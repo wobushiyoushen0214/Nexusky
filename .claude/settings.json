@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(npx *)",
+      "Bash(npm *)",
+      "Bash(node *)",
+      "Bash(./node_modules/.bin/*)",
+      "Bash(./node_modules/electron/*)",
+      "Bash(node_modules/*)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "Bash(mv *)",
+      "Bash(touch *)",
+      "Bash(rm *)",
+      "Bash(echo *)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(curl *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(tar *)",
+      "Bash(unzip *)",
+      "Bash(chmod *)",
+      "Bash(kill *)",
+      "Bash(wait *)",
+      "Bash(xargs *)",
+      "Bash(awk *)",
+      "Bash(sed *)",
+      "Bash(tee *)",
+      "Read(//c/Users/李志伟/.claude/projects/**)"
+    ]
+  }
+}
