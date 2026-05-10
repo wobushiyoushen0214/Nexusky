@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './client'
+import { getSupabaseClient, getAdminClient } from './client'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join, relative } from 'path'
 import { createHash } from 'crypto'
@@ -9,18 +9,23 @@ export interface SyncStatus {
   errors: string[]
 }
 
+function encodeStoragePath(relPath: string): string {
+  return relPath.split('/').map((part) => encodeURIComponent(part)).join('/')
+}
+
 export async function pushNote(vaultPath: string, filePath: string): Promise<boolean> {
-  const client = getSupabaseClient()
+  const client = getAdminClient() || getSupabaseClient()
   if (!client) return false
 
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
+  const storagePath = encodeStoragePath(relPath)
   const content = readFileSync(filePath, 'utf-8')
   const hash = createHash('md5').update(content).digest('hex')
 
   const { error } = await client.storage
     .from('notes')
-    .upload(relPath, content, {
-      contentType: 'text/markdown',
+    .upload(storagePath, content, {
+      contentType: 'text/markdown; charset=utf-8',
       upsert: true
     })
 
@@ -39,12 +44,13 @@ export async function pushNote(vaultPath: string, filePath: string): Promise<boo
 }
 
 export async function pullNote(vaultPath: string, relPath: string): Promise<boolean> {
-  const client = getSupabaseClient()
+  const client = getAdminClient() || getSupabaseClient()
   if (!client) return false
 
+  const storagePath = encodeStoragePath(relPath)
   const { data, error } = await client.storage
     .from('notes')
-    .download(relPath)
+    .download(storagePath)
 
   if (error || !data) {
     console.error('Pull failed:', relPath, error?.message)
@@ -53,8 +59,6 @@ export async function pullNote(vaultPath: string, relPath: string): Promise<bool
 
   const content = await data.text()
   const fullPath = join(vaultPath, relPath)
-  const dir = fullPath.substring(0, fullPath.lastIndexOf(/[\\/]/.test(fullPath) ? fullPath.match(/[\\/]/)?.[0] || '/' : '/'))
-
   const { mkdirSync } = require('fs')
   const { dirname } = require('path')
   mkdirSync(dirname(fullPath), { recursive: true })
@@ -63,7 +67,7 @@ export async function pullNote(vaultPath: string, relPath: string): Promise<bool
 }
 
 export async function syncVault(vaultPath: string): Promise<SyncStatus> {
-  const client = getSupabaseClient()
+  const client = getAdminClient() || getSupabaseClient()
   if (!client) return { total: 0, synced: 0, errors: ['未配置云端'] }
 
   const status: SyncStatus = { total: 0, synced: 0, errors: [] }

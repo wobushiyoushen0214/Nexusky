@@ -13,6 +13,7 @@ interface EditorState {
   currentFilePath: string | null
   content: string
   isDirty: boolean
+  recentFiles: string[]
   setContent: (content: string) => void
   setCurrentFile: (path: string | null) => void
   setDirty: (dirty: boolean) => void
@@ -28,6 +29,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentFilePath: null,
   content: '',
   isDirty: false,
+  recentFiles: JSON.parse(localStorage.getItem('nexusky-recent') || '[]'),
 
   setCurrentFile: (path) => set({ currentFilePath: path }),
   setContent: (content) => {
@@ -59,7 +61,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const content = await window.api.invoke('file:read', { path })
     const newTab: Tab = { path, content, isDirty: false }
     const newTabs = [...tabs, newTab]
-    set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false })
+
+    const recent = [path, ...get().recentFiles.filter((p) => p !== path)].slice(0, 10)
+    localStorage.setItem('nexusky-recent', JSON.stringify(recent))
+    set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false, recentFiles: recent })
   },
 
   closeTab: async (index) => {

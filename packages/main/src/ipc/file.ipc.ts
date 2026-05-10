@@ -29,6 +29,15 @@ export function registerFileIPC(): void {
   ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string }) => {
     await rename(params.oldPath, params.newPath)
   })
+
+  ipcMain.handle('file:save-image', async (_event, params: { vaultPath: string; imageData: string; fileName: string }) => {
+    const assetsDir = join(params.vaultPath, 'assets')
+    await mkdir(assetsDir, { recursive: true })
+    const filePath = join(assetsDir, params.fileName)
+    const base64Data = params.imageData.replace(/^data:image\/\w+;base64,/, '')
+    await writeFile(filePath, Buffer.from(base64Data, 'base64'))
+    return `assets/${params.fileName}`
+  })
 }
 
 async function listDirectory(dirPath: string): Promise<FileEntry[]> {

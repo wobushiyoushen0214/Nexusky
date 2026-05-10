@@ -1,10 +1,13 @@
 import type { Editor } from '@tiptap/react'
+import { useEditorStore } from '../../stores/editor-store'
+import { useUIStore } from '../../stores/ui-store'
 
 interface ToolbarProps {
   editor: Editor
 }
 
 export function EditorToolbar({ editor }: ToolbarProps) {
+  const { previewMode, togglePreviewMode } = useUIStore()
   const btnStyle = (active: boolean): React.CSSProperties => ({
     width: 28,
     height: 28,
@@ -26,7 +29,7 @@ export function EditorToolbar({ editor }: ToolbarProps) {
   }
 
   return (
-    <div style={{ height: 36, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 2, borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+    <div style={{ height: 36, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
       {/* Headings */}
       <button
         style={btnStyle(editor.isActive('heading', { level: 1 }))}
@@ -148,6 +151,41 @@ export function EditorToolbar({ editor }: ToolbarProps) {
 
       <div style={sepStyle} />
 
+      {/* Task list */}
+      <button
+        style={btnStyle(editor.isActive('taskList'))}
+        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        title="任务列表"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="5" width="6" height="6" rx="1" /><line x1="13" y1="8" x2="21" y2="8" /><rect x="3" y="13" width="6" height="6" rx="1" /><line x1="13" y1="16" x2="21" y2="16" />
+        </svg>
+      </button>
+
+      {/* Table */}
+      <button
+        style={btnStyle(false)}
+        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        title="插入表格"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
+        </svg>
+      </button>
+
+      {/* Highlight */}
+      <button
+        style={btnStyle(editor.isActive('highlight'))}
+        onClick={() => editor.chain().focus().toggleHighlight().run()}
+        title="高亮"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+        </svg>
+      </button>
+
+      <div style={sepStyle} />
+
       {/* Horizontal rule */}
       <button
         style={btnStyle(false)}
@@ -156,6 +194,35 @@ export function EditorToolbar({ editor }: ToolbarProps) {
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <line x1="3" y1="12" x2="21" y2="12" />
+        </svg>
+      </button>
+
+      <div style={{ flex: 1 }} />
+
+      {/* Preview toggle */}
+      <button
+        style={btnStyle(previewMode)}
+        onClick={togglePreviewMode}
+        title="预览模式 (Ctrl+Shift+V)"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+
+      {/* Export */}
+      <button
+        style={btnStyle(false)}
+        onClick={async () => {
+          const { content, currentFilePath } = useEditorStore.getState()
+          if (!content || !currentFilePath) return
+          const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
+          await window.api.invoke('export:pdf', { content, title })
+        }}
+        title="导出 PDF"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><polyline points="9 15 12 18 15 15" />
         </svg>
       </button>
     </div>

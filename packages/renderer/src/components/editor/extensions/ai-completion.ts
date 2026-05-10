@@ -4,9 +4,24 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 const pluginKey = new PluginKey('aiCompletion')
 
-let completionText = ''
-let completionPos = -1
+interface CompletionState {
+  text: string
+  pos: number
+  decorations: DecorationSet
+}
+
+const EMPTY_STATE: CompletionState = { text: '', pos: -1, decorations: DecorationSet.empty }
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+let ghostElement: HTMLElement | null = null
+
+function getOrCreateGhost(): HTMLElement {
+  if (!ghostElement) {
+    ghostElement = document.createElement('span')
+    ghostElement.className = 'ai-ghost-text'
+  }
+  return ghostElement
+}
 
 async function fetchCompletion(textBefore: string): Promise<string> {
   try {
@@ -21,52 +36,57 @@ export const AICompletion = Extension.create({
   name: 'aiCompletion',
 
   addProseMirrorPlugins() {
-    const editor = this.editor
-
     return [
       new Plugin({
         key: pluginKey,
         state: {
-          init() {
-            return DecorationSet.empty
+          init(): CompletionState {
+            return EMPTY_STATE
           },
-          apply(tr, decorationSet) {
-            if (completionText && completionPos >= 0) {
-              const widget = Decoration.widget(completionPos, () => {
-                const span = document.createElement('span')
-                span.className = 'ai-ghost-text'
-                span.textContent = completionText
-                return span
-              }, { side: 1 })
-              return DecorationSet.create(tr.doc, [widget])
+          apply(tr, prev): CompletionState {
+            const meta = tr.getMeta(pluginKey)
+            if (meta?.clear) return EMPTY_STATE
+            if (meta?.set) {
+              const { text, pos } = meta.set
+              const ghost = getOrCreateGhost()
+              ghost.textContent = text
+              const widget = Decoration.widget(pos, ghost, { side: 1, key: 'ai-ghost' })
+              return { text, pos, decorations: DecorationSet.create(tr.doc, [widget]) }
             }
-            return DecorationSet.empty
+            if (prev.text && !tr.docChanged) return prev
+            if (tr.docChanged) return EMPTY_STATE
+            return prev
           }
         },
         props: {
           decorations(state) {
-            return pluginKey.getState(state)
+            return pluginKey.getState(state)?.decorations || DecorationSet.empty
           },
           handleKeyDown(view, event) {
-            if (event.key === 'Tab' && completionText) {
+            const completion = pluginKey.getState(view.state) as CompletionState
+            if (!completion.text) return false
+
+            if (event.key === 'Tab') {
               event.preventDefault()
-              const { state, dispatch } = view
-              const tr = state.tr.insertText(completionText, completionPos)
-              dispatch(tr)
-              completionText = ''
-              completionPos = -1
+              // Immediately hide ghost to prevent visual duplication
+              if (ghostElement) ghostElement.style.display = 'none'
+              const { tr } = view.state
+              tr.insertText(completion.text, completion.pos)
+              tr.setMeta(pluginKey, { clear: true })
+              view.dispatch(tr)
+              // Reset ghost visibility for next use
+              if (ghostElement) ghostElement.style.display = ''
               return true
             }
-            if (event.key === 'Escape' && completionText) {
-              completionText = ''
-              completionPos = -1
-              view.dispatch(view.state.tr)
+
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              if (ghostElement) ghostElement.style.display = 'none'
+              view.dispatch(view.state.tr.setMeta(pluginKey, { clear: true }))
+              if (ghostElement) ghostElement.style.display = ''
               return true
             }
-            if (completionText && event.key !== 'Shift' && event.key !== 'Control' && event.key !== 'Alt') {
-              completionText = ''
-              completionPos = -1
-            }
+
             return false
           }
         },
@@ -75,21 +95,30 @@ export const AICompletion = Extension.create({
             update(view) {
               if (debounceTimer) clearTimeout(debounceTimer)
 
+              const completion = pluginKey.getState(view.state) as CompletionState
+              if (completion.text) return
+
               debounceTimer = setTimeout(async () => {
                 const { state } = view
                 const { from } = state.selection
-                const textBefore = state.doc.textBetween(Math.max(0, from - 200), from)
+                if (!state.selection.empty) return
 
+                const textBefore = state.doc.textBetween(Math.max(0, from - 300), from)
                 if (textBefore.length < 10) return
-                if (completionText) return
 
                 const result = await fetchCompletion(textBefore)
-                if (result && view.state.selection.from === from) {
-                  completionText = result
-                  completionPos = from
-                  view.dispatch(view.state.tr)
-                }
-              }, 1500)
+                if (!result) return
+                if (view.state.selection.from !== from) return
+
+                const current = pluginKey.getState(view.state) as CompletionState
+                if (current.text) return
+
+                view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: result, pos: from } }))
+              }, 2000)
+            },
+            destroy() {
+              if (debounceTimer) clearTimeout(debounceTimer)
+              ghostElement = null
             }
           }
         }

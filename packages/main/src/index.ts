@@ -6,19 +6,24 @@ import { registerDbIPC } from './ipc/db.ipc'
 import { registerAiIPC } from './ipc/ai.ipc'
 import { registerTemplateIPC } from './ipc/template.ipc'
 import { registerCloudIPC } from './ipc/cloud.ipc'
+import { registerExportIPC } from './ipc/export.ipc'
 
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
+  const isMac = process.platform === 'darwin'
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 600,
     frame: false,
-    titleBarStyle: 'hidden',
+    titleBarStyle: 'hiddenInset',
     titleBarOverlay: false,
-    backgroundColor: '#1e2030',
+    trafficLightPosition: isMac ? { x: 16, y: 12 } : undefined,
+    backgroundColor: '#1e1e1e',
+    icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -45,6 +50,7 @@ app.whenReady().then(() => {
   registerAiIPC()
   registerTemplateIPC()
   registerCloudIPC()
+  registerExportIPC()
 
   ipcMain.on('window:minimize', () => mainWindow?.minimize())
   ipcMain.on('window:maximize', () => {

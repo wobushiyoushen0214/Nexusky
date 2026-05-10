@@ -3,13 +3,30 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { FileTree } from './FileTree'
+import type { FileEntry } from '@shared/types/ipc'
 
-export function Sidebar() {
-  const { vaultPath, files, refreshFiles, selectVault } = useVaultStore()
+function filterFiles(entries: FileEntry[], query: string): FileEntry[] {
+  if (!query.trim()) return entries
+  const q = query.toLowerCase()
+  return entries.reduce<FileEntry[]>((acc, entry) => {
+    if (entry.isDirectory) {
+      const filtered = filterFiles(entry.children || [], query)
+      if (filtered.length > 0) acc.push({ ...entry, children: filtered })
+    } else if (entry.name.toLowerCase().includes(q)) {
+      acc.push(entry)
+    }
+    return acc
+  }, [])
+}
+
+export function Sidebar({ width = 240 }: { width?: number }) {
+  const { vaultPath, files, favorites, refreshFiles, selectVault } = useVaultStore()
   const openFile = useEditorStore((s) => s.openFile)
-  const { setSearchOpen, setQuickSwitcherOpen, toggleRightPanel, setSettingsOpen } = useUIStore()
+  const { setSearchOpen, setQuickSwitcherOpen, toggleRightPanel, setSettingsOpen, setMainView } = useUIStore()
   const [isCreating, setIsCreating] = useState(false)
+  const [createType, setCreateType] = useState<'file' | 'folder'>('file')
   const [newFileName, setNewFileName] = useState('')
+  const [filterQuery, setFilterQuery] = useState('')
 
   useEffect(() => {
     if (vaultPath) refreshFiles()
@@ -17,6 +34,14 @@ export function Sidebar() {
 
   const handleCreateFile = async () => {
     if (!newFileName.trim() || !vaultPath) return
+    if (createType === 'folder') {
+      const folderPath = `${vaultPath}/${newFileName.trim()}`
+      await window.api.invoke('file:create', { path: `${folderPath}/.gitkeep`, content: '' })
+      setIsCreating(false)
+      setNewFileName('')
+      await refreshFiles()
+      return
+    }
     const name = newFileName.trim().endsWith('.md') ? newFileName.trim() : `${newFileName.trim()}.md`
     const path = `${vaultPath}/${name}`
     await window.api.invoke('file:create', { path, content: `# ${newFileName.trim().replace(/\.md$/, '')}\n\n` })
@@ -27,21 +52,32 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="animate-slide-in-left" style={{ width: 240, height: '100%', background: 'var(--sidebar-bg)', backdropFilter: 'blur(24px) saturate(1.2)', WebkitBackdropFilter: 'blur(24px) saturate(1.2)', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-glow)', boxShadow: 'inset -1px 0 0 var(--border-shine)' } as React.CSSProperties}>
+    <aside className="animate-slide-in-left" style={{ width, height: '100%', background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
       {/* Header */}
       <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {vaultPath?.split(/[\\/]/).pop()}
         </span>
-        <button
-          onClick={() => setIsCreating(true)}
-          style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-          title="新建笔记"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
+        <div style={{ display: 'flex', gap: 2 }}>
+          <button
+            onClick={() => { setCreateType('file'); setIsCreating(true) }}
+            style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+            title="新建笔记"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+          <button
+            onClick={() => { setCreateType('folder'); setIsCreating(true) }}
+            style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+            title="新建文件夹"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* New file input */}
@@ -56,7 +92,7 @@ export function Sidebar() {
               if (e.key === 'Escape') { setIsCreating(false); setNewFileName('') }
             }}
             onBlur={() => { setIsCreating(false); setNewFileName('') }}
-            placeholder="文件名"
+            placeholder={createType === 'folder' ? '文件夹名' : '文件名'}
             style={{
               width: '100%',
               height: 28,
@@ -72,13 +108,58 @@ export function Sidebar() {
         </div>
       )}
 
+      {/* Filter */}
+      <div style={{ padding: '0 8px 4px' }}>
+        <input
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          placeholder="筛选..."
+          style={{
+            width: '100%', height: 26, padding: '0 8px', fontSize: 12,
+            background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+            borderRadius: 6, color: 'var(--text-primary)', outline: 'none',
+            transition: 'border-color 150ms',
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+        />
+      </div>
+
+      {/* Favorites */}
+      {favorites.length > 0 && !filterQuery && (
+        <div style={{ padding: '4px 8px 8px' }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 4px 2px', marginBottom: 2 }}>收藏</div>
+          {favorites.map((fav) => {
+            const name = fav.split(/[\\/]/).pop()?.replace(/\.md$/, '') || fav
+            return (
+              <button
+                key={fav}
+                onClick={() => openFile(fav)}
+                style={{
+                  width: '100%', height: 26, paddingLeft: 8, paddingRight: 8,
+                  display: 'flex', alignItems: 'center', gap: 6, borderRadius: 5,
+                  border: 'none', background: 'transparent', cursor: 'pointer',
+                  fontSize: 12, color: 'var(--text-secondary)', textAlign: 'left',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--accent)" stroke="none">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* File tree */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 12px' }}>
-        <FileTree entries={files} />
+        <FileTree entries={filterFiles(files, filterQuery)} />
       </div>
 
       {/* Footer - Icon buttons */}
-      <div style={{ height: 44, padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+      <div style={{ height: 44, padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {/* Search */}
           <button
@@ -103,8 +184,9 @@ export function Sidebar() {
           {/* Graph */}
           <button
             onClick={() => toggleRightPanel('graph')}
+            onDoubleClick={() => setMainView('graph')}
             style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-            title="知识图谱 (Ctrl+G)"
+            title="知识图谱 (单击侧栏 / 双击全屏)"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="6" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><circle cx="18" cy="6" r="3" />

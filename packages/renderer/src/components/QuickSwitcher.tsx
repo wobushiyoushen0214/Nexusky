@@ -28,7 +28,18 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
   useEffect(() => {
     if (!vaultPath || !open) return
     if (!query.trim()) {
-      window.api.invoke('db:get-all-notes', { vaultPath }).then(setResults)
+      window.api.invoke('db:get-all-notes', { vaultPath }).then((notes) => {
+        const recent = useEditorStore.getState().recentFiles
+        const sorted = [...notes].sort((a, b) => {
+          const aIdx = recent.indexOf(`${vaultPath}/${a.filePath}`)
+          const bIdx = recent.indexOf(`${vaultPath}/${b.filePath}`)
+          if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx
+          if (aIdx >= 0) return -1
+          if (bIdx >= 0) return 1
+          return 0
+        })
+        setResults(sorted)
+      })
       return
     }
     window.api.invoke('db:search-notes', { vaultPath, query: query.trim() }).then(setResults)
@@ -58,25 +69,39 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] animate-overlay-in" style={{ background: 'rgba(10, 12, 20, 0.5)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' } as React.CSSProperties} onClick={onClose}>
+    <div
+      className="animate-overlay-in"
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '18vh', background: 'rgba(0, 0, 0, 0.4)' }}
+      onClick={onClose}
+    >
       <div
         className="animate-scale-in"
-        style={{ width: 480, background: 'var(--bg-glass-solid)', backdropFilter: 'blur(24px) saturate(1.2)', WebkitBackdropFilter: 'blur(24px) saturate(1.2)', borderRadius: 14, border: '1px solid var(--border-glow)', overflow: 'hidden', boxShadow: 'var(--shadow-lg), var(--shadow-glow)' } as React.CSSProperties}
+        style={{ width: 520, background: 'var(--bg-elevated)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-3 border-b border-[var(--border-subtle)]">
+        {/* Search input */}
+        <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0) }}
             onKeyDown={handleKeyDown}
             placeholder="搜索笔记..."
-            className="w-full bg-transparent text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none"
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)' }}
           />
+          <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 4, background: 'var(--bg-hover)' }}>ESC</kbd>
         </div>
-        <div className="max-h-[300px] overflow-y-auto py-1">
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+
+        {/* Results */}
+        <div style={{ maxHeight: 340, overflowY: 'auto', padding: '6px' }}>
           {results.length === 0 ? (
-            <div className="px-4 py-6 text-center text-[12px] text-[var(--text-tertiary)]">
+            <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
               {query ? '没有找到匹配的笔记' : '暂无笔记'}
             </div>
           ) : (
@@ -84,14 +109,25 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
               <button
                 key={result.id}
                 onClick={() => handleSelect(result)}
-                className={`w-full text-left px-4 py-2 flex items-center gap-3 transition-colors ${
-                  i === selectedIndex ? 'bg-[var(--accent-muted)]' : 'hover:bg-[var(--bg-hover)]'
-                }`}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: i === selectedIndex ? 'var(--accent-muted)' : 'transparent',
+                  transition: 'background 80ms',
+                }}
               >
-                <span className={`text-[13px] truncate ${i === selectedIndex ? 'text-[var(--accent-text)]' : 'text-[var(--text-primary)]'}`}>
+                <span style={{ fontSize: 14, color: i === selectedIndex ? 'var(--accent-text)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {result.title}
                 </span>
-                <span className="text-[11px] text-[var(--text-tertiary)] truncate ml-auto shrink-0">
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {result.filePath}
                 </span>
               </button>

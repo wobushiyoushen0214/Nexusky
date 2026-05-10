@@ -29,6 +29,9 @@ export interface IPCChannelMap {
   'file:create': { params: { path: string; content?: string }; result: void }
   'file:delete': { params: { path: string }; result: void }
   'file:rename': { params: { oldPath: string; newPath: string }; result: void }
+  'file:save-image': { params: { vaultPath: string; imageData: string; fileName: string }; result: string }
+  'export:html': { params: { content: string; title: string }; result: boolean }
+  'export:pdf': { params: { content: string; title: string }; result: boolean }
   'vault:select': { params: undefined; result: string | null }
   'vault:create': { params: { name: string }; result: string | null }
   'vault:get': { params: undefined; result: string | null }

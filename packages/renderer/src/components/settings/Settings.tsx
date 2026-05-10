@@ -97,7 +97,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     >
       <div
         className="animate-scale-in"
-        style={{ width: 520, maxHeight: '75vh', background: 'var(--bg-glass-solid)', backdropFilter: 'blur(28px) saturate(1.3)', WebkitBackdropFilter: 'blur(28px) saturate(1.3)', borderRadius: 16, border: '1px solid var(--border-glow)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg), var(--shadow-glow), inset 0 1px 0 var(--border-shine)' } as React.CSSProperties}
+        style={{ width: 520, maxHeight: '75vh', background: 'var(--bg-surface)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -270,13 +270,13 @@ export function Settings({ open, onClose }: SettingsProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Service Role Key（初始化用，可选）</label>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--accent-text)', marginBottom: 6, fontWeight: 600 }}>Service Role Key（必填，用于同步和初始化）</label>
                   <input
                     type="password"
                     value={cloudConfig.serviceRoleKey}
                     onChange={(e) => setCloudConfig({ ...cloudConfig, serviceRoleKey: e.target.value })}
                     style={inputStyle}
-                    placeholder="eyJ... (Supabase Dashboard → Settings → API)"
+                    placeholder="eyJ... (Dashboard → Settings → API → service_role)"
                     onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                     onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
                   />

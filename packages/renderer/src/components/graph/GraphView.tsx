@@ -45,11 +45,33 @@ export function GraphView() {
     svg.selectAll('*').remove()
 
     const defs = svg.append('defs')
-    const gradient = defs.append('radialGradient').attr('id', 'node-glow')
-    gradient.append('stop').attr('offset', '0%').attr('stop-color', 'var(--accent)').attr('stop-opacity', 0.6)
-    gradient.append('stop').attr('offset', '100%').attr('stop-color', 'var(--accent)').attr('stop-opacity', 0)
+
+    // Neuron glow gradient
+    const glowGrad = defs.append('radialGradient').attr('id', 'neuron-glow')
+    glowGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.6)
+    glowGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.15)
+    glowGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0)
+
+    // Inactive node gradient
+    const dimGrad = defs.append('radialGradient').attr('id', 'neuron-dim')
+    dimGrad.append('stop').attr('offset', '0%').attr('stop-color', '#999999').attr('stop-opacity', 0.4)
+    dimGrad.append('stop').attr('offset', '100%').attr('stop-color', '#999999').attr('stop-opacity', 0)
+
+    // Synapse gradient for links
+    const synapseGrad = defs.append('linearGradient').attr('id', 'synapse-grad')
+    synapseGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
+    synapseGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.2)
+    synapseGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
+
+    // Glow filter
+    const filter = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%')
+    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur')
+    filter.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', (d) => d)
 
     const g = svg.append('g')
+
+    // Determine current file's title for highlighting
+    const currentTitle = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
 
     const linkCountMap = new Map<string, number>()
     graphData.edges.forEach((e) => {
@@ -63,64 +85,73 @@ export function GraphView() {
     }))
     const links: SimLink[] = graphData.edges.map((e) => ({ source: e.source, target: e.target }))
 
-    const getRadius = (d: SimNode) => Math.max(4, Math.min(12, 4 + d.linkCount * 1.5))
+    const getRadius = (d: SimNode) => Math.max(3, Math.min(8, 3 + d.linkCount * 1.2))
 
     const simulation = forceSimulation(nodes)
-      .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(100).strength(0.5))
-      .force('charge', forceManyBody().strength(-300).distanceMax(400))
+      .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(80).strength(0.4))
+      .force('charge', forceManyBody().strength(-200).distanceMax(350))
       .force('center', forceCenter(width / 2, height / 2))
-      .force('collide', forceCollide<SimNode>((d) => getRadius(d) + 10))
-      .force('x', forceX(width / 2).strength(0.02))
-      .force('y', forceY(height / 2).strength(0.02))
+      .force('collide', forceCollide<SimNode>((d) => getRadius(d) + 20))
+      .force('x', forceX(width / 2).strength(0.015))
+      .force('y', forceY(height / 2).strength(0.015))
 
+    // Synapse connections (curved lines like dendrites)
     const link = g.append('g')
-      .attr('class', 'links')
-      .selectAll('line')
+      .selectAll('path')
       .data(links)
-      .join('line')
-      .attr('stroke', 'var(--border-default)')
+      .join('path')
+      .attr('fill', 'none')
+      .attr('stroke', 'url(#synapse-grad)')
       .attr('stroke-width', 0.8)
-      .attr('stroke-opacity', 0.4)
+      .attr('stroke-opacity', 0.35)
 
     const nodeGroup = g.append('g')
-      .attr('class', 'nodes')
       .selectAll('g')
       .data(nodes)
       .join('g')
       .attr('cursor', 'pointer')
 
-    // Glow for active node
-    nodeGroup.append('circle')
-      .attr('r', (d) => getRadius(d) + 8)
-      .attr('fill', 'url(#node-glow)')
-      .attr('opacity', 0)
-      .attr('class', 'node-glow')
+    const isCurrentNode = (d: SimNode) => d.title === currentTitle
 
-    // Main circle
+    // Outer glow (soma halo)
     nodeGroup.append('circle')
-      .attr('r', getRadius)
-      .attr('fill', (d) => d.linkCount > 0 ? 'var(--accent)' : 'var(--text-tertiary)')
-      .attr('stroke', 'var(--bg-base)')
-      .attr('stroke-width', 2)
-      .attr('class', 'node-circle')
+      .attr('r', (d) => isCurrentNode(d) ? getRadius(d) + 18 : getRadius(d) + 12)
+      .attr('fill', (d) => isCurrentNode(d) ? 'url(#neuron-glow)' : d.linkCount > 0 ? 'url(#neuron-glow)' : 'url(#neuron-dim)')
+      .attr('opacity', (d) => isCurrentNode(d) ? 1 : Math.min(0.6, 0.2 + d.linkCount * 0.1))
+      .attr('class', 'neuron-halo')
+
+    // Core (soma)
+    nodeGroup.append('circle')
+      .attr('r', (d) => isCurrentNode(d) ? getRadius(d) + 4 : getRadius(d))
+      .attr('fill', (d) => isCurrentNode(d) ? '#a89cf8' : d.linkCount > 0 ? '#7c6ef5' : '#666666')
+      .attr('opacity', (d) => isCurrentNode(d) ? 1 : d.linkCount > 0 ? 0.9 : 0.5)
+      .attr('filter', (d) => isCurrentNode(d) || d.linkCount > 2 ? 'url(#glow)' : 'none')
+      .attr('class', 'neuron-soma')
+
+    // Inner bright spot (nucleus)
+    nodeGroup.append('circle')
+      .attr('r', (d) => isCurrentNode(d) ? 4 : Math.max(1.5, getRadius(d) * 0.4))
+      .attr('fill', '#ffffff')
+      .attr('opacity', (d) => isCurrentNode(d) ? 0.9 : d.linkCount > 0 ? 0.7 : 0.2)
 
     // Label
     nodeGroup.append('text')
       .text((d) => d.title)
-      .attr('x', (d) => getRadius(d) + 6)
-      .attr('y', 4)
-      .attr('font-size', '10px')
-      .attr('fill', 'var(--text-tertiary)')
+      .attr('x', (d) => (isCurrentNode(d) ? getRadius(d) + 14 : getRadius(d) + 10))
+      .attr('y', 3)
+      .attr('font-size', (d) => isCurrentNode(d) ? '12px' : '10px')
+      .attr('font-weight', (d) => isCurrentNode(d) ? '600' : '400')
+      .attr('fill', (d) => isCurrentNode(d) ? 'var(--text-primary)' : 'var(--text-secondary)')
       .attr('font-family', 'Inter, system-ui, sans-serif')
-      .attr('opacity', 0.8)
-      .attr('class', 'node-label')
+      .attr('opacity', (d) => isCurrentNode(d) ? 1 : 0.7)
+      .attr('class', 'neuron-label')
 
-    // Hover interactions
+    // Hover
     nodeGroup
       .on('mouseenter', function (_event, d) {
-        select(this).select('.node-glow').attr('opacity', 1)
-        select(this).select('.node-label').attr('fill', 'var(--text-primary)').attr('opacity', 1).attr('font-size', '11px')
-        select(this).select('.node-circle').attr('stroke', 'var(--accent-text)').attr('stroke-width', 2)
+        select(this).select('.neuron-halo').attr('opacity', 0.8)
+        select(this).select('.neuron-soma').attr('fill', '#a89cf8').attr('opacity', 1)
+        select(this).select('.neuron-label').attr('opacity', 1).attr('fill', 'var(--text-primary)')
 
         const connectedIds = new Set<string>()
         links.forEach((l) => {
@@ -130,23 +161,25 @@ export function GraphView() {
           if (t === d.id) connectedIds.add(s)
         })
 
-        nodeGroup.attr('opacity', (n) => n.id === d.id || connectedIds.has(n.id) ? 1 : 0.2)
+        nodeGroup.attr('opacity', (n) => n.id === d.id || connectedIds.has(n.id) ? 1 : 0.15)
         link.attr('stroke-opacity', (l: any) => {
           const s = typeof l.source === 'string' ? l.source : l.source.id
           const t = typeof l.target === 'string' ? l.target : l.target.id
-          return s === d.id || t === d.id ? 0.8 : 0.1
+          return s === d.id || t === d.id ? 0.7 : 0.05
         }).attr('stroke-width', (l: any) => {
           const s = typeof l.source === 'string' ? l.source : l.source.id
           const t = typeof l.target === 'string' ? l.target : l.target.id
           return s === d.id || t === d.id ? 1.5 : 0.8
         })
       })
-      .on('mouseleave', function () {
-        select(this).select('.node-glow').attr('opacity', 0)
-        select(this).select('.node-label').attr('fill', 'var(--text-tertiary)').attr('opacity', 0.8).attr('font-size', '10px')
-        select(this).select('.node-circle').attr('stroke', 'var(--bg-base)').attr('stroke-width', 2)
+      .on('mouseleave', function (_event, d) {
+        select(this).select('.neuron-halo').attr('opacity', Math.min(0.6, 0.2 + d.linkCount * 0.1))
+        select(this).select('.neuron-soma')
+          .attr('fill', d.linkCount > 0 ? '#7c6ef5' : '#666666')
+          .attr('opacity', d.linkCount > 0 ? 0.9 : 0.5)
+        select(this).select('.neuron-label').attr('opacity', 0.7).attr('fill', 'var(--text-secondary)')
         nodeGroup.attr('opacity', 1)
-        link.attr('stroke-opacity', 0.4).attr('stroke-width', 0.8)
+        link.attr('stroke-opacity', 0.35).attr('stroke-width', 0.8)
       })
 
     // Drag
@@ -168,7 +201,6 @@ export function GraphView() {
 
     nodeGroup.call(dragBehavior)
 
-    // Click to open
     nodeGroup.on('click', async (_event, d) => {
       if (!vaultPath) return
       const notes = await window.api.invoke('db:search-notes', { vaultPath, query: d.title })
@@ -177,7 +209,6 @@ export function GraphView() {
       }
     })
 
-    // Zoom
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 5])
       .on('zoom', (event) => {
@@ -186,13 +217,27 @@ export function GraphView() {
 
     svg.call(zoomBehavior)
 
-    // Tick
+    // Center on current node after simulation stabilizes
+    simulation.on('end', () => {
+      const currentNode = nodes.find((n) => n.title === currentTitle)
+      if (currentNode && currentNode.x != null && currentNode.y != null) {
+        const { x, y } = currentNode
+        const transform = { k: 1.2, x: width / 2 - x * 1.2, y: height / 2 - y * 1.2 }
+        svg.transition().duration(600).call(
+          zoomBehavior.transform as any,
+          { k: transform.k, x: transform.x, y: transform.y } as any
+        )
+      }
+    })
+
+    // Tick - use curved paths for organic synapse look
     simulation.on('tick', () => {
-      link
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y)
+      link.attr('d', (d: any) => {
+        const dx = d.target.x - d.source.x
+        const dy = d.target.y - d.source.y
+        const dr = Math.sqrt(dx * dx + dy * dy) * 1.5
+        return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`
+      })
 
       nodeGroup.attr('transform', (d) => `translate(${d.x},${d.y})`)
     })
@@ -212,6 +257,6 @@ export function GraphView() {
   }
 
   return (
-    <svg ref={svgRef} style={{ width: '100%', height: '100%', background: 'var(--bg-base)' }} />
+    <svg ref={svgRef} style={{ width: '100%', height: '100%', background: 'transparent' }} />
   )
 }

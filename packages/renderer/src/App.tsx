@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
+import { useEditorStore } from './stores/editor-store'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { Editor } from './components/editor/Editor'
 import { WelcomeScreen } from './components/WelcomeScreen'
@@ -11,10 +12,12 @@ import { ChatPanel } from './components/ai/ChatPanel'
 import { Settings } from './components/settings/Settings'
 import { SearchPanel } from './components/SearchPanel'
 import { OutlinePanel } from './components/editor/OutlinePanel'
+import { CommandPalette } from './components/CommandPalette'
+import { ResizeHandle } from './components/ResizeHandle'
 
 export default function App() {
   const { vaultPath, loadVault } = useVaultStore()
-  const { rightPanel, quickSwitcherOpen, settingsOpen, searchOpen, toggleRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen } = useUIStore()
+  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView } = useUIStore()
 
   useEffect(() => {
     loadVault()
@@ -22,13 +25,23 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'p') && !e.shiftKey) {
         e.preventDefault()
         setQuickSwitcherOpen(true)
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'g' || e.key === 'G')) {
         e.preventDefault()
-        toggleRightPanel('graph')
+        if (e.shiftKey) {
+          const state = useUIStore.getState()
+          if (state.mainView === 'graph') {
+            setMainView('editor')
+          } else {
+            if (state.rightPanel === 'graph') toggleRightPanel('graph')
+            setMainView('graph')
+          }
+        } else {
+          toggleRightPanel('graph')
+        }
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
         e.preventDefault()
@@ -42,34 +55,103 @@ export default function App() {
         e.preventDefault()
         setSearchOpen(true)
       }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'B') {
+        e.preventDefault()
+        toggleSidebar()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+        e.preventDefault()
+        setCommandPaletteOpen(true)
+      }
+      if (e.key === 'F11' || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')) {
+        e.preventDefault()
+        toggleFocusMode()
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Drag & drop .md files to open
+  useEffect(() => {
+    const handleDragOver = (e: DragEvent) => e.preventDefault()
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault()
+      const files = e.dataTransfer?.files
+      if (!files) return
+      for (const file of files) {
+        if (file.name.endsWith('.md') && (file as any).path) {
+          useEditorStore.getState().openFile((file as any).path)
+          break
+        }
+      }
+    }
+    document.addEventListener('dragover', handleDragOver)
+    document.addEventListener('drop', handleDrop)
+    return () => {
+      document.removeEventListener('dragover', handleDragOver)
+      document.removeEventListener('drop', handleDrop)
+    }
+  }, [])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
-      <TitleBar />
+      {!focusMode && <TitleBar />}
       {vaultPath ? (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <Sidebar />
-          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)' }}>
-            <Editor />
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'var(--sidebar-bg)', minHeight: 0, alignItems: 'stretch' }}>
+          {!sidebarCollapsed && (
+            <>
+              <Sidebar width={sidebarWidth} />
+              <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />
+            </>
+          )}
+          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: 4, marginRight: 4, minWidth: 0 }}>
+            {mainView === 'editor' ? <Editor /> : (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>知识图谱</span>
+                  <button
+                    onClick={() => setMainView('editor')}
+                    style={{ fontSize: 12, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  >
+                    返回编辑器
+                  </button>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <GraphView />
+                </div>
+              </div>
+            )}
           </main>
           {rightPanel !== 'none' && (
-            <aside className="animate-slide-in-right" style={{ width: 360, height: '100%', borderLeft: '1px solid var(--border-glow)', background: 'var(--bg-glass-solid)', backdropFilter: 'blur(24px) saturate(1.2)', WebkitBackdropFilter: 'blur(24px) saturate(1.2)', flexShrink: 0, display: 'flex', flexDirection: 'column', boxShadow: 'inset 1px 0 0 var(--border-shine), var(--shadow-md)' } as React.CSSProperties}>
-              <div style={{ height: 40, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', letterSpacing: '0.02em' }}>
+            <>
+              <ResizeHandle side="right" onResize={(delta) => resizeRightPanel(delta)} />
+              <aside style={{ width: rightPanelWidth, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: 4, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
                   {rightPanel === 'graph' ? '知识图谱' : rightPanel === 'chat' ? 'AI 对话' : '大纲'}
                 </span>
-                <button
-                  onClick={() => toggleRightPanel(rightPanel)}
-                  style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {rightPanel === 'graph' && (
+                    <button
+                      onClick={() => { setMainView('graph'); toggleRightPanel('graph') }}
+                      style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                      title="全屏图谱"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => toggleRightPanel(rightPanel)}
+                    style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 {rightPanel === 'graph' && <GraphView />}
@@ -77,6 +159,7 @@ export default function App() {
                 {rightPanel === 'outline' && <OutlinePanel />}
               </div>
             </aside>
+            </>
           )}
         </div>
       ) : (
@@ -85,6 +168,7 @@ export default function App() {
       <QuickSwitcher open={quickSwitcherOpen} onClose={() => setQuickSwitcherOpen(false)} />
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
     </div>
   )
 }

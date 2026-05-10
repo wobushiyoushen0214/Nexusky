@@ -11,44 +11,50 @@ interface Message {
 export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([])
   const vaultPath = useVaultStore((s) => s.vaultPath)
-  const [pendingSources, setPendingSources] = useState<any[]>([])
+  const pendingSourcesRef = useRef<any[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamContent, setStreamContent] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const cleanup = window.api.onAiStream((event) => {
+    const handler = (event: { type: string; content: string }) => {
       if (event.type === 'text') {
         setStreamContent((prev) => prev + event.content)
       } else if (event.type === 'done') {
-        setStreamContent((prev) => {
-          if (prev) {
-            setMessages((msgs) => [...msgs, {
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: prev,
-              sources: pendingSources.length > 0 ? [...pendingSources] : undefined
-            }])
-            setPendingSources([])
-          }
-          return ''
-        })
         setIsStreaming(false)
       } else if (event.type === 'error') {
         setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `错误: ${event.content}` }])
         setStreamContent('')
         setIsStreaming(false)
       }
-    })
-    return cleanup
-  }, [pendingSources])
+    }
+    const cleanup = window.api.onAiStream(handler)
+    return () => { cleanup() }
+  }, [])
+
+  // When streaming ends, commit the streamed content as a message
+  const prevStreaming = useRef(false)
+  useEffect(() => {
+    if (prevStreaming.current && !isStreaming && streamContent) {
+      const sources = pendingSourcesRef.current.length > 0 ? [...pendingSourcesRef.current] : undefined
+      setMessages((msgs) => [...msgs, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: streamContent,
+        sources
+      }])
+      pendingSourcesRef.current = []
+      setStreamContent('')
+    }
+    prevStreaming.current = isStreaming
+  }, [isStreaming])
 
   useEffect(() => {
     const cleanup = window.api.onAiSources((sources) => {
-      setPendingSources(sources)
+      pendingSourcesRef.current = sources
     })
-    return cleanup
+    return () => { cleanup() }
   }, [])
 
   useEffect(() => {
@@ -87,8 +93,8 @@ export function ChatPanel() {
                   lineHeight: 1.6,
                   background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
                   color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                  boxShadow: msg.role === 'user' ? 'var(--shadow-sm), 0 0 12px var(--accent-glow)' : 'var(--shadow-sm), inset 0 1px 0 var(--border-shine)',
-                  border: msg.role === 'user' ? 'none' : '1px solid var(--border-subtle)',
+                  boxShadow: msg.role === 'user' ? 'none' : 'none',
+                  border: msg.role === 'user' ? 'none' : 'none',
                 }}>
                   <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
                 </div>
@@ -125,7 +131,7 @@ export function ChatPanel() {
       </div>
 
       {/* Input */}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-glow)', background: 'var(--bg-glass)', backdropFilter: 'blur(16px) saturate(1.2)', WebkitBackdropFilter: 'blur(16px) saturate(1.2)', boxShadow: 'inset 0 1px 0 var(--border-shine)' } as React.CSSProperties}>
+      <div style={{ padding: '12px 16px' } as React.CSSProperties}>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             value={input}

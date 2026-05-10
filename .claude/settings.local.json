@@ -49,7 +49,18 @@
       "WebFetch(domain:liquidglassgen.com)",
       "WebFetch(domain:therobbiedavis.com)",
       "WebFetch(domain:www.liquid-glass.org)",
-      "WebFetch(domain:designfast.io)"
+      "WebFetch(domain:designfast.io)",
+      "WebFetch(domain:matthiasfrank.de)",
+      "WebFetch(domain:docs.obsidian.md)",
+      "WebFetch(domain:docs.super.so)",
+      "WebFetch(domain:publish.obsidian.md)",
+      "WebFetch(domain:www.notionavenue.co)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:blog.karenying.com)",
+      "WebFetch(domain:blog.superhuman.com)",
+      "WebFetch(domain:blakecrosley.com)",
+      "WebFetch(domain:aiuicode.com)",
+      "WebFetch(domain:notioneers.eu)"
     ]
   }
 }

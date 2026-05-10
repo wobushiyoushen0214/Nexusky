@@ -35,6 +35,8 @@ function FileTreeItem({ entry, depth }: { entry: FileEntry; depth: number }) {
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
+  const toggleFavorite = useVaultStore((s) => s.toggleFavorite)
+  const isFavorite = useVaultStore((s) => s.favorites.includes(entry.path))
   const isActive = currentFilePath === entry.path
 
   const paddingLeft = depth * 14 + 8
@@ -59,6 +61,7 @@ function FileTreeItem({ entry, depth }: { entry: FileEntry; depth: number }) {
   }
 
   const menuItems = [
+    { label: isFavorite ? '取消收藏' : '收藏', onClick: () => toggleFavorite(entry.path) },
     { label: '重命名', onClick: () => { setNewName(entry.name.replace(/\.md$/, '')); setRenaming(true) } },
     { label: '删除', danger: true, onClick: handleDelete },
   ]

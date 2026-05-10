@@ -21,14 +21,16 @@ const api = {
     return () => ipcRenderer.removeListener('file:changed', handler)
   },
   onAiStream: (callback: (event: { type: string; content: string }) => void) => {
+    ipcRenderer.removeAllListeners('ai:stream')
     const handler = (_event: unknown, data: { type: string; content: string }) => callback(data)
     ipcRenderer.on('ai:stream', handler)
-    return () => ipcRenderer.removeListener('ai:stream', handler)
+    return () => ipcRenderer.removeAllListeners('ai:stream')
   },
   onAiSources: (callback: (sources: any[]) => void) => {
+    ipcRenderer.removeAllListeners('ai:sources')
     const handler = (_event: unknown, data: any[]) => callback(data)
     ipcRenderer.on('ai:sources', handler)
-    return () => ipcRenderer.removeListener('ai:sources', handler)
+    return () => ipcRenderer.removeAllListeners('ai:sources')
   },
   platform: process.platform,
   windowControls: {
