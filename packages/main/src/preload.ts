@@ -12,6 +12,9 @@ const invoke: InvokeFunction = (channel, params) => {
 
 const api = {
   invoke,
+  send: (channel: string, ...args: any[]) => {
+    ipcRenderer.send(channel, ...args)
+  },
   onFileChanged: (callback: (path: string) => void) => {
     const handler = (_event: unknown, path: string) => callback(path)
     ipcRenderer.on('file:changed', handler)

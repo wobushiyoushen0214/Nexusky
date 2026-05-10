@@ -3,6 +3,7 @@ import { store } from '../services/store'
 import { resetClient, CloudConfig } from '../services/cloud/client'
 import { syncVault, pushNote } from '../services/cloud/sync'
 import { signIn, signUp, signOut, getUser } from '../services/cloud/auth'
+import { initializeCloud } from '../services/cloud/setup'
 
 export function registerCloudIPC(): void {
   ipcMain.handle('cloud:get-config', () => {
@@ -12,6 +13,10 @@ export function registerCloudIPC(): void {
   ipcMain.handle('cloud:save-config', (_event, params: { config: CloudConfig }) => {
     store.set('cloudConfig', params.config)
     resetClient()
+  })
+
+  ipcMain.handle('cloud:init', async () => {
+    return initializeCloud()
   })
 
   ipcMain.handle('cloud:sign-in', async (_event, params: { email: string; password: string }) => {

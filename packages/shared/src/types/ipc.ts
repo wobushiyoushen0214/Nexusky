@@ -40,6 +40,9 @@ export interface IPCChannelMap {
   'db:get-graph': { params: { vaultPath: string }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
   'db:semantic-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }
+  'db:fulltext-search': { params: { vaultPath: string; query: string }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }
+  'db:get-tags': { params: { vaultPath: string }; result: { name: string; count: number }[] }
+  'db:get-notes-by-tag': { params: { vaultPath: string; tag: string }; result: NoteSearchResult[] }
   'db:embed-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
   'db:embed-vault': { params: { vaultPath: string }; result: { embedded: number } }
   'ai:get-providers': { params: undefined; result: any[] }
@@ -52,8 +55,9 @@ export interface IPCChannelMap {
   'template:get-templates': { params: undefined; result: { id: string; name: string; content: string }[] }
   'template:save-templates': { params: { templates: { id: string; name: string; content: string }[] }; result: void }
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
-  'cloud:get-config': { params: undefined; result: { supabaseUrl: string; supabaseKey: string; enabled: boolean } }
-  'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey: string; enabled: boolean } }; result: void }
+  'cloud:get-config': { params: undefined; result: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }
+  'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }; result: void }
+  'cloud:init': { params: undefined; result: { success: boolean; error?: string } }
   'cloud:sign-in': { params: { email: string; password: string }; result: { success: boolean; error?: string } }
   'cloud:sign-up': { params: { email: string; password: string }; result: { success: boolean; error?: string } }
   'cloud:sign-out': { params: undefined; result: void }

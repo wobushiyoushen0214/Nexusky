@@ -68,72 +68,103 @@ export function ChatPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px' }}>
         {messages.length === 0 && !isStreaming && (
-          <div className="text-center py-12">
-            <p className="text-[13px] text-[var(--text-tertiary)]">向 AI 提问关于你的笔记</p>
+          <div style={{ textAlign: 'center', padding: '48px 0' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>向 AI 提问关于你的笔记</p>
           </div>
         )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className="max-w-[85%] space-y-2">
-              <div className={`rounded-lg px-3 py-2 text-[13px] leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'
-              }`}>
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-              </div>
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-[10px] text-[var(--text-tertiary)] px-1">来源引用：</p>
-                  {msg.sources.map((s, i) => (
-                    <div key={i} className="px-2 py-1 rounded bg-[var(--bg-hover)] text-[11px] text-[var(--text-secondary)]">
-                      <span className="text-[var(--accent-text)]">[^{i + 1}]</span> {s.title}
-                    </div>
-                  ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {messages.map((msg) => (
+            <div key={msg.id} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div style={{ maxWidth: '85%' }}>
+                <div style={{
+                  borderRadius: 12,
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
+                  color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                  boxShadow: msg.role === 'user' ? 'var(--shadow-sm), 0 0 12px var(--accent-glow)' : 'var(--shadow-sm), inset 0 1px 0 var(--border-shine)',
+                  border: msg.role === 'user' ? 'none' : '1px solid var(--border-subtle)',
+                }}>
+                  <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
-        {isStreaming && streamContent && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-lg px-3 py-2 text-[13px] leading-relaxed bg-[var(--bg-elevated)] text-[var(--text-primary)]">
-              <p className="whitespace-pre-wrap">{streamContent}</p>
-            </div>
-          </div>
-        )}
-        {isStreaming && !streamContent && (
-          <div className="flex justify-start">
-            <div className="rounded-lg px-3 py-2 bg-[var(--bg-elevated)]">
-              <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)] animate-pulse" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)] animate-pulse [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)] animate-pulse [animation-delay:300ms]" />
+                {msg.sources && msg.sources.length > 0 && (
+                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <p style={{ fontSize: 10, color: 'var(--text-tertiary)', padding: '0 4px' }}>来源引用：</p>
+                    {msg.sources.map((s, i) => (
+                      <div key={i} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--bg-hover)', fontSize: 11, color: 'var(--text-secondary)' }}>
+                        <span style={{ color: 'var(--accent-text)' }}>[{i + 1}]</span> {s.title}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          ))}
+          {isStreaming && streamContent && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{ maxWidth: '85%', borderRadius: 10, padding: '8px 12px', fontSize: 13, lineHeight: 1.6, background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>
+                <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{streamContent}</p>
+              </div>
+            </div>
+          )}
+          {isStreaming && !streamContent && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{ borderRadius: 10, padding: '10px 14px', background: 'var(--bg-elevated)', display: 'flex', gap: 4 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', animation: 'pulse 1.2s infinite' }} />
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', animation: 'pulse 1.2s infinite 0.15s' }} />
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', animation: 'pulse 1.2s infinite 0.3s' }} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-[var(--border-subtle)]">
-        <div className="flex gap-2">
+      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-glow)', background: 'var(--bg-glass)', backdropFilter: 'blur(16px) saturate(1.2)', WebkitBackdropFilter: 'blur(16px) saturate(1.2)', boxShadow: 'inset 0 1px 0 var(--border-shine)' } as React.CSSProperties}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
             placeholder="输入消息..."
             disabled={isStreaming}
-            className="flex-1 h-8 px-3 text-[13px] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] disabled:opacity-50 transition-colors"
+            style={{
+              flex: 1,
+              height: 36,
+              padding: '0 14px',
+              fontSize: 13,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 10,
+              color: 'var(--text-primary)',
+              outline: 'none',
+              opacity: isStreaming ? 0.5 : 1,
+              transition: 'border-color 150ms',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none' }}
           />
           <button
             onClick={handleSend}
             disabled={isStreaming || !input.trim()}
-            className="h-8 px-3 bg-[var(--accent)] text-white text-[12px] font-medium rounded-lg hover:bg-[var(--accent-hover)] disabled:opacity-40 transition-colors"
+            style={{
+              height: 36,
+              padding: '0 16px',
+              fontSize: 12,
+              fontWeight: 500,
+              background: 'var(--accent)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              cursor: isStreaming || !input.trim() ? 'default' : 'pointer',
+              opacity: isStreaming || !input.trim() ? 0.4 : 1,
+              transition: 'opacity 150ms',
+            }}
           >
             发送
           </button>

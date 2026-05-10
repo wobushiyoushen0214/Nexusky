@@ -17,11 +17,8 @@ function createWindow(): void {
     minHeight: 600,
     frame: false,
     titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#1e1e1e',
-      symbolColor: '#999999',
-      height: 32
-    },
+    titleBarOverlay: false,
+    backgroundColor: '#1e2030',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -58,6 +55,10 @@ app.whenReady().then(() => {
     }
   })
   ipcMain.on('window:close', () => mainWindow?.close())
+
+  ipcMain.on('theme:change', (_event, _theme: string) => {
+    // Reserved for future use
+  })
 
   createWindow()
 

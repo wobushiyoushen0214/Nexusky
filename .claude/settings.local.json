@@ -42,7 +42,14 @@
       "Bash(claude --version)",
       "Bash(grep -r \"content\" tailwind.config*)",
       "Bash(ls tailwind.config*)",
-      "Bash(ls postcss.config*)"
+      "Bash(ls postcss.config*)",
+      "Skill(impeccable)",
+      "Skill(impeccable:*)",
+      "WebSearch",
+      "WebFetch(domain:liquidglassgen.com)",
+      "WebFetch(domain:therobbiedavis.com)",
+      "WebFetch(domain:www.liquid-glass.org)",
+      "WebFetch(domain:designfast.io)"
     ]
   }
 }

@@ -58,9 +58,10 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] animate-overlay-in" style={{ background: 'rgba(10, 12, 20, 0.5)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' } as React.CSSProperties} onClick={onClose}>
       <div
-        className="w-[480px] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl shadow-2xl shadow-black/50 overflow-hidden"
+        className="animate-scale-in"
+        style={{ width: 480, background: 'var(--bg-glass-solid)', backdropFilter: 'blur(24px) saturate(1.2)', WebkitBackdropFilter: 'blur(24px) saturate(1.2)', borderRadius: 14, border: '1px solid var(--border-glow)', overflow: 'hidden', boxShadow: 'var(--shadow-lg), var(--shadow-glow)' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-3 border-b border-[var(--border-subtle)]">

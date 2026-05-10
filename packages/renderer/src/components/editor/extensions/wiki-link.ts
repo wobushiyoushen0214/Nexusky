@@ -53,6 +53,18 @@ export const WikiLink = Node.create({
             })
 
             return DecorationSet.create(doc, decorations)
+          },
+          handleClick(view, pos, event) {
+            const target = event.target as HTMLElement
+            if (target.classList.contains('wiki-link-inline') || target.closest('.wiki-link-inline')) {
+              const el = target.classList.contains('wiki-link-inline') ? target : target.closest('.wiki-link-inline') as HTMLElement
+              const title = el?.getAttribute('data-title')
+              if (title) {
+                window.dispatchEvent(new CustomEvent('navigate-wikilink', { detail: { title } }))
+                return true
+              }
+            }
+            return false
           }
         }
       })

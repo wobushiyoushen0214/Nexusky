@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import WebSocket from 'ws'
 import { store } from '../store'
 
 let client: SupabaseClient | null = null
@@ -6,6 +7,7 @@ let client: SupabaseClient | null = null
 export interface CloudConfig {
   supabaseUrl: string
   supabaseKey: string
+  serviceRoleKey: string
   enabled: boolean
 }
 
@@ -20,9 +22,21 @@ export function getSupabaseClient(): SupabaseClient | null {
   if (!config) return null
 
   if (!client) {
-    client = createClient(config.supabaseUrl, config.supabaseKey)
+    client = createClient(config.supabaseUrl, config.supabaseKey, {
+      realtime: { transport: WebSocket as any }
+    })
   }
   return client
+}
+
+export function getAdminClient(): SupabaseClient | null {
+  const config = getCloudConfig()
+  if (!config || !config.serviceRoleKey) return null
+
+  return createClient(config.supabaseUrl, config.serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    realtime: { transport: WebSocket as any }
+  })
 }
 
 export function resetClient(): void {

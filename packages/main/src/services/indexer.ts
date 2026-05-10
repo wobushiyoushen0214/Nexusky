@@ -45,14 +45,25 @@ export function indexNote(vaultPath: string, filePath: string): void {
 
   const deleteLinks = db.prepare('DELETE FROM links WHERE source_note_id = ?')
   const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context) VALUES (?, ?, ?)')
+  const deleteTags = db.prepare('DELETE FROM note_tags WHERE note_id = ?')
+  const findOrCreateTag = db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)')
+  const getTagId = db.prepare('SELECT id FROM tags WHERE name = ?')
+  const insertNoteTag = db.prepare('INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?)')
 
   const links = extractLinks(content)
+  const tags = extractTags(content)
 
   const transaction = db.transaction(() => {
     upsert.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash)
     deleteLinks.run(id)
     for (const link of links) {
       insertLink.run(id, link.targetTitle, link.context)
+    }
+    deleteTags.run(id)
+    for (const tag of tags) {
+      findOrCreateTag.run(tag)
+      const row = getTagId.get(tag) as { id: number } | undefined
+      if (row) insertNoteTag.run(id, row.id)
     }
   })
 
@@ -131,4 +142,39 @@ function resolveLinks(db: Database.Database, noteId: string, noteTitle: string):
     UPDATE links SET target_note_id = (SELECT id FROM notes WHERE title = target_title)
     WHERE source_note_id = ? AND target_note_id IS NULL
   `).run(noteId)
+}
+
+const TAG_REGEX = /(?:^|\s)#([a-zA-Z一-鿿][\w一-鿿-]*)/g
+
+function extractTags(content: string): string[] {
+  const tags = new Set<string>()
+  let match: RegExpExecArray | null
+  TAG_REGEX.lastIndex = 0
+  while ((match = TAG_REGEX.exec(content)) !== null) {
+    tags.add(match[1])
+  }
+  return Array.from(tags)
+}
+
+export function getAllTags(vaultPath: string): { name: string; count: number }[] {
+  const db = getDatabase(vaultPath)
+  return db.prepare(`
+    SELECT t.name, COUNT(nt.note_id) as count
+    FROM tags t
+    JOIN note_tags nt ON nt.tag_id = t.id
+    GROUP BY t.id
+    ORDER BY count DESC
+  `).all() as { name: string; count: number }[]
+}
+
+export function getNotesByTag(vaultPath: string, tag: string): NoteIndex[] {
+  const db = getDatabase(vaultPath)
+  return db.prepare(`
+    SELECT n.id, n.title, n.file_path as filePath, n.created_at as createdAt, n.updated_at as updatedAt, n.content_hash as contentHash
+    FROM notes n
+    JOIN note_tags nt ON nt.note_id = n.id
+    JOIN tags t ON t.id = nt.tag_id
+    WHERE t.name = ?
+    ORDER BY n.updated_at DESC
+  `).all(tag) as NoteIndex[]
 }

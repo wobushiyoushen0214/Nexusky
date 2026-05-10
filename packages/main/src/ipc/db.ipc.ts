@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { readdirSync, readFileSync } from 'fs'
 import { join, extname } from 'path'
-import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData } from '../services/indexer'
+import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData, getAllTags, getNotesByTag } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
 import { semanticSearch, indexNoteEmbeddings } from '../services/embedding'
 
@@ -48,6 +48,35 @@ export function registerDbIPC(): void {
 
   ipcMain.handle('db:semantic-search', async (_event, params: { vaultPath: string; query: string }) => {
     return semanticSearch(params.vaultPath, params.query)
+  })
+
+  ipcMain.handle('db:fulltext-search', async (_event, params: { vaultPath: string; query: string }) => {
+    const files = collectMarkdownFiles(params.vaultPath)
+    const results: { filePath: string; title: string; line: string; lineNumber: number }[] = []
+    const query = params.query.toLowerCase()
+
+    for (const file of files) {
+      const content = readFileSync(file, 'utf-8')
+      const lines = content.split('\n')
+      const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+      const title = lines.find((l) => l.startsWith('# '))?.replace(/^#\s+/, '') || relPath.replace(/\.md$/, '')
+
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].toLowerCase().includes(query)) {
+          results.push({ filePath: relPath, title, line: lines[i].trim(), lineNumber: i + 1 })
+          if (results.length >= 50) return results
+        }
+      }
+    }
+    return results
+  })
+
+  ipcMain.handle('db:get-tags', async (_event, params: { vaultPath: string }) => {
+    return getAllTags(params.vaultPath)
+  })
+
+  ipcMain.handle('db:get-notes-by-tag', async (_event, params: { vaultPath: string; tag: string }) => {
+    return getNotesByTag(params.vaultPath, params.tag)
   })
 
   ipcMain.handle('db:embed-note', async (_event, params: { vaultPath: string; noteId: string; content: string }) => {
