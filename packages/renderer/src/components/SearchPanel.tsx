@@ -7,7 +7,10 @@ interface SearchResult {
   title: string
   line: string
   lineNumber: number
+  score?: number
 }
+
+type SearchMode = 'keyword' | 'semantic'
 
 interface SearchPanelProps {
   open: boolean
@@ -16,8 +19,10 @@ interface SearchPanelProps {
 
 export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const [query, setQuery] = useState('')
+  const [mode, setMode] = useState<SearchMode>('keyword')
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [indexing, setIndexing] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
@@ -33,9 +38,29 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const handleSearch = async () => {
     if (!query.trim() || !vaultPath) return
     setSearching(true)
-    const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
-    setResults(res)
+    setResults([])
+
+    if (mode === 'keyword') {
+      const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
+      setResults(res)
+    } else {
+      const res = await window.api.invoke('db:semantic-search', { vaultPath, query: query.trim() })
+      setResults(res.map((r) => ({
+        filePath: r.filePath,
+        title: r.title,
+        line: r.chunk.slice(0, 150),
+        lineNumber: 0,
+        score: r.score
+      })))
+    }
     setSearching(false)
+  }
+
+  const handleBuildIndex = async () => {
+    if (!vaultPath) return
+    setIndexing(true)
+    await window.api.invoke('db:embed-vault', { vaultPath })
+    setIndexing(false)
   }
 
   if (!open) return null
@@ -64,7 +89,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
               if (e.key === 'Enter') handleSearch()
               if (e.key === 'Escape') onClose()
             }}
-            placeholder="搜索笔记内容..."
+            placeholder={mode === 'keyword' ? '关键词搜索...' : '语义搜索（用自然语言描述）...'}
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)' }}
           />
           {query && (
@@ -76,6 +101,44 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             </button>
           )}
           <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 4, background: 'var(--bg-hover)' }}>ESC</kbd>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => setMode('keyword')}
+            style={{
+              padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer', fontWeight: 500,
+              background: mode === 'keyword' ? 'var(--accent-muted)' : 'transparent',
+              color: mode === 'keyword' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              border: mode === 'keyword' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+            }}
+          >
+            关键词
+          </button>
+          <button
+            onClick={() => setMode('semantic')}
+            style={{
+              padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer', fontWeight: 500,
+              background: mode === 'semantic' ? 'var(--accent-muted)' : 'transparent',
+              color: mode === 'semantic' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              border: mode === 'semantic' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+            }}
+          >
+            语义
+          </button>
+          {mode === 'semantic' && (
+            <button
+              onClick={handleBuildIndex}
+              disabled={indexing}
+              style={{
+                marginLeft: 'auto', padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer',
+                background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)',
+              }}
+            >
+              {indexing ? '索引中...' : '建立向量索引'}
+            </button>
+          )}
         </div>
 
         {/* Divider */}
@@ -90,7 +153,9 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>无结果</div>
           )}
           {!searching && results.length === 0 && !query && (
-            <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>输入关键词后按 Enter 搜索</div>
+            <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
+              {mode === 'keyword' ? '输入关键词后按 Enter 搜索' : '用自然语言描述你要找的内容'}
+            </div>
           )}
           {results.map((r, i) => (
             <button
@@ -106,7 +171,12 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.title}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>行 {r.lineNumber}</span>
+                {r.score !== undefined && (
+                  <span style={{ fontSize: 10, color: 'var(--accent-text)', background: 'var(--accent-muted)', padding: '1px 5px', borderRadius: 3 }}>
+                    {(r.score * 100).toFixed(0)}%
+                  </span>
+                )}
+                {r.lineNumber > 0 && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>行 {r.lineNumber}</span>}
               </div>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
                 {r.line}
