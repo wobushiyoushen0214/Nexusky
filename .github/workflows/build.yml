@@ -34,6 +34,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Generate 1024x1024 icon
+        run: |
+          brew install librsvg
+          rsvg-convert -w 1024 -h 1024 resources/icon.svg -o resources/icon.png
       - uses: pnpm/action-setup@v4
         with:
           version: 10
