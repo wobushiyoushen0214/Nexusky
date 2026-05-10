@@ -38,7 +38,8 @@
       "Bash(xargs ls -t)",
       "Bash(python3 -c ' *)",
       "Bash(ELECTRON_RUN_AS_NODE= ./node_modules/electron/dist/electron.exe .)",
-      "Bash(unset ELECTRON_RUN_AS_NODE)"
+      "Bash(unset ELECTRON_RUN_AS_NODE)",
+      "Bash(claude --version)"
     ]
   }
 }

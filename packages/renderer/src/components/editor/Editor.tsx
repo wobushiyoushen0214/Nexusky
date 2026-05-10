@@ -6,7 +6,7 @@ import { Markdown } from 'tiptap-markdown'
 import { useEditorStore } from '../../stores/editor-store'
 
 export function Editor() {
-  const { content, currentFilePath, setContent } = useEditorStore()
+  const { content, currentFilePath, setContent, isDirty } = useEditorStore()
 
   const editor = useEditor({
     extensions: [
@@ -26,7 +26,7 @@ export function Editor() {
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-full px-12 py-8'
+        class: 'editor-content focus:outline-none min-h-full'
       }
     },
     onUpdate: ({ editor }) => {
@@ -57,15 +57,33 @@ export function Editor() {
 
   if (!currentFilePath) {
     return (
-      <div className="flex-1 flex items-center justify-center h-full text-[var(--muted-foreground)]">
-        <p>选择一个文件开始编辑</p>
+      <div className="flex-1 flex items-center justify-center h-full">
+        <div className="text-center space-y-2">
+          <p className="text-[13px] text-[var(--text-tertiary)]">选择文件开始编辑</p>
+          <p className="text-[11px] text-[var(--text-tertiary)] opacity-60">或按 Ctrl+N 新建笔记</p>
+        </div>
       </div>
     )
   }
 
+  const fileName = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '')
+
   return (
-    <div className="h-full overflow-y-auto">
-      <EditorContent editor={editor} className="h-full" />
+    <div className="h-full flex flex-col">
+      {/* Tab bar */}
+      <div className="h-9 px-4 flex items-center gap-2 border-b border-[var(--border-subtle)] shrink-0">
+        <span className="text-[12px] text-[var(--text-secondary)] font-medium">{fileName}</span>
+        {isDirty && (
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" title="未保存" />
+        )}
+      </div>
+
+      {/* Editor area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[680px] mx-auto px-6 py-10">
+          <EditorContent editor={editor} />
+        </div>
+      </div>
     </div>
   )
 }

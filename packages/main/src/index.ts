@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { registerFileIPC } from './ipc/file.ipc'
 import { registerVaultIPC } from './ipc/vault.ipc'
@@ -14,9 +14,9 @@ function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#1e1e2e',
-      symbolColor: '#cdd6f4',
-      height: 36
+      color: '#09090b',
+      symbolColor: '#63636e',
+      height: 32
     },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -40,6 +40,17 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerFileIPC()
   registerVaultIPC()
+
+  ipcMain.on('window:minimize', () => mainWindow?.minimize())
+  ipcMain.on('window:maximize', () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.unmaximize()
+    } else {
+      mainWindow?.maximize()
+    }
+  })
+  ipcMain.on('window:close', () => mainWindow?.close())
+
   createWindow()
 
   app.on('activate', () => {

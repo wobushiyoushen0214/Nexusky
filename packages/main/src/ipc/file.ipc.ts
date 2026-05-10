@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { readFile, writeFile, mkdir, rename, rm } from 'fs/promises'
-import { readdir, stat } from 'fs/promises'
-import { join, basename, extname } from 'path'
+import { readdir } from 'fs/promises'
+import { join, dirname, extname } from 'path'
 import type { FileEntry } from '@shared/types/ipc'
 
 export function registerFileIPC(): void {
@@ -18,8 +18,7 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:create', async (_event, params: { path: string; content?: string }) => {
-    const dir = params.path.substring(0, params.path.lastIndexOf('/'))
-    await mkdir(dir, { recursive: true })
+    await mkdir(dirname(params.path), { recursive: true })
     await writeFile(params.path, params.content || '', 'utf-8')
   })
 
@@ -40,19 +39,13 @@ async function listDirectory(dirPath: string): Promise<FileEntry[]> {
     if (entry.name.startsWith('.')) continue
 
     const fullPath = join(dirPath, entry.name)
-    const fileEntry: FileEntry = {
-      name: entry.name,
-      path: fullPath,
-      isDirectory: entry.isDirectory()
-    }
 
     if (entry.isDirectory()) {
-      fileEntry.children = await listDirectory(fullPath)
-    } else if (extname(entry.name) !== '.md') {
-      continue
+      const children = await listDirectory(fullPath)
+      result.push({ name: entry.name, path: fullPath, isDirectory: true, children })
+    } else if (extname(entry.name) === '.md') {
+      result.push({ name: entry.name, path: fullPath, isDirectory: false })
     }
-
-    result.push(fileEntry)
   }
 
   result.sort((a, b) => {
