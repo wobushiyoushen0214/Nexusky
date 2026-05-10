@@ -2,6 +2,10 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { registerFileIPC } from './ipc/file.ipc'
 import { registerVaultIPC } from './ipc/vault.ipc'
+import { registerDbIPC } from './ipc/db.ipc'
+import { registerAiIPC } from './ipc/ai.ipc'
+import { registerTemplateIPC } from './ipc/template.ipc'
+import { registerCloudIPC } from './ipc/cloud.ipc'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -14,8 +18,8 @@ function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#09090b',
-      symbolColor: '#63636e',
+      color: '#1e1e1e',
+      symbolColor: '#999999',
       height: 32
     },
     webPreferences: {
@@ -40,6 +44,10 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerFileIPC()
   registerVaultIPC()
+  registerDbIPC()
+  registerAiIPC()
+  registerTemplateIPC()
+  registerCloudIPC()
 
   ipcMain.on('window:minimize', () => mainWindow?.minimize())
   ipcMain.on('window:maximize', () => {

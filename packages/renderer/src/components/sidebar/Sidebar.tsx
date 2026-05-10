@@ -25,19 +25,20 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-[220px] h-full bg-[var(--sidebar-bg)] flex flex-col border-r border-[var(--border-subtle)]">
+    <aside style={{ width: 240 }} className="h-full bg-[var(--sidebar-bg)] flex flex-col border-r border-[var(--border-subtle)]">
       {/* Header */}
-      <div className="h-10 px-3 flex items-center justify-between shrink-0">
-        <span className="text-[12px] font-medium text-[var(--text-secondary)] truncate">
+      <div style={{ height: 44, padding: '0 16px' }} className="flex items-center justify-between shrink-0">
+        <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
           {vaultPath?.split(/[\\/]/).pop()}
         </span>
         <div className="flex items-center">
           <button
             onClick={() => setIsCreating(true)}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+            style={{ width: 28, height: 28 }}
+            className="flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
             title="新建笔记"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
@@ -46,7 +47,7 @@ export function Sidebar() {
 
       {/* New file input */}
       {isCreating && (
-        <div className="px-2 pb-2">
+        <div style={{ padding: '0 12px 8px' }}>
           <input
             autoFocus
             value={newFileName}
@@ -57,23 +58,35 @@ export function Sidebar() {
             }}
             onBlur={() => { setIsCreating(false); setNewFileName('') }}
             placeholder="文件名"
-            className="w-full h-7 px-2 text-[12px] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-md text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+            style={{ height: 28, padding: '0 8px', fontSize: 13 }}
+            className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
           />
         </div>
       )}
 
       {/* File tree */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2">
+      <div style={{ padding: '0 12px 12px' }} className="flex-1 overflow-y-auto">
         <FileTree entries={files} />
       </div>
 
       {/* Footer */}
-      <div className="h-9 px-3 flex items-center border-t border-[var(--border-subtle)] shrink-0">
+      <div style={{ height: 40, padding: '0 16px' }} className="flex items-center justify-between border-t border-[var(--border-subtle)] shrink-0">
+        <button
+          onClick={async () => {
+            if (!vaultPath) return
+            const path = await window.api.invoke('template:daily-note', { vaultPath })
+            if (path) { await refreshFiles(); await openFile(path) }
+          }}
+          className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+          title="今日笔记"
+        >
+          今日笔记
+        </button>
         <button
           onClick={selectVault}
-          className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+          className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
         >
-          切换笔记库
+          切换
         </button>
       </div>
     </aside>

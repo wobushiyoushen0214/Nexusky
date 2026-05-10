@@ -1,5 +1,5 @@
 {
-  "name": "my-note",
+  "name": "nexusky",
   "version": "0.1.0",
   "private": true,
   "description": "AI-powered knowledge base note-taking app",
@@ -7,22 +7,42 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "electron-vite build",
+    "rebuild": "electron-rebuild -m .",
+    "postinstall": "electron-rebuild -m .",
     "preview": "electron-vite preview",
+    "pack": "electron-vite build && electron-builder --dir",
+    "dist": "electron-vite build && electron-builder",
+    "dist:win": "electron-vite build && electron-builder --win",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.1",
+    "@supabase/supabase-js": "^2.105.4",
+    "@tiptap/core": "^2.27.2",
     "@tiptap/extension-placeholder": "^2.10.0",
     "@tiptap/pm": "^2.10.0",
     "@tiptap/react": "^2.10.0",
     "@tiptap/starter-kit": "^2.10.0",
+    "better-sqlite3": "^12.9.0",
+    "d3-drag": "^3.0.0",
+    "d3-force": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
+    "openai": "^6.37.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tiptap-markdown": "^0.8.10",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "@tailwindcss/vite": "^4.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/d3-drag": "^3.0.7",
+    "@types/d3-force": "^3.0.10",
+    "@types/d3-selection": "^3.0.11",
+    "@types/d3-zoom": "^3.0.8",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -37,7 +57,8 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "electron",
-      "esbuild"
+      "esbuild",
+      "better-sqlite3"
     ]
   }
 }

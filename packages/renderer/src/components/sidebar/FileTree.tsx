@@ -31,14 +31,14 @@ function FileTreeItem({ entry, depth }: { entry: FileEntry; depth: number }) {
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const isActive = currentFilePath === entry.path
 
-  const paddingLeft = depth * 12 + 8
+  const paddingLeft = depth * 14 + 12
 
   if (entry.isDirectory) {
     return (
       <div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full h-7 text-left rounded-md text-[12px] hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-1.5 text-[var(--text-secondary)] group"
+          className="w-full h-8 text-left rounded text-[13px] hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-2 text-[var(--text-secondary)] group"
           style={{ paddingLeft }}
         >
           <svg
@@ -60,12 +60,12 @@ function FileTreeItem({ entry, depth }: { entry: FileEntry; depth: number }) {
   return (
     <button
       onClick={() => openFile(entry.path)}
-      className={`w-full h-7 text-left rounded-md text-[12px] transition-colors flex items-center gap-1.5 truncate ${
+      className={`w-full h-8 text-left rounded text-[13px] transition-colors flex items-center gap-2 truncate ${
         isActive
           ? 'bg-[var(--accent-muted)] text-[var(--accent-text)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
       }`}
-      style={{ paddingLeft: paddingLeft + 14 }}
+      style={{ paddingLeft: paddingLeft + 16 }}
     >
       <span className="truncate">{entry.name.replace(/\.md$/, '')}</span>
     </button>

@@ -39,7 +39,10 @@
       "Bash(python3 -c ' *)",
       "Bash(ELECTRON_RUN_AS_NODE= ./node_modules/electron/dist/electron.exe .)",
       "Bash(unset ELECTRON_RUN_AS_NODE)",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "Bash(grep -r \"content\" tailwind.config*)",
+      "Bash(ls tailwind.config*)",
+      "Bash(ls postcss.config*)"
     ]
   }
 }

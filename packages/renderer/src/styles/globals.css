@@ -7,22 +7,23 @@
 }
 
 :root {
-  --bg-base: #09090b;
-  --bg-surface: #0c0c0f;
-  --bg-elevated: #141418;
-  --bg-hover: #1a1a20;
-  --bg-active: #222228;
-  --border-subtle: #1e1e24;
-  --border-default: #27272f;
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-tertiary: #63636e;
-  --accent: #6366f1;
-  --accent-hover: #818cf8;
-  --accent-muted: rgba(99, 102, 241, 0.12);
-  --accent-text: #a5b4fc;
-  --sidebar-bg: #09090b;
-  --editor-bg: #0c0c0f;
+  --spacing: 4px;
+  --bg-base: #1e1e1e;
+  --bg-surface: #252526;
+  --bg-elevated: #2d2d2d;
+  --bg-hover: #353535;
+  --bg-active: #3e3e3e;
+  --border-subtle: #333333;
+  --border-default: #404040;
+  --text-primary: #dcddde;
+  --text-secondary: #999999;
+  --text-tertiary: #666666;
+  --accent: #7f6df2;
+  --accent-hover: #8875f2;
+  --accent-muted: rgba(127, 109, 242, 0.15);
+  --accent-text: #a88bfa;
+  --sidebar-bg: #1e1e1e;
+  --editor-bg: #1e1e1e;
 }
 
 * {
@@ -70,23 +71,12 @@ body {
 
 /* Animations */
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-up {
-  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(10px, -15px) scale(1.02); }
-  66% { transform: translate(-8px, 10px) scale(0.98); }
-}
-
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+  animation: fade-up 0.2s ease-out;
 }
 
 /* Editor */
@@ -204,4 +194,26 @@ body {
   color: var(--text-tertiary);
   pointer-events: none;
   height: 0;
+}
+
+/* Wiki links */
+.wiki-link-inline {
+  color: var(--accent-text);
+  background: var(--accent-muted);
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.wiki-link-inline:hover {
+  background: rgba(99, 102, 241, 0.25);
+}
+
+/* AI ghost text */
+.ai-ghost-text {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  font-style: italic;
+  pointer-events: none;
 }

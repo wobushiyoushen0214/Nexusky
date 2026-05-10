@@ -3,7 +3,10 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown'
+import { WikiLink } from './extensions/wiki-link'
+import { AICompletion } from './extensions/ai-completion'
 import { useEditorStore } from '../../stores/editor-store'
+import { EditorToolbar } from './EditorToolbar'
 
 export function Editor() {
   const { content, currentFilePath, setContent, isDirty } = useEditorStore()
@@ -14,6 +17,8 @@ export function Editor() {
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         codeBlock: { HTMLAttributes: { class: 'code-block' } }
       }),
+      WikiLink,
+      AICompletion,
       Placeholder.configure({
         placeholder: '开始写作...'
       }),
@@ -71,18 +76,19 @@ export function Editor() {
   return (
     <div className="h-full flex flex-col">
       {/* Tab bar */}
-      <div className="h-9 px-4 flex items-center gap-2 border-b border-[var(--border-subtle)] shrink-0">
+      <div style={{ height: 36, padding: '0 16px' }} className="flex items-center gap-2 border-b border-[var(--border-subtle)] shrink-0">
         <span className="text-[12px] text-[var(--text-secondary)] font-medium">{fileName}</span>
         {isDirty && (
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" title="未保存" />
         )}
       </div>
 
+      {/* Toolbar */}
+      {editor && <EditorToolbar editor={editor} />}
+
       {/* Editor area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[680px] mx-auto px-6 py-10">
-          <EditorContent editor={editor} />
-        </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+        <EditorContent editor={editor} />
       </div>
     </div>
   )

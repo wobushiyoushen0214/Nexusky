@@ -1,0 +1,95 @@
+import { ipcMain } from 'electron'
+import { readdirSync, readFileSync } from 'fs'
+import { join, extname } from 'path'
+import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData } from '../services/indexer'
+import { getDatabase, closeDatabase } from '../services/database'
+import { semanticSearch, indexNoteEmbeddings } from '../services/embedding'
+
+export function registerDbIPC(): void {
+  ipcMain.handle('db:index-vault', async (_event, params: { vaultPath: string }) => {
+    const files = collectMarkdownFiles(params.vaultPath)
+    for (const file of files) {
+      indexNote(params.vaultPath, file)
+    }
+    return { indexed: files.length }
+  })
+
+  ipcMain.handle('db:index-file', async (_event, params: { vaultPath: string; filePath: string }) => {
+    indexNote(params.vaultPath, params.filePath)
+  })
+
+  ipcMain.handle('db:remove-file', async (_event, params: { vaultPath: string; filePath: string }) => {
+    removeNoteIndex(params.vaultPath, params.filePath)
+  })
+
+  ipcMain.handle('db:get-all-notes', async (_event, params: { vaultPath: string }) => {
+    return getAllNotes(params.vaultPath)
+  })
+
+  ipcMain.handle('db:get-backlinks', async (_event, params: { vaultPath: string; noteId: string }) => {
+    return getBacklinks(params.vaultPath, params.noteId)
+  })
+
+  ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string }) => {
+    return getGraphData(params.vaultPath)
+  })
+
+  ipcMain.handle('db:search-notes', async (_event, params: { vaultPath: string; query: string }) => {
+    const db = getDatabase(params.vaultPath)
+    const pattern = `%${params.query}%`
+    return db.prepare(`
+      SELECT id, title, file_path as filePath
+      FROM notes
+      WHERE title LIKE ?
+      ORDER BY updated_at DESC
+      LIMIT 20
+    `).all(pattern)
+  })
+
+  ipcMain.handle('db:semantic-search', async (_event, params: { vaultPath: string; query: string }) => {
+    return semanticSearch(params.vaultPath, params.query)
+  })
+
+  ipcMain.handle('db:embed-note', async (_event, params: { vaultPath: string; noteId: string; content: string }) => {
+    await indexNoteEmbeddings(params.vaultPath, params.noteId, params.content)
+  })
+
+  ipcMain.handle('db:embed-vault', async (_event, params: { vaultPath: string }) => {
+    const files = collectMarkdownFiles(params.vaultPath)
+    const db = getDatabase(params.vaultPath)
+    let embedded = 0
+    for (const file of files) {
+      const content = readFileSync(file, 'utf-8')
+      const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+      const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
+      if (note) {
+        const hasEmbedding = db.prepare('SELECT 1 FROM chunks WHERE note_id = ? AND embedding IS NOT NULL LIMIT 1').get(note.id)
+        if (!hasEmbedding) {
+          await indexNoteEmbeddings(params.vaultPath, note.id, content)
+          embedded++
+        }
+      }
+    }
+    return { embedded }
+  })
+}
+
+function collectMarkdownFiles(dirPath: string): string[] {
+  const results: string[] = []
+
+  function walk(dir: string): void {
+    const entries = readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      const fullPath = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(fullPath)
+      } else if (extname(entry.name) === '.md') {
+        results.push(fullPath)
+      }
+    }
+  }
+
+  walk(dirPath)
+  return results
+}

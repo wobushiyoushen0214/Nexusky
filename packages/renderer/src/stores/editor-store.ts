@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useVaultStore } from './vault-store'
 
 interface EditorState {
   currentFilePath: string | null
@@ -34,5 +35,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!currentFilePath) return
     await window.api.invoke('file:write', { path: currentFilePath, content })
     set({ isDirty: false })
+
+    const vaultPath = useVaultStore.getState().vaultPath
+    if (vaultPath) {
+      window.api.invoke('db:index-file', { vaultPath, filePath: currentFilePath })
+      window.api.invoke('cloud:push-file', { vaultPath, filePath: currentFilePath })
+    }
   }
 }))

@@ -17,6 +17,16 @@ const api = {
     ipcRenderer.on('file:changed', handler)
     return () => ipcRenderer.removeListener('file:changed', handler)
   },
+  onAiStream: (callback: (event: { type: string; content: string }) => void) => {
+    const handler = (_event: unknown, data: { type: string; content: string }) => callback(data)
+    ipcRenderer.on('ai:stream', handler)
+    return () => ipcRenderer.removeListener('ai:stream', handler)
+  },
+  onAiSources: (callback: (sources: any[]) => void) => {
+    const handler = (_event: unknown, data: any[]) => callback(data)
+    ipcRenderer.on('ai:sources', handler)
+    return () => ipcRenderer.removeListener('ai:sources', handler)
+  },
   platform: process.platform,
   windowControls: {
     minimize: () => ipcRenderer.send('window:minimize'),
