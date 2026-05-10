@@ -5,6 +5,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -19,13 +22,13 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --win nsis --x64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npx electron-builder --win nsis --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-windows
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            !dist/__uninstaller*
 
   build-mac:
     runs-on: macos-latest
@@ -40,9 +43,7 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --mac dmg --x64 --arm64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npx electron-builder --mac dmg --x64 --arm64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-mac
@@ -61,9 +62,7 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --linux AppImage --x64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npx electron-builder --linux AppImage --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-linux
