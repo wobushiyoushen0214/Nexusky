@@ -185,13 +185,13 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       )}
 
       {/* Filter + Sort */}
-      <div style={{ padding: '0 8px 4px', display: 'flex', gap: 4 }}>
+      <div style={{ padding: '0 8px 4px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         <input
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}
           placeholder="筛选..."
           style={{
-            flex: 1, height: 26, padding: '0 8px', fontSize: 12,
+            flex: 1, minWidth: 60, height: 26, padding: '0 8px', fontSize: 12,
             background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
             borderRadius: 6, color: 'var(--text-primary)', outline: 'none',
             transition: 'border-color 150ms',
