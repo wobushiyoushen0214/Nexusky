@@ -13,8 +13,6 @@ asarUnpack:
   - node_modules/better-sqlite3/**/*
 publish:
   provider: github
-  owner: nexusky
-  repo: nexusky
 win:
   target:
     - target: nsis
@@ -36,3 +34,4 @@ linux:
     - target: AppImage
       arch: [x64]
   icon: resources/icon.png
+  category: Utility

@@ -22,9 +22,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --win nsis --x64 --publish always
+      - run: pnpm exec electron-builder --win nsis --x64 --publish always
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-windows
@@ -33,13 +33,9 @@ jobs:
             !dist/__uninstaller*
 
   build-mac:
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
-      - name: Generate 1024x1024 icon
-        run: |
-          brew install librsvg
-          rsvg-convert -w 1024 -h 1024 resources/icon.svg -o resources/icon.png
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -49,9 +45,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --mac dmg --x64 --arm64 --publish always
+      - run: pnpm exec electron-builder --mac dmg --x64 --arm64 --publish always
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-mac
@@ -70,9 +66,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --linux AppImage --x64 --publish always
+      - run: pnpm exec electron-builder --linux AppImage --x64 --publish always
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-linux
