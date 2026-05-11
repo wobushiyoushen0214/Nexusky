@@ -3,9 +3,15 @@ import { join } from 'path'
 import { app } from 'electron'
 
 let db: Database.Database | null = null
+let currentVaultPath: string | null = null
 
 export function getDatabase(vaultPath: string): Database.Database {
-  if (db) return db
+  if (db && currentVaultPath === vaultPath) return db
+
+  if (db) {
+    db.close()
+    db = null
+  }
 
   const dbPath = join(vaultPath, '.nexusky', 'index.db')
   const { mkdirSync, existsSync } = require('fs')
@@ -15,6 +21,7 @@ export function getDatabase(vaultPath: string): Database.Database {
   db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
+  currentVaultPath = vaultPath
   initSchema(db)
   return db
 }
@@ -23,6 +30,7 @@ export function closeDatabase(): void {
   if (db) {
     db.close()
     db = null
+    currentVaultPath = null
   }
 }
 
