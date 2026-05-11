@@ -242,49 +242,61 @@ export function ChatPanel() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header with clear button */}
-      <div style={{ padding: '0 16px', height: 32, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
+      {/* Header */}
+      <div style={{ padding: '0 14px', height: 36, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
         {messages.length > 0 && (
           <>
-            <button onClick={handleExport} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}>
-              导出为笔记
+            <button onClick={handleExport} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+            >
+              导出
             </button>
-            <button onClick={handleClear} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}>
-              清空对话
+            <button onClick={handleClear} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+            >
+              清空
             </button>
           </>
         )}
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
         {messages.length === 0 && !isStreaming && (
-          <div style={{ textAlign: 'center', padding: '48px 0' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>向 AI 提问关于你的笔记</p>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6, opacity: 0.6 }}>输入 @ 可引用特定笔记作为上下文</p>
+          <div style={{ textAlign: 'center', padding: '40px 16px' }}>
+            <div style={{ width: 40, height: 40, margin: '0 auto 12px', borderRadius: 10, background: 'var(--accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>向 AI 提问</p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>输入 @ 引用笔记作为上下文<br/>切换编辑模式可直接修改文档</p>
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {messages.map((msg) => (
             <div key={msg.id} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-              <div style={{ maxWidth: '85%' }}>
+              <div style={{ maxWidth: '88%' }}>
                 <div style={{
-                  borderRadius: 12, padding: '10px 14px', fontSize: 13, lineHeight: 1.6,
+                  borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                  padding: '10px 14px', fontSize: 13, lineHeight: 1.7,
                   background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
                   color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                  borderLeft: msg.role === 'assistant' ? '3px solid var(--accent)' : 'none',
                 }}>
                   {msg.role === 'user' ? (
                     <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
                   ) : (
-                    <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
                   )}
                 </div>
                 {msg.sources && msg.sources.length > 0 && (
-                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <p style={{ fontSize: 10, color: 'var(--text-tertiary)', padding: '0 4px' }}>来源引用：</p>
+                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {msg.sources.map((s, i) => (
-                      <div key={i} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--bg-hover)', fontSize: 11, color: 'var(--text-secondary)' }}>
-                        <span style={{ color: 'var(--accent-text)' }}>[{i + 1}]</span> {s.title}
+                      <div key={i} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--accent-muted)', fontSize: 10, color: 'var(--accent-text)' }}>
+                        [{i + 1}] {s.title}
                       </div>
                     ))}
                   </div>
@@ -294,17 +306,17 @@ export function ChatPanel() {
           ))}
           {isStreaming && streamContent && (
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{ maxWidth: '85%', borderRadius: 10, padding: '8px 12px', fontSize: 13, lineHeight: 1.6, background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>
-                <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(streamContent) }} />
+              <div style={{ maxWidth: '88%', borderRadius: '14px 14px 14px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.7, background: 'var(--bg-elevated)', color: 'var(--text-primary)', borderLeft: '3px solid var(--accent)' }}>
+                <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(streamContent) }} />
               </div>
             </div>
           )}
           {isStreaming && !streamContent && (
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{ borderRadius: 10, padding: '10px 14px', background: 'var(--bg-elevated)', display: 'flex', gap: 4 }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', animation: 'pulse 1.2s infinite' }} />
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', animation: 'pulse 1.2s infinite 0.15s' }} />
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', animation: 'pulse 1.2s infinite 0.3s' }} />
+              <div style={{ borderRadius: '14px 14px 14px 4px', padding: '12px 16px', background: 'var(--bg-elevated)', display: 'flex', gap: 5, alignItems: 'center' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.2s', opacity: 0.7 }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.4s', opacity: 0.7 }} />
               </div>
             </div>
           )}
@@ -377,64 +389,63 @@ export function ChatPanel() {
       )}
 
       {/* Input */}
-      <div style={{ padding: '8px 16px 12px' } as React.CSSProperties}>
+      <div style={{ padding: '8px 14px 14px', borderTop: '1px solid var(--border-subtle)' } as React.CSSProperties}>
         {/* Mode toggle + target */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
           <button
             onClick={() => { setEditMode(!editMode); setEditTarget(null) }}
             style={{
-              height: 24, padding: '0 8px', fontSize: 10, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
-              background: editMode ? 'var(--accent)' : 'var(--bg-elevated)',
+              height: 22, padding: '0 8px', fontSize: 10, fontWeight: 500, borderRadius: 4, cursor: 'pointer',
+              background: editMode ? 'var(--accent)' : 'transparent',
               color: editMode ? '#fff' : 'var(--text-tertiary)',
               border: editMode ? 'none' : '1px solid var(--border-subtle)',
+              transition: 'all 100ms',
             }}
           >
-            {editMode ? '编辑模式' : '对话模式'}
+            {editMode ? '✎ 编辑' : '💬 对话'}
           </button>
           {editMode && (
-            <span style={{ fontSize: 10, color: editTarget ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>
-              目标: {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (useEditorStore.getState().currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '未打开文件')}
+            <span style={{ fontSize: 10, color: editTarget ? 'var(--accent-text)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 3 }}>
+              → {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (useEditorStore.getState().currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '未打开文件')}
+              {editTarget && (
+                <button onClick={() => setEditTarget(null)} style={{ width: 12, height: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0 }}>×</button>
+              )}
             </span>
           )}
-          {editMode && editTarget && (
-            <button
-              onClick={() => setEditTarget(null)}
-              style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0 }}
-              title="重置为当前文件"
-            >
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-            </button>
-          )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <input
             ref={inputRef}
             value={input}
             onChange={handleInputChange}
             onPaste={handleImagePaste}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }; if (e.key === 'Escape') setShowMention(false) }}
-            placeholder={editMode ? '输入修改指令... (如: 在开头添加摘要)' : '输入消息... (@ 引用笔记)'}
+            placeholder={editMode ? '描述修改内容...' : '提问或 @ 引用笔记...'}
             disabled={isStreaming}
             style={{
-              flex: 1, height: 36, padding: '0 14px', fontSize: 13,
-              background: 'var(--bg-elevated)', border: `1px solid ${editMode ? 'var(--accent)' : 'var(--border-subtle)'}`,
+              flex: 1, height: 38, padding: '0 14px', fontSize: 13,
+              background: 'var(--bg-base)', border: `1.5px solid ${editMode ? 'var(--accent)' : 'var(--border-subtle)'}`,
               borderRadius: 10, color: 'var(--text-primary)', outline: 'none',
-              opacity: isStreaming ? 0.5 : 1, transition: 'border-color 150ms',
+              opacity: isStreaming ? 0.5 : 1, transition: 'border-color 150ms, box-shadow 150ms',
             }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = editMode ? 'var(--accent)' : 'var(--border-subtle)' }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,110,240,0.1)' }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = editMode ? 'var(--accent)' : 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none' }}
           />
           <button
             onClick={handleSend}
             disabled={isStreaming || !input.trim()}
             style={{
-              height: 36, padding: '0 16px', fontSize: 12, fontWeight: 500,
-              background: editMode ? '#4ade80' : 'var(--accent)', color: editMode ? '#000' : '#fff', border: 'none', borderRadius: 8,
+              width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: editMode ? '#4ade80' : 'var(--accent)', color: editMode ? '#000' : '#fff',
+              border: 'none', borderRadius: 10,
               cursor: isStreaming || !input.trim() ? 'default' : 'pointer',
               opacity: isStreaming || !input.trim() ? 0.4 : 1, transition: 'opacity 150ms',
+              flexShrink: 0,
             }}
           >
-            {editMode ? '执行' : '发送'}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
           </button>
         </div>
       </div>
