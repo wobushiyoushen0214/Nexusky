@@ -40,6 +40,19 @@ export default function App() {
     loadVault()
   }, [])
 
+  // Save all dirty tabs before window closes
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const { tabs, currentFilePath, content } = useEditorStore.getState()
+      const dirty = tabs.filter((t) => t.isDirty)
+      if (dirty.length > 0 && currentFilePath) {
+        useEditorStore.getState().saveFile()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
   // Network status monitoring for offline queue
   useEffect(() => {
     const handleOnline = () => window.api.invoke('cloud:set-online' as any, { online: true })
