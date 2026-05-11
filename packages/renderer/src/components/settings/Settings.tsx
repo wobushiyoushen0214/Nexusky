@@ -150,12 +150,41 @@ export function Settings({ open, onClose }: SettingsProps) {
             {/* AI header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>已配置</span>
-              <button
-                onClick={handleAdd}
-                style={{ fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}
-              >
-                + 添加
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    const detected = await window.api.invoke('ai:detect-local-config', undefined)
+                    let added = 0
+                    if (detected.claude) {
+                      const exists = providers.find((p) => p.type === 'claude')
+                      if (!exists) {
+                        const np = { id: crypto.randomUUID(), name: 'Claude (本地检测)', type: 'claude' as const, baseUrl: detected.claude.baseUrl, apiKey: detected.claude.apiKey, model: 'claude-sonnet-4-6', enabled: true }
+                        saveProviders([...providers, np])
+                        added++
+                      }
+                    }
+                    if (detected.openai) {
+                      const exists = providers.find((p) => p.type === 'openai')
+                      if (!exists) {
+                        const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4o-mini', enabled: true }
+                        saveProviders([...providers, np])
+                        added++
+                      }
+                    }
+                    if (added > 0) toast(`已检测并添加 ${added} 个 AI 配置`, 'success')
+                    else toast('未检测到本地 AI 配置，或已存在', 'info')
+                  }}
+                  style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: 'pointer', padding: '3px 8px', borderRadius: 4 }}
+                >
+                  自动检测
+                </button>
+                <button
+                  onClick={handleAdd}
+                  style={{ fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}
+                >
+                  + 添加
+                </button>
+              </div>
             </div>
 
             {/* Empty state */}
