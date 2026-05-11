@@ -7,6 +7,12 @@ import type { AIProviderConfig } from './ai/base-provider'
 const CHUNK_SIZE = 400
 const CHUNK_OVERLAP = 50
 
+let embeddingCache: { vaultPath: string; data: { noteId: string; title: string; filePath: string; content: string; embedding: number[] }[] } | null = null
+
+export function invalidateEmbeddingCache(): void {
+  embeddingCache = null
+}
+
 export interface TextChunk {
   noteId: string
   chunkIndex: number
@@ -112,6 +118,7 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
   })
 
   transaction()
+  invalidateEmbeddingCache()
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
@@ -130,17 +137,30 @@ export async function semanticSearch(vaultPath: string, query: string, topK = 10
   if (!queryEmbedding || queryEmbedding.length === 0) return []
 
   const qVec = queryEmbedding[0]
-  const allChunks = db.prepare(`
-    SELECT c.content, c.note_id, c.embedding, n.title, n.file_path
-    FROM chunks c
-    JOIN notes n ON n.id = c.note_id
-    WHERE c.embedding IS NOT NULL
-  `).all() as { content: string; note_id: string; embedding: Buffer; title: string; file_path: string }[]
 
-  const scored = allChunks.map((row) => {
-    const embedding = Array.from(new Float32Array(row.embedding.buffer, row.embedding.byteOffset, row.embedding.byteLength / 4))
-    const score = cosineSimilarity(qVec, embedding)
-    return { noteId: row.note_id, title: row.title, filePath: row.file_path, chunk: row.content, score }
+  if (!embeddingCache || embeddingCache.vaultPath !== vaultPath) {
+    const allChunks = db.prepare(`
+      SELECT c.content, c.note_id, c.embedding, n.title, n.file_path
+      FROM chunks c
+      JOIN notes n ON n.id = c.note_id
+      WHERE c.embedding IS NOT NULL
+    `).all() as { content: string; note_id: string; embedding: Buffer; title: string; file_path: string }[]
+
+    embeddingCache = {
+      vaultPath,
+      data: allChunks.map((row) => ({
+        noteId: row.note_id,
+        title: row.title,
+        filePath: row.file_path,
+        content: row.content,
+        embedding: Array.from(new Float32Array(row.embedding.buffer, row.embedding.byteOffset, row.embedding.byteLength / 4))
+      }))
+    }
+  }
+
+  const scored = embeddingCache.data.map((row) => {
+    const score = cosineSimilarity(qVec, row.embedding)
+    return { noteId: row.noteId, title: row.title, filePath: row.filePath, chunk: row.content, score }
   })
 
   scored.sort((a, b) => b.score - a.score)
