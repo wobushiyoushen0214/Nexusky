@@ -97,6 +97,25 @@ ${context}
     return listOllamaModels(params.baseUrl)
   })
 
+  ipcMain.handle('ai:summarize', async (_event, params: { content: string }) => {
+    const config = aiManager.getActiveConfig()
+    if (!config) return ''
+    try {
+      const provider = aiManager.getProvider(config)
+      let result = ''
+      for await (const chunk of provider.chatStream([
+        { role: 'system', content: '为以下笔记生成一段简洁的摘要（2-3句话）。只输出摘要内容，不要前缀。' },
+        { role: 'user', content: params.content.slice(0, 3000) }
+      ])) {
+        if (chunk.type === 'text') result += chunk.content
+        if (chunk.type === 'error') return ''
+      }
+      return result.trim()
+    } catch {
+      return ''
+    }
+  })
+
   ipcMain.handle('ai:suggest-tags', async (_event, params: { content: string; existingTags: string[] }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return []

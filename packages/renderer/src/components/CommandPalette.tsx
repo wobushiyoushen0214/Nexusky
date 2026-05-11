@@ -68,6 +68,14 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       useUIStore.getState().setMainView('graph')
     }},
     { id: 'trash', label: '回收站', action: () => window.dispatchEvent(new CustomEvent('open-trash')) },
+    { id: 'summarize', label: 'AI 生成摘要', action: async () => {
+      if (!content || !currentFilePath) return
+      const summary = await window.api.invoke('ai:summarize', { content })
+      if (summary) {
+        const newContent = `> ${summary}\n\n${content}`
+        useEditorStore.getState().setContent(newContent)
+      }
+    }},
   ]
 
   const filtered = query.trim()

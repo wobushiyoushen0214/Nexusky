@@ -68,6 +68,7 @@ export interface IPCChannelMap {
   'ai:complete': { params: { text: string }; result: string }
   'ai:list-ollama-models': { params: { baseUrl?: string }; result: string[] }
   'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }
+  'ai:summarize': { params: { content: string }; result: string }
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[] }; result: { success: boolean; content?: string; error?: string } }
   'template:daily-note': { params: { vaultPath: string }; result: string }
   'template:get-templates': { params: undefined; result: { id: string; name: string; content: string }[] }
