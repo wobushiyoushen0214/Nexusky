@@ -52,18 +52,35 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
     onClose()
   }
 
+  const listRef = useRef<HTMLDivElement>(null)
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setSelectedIndex((i) => Math.min(i + 1, results.length - 1))
+      setSelectedIndex((i) => {
+        const next = Math.min(i + 1, results.length - 1)
+        scrollToItem(next)
+        return next
+      })
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setSelectedIndex((i) => Math.max(i - 1, 0))
+      setSelectedIndex((i) => {
+        const next = Math.max(i - 1, 0)
+        scrollToItem(next)
+        return next
+      })
     } else if (e.key === 'Enter' && results[selectedIndex]) {
       handleSelect(results[selectedIndex])
     } else if (e.key === 'Escape') {
       onClose()
     }
+  }
+
+  const scrollToItem = (index: number) => {
+    const container = listRef.current
+    if (!container) return
+    const item = container.children[index] as HTMLElement
+    if (item) item.scrollIntoView({ block: 'nearest' })
   }
 
   if (!open) return null
@@ -99,7 +116,7 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
         <div style={{ height: 1, background: 'var(--border-subtle)' }} />
 
         {/* Results */}
-        <div style={{ maxHeight: 340, overflowY: 'auto', padding: '6px' }}>
+        <div ref={listRef} style={{ maxHeight: 340, overflowY: 'auto', padding: '6px' }}>
           {results.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
               {query ? '没有找到匹配的笔记' : '暂无笔记'}
