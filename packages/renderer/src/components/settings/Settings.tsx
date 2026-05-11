@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
+import { useKeyBindingStore } from '../../stores/keybinding-store'
 
 interface ProviderConfig {
   id: string
@@ -24,7 +25,7 @@ interface SettingsProps {
   onClose: () => void
 }
 
-type Tab = 'appearance' | 'ai' | 'cloud'
+type Tab = 'appearance' | 'ai' | 'cloud' | 'keys'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -117,7 +118,7 @@ export function Settings({ open, onClose }: SettingsProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', padding: '0 20px' }}>
-          {(['appearance', 'ai', 'cloud'] as Tab[]).map((t) => (
+          {(['appearance', 'ai', 'cloud', 'keys'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -134,7 +135,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                 transition: 'color 150ms',
               }}
             >
-              {{ appearance: '外观', ai: 'AI 提供商', cloud: '云端同步' }[t]}
+              {{ appearance: '外观', ai: 'AI 提供商', cloud: '云端同步', keys: '快捷键' }[t]}
             </button>
           ))}
         </div>
@@ -253,6 +254,8 @@ export function Settings({ open, onClose }: SettingsProps) {
               inputStyle={inputStyle}
             />
           )}
+
+          {tab === 'keys' && <KeyBindingsTab />}
         </div>
       </div>
     </div>
@@ -631,6 +634,55 @@ function AppearanceTab() {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function KeyBindingsTab() {
+  const { bindings, setCustomKey, resetAll } = useKeyBindingStore()
+  const [recording, setRecording] = useState<string | null>(null)
+
+  const handleKeyDown = (e: React.KeyboardEvent, id: string) => {
+    e.preventDefault()
+    const parts: string[] = []
+    if (e.ctrlKey || e.metaKey) parts.push('Ctrl')
+    if (e.shiftKey) parts.push('Shift')
+    if (e.altKey) parts.push('Alt')
+    const key = e.key.length === 1 ? e.key.toUpperCase() : e.key
+    if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) parts.push(key)
+    if (parts.length > 1) {
+      setCustomKey(id, parts.join('+'))
+      setRecording(null)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>快捷键配置</span>
+        <button onClick={resetAll} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>重置全部</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {bindings.map((b) => (
+          <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 6, background: 'var(--bg-base)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{b.label}</span>
+            <button
+              onClick={() => setRecording(b.id)}
+              onKeyDown={(e) => recording === b.id && handleKeyDown(e, b.id)}
+              onBlur={() => setRecording(null)}
+              style={{
+                minWidth: 100, height: 24, padding: '0 8px', fontSize: 11, textAlign: 'center',
+                background: recording === b.id ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+                border: recording === b.id ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                borderRadius: 4, color: 'var(--text-primary)', cursor: 'pointer', outline: 'none',
+              }}
+            >
+              {recording === b.id ? '按下快捷键...' : (b.customKey || b.defaultKey)}
+            </button>
+          </div>
+        ))}
+      </div>
+      <p style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>点击快捷键按钮后按下新组合键即可修改。修改后需重启应用生效。</p>
     </div>
   )
 }
