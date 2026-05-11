@@ -76,6 +76,16 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         useEditorStore.getState().setContent(newContent)
       }
     }},
+    { id: 'import-obsidian', label: '导入 Obsidian Vault', action: async () => {
+      if (!vaultPath) return
+      const sourcePath = await window.api.invoke('vault:select', undefined)
+      if (sourcePath) {
+        const result = await window.api.invoke('file:import-obsidian', { sourcePath, vaultPath })
+        const { toast } = await import('../stores/toast-store')
+        toast(`导入完成: ${result.imported} 个文件, ${result.converted} 个已转换`, 'success')
+        useVaultStore.getState().refreshFiles()
+      }
+    }},
   ]
 
   const filtered = query.trim()
