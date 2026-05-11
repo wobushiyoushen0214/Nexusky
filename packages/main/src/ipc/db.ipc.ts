@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { readdirSync, readFileSync } from 'fs'
 import { join, extname } from 'path'
 import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData, getAllTags, getNotesByTag } from '../services/indexer'
@@ -84,11 +84,15 @@ export function registerDbIPC(): void {
     await indexNoteEmbeddings(params.vaultPath, params.noteId, params.content)
   })
 
-  ipcMain.handle('db:embed-vault', async (_event, params: { vaultPath: string }) => {
+  ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
     const files = collectMarkdownFiles(params.vaultPath)
     const db = getDatabase(params.vaultPath)
     let embedded = 0
-    for (const file of files) {
+    const total = files.length
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
       const content = readFileSync(file, 'utf-8')
       const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
       const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
@@ -98,6 +102,9 @@ export function registerDbIPC(): void {
           await indexNoteEmbeddings(params.vaultPath, note.id, content)
           embedded++
         }
+      }
+      if (window && !window.isDestroyed() && i % 5 === 0) {
+        window.webContents.send('embed:progress', { current: i + 1, total, embedded })
       }
     }
     pushIndex(params.vaultPath).catch(() => {})
