@@ -353,6 +353,7 @@ export function Editor() {
               onDrop={() => { if (dragTabRef.current !== null && dragTabRef.current !== i) { reorderTab(dragTabRef.current, i) }; dragTabRef.current = null }}
               onDragEnd={() => { dragTabRef.current = null }}
               onClick={() => switchTab(i)}
+              onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(i) } }}
               onContextMenu={(e) => { e.preventDefault(); setTabContextMenu({ x: e.clientX, y: e.clientY, index: i }) }}
               style={{
                 height: 30,
