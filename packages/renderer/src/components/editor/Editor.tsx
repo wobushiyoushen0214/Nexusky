@@ -119,6 +119,18 @@ export function Editor() {
     }
   }, [currentFilePath])
 
+  useEffect(() => {
+    if (!editor) return
+    const handleReload = (e: Event) => {
+      const newContent = (e as CustomEvent).detail?.content
+      if (newContent !== undefined) {
+        editor.commands.setContent(newContent)
+      }
+    }
+    window.addEventListener('editor-reload-content', handleReload)
+    return () => window.removeEventListener('editor-reload-content', handleReload)
+  }, [editor])
+
   // Auto-save after 3 seconds of inactivity
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {

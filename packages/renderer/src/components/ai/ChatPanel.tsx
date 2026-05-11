@@ -43,6 +43,7 @@ export function ChatPanel() {
   const [editResult, setEditResult] = useState<{ content: string; filePath: string } | null>(null)
   const [editHistory, setEditHistory] = useState<string[]>([])
   const [attachedImages, setAttachedImages] = useState<string[]>([])
+  const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { saveHistory(messages) }, [messages])
@@ -208,12 +209,21 @@ export function ChatPanel() {
     if (tabIndex >= 0) {
       const tabs = [...store.tabs]
       tabs[tabIndex] = { ...tabs[tabIndex], content: editResult.content, isDirty: false }
-      useEditorStore.setState({ tabs, content: editResult.content, isDirty: false })
+      const isActive = tabIndex === store.activeTabIndex
+      useEditorStore.setState({
+        tabs,
+        ...(isActive ? { content: editResult.content, isDirty: false } : {})
+      })
+      if (isActive) {
+        window.dispatchEvent(new CustomEvent('editor-reload-content', { detail: { content: editResult.content } }))
+      }
     } else {
-      store.openFile(editResult.filePath)
+      await store.openFile(editResult.filePath)
     }
+    const appliedFile = editResult.filePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
     setEditResult(null)
-    setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '修改已应用。' }])
+    setEditPreviewExpanded(false)
+    setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `已应用修改到「${appliedFile}」。` }])
   }
 
   const handleImagePaste = (e: React.ClipboardEvent) => {
@@ -345,18 +355,25 @@ export function ChatPanel() {
 
       {/* Edit result preview */}
       {editResult && (
-        <div style={{ padding: '8px 16px' }}>
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--accent)', borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--accent-muted)', borderBottom: '1px solid var(--accent)' }}>
+        <div style={{ padding: '8px 14px', flexShrink: 0 }}>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--accent)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: editPreviewExpanded ? '70vh' : 'none' }}>
+            <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--accent-muted)', borderBottom: '1px solid var(--accent)', flexShrink: 0 }}>
               <span style={{ fontSize: 11, color: 'var(--accent-text)', fontWeight: 500 }}>修改预览: {editResult.filePath.split(/[\\/]/).pop()}</span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={handleApplyEdit} style={{ height: 22, padding: '0 10px', fontSize: 10, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>应用修改</button>
-                <button onClick={() => setEditResult(null)} style={{ height: 22, padding: '0 8px', fontSize: 10, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer' }}>放弃</button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  onClick={() => setEditPreviewExpanded(!editPreviewExpanded)}
+                  style={{ height: 22, padding: '0 6px', fontSize: 10, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer' }}
+                  title={editPreviewExpanded ? '收起' : '展开全部'}
+                >
+                  {editPreviewExpanded ? '收起' : '展开'}
+                </button>
+                <button onClick={handleApplyEdit} style={{ height: 22, padding: '0 10px', fontSize: 10, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>应用</button>
+                <button onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }} style={{ height: 22, padding: '0 8px', fontSize: 10, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer' }}>放弃</button>
               </div>
             </div>
             <div
               className="editor-content"
-              style={{ padding: '12px 16px', maxHeight: 200, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-primary)' }}
+              style={{ padding: '12px 16px', maxHeight: editPreviewExpanded ? 'none' : 200, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}
               dangerouslySetInnerHTML={{ __html: renderMarkdown(editResult.content) }}
             />
           </div>
