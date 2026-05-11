@@ -100,13 +100,25 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     }
   }, [open])
 
+  const listRef = useRef<HTMLDivElement>(null)
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1))
+      setSelectedIndex((i) => {
+        const next = Math.min(i + 1, filtered.length - 1)
+        const item = listRef.current?.children[next] as HTMLElement
+        if (item) item.scrollIntoView({ block: 'nearest' })
+        return next
+      })
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setSelectedIndex((i) => Math.max(i - 1, 0))
+      setSelectedIndex((i) => {
+        const next = Math.max(i - 1, 0)
+        const item = listRef.current?.children[next] as HTMLElement
+        if (item) item.scrollIntoView({ block: 'nearest' })
+        return next
+      })
     } else if (e.key === 'Enter' && filtered[selectedIndex]) {
       filtered[selectedIndex].action()
       onClose()
@@ -137,7 +149,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: 'var(--text-primary)' }}
           />
         </div>
-        <div style={{ maxHeight: 320, overflowY: 'auto', padding: 4 }}>
+        <div ref={listRef} style={{ maxHeight: 320, overflowY: 'auto', padding: 4 }}>
           {filtered.map((cmd, i) => (
             <button
               key={cmd.id}
