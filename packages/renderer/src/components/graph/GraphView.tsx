@@ -41,32 +41,32 @@ export function GraphView() {
     const svg = select(svgRef.current)
     const width = svgRef.current.clientWidth
     const height = svgRef.current.clientHeight
+    const nodeCount = graphData.nodes.length
+    const isLarge = nodeCount > 200
 
     svg.selectAll('*').remove()
 
     const defs = svg.append('defs')
 
-    // Neuron glow gradient
-    const glowGrad = defs.append('radialGradient').attr('id', 'neuron-glow')
-    glowGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.6)
-    glowGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.15)
-    glowGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0)
+    if (!isLarge) {
+      const glowGrad = defs.append('radialGradient').attr('id', 'neuron-glow')
+      glowGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.6)
+      glowGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.15)
+      glowGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0)
 
-    // Inactive node gradient
-    const dimGrad = defs.append('radialGradient').attr('id', 'neuron-dim')
-    dimGrad.append('stop').attr('offset', '0%').attr('stop-color', '#999999').attr('stop-opacity', 0.4)
-    dimGrad.append('stop').attr('offset', '100%').attr('stop-color', '#999999').attr('stop-opacity', 0)
+      const dimGrad = defs.append('radialGradient').attr('id', 'neuron-dim')
+      dimGrad.append('stop').attr('offset', '0%').attr('stop-color', '#999999').attr('stop-opacity', 0.4)
+      dimGrad.append('stop').attr('offset', '100%').attr('stop-color', '#999999').attr('stop-opacity', 0)
 
-    // Synapse gradient for links
-    const synapseGrad = defs.append('linearGradient').attr('id', 'synapse-grad')
-    synapseGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
-    synapseGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.2)
-    synapseGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
+      const synapseGrad = defs.append('linearGradient').attr('id', 'synapse-grad')
+      synapseGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
+      synapseGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.2)
+      synapseGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
 
-    // Glow filter
-    const filter = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%')
-    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur')
-    filter.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', (d) => d)
+      const filter = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%')
+      filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur')
+      filter.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', (d) => d)
+    }
 
     const g = svg.append('g')
 
@@ -79,19 +79,26 @@ export function GraphView() {
       linkCountMap.set(e.target, (linkCountMap.get(e.target) || 0) + 1)
     })
 
-    const nodes: SimNode[] = graphData.nodes.map((n) => ({
+    const filteredNodes = isLarge && nodeCount > 500
+      ? graphData.nodes.filter((n) => (linkCountMap.get(n.id) || 0) > 0)
+      : graphData.nodes
+
+    const nodes: SimNode[] = filteredNodes.map((n) => ({
       ...n,
       linkCount: linkCountMap.get(n.id) || 0
     }))
-    const links: SimLink[] = graphData.edges.map((e) => ({ source: e.source, target: e.target }))
+    const nodeIds = new Set(nodes.map((n) => n.id))
+    const links: SimLink[] = graphData.edges
+      .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+      .map((e) => ({ source: e.source, target: e.target }))
 
     const getRadius = (d: SimNode) => Math.max(3, Math.min(8, 3 + d.linkCount * 1.2))
 
     const simulation = forceSimulation(nodes)
-      .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(80).strength(0.4))
-      .force('charge', forceManyBody().strength(-200).distanceMax(350))
+      .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(isLarge ? 50 : 80).strength(0.4))
+      .force('charge', forceManyBody().strength(isLarge ? -80 : -200).distanceMax(isLarge ? 200 : 350))
       .force('center', forceCenter(width / 2, height / 2))
-      .force('collide', forceCollide<SimNode>((d) => getRadius(d) + 20))
+      .force('collide', forceCollide<SimNode>((d) => getRadius(d) + (isLarge ? 10 : 20)))
       .force('x', forceX(width / 2).strength(0.015))
       .force('y', forceY(height / 2).strength(0.015))
 
