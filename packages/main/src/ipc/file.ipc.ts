@@ -16,6 +16,15 @@ async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     const snapshotPath = join(historyDir, `${name}_${timestamp}.md`)
     await writeFile(snapshotPath, content, 'utf-8')
+
+    const entries = await readdir(historyDir)
+    const snapshots = entries.filter((e) => e.startsWith(name + '_') && e.endsWith('.md')).sort()
+    if (snapshots.length > 50) {
+      const toDelete = snapshots.slice(0, snapshots.length - 50)
+      for (const f of toDelete) {
+        await rm(join(historyDir, f), { force: true })
+      }
+    }
   } catch {}
 }
 
