@@ -3,6 +3,7 @@ import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
 import { useSyncStore } from './stores/sync-store'
+import { toast } from './stores/toast-store'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { Editor } from './components/editor/Editor'
 import { WelcomeScreen } from './components/WelcomeScreen'
@@ -146,10 +147,16 @@ export default function App() {
       setSyncing()
       try {
         const result = await window.api.invoke('cloud:sync', { vaultPath })
-        if (result.errors.length === 0) setSuccess()
-        else setError(result.errors[0])
+        if (result.errors.length === 0) {
+          setSuccess()
+          if (result.pushed > 0 || result.pulled > 0) toast(`同步完成: ↑${result.pushed} ↓${result.pulled}`, 'success')
+        } else {
+          setError(result.errors[0])
+          toast(`同步出错: ${result.errors[0]}`, 'error')
+        }
       } catch (e: any) {
         setError(e.message)
+        toast(`同步失败: ${e.message}`, 'error')
       }
     }, intervalMin * 60 * 1000)
 
