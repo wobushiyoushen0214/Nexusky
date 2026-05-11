@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -296,6 +296,18 @@ function SidebarFooter() {
   const { vaultPath, refreshFiles } = useVaultStore()
   const openFile = useEditorStore((s) => s.openFile)
   const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!moreOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [moreOpen])
 
   const iconBtn = (onClick: () => void, title: string, icon: React.ReactNode) => (
     <button onClick={onClick} style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }} title={title}>
@@ -330,7 +342,7 @@ function SidebarFooter() {
 
       {/* More menu popup */}
       {moreOpen && (
-        <div style={{ position: 'absolute', bottom: 44, left: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.3)', minWidth: 160, zIndex: 100 }}>
+        <div ref={moreRef} style={{ position: 'absolute', bottom: 44, left: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.3)', minWidth: 160, zIndex: 100 }}>
           {[
             { label: '快速切换', shortcut: 'Ctrl+O', action: () => setQuickSwitcherOpen(true) },
             { label: '今日笔记', action: async () => { if (!vaultPath) return; const p = await window.api.invoke('template:daily-note', { vaultPath }); if (p) { await refreshFiles(); await openFile(p) } } },
