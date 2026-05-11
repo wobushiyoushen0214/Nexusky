@@ -40,6 +40,10 @@ export function registerFileIPC(): void {
     return listDirectory(params.dirPath)
   })
 
+  ipcMain.handle('file:list-shallow', async (_event, params: { dirPath: string }) => {
+    return listDirectoryShallow(params.dirPath)
+  })
+
   ipcMain.handle('file:create', async (_event, params: { path: string; content?: string }) => {
     await mkdir(dirname(params.path), { recursive: true })
     await writeFile(params.path, params.content || '', 'utf-8')
@@ -223,6 +227,32 @@ async function listDirectory(dirPath: string): Promise<FileEntry[]> {
     if (entry.isDirectory()) {
       const children = await listDirectory(fullPath)
       result.push({ name: entry.name, path: fullPath, isDirectory: true, children, mtime: fileStat.mtimeMs })
+    } else if (extname(entry.name) === '.md') {
+      result.push({ name: entry.name, path: fullPath, isDirectory: false, mtime: fileStat.mtimeMs })
+    }
+  }
+
+  result.sort((a, b) => {
+    if (a.isDirectory && !b.isDirectory) return -1
+    if (!a.isDirectory && b.isDirectory) return 1
+    return a.name.localeCompare(b.name)
+  })
+
+  return result
+}
+
+async function listDirectoryShallow(dirPath: string): Promise<FileEntry[]> {
+  const entries = await readdir(dirPath, { withFileTypes: true })
+  const result: FileEntry[] = []
+
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue
+
+    const fullPath = join(dirPath, entry.name)
+    const fileStat = await stat(fullPath)
+
+    if (entry.isDirectory()) {
+      result.push({ name: entry.name, path: fullPath, isDirectory: true, children: [], mtime: fileStat.mtimeMs })
     } else if (extname(entry.name) === '.md') {
       result.push({ name: entry.name, path: fullPath, isDirectory: false, mtime: fileStat.mtimeMs })
     }
