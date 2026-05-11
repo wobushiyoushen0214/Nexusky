@@ -44,7 +44,7 @@ export function ChatPanel() {
   const [editHistory, setEditHistory] = useState<string[]>([])
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { saveHistory(messages) }, [messages])
 
@@ -486,18 +486,20 @@ export function ChatPanel() {
           )}
 
           {/* Input row */}
-          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 8px 8px 12px', gap: 6 }}>
-            <input
+          <div style={{ display: 'flex', alignItems: 'flex-end', padding: '8px 8px 8px 12px', gap: 6 }}>
+            <textarea
               ref={inputRef}
               value={input}
-              onChange={handleInputChange}
-              onPaste={handleImagePaste}
+              onChange={(e) => handleInputChange(e as any)}
+              onPaste={handleImagePaste as any}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }; if (e.key === 'Escape') setShowMention(false) }}
               placeholder={editMode ? '描述你想要的修改...' : '提问，或 @ 引用笔记'}
+              rows={1}
+              onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
               style={{
-                flex: 1, height: 28, padding: 0, fontSize: 13,
+                flex: 1, minHeight: 28, maxHeight: 120, padding: '4px 0', fontSize: 13,
                 background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none',
-                minWidth: 0,
+                minWidth: 0, resize: 'none', lineHeight: 1.5, fontFamily: 'inherit',
               }}
             />
             {isStreaming ? (
@@ -558,7 +560,7 @@ export function ChatPanel() {
               {editMode ? '编辑' : '对话'}
             </button>
             <div style={{ flex: 1 }} />
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.6 }}>Enter 发送</span>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.6 }}>Enter 发送 · Shift+Enter 换行</span>
           </div>
         </div>
       </div>
