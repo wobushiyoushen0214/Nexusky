@@ -94,39 +94,49 @@ ${context}
   })
 
   ipcMain.handle('ai:detect-local-config', async () => {
-    const { homedir } = require('os')
+    const { homedir, platform } = require('os')
     const { readFileSync, existsSync } = require('fs')
     const { join } = require('path')
     const home = homedir()
+    const os = platform()
     const result: { claude?: { apiKey: string; baseUrl: string }; openai?: { apiKey: string } } = {}
 
-    // Detect Claude Code config
-    const claudeSettings = join(home, '.claude', 'settings.json')
-    if (existsSync(claudeSettings)) {
+    // Claude Code config paths per platform
+    const claudePaths = [
+      join(home, '.claude', 'settings.json'),
+      ...(os === 'win32' ? [join(process.env.APPDATA || '', 'claude', 'settings.json')] : []),
+      ...(os === 'linux' ? [join(home, '.config', 'claude', 'settings.json')] : []),
+    ]
+    for (const p of claudePaths) {
+      if (!existsSync(p)) continue
       try {
-        const data = JSON.parse(readFileSync(claudeSettings, 'utf-8'))
+        const data = JSON.parse(readFileSync(p, 'utf-8'))
         const env = data.env || {}
         if (env.ANTHROPIC_AUTH_TOKEN) {
-          result.claude = {
-            apiKey: env.ANTHROPIC_AUTH_TOKEN,
-            baseUrl: env.ANTHROPIC_BASE_URL || ''
-          }
+          result.claude = { apiKey: env.ANTHROPIC_AUTH_TOKEN, baseUrl: env.ANTHROPIC_BASE_URL || '' }
+          break
         }
       } catch {}
     }
 
-    // Detect OpenAI/Codex config
-    const codexAuth = join(home, '.codex', 'auth.json')
-    if (existsSync(codexAuth)) {
+    // Codex config paths per platform
+    const codexPaths = [
+      join(home, '.codex', 'auth.json'),
+      ...(os === 'win32' ? [join(process.env.APPDATA || '', 'codex', 'auth.json')] : []),
+      ...(os === 'linux' ? [join(home, '.config', 'codex', 'auth.json')] : []),
+    ]
+    for (const p of codexPaths) {
+      if (!existsSync(p)) continue
       try {
-        const data = JSON.parse(readFileSync(codexAuth, 'utf-8'))
+        const data = JSON.parse(readFileSync(p, 'utf-8'))
         if (data.OPENAI_API_KEY) {
           result.openai = { apiKey: data.OPENAI_API_KEY }
+          break
         }
       } catch {}
     }
 
-    // Also check environment variables
+    // Fallback to environment variables
     if (!result.claude && process.env.ANTHROPIC_API_KEY) {
       result.claude = { apiKey: process.env.ANTHROPIC_API_KEY, baseUrl: process.env.ANTHROPIC_BASE_URL || '' }
     }
