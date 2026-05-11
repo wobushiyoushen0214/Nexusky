@@ -91,7 +91,7 @@ export function Editor() {
 
   const editorAreaRef = useRef<HTMLDivElement>(null)
 
-  // Scroll to cursor after operations
+  // Scroll to cursor after selection changes
   useEffect(() => {
     if (!editor) return
     const scrollToCursor = () => {
@@ -108,8 +108,8 @@ export function Editor() {
         }
       })
     }
-    editor.on('transaction', scrollToCursor)
-    return () => { editor.off('transaction', scrollToCursor) }
+    editor.on('selectionUpdate', scrollToCursor)
+    return () => { editor.off('selectionUpdate', scrollToCursor) }
   }, [editor])
 
   useEffect(() => {
@@ -533,14 +533,21 @@ function SyncIndicator() {
 }
 
 function MermaidBlocks({ content }: { content: string }) {
-  const blocks = useMemo(() => {
-    const regex = /```mermaid\n([\s\S]*?)```/g
-    const matches: string[] = []
-    let match
-    while ((match = regex.exec(content)) !== null) {
-      matches.push(match[1])
-    }
-    return matches
+  const [blocks, setBlocks] = useState<string[]>([])
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      const regex = /```mermaid\n([\s\S]*?)```/g
+      const matches: string[] = []
+      let match
+      while ((match = regex.exec(content)) !== null) {
+        matches.push(match[1])
+      }
+      setBlocks(matches)
+    }, 800)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [content])
 
   if (blocks.length === 0) return null
@@ -560,27 +567,32 @@ function MermaidBlocks({ content }: { content: string }) {
 function TransclusionBlocks({ content }: { content: string }) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const [embeds, setEmbeds] = useState<{ title: string; content: string }[]>([])
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const regex = /!\[\[([^\]]+)\]\]/g
-    const titles: string[] = []
-    let match
-    while ((match = regex.exec(content)) !== null) {
-      titles.push(match[1])
-    }
-    if (titles.length === 0 || !vaultPath) { setEmbeds([]); return }
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      const regex = /!\[\[([^\]]+)\]\]/g
+      const titles: string[] = []
+      let match
+      while ((match = regex.exec(content)) !== null) {
+        titles.push(match[1])
+      }
+      if (titles.length === 0 || !vaultPath) { setEmbeds([]); return }
 
-    Promise.all(titles.map(async (title) => {
-      try {
-        const results = await window.api.invoke('db:search-notes', { vaultPath, query: title })
-        const exact = results.find((r) => r.title === title)
-        if (exact) {
-          const text = await window.api.invoke('file:read', { path: `${vaultPath}/${exact.filePath}` })
-          return { title, content: text }
-        }
-      } catch {}
-      return null
-    })).then((results) => setEmbeds(results.filter(Boolean) as any))
+      Promise.all(titles.map(async (title) => {
+        try {
+          const results = await window.api.invoke('db:search-notes', { vaultPath, query: title })
+          const exact = results.find((r) => r.title === title)
+          if (exact) {
+            const text = await window.api.invoke('file:read', { path: `${vaultPath}/${exact.filePath}` })
+            return { title, content: text }
+          }
+        } catch {}
+        return null
+      })).then((results) => setEmbeds(results.filter(Boolean) as any))
+    }, 800)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [content, vaultPath])
 
   if (embeds.length === 0) return null
