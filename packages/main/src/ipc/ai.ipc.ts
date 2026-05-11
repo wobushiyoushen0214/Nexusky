@@ -72,22 +72,16 @@ ${context}
     if (!config) return ''
 
     try {
-      const OpenAI = require('openai').default
-      const client = new OpenAI({
-        apiKey: config.apiKey || 'ollama',
-        baseURL: config.baseUrl || (config.type === 'ollama' ? 'http://localhost:11434/v1' : undefined)
-      })
-      const response = await client.chat.completions.create({
-        model: config.model,
-        messages: [
-          { role: 'system', content: '续写1-2句，只输出续写内容。' },
-          { role: 'user', content: params.text }
-        ],
-        max_tokens: 60,
-        temperature: 0.7,
-        stream: false
-      })
-      return response.choices[0]?.message?.content?.trim() || ''
+      const provider = aiManager.getProvider(config)
+      let result = ''
+      for await (const chunk of provider.chatStream([
+        { role: 'system', content: '续写1-2句，只输出续写内容。' },
+        { role: 'user', content: params.text }
+      ])) {
+        if (chunk.type === 'text') result += chunk.content
+        if (chunk.type === 'error') return ''
+      }
+      return result.trim().slice(0, 200)
     } catch {
       return ''
     }
