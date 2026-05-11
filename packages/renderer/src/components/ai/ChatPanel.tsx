@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { toast } from '../../stores/toast-store'
 
 interface Message {
   id: string
@@ -122,6 +123,13 @@ export function ChatPanel() {
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return
+
+    const providers = await window.api.invoke('ai:get-providers', undefined)
+    if (!providers || providers.length === 0 || !providers.some((p: any) => p.enabled)) {
+      toast('请先在设置中配置 AI 提供商', 'error')
+      return
+    }
+
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim() }
     setMessages((prev) => [...prev, userMsg])
     setInput('')

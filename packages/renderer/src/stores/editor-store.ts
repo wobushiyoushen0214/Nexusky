@@ -64,22 +64,30 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return
     }
 
-    const fileStat = await window.api.invoke('file:stat', { path })
-    if (fileStat.size > 512000) {
-      toast('大文件加载中，可能需要几秒...', 'info')
+    try {
+      const fileStat = await window.api.invoke('file:stat', { path })
+      if (fileStat.size > 512000) {
+        toast('大文件加载中，可能需要几秒...', 'info')
+      }
+    } catch {
+      toast('文件不存在或无法访问', 'error')
+      return
     }
 
     if (activeTabIndex >= 0 && tabs[activeTabIndex]?.isDirty) {
       await get().saveFile()
     }
 
-    const content = await window.api.invoke('file:read', { path })
-    const newTab: Tab = { path, content, isDirty: false }
-    const newTabs = [...tabs, newTab]
-
-    const recent = [path, ...get().recentFiles.filter((p) => p !== path)].slice(0, 10)
-    localStorage.setItem('nexusky-recent', JSON.stringify(recent))
-    set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false, recentFiles: recent })
+    try {
+      const content = await window.api.invoke('file:read', { path })
+      const newTab: Tab = { path, content, isDirty: false }
+      const newTabs = [...tabs, newTab]
+      const recent = [path, ...get().recentFiles.filter((p) => p !== path)].slice(0, 10)
+      localStorage.setItem('nexusky-recent', JSON.stringify(recent))
+      set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false, recentFiles: recent })
+    } catch (e: any) {
+      toast(`打开文件失败: ${e.message || '未知错误'}`, 'error')
+    }
   },
 
   closeTab: async (index) => {
