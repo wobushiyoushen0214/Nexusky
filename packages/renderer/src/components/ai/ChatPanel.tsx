@@ -40,6 +40,7 @@ export function ChatPanel() {
   const [editMode, setEditMode] = useState(false)
   const [editTarget, setEditTarget] = useState<string | null>(null)
   const [editResult, setEditResult] = useState<{ content: string; filePath: string } | null>(null)
+  const [editHistory, setEditHistory] = useState<string[]>([])
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -135,10 +136,12 @@ export function ChatPanel() {
         instruction: userMsg.content,
         fileContent,
         filePath: targetPath,
-        images: attachedImages.length > 0 ? attachedImages : undefined
-      })
+        images: attachedImages.length > 0 ? attachedImages : undefined,
+        history: editHistory.length > 0 ? editHistory : undefined
+      } as any)
       setAttachedImages([])
       if (result.success && result.content) {
+        setEditHistory((prev) => [...prev, userMsg.content])
         setEditResult({ content: result.content, filePath: targetPath })
         setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '已生成修改方案，请查看下方预览并确认应用。' }])
       } else {
@@ -392,7 +395,7 @@ export function ChatPanel() {
         {/* Mode toggle + target */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
           <button
-            onClick={() => { setEditMode(!editMode); setEditTarget(null) }}
+            onClick={() => { setEditMode(!editMode); setEditTarget(null); setEditHistory([]) }}
             style={{
               height: 22, padding: '0 8px', fontSize: 10, fontWeight: 500, borderRadius: 4, cursor: 'pointer',
               background: editMode ? 'var(--accent)' : 'transparent',

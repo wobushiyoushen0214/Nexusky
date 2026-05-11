@@ -117,7 +117,7 @@ ${context}
     }
   })
 
-  ipcMain.handle('ai:edit', async (event, params: { instruction: string; fileContent: string; filePath: string; images?: string[] }) => {
+  ipcMain.handle('ai:edit', async (event, params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商' }
 
@@ -128,7 +128,11 @@ ${context}
 请直接输出修改后的完整笔记内容，不要添加任何解释、代码块标记或前后缀。
 只输出修改后的 Markdown 内容本身。`
 
-    const textContent = `文件: ${params.filePath}\n\n当前内容:\n${params.fileContent}\n\n修改指令: ${params.instruction}`
+    let textContent = `文件: ${params.filePath}\n\n当前内容:\n${params.fileContent}\n\n`
+    if (params.history && params.history.length > 0) {
+      textContent += `之前的修改指令（已应用）:\n${params.history.map((h, i) => `${i + 1}. ${h}`).join('\n')}\n\n`
+    }
+    textContent += `本次修改指令: ${params.instruction}`
 
     let userMessage: ChatMessage
     if (params.images && params.images.length > 0) {
