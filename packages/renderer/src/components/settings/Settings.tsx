@@ -272,13 +272,22 @@ export function Settings({ open, onClose }: SettingsProps) {
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>模型</label>
-                  <input value={editing.model} onChange={(e) => setEditing({ ...editing, model: e.target.value })}
-                    list="model-suggestions" style={inputStyle} placeholder="gpt-4o"
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                  <datalist id="model-suggestions">
-                    {(DEFAULT_MODELS[editing.type] || []).map((m) => <option key={m} value={m} />)}
-                  </datalist>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <select
+                      value={(DEFAULT_MODELS[editing.type] || []).includes(editing.model) ? editing.model : '__custom__'}
+                      onChange={(e) => { if (e.target.value !== '__custom__') setEditing({ ...editing, model: e.target.value }) }}
+                      style={{ ...inputStyle, flex: 1, cursor: 'pointer', appearance: 'auto' }}
+                    >
+                      {(DEFAULT_MODELS[editing.type] || []).map((m) => <option key={m} value={m}>{m}</option>)}
+                      <option value="__custom__">自定义...</option>
+                    </select>
+                  </div>
+                  {!(DEFAULT_MODELS[editing.type] || []).includes(editing.model) && (
+                    <input value={editing.model} onChange={(e) => setEditing({ ...editing, model: e.target.value })}
+                      style={{ ...inputStyle, marginTop: 6 }} placeholder="输入自定义模型名称"
+                      onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                      onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                  )}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                   <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer' }}>取消</button>
