@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
-import { FileTree } from './FileTree'
+import { VirtualFileTree } from './VirtualFileTree'
 import { ContextMenu } from '../ContextMenu'
 import type { FileEntry } from '@shared/types/ipc'
 
@@ -263,36 +263,14 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       {/* File tree */}
       <div
         tabIndex={0}
-        style={{ flex: 1, overflowY: 'auto', padding: '0 8px 12px', outline: 'none' }}
-        onKeyDown={(e) => {
-          if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) return
-          e.preventDefault()
-          const buttons = e.currentTarget.querySelectorAll<HTMLButtonElement>('[data-file-path]')
-          if (buttons.length === 0) return
-          const focused = e.currentTarget.querySelector<HTMLButtonElement>('[data-file-path][data-focused="true"]')
-          let index = focused ? Array.from(buttons).indexOf(focused) : -1
-          if (e.key === 'ArrowDown') index = Math.min(index + 1, buttons.length - 1)
-          else if (e.key === 'ArrowUp') index = Math.max(index - 1, 0)
-          else if (e.key === 'Enter' && focused) { focused.click(); return }
-          buttons.forEach((b) => b.removeAttribute('data-focused'))
-          if (buttons[index]) {
-            buttons[index].setAttribute('data-focused', 'true')
-            buttons[index].style.background = 'var(--bg-hover)'
-            buttons[index].scrollIntoView({ block: 'nearest' })
-          }
-          if (focused) focused.style.background = ''
-        }}
-        onBlur={(e) => {
-          const focused = e.currentTarget.querySelector<HTMLButtonElement>('[data-focused="true"]')
-          if (focused) { focused.removeAttribute('data-focused'); focused.style.background = '' }
-        }}
+        style={{ flex: 1, overflowY: 'hidden', padding: '0 8px 12px', outline: 'none' }}
         onContextMenu={(e) => {
           if ((e.target as HTMLElement).closest('button')) return
           e.preventDefault()
           setBlankContextMenu({ x: e.clientX, y: e.clientY })
         }}
       >
-        <FileTree key={treeKey} entries={sortFiles(filterFiles(files, filterQuery), sortBy)} defaultExpanded={defaultExpanded} />
+        <VirtualFileTree key={treeKey} entries={sortFiles(filterFiles(files, filterQuery), sortBy)} defaultExpanded={defaultExpanded} />
       </div>
       {blankContextMenu && (
         <ContextMenu
