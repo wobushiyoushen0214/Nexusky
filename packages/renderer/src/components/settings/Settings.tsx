@@ -14,8 +14,8 @@ interface ProviderConfig {
 }
 
 const DEFAULT_MODELS: Record<string, string[]> = {
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  claude: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-opus-4-7'],
+  openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
+  claude: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
   ollama: ['llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral'],
   custom: []
 }
@@ -67,7 +67,7 @@ export function Settings({ open, onClose }: SettingsProps) {
       type: 'openai',
       baseUrl: '',
       apiKey: '',
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-mini',
       enabled: true
     })
   }
@@ -176,7 +176,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                     if (detected.openai) {
                       const exists = updated.find((p) => p.apiKey === detected.openai!.apiKey)
                       if (!exists) {
-                        const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4o-mini', enabled: true }
+                        const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4.1-mini', enabled: true }
                         updated.push(np)
                         added++
                       }
