@@ -152,8 +152,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   saveFile: async () => {
-    const { currentFilePath, content, tabs, activeTabIndex } = get()
-    if (!currentFilePath) return
+    const { currentFilePath, content, tabs, activeTabIndex, isDirty } = get()
+    if (!currentFilePath || !isDirty) return
     const vaultPath = useVaultStore.getState().vaultPath
     await window.api.invoke('file:write', { path: currentFilePath, content, vaultPath: vaultPath || undefined })
 
