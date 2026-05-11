@@ -22,11 +22,13 @@ import { TrashPanel } from './components/TrashPanel'
 import { CommandPalette } from './components/CommandPalette'
 import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
+import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
 
 export default function App() {
   const { vaultPath, loadVault } = useVaultStore()
   const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView } = useUIStore()
   const [trashOpen, setTrashOpen] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
 
   useEffect(() => {
     const handler = () => setTrashOpen(true)
@@ -253,6 +255,7 @@ export default function App() {
       <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
       <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />
       <ToastContainer />
+      {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
     </div>
   )
 }
