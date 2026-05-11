@@ -426,64 +426,93 @@ export function ChatPanel() {
       )}
 
       {/* Input */}
-      <div style={{ padding: '8px 14px 14px', borderTop: '1px solid var(--border-subtle)' } as React.CSSProperties}>
-        {/* Mode toggle + target */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <button
-            onClick={() => { setEditMode(!editMode); setEditTarget(null); setEditHistory([]) }}
-            style={{
-              height: 22, padding: '0 8px', fontSize: 10, fontWeight: 500, borderRadius: 4, cursor: 'pointer',
-              background: editMode ? 'var(--accent)' : 'transparent',
-              color: editMode ? '#fff' : 'var(--text-tertiary)',
-              border: editMode ? 'none' : '1px solid var(--border-subtle)',
-              transition: 'all 100ms',
-            }}
-          >
-            {editMode ? '✎ 编辑' : '💬 对话'}
-          </button>
+      <div style={{ padding: '10px 14px 14px', flexShrink: 0 }}>
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1.5px solid var(--border-subtle)',
+          borderRadius: 12,
+          transition: 'border-color 150ms, box-shadow 150ms',
+          overflow: 'hidden',
+        }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,110,240,0.08)' }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none' }}
+        >
+          {/* Edit target indicator */}
           {editMode && (
-            <span style={{ fontSize: 10, color: editTarget ? 'var(--accent-text)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 3 }}>
-              → {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (useEditorStore.getState().currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '未打开文件')}
+            <div style={{ padding: '6px 12px 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span style={{ fontSize: 11, color: 'var(--accent-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (useEditorStore.getState().currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '未打开文件')}
+              </span>
               {editTarget && (
-                <button onClick={() => setEditTarget(null)} style={{ width: 12, height: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0 }}>×</button>
+                <button onClick={() => setEditTarget(null)} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
               )}
-            </span>
+            </div>
           )}
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={handleInputChange}
-            onPaste={handleImagePaste}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }; if (e.key === 'Escape') setShowMention(false) }}
-            placeholder={editMode ? '描述修改内容...' : '提问或 @ 引用笔记...'}
-            disabled={isStreaming}
-            style={{
-              flex: 1, height: 38, padding: '0 14px', fontSize: 13,
-              background: 'var(--bg-base)', border: `1.5px solid ${editMode ? 'var(--accent)' : 'var(--border-subtle)'}`,
-              borderRadius: 10, color: 'var(--text-primary)', outline: 'none',
-              opacity: isStreaming ? 0.5 : 1, transition: 'border-color 150ms, box-shadow 150ms',
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,110,240,0.1)' }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = editMode ? 'var(--accent)' : 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none' }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={isStreaming || !input.trim()}
-            style={{
-              width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: editMode ? '#4ade80' : 'var(--accent)', color: editMode ? '#000' : '#fff',
-              border: 'none', borderRadius: 10,
-              cursor: isStreaming || !input.trim() ? 'default' : 'pointer',
-              opacity: isStreaming || !input.trim() ? 0.4 : 1, transition: 'opacity 150ms',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
+
+          {/* Input row */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 8px 8px 12px', gap: 6 }}>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={handleInputChange}
+              onPaste={handleImagePaste}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }; if (e.key === 'Escape') setShowMention(false) }}
+              placeholder={editMode ? '描述你想要的修改...' : '提问，或 @ 引用笔记'}
+              disabled={isStreaming}
+              style={{
+                flex: 1, height: 28, padding: 0, fontSize: 13,
+                background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none',
+                opacity: isStreaming ? 0.5 : 1, minWidth: 0,
+              }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={isStreaming || !input.trim()}
+              style={{
+                width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: (isStreaming || !input.trim()) ? 'transparent' : 'var(--accent)',
+                color: (isStreaming || !input.trim()) ? 'var(--text-tertiary)' : '#fff',
+                border: 'none', borderRadius: 8,
+                cursor: isStreaming || !input.trim() ? 'default' : 'pointer',
+                transition: 'background 150ms, color 150ms',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Bottom toolbar */}
+          <div style={{ padding: '0 8px 6px', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button
+              onClick={() => { setEditMode(!editMode); setEditTarget(null); setEditHistory([]) }}
+              style={{
+                height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
+                background: editMode ? 'var(--accent-muted)' : 'transparent',
+                color: editMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                border: 'none',
+                transition: 'all 100ms',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+              title={editMode ? '切换到对话模式' : '切换到编辑模式（直接修改文档）'}
+            >
+              {editMode ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              )}
+              {editMode ? '编辑' : '对话'}
+            </button>
+            <div style={{ flex: 1 }} />
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.6 }}>Enter 发送</span>
+          </div>
         </div>
       </div>
     </div>
