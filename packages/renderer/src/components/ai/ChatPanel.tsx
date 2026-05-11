@@ -566,8 +566,10 @@ export function ChatPanel() {
   )
 }
 
+import DOMPurify from 'dompurify'
+
 function renderMarkdown(md: string): string {
-  return md
+  const html = md
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -581,4 +583,5 @@ function renderMarkdown(md: string): string {
     .replace(/^---$/gm, '<hr>')
     .replace(/\n\n/g, '</p><p>')
     .replace(/^(?!<[hupbl]|<li|<hr|<code|<pre)(.+)$/gm, '<p>$1</p>')
+  return DOMPurify.sanitize(html)
 }
