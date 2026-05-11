@@ -15,6 +15,8 @@ interface EditorState {
   content: string
   isDirty: boolean
   recentFiles: string[]
+  splitPath: string | null
+  splitContent: string | null
   setContent: (content: string) => void
   setCurrentFile: (path: string | null) => void
   setDirty: (dirty: boolean) => void
@@ -25,6 +27,8 @@ interface EditorState {
   switchTab: (index: number) => void
   reorderTab: (from: number, to: number) => void
   saveFile: () => Promise<void>
+  openSplit: (path: string) => Promise<void>
+  closeSplit: () => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -34,6 +38,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   content: '',
   isDirty: false,
   recentFiles: JSON.parse(localStorage.getItem('nexusky-recent') || '[]'),
+  splitPath: null,
+  splitContent: null,
 
   setCurrentFile: (path) => set({ currentFilePath: path }),
   setContent: (content) => {
@@ -164,5 +170,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         }).catch(() => {})
       }
     }
-  }
+  },
+
+  openSplit: async (path) => {
+    const content = await window.api.invoke('file:read', { path })
+    set({ splitPath: path, splitContent: content })
+  },
+
+  closeSplit: () => set({ splitPath: null, splitContent: null })
 }))

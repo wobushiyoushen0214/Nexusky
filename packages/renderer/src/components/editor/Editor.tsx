@@ -29,7 +29,7 @@ import { FindReplace } from './FindReplace'
 import { MermaidRenderer } from './MermaidRenderer'
 
 export function Editor() {
-  const { content, currentFilePath, setContent, isDirty, tabs, activeTabIndex, closeTab, switchTab, reorderTab, closeOtherTabs, closeTabsToRight } = useEditorStore()
+  const { content, currentFilePath, setContent, isDirty, tabs, activeTabIndex, closeTab, switchTab, reorderTab, closeOtherTabs, closeTabsToRight, splitPath, splitContent, closeSplit } = useEditorStore()
   const focusMode = useUIStore((s) => s.focusMode)
   const previewMode = useUIStore((s) => s.previewMode)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
@@ -345,6 +345,7 @@ export function Editor() {
             { label: '关闭其他', onClick: () => closeOtherTabs(tabContextMenu.index) },
             { label: '关闭右侧', onClick: () => closeTabsToRight(tabContextMenu.index) },
             { label: '复制路径', onClick: () => { navigator.clipboard.writeText(tabs[tabContextMenu.index]?.path || '') } },
+            { label: '在右侧打开', onClick: () => { const p = tabs[tabContextMenu.index]?.path; if (p) useEditorStore.getState().openSplit(p) } },
           ]}
           onClose={() => setTabContextMenu(null)}
         />
@@ -371,25 +372,40 @@ export function Editor() {
       {!focusMode && editor && <EditorToolbar editor={editor} />}
 
       {/* Editor area */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <FindReplace editor={editor} open={findReplaceOpen} onClose={() => setFindReplaceOpen(false)} />
-        {linkPreview && (
-          <div style={{
-            position: 'fixed', left: linkPreview.x, top: linkPreview.y, zIndex: 50,
-            maxWidth: 360, maxHeight: 200, padding: '10px 14px',
-            background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-            borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-            fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)',
-            overflowY: 'auto', whiteSpace: 'pre-wrap', pointerEvents: 'none',
-          }}>
-            {linkPreview.content}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          <FindReplace editor={editor} open={findReplaceOpen} onClose={() => setFindReplaceOpen(false)} />
+          {linkPreview && (
+            <div style={{
+              position: 'fixed', left: linkPreview.x, top: linkPreview.y, zIndex: 50,
+              maxWidth: 360, maxHeight: 200, padding: '10px 14px',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+              borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+              fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)',
+              overflowY: 'auto', whiteSpace: 'pre-wrap', pointerEvents: 'none',
+            }}>
+              {linkPreview.content}
+            </div>
+          )}
+          <div ref={editorAreaRef} style={{ height: '100%', overflowY: 'auto', padding: focusMode ? '48px 64px' : '24px 32px' }}>
+            <EditorContent editor={editor} />
+            <TransclusionBlocks content={content} />
+            <MermaidBlocks content={content} />
+          </div>
+        </div>
+        {splitPath && splitContent !== null && (
+          <div style={{ width: '50%', borderLeft: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{splitPath.split(/[\\/]/).pop()?.replace(/\.md$/, '')}</span>
+              <button onClick={closeSplit} style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+            <div className="editor-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', fontSize: 15, lineHeight: 1.7, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+              {splitContent}
+            </div>
           </div>
         )}
-        <div ref={editorAreaRef} style={{ height: '100%', overflowY: 'auto', padding: focusMode ? '48px 64px' : '24px 32px' }}>
-          <EditorContent editor={editor} />
-          <TransclusionBlocks content={content} />
-          <MermaidBlocks content={content} />
-        </div>
       </div>
 
       {/* AI Writing Menu */}
