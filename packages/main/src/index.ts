@@ -24,16 +24,20 @@ function getSavedBounds(): Partial<WindowBounds> {
   return (store.get('windowBounds') as WindowBounds) || {}
 }
 
+let boundsTimer: ReturnType<typeof setTimeout> | null = null
 function saveWindowBounds(): void {
-  if (!mainWindow) return
-  const isMaximized = mainWindow.isMaximized()
-  if (!isMaximized) {
-    const bounds = mainWindow.getBounds()
-    store.set('windowBounds', { ...bounds, isMaximized: false })
-  } else {
-    const existing = getSavedBounds()
-    store.set('windowBounds', { ...existing, isMaximized: true })
-  }
+  if (boundsTimer) clearTimeout(boundsTimer)
+  boundsTimer = setTimeout(() => {
+    if (!mainWindow) return
+    const isMaximized = mainWindow.isMaximized()
+    if (!isMaximized) {
+      const bounds = mainWindow.getBounds()
+      store.set('windowBounds', { ...bounds, isMaximized: false })
+    } else {
+      const existing = getSavedBounds()
+      store.set('windowBounds', { ...existing, isMaximized: true })
+    }
+  }, 500)
 }
 
 function createWindow(): void {
