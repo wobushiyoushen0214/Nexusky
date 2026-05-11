@@ -256,6 +256,10 @@ export function ChatPanel() {
   }
 
   const handleClear = () => {
+    if (messages.length > 3) {
+      const confirmed = window.confirm(`确定清空 ${messages.length} 条对话记录？`)
+      if (!confirmed) return
+    }
     setMessages([])
     localStorage.removeItem(STORAGE_KEY)
   }
