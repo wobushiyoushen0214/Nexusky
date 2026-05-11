@@ -17,6 +17,8 @@ import { Markdown } from 'tiptap-markdown'
 import { WikiLink } from './extensions/wiki-link'
 import { AICompletion } from './extensions/ai-completion'
 import { ImagePaste } from './extensions/image-paste'
+import { SlashCommand } from './extensions/slash-command'
+import { SlashCommandMenu } from './SlashCommandMenu'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
@@ -57,6 +59,7 @@ export function Editor() {
       Highlight.configure({ multicolor: true }),
       WikiLink,
       AICompletion,
+      SlashCommand,
       Mathematics,
       ImagePaste,
       Placeholder.configure({
@@ -410,6 +413,9 @@ export function Editor() {
 
       {/* AI Writing Menu */}
       <AIWritingMenu editor={editor} />
+
+      {/* Slash Command Menu */}
+      <SlashCommandMenu editor={editor} />
 
       {/* Backlinks */}
       {!focusMode && <BacklinksPanel />}
