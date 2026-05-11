@@ -429,7 +429,10 @@ export function Editor() {
           <FindReplace editor={editor} open={findReplaceOpen} onClose={() => setFindReplaceOpen(false)} />
           {linkPreview && (
             <div style={{
-              position: 'fixed', left: linkPreview.x, top: linkPreview.y, zIndex: 50,
+              position: 'fixed',
+              left: Math.min(linkPreview.x, window.innerWidth - 380),
+              top: linkPreview.y + 200 > window.innerHeight ? linkPreview.y - 210 : linkPreview.y,
+              zIndex: 50,
               maxWidth: 360, maxHeight: 200, padding: '10px 14px',
               background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
               borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
