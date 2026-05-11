@@ -183,7 +183,12 @@ export function ChatPanel() {
       setAttachedNotes([])
     }
 
-    const chatMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }))
+    const allMessages = [...messages, userMsg]
+    const MAX_CONTEXT_MESSAGES = 20
+    const recentMessages = allMessages.length > MAX_CONTEXT_MESSAGES
+      ? allMessages.slice(-MAX_CONTEXT_MESSAGES)
+      : allMessages
+    const chatMessages = recentMessages.map((m) => ({ role: m.role, content: m.content }))
     if (contextPrefix) {
       chatMessages[chatMessages.length - 1] = {
         role: 'user',
