@@ -178,6 +178,18 @@ export function Editor() {
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }
   }, [isDirty, content])
 
+  // Save immediately on window blur
+  useEffect(() => {
+    const handleBlur = () => {
+      const { isDirty, currentFilePath } = useEditorStore.getState()
+      if (isDirty && currentFilePath) {
+        useEditorStore.getState().saveFile()
+      }
+    }
+    window.addEventListener('blur', handleBlur)
+    return () => window.removeEventListener('blur', handleBlur)
+  }, [])
+
   // Word count
   const stats = useMemo(() => {
     if (!content) return { chars: 0, words: 0, readTime: 0 }
