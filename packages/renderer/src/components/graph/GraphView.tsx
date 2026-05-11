@@ -35,6 +35,15 @@ export function GraphView() {
   }, [vaultPath])
 
   useEffect(() => {
+    if (!vaultPath) return
+    const refresh = () => {
+      window.api.invoke('db:get-graph', { vaultPath }).then(setGraphData)
+    }
+    const cleanup = window.api.onVaultChanged(refresh)
+    return () => { cleanup() }
+  }, [vaultPath])
+
+  useEffect(() => {
     if (!graphData || !svgRef.current) return
     if (graphData.nodes.length === 0) return
 
