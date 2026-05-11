@@ -144,13 +144,23 @@ export default function App() {
 
   // Auto sync timer
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [autoSyncInterval, setAutoSyncInterval] = useState(() => {
+    try { return Number(localStorage.getItem('nexusky-auto-sync') || '0') } catch { return 0 }
+  })
+
+  useEffect(() => {
+    const handler = () => {
+      try { setAutoSyncInterval(Number(localStorage.getItem('nexusky-auto-sync') || '0')) } catch {}
+    }
+    window.addEventListener('storage', handler)
+    window.addEventListener('sync-interval-changed', handler)
+    return () => { window.removeEventListener('storage', handler); window.removeEventListener('sync-interval-changed', handler) }
+  }, [])
+
   useEffect(() => {
     if (syncTimerRef.current) clearInterval(syncTimerRef.current)
 
-    const intervalMin = (() => {
-      try { return Number(localStorage.getItem('nexusky-auto-sync') || '0') } catch { return 0 }
-    })()
-    if (!intervalMin || !vaultPath) return
+    if (!autoSyncInterval || !vaultPath) return
 
     syncTimerRef.current = setInterval(async () => {
       const { status, setSyncing, setSuccess, setError } = useSyncStore.getState()
@@ -169,10 +179,10 @@ export default function App() {
         setError(e.message)
         toast(`同步失败: ${e.message}`, 'error')
       }
-    }, intervalMin * 60 * 1000)
+    }, autoSyncInterval * 60 * 1000)
 
     return () => { if (syncTimerRef.current) clearInterval(syncTimerRef.current) }
-  }, [vaultPath])
+  }, [vaultPath, autoSyncInterval])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
