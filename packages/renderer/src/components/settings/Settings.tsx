@@ -155,24 +155,38 @@ export function Settings({ open, onClose }: SettingsProps) {
                   onClick={async () => {
                     const detected = await window.api.invoke('ai:detect-local-config', undefined)
                     let added = 0
+                    const updated = [...providers]
                     if (detected.claude) {
-                      const exists = providers.find((p) => p.type === 'claude')
+                      const exists = updated.find((p) => p.apiKey === detected.claude!.apiKey)
                       if (!exists) {
-                        const np = { id: crypto.randomUUID(), name: 'Claude (本地检测)', type: 'claude' as const, baseUrl: detected.claude.baseUrl, apiKey: detected.claude.apiKey, model: 'claude-sonnet-4-6', enabled: true }
-                        saveProviders([...providers, np])
+                        const hasCustomBase = !!detected.claude.baseUrl
+                        const np = {
+                          id: crypto.randomUUID(),
+                          name: hasCustomBase ? 'Claude 中转站 (本地检测)' : 'Claude (本地检测)',
+                          type: (hasCustomBase ? 'custom' : 'claude') as any,
+                          baseUrl: hasCustomBase ? detected.claude.baseUrl + '/v1' : '',
+                          apiKey: detected.claude.apiKey,
+                          model: 'claude-sonnet-4-6',
+                          enabled: true
+                        }
+                        updated.push(np)
                         added++
                       }
                     }
                     if (detected.openai) {
-                      const exists = providers.find((p) => p.type === 'openai')
+                      const exists = updated.find((p) => p.apiKey === detected.openai!.apiKey)
                       if (!exists) {
                         const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4o-mini', enabled: true }
-                        saveProviders([...providers, np])
+                        updated.push(np)
                         added++
                       }
                     }
-                    if (added > 0) toast(`已检测并添加 ${added} 个 AI 配置`, 'success')
-                    else toast('未检测到本地 AI 配置，或已存在', 'info')
+                    if (added > 0) {
+                      saveProviders(updated)
+                      toast(`已检测并添加 ${added} 个 AI 配置`, 'success')
+                    } else {
+                      toast('未检测到本地 AI 配置，或已存在', 'info')
+                    }
                   }}
                   style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: 'pointer', padding: '3px 8px', borderRadius: 4 }}
                 >

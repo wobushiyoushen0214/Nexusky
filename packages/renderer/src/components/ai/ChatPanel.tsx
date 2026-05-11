@@ -139,21 +139,25 @@ export function ChatPanel() {
     if (editMode) {
       const targetPath = editTarget || useEditorStore.getState().currentFilePath
       if (!targetPath) { setIsStreaming(false); return }
-      const fileContent = await window.api.invoke('file:read', { path: targetPath })
-      const result = await window.api.invoke('ai:edit', {
-        instruction: userMsg.content,
-        fileContent,
-        filePath: targetPath,
-        images: attachedImages.length > 0 ? attachedImages : undefined,
-        history: editHistory.length > 0 ? editHistory : undefined
-      } as any)
-      setAttachedImages([])
-      if (result.success && result.content) {
-        setEditHistory((prev) => [...prev, userMsg.content])
-        setEditResult({ content: result.content, filePath: targetPath })
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '已生成修改方案，请查看下方预览并确认应用。' }])
-      } else {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `编辑失败: ${result.error}` }])
+      try {
+        const fileContent = await window.api.invoke('file:read', { path: targetPath })
+        const result = await window.api.invoke('ai:edit', {
+          instruction: userMsg.content,
+          fileContent,
+          filePath: targetPath,
+          images: attachedImages.length > 0 ? attachedImages : undefined,
+          history: editHistory.length > 0 ? editHistory : undefined
+        } as any)
+        setAttachedImages([])
+        if (result.success && result.content) {
+          setEditHistory((prev) => [...prev, userMsg.content])
+          setEditResult({ content: result.content, filePath: targetPath })
+          setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '已生成修改方案，请查看下方预览并确认应用。' }])
+        } else {
+          setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `编辑失败: ${result.error}` }])
+        }
+      } catch (e: any) {
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `请求失败: ${e.message || '网络错误'}` }])
       }
       setIsStreaming(false)
       return
@@ -187,7 +191,13 @@ export function ChatPanel() {
       }
       setAttachedImages([])
     }
-    await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+    try {
+      await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+    } catch (e: any) {
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `请求失败: ${e.message || '网络错误'}` }])
+      setStreamContent('')
+      setIsStreaming(false)
+    }
   }
 
   const handleApplyEdit = async () => {
