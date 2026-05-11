@@ -45,7 +45,19 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const [treeKey, setTreeKey] = useState(0)
   const [defaultExpanded, setDefaultExpanded] = useState(true)
   const [vaultMenu, setVaultMenu] = useState(false)
+  const vaultMenuRef = useRef<HTMLDivElement>(null)
   const [recentVaults, setRecentVaults] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!vaultMenu) return
+    const handleClick = (e: MouseEvent) => {
+      if (vaultMenuRef.current && !vaultMenuRef.current.contains(e.target as Node)) {
+        setVaultMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [vaultMenu])
 
   useEffect(() => {
     window.api.invoke('vault:get-recent', undefined).then(setRecentVaults)
@@ -121,7 +133,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
 
       {/* Vault switcher dropdown */}
       {vaultMenu && (
-        <div style={{ padding: '0 8px 8px' }}>
+        <div ref={vaultMenuRef} style={{ padding: '0 8px 8px' }}>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
             {recentVaults.filter((p) => p !== vaultPath).map((path) => (
               <button
