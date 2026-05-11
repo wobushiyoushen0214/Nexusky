@@ -25,10 +25,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   const commands: Command[] = [
     { id: 'save', label: '保存文件', shortcut: 'Ctrl+S', action: () => saveFile() },
+    { id: 'new-note', label: '新建笔记', shortcut: 'Ctrl+N', action: () => window.dispatchEvent(new CustomEvent('create-new-note')) },
     { id: 'search', label: '全文搜索', shortcut: 'Ctrl+Shift+F', action: () => setSearchOpen(true) },
     { id: 'graph', label: '知识图谱', shortcut: 'Ctrl+G', action: () => toggleRightPanel('graph') },
     { id: 'chat', label: 'AI 对话', shortcut: 'Ctrl+L', action: () => toggleRightPanel('chat') },
-    { id: 'outline', label: '文档大纲', action: () => toggleRightPanel('outline') },
+    { id: 'outline', label: '文档大纲', shortcut: 'Ctrl+E', action: () => toggleRightPanel('outline') },
     { id: 'settings', label: '设置', shortcut: 'Ctrl+,', action: () => setSettingsOpen(true) },
     { id: 'sidebar', label: '切换侧边栏', shortcut: 'Ctrl+Shift+B', action: () => toggleSidebar() },
     { id: 'focus', label: '聚焦模式', shortcut: 'F11', action: () => toggleFocusMode() },
@@ -43,15 +44,30 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:html', { content, title })
     }},
+    { id: 'share', label: '分享笔记（复制 HTML）', action: async () => {
+      if (!content || !currentFilePath) return
+      const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
+      await window.api.invoke('export:share', { content, title })
+    }},
     { id: 'daily', label: '今日笔记', action: async () => {
       if (!vaultPath) return
       const path = await window.api.invoke('template:daily-note', { vaultPath })
       if (path) useEditorStore.getState().openFile(path)
     }},
-    { id: 'sync', label: '云端同步', action: async () => {
+    { id: 'sync', label: '云端同步', shortcut: 'Ctrl+Shift+S', action: async () => {
       if (!vaultPath) return
       await window.api.invoke('cloud:sync', { vaultPath })
     }},
+    { id: 'pull', label: '从云端拉取', action: async () => {
+      if (!vaultPath) return
+      await window.api.invoke('cloud:pull-all', { vaultPath })
+    }},
+    { id: 'graph-full', label: '知识图谱（全屏）', shortcut: 'Ctrl+Shift+G', action: () => {
+      const state = useUIStore.getState()
+      if (state.rightPanel === 'graph') toggleRightPanel('graph')
+      useUIStore.getState().setMainView('graph')
+    }},
+    { id: 'trash', label: '回收站', action: () => window.dispatchEvent(new CustomEvent('open-trash')) },
   ]
 
   const filtered = query.trim()

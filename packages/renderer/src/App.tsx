@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
@@ -17,6 +17,7 @@ import { TagsPanel } from './components/TagsPanel'
 import { CalendarPanel } from './components/CalendarPanel'
 import { KanbanPanel } from './components/KanbanPanel'
 import { HistoryPanel } from './components/HistoryPanel'
+import { TrashPanel } from './components/TrashPanel'
 import { CommandPalette } from './components/CommandPalette'
 import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
@@ -24,6 +25,13 @@ import { ToastContainer } from './components/Toast'
 export default function App() {
   const { vaultPath, loadVault } = useVaultStore()
   const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView } = useUIStore()
+  const [trashOpen, setTrashOpen] = useState(false)
+
+  useEffect(() => {
+    const handler = () => setTrashOpen(true)
+    window.addEventListener('open-trash', handler)
+    return () => window.removeEventListener('open-trash', handler)
+  }, [])
 
   useEffect(() => {
     loadVault()
@@ -227,6 +235,7 @@ export default function App() {
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
       <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+      <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />
       <ToastContainer />
     </div>
   )

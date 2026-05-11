@@ -1,15 +1,38 @@
 import { ipcMain } from 'electron'
-import { readFile, writeFile, mkdir, rename, rm } from 'fs/promises'
+import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promises'
 import { readdir } from 'fs/promises'
-import { join, dirname, extname } from 'path'
+import { join, dirname, extname, relative, basename } from 'path'
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
 import type { FileEntry } from '@shared/types/ipc'
+
+async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> {
+  try {
+    await access(filePath)
+    const content = await readFile(filePath, 'utf-8')
+    const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
+    const historyDir = join(vaultPath, '.history', dirname(relPath))
+    await mkdir(historyDir, { recursive: true })
+    const name = basename(filePath, '.md')
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const snapshotPath = join(historyDir, `${name}_${timestamp}.md`)
+    await writeFile(snapshotPath, content, 'utf-8')
+  } catch {}
+}
 
 export function registerFileIPC(): void {
   ipcMain.handle('file:read', async (_event, params: { path: string }) => {
     return readFile(params.path, 'utf-8')
   })
 
-  ipcMain.handle('file:write', async (_event, params: { path: string; content: string }) => {
+  ipcMain.handle('file:stat', async (_event, params: { path: string }) => {
+    const s = await stat(params.path)
+    return { size: s.size, mtime: s.mtimeMs }
+  })
+
+  ipcMain.handle('file:write', async (_event, params: { path: string; content: string; vaultPath?: string }) => {
+    if (params.vaultPath && params.path.endsWith('.md')) {
+      await saveSnapshot(params.path, params.vaultPath)
+    }
     await writeFile(params.path, params.content, 'utf-8')
   })
 
@@ -22,12 +45,30 @@ export function registerFileIPC(): void {
     await writeFile(params.path, params.content || '', 'utf-8')
   })
 
-  ipcMain.handle('file:delete', async (_event, params: { path: string }) => {
-    await rm(params.path, { recursive: true })
+  ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {
+    if (params.vaultPath) {
+      const trashDir = join(params.vaultPath, '.trash')
+      await mkdir(trashDir, { recursive: true })
+      const fileName = params.path.split(/[\\/]/).pop() || 'file'
+      const timestamp = Date.now()
+      const trashPath = join(trashDir, `${timestamp}_${fileName}`)
+      await rename(params.path, trashPath)
+    } else {
+      await rm(params.path, { recursive: true })
+    }
   })
 
-  ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string }) => {
+  ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string; vaultPath?: string }) => {
+    await mkdir(dirname(params.newPath), { recursive: true })
     await rename(params.oldPath, params.newPath)
+
+    if (params.vaultPath && params.oldPath.endsWith('.md') && params.newPath.endsWith('.md')) {
+      const oldName = params.oldPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
+      const newName = params.newPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
+      if (oldName !== newName) {
+        await updateWikilinks(params.vaultPath, oldName, newName)
+      }
+    }
   })
 
   ipcMain.handle('file:save-image', async (_event, params: { vaultPath: string; imageData: string; fileName: string }) => {
@@ -37,6 +78,96 @@ export function registerFileIPC(): void {
     const base64Data = params.imageData.replace(/^data:image\/\w+;base64,/, '')
     await writeFile(filePath, Buffer.from(base64Data, 'base64'))
     return `assets/${params.fileName}`
+  })
+
+  ipcMain.handle('file:get-history', async (_event, params: { vaultPath: string; filePath: string }) => {
+    const relPath = relative(params.vaultPath, params.filePath).replace(/\\/g, '/')
+    const name = basename(params.filePath, '.md')
+    const historyDir = join(params.vaultPath, '.history', dirname(relPath))
+    try {
+      const entries = await readdir(historyDir)
+      const snapshots = entries
+        .filter((e) => e.startsWith(name + '_') && e.endsWith('.md'))
+        .sort()
+        .reverse()
+        .slice(0, 30)
+        .map((e) => {
+          const ts = e.replace(name + '_', '').replace('.md', '').replace(/-/g, (m, i) => i < 16 ? '-' : m === '-' ? ':' : '.')
+          return { fileName: e, path: join(historyDir, e), timestamp: ts }
+        })
+      return snapshots
+    } catch {
+      return []
+    }
+  })
+
+  ipcMain.handle('file:restore-history', async (_event, params: { snapshotPath: string; targetPath: string }) => {
+    const content = await readFile(params.snapshotPath, 'utf-8')
+    await writeFile(params.targetPath, content, 'utf-8')
+  })
+
+  ipcMain.handle('file:encrypt', async (_event, params: { path: string; password: string }) => {
+    const content = await readFile(params.path, 'utf-8')
+    const salt = randomBytes(16)
+    const key = scryptSync(params.password, salt, 32)
+    const iv = randomBytes(12)
+    const cipher = createCipheriv('aes-256-gcm', key, iv)
+    const encrypted = Buffer.concat([cipher.update(content, 'utf-8'), cipher.final()])
+    const tag = cipher.getAuthTag()
+    const payload = Buffer.concat([salt, iv, tag, encrypted])
+    await writeFile(params.path, '---encrypted---\n' + payload.toString('base64'), 'utf-8')
+    return true
+  })
+
+  ipcMain.handle('file:decrypt', async (_event, params: { path: string; password: string }) => {
+    const raw = await readFile(params.path, 'utf-8')
+    if (!raw.startsWith('---encrypted---\n')) return { success: false, error: '文件未加密' }
+    try {
+      const payload = Buffer.from(raw.slice('---encrypted---\n'.length), 'base64')
+      const salt = payload.subarray(0, 16)
+      const iv = payload.subarray(16, 28)
+      const tag = payload.subarray(28, 44)
+      const encrypted = payload.subarray(44)
+      const key = scryptSync(params.password, salt, 32)
+      const decipher = createDecipheriv('aes-256-gcm', key, iv)
+      decipher.setAuthTag(tag)
+      const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()])
+      return { success: true, content: decrypted.toString('utf-8') }
+    } catch {
+      return { success: false, error: '密码错误' }
+    }
+  })
+
+  ipcMain.handle('file:list-trash', async (_event, params: { vaultPath: string }) => {
+    const trashDir = join(params.vaultPath, '.trash')
+    try {
+      const entries = await readdir(trashDir)
+      return entries
+        .filter((e) => e.endsWith('.md'))
+        .sort()
+        .reverse()
+        .map((e) => {
+          const underscoreIdx = e.indexOf('_')
+          const originalName = underscoreIdx > 0 ? e.slice(underscoreIdx + 1) : e
+          return { fileName: e, originalName, path: join(trashDir, e) }
+        })
+    } catch {
+      return []
+    }
+  })
+
+  ipcMain.handle('file:restore-trash', async (_event, params: { trashPath: string; vaultPath: string }) => {
+    const fileName = params.trashPath.split(/[\\/]/).pop() || ''
+    const underscoreIdx = fileName.indexOf('_')
+    const originalName = underscoreIdx > 0 ? fileName.slice(underscoreIdx + 1) : fileName
+    const destPath = join(params.vaultPath, originalName)
+    await mkdir(dirname(destPath), { recursive: true })
+    await rename(params.trashPath, destPath)
+  })
+
+  ipcMain.handle('file:empty-trash', async (_event, params: { vaultPath: string }) => {
+    const trashDir = join(params.vaultPath, '.trash')
+    await rm(trashDir, { recursive: true, force: true })
   })
 }
 
@@ -48,12 +179,13 @@ async function listDirectory(dirPath: string): Promise<FileEntry[]> {
     if (entry.name.startsWith('.')) continue
 
     const fullPath = join(dirPath, entry.name)
+    const fileStat = await stat(fullPath)
 
     if (entry.isDirectory()) {
       const children = await listDirectory(fullPath)
-      result.push({ name: entry.name, path: fullPath, isDirectory: true, children })
+      result.push({ name: entry.name, path: fullPath, isDirectory: true, children, mtime: fileStat.mtimeMs })
     } else if (extname(entry.name) === '.md') {
-      result.push({ name: entry.name, path: fullPath, isDirectory: false })
+      result.push({ name: entry.name, path: fullPath, isDirectory: false, mtime: fileStat.mtimeMs })
     }
   }
 
@@ -64,4 +196,29 @@ async function listDirectory(dirPath: string): Promise<FileEntry[]> {
   })
 
   return result
+}
+
+async function updateWikilinks(vaultPath: string, oldName: string, newName: string): Promise<void> {
+  const pattern = new RegExp(`\\[\\[${oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g')
+  const replacement = `[[${newName}]]`
+
+  async function walk(dir: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await walk(full)
+      } else if (extname(entry.name) === '.md') {
+        const content = await readFile(full, 'utf-8')
+        if (pattern.test(content)) {
+          pattern.lastIndex = 0
+          const updated = content.replace(pattern, replacement)
+          await writeFile(full, updated, 'utf-8')
+        }
+      }
+    }
+  }
+
+  await walk(vaultPath)
 }
