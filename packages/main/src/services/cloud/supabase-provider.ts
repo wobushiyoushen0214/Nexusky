@@ -1,0 +1,183 @@
+import { SyncProvider, SyncFileInfo, SyncResult, SyncConflict } from './provider'
+import { getSupabaseClient, getAdminClient } from './client'
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync } from 'fs'
+import { join, relative, dirname, extname } from 'path'
+import { createHash } from 'crypto'
+
+function encodeStoragePath(relPath: string): string {
+  return relPath.split('/').map((part) => encodeURIComponent(part)).join('/')
+}
+
+function collectLocalFiles(dirPath: string): string[] {
+  const results: string[] = []
+  function walk(dir: string): void {
+    const entries = readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (extname(entry.name) === '.md') results.push(full)
+    }
+  }
+  walk(dirPath)
+  return results
+}
+
+export class SupabaseSyncProvider implements SyncProvider {
+  readonly type = 'supabase' as const
+  readonly name = 'Supabase'
+
+  isConfigured(): boolean {
+    return !!(getAdminClient() || getSupabaseClient())
+  }
+
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
+    const client = getAdminClient() || getSupabaseClient()
+    if (!client) return { ok: false, error: '未配置 Supabase' }
+    const { error } = await client.from('note_sync').select('id').limit(1)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  }
+
+  async pushFile(vaultPath: string, filePath: string): Promise<boolean> {
+    const client = getAdminClient() || getSupabaseClient()
+    if (!client) return false
+
+    const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
+    const storagePath = encodeStoragePath(relPath)
+    const content = readFileSync(filePath, 'utf-8')
+    const hash = createHash('md5').update(content).digest('hex')
+
+    const { error } = await client.storage
+      .from('notes')
+      .upload(storagePath, content, {
+        contentType: 'text/markdown; charset=utf-8',
+        upsert: true
+      })
+
+    if (error) {
+      console.error('Push failed:', relPath, error.message)
+      return false
+    }
+
+    await client.from('note_sync').upsert({
+      file_path: relPath,
+      content_hash: hash,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'file_path' })
+
+    return true
+  }
+  async pullFile(vaultPath: string, relPath: string): Promise<boolean> {
+    const client = getAdminClient() || getSupabaseClient()
+    if (!client) return false
+
+    const storagePath = encodeStoragePath(relPath)
+    const { data, error } = await client.storage
+      .from('notes')
+      .download(storagePath)
+
+    if (error || !data) {
+      console.error('Pull failed:', relPath, error?.message)
+      return false
+    }
+
+    const content = await data.text()
+    const fullPath = join(vaultPath, relPath)
+    mkdirSync(dirname(fullPath), { recursive: true })
+    writeFileSync(fullPath, content, 'utf-8')
+    return true
+  }
+
+  async listRemoteFiles(): Promise<SyncFileInfo[]> {
+    const client = getAdminClient() || getSupabaseClient()
+    if (!client) return []
+
+    const { data } = await client.from('note_sync').select('file_path, content_hash, updated_at')
+    return (data || []).map((f: any) => ({
+      path: f.file_path,
+      hash: f.content_hash,
+      updatedAt: f.updated_at
+    }))
+  }
+
+  async syncAll(vaultPath: string): Promise<SyncResult> {
+    const client = getAdminClient() || getSupabaseClient()
+    if (!client) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置云端'] }
+
+    const result: SyncResult = { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: [] }
+
+    const remoteFiles = await this.listRemoteFiles()
+    const remoteMap = new Map(remoteFiles.map((f) => [f.path, f]))
+
+    const localFiles = collectLocalFiles(vaultPath)
+    result.total = localFiles.length
+
+    for (const filePath of localFiles) {
+      const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
+      const content = readFileSync(filePath, 'utf-8')
+      const localHash = createHash('md5').update(content).digest('hex')
+      const remote = remoteMap.get(relPath)
+
+      if (!remote) {
+        const ok = await this.pushFile(vaultPath, filePath)
+        if (ok) result.pushed++
+        else result.errors.push(`push failed: ${relPath}`)
+      } else if (remote.hash !== localHash) {
+        const localMtime = statSync(filePath).mtime
+        const remoteMtime = new Date(remote.updatedAt)
+        if (remoteMtime > localMtime) {
+          result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
+        } else {
+          const ok = await this.pushFile(vaultPath, filePath)
+          if (ok) result.pushed++
+          else result.errors.push(`push failed: ${relPath}`)
+        }
+      }
+      remoteMap.delete(relPath)
+    }
+
+    for (const [relPath] of remoteMap) {
+      const fullPath = join(vaultPath, relPath)
+      if (!existsSync(fullPath)) {
+        const ok = await this.pullFile(vaultPath, relPath)
+        if (ok) result.pulled++
+        else result.errors.push(`pull failed: ${relPath}`)
+        result.total++
+      }
+    }
+
+    return result
+  }
+
+  async pullAll(vaultPath: string): Promise<SyncResult> {
+    const client = getAdminClient() || getSupabaseClient()
+    if (!client) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置云端'] }
+
+    const result: SyncResult = { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: [] }
+
+    const remoteFiles = await this.listRemoteFiles()
+    result.total = remoteFiles.length
+
+    for (const remote of remoteFiles) {
+      const fullPath = join(vaultPath, remote.path)
+      let needPull = false
+
+      if (!existsSync(fullPath)) {
+        needPull = true
+      } else {
+        const content = readFileSync(fullPath, 'utf-8')
+        const localHash = createHash('md5').update(content).digest('hex')
+        if (localHash !== remote.hash) needPull = true
+      }
+
+      if (needPull) {
+        const ok = await this.pullFile(vaultPath, remote.path)
+        if (ok) result.pulled++
+        else result.errors.push(`pull failed: ${remote.path}`)
+      }
+    }
+
+    return result
+  }
+}

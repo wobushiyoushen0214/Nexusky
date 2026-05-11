@@ -22,7 +22,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --win nsis --x64 --publish never
+      - run: npx electron-builder --win nsis --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-windows
@@ -47,7 +49,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --mac dmg --x64 --arm64 --publish never
+      - run: npx electron-builder --mac dmg --x64 --arm64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-mac
@@ -66,7 +70,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: npx electron-builder --linux AppImage --x64 --publish never
+      - run: npx electron-builder --linux AppImage --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-linux

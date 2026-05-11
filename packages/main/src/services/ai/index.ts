@@ -1,6 +1,7 @@
 import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent } from './base-provider'
 import { OpenAIProvider } from './openai-provider'
 import { ClaudeProvider } from './claude-provider'
+import { OllamaProvider } from './ollama-provider'
 import { store } from '../store'
 
 class AIManager {
@@ -14,6 +15,9 @@ class AIManager {
     switch (config.type) {
       case 'claude':
         provider = new ClaudeProvider(config)
+        break
+      case 'ollama':
+        provider = new OllamaProvider(config)
         break
       case 'openai':
       case 'custom':

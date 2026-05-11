@@ -1,7 +1,7 @@
 export interface AIProviderConfig {
   id: string
   name: string
-  type: 'openai' | 'claude' | 'custom'
+  type: 'openai' | 'claude' | 'custom' | 'ollama'
   baseUrl: string
   apiKey: string
   model: string
@@ -10,7 +10,13 @@ export interface AIProviderConfig {
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
-  content: string
+  content: string | ChatContentPart[]
+}
+
+export interface ChatContentPart {
+  type: 'text' | 'image_url'
+  text?: string
+  image_url?: { url: string }
 }
 
 export interface ChatStreamEvent {

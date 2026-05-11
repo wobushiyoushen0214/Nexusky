@@ -4,6 +4,7 @@ import { join, extname } from 'path'
 import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData, getAllTags, getNotesByTag } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
 import { semanticSearch, indexNoteEmbeddings } from '../services/embedding'
+import { pushIndex } from '../services/cloud/manager'
 
 export function registerDbIPC(): void {
   ipcMain.handle('db:index-vault', async (_event, params: { vaultPath: string }) => {
@@ -99,6 +100,7 @@ export function registerDbIPC(): void {
         }
       }
     }
+    pushIndex(params.vaultPath).catch(() => {})
     return { embedded }
   })
 }

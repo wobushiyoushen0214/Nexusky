@@ -7,15 +7,44 @@ import { registerAiIPC } from './ipc/ai.ipc'
 import { registerTemplateIPC } from './ipc/template.ipc'
 import { registerCloudIPC } from './ipc/cloud.ipc'
 import { registerExportIPC } from './ipc/export.ipc'
+import { store } from './services/store'
+import { setupAutoUpdater } from './services/updater'
 
 let mainWindow: BrowserWindow | null = null
 
+interface WindowBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+  isMaximized: boolean
+}
+
+function getSavedBounds(): Partial<WindowBounds> {
+  return (store.get('windowBounds') as WindowBounds) || {}
+}
+
+function saveWindowBounds(): void {
+  if (!mainWindow) return
+  const isMaximized = mainWindow.isMaximized()
+  if (!isMaximized) {
+    const bounds = mainWindow.getBounds()
+    store.set('windowBounds', { ...bounds, isMaximized: false })
+  } else {
+    const existing = getSavedBounds()
+    store.set('windowBounds', { ...existing, isMaximized: true })
+  }
+}
+
 function createWindow(): void {
   const isMac = process.platform === 'darwin'
+  const saved = getSavedBounds()
 
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    width: saved.width || 1400,
+    height: saved.height || 900,
+    x: saved.x,
+    y: saved.y,
     minWidth: 800,
     minHeight: 600,
     frame: false,
@@ -32,11 +61,20 @@ function createWindow(): void {
     }
   })
 
+  if (saved.isMaximized) {
+    mainWindow.maximize()
+  }
+
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  mainWindow.on('resize', saveWindowBounds)
+  mainWindow.on('move', saveWindowBounds)
+  mainWindow.on('maximize', saveWindowBounds)
+  mainWindow.on('unmaximize', saveWindowBounds)
 
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -51,6 +89,7 @@ app.whenReady().then(() => {
   registerTemplateIPC()
   registerCloudIPC()
   registerExportIPC()
+  setupAutoUpdater()
 
   ipcMain.on('window:minimize', () => mainWindow?.minimize())
   ipcMain.on('window:maximize', () => {

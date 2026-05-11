@@ -16,7 +16,7 @@ export class OpenAIProvider extends BaseAIProvider {
     try {
       const stream = await this.client.chat.completions.create({
         model: this.config.model,
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        messages: messages.map((m) => ({ role: m.role, content: m.content })) as any,
         stream: true
       })
 

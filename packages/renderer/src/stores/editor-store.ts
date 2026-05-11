@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useVaultStore } from './vault-store'
+import { toast } from './toast-store'
 
 interface Tab {
   path: string
@@ -19,7 +20,10 @@ interface EditorState {
   setDirty: (dirty: boolean) => void
   openFile: (path: string) => Promise<void>
   closeTab: (index: number) => Promise<void>
+  closeOtherTabs: (index: number) => void
+  closeTabsToRight: (index: number) => void
   switchTab: (index: number) => void
+  reorderTab: (from: number, to: number) => void
   saveFile: () => Promise<void>
 }
 
@@ -52,6 +56,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const tab = tabs[existingIndex]
       set({ activeTabIndex: existingIndex, currentFilePath: path, content: tab.content, isDirty: tab.isDirty })
       return
+    }
+
+    const fileStat = await window.api.invoke('file:stat', { path })
+    if (fileStat.size > 512000) {
+      toast('大文件加载中，可能需要几秒...', 'info')
     }
 
     if (activeTabIndex >= 0 && tabs[activeTabIndex]?.isDirty) {
@@ -99,10 +108,40 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ activeTabIndex: index, currentFilePath: tab.path, content: tab.content, isDirty: tab.isDirty })
   },
 
+  reorderTab: (from, to) => {
+    const { tabs, activeTabIndex } = get()
+    if (from === to || from < 0 || to < 0 || from >= tabs.length || to >= tabs.length) return
+    const newTabs = [...tabs]
+    const [moved] = newTabs.splice(from, 1)
+    newTabs.splice(to, 0, moved)
+    let newActive = activeTabIndex
+    if (activeTabIndex === from) newActive = to
+    else if (from < activeTabIndex && to >= activeTabIndex) newActive--
+    else if (from > activeTabIndex && to <= activeTabIndex) newActive++
+    set({ tabs: newTabs, activeTabIndex: newActive })
+  },
+
+  closeOtherTabs: (index) => {
+    const { tabs } = get()
+    if (index < 0 || index >= tabs.length) return
+    const kept = tabs[index]
+    set({ tabs: [kept], activeTabIndex: 0, currentFilePath: kept.path, content: kept.content, isDirty: kept.isDirty })
+  },
+
+  closeTabsToRight: (index) => {
+    const { tabs, activeTabIndex } = get()
+    if (index < 0 || index >= tabs.length - 1) return
+    const newTabs = tabs.slice(0, index + 1)
+    const newActive = Math.min(activeTabIndex, newTabs.length - 1)
+    const tab = newTabs[newActive]
+    set({ tabs: newTabs, activeTabIndex: newActive, currentFilePath: tab.path, content: tab.content, isDirty: tab.isDirty })
+  },
+
   saveFile: async () => {
     const { currentFilePath, content, tabs, activeTabIndex } = get()
     if (!currentFilePath) return
-    await window.api.invoke('file:write', { path: currentFilePath, content })
+    const vaultPath = useVaultStore.getState().vaultPath
+    await window.api.invoke('file:write', { path: currentFilePath, content, vaultPath: vaultPath || undefined })
 
     if (activeTabIndex >= 0 && activeTabIndex < tabs.length) {
       const updated = [...tabs]
@@ -112,10 +151,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ isDirty: false })
     }
 
-    const vaultPath = useVaultStore.getState().vaultPath
     if (vaultPath) {
       window.api.invoke('db:index-file', { vaultPath, filePath: currentFilePath })
       window.api.invoke('cloud:push-file', { vaultPath, filePath: currentFilePath })
+
+      // AI tag suggestion (async, non-blocking)
+      if (content.length > 100 && !content.includes('#')) {
+        window.api.invoke('ai:suggest-tags', { content: content.slice(0, 2000), existingTags: [] }).then((tags) => {
+          if (tags.length > 0) {
+            toast(`建议标签: ${tags.map((t) => '#' + t).join(' ')}`, 'info')
+          }
+        }).catch(() => {})
+      }
     }
   }
 }))

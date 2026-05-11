@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useUIStore } from '../../stores/ui-store'
+import { toast } from '../../stores/toast-store'
 
 interface ProviderConfig {
   id: string
   name: string
-  type: 'openai' | 'claude' | 'custom'
+  type: 'openai' | 'claude' | 'custom' | 'ollama'
   baseUrl: string
   apiKey: string
   model: string
@@ -14,6 +15,7 @@ interface ProviderConfig {
 const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   claude: ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-opus-4-7'],
+  ollama: ['llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral'],
   custom: []
 }
 
@@ -206,6 +208,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                       <option value="openai">OpenAI</option>
                       <option value="claude">Claude</option>
                       <option value="custom">自定义 (OpenAI 兼容)</option>
+                      <option value="ollama">Ollama (本地模型)</option>
                     </select>
                   </div>
                 </div>
@@ -242,123 +245,332 @@ export function Settings({ open, onClose }: SettingsProps) {
           </>)}
 
           {tab === 'cloud' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Supabase 配置</span>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Supabase URL</label>
-                  <input
-                    value={cloudConfig.supabaseUrl}
-                    onChange={(e) => setCloudConfig({ ...cloudConfig, supabaseUrl: e.target.value })}
-                    style={inputStyle}
-                    placeholder="https://xxx.supabase.co"
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Supabase Anon Key</label>
-                  <input
-                    type="password"
-                    value={cloudConfig.supabaseKey}
-                    onChange={(e) => setCloudConfig({ ...cloudConfig, supabaseKey: e.target.value })}
-                    style={inputStyle}
-                    placeholder="eyJ..."
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, color: 'var(--accent-text)', marginBottom: 6, fontWeight: 600 }}>Service Role Key（必填，用于同步和初始化）</label>
-                  <input
-                    type="password"
-                    value={cloudConfig.serviceRoleKey}
-                    onChange={(e) => setCloudConfig({ ...cloudConfig, serviceRoleKey: e.target.value })}
-                    style={inputStyle}
-                    placeholder="eyJ... (Dashboard → Settings → API → service_role)"
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
-                  />
-                </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={cloudConfig.enabled}
-                    onChange={(e) => setCloudConfig({ ...cloudConfig, enabled: e.target.checked })}
-                    style={{ width: 14, height: 14, accentColor: 'var(--accent)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>启用云端同步</span>
-                </label>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button
-                    onClick={async () => { await window.api.invoke('cloud:save-config', { config: cloudConfig }) }}
-                    style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    保存配置
-                  </button>
-                  {cloudConfig.supabaseUrl && cloudConfig.supabaseKey && (
-                    <button
-                      onClick={async () => {
-                        await window.api.invoke('cloud:save-config', { config: cloudConfig })
-                        const result = await window.api.invoke('cloud:init', undefined)
-                        if (result.success) {
-                          alert('云端初始化成功！数据库表和 Storage 已创建。')
-                        } else {
-                          alert(`初始化失败: ${result.error}`)
-                        }
-                      }}
-                      style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
-                    >
-                      一键初始化云端
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {cloudConfig.enabled && (
-                <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
-                  <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 12 }}>账户</span>
-                  {cloudUser ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 6, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cloudUser.email}</span>
-                      <button
-                        onClick={async () => { await window.api.invoke('cloud:sign-out', undefined); setCloudUser(null) }}
-                        style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                      >
-                        退出登录
-                      </button>
-                    </div>
-                  ) : (
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '10px 12px', borderRadius: 6, background: 'var(--bg-base)', border: '1px dashed var(--border-default)' }}>未登录。配置 Supabase 后可使用 Auth 登录。</p>
-                  )}
-                </div>
-              )}
-
-              {cloudConfig.enabled && (
-                <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
-                  <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 12 }}>同步</span>
-                  <button
-                    onClick={async () => {
-                      const vaultPath = (await window.api.invoke('vault:get', undefined))
-                      if (!vaultPath) return
-                      const result = await window.api.invoke('cloud:sync', { vaultPath })
-                      if (result.errors.length === 0) {
-                        alert(`同步完成！共 ${result.total} 个文件，已同步 ${result.synced} 个。`)
-                      } else {
-                        alert(`同步完成，但有 ${result.errors.length} 个错误:\n${result.errors.join('\n')}`)
-                      }
-                    }}
-                    style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    立即同步
-                  </button>
-                </div>
-              )}
-            </div>
+            <CloudTab
+              cloudConfig={cloudConfig}
+              setCloudConfig={setCloudConfig}
+              cloudUser={cloudUser}
+              setCloudUser={setCloudUser}
+              inputStyle={inputStyle}
+            />
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+interface CloudTabProps {
+  cloudConfig: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean }
+  setCloudConfig: (c: any) => void
+  cloudUser: { email: string } | null
+  setCloudUser: (u: any) => void
+  inputStyle: React.CSSProperties
+}
+
+function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputStyle }: CloudTabProps) {
+  const [activeProvider, setActiveProvider] = useState<string>('supabase')
+  const [providers, setProviders] = useState<{ type: string; name: string; configured: boolean }[]>([])
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
+  const [onedriveConfig, setOnedriveConfig] = useState({ clientId: '', folder: '/Nexusky' })
+  const [icloudPath, setIcloudPath] = useState<string | null>(null)
+
+  useEffect(() => {
+    window.api.invoke('cloud:get-sync-provider', undefined).then(setActiveProvider)
+    window.api.invoke('cloud:get-all-providers', undefined).then(setProviders)
+    window.api.invoke('cloud:get-onedrive-config', undefined).then((c) => {
+      if (c) setOnedriveConfig({ clientId: c.clientId, folder: c.folder })
+    })
+    window.api.invoke('cloud:get-icloud-path', undefined).then(setIcloudPath)
+  }, [])
+
+  const switchProvider = async (type: string) => {
+    setActiveProvider(type)
+    await window.api.invoke('cloud:set-sync-provider', { provider: type })
+  }
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncMsg('')
+    const vaultPath = await window.api.invoke('vault:get', undefined)
+    if (!vaultPath) { setSyncing(false); return }
+    const result = await window.api.invoke('cloud:sync', { vaultPath })
+    if (result.errors.length === 0 && result.conflicts.length === 0) {
+      setSyncMsg(`同步完成: ${result.total} 个文件, 推送 ${result.pushed}, 拉取 ${result.pulled}`)
+    } else if (result.conflicts.length > 0) {
+      setSyncMsg(`同步完成，但有 ${result.conflicts.length} 个冲突文件（远端更新）: ${result.conflicts.map((c) => c.path).join(', ')}`)
+    } else {
+      setSyncMsg(`有 ${result.errors.length} 个错误: ${result.errors[0]}`)
+    }
+    setSyncing(false)
+  }
+
+  const handlePull = async () => {
+    setSyncing(true)
+    setSyncMsg('')
+    const vaultPath = await window.api.invoke('vault:get', undefined)
+    if (!vaultPath) { setSyncing(false); return }
+    const result = await window.api.invoke('cloud:pull-all', { vaultPath })
+    if (result.errors.length === 0) {
+      setSyncMsg(`拉取完成: 共 ${result.total} 个远端文件, 拉取 ${result.pulled} 个`)
+    } else {
+      setSyncMsg(`有 ${result.errors.length} 个错误: ${result.errors[0]}`)
+    }
+    setSyncing(false)
+  }
+
+  const providerBtnStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    height: 56,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderRadius: 8,
+    border: active ? '2px solid var(--accent)' : '1px solid var(--border-default)',
+    background: active ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+    cursor: 'pointer',
+    transition: 'all 150ms',
+    fontSize: 11,
+    fontWeight: 500,
+    color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Provider selector */}
+      <div>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>同步后端</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => switchProvider('supabase')} style={providerBtnStyle(activeProvider === 'supabase')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            Supabase
+          </button>
+          <button onClick={() => switchProvider('icloud')} style={providerBtnStyle(activeProvider === 'icloud')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+            iCloud
+          </button>
+          <button onClick={() => switchProvider('onedrive')} style={providerBtnStyle(activeProvider === 'onedrive')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+            OneDrive
+          </button>
+        </div>
+      </div>
+
+      {/* Provider-specific config */}
+      {activeProvider === 'supabase' && (
+        <SupabaseConfig
+          cloudConfig={cloudConfig}
+          setCloudConfig={setCloudConfig}
+          cloudUser={cloudUser}
+          setCloudUser={setCloudUser}
+          inputStyle={inputStyle}
+        />
+      )}
+
+      {activeProvider === 'icloud' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+              iCloud Drive 通过文件系统同步，无需额外配置。确保已登录 iCloud 并启用 iCloud Drive。
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+              路径: {icloudPath || '未检测到 iCloud Drive'}
+            </p>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>自定义 iCloud 同步路径（可选）</label>
+            <input
+              value={icloudPath || ''}
+              onChange={(e) => setIcloudPath(e.target.value)}
+              style={inputStyle}
+              placeholder="~/Library/Mobile Documents/..."
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+            />
+            <button
+              onClick={async () => { if (icloudPath) await window.api.invoke('cloud:set-icloud-path', { path: icloudPath }) }}
+              style={{ marginTop: 8, height: 28, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}
+            >
+              保存路径
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeProvider === 'onedrive' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Application (Client) ID</label>
+            <input
+              value={onedriveConfig.clientId}
+              onChange={(e) => setOnedriveConfig({ ...onedriveConfig, clientId: e.target.value })}
+              style={inputStyle}
+              placeholder="Azure AD 应用 Client ID"
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>同步文件夹</label>
+            <input
+              value={onedriveConfig.folder}
+              onChange={(e) => setOnedriveConfig({ ...onedriveConfig, folder: e.target.value })}
+              style={inputStyle}
+              placeholder="/Nexusky"
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={async () => {
+                await window.api.invoke('cloud:save-onedrive-config', onedriveConfig)
+                const result = await window.api.invoke('cloud:onedrive-auth', { clientId: onedriveConfig.clientId })
+                if (result.success) toast('OneDrive 授权成功', 'success')
+                else toast(`授权失败: ${result.error}`, 'error')
+              }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+            >
+              授权登录
+            </button>
+            <button
+              onClick={async () => { await window.api.invoke('cloud:save-onedrive-config', onedriveConfig) }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
+            >
+              保存配置
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Auto sync */}
+      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>自动同步</span>
+        <select
+          defaultValue={localStorage.getItem('nexusky-auto-sync') || '0'}
+          onChange={(e) => localStorage.setItem('nexusky-auto-sync', e.target.value)}
+          style={{ height: 30, padding: '0 10px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
+        >
+          <option value="0">关闭</option>
+          <option value="5">每 5 分钟</option>
+          <option value="10">每 10 分钟</option>
+          <option value="30">每 30 分钟</option>
+          <option value="60">每 60 分钟</option>
+        </select>
+        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>修改后重启应用生效</p>
+      </div>
+
+      {/* Sync actions */}
+      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 12 }}>同步操作</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: syncing ? 'wait' : 'pointer', fontWeight: 500, opacity: syncing ? 0.6 : 1 }}
+          >
+            {syncing ? '同步中...' : '双向同步'}
+          </button>
+          <button
+            onClick={handlePull}
+            disabled={syncing}
+            style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: syncing ? 'wait' : 'pointer', opacity: syncing ? 0.6 : 1 }}
+          >
+            {syncing ? '拉取中...' : '从云端拉取'}
+          </button>
+        </div>
+        {syncMsg && (
+          <p style={{ marginTop: 10, fontSize: 11, color: syncMsg.includes('错误') ? '#f87171' : 'var(--text-tertiary)', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-base)' }}>
+            {syncMsg}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputStyle }: CloudTabProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div>
+        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Supabase URL</label>
+        <input
+          value={cloudConfig.supabaseUrl}
+          onChange={(e) => setCloudConfig({ ...cloudConfig, supabaseUrl: e.target.value })}
+          style={inputStyle}
+          placeholder="https://xxx.supabase.co"
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+        />
+      </div>
+      <div>
+        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Supabase Anon Key</label>
+        <input
+          type="password"
+          value={cloudConfig.supabaseKey}
+          onChange={(e) => setCloudConfig({ ...cloudConfig, supabaseKey: e.target.value })}
+          style={inputStyle}
+          placeholder="eyJ..."
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+        />
+      </div>
+      <div>
+        <label style={{ display: 'block', fontSize: 11, color: 'var(--accent-text)', marginBottom: 6, fontWeight: 600 }}>Service Role Key（必填）</label>
+        <input
+          type="password"
+          value={cloudConfig.serviceRoleKey}
+          onChange={(e) => setCloudConfig({ ...cloudConfig, serviceRoleKey: e.target.value })}
+          style={inputStyle}
+          placeholder="eyJ... (Dashboard → Settings → API → service_role)"
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+        />
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={cloudConfig.enabled}
+          onChange={(e) => setCloudConfig({ ...cloudConfig, enabled: e.target.checked })}
+          style={{ width: 14, height: 14, accentColor: 'var(--accent)' }}
+        />
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>启用 Supabase</span>
+      </label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={async () => { await window.api.invoke('cloud:save-config', { config: cloudConfig }) }}
+          style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+        >
+          保存配置
+        </button>
+        {cloudConfig.supabaseUrl && cloudConfig.supabaseKey && (
+          <button
+            onClick={async () => {
+              await window.api.invoke('cloud:save-config', { config: cloudConfig })
+              const result = await window.api.invoke('cloud:init', undefined)
+              toast(result.success ? '云端初始化成功！' : `初始化失败: ${result.error}`, result.success ? 'success' : 'error')
+            }}
+            style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
+          >
+            一键初始化
+          </button>
+        )}
+      </div>
+      {cloudConfig.enabled && cloudUser && (
+        <div style={{ paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 6, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cloudUser.email}</span>
+            <button
+              onClick={async () => { await window.api.invoke('cloud:sign-out', undefined); setCloudUser(null) }}
+              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            >
+              退出
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -397,6 +609,27 @@ function AppearanceTab() {
           </svg>
           <span style={{ fontSize: 12, color: theme === 'light' ? 'var(--accent-text)' : 'var(--text-secondary)' }}>浅色</span>
         </button>
+      </div>
+
+      {/* Version & Update */}
+      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>关于</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v0.1.0</span>
+          <button
+            onClick={async () => {
+              const result = await window.api.invoke('updater:check' as any, undefined)
+              if (result.available) {
+                toast(`发现新版本 v${result.version}`, 'info')
+              } else {
+                toast('已是最新版本', 'success')
+              }
+            }}
+            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer' }}
+          >
+            检查更新
+          </button>
+        </div>
       </div>
     </div>
   )

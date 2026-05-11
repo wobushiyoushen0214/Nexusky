@@ -2,6 +2,14 @@ import { ipcMain, dialog, app } from 'electron'
 import { join } from 'path'
 import { mkdirSync, existsSync, writeFileSync } from 'fs'
 import { store } from '../services/store'
+import { startWatching } from '../services/watcher'
+import { syncIndex } from '../services/cloud/manager'
+
+function addToRecentVaults(vaultPath: string): void {
+  const recent = (store.get('recentVaults') as string[]) || []
+  const updated = [vaultPath, ...recent.filter((p) => p !== vaultPath)].slice(0, 8)
+  store.set('recentVaults', updated)
+}
 
 export function registerVaultIPC(): void {
   ipcMain.handle('vault:select', async () => {
@@ -14,6 +22,8 @@ export function registerVaultIPC(): void {
     }
     const vaultPath = result.filePaths[0]
     store.set('vaultPath', vaultPath)
+    addToRecentVaults(vaultPath)
+    startWatching(vaultPath)
     return vaultPath
   })
 
@@ -39,10 +49,25 @@ export function registerVaultIPC(): void {
     )
 
     store.set('vaultPath', vaultPath)
+    addToRecentVaults(vaultPath)
+    startWatching(vaultPath)
     return vaultPath
   })
 
   ipcMain.handle('vault:get', () => {
-    return store.get('vaultPath') || null
+    const path = store.get('vaultPath') as string | null
+    if (path) {
+      startWatching(path)
+      syncIndex(path).catch(() => {})
+    }
+    return path || null
+  })
+
+  ipcMain.handle('vault:get-recent', () => {
+    return (store.get('recentVaults') as string[]) || []
+  })
+
+  ipcMain.handle('vault:clear-current', () => {
+    store.set('vaultPath', null)
   })
 }

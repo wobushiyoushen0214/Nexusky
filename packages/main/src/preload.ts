@@ -20,6 +20,11 @@ const api = {
     ipcRenderer.on('file:changed', handler)
     return () => ipcRenderer.removeListener('file:changed', handler)
   },
+  onVaultChanged: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('vault:files-changed', handler)
+    return () => ipcRenderer.removeListener('vault:files-changed', handler)
+  },
   onAiStream: (callback: (event: { type: string; content: string }) => void) => {
     ipcRenderer.removeAllListeners('ai:stream')
     const handler = (_event: unknown, data: { type: string; content: string }) => callback(data)

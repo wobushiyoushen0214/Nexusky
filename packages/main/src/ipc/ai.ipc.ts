@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { aiManager, AIProviderConfig, ChatMessage } from '../services/ai'
 import { store } from '../services/store'
 import { semanticSearch } from '../services/embedding'
+import { listOllamaModels } from '../services/ai/ollama-provider'
 
 export function registerAiIPC(): void {
   ipcMain.handle('ai:get-providers', () => {
@@ -83,6 +84,74 @@ ${context}
       return result.trim()
     } catch {
       return ''
+    }
+  })
+
+  ipcMain.handle('ai:list-ollama-models', async (_event, params: { baseUrl?: string }) => {
+    return listOllamaModels(params.baseUrl)
+  })
+
+  ipcMain.handle('ai:suggest-tags', async (_event, params: { content: string; existingTags: string[] }) => {
+    const config = aiManager.getActiveConfig()
+    if (!config) return []
+
+    try {
+      const provider = aiManager.getProvider(config)
+      let result = ''
+      for await (const chunk of provider.chatStream([
+        { role: 'system', content: `你是一个标签建议助手。根据笔记内容建议 2-4 个标签。只输出标签，用逗号分隔，不要 # 前缀，不要解释。已有标签: ${params.existingTags.join(', ')}` },
+        { role: 'user', content: params.content.slice(0, 2000) }
+      ])) {
+        if (chunk.type === 'text') result += chunk.content
+        if (chunk.type === 'error') return []
+      }
+      return result.trim().split(/[,，、\n]/).map((t) => t.trim()).filter((t) => t && t.length < 20)
+    } catch {
+      return []
+    }
+  })
+
+  ipcMain.handle('ai:edit', async (event, params: { instruction: string; fileContent: string; filePath: string; images?: string[] }) => {
+    const config = aiManager.getActiveConfig()
+    if (!config) return { success: false, error: '未配置 AI 提供商' }
+
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { success: false, error: '窗口不存在' }
+
+    const systemPrompt = `你是一个笔记编辑助手。用户会给你一个 Markdown 笔记的内容和修改指令。
+请直接输出修改后的完整笔记内容，不要添加任何解释、代码块标记或前后缀。
+只输出修改后的 Markdown 内容本身。`
+
+    const textContent = `文件: ${params.filePath}\n\n当前内容:\n${params.fileContent}\n\n修改指令: ${params.instruction}`
+
+    let userMessage: ChatMessage
+    if (params.images && params.images.length > 0) {
+      userMessage = {
+        role: 'user',
+        content: [
+          { type: 'text', text: textContent },
+          ...params.images.map((img) => ({ type: 'image_url' as const, image_url: { url: img } }))
+        ]
+      }
+    } else {
+      userMessage = { role: 'user', content: textContent }
+    }
+
+    try {
+      const provider = aiManager.getProvider(config)
+      let result = ''
+      for await (const chunk of provider.chatStream([
+        { role: 'system', content: systemPrompt },
+        userMessage
+      ])) {
+        if (chunk.type === 'text') {
+          result += chunk.content
+        }
+        if (chunk.type === 'error') return { success: false, error: chunk.content }
+      }
+      return { success: true, content: result.trim() }
+    } catch (err: any) {
+      return { success: false, error: err.message }
     }
   })
 }

@@ -17,12 +17,25 @@ interface SearchPanelProps {
   onClose: () => void
 }
 
+const HISTORY_KEY = 'nexusky-search-history'
+
+function loadHistory(): string[] {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
+}
+
+function saveToHistory(query: string): void {
+  const history = loadHistory()
+  const updated = [query, ...history.filter((h) => h !== query)].slice(0, 12)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+}
+
 export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<SearchMode>('keyword')
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [indexing, setIndexing] = useState(false)
+  const [history, setHistory] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
@@ -31,6 +44,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     if (open) {
       setQuery('')
       setResults([])
+      setHistory(loadHistory())
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
@@ -39,6 +53,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     if (!query.trim() || !vaultPath) return
     setSearching(true)
     setResults([])
+    saveToHistory(query.trim())
 
     if (mode === 'keyword') {
       const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
@@ -55,12 +70,27 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     }
     setSearching(false)
   }
-
   const handleBuildIndex = async () => {
     if (!vaultPath) return
     setIndexing(true)
     await window.api.invoke('db:embed-vault', { vaultPath })
     setIndexing(false)
+  }
+
+  const handleResultClick = (r: SearchResult) => {
+    const fullPath = r.filePath.startsWith('/') ? r.filePath : `${vaultPath}/${r.filePath}`
+    openFile(fullPath)
+    if (r.lineNumber > 0) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('editor-goto-line', { detail: { line: r.lineNumber } }))
+      }, 200)
+    }
+    onClose()
+  }
+
+  const handleHistoryClick = (h: string) => {
+    setQuery(h)
+    setTimeout(() => handleSearch(), 0)
   }
 
   if (!open) return null
@@ -144,7 +174,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
         {/* Divider */}
         <div style={{ height: 1, background: 'var(--border-subtle)' }} />
 
-        {/* Results */}
+        {/* Results / History */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
           {searching && (
             <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>搜索中...</div>
@@ -152,7 +182,23 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           {!searching && results.length === 0 && query && (
             <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>无结果</div>
           )}
-          {!searching && results.length === 0 && !query && (
+          {!searching && results.length === 0 && !query && history.length > 0 && (
+            <div style={{ padding: '8px 10px' }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>搜索历史</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {history.map((h, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleHistoryClick(h)}
+                    style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {!searching && results.length === 0 && !query && history.length === 0 && (
             <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
               {mode === 'keyword' ? '输入关键词后按 Enter 搜索' : '用自然语言描述你要找的内容'}
             </div>
@@ -160,7 +206,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           {results.map((r, i) => (
             <button
               key={i}
-              onClick={() => { openFile(`${vaultPath}/${r.filePath}`); onClose() }}
+              onClick={() => handleResultClick(r)}
               style={{
                 width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 8,
                 background: 'transparent', border: 'none', cursor: 'pointer', display: 'block',

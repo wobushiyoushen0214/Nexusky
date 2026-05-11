@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, clipboard } from 'electron'
 import { writeFile } from 'fs/promises'
 
 export function registerExportIPC(): void {
@@ -71,6 +71,41 @@ ${markdownToHtml(params.content)}
     await writeFile(result.filePath, pdfData)
     printWin.close()
     return true
+  })
+
+  ipcMain.handle('export:share', async (_event, params: { content: string; title: string }) => {
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${params.title} — Nexusky</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 720px; margin: 0 auto; padding: 48px 24px; line-height: 1.8; color: #1a1a2e; background: #fafafa; }
+h1 { font-size: 1.8rem; margin: 2rem 0 1rem; color: #111; }
+h2 { font-size: 1.4rem; margin: 1.5rem 0 0.75rem; color: #222; }
+h3 { font-size: 1.15rem; margin: 1.25rem 0 0.5rem; }
+code { background: #f0f0f5; padding: 2px 6px; border-radius: 4px; font-size: 0.88em; font-family: 'JetBrains Mono', monospace; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 18px; border-radius: 10px; overflow-x: auto; }
+pre code { background: none; color: inherit; }
+blockquote { border-left: 3px solid #7c6ef0; padding-left: 1rem; color: #555; margin: 1rem 0; }
+a { color: #7c6ef0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #e0e0e0; padding: 8px 12px; }
+th { background: #f5f5f5; font-weight: 600; }
+hr { border: none; height: 1px; background: #e0e0e0; margin: 2rem 0; }
+.footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; font-size: 0.8rem; color: #999; text-align: center; }
+</style>
+</head>
+<body>
+${markdownToHtml(params.content)}
+<div class="footer">由 Nexusky 生成</div>
+</body>
+</html>`
+    clipboard.writeText(html)
+    return html
   })
 }
 
