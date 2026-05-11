@@ -17,6 +17,7 @@ export function startWatching(vaultPath: string): void {
   })
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let changeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
 
   const notifyChange = (path: string) => {
     if (debounceTimer) clearTimeout(debounceTimer)
@@ -33,6 +34,20 @@ export function startWatching(vaultPath: string): void {
     }, 500)
   }
 
+  const notifyFileChange = (path: string) => {
+    const existing = changeTimers.get(path)
+    if (existing) clearTimeout(existing)
+    changeTimers.set(path, setTimeout(() => {
+      changeTimers.delete(path)
+      const windows = BrowserWindow.getAllWindows()
+      for (const win of windows) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('file:changed', path)
+        }
+      }
+    }, 300))
+  }
+
   watcher
     .on('add', notifyChange)
     .on('unlink', notifyChange)
@@ -40,12 +55,7 @@ export function startWatching(vaultPath: string): void {
     .on('unlinkDir', notifyChange)
     .on('change', (path) => {
       if (extname(path) === '.md') {
-        const windows = BrowserWindow.getAllWindows()
-        for (const win of windows) {
-          if (!win.isDestroyed()) {
-            win.webContents.send('file:changed', path)
-          }
-        }
+        notifyFileChange(path)
       }
     })
 }
