@@ -11,6 +11,8 @@ import {
   pushIndex,
   pullIndex,
   syncIndex,
+  getSyncExclude,
+  setSyncExclude,
   getActiveProviderType,
   setActiveProviderType,
   getAllProviders,
@@ -117,5 +119,13 @@ export function registerCloudIPC(): void {
 
   ipcMain.handle('cloud:sync-index', async (_event, params: { vaultPath: string }) => {
     return syncIndex(params.vaultPath)
+  })
+
+  ipcMain.handle('cloud:get-sync-exclude', () => {
+    return getSyncExclude()
+  })
+
+  ipcMain.handle('cloud:set-sync-exclude', (_event, params: { paths: string[] }) => {
+    setSyncExclude(params.paths)
   })
 }

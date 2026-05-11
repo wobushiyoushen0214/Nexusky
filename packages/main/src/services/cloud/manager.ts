@@ -40,9 +40,24 @@ export function getAllProviders(): { type: SyncProviderType; name: string; confi
   }))
 }
 
+export function getSyncExclude(): string[] {
+  return (store.get('syncExclude') as string[]) || []
+}
+
+export function setSyncExclude(paths: string[]): void {
+  store.set('syncExclude', paths)
+}
+
+function isExcluded(relPath: string): boolean {
+  const excludes = getSyncExclude()
+  return excludes.some((ex) => relPath.startsWith(ex + '/') || relPath === ex)
+}
+
 export async function pushFile(vaultPath: string, filePath: string): Promise<boolean> {
   const provider = getActiveProvider()
   if (!provider) return false
+  const relPath = filePath.replace(vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+  if (isExcluded(relPath)) return false
   return provider.pushFile(vaultPath, filePath)
 }
 
