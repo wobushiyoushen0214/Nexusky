@@ -33,10 +33,12 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<SearchMode>('keyword')
   const [results, setResults] = useState<SearchResult[]>([])
+  const [selectedIndex, setSelectedIndex] = useState(-1)
   const [searching, setSearching] = useState(false)
   const [indexing, setIndexing] = useState(false)
   const [history, setHistory] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const resultsRef = useRef<HTMLDivElement>(null)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
 
@@ -53,6 +55,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     if (!query.trim() || !vaultPath) return
     setSearching(true)
     setResults([])
+    setSelectedIndex(0)
     saveToHistory(query.trim())
 
     if (mode === 'keyword') {
@@ -116,8 +119,32 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSearch()
+              if (e.key === 'Enter') {
+                if (selectedIndex >= 0 && results[selectedIndex]) {
+                  handleResultClick(results[selectedIndex])
+                } else {
+                  handleSearch()
+                }
+              }
               if (e.key === 'Escape') onClose()
+              if (e.key === 'ArrowDown' && results.length > 0) {
+                e.preventDefault()
+                setSelectedIndex((i) => {
+                  const next = Math.min(i + 1, results.length - 1)
+                  const item = resultsRef.current?.children[next] as HTMLElement
+                  if (item) item.scrollIntoView({ block: 'nearest' })
+                  return next
+                })
+              }
+              if (e.key === 'ArrowUp' && results.length > 0) {
+                e.preventDefault()
+                setSelectedIndex((i) => {
+                  const next = Math.max(i - 1, 0)
+                  const item = resultsRef.current?.children[next] as HTMLElement
+                  if (item) item.scrollIntoView({ block: 'nearest' })
+                  return next
+                })
+              }
             }}
             placeholder={mode === 'keyword' ? '关键词搜索...' : '语义搜索（用自然语言描述）...'}
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)' }}
@@ -175,7 +202,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
         <div style={{ height: 1, background: 'var(--border-subtle)' }} />
 
         {/* Results / History */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
+        <div ref={resultsRef} style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
           {searching && (
             <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>搜索中...</div>
           )}
@@ -209,11 +236,12 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
               onClick={() => handleResultClick(r)}
               style={{
                 width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 8,
-                background: 'transparent', border: 'none', cursor: 'pointer', display: 'block',
+                background: i === selectedIndex ? 'var(--accent-muted)' : 'transparent',
+                border: 'none', cursor: 'pointer', display: 'block',
                 transition: 'background 80ms',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-muted)'; setSelectedIndex(i) }}
+              onMouseLeave={(e) => { if (i !== selectedIndex) e.currentTarget.style.background = 'transparent' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.title}</span>
