@@ -123,7 +123,15 @@ export function ChatPanel() {
   }
 
   const handleSend = async () => {
-    if (!input.trim() || isStreaming) return
+    if (!input.trim()) return
+
+    if (isStreaming) {
+      setIsStreaming(false)
+      if (streamContent) {
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: streamContent }])
+        setStreamContent('')
+      }
+    }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
     if (!providers || providers.length === 0 || !providers.some((p: any) => p.enabled)) {
@@ -296,14 +304,32 @@ export function ChatPanel() {
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
         {messages.length === 0 && !isStreaming && (
-          <div style={{ textAlign: 'center', padding: '40px 16px' }}>
-            <div style={{ width: 40, height: 40, margin: '0 auto 12px', borderRadius: 10, background: 'var(--accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+          <div style={{ padding: '32px 16px' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, fontWeight: 500 }}>可以帮你做什么？</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                { text: '总结当前笔记的要点', icon: '📝' },
+                { text: '基于笔记内容提问', icon: '💡' },
+                { text: '切换编辑模式修改文档', icon: '✎' },
+                { text: '@ 引用笔记作为上下文', icon: '@' },
+              ].map((hint) => (
+                <button
+                  key={hint.text}
+                  onClick={() => { setInput(hint.text === '@ 引用笔记作为上下文' ? '@' : hint.text); inputRef.current?.focus() }}
+                  style={{
+                    width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
+                    fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                    transition: 'border-color 100ms, background 100ms',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-surface)' }}
+                >
+                  <span style={{ width: 20, textAlign: 'center', fontSize: 13, flexShrink: 0 }}>{hint.icon}</span>
+                  <span>{hint.text}</span>
+                </button>
+              ))}
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>向 AI 提问</p>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>输入 @ 引用笔记作为上下文<br/>切换编辑模式可直接修改文档</p>
           </div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -463,30 +489,46 @@ export function ChatPanel() {
               onPaste={handleImagePaste}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }; if (e.key === 'Escape') setShowMention(false) }}
               placeholder={editMode ? '描述你想要的修改...' : '提问，或 @ 引用笔记'}
-              disabled={isStreaming}
               style={{
                 flex: 1, height: 28, padding: 0, fontSize: 13,
                 background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none',
-                opacity: isStreaming ? 0.5 : 1, minWidth: 0,
+                minWidth: 0,
               }}
             />
-            <button
-              onClick={handleSend}
-              disabled={isStreaming || !input.trim()}
-              style={{
-                width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: (isStreaming || !input.trim()) ? 'transparent' : 'var(--accent)',
-                color: (isStreaming || !input.trim()) ? 'var(--text-tertiary)' : '#fff',
-                border: 'none', borderRadius: 8,
-                cursor: isStreaming || !input.trim() ? 'default' : 'pointer',
-                transition: 'background 150ms, color 150ms',
-                flexShrink: 0,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-              </svg>
-            </button>
+            {isStreaming ? (
+              <button
+                onClick={() => { setIsStreaming(false); setStreamContent('') }}
+                style={{
+                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--bg-surface)', color: 'var(--text-secondary)',
+                  border: '1.5px solid var(--border-default)', borderRadius: 8,
+                  cursor: 'pointer', flexShrink: 0, transition: 'border-color 100ms',
+                }}
+                title="停止生成"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim()}
+                style={{
+                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: !input.trim() ? 'transparent' : 'var(--accent)',
+                  color: !input.trim() ? 'var(--text-tertiary)' : '#fff',
+                  border: 'none', borderRadius: 8,
+                  cursor: !input.trim() ? 'default' : 'pointer',
+                  transition: 'background 150ms, color 150ms',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Bottom toolbar */}
