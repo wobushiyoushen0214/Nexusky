@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
+import { useSyncStore } from './stores/sync-store'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { Editor } from './components/editor/Editor'
 import { WelcomeScreen } from './components/WelcomeScreen'
@@ -12,8 +13,13 @@ import { ChatPanel } from './components/ai/ChatPanel'
 import { Settings } from './components/settings/Settings'
 import { SearchPanel } from './components/SearchPanel'
 import { OutlinePanel } from './components/editor/OutlinePanel'
+import { TagsPanel } from './components/TagsPanel'
+import { CalendarPanel } from './components/CalendarPanel'
+import { KanbanPanel } from './components/KanbanPanel'
+import { HistoryPanel } from './components/HistoryPanel'
 import { CommandPalette } from './components/CommandPalette'
 import { ResizeHandle } from './components/ResizeHandle'
+import { ToastContainer } from './components/Toast'
 
 export default function App() {
   const { vaultPath, loadVault } = useVaultStore()
@@ -24,12 +30,21 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const cleanup = window.api.onVaultChanged(() => {
+      useVaultStore.getState().refreshFiles()
+    })
+    return () => { cleanup() }
+  }, [])
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'p') && !e.shiftKey) {
+      const mod = e.ctrlKey || e.metaKey
+
+      if (mod && (e.key === 'o' || e.key === 'p') && !e.shiftKey) {
         e.preventDefault()
         setQuickSwitcherOpen(true)
       }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'g' || e.key === 'G')) {
+      if (mod && (e.key === 'g' || e.key === 'G')) {
         e.preventDefault()
         if (e.shiftKey) {
           const state = useUIStore.getState()
@@ -43,27 +58,40 @@ export default function App() {
           toggleRightPanel('graph')
         }
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+      if (mod && e.key === 'l') {
         e.preventDefault()
         toggleRightPanel('chat')
       }
-      if ((e.ctrlKey || e.metaKey) && (e.key === ',' || e.code === 'Comma')) {
+      if (mod && e.key === 'e' && !e.shiftKey) {
+        e.preventDefault()
+        toggleRightPanel('outline')
+      }
+      if (mod && (e.key === ',' || e.code === 'Comma')) {
         e.preventDefault()
         setSettingsOpen(true)
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+      if (mod && e.shiftKey && e.key === 'F') {
         e.preventDefault()
         setSearchOpen(true)
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'B') {
+      if (mod && e.shiftKey && e.key === 'B') {
         e.preventDefault()
         toggleSidebar()
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+      if (mod && e.shiftKey && e.key === 'P') {
         e.preventDefault()
         setCommandPaletteOpen(true)
       }
-      if (e.key === 'F11' || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')) {
+      if (mod && e.key === 'n' && !e.shiftKey) {
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('create-new-note'))
+      }
+      if (mod && e.shiftKey && e.key === 'S') {
+        e.preventDefault()
+        const vault = useVaultStore.getState().vaultPath
+        if (vault) window.api.invoke('cloud:sync', { vaultPath: vault })
+      }
+      if (e.key === 'F11' || (mod && e.shiftKey && e.key === 'Enter')) {
         e.preventDefault()
         toggleFocusMode()
       }
@@ -93,6 +121,32 @@ export default function App() {
       document.removeEventListener('drop', handleDrop)
     }
   }, [])
+
+  // Auto sync timer
+  const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => {
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current)
+
+    const intervalMin = (() => {
+      try { return Number(localStorage.getItem('nexusky-auto-sync') || '0') } catch { return 0 }
+    })()
+    if (!intervalMin || !vaultPath) return
+
+    syncTimerRef.current = setInterval(async () => {
+      const { status, setSyncing, setSuccess, setError } = useSyncStore.getState()
+      if (status === 'syncing') return
+      setSyncing()
+      try {
+        const result = await window.api.invoke('cloud:sync', { vaultPath })
+        if (result.errors.length === 0) setSuccess()
+        else setError(result.errors[0])
+      } catch (e: any) {
+        setError(e.message)
+      }
+    }, intervalMin * 60 * 1000)
+
+    return () => { if (syncTimerRef.current) clearInterval(syncTimerRef.current) }
+  }, [vaultPath])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
@@ -129,7 +183,7 @@ export default function App() {
               <aside style={{ width: rightPanelWidth, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: 4, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {rightPanel === 'graph' ? '知识图谱' : rightPanel === 'chat' ? 'AI 对话' : '大纲'}
+                  {rightPanel === 'graph' ? '知识图谱' : rightPanel === 'chat' ? 'AI 对话' : rightPanel === 'tags' ? '标签' : rightPanel === 'calendar' ? '日历' : rightPanel === 'kanban' ? '看板' : rightPanel === 'history' ? '版本历史' : '大纲'}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   {rightPanel === 'graph' && (
@@ -157,6 +211,10 @@ export default function App() {
                 {rightPanel === 'graph' && <GraphView />}
                 {rightPanel === 'chat' && <ChatPanel />}
                 {rightPanel === 'outline' && <OutlinePanel />}
+                {rightPanel === 'tags' && <TagsPanel />}
+                {rightPanel === 'calendar' && <CalendarPanel />}
+                {rightPanel === 'kanban' && <KanbanPanel />}
+                {rightPanel === 'history' && <HistoryPanel />}
               </div>
             </aside>
             </>
@@ -169,6 +227,7 @@ export default function App() {
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
       <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+      <ToastContainer />
     </div>
   )
 }

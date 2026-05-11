@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-type Panel = 'none' | 'graph' | 'chat' | 'outline'
+type Panel = 'none' | 'graph' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history'
 type Theme = 'dark' | 'light'
 type MainView = 'editor' | 'graph'
 
@@ -52,6 +52,22 @@ function applyTheme(theme: Theme) {
   } catch {}
 }
 
+function getInitialSidebarWidth(): number {
+  try {
+    const saved = localStorage.getItem('nexusky-sidebar-width')
+    if (saved) return Math.max(180, Math.min(400, Number(saved)))
+  } catch {}
+  return 240
+}
+
+function getInitialRightPanelWidth(): number {
+  try {
+    const saved = localStorage.getItem('nexusky-right-panel-width')
+    if (saved) return Math.max(260, Math.min(600, Number(saved)))
+  } catch {}
+  return 360
+}
+
 const initialTheme = getInitialTheme()
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', initialTheme)
@@ -61,8 +77,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   rightPanel: 'none',
   mainView: 'editor' as MainView,
   sidebarCollapsed: false,
-  sidebarWidth: 240,
-  rightPanelWidth: 360,
+  sidebarWidth: getInitialSidebarWidth(),
+  rightPanelWidth: getInitialRightPanelWidth(),
   focusMode: false,
   previewMode: false,
   quickSwitcherOpen: false,
@@ -82,8 +98,16 @@ export const useUIStore = create<UIState>((set, get) => ({
   togglePreviewMode: () => set({ previewMode: !get().previewMode }),
   setSidebarWidth: (width) => set({ sidebarWidth: Math.max(180, Math.min(400, width)) }),
   setRightPanelWidth: (width) => set({ rightPanelWidth: Math.max(260, Math.min(600, width)) }),
-  resizeSidebar: (delta: number) => set((s) => ({ sidebarWidth: Math.max(180, Math.min(400, s.sidebarWidth + delta)) })),
-  resizeRightPanel: (delta: number) => set((s) => ({ rightPanelWidth: Math.max(260, Math.min(600, s.rightPanelWidth + delta)) })),
+  resizeSidebar: (delta: number) => {
+    const width = Math.max(180, Math.min(400, get().sidebarWidth + delta))
+    localStorage.setItem('nexusky-sidebar-width', String(width))
+    set({ sidebarWidth: width })
+  },
+  resizeRightPanel: (delta: number) => {
+    const width = Math.max(260, Math.min(600, get().rightPanelWidth + delta))
+    localStorage.setItem('nexusky-right-panel-width', String(width))
+    set({ rightPanelWidth: width })
+  },
   setQuickSwitcherOpen: (open) => set({ quickSwitcherOpen: open }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   setSearchOpen: (open) => set({ searchOpen: open }),
