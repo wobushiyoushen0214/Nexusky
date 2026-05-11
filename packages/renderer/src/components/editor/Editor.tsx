@@ -22,6 +22,7 @@ import { SlashCommandMenu } from './SlashCommandMenu'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
+import { toast } from '../../stores/toast-store'
 import { EditorToolbar } from './EditorToolbar'
 import { BacklinksPanel } from './BacklinksPanel'
 import { AIWritingMenu } from './AIWritingMenu'
@@ -39,6 +40,8 @@ export function Editor() {
   const [findReplaceOpen, setFindReplaceOpen] = useState(false)
   const [linkPreview, setLinkPreview] = useState<{ x: number; y: number; content: string } | null>(null)
   const linkPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const markdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const editor = useEditor({
     extensions: [
@@ -78,8 +81,11 @@ export function Editor() {
       }
     },
     onUpdate: ({ editor }) => {
-      const markdown = editor.storage.markdown.getMarkdown()
-      setContent(markdown)
+      if (markdownTimer.current) clearTimeout(markdownTimer.current)
+      markdownTimer.current = setTimeout(() => {
+        const markdown = editor.storage.markdown.getMarkdown()
+        setContent(markdown)
+      }, 300)
     }
   })
 
@@ -130,6 +136,36 @@ export function Editor() {
     window.addEventListener('editor-reload-content', handleReload)
     return () => window.removeEventListener('editor-reload-content', handleReload)
   }, [editor])
+
+  // External file change detection
+  useEffect(() => {
+    if (!editor) return
+    const cleanup = window.api.onFileChanged(async (changedPath: string) => {
+      const normalizedChanged = changedPath.replace(/\\/g, '/')
+      const normalizedCurrent = currentFilePath?.replace(/\\/g, '/')
+      if (!normalizedCurrent || normalizedChanged !== normalizedCurrent) return
+      const { isDirty } = useEditorStore.getState()
+      if (isDirty) {
+        toast('文件已被外部修改，当前有未保存更改', 'info')
+        return
+      }
+      try {
+        const newContent = await window.api.invoke('file:read', { path: changedPath })
+        const currentMarkdown = editor.storage.markdown.getMarkdown()
+        if (newContent !== currentMarkdown) {
+          editor.commands.setContent(newContent)
+          useEditorStore.setState((state) => {
+            const tabs = [...state.tabs]
+            if (state.activeTabIndex >= 0 && state.activeTabIndex < tabs.length) {
+              tabs[state.activeTabIndex] = { ...tabs[state.activeTabIndex], content: newContent, isDirty: false }
+            }
+            return { tabs, content: newContent, isDirty: false }
+          })
+        }
+      } catch {}
+    })
+    return () => cleanup()
+  }, [editor, currentFilePath])
 
   // Auto-save after 3 seconds of inactivity
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
