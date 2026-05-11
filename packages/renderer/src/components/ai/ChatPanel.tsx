@@ -284,7 +284,6 @@ export function ChatPanel() {
                   padding: '10px 14px', fontSize: 13, lineHeight: 1.7,
                   background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
                   color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                  borderLeft: msg.role === 'assistant' ? '3px solid var(--accent)' : 'none',
                 }}>
                   {msg.role === 'user' ? (
                     <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
@@ -306,7 +305,7 @@ export function ChatPanel() {
           ))}
           {isStreaming && streamContent && (
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{ maxWidth: '88%', borderRadius: '14px 14px 14px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.7, background: 'var(--bg-elevated)', color: 'var(--text-primary)', borderLeft: '3px solid var(--accent)' }}>
+              <div style={{ maxWidth: '88%', borderRadius: '14px 14px 14px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.7, background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>
                 <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(streamContent) }} />
               </div>
             </div>
