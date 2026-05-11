@@ -7,6 +7,32 @@ import { join } from 'path'
 import { existsSync, statSync } from 'fs'
 import { closeDatabase } from '../database'
 
+const offlineQueue: { vaultPath: string; filePath: string }[] = []
+let isOnline = true
+
+export function setOnlineStatus(online: boolean): void {
+  isOnline = online
+  if (online) flushOfflineQueue()
+}
+
+async function flushOfflineQueue(): Promise<void> {
+  while (offlineQueue.length > 0) {
+    const item = offlineQueue.shift()!
+    const provider = getActiveProvider()
+    if (!provider) break
+    try {
+      await provider.pushFile(item.vaultPath, item.filePath)
+    } catch {
+      offlineQueue.unshift(item)
+      break
+    }
+  }
+}
+
+export function getOfflineQueueSize(): number {
+  return offlineQueue.length
+}
+
 const providers: Map<SyncProviderType, SyncProvider> = new Map([
   ['supabase', new SupabaseSyncProvider()],
   ['icloud', new ICloudSyncProvider()],
@@ -58,7 +84,16 @@ export async function pushFile(vaultPath: string, filePath: string): Promise<boo
   if (!provider) return false
   const relPath = filePath.replace(vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
   if (isExcluded(relPath)) return false
-  return provider.pushFile(vaultPath, filePath)
+  if (!isOnline) {
+    offlineQueue.push({ vaultPath, filePath })
+    return false
+  }
+  try {
+    return await provider.pushFile(vaultPath, filePath)
+  } catch {
+    offlineQueue.push({ vaultPath, filePath })
+    return false
+  }
 }
 
 export async function pullFile(vaultPath: string, relPath: string): Promise<boolean> {

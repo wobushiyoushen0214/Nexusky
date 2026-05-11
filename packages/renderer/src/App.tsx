@@ -38,6 +38,15 @@ export default function App() {
     loadVault()
   }, [])
 
+  // Network status monitoring for offline queue
+  useEffect(() => {
+    const handleOnline = () => window.api.invoke('cloud:set-online' as any, { online: true })
+    const handleOffline = () => window.api.invoke('cloud:set-online' as any, { online: false })
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline) }
+  }, [])
+
   useEffect(() => {
     const cleanup = window.api.onVaultChanged(() => {
       useVaultStore.getState().refreshFiles()

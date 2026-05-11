@@ -13,6 +13,8 @@ import {
   syncIndex,
   getSyncExclude,
   setSyncExclude,
+  setOnlineStatus,
+  getOfflineQueueSize,
   getActiveProviderType,
   setActiveProviderType,
   getAllProviders,
@@ -127,5 +129,13 @@ export function registerCloudIPC(): void {
 
   ipcMain.handle('cloud:set-sync-exclude', (_event, params: { paths: string[] }) => {
     setSyncExclude(params.paths)
+  })
+
+  ipcMain.handle('cloud:set-online', (_event, params: { online: boolean }) => {
+    setOnlineStatus(params.online)
+  })
+
+  ipcMain.handle('cloud:get-queue-size', () => {
+    return getOfflineQueueSize()
   })
 }
