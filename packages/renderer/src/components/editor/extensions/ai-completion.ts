@@ -14,6 +14,9 @@ const EMPTY_STATE: CompletionState = { text: '', pos: -1, decorations: Decoratio
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let ghostElement: HTMLElement | null = null
+let lastRequestText = ''
+let lastResult = ''
+let requestInFlight = false
 
 function getOrCreateGhost(): HTMLElement {
   if (!ghostElement) {
@@ -102,19 +105,29 @@ export const AICompletion = Extension.create({
                 const { state } = view
                 const { from } = state.selection
                 if (!state.selection.empty) return
+                if (requestInFlight) return
 
-                const textBefore = state.doc.textBetween(Math.max(0, from - 300), from)
+                const textBefore = state.doc.textBetween(Math.max(0, from - 150), from)
                 if (textBefore.length < 10) return
 
+                if (textBefore === lastRequestText && lastResult) {
+                  view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: lastResult, pos: from } }))
+                  return
+                }
+
+                requestInFlight = true
                 const result = await fetchCompletion(textBefore)
+                requestInFlight = false
                 if (!result) return
                 if (view.state.selection.from !== from) return
 
                 const current = pluginKey.getState(view.state) as CompletionState
                 if (current.text) return
 
+                lastRequestText = textBefore
+                lastResult = result
                 view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: result, pos: from } }))
-              }, 2000)
+              }, 1500)
             },
             destroy() {
               if (debounceTimer) clearTimeout(debounceTimer)
