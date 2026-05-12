@@ -1,9 +1,16 @@
 import { ipcMain } from 'electron'
 import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promises'
 import { readdir } from 'fs/promises'
-import { join, dirname, extname, relative, basename } from 'path'
+import { join, dirname, extname, relative, basename, resolve, normalize } from 'path'
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
 import type { FileEntry } from '@shared/types/ipc'
+
+function isPathSafe(filePath: string, vaultPath?: string): boolean {
+  if (!vaultPath) return true
+  const normalizedFile = normalize(resolve(filePath))
+  const normalizedVault = normalize(resolve(vaultPath))
+  return normalizedFile.startsWith(normalizedVault)
+}
 
 async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> {
   try {
@@ -39,6 +46,9 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:write', async (_event, params: { path: string; content: string; vaultPath?: string }) => {
+    if (params.vaultPath && !isPathSafe(params.path, params.vaultPath)) {
+      throw new Error('路径不在当前笔记空间内')
+    }
     if (params.vaultPath && params.path.endsWith('.md')) {
       await saveSnapshot(params.path, params.vaultPath)
     }
@@ -59,6 +69,9 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {
+    if (params.vaultPath && !isPathSafe(params.path, params.vaultPath)) {
+      throw new Error('路径不在当前笔记空间内')
+    }
     if (params.vaultPath) {
       const trashDir = join(params.vaultPath, '.trash')
       await mkdir(trashDir, { recursive: true })
