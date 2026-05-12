@@ -82,6 +82,7 @@ export function ChatPanel() {
   const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
   const [editElapsed, setEditElapsed] = useState(0)
   const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -138,6 +139,7 @@ export function ChatPanel() {
         const results = await window.api.invoke('db:get-all-notes', { vaultPath })
         setMentionResults(results.slice(0, 6))
       }
+      setMentionIndex(0)
     }
     search()
   }, [showMention, mentionQuery, vaultPath])
@@ -483,13 +485,12 @@ export function ChatPanel() {
       {showMention && mentionResults.length > 0 && (
         <div style={{ padding: '0 16px 4px' }}>
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: 4, maxHeight: 180, overflowY: 'auto' }}>
-            {mentionResults.map((note) => (
+            {mentionResults.map((note, i) => (
               <button
                 key={note.filePath}
                 onClick={() => handleSelectMention(note)}
-                style={{ width: '100%', height: 28, padding: '0 10px', display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                style={{ width: '100%', height: 28, padding: '0 10px', display: 'flex', alignItems: 'center', fontSize: 12, color: i === mentionIndex ? 'var(--text-primary)' : 'var(--text-secondary)', background: i === mentionIndex ? 'var(--bg-hover)' : 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={() => setMentionIndex(i)}
               >
                 {note.title}
               </button>
@@ -534,7 +535,15 @@ export function ChatPanel() {
               value={input}
               onChange={(e) => handleInputChange(e as any)}
               onPaste={handleImagePaste as any}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }; if (e.key === 'Escape') setShowMention(false) }}
+              onKeyDown={(e) => {
+                if (showMention && mentionResults.length > 0) {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => Math.min(i + 1, mentionResults.length - 1)); return }
+                  if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex((i) => Math.max(i - 1, 0)); return }
+                  if (e.key === 'Enter') { e.preventDefault(); handleSelectMention(mentionResults[mentionIndex]); return }
+                }
+                if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }
+                if (e.key === 'Escape') setShowMention(false)
+              }}
               placeholder={editMode ? '描述你想要的修改...' : '提问，或 @ 引用笔记'}
               rows={1}
               onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
