@@ -52,11 +52,14 @@ export function indexNote(vaultPath: string, filePath: string): void {
 
   const links = extractLinks(content)
   const tags = extractTags(content)
+  const tasks = extractTasks(content)
 
   const upsertFtsMap = db.prepare('INSERT OR IGNORE INTO notes_fts_map (note_id) VALUES (?)')
   const getFtsRowid = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?')
   const deleteFts = db.prepare('DELETE FROM notes_fts WHERE rowid = ?')
   const insertFts = db.prepare('INSERT INTO notes_fts (rowid, title, content) VALUES (?, ?, ?)')
+  const deleteTasks = db.prepare('DELETE FROM tasks WHERE note_id = ?')
+  const insertTask = db.prepare('INSERT INTO tasks (note_id, text, done) VALUES (?, ?, ?)')
 
   const transaction = db.transaction(() => {
     upsert.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash)
@@ -69,6 +72,10 @@ export function indexNote(vaultPath: string, filePath: string): void {
       findOrCreateTag.run(tag)
       const row = getTagId.get(tag) as { id: number } | undefined
       if (row) insertNoteTag.run(id, row.id)
+    }
+    deleteTasks.run(id)
+    for (const task of tasks) {
+      insertTask.run(id, task.text, task.done ? 1 : 0)
     }
 
     upsertFtsMap.run(id)
@@ -197,4 +204,27 @@ export function getNotesByTag(vaultPath: string, tag: string): NoteIndex[] {
     WHERE t.name = ?
     ORDER BY n.updated_at DESC
   `).all(tag) as NoteIndex[]
+}
+
+function extractTasks(content: string): { text: string; done: boolean }[] {
+  const tasks: { text: string; done: boolean }[] = []
+  const lines = content.split('\n')
+  for (const line of lines) {
+    const todoMatch = line.match(/^[-*]\s+\[\s?\]\s+(.+)/)
+    const doneMatch = line.match(/^[-*]\s+\[x\]\s+(.+)/i)
+    if (todoMatch) tasks.push({ text: todoMatch[1].trim(), done: false })
+    else if (doneMatch) tasks.push({ text: doneMatch[1].trim(), done: true })
+  }
+  return tasks
+}
+
+export function getAllTasks(vaultPath: string): { text: string; done: boolean; noteTitle: string; filePath: string }[] {
+  const db = getDatabase(vaultPath)
+  return db.prepare(`
+    SELECT t.text, t.done, n.title as noteTitle, n.file_path as filePath
+    FROM tasks t
+    JOIN notes n ON n.id = t.note_id
+    ORDER BY t.done ASC, n.updated_at DESC
+  `).all() as { text: string; done: number; noteTitle: string; filePath: string }[]
+    .map((r) => ({ ...r, done: r.done === 1 })) as any
 }

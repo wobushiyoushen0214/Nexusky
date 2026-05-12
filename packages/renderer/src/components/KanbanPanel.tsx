@@ -21,21 +21,7 @@ export function KanbanPanel() {
 
   const loadTasks = async () => {
     if (!vaultPath) return
-    const notes = await window.api.invoke('db:get-all-notes', { vaultPath })
-    const allTasks: TaskItem[] = []
-
-    for (const note of notes.slice(0, 50)) {
-      try {
-        const content = await window.api.invoke('file:read', { path: `${vaultPath}/${note.filePath}` })
-        const lines = content.split('\n')
-        for (const line of lines) {
-          const todoMatch = line.match(/^[-*]\s+\[\s?\]\s+(.+)/)
-          const doneMatch = line.match(/^[-*]\s+\[x\]\s+(.+)/i)
-          if (todoMatch) allTasks.push({ text: todoMatch[1], done: false, filePath: note.filePath, noteTitle: note.title })
-          else if (doneMatch) allTasks.push({ text: doneMatch[1], done: true, filePath: note.filePath, noteTitle: note.title })
-        }
-      } catch {}
-    }
+    const allTasks = await window.api.invoke('db:get-tasks', { vaultPath }) as TaskItem[]
     setTasks(allTasks)
   }
 

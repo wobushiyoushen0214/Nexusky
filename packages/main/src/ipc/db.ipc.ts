@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { readdirSync, readFileSync } from 'fs'
 import { join, extname } from 'path'
-import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData, getAllTags, getNotesByTag } from '../services/indexer'
+import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData, getAllTags, getNotesByTag, getAllTasks } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
 import { semanticSearch, indexNoteEmbeddings } from '../services/embedding'
 import { pushIndex } from '../services/cloud/manager'
@@ -94,6 +94,10 @@ export function registerDbIPC(): void {
 
   ipcMain.handle('db:get-notes-by-tag', async (_event, params: { vaultPath: string; tag: string }) => {
     return getNotesByTag(params.vaultPath, params.tag)
+  })
+
+  ipcMain.handle('db:get-tasks', async (_event, params: { vaultPath: string }) => {
+    return getAllTasks(params.vaultPath)
   })
 
   ipcMain.handle('db:embed-note', async (_event, params: { vaultPath: string; noteId: string; content: string }) => {
