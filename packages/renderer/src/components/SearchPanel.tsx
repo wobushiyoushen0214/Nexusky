@@ -10,7 +10,7 @@ interface SearchResult {
   score?: number
 }
 
-type SearchMode = 'keyword' | 'semantic'
+type SearchMode = 'keyword' | 'semantic' | 'regex'
 
 interface SearchPanelProps {
   open: boolean
@@ -64,13 +64,18 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   }, [open])
 
   useEffect(() => {
-    if (!open || mode !== 'keyword' || !query.trim() || !vaultPath) return
+    if (!open || mode === 'semantic' || !query.trim() || !vaultPath) return
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     searchTimerRef.current = setTimeout(async () => {
       setSearching(true)
       setSelectedIndex(0)
-      const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
-      setResults(res)
+      if (mode === 'regex') {
+        const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim(), regex: true } as any)
+        setResults(res)
+      } else {
+        const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
+        setResults(res)
+      }
       setSearching(false)
     }, 300)
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
@@ -208,6 +213,17 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             }}
           >
             语义
+          </button>
+          <button
+            onClick={() => setMode('regex')}
+            style={{
+              padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer', fontWeight: 500,
+              background: mode === 'regex' ? 'var(--accent-muted)' : 'transparent',
+              color: mode === 'regex' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              border: mode === 'regex' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+            }}
+          >
+            正则
           </button>
           {mode === 'semantic' && (
             <button

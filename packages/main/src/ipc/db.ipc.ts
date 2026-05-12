@@ -66,10 +66,32 @@ export function registerDbIPC(): void {
     return semanticSearch(params.vaultPath, params.query)
   })
 
-  ipcMain.handle('db:fulltext-search', async (_event, params: { vaultPath: string; query: string }) => {
+  ipcMain.handle('db:fulltext-search', async (_event, params: { vaultPath: string; query: string; regex?: boolean }) => {
     const db = getDatabase(params.vaultPath)
     const ftsQuery = params.query.replace(/['"]/g, '').trim()
     if (!ftsQuery) return []
+
+    if (params.regex) {
+      const files = collectMarkdownFiles(params.vaultPath)
+      const results: { filePath: string; title: string; line: string; lineNumber: number }[] = []
+      let re: RegExp
+      try { re = new RegExp(ftsQuery, 'i') } catch { return [] }
+
+      for (const file of files) {
+        const content = readFileSync(file, 'utf-8')
+        const lines = content.split('\n')
+        const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+        const title = lines.find((l) => l.startsWith('# '))?.replace(/^#\s+/, '') || relPath.replace(/\.md$/, '')
+
+        for (let i = 0; i < lines.length; i++) {
+          if (re.test(lines[i])) {
+            results.push({ filePath: relPath, title, line: lines[i].trim(), lineNumber: i + 1 })
+            if (results.length >= 50) return results
+          }
+        }
+      }
+      return results
+    }
 
     try {
       return db.prepare(`
