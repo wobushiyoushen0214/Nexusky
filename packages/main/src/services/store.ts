@@ -9,6 +9,7 @@ function getStorePath(): string {
 class Store {
   private data: Record<string, unknown> = {}
   private initialized = false
+  private saveTimer: ReturnType<typeof setTimeout> | null = null
 
   private ensureLoaded(): void {
     if (!this.initialized) {
@@ -36,6 +37,19 @@ class Store {
   set(key: string, value: unknown): void {
     this.ensureLoaded()
     this.data[key] = value
+    this.scheduleSave()
+  }
+
+  private scheduleSave(): void {
+    if (this.saveTimer) clearTimeout(this.saveTimer)
+    this.saveTimer = setTimeout(() => this.save(), 500)
+  }
+
+  flush(): void {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
+    }
     this.save()
   }
 

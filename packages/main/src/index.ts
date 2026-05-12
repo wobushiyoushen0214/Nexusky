@@ -119,6 +119,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  store.flush()
   if (process.platform !== 'darwin') {
     app.quit()
   }
