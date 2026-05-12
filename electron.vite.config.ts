@@ -35,6 +35,9 @@ export default defineConfig({
       port: 5188
     },
     plugins: [react(), tailwindcss()],
+    optimizeDeps: {
+      include: ['dompurify']
+    },
     build: {
       rollupOptions: {
         input: {
@@ -45,7 +48,8 @@ export default defineConfig({
     resolve: {
       alias: {
         '@shared': resolve(__dirname, 'packages/shared/src'),
-        '@renderer': resolve(__dirname, 'packages/renderer/src')
+        '@renderer': resolve(__dirname, 'packages/renderer/src'),
+        'dompurify': resolve(__dirname, 'node_modules/.pnpm/dompurify@3.4.2/node_modules/dompurify/dist/purify.es.mjs')
       }
     }
   }
