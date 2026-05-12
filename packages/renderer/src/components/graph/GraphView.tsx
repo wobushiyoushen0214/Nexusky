@@ -30,6 +30,7 @@ export function GraphView() {
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const [graphData, setGraphData] = useState<GraphData | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     if (!vaultPath) return
@@ -307,6 +308,20 @@ export function GraphView() {
     return () => { simulation.stop() }
   }, [graphData])
 
+  // Highlight nodes matching search query
+  useEffect(() => {
+    if (!svgRef.current || !graphData) return
+    const svg = select(svgRef.current)
+    if (!searchQuery.trim()) {
+      svg.selectAll<SVGGElement, SimNode>('g.node-group').attr('opacity', 1)
+      return
+    }
+    const q = searchQuery.toLowerCase()
+    svg.selectAll<SVGGElement, SimNode>('g.node-group').attr('opacity', (d) =>
+      d.title.toLowerCase().includes(q) ? 1 : 0.15
+    )
+  }, [searchQuery, graphData])
+
   if (!graphData || graphData.nodes.length === 0) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -319,7 +334,15 @@ export function GraphView() {
   }
 
   return (
-    <svg ref={svgRef} style={{ width: '100%', height: '100%', background: 'transparent' }} />
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <input
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="搜索节点..."
+        style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, width: 160, height: 28, padding: '0 8px', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
+      />
+      <svg ref={svgRef} style={{ width: '100%', height: '100%', background: 'transparent' }} />
+    </div>
   )
 }
 
