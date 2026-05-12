@@ -31,7 +31,11 @@ function filterFiles(entries: FileEntry[], query: string): FileEntry[] {
 }
 
 export function Sidebar({ width = 240 }: { width?: number }) {
-  const { vaultPath, files, favorites, refreshFiles, selectVault } = useVaultStore()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const files = useVaultStore((s) => s.files)
+  const favorites = useVaultStore((s) => s.favorites)
+  const refreshFiles = useVaultStore((s) => s.refreshFiles)
+  const selectVault = useVaultStore((s) => s.selectVault)
   const openFile = useEditorStore((s) => s.openFile)
   const { setSearchOpen, setQuickSwitcherOpen, toggleRightPanel, setSettingsOpen, setMainView } = useUIStore()
   const [isCreating, setIsCreating] = useState(false)
