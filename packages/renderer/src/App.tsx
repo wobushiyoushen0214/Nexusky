@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
@@ -9,20 +9,21 @@ import { Editor } from './components/editor/Editor'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { TitleBar } from './components/TitleBar'
 import { QuickSwitcher } from './components/QuickSwitcher'
-import { GraphView } from './components/graph/GraphView'
-import { ChatPanel } from './components/ai/ChatPanel'
-import { Settings } from './components/settings/Settings'
-import { SearchPanel } from './components/SearchPanel'
-import { OutlinePanel } from './components/editor/OutlinePanel'
-import { TagsPanel } from './components/TagsPanel'
-import { CalendarPanel } from './components/CalendarPanel'
-import { KanbanPanel } from './components/KanbanPanel'
-import { HistoryPanel } from './components/HistoryPanel'
-import { TrashPanel } from './components/TrashPanel'
-import { CommandPalette } from './components/CommandPalette'
 import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
+
+const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
+const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
+const Settings = lazy(() => import('./components/settings/Settings').then((m) => ({ default: m.Settings })))
+const SearchPanel = lazy(() => import('./components/SearchPanel').then((m) => ({ default: m.SearchPanel })))
+const OutlinePanel = lazy(() => import('./components/editor/OutlinePanel').then((m) => ({ default: m.OutlinePanel })))
+const TagsPanel = lazy(() => import('./components/TagsPanel').then((m) => ({ default: m.TagsPanel })))
+const CalendarPanel = lazy(() => import('./components/CalendarPanel').then((m) => ({ default: m.CalendarPanel })))
+const KanbanPanel = lazy(() => import('./components/KanbanPanel').then((m) => ({ default: m.KanbanPanel })))
+const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => ({ default: m.HistoryPanel })))
+const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
+const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
 
 export default function App() {
   const { vaultPath, loadVault } = useVaultStore()
@@ -221,7 +222,7 @@ export default function App() {
                   </button>
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <GraphView />
+                  <Suspense fallback={null}><GraphView /></Suspense>
                 </div>
               </div>
             )}
@@ -257,6 +258,7 @@ export default function App() {
                 </div>
               </div>
               <div style={{ flex: 1, overflow: 'hidden' }}>
+                <Suspense fallback={null}>
                 {rightPanel === 'graph' && <GraphView />}
                 {rightPanel === 'chat' && <ChatPanel />}
                 {rightPanel === 'outline' && <OutlinePanel />}
@@ -264,6 +266,7 @@ export default function App() {
                 {rightPanel === 'calendar' && <CalendarPanel />}
                 {rightPanel === 'kanban' && <KanbanPanel />}
                 {rightPanel === 'history' && <HistoryPanel />}
+                </Suspense>
               </div>
             </aside>
             </>
@@ -273,10 +276,12 @@ export default function App() {
         <WelcomeScreen />
       )}
       <QuickSwitcher open={quickSwitcherOpen} onClose={() => setQuickSwitcherOpen(false)} />
-      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
-      <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />
+      <Suspense fallback={null}>
+        {settingsOpen && <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
+        {searchOpen && <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />}
+        {commandPaletteOpen && <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />}
+        {trashOpen && <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />}
+      </Suspense>
       <ToastContainer />
       {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
     </div>
