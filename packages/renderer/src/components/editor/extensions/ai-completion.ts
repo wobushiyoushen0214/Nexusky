@@ -109,7 +109,7 @@ export const AICompletion = Extension.create({
                 if (!state.selection.empty) return
                 if (requestInFlight) return
 
-                const textBefore = state.doc.textBetween(Math.max(0, from - 150), from)
+                const textBefore = state.doc.textBetween(Math.max(0, from - 500), from)
                 if (textBefore.length < 10) return
 
                 if (textBefore === lastRequestText && lastResult) {
@@ -133,7 +133,7 @@ export const AICompletion = Extension.create({
                 lastRequestText = textBefore
                 lastResult = result
                 view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: result, pos: from } }))
-              }, 1500)
+              }, 800)
             },
             destroy() {
               if (debounceTimer) clearTimeout(debounceTimer)
