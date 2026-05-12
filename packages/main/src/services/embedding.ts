@@ -6,6 +6,7 @@ import type { AIProviderConfig } from './ai/base-provider'
 
 const CHUNK_SIZE = 400
 const CHUNK_OVERLAP = 50
+const MAX_CACHE_CHUNKS = 2000
 
 let embeddingCache: { vaultPath: string; data: { noteId: string; title: string; filePath: string; content: string; embedding: number[] }[] } | null = null
 
@@ -144,7 +145,9 @@ export async function semanticSearch(vaultPath: string, query: string, topK = 10
       FROM chunks c
       JOIN notes n ON n.id = c.note_id
       WHERE c.embedding IS NOT NULL
-    `).all() as { content: string; note_id: string; embedding: Buffer; title: string; file_path: string }[]
+      ORDER BY n.updated_at DESC
+      LIMIT ?
+    `).all(MAX_CACHE_CHUNKS) as { content: string; note_id: string; embedding: Buffer; title: string; file_path: string }[]
 
     embeddingCache = {
       vaultPath,
