@@ -36,13 +36,18 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'theme', label: '切换主题', action: () => toggleTheme() },
     { id: 'export-pdf', label: '导出 PDF', action: async () => {
       if (!content || !currentFilePath) return
+      const { toast } = await import('../stores/toast-store')
+      toast('正在导出 PDF...', 'info')
       const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:pdf', { content, title })
+      toast('PDF 导出完成', 'success')
     }},
     { id: 'export-html', label: '导出 HTML', action: async () => {
       if (!content || !currentFilePath) return
+      const { toast } = await import('../stores/toast-store')
       const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:html', { content, title })
+      toast('HTML 导出完成', 'success')
     }},
     { id: 'share', label: '分享笔记（复制 HTML）', action: async () => {
       if (!content || !currentFilePath) return
