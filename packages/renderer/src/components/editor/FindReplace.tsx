@@ -53,11 +53,15 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
     return matches
   }, [editor, findText])
 
-  const handleFind = useCallback(() => {
+  useEffect(() => {
+    if (!open || !findText) { setMatchCount(0); return }
     const matches = findMatches()
     setMatchCount(matches.length)
-    if (matches.length === 0) { setCurrentMatch(0); return }
+  }, [findText, open])
 
+  const handleFind = useCallback(() => {
+    const matches = findMatches()
+    if (matches.length === 0) return
     const next = currentMatch < matches.length ? currentMatch : 0
     setCurrentMatch(next)
     const match = matches[next]
