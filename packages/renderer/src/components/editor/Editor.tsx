@@ -96,10 +96,12 @@ export function Editor() {
     },
     onUpdate: ({ editor }) => {
       if (markdownTimer.current) clearTimeout(markdownTimer.current)
+      const { isDirty } = useEditorStore.getState()
+      if (!isDirty) useEditorStore.getState().setDirty(true)
       markdownTimer.current = setTimeout(() => {
         const markdown = editor.storage.markdown.getMarkdown()
         setContent(markdown)
-      }, 300)
+      }, 1000)
     }
   })
 
