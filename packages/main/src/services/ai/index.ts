@@ -6,10 +6,19 @@ import { store } from '../store'
 
 class AIManager {
   private providers: Map<string, BaseAIProvider> = new Map()
+  private configHashes: Map<string, string> = new Map()
+
+  private hashConfig(config: AIProviderConfig): string {
+    return `${config.type}:${config.apiKey}:${config.baseUrl}:${config.model}`
+  }
 
   getProvider(config: AIProviderConfig): BaseAIProvider {
-    const cached = this.providers.get(config.id)
-    if (cached) return cached
+    const hash = this.hashConfig(config)
+    const cachedHash = this.configHashes.get(config.id)
+    if (cachedHash === hash) {
+      const cached = this.providers.get(config.id)
+      if (cached) return cached
+    }
 
     let provider: BaseAIProvider
     switch (config.type) {
@@ -27,11 +36,13 @@ class AIManager {
     }
 
     this.providers.set(config.id, provider)
+    this.configHashes.set(config.id, hash)
     return provider
   }
 
   clearCache(): void {
     this.providers.clear()
+    this.configHashes.clear()
   }
 
   getActiveConfig(): AIProviderConfig | null {
