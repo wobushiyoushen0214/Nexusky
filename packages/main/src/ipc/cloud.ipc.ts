@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { store } from '../services/store'
 import { resetClient, CloudConfig } from '../services/cloud/client'
 import { initializeCloud } from '../services/cloud/setup'
@@ -54,8 +54,13 @@ export function registerCloudIPC(): void {
     return getUser()
   })
 
-  ipcMain.handle('cloud:sync', async (_event, params: { vaultPath: string }) => {
-    return syncAll(params.vaultPath)
+  ipcMain.handle('cloud:sync', async (event, params: { vaultPath: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    const result = await syncAll(params.vaultPath)
+    if (window && !window.isDestroyed()) {
+      window.webContents.send('cloud:sync-done', { pushed: result.pushed, pulled: result.pulled, conflicts: result.conflicts.length })
+    }
+    return result
   })
 
   ipcMain.handle('cloud:push-file', async (_event, params: { vaultPath: string; filePath: string }) => {
