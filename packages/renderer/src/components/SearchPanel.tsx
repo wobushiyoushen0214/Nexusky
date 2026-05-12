@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 
@@ -27,6 +27,17 @@ function saveToHistory(query: string): void {
   const history = loadHistory()
   const updated = [query, ...history.filter((h) => h !== query)].slice(0, 12)
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+}
+
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return text
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'))
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase()
+      ? <mark key={i} style={{ background: 'var(--accent-muted)', color: 'var(--accent-text)', borderRadius: 2, padding: '0 1px' }}>{part}</mark>
+      : part
+  )
 }
 
 export function SearchPanel({ open, onClose }: SearchPanelProps) {
@@ -253,7 +264,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
                 {r.lineNumber > 0 && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>行 {r.lineNumber}</span>}
               </div>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
-                {r.line}
+                {mode === 'keyword' ? highlightText(r.line, query) : r.line}
               </p>
             </button>
           ))}
