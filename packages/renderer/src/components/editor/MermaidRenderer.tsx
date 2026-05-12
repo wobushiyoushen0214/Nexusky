@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import DOMPurify from 'dompurify'
 
 let mermaidInstance: typeof import('mermaid').default | null = null
 let mermaidLoading: Promise<typeof import('mermaid').default> | null = null
@@ -57,7 +58,7 @@ export function MermaidRenderer({ code }: { code: string }) {
     <div
       ref={containerRef}
       style={{ padding: '16px', display: 'flex', justifyContent: 'center', overflow: 'auto' }}
-      dangerouslySetInnerHTML={{ __html: svg }}
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true }, ADD_TAGS: ['foreignObject'] }) }}
     />
   )
 }
