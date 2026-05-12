@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 let mermaidInstance: typeof import('mermaid').default | null = null
 let mermaidLoading: Promise<typeof import('mermaid').default> | null = null
 let mermaidId = 0
+const svgCache = new Map<string, string>()
 
 async function getMermaid() {
   if (mermaidInstance) return mermaidInstance
@@ -18,18 +19,23 @@ async function getMermaid() {
 
 export function MermaidRenderer({ code }: { code: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [svg, setSvg] = useState('')
+  const [svg, setSvg] = useState(() => svgCache.get(code.trim()) || '')
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!code.trim()) return
+    const trimmed = code.trim()
+    if (!trimmed) return
+
+    const cached = svgCache.get(trimmed)
+    if (cached) { setSvg(cached); setError(''); return }
+
     let cancelled = false
     const id = `mermaid-${++mermaidId}`
 
     getMermaid().then((mermaid) => {
       if (cancelled) return
-      mermaid.render(id, code.trim()).then(
-        (result) => { if (!cancelled) { setSvg(result.svg); setError('') } },
+      mermaid.render(id, trimmed).then(
+        (result) => { if (!cancelled) { svgCache.set(trimmed, result.svg); setSvg(result.svg); setError('') } },
         (err) => { if (!cancelled) { setError(err.message || '渲染失败'); setSvg('') } }
       )
     })
