@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 import { useVaultStore } from '../../stores/vault-store'
 
@@ -19,6 +19,18 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [loading, setLoading] = useState(false)
   const [selectedText, setSelectedText] = useState('')
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!visible) return
+    const handleMouseDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setVisible(false)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [visible])
 
   useEffect(() => {
     if (!editor) return
@@ -83,6 +95,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
 
   return (
     <div
+      ref={menuRef}
       style={{
         position: 'fixed',
         left: Math.max(8, position.x),
