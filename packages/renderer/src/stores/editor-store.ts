@@ -81,7 +81,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       const content = await window.api.invoke('file:read', { path })
       const newTab: Tab = { path, content, isDirty: false }
-      const newTabs = [...tabs, newTab]
+      let newTabs = [...tabs, newTab]
+
+      const MAX_TABS = 30
+      if (newTabs.length > MAX_TABS) {
+        const closeable = newTabs.findIndex((t, i) => !t.isDirty && i !== newTabs.length - 1)
+        if (closeable >= 0) {
+          newTabs = newTabs.filter((_, i) => i !== closeable)
+        }
+      }
+
       const recent = [path, ...get().recentFiles.filter((p) => p !== path)].slice(0, 10)
       localStorage.setItem('nexusky-recent', JSON.stringify(recent))
       set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false, recentFiles: recent })
