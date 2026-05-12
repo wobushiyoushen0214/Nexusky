@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
+import { safeGetJSON, safeSetJSON, safeRemove } from '../../utils/storage'
 
 interface Message {
   id: string
@@ -14,17 +15,23 @@ interface Message {
 const STORAGE_KEY = 'nexusky-chat-history'
 
 function loadHistory(): Message[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) return JSON.parse(saved)
-  } catch {}
-  return []
+  return safeGetJSON<Message[]>(STORAGE_KEY, [])
 }
 
 function saveHistory(messages: Message[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-100)))
-  } catch {}
+  // 只保留最近 100 条，避免 localStorage 配额超限
+  // 多模态图片的 base64 会非常大，进一步剔除超大消息
+  let trimmed = messages.slice(-100)
+  let ok = safeSetJSON(STORAGE_KEY, trimmed)
+  if (ok) return
+  // 写入失败（quota exceeded）：再降级保留最近 30 条
+  trimmed = messages.slice(-30)
+  ok = safeSetJSON(STORAGE_KEY, trimmed)
+  if (!ok) {
+    // 还失败：清空历史避免后续累积
+    safeRemove(STORAGE_KEY)
+    toast('对话历史过大，已清理旧记录', 'info')
+  }
 }
 
 export function ChatPanel() {
@@ -268,7 +275,7 @@ export function ChatPanel() {
 
   const doClear = () => {
     setMessages([])
-    try { localStorage.removeItem(STORAGE_KEY) } catch {}
+    try { safeRemove(STORAGE_KEY) } catch {}
     setConfirmClear(false)
   }
 
@@ -351,32 +358,7 @@ export function ChatPanel() {
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {messages.map((msg) => (
-            <div key={msg.id} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-              <div style={{ maxWidth: '88%' }}>
-                <div style={{
-                  borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                  padding: '10px 14px', fontSize: 13, lineHeight: 1.7,
-                  background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
-                  color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                  wordBreak: 'break-word', overflowWrap: 'anywhere',
-                }}>
-                  {msg.role === 'user' ? (
-                    <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
-                  ) : (
-                    <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                  )}
-                </div>
-                {msg.sources && msg.sources.length > 0 && (
-                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {msg.sources.map((s, i) => (
-                      <div key={i} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--accent-muted)', fontSize: 10, color: 'var(--accent-text)' }}>
-                        [{i + 1}] {s.title}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <MessageBubble key={msg.id} msg={msg} />
           ))}
           {isStreaming && streamContent && (
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
@@ -599,3 +581,34 @@ function renderMarkdown(md: string): string {
   const html = marked.parse(md, { async: false }) as string
   return DOMPurify.sanitize(html)
 }
+
+const MessageBubble = memo(function MessageBubble({ msg }: { msg: Message }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+      <div style={{ maxWidth: '88%' }}>
+        <div style={{
+          borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+          padding: '10px 14px', fontSize: 13, lineHeight: 1.7,
+          background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
+          color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+          wordBreak: 'break-word', overflowWrap: 'anywhere',
+        }}>
+          {msg.role === 'user' ? (
+            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
+          ) : (
+            <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+          )}
+        </div>
+        {msg.sources && msg.sources.length > 0 && (
+          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {msg.sources.map((s, i) => (
+              <div key={i} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--accent-muted)', fontSize: 10, color: 'var(--accent-text)' }}>
+                [{i + 1}] {s.title}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+})
