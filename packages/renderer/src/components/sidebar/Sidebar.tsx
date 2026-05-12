@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -52,6 +52,8 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const vaultMenuRef = useRef<HTMLDivElement>(null)
   const vaultMenuButtonRef = useRef<HTMLButtonElement>(null)
   const [recentVaults, setRecentVaults] = useState<string[]>([])
+
+  const sortedFiles = useMemo(() => sortFiles(filterFiles(files, filterQuery), sortBy), [files, filterQuery, sortBy])
 
   useEffect(() => {
     if (!vaultMenu) return
@@ -289,7 +291,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           setBlankContextMenu({ x: e.clientX, y: e.clientY })
         }}
       >
-        <VirtualFileTree key={treeKey} entries={sortFiles(filterFiles(files, filterQuery), sortBy)} defaultExpanded={defaultExpanded} />
+        <VirtualFileTree key={treeKey} entries={sortedFiles} defaultExpanded={defaultExpanded} />
       </div>
       {blankContextMenu && (
         <ContextMenu
