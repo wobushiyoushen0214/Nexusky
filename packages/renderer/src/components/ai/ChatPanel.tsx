@@ -414,25 +414,29 @@ export function ChatPanel() {
 
       {/* Edit result preview */}
       {editResult && (
-        <div style={{ padding: '8px 14px', flexShrink: 0 }}>
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--accent)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: editPreviewExpanded ? '70vh' : 'none' }}>
-            <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--accent-muted)', borderBottom: '1px solid var(--accent)', flexShrink: 0 }}>
-              <span style={{ fontSize: 11, color: 'var(--accent-text)', fontWeight: 500 }}>修改预览: {editResult.filePath.split(/[\\/]/).pop()}</span>
-              <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ padding: '8px 14px', flexShrink: 0, maxHeight: editPreviewExpanded ? 'calc(50% - 60px)' : 'none', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}>
+            <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500 }}>{editResult.filePath.split(/[\\/]/).pop()}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   onClick={() => setEditPreviewExpanded(!editPreviewExpanded)}
-                  style={{ height: 22, padding: '0 6px', fontSize: 10, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer' }}
-                  title={editPreviewExpanded ? '收起' : '展开全部'}
+                  style={{ height: 24, padding: '0 8px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer', transition: 'all 100ms' }}
                 >
                   {editPreviewExpanded ? '收起' : '展开'}
                 </button>
-                <button onClick={handleApplyEdit} style={{ height: 22, padding: '0 10px', fontSize: 10, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>应用</button>
-                <button onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }} style={{ height: 22, padding: '0 8px', fontSize: 10, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer' }}>放弃</button>
+                <button onClick={handleApplyEdit} style={{ height: 24, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 500 }}>应用修改</button>
+                <button onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }} style={{ height: 24, padding: '0 8px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>放弃</button>
               </div>
             </div>
             <div
               className="editor-content"
-              style={{ padding: '12px 16px', maxHeight: editPreviewExpanded ? 'none' : 200, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}
+              style={{ padding: '12px 16px', maxHeight: editPreviewExpanded ? 'none' : 120, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}
               dangerouslySetInnerHTML={{ __html: renderMarkdown(editResult.content) }}
             />
           </div>
