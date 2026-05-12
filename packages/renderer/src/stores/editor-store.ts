@@ -6,6 +6,7 @@ interface Tab {
   path: string
   content: string
   isDirty: boolean
+  pinned?: boolean
 }
 
 interface EditorState {
@@ -29,6 +30,8 @@ interface EditorState {
   saveFile: () => Promise<void>
   openSplit: (path: string) => Promise<void>
   closeSplit: () => void
+  pinTab: (index: number) => void
+  unpinTab: (index: number) => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -85,7 +88,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       const MAX_TABS = 30
       if (newTabs.length > MAX_TABS) {
-        const closeable = newTabs.findIndex((t, i) => !t.isDirty && i !== newTabs.length - 1)
+        const closeable = newTabs.findIndex((t, i) => !t.isDirty && !t.pinned && i !== newTabs.length - 1)
         if (closeable >= 0) {
           newTabs = newTabs.filter((_, i) => i !== closeable)
         }
@@ -199,5 +202,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ splitPath: path, splitContent: content })
   },
 
-  closeSplit: () => set({ splitPath: null, splitContent: null })
+  closeSplit: () => set({ splitPath: null, splitContent: null }),
+
+  pinTab: (index) => {
+    const { tabs } = get()
+    if (index < 0 || index >= tabs.length) return
+    const updated = [...tabs]
+    updated[index] = { ...updated[index], pinned: true }
+    set({ tabs: updated })
+  },
+
+  unpinTab: (index) => {
+    const { tabs } = get()
+    if (index < 0 || index >= tabs.length) return
+    const updated = [...tabs]
+    updated[index] = { ...updated[index], pinned: false }
+    set({ tabs: updated })
+  }
 }))

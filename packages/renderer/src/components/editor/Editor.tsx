@@ -474,6 +474,7 @@ export function Editor() {
           x={tabContextMenu.x}
           y={tabContextMenu.y}
           items={[
+            { label: tabs[tabContextMenu.index]?.pinned ? '取消固定' : '固定标签', onClick: () => { const t = tabs[tabContextMenu.index]; if (t?.pinned) useEditorStore.getState().unpinTab(tabContextMenu.index); else useEditorStore.getState().pinTab(tabContextMenu.index) } },
             { label: '关闭', onClick: () => closeTab(tabContextMenu.index) },
             { label: '关闭其他', onClick: () => closeOtherTabs(tabContextMenu.index) },
             { label: '关闭右侧', onClick: () => closeTabsToRight(tabContextMenu.index) },
