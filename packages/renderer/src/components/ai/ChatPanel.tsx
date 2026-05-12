@@ -14,6 +14,31 @@ interface Message {
 
 const STORAGE_KEY = 'nexusky-chat-history'
 
+function friendlyError(raw: string): string {
+  if (!raw) return '请求失败，请稍后重试'
+  // 屏蔽完整本地路径
+  let msg = raw.replace(/\/[^\s]+\/(node_modules|app\.asar[^\s]*)/g, '<...>')
+  // 模式匹配常见错误
+  if (/dlopen|incompatible architecture/i.test(msg)) {
+    return '应用架构不匹配，请下载与你的 Mac 处理器对应的版本（Apple Silicon 或 Intel）。'
+  }
+  if (/ECONNREFUSED|fetch failed|ENOTFOUND|getaddrinfo/i.test(msg)) {
+    return '无法连接到 AI 服务，请检查网络或 API Base URL 配置。'
+  }
+  if (/401|unauthorized|invalid api key/i.test(msg)) {
+    return 'API Key 无效或已过期，请在设置中检查。'
+  }
+  if (/429|rate limit/i.test(msg)) {
+    return '请求过于频繁，已被限流。请稍后重试。'
+  }
+  if (/timeout|timed out/i.test(msg)) {
+    return '请求超时，AI 服务响应过慢。'
+  }
+  // 截断过长的原始错误
+  if (msg.length > 200) msg = msg.slice(0, 200) + '...'
+  return msg
+}
+
 function loadHistory(): Message[] {
   return safeGetJSON<Message[]>(STORAGE_KEY, [])
 }
@@ -63,7 +88,7 @@ export function ChatPanel() {
       } else if (event.type === 'done') {
         setIsStreaming(false)
       } else if (event.type === 'error') {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `错误: ${event.content}` }])
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }])
         setStreamContent('')
         setIsStreaming(false)
       }
@@ -174,7 +199,7 @@ export function ChatPanel() {
           setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `编辑失败: ${result.error}` }])
         }
       } catch (e: any) {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `请求失败: ${e.message || '网络错误'}` }])
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
       }
       setIsStreaming(false)
       return
@@ -216,7 +241,7 @@ export function ChatPanel() {
     try {
       await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
     } catch (e: any) {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `请求失败: ${e.message || '网络错误'}` }])
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
       setStreamContent('')
       setIsStreaming(false)
     }
