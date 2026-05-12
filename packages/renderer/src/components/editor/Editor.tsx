@@ -324,8 +324,7 @@ export function Editor() {
 
   // Code block folding
   useEffect(() => {
-    if (!editorAreaRef.current) return
-    let scanTimer: ReturnType<typeof setTimeout> | null = null
+    if (!editor || !editorAreaRef.current) return
     const scan = () => {
       const blocks = editorAreaRef.current?.querySelectorAll('.code-block') || []
       blocks.forEach((block) => {
@@ -347,19 +346,18 @@ export function Editor() {
         btn.textContent = '展开'
       })
     }
-    const observer = new MutationObserver((mutations) => {
-      const hasAdded = mutations.some((m) => m.addedNodes.length > 0)
-      if (!hasAdded) return
+    let scanTimer: ReturnType<typeof setTimeout> | null = null
+    const debouncedScan = () => {
       if (scanTimer) clearTimeout(scanTimer)
       scanTimer = setTimeout(scan, 300)
-    })
-    observer.observe(editorAreaRef.current, { childList: true, subtree: true })
+    }
     scan()
+    editor.on('update', debouncedScan)
     return () => {
-      observer.disconnect()
+      editor.off('update', debouncedScan)
       if (scanTimer) clearTimeout(scanTimer)
     }
-  }, [currentFilePath])
+  }, [editor, currentFilePath])
 
   // Wikilink hover preview
   useEffect(() => {
