@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 import { useVaultStore } from '../../stores/vault-store'
+import { toast } from '../../stores/toast-store'
 
 interface AIWritingMenuProps {
   editor: Editor | null
@@ -62,34 +63,54 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
     if (!editor || !selectedText || loading) return
     setLoading(true)
     setVisible(false)
+    toast(`AI 正在${action.label}...`, 'info')
+
+    const { from, to } = editor.state.selection
+    let result = ''
+    let done = false
+
+    const cleanup = window.api.onAiStream((event) => {
+      if (event.type === 'text') {
+        result += event.content
+      } else if (event.type === 'done') {
+        done = true
+        if (result) {
+          editor.chain().focus().deleteRange({ from, to }).insertContent(result.trim()).run()
+          toast(`${action.label}完成`, 'success')
+        } else {
+          toast('AI 未返回内容，请检查配置', 'error')
+        }
+        setLoading(false)
+        cleanup()
+      } else if (event.type === 'error') {
+        done = true
+        toast(`${action.label}失败: ${event.content}`, 'error')
+        setLoading(false)
+        cleanup()
+      }
+    })
 
     try {
       const messages = [
         { role: 'system', content: '你是一个写作助手。只输出处理后的结果，不要解释。保持原文的语言。' },
         { role: 'user', content: `${action.prompt}\n\n${selectedText}` }
       ]
-
       await window.api.invoke('ai:chat', { messages } as any)
-
-      let result = ''
-      const cleanup = window.api.onAiStream((event) => {
-        if (event.type === 'text') {
-          result += event.content
-        } else if (event.type === 'done') {
-          if (result) {
-            const { from, to } = editor.state.selection
-            editor.chain().focus().deleteRange({ from, to }).insertContent(result).run()
-          }
-          setLoading(false)
-          cleanup()
-        } else if (event.type === 'error') {
-          setLoading(false)
-          cleanup()
-        }
-      })
-    } catch {
-      setLoading(false)
+    } catch (e: any) {
+      if (!done) {
+        toast(`${action.label}失败: ${e.message || '未知错误'}`, 'error')
+        setLoading(false)
+        cleanup()
+        done = true
+      }
     }
+
+    setTimeout(() => {
+      if (!done) {
+        setLoading(false)
+        cleanup()
+      }
+    }, 500)
   }, [editor, selectedText, loading])
 
   if (!visible || loading) return null

@@ -68,6 +68,8 @@ export function ChatPanel() {
   const pendingSourcesRef = useRef<any[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  const isStreamingRef = useRef(false)
+  useEffect(() => { isStreamingRef.current = isStreaming }, [isStreaming])
   const [streamContent, setStreamContent] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showMention, setShowMention] = useState(false)
@@ -96,6 +98,7 @@ export function ChatPanel() {
 
   useEffect(() => {
     const handler = (event: { type: string; content: string }) => {
+      if (!isStreamingRef.current) return
       if (event.type === 'text') {
         setStreamContent((prev) => prev + event.content)
       } else if (event.type === 'done') {
