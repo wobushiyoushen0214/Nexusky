@@ -46,12 +46,14 @@ export default defineConfig({
           index: resolve(__dirname, 'packages/renderer/index.html')
         },
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-tiptap': ['@tiptap/core', '@tiptap/react', '@tiptap/starter-kit', '@tiptap/pm'],
-            'vendor-d3': ['d3-force', 'd3-selection', 'd3-zoom', 'd3-drag'],
-            'vendor-katex': ['katex'],
-            'vendor-marked': ['marked', 'dompurify']
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react-dom') || id.match(/[\\/]react[\\/]/)) return 'vendor-react'
+              if (id.includes('@tiptap') || id.includes('prosemirror')) return 'vendor-tiptap'
+              if (id.includes('d3-')) return 'vendor-d3'
+              if (id.includes('katex')) return 'vendor-katex'
+              if (id.includes('marked') || id.includes('dompurify')) return 'vendor-marked'
+            }
           }
         }
       }
