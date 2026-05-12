@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { join, dirname } from 'path'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { encrypt, decrypt, isEncrypted } from './secret'
 
 function getStorePath(): string {
@@ -62,9 +62,23 @@ class Store {
     try {
       const p = getStorePath()
       if (existsSync(p)) {
-        this.data = JSON.parse(readFileSync(p, 'utf-8'))
+        const raw = readFileSync(p, 'utf-8')
+        this.data = JSON.parse(raw)
+      } else {
+        const bak = p + '.bak'
+        if (existsSync(bak)) {
+          const raw = readFileSync(bak, 'utf-8')
+          this.data = JSON.parse(raw)
+        }
       }
     } catch {
+      const bak = getStorePath() + '.bak'
+      try {
+        if (existsSync(bak)) {
+          this.data = JSON.parse(readFileSync(bak, 'utf-8'))
+          return
+        }
+      } catch {}
       this.data = {}
     }
   }
@@ -116,7 +130,13 @@ class Store {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true })
     }
-    writeFileSync(p, JSON.stringify(this.data, null, 2), 'utf-8')
+    const tmpPath = p + '.tmp'
+    const bakPath = p + '.bak'
+    writeFileSync(tmpPath, JSON.stringify(this.data, null, 2), 'utf-8')
+    if (existsSync(p)) {
+      try { renameSync(p, bakPath) } catch {}
+    }
+    renameSync(tmpPath, p)
   }
 }
 
