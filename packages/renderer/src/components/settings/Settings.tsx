@@ -670,7 +670,7 @@ function AppearanceTab() {
       <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>关于</span>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v0.1.0</span>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v0.1.7</span>
           <button
             onClick={async () => {
               const result = await window.api.invoke('updater:check' as any, undefined)
