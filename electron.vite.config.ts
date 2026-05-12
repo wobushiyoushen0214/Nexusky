@@ -7,6 +7,7 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
+      minify: true,
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'packages/main/src/index.ts')
@@ -22,6 +23,7 @@ export default defineConfig({
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
+      minify: true,
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'packages/main/src/preload.ts')
