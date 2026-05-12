@@ -64,6 +64,7 @@ function saveHistory(messages: Message[]): void {
 export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>(loadHistory)
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const pendingSourcesRef = useRef<any[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -79,6 +80,8 @@ export function ChatPanel() {
   const [editHistory, setEditHistory] = useState<string[]>([])
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
+  const [editElapsed, setEditElapsed] = useState(0)
+  const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -187,8 +190,10 @@ export function ChatPanel() {
     setStreamContent('')
 
     if (editMode) {
-      const targetPath = editTarget || useEditorStore.getState().currentFilePath
+      const targetPath = editTarget || currentFilePath
       if (!targetPath) { setIsStreaming(false); return }
+      setEditElapsed(0)
+      editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
       try {
         const fileContent = await window.api.invoke('file:read', { path: targetPath })
         const result = await window.api.invoke('ai:edit', {
@@ -209,6 +214,8 @@ export function ChatPanel() {
       } catch (e: any) {
         setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
       }
+      if (editTimerRef.current) clearInterval(editTimerRef.current)
+      editTimerRef.current = null
       setIsStreaming(false)
       return
     }
@@ -402,10 +409,13 @@ export function ChatPanel() {
           )}
           {isStreaming && !streamContent && (
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{ borderRadius: '14px 14px 14px 4px', padding: '12px 16px', background: 'var(--bg-elevated)', display: 'flex', gap: 5, alignItems: 'center' }}>
+              <div style={{ borderRadius: '14px 14px 14px 4px', padding: '12px 16px', background: 'var(--bg-elevated)', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.2s', opacity: 0.7 }} />
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.4s', opacity: 0.7 }} />
+                {editMode && editElapsed > 0 && (
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 4 }}>{editElapsed}s</span>
+                )}
               </div>
             </div>
           )}
@@ -507,7 +517,7 @@ export function ChatPanel() {
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
               </svg>
               <span style={{ fontSize: 11, color: 'var(--accent-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (useEditorStore.getState().currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '未打开文件')}
+                {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '未打开文件')}
               </span>
               {editTarget && (
                 <button onClick={() => setEditTarget(null)} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
