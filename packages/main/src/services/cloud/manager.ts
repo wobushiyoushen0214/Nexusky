@@ -7,8 +7,13 @@ import { join } from 'path'
 import { existsSync, statSync } from 'fs'
 import { closeDatabase } from '../database'
 
-const offlineQueue: { vaultPath: string; filePath: string }[] = []
+const offlineQueue: { vaultPath: string; filePath: string }[] =
+  (store.get('offlineQueue') as { vaultPath: string; filePath: string }[] | undefined) || []
 let isOnline = true
+
+function persistQueue(): void {
+  store.set('offlineQueue', offlineQueue)
+}
 
 export function setOnlineStatus(online: boolean): void {
   isOnline = online
@@ -27,6 +32,7 @@ async function flushOfflineQueue(): Promise<void> {
       break
     }
   }
+  persistQueue()
 }
 
 export function getOfflineQueueSize(): number {
@@ -86,12 +92,14 @@ export async function pushFile(vaultPath: string, filePath: string): Promise<boo
   if (isExcluded(relPath)) return false
   if (!isOnline) {
     offlineQueue.push({ vaultPath, filePath })
+    persistQueue()
     return false
   }
   try {
     return await provider.pushFile(vaultPath, filePath)
   } catch {
     offlineQueue.push({ vaultPath, filePath })
+    persistQueue()
     return false
   }
 }
