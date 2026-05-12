@@ -1,9 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import mermaid from 'mermaid'
 
-mermaid.initialize({ startOnLoad: false, theme: 'dark', darkMode: true })
-
+let mermaidInstance: typeof import('mermaid').default | null = null
+let mermaidLoading: Promise<typeof import('mermaid').default> | null = null
 let mermaidId = 0
+
+async function getMermaid() {
+  if (mermaidInstance) return mermaidInstance
+  if (!mermaidLoading) {
+    mermaidLoading = import('mermaid').then((m) => {
+      mermaidInstance = m.default
+      mermaidInstance.initialize({ startOnLoad: false, theme: 'dark', darkMode: true })
+      return mermaidInstance
+    })
+  }
+  return mermaidLoading
+}
 
 export function MermaidRenderer({ code }: { code: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -12,11 +23,18 @@ export function MermaidRenderer({ code }: { code: string }) {
 
   useEffect(() => {
     if (!code.trim()) return
+    let cancelled = false
     const id = `mermaid-${++mermaidId}`
-    mermaid.render(id, code.trim()).then(
-      (result) => { setSvg(result.svg); setError('') },
-      (err) => { setError(err.message || '渲染失败'); setSvg('') }
-    )
+
+    getMermaid().then((mermaid) => {
+      if (cancelled) return
+      mermaid.render(id, code.trim()).then(
+        (result) => { if (!cancelled) { setSvg(result.svg); setError('') } },
+        (err) => { if (!cancelled) { setError(err.message || '渲染失败'); setSvg('') } }
+      )
+    })
+
+    return () => { cancelled = true }
   }, [code])
 
   if (error) {
