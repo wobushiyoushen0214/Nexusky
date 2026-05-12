@@ -52,6 +52,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const resultsRef = useRef<HTMLDivElement>(null)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -61,6 +62,19 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open || mode !== 'keyword' || !query.trim() || !vaultPath) return
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true)
+      setSelectedIndex(0)
+      const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
+      setResults(res)
+      setSearching(false)
+    }, 300)
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
+  }, [query, mode, vaultPath, open])
 
   const handleSearch = async () => {
     if (!query.trim() || !vaultPath) return
