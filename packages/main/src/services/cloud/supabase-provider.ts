@@ -8,6 +8,19 @@ function encodeStoragePath(relPath: string): string {
   return relPath.split('/').map((part) => encodeURIComponent(part)).join('/')
 }
 
+async function runConcurrent<T>(tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]> {
+  const results: T[] = []
+  let index = 0
+  async function worker() {
+    while (index < tasks.length) {
+      const i = index++
+      results[i] = await tasks[i]()
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker()))
+  return results
+}
+
 function collectLocalFiles(dirPath: string): string[] {
   const results: string[] = []
   function walk(dir: string): void {
@@ -113,6 +126,8 @@ export class SupabaseSyncProvider implements SyncProvider {
     const localFiles = collectLocalFiles(vaultPath)
     result.total = localFiles.length
 
+    const pushTasks: (() => Promise<void>)[] = []
+
     for (const filePath of localFiles) {
       const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
       const content = readFileSync(filePath, 'utf-8')
@@ -120,32 +135,43 @@ export class SupabaseSyncProvider implements SyncProvider {
       const remote = remoteMap.get(relPath)
 
       if (!remote) {
-        const ok = await this.pushFile(vaultPath, filePath)
-        if (ok) result.pushed++
-        else result.errors.push(`push failed: ${relPath}`)
+        pushTasks.push(async () => {
+          const ok = await this.pushFile(vaultPath, filePath)
+          if (ok) result.pushed++
+          else result.errors.push(`push failed: ${relPath}`)
+        })
       } else if (remote.hash !== localHash) {
         const localMtime = statSync(filePath).mtime
         const remoteMtime = new Date(remote.updatedAt)
         if (remoteMtime > localMtime) {
           result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
         } else {
-          const ok = await this.pushFile(vaultPath, filePath)
-          if (ok) result.pushed++
-          else result.errors.push(`push failed: ${relPath}`)
+          pushTasks.push(async () => {
+            const ok = await this.pushFile(vaultPath, filePath)
+            if (ok) result.pushed++
+            else result.errors.push(`push failed: ${relPath}`)
+          })
         }
       }
       remoteMap.delete(relPath)
     }
 
+    await runConcurrent(pushTasks, 5)
+
+    const pullTasks: (() => Promise<void>)[] = []
     for (const [relPath] of remoteMap) {
       const fullPath = join(vaultPath, relPath)
       if (!existsSync(fullPath)) {
-        const ok = await this.pullFile(vaultPath, relPath)
-        if (ok) result.pulled++
-        else result.errors.push(`pull failed: ${relPath}`)
         result.total++
+        pullTasks.push(async () => {
+          const ok = await this.pullFile(vaultPath, relPath)
+          if (ok) result.pulled++
+          else result.errors.push(`pull failed: ${relPath}`)
+        })
       }
     }
+
+    await runConcurrent(pullTasks, 5)
 
     return result
   }
