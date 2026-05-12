@@ -172,9 +172,56 @@
 
 | 功能 | 说明 |
 |------|------|
-| Windows 便携版 | dist/win-unpacked/Nexusky.exe |
-| GitHub Actions CI | 自动构建 Windows/Mac/Linux |
-| electron-builder | NSIS 安装包、DMG、AppImage |
+| Windows 安装包 | NSIS 安装程序，支持自定义安装目录、桌面快捷方式 |
+| macOS Universal | 单个 dmg 同时支持 Intel x86_64 和 Apple Silicon arm64 |
+| Linux 便携版 | AppImage，无需安装即可运行 |
+| GitHub Actions CI | 自动构建三平台并发布到 GitHub Releases |
+| 自动发布 | electron-builder 推送 tag 后自动创建公开 release |
+
+---
+
+## v0.1.5 性能优化与 Bug 修复
+
+### 性能优化
+
+| 优化项 | 说明 |
+|--------|------|
+| FTS5 全文搜索 | 用 SQLite FTS5 虚拟表替代逐文件暴力扫描，搜索速度从 O(n×文件大小) 降到 O(log n) |
+| 文件树浅加载 | refreshFiles 改用 file:list-shallow，子目录展开时按需加载，大 vault 打开速度显著提升 |
+| 知识图谱高亮 | 切换文件时只更新节点高亮样式，不再销毁重建整个力导向图，消除闪烁 |
+| Mermaid 动态导入 | 改为 dynamic import 按需加载，首屏 bundle 减少 2-3MB |
+| 右侧面板代码分割 | GraphView/ChatPanel/Settings 等用 React.lazy 拆分，首屏只加载编辑器核心 |
+| Store debounce 写入 | 配置文件写入改为 500ms 防抖合并，消除窗口 resize 等高频操作的磁盘抖动 |
+| WikiLink 增量装饰 | 装饰器用 plugin state 管理，只在文档变更时重算，选区移动不再触发全文扫描 |
+| Kanban 数据库查询 | 看板任务从 SQLite 查询而非逐文件读取，新增 tasks 表存储 checkbox 项 |
+| QuickSwitcher 限流 | 空查询时只显示前 50 条结果，避免大 vault 渲染卡顿 |
+| Supabase 并发同步 | push/pull 操作从串行改为 5 并发执行，提速 3-5 倍 |
+| 索引分批处理 | index-vault 每 20 个文件让出事件循环，避免大 vault 索引时主进程冻结 |
+| Embedding 缓存上限 | 限制最多 2000 条 chunk 缓存，按 updated_at DESC 排序，防止内存膨胀 |
+| 编辑器滚动优化 | selectionUpdate 改为 80ms debounce 且去除 smooth 动画，连续按方向键不再叠加滚动 |
+| 代码块折叠优化 | MutationObserver 加 300ms debounce 且仅在节点新增时触发，全屏切换不再卡顿 |
+
+### Bug 修复
+
+| 修复项 | 说明 |
+|--------|------|
+| AI 多模态消息 | 修复 AI chat 语义搜索处理 ChatContentPart[] 类型 content 的崩溃问题 |
+| AI 补全过期结果 | 添加 AbortController，新请求发起时取消旧请求，防止幽灵文本闪烁 |
+| Watcher 重复通知 | 结构变更和内容变更事件分离，消除同一文件收到多次 file:changed 的问题 |
+| AI 消息文字溢出 | 消息气泡添加 wordBreak/overflowWrap，长 URL/路径自动换行 |
+| macOS 15 图标白边 | PNG 改为全填深色背景方形，与 macOS 自动圆角遮罩匹配 |
+| dompurify 构建失败 | 添加 resolve.alias 指向 pnpm store 实际 ESM 文件 |
+| 架构错配崩溃 | macOS 改为 universal binary，解决 x64 主进程加载 arm64 native module 的 dlopen 错误 |
+
+---
+
+## 历史版本资产格式
+
+| 平台 | 文件名 | 安装方式 |
+|------|--------|----------|
+| Windows | `Nexusky-Setup-X.X.X.exe` | 双击运行 NSIS 安装程序 |
+| macOS | `Nexusky-X.X.X-universal.dmg` | 双击挂载 dmg，拖拽 Nexusky.app 到 Applications |
+| Linux | `Nexusky-X.X.X.AppImage` | `chmod +x` 后双击运行，无需安装 |
 
 ---
 
@@ -287,9 +334,20 @@
 
 ### 性能优化
 - [x] 文件监听（chokidar）自动刷新文件树
-- [x] AI 补全性能优化（缓存/限制 token/非流式）
+- [x] AI 补全性能优化（缓存/限制 token/非流式 + AbortController）
 - [x] 虚拟滚动文件树（万级文件）
 - [x] 文件列表懒加载（展开时按需加载子目录）
+- [x] FTS5 全文搜索
+- [x] 图谱 simulation 持久化（切换文件只更新高亮）
+- [x] Mermaid 动态 import
+- [x] 右侧面板 React.lazy 代码分割
+- [x] Store debounce 写入
+- [x] WikiLink 增量装饰
+- [x] Kanban 任务数据库查询
+- [x] QuickSwitcher 结果限制
+- [x] Supabase 同步并发
+- [x] index-vault 分批处理
+- [x] Embedding 缓存上限
 - [ ] 向量索引增量更新优化
 - [ ] Worker Thread 后台索引
 - [ ] 数据库查询缓存

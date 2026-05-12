@@ -211,3 +211,40 @@ abstract class BaseAIProvider {
 - Phase 4: 搜索框输入自然语言能返回语义相关的笔记
 - Phase 5: 对话中提问能引用笔记内容并标注来源
 - Phase 6: 打包后的应用能正常安装运行
+
+---
+
+## v0.1.5 已发布（2026-05-12）
+
+### 16 项性能优化
+
+1. **FTS5 全文搜索** — 替代逐文件暴力扫描
+2. **文件树浅加载** — refreshFiles 改用 file:list-shallow，子目录懒加载
+3. **图谱 simulation 持久化** — 切换文件只更新高亮，不重建力导向图
+4. **Mermaid 动态 import** — 首屏 bundle 减少 2-3MB
+5. **AI 多模态消息修复** — 语义搜索正确处理 ChatContentPart[]
+6. **右侧面板 React.lazy** — 代码分割，首屏加载提速
+7. **Store debounce 写入** — 500ms 防抖合并配置文件写入
+8. **WikiLink 增量装饰** — 用 plugin state 管理，选区移动不重算
+9. **dompurify 构建修复** — resolve.alias 指向 pnpm store ESM 文件
+10. **Kanban 数据库查询** — 新增 tasks 表，替代逐文件读取
+11. **AI 补全 AbortController** — 防止过期结果覆盖
+12. **Watcher 通知去重** — 结构变更和内容变更事件分离
+13. **QuickSwitcher 结果限流** — 空查询显示前 50 条
+14. **Supabase 同步 5 并发** — push/pull 提速 3-5 倍
+15. **index-vault 分批处理** — 每 20 文件让出事件循环
+16. **Embedding 缓存上限** — 最多 2000 chunk 防内存膨胀
+
+### Bug 修复
+
+- AI 消息长 URL 自动换行（wordBreak/overflowWrap）
+- 全屏切换卡顿（selectionUpdate 80ms debounce + MutationObserver 300ms debounce）
+- macOS 15 应用图标白边（PNG 改为全填深色背景方形）
+- better-sqlite3 架构错配（macOS 改为 universal binary）
+
+### 打包改进
+
+- macOS 单一 universal.dmg（同时支持 Intel x86_64 + Apple Silicon arm64）
+- CI 配置 `--universal` 替代独立 `--x64 --arm64`
+- electron-builder 默认 release 而非 draft（用户能直接看到下载）
+- 历史 v0.1.0~v0.1.4 release 从 draft 转为 published
