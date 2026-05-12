@@ -120,7 +120,7 @@ export function ChatPanel() {
   }, [])
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: isStreaming ? 'auto' : 'smooth' })
   }, [messages, streamContent])
 
   useEffect(() => {
