@@ -363,8 +363,42 @@ export function ChatPanel() {
     openFile(path)
   }
 
+  const [dragOver, setDragOver] = useState(false)
+
+  const handlePanelDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('text/plain')) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+      setDragOver(true)
+    }
+  }
+
+  const handlePanelDragLeave = () => {
+    setDragOver(false)
+  }
+
+  const handlePanelDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const text = e.dataTransfer.getData('text/plain')
+    if (text && text.length >= 3 && !text.endsWith('.md')) {
+      const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '拖入文本'
+      setAttachedSelections((prev) => [...prev, { text: text.slice(0, 2000), source }])
+    }
+  }
+
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
+      onDragOver={handlePanelDragOver}
+      onDragLeave={handlePanelDragLeave}
+      onDrop={handlePanelDrop}
+    >
+      {dragOver && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(124,110,240,0.06)', border: '2px dashed var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <span style={{ fontSize: 13, color: 'var(--accent-text)', fontWeight: 500 }}>松开以引用选中文本</span>
+        </div>
+      )}
       {/* Header */}
       <div style={{ padding: '0 14px', height: 36, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
         {messages.length > 0 && (
