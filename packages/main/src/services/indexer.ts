@@ -53,6 +53,11 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const links = extractLinks(content)
   const tags = extractTags(content)
 
+  const upsertFtsMap = db.prepare('INSERT OR IGNORE INTO notes_fts_map (note_id) VALUES (?)')
+  const getFtsRowid = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?')
+  const deleteFts = db.prepare('DELETE FROM notes_fts WHERE rowid = ?')
+  const insertFts = db.prepare('INSERT INTO notes_fts (rowid, title, content) VALUES (?, ?, ?)')
+
   const transaction = db.transaction(() => {
     upsert.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash)
     deleteLinks.run(id)
@@ -65,6 +70,13 @@ export function indexNote(vaultPath: string, filePath: string): void {
       const row = getTagId.get(tag) as { id: number } | undefined
       if (row) insertNoteTag.run(id, row.id)
     }
+
+    upsertFtsMap.run(id)
+    const ftsRow = getFtsRowid.get(id) as { rowid: number } | undefined
+    if (ftsRow) {
+      deleteFts.run(ftsRow.rowid)
+      insertFts.run(ftsRow.rowid, title, content)
+    }
   })
 
   transaction()
@@ -74,6 +86,14 @@ export function indexNote(vaultPath: string, filePath: string): void {
 export function removeNoteIndex(vaultPath: string, filePath: string): void {
   const db = getDatabase(vaultPath)
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
+  const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
+  if (note) {
+    const ftsRow = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?').get(note.id) as { rowid: number } | undefined
+    if (ftsRow) {
+      db.prepare('DELETE FROM notes_fts WHERE rowid = ?').run(ftsRow.rowid)
+      db.prepare('DELETE FROM notes_fts_map WHERE note_id = ?').run(note.id)
+    }
+  }
   db.prepare('DELETE FROM notes WHERE file_path = ?').run(relPath)
 }
 

@@ -52,24 +52,40 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('db:fulltext-search', async (_event, params: { vaultPath: string; query: string }) => {
-    const files = collectMarkdownFiles(params.vaultPath)
-    const results: { filePath: string; title: string; line: string; lineNumber: number }[] = []
-    const query = params.query.toLowerCase()
+    const db = getDatabase(params.vaultPath)
+    const ftsQuery = params.query.replace(/['"]/g, '').trim()
+    if (!ftsQuery) return []
 
-    for (const file of files) {
-      const content = readFileSync(file, 'utf-8')
-      const lines = content.split('\n')
-      const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
-      const title = lines.find((l) => l.startsWith('# '))?.replace(/^#\s+/, '') || relPath.replace(/\.md$/, '')
+    try {
+      return db.prepare(`
+        SELECT n.file_path as filePath, n.title, snippet(notes_fts, 1, '<<', '>>', '...', 32) as line, 0 as lineNumber
+        FROM notes_fts
+        JOIN notes_fts_map m ON m.rowid = notes_fts.rowid
+        JOIN notes n ON n.id = m.note_id
+        WHERE notes_fts MATCH ?
+        ORDER BY rank
+        LIMIT 50
+      `).all(ftsQuery)
+    } catch {
+      const files = collectMarkdownFiles(params.vaultPath)
+      const results: { filePath: string; title: string; line: string; lineNumber: number }[] = []
+      const query = params.query.toLowerCase()
 
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].toLowerCase().includes(query)) {
-          results.push({ filePath: relPath, title, line: lines[i].trim(), lineNumber: i + 1 })
-          if (results.length >= 50) return results
+      for (const file of files) {
+        const content = readFileSync(file, 'utf-8')
+        const lines = content.split('\n')
+        const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+        const title = lines.find((l) => l.startsWith('# '))?.replace(/^#\s+/, '') || relPath.replace(/\.md$/, '')
+
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].toLowerCase().includes(query)) {
+            results.push({ filePath: relPath, title, line: lines[i].trim(), lineNumber: i + 1 })
+            if (results.length >= 50) return results
+          }
         }
       }
+      return results
     }
-    return results
   })
 
   ipcMain.handle('db:get-tags', async (_event, params: { vaultPath: string }) => {

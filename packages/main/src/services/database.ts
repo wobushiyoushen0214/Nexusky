@@ -70,5 +70,31 @@ function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_links_source ON links(source_note_id);
     CREATE INDEX IF NOT EXISTS idx_links_target ON links(target_note_id);
     CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(file_path);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+      title,
+      content,
+      content_rowid='rowid',
+      tokenize='unicode61'
+    );
+
+    CREATE TABLE IF NOT EXISTS notes_fts_map (
+      rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+      note_id TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS chunks (
+      id TEXT PRIMARY KEY,
+      note_id TEXT NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      heading_context TEXT,
+      token_count INTEGER,
+      embedding BLOB,
+      embedding_model TEXT,
+      FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_chunks_note ON chunks(note_id);
   `)
 }
