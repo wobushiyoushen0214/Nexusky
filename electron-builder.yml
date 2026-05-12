@@ -13,6 +13,7 @@ asarUnpack:
   - node_modules/better-sqlite3/**/*
 publish:
   provider: github
+  releaseType: release
 win:
   target:
     - target: nsis
