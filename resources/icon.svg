@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1e1e1e"/>
@@ -14,47 +14,50 @@
     </radialGradient>
   </defs>
 
-  <!-- Background rounded square -->
-  <rect width="512" height="512" rx="108" fill="url(#bg-grad)"/>
+  <!-- Full-bleed background: no rounded corners, macOS will mask it -->
+  <rect width="1024" height="1024" fill="url(#bg-grad)"/>
 
-  <!-- Subtle glow behind center -->
-  <circle cx="256" cy="256" r="140" fill="url(#glow)"/>
+  <!-- Content area scaled and centered (824x824 safe area per Apple HIG) -->
+  <g transform="translate(100, 100) scale(1.609)">
+    <!-- Subtle glow behind center -->
+    <circle cx="256" cy="256" r="140" fill="url(#glow)"/>
 
-  <!-- Neural connections (synapses) -->
-  <g stroke="url(#accent-grad)" stroke-width="2" stroke-opacity="0.4" fill="none">
-    <path d="M256 180 L180 260"/>
-    <path d="M256 180 L330 240"/>
-    <path d="M256 180 L256 100"/>
-    <path d="M180 260 L140 340"/>
-    <path d="M180 260 L240 340"/>
-    <path d="M330 240 L380 320"/>
-    <path d="M330 240 L290 340"/>
-    <path d="M256 100 L180 260"/>
-    <path d="M256 100 L330 240"/>
-    <path d="M140 340 L240 340"/>
-    <path d="M290 340 L380 320"/>
-    <path d="M240 340 L290 340"/>
+    <!-- Neural connections (synapses) -->
+    <g stroke="url(#accent-grad)" stroke-width="2" stroke-opacity="0.4" fill="none">
+      <path d="M256 180 L180 260"/>
+      <path d="M256 180 L330 240"/>
+      <path d="M256 180 L256 100"/>
+      <path d="M180 260 L140 340"/>
+      <path d="M180 260 L240 340"/>
+      <path d="M330 240 L380 320"/>
+      <path d="M330 240 L290 340"/>
+      <path d="M256 100 L180 260"/>
+      <path d="M256 100 L330 240"/>
+      <path d="M140 340 L240 340"/>
+      <path d="M290 340 L380 320"/>
+      <path d="M240 340 L290 340"/>
+    </g>
+
+    <!-- Secondary nodes (smaller) -->
+    <g fill="#7c6ef5" fill-opacity="0.6">
+      <circle cx="256" cy="100" r="8"/>
+      <circle cx="140" cy="340" r="7"/>
+      <circle cx="240" cy="340" r="7"/>
+      <circle cx="290" cy="340" r="7"/>
+      <circle cx="380" cy="320" r="7"/>
+    </g>
+
+    <!-- Primary nodes -->
+    <g fill="#7c6ef5">
+      <circle cx="180" cy="260" r="12"/>
+      <circle cx="330" cy="240" r="11"/>
+    </g>
+
+    <!-- Center node (main) -->
+    <circle cx="256" cy="180" r="18" fill="url(#accent-grad)"/>
+    <circle cx="256" cy="180" r="8" fill="#ffffff" fill-opacity="0.8"/>
+
+    <!-- Brand mark: stylized N -->
+    <text x="256" y="440" text-anchor="middle" font-family="Inter, sans-serif" font-size="48" font-weight="700" fill="#dcddde" letter-spacing="-2">N</text>
   </g>
-
-  <!-- Secondary nodes (smaller) -->
-  <g fill="#7c6ef5" fill-opacity="0.6">
-    <circle cx="256" cy="100" r="8"/>
-    <circle cx="140" cy="340" r="7"/>
-    <circle cx="240" cy="340" r="7"/>
-    <circle cx="290" cy="340" r="7"/>
-    <circle cx="380" cy="320" r="7"/>
-  </g>
-
-  <!-- Primary nodes -->
-  <g fill="#7c6ef5">
-    <circle cx="180" cy="260" r="12"/>
-    <circle cx="330" cy="240" r="11"/>
-  </g>
-
-  <!-- Center node (main) -->
-  <circle cx="256" cy="180" r="18" fill="url(#accent-grad)"/>
-  <circle cx="256" cy="180" r="8" fill="#ffffff" fill-opacity="0.8"/>
-
-  <!-- Brand mark: stylized N -->
-  <text x="256" y="440" text-anchor="middle" font-family="Inter, sans-serif" font-size="48" font-weight="700" fill="#dcddde" letter-spacing="-2">N</text>
 </svg>
