@@ -58,6 +58,14 @@ export const useKeyBindingStore = create<KeyBindingState>((set, get) => ({
   },
 
   setCustomKey: (id, key) => {
+    if (key) {
+      const conflict = get().bindings.find((b) => b.id !== id && (b.customKey || b.defaultKey) === key)
+      if (conflict) {
+        const { toast } = require('./toast-store')
+        toast(`快捷键 ${key} 与「${conflict.label}」冲突`, 'error')
+        return
+      }
+    }
     const bindings = get().bindings.map((b) => b.id === id ? { ...b, customKey: key } : b)
     saveBindings(bindings)
     set({ bindings })
