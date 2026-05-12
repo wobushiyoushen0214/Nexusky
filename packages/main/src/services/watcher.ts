@@ -9,7 +9,7 @@ export function startWatching(vaultPath: string): void {
   stopWatching()
 
   watcher = chokidar.watch(vaultPath, {
-    ignored: /(^|[\/\\])\.|node_modules/,
+    ignored: /(^|[\/\\])(\.|node_modules|\.history)/,
     persistent: true,
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
