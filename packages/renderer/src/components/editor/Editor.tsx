@@ -98,6 +98,10 @@ export function Editor() {
       if (markdownTimer.current) clearTimeout(markdownTimer.current)
       const { isDirty } = useEditorStore.getState()
       if (!isDirty) useEditorStore.getState().setDirty(true)
+      const text = editor.state.doc.textContent
+      const chars = text.length
+      const words = text.trim().split(/\s+/).filter(Boolean).length
+      setLiveStats({ chars, words, readTime: Math.max(1, Math.ceil(words / 200)) })
       markdownTimer.current = setTimeout(() => {
         const markdown = editor.storage.markdown.getMarkdown()
         setContent(markdown)
@@ -233,13 +237,16 @@ export function Editor() {
   }, [])
 
   // Word count
+  const [liveStats, setLiveStats] = useState({ chars: 0, words: 0, readTime: 0 })
+
   const stats = useMemo(() => {
+    if (liveStats.chars > 0) return liveStats
     if (!content) return { chars: 0, words: 0, readTime: 0 }
     const chars = content.length
     const words = content.trim().split(/\s+/).filter(Boolean).length
     const readTime = Math.max(1, Math.ceil(words / 200))
     return { chars, words, readTime }
-  }, [content])
+  }, [content, liveStats])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
