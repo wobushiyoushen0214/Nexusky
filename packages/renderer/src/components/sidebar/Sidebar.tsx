@@ -46,14 +46,16 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const [defaultExpanded, setDefaultExpanded] = useState(true)
   const [vaultMenu, setVaultMenu] = useState(false)
   const vaultMenuRef = useRef<HTMLDivElement>(null)
+  const vaultMenuButtonRef = useRef<HTMLButtonElement>(null)
   const [recentVaults, setRecentVaults] = useState<string[]>([])
 
   useEffect(() => {
     if (!vaultMenu) return
     const handleClick = (e: MouseEvent) => {
-      if (vaultMenuRef.current && !vaultMenuRef.current.contains(e.target as Node)) {
-        setVaultMenu(false)
-      }
+      const target = e.target as Node
+      if (vaultMenuRef.current?.contains(target)) return
+      if (vaultMenuButtonRef.current?.contains(target)) return
+      setVaultMenu(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -100,6 +102,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       {/* Header */}
       <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <button
+          ref={vaultMenuButtonRef}
           onClick={() => setVaultMenu(!vaultMenu)}
           style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}
           title="切换笔记空间"
@@ -309,13 +312,15 @@ function SidebarFooter() {
   const openFile = useEditorStore((s) => s.openFile)
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!moreOpen) return
     const handleClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false)
-      }
+      const target = e.target as Node
+      if (moreRef.current?.contains(target)) return
+      if (moreButtonRef.current?.contains(target)) return
+      setMoreOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -341,6 +346,7 @@ function SidebarFooter() {
         )}
         {/* More */}
         <button
+          ref={moreButtonRef}
           onClick={() => setMoreOpen(!moreOpen)}
           style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: moreOpen ? 'var(--bg-elevated)' : 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
           title="更多"
