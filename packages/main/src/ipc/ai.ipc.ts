@@ -32,7 +32,10 @@ export function registerAiIPC(): void {
     if (params.vaultPath) {
       const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
       if (lastUserMsg) {
-        const results = await semanticSearch(params.vaultPath, lastUserMsg.content, 5)
+        const queryText = typeof lastUserMsg.content === 'string'
+          ? lastUserMsg.content
+          : lastUserMsg.content.filter((p) => p.type === 'text').map((p) => p.text).join(' ')
+        const results = await semanticSearch(params.vaultPath, queryText, 5)
         if (results.length > 0) {
           const context = results.map((r, i) => `[^${i + 1}] ${r.title}\n${r.chunk}`).join('\n\n---\n\n')
           const systemMsg: ChatMessage = {
