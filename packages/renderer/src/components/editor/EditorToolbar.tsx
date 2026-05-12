@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { Editor } from '@tiptap/react'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -6,7 +7,7 @@ interface ToolbarProps {
   editor: Editor
 }
 
-export function EditorToolbar({ editor }: ToolbarProps) {
+export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProps) {
   const { previewMode, togglePreviewMode } = useUIStore()
   const btnStyle = (active: boolean): React.CSSProperties => ({
     width: 28,
@@ -238,4 +239,4 @@ export function EditorToolbar({ editor }: ToolbarProps) {
       </button>
     </div>
   )
-}
+})
