@@ -4,6 +4,8 @@ import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { safeGetJSON, safeSetJSON, safeRemove } from '../../utils/storage'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
 
 interface Message {
   id: string
@@ -602,9 +604,6 @@ export function ChatPanel() {
     </div>
   )
 }
-
-import DOMPurify from 'dompurify'
-import { marked } from 'marked'
 
 marked.setOptions({ breaks: true, gfm: true })
 
