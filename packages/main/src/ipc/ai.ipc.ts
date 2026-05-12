@@ -198,7 +198,34 @@ ${context}
 请直接输出修改后的完整笔记内容，不要添加任何解释、代码块标记或前后缀。
 只输出修改后的 Markdown 内容本身。`
 
-    let textContent = `文件: ${params.filePath}\n\n当前内容:\n${params.fileContent}\n\n`
+    let fileContent = params.fileContent
+    const TOKEN_LIMIT = 12000
+    const estimatedTokens = Math.ceil(fileContent.length / 4)
+
+    if (estimatedTokens > TOKEN_LIMIT) {
+      const sections = fileContent.split(/(?=^#{1,3}\s)/m)
+      const instruction = params.instruction.toLowerCase()
+      const scored = sections.map((s, i) => ({
+        section: s,
+        index: i,
+        score: instruction.split(/\s+/).filter((w) => w.length > 1 && s.toLowerCase().includes(w)).length
+      }))
+      scored.sort((a, b) => b.score - a.score)
+      let selected: typeof scored = []
+      let totalLen = 0
+      for (const s of scored) {
+        if (totalLen + s.section.length > TOKEN_LIMIT * 4) break
+        selected.push(s)
+        totalLen += s.section.length
+      }
+      if (selected.length < sections.length) {
+        selected.sort((a, b) => a.index - b.index)
+        fileContent = selected.map((s) => s.section).join('')
+        fileContent = `[注意: 以下为文件的相关片段，非完整内容。请基于这些片段输出修改后的完整内容]\n\n${fileContent}`
+      }
+    }
+
+    let textContent = `文件: ${params.filePath}\n\n当前内容:\n${fileContent}\n\n`
     if (params.history && params.history.length > 0) {
       textContent += `之前的修改指令（已应用）:\n${params.history.map((h, i) => `${i + 1}. ${h}`).join('\n')}\n\n`
     }

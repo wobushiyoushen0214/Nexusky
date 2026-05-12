@@ -70,12 +70,13 @@ function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_links_source ON links(source_note_id);
     CREATE INDEX IF NOT EXISTS idx_links_target ON links(target_note_id);
     CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(file_path);
+    CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
 
     CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
       title,
       content,
       content_rowid='rowid',
-      tokenize='unicode61'
+      tokenize='unicode61 categories "L* N* Co"'
     );
 
     CREATE TABLE IF NOT EXISTS notes_fts_map (
@@ -107,5 +108,15 @@ function initSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_tasks_note ON tasks(note_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_done ON tasks(done);
+
+    CREATE TABLE IF NOT EXISTS conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      sources TEXT,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(created_at DESC);
   `)
 }

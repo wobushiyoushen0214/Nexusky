@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo, useCallback } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
@@ -78,8 +78,14 @@ export function ChatPanel() {
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => { saveHistory(messages) }, [messages])
+  const debouncedSave = useCallback((msgs: Message[]) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => saveHistory(msgs), 500)
+  }, [])
+
+  useEffect(() => { debouncedSave(messages) }, [messages, debouncedSave])
 
   useEffect(() => {
     const handler = (event: { type: string; content: string }) => {
@@ -602,9 +608,14 @@ import { marked } from 'marked'
 
 marked.setOptions({ breaks: true, gfm: true })
 
+const PURIFY_CONFIG = {
+  FORBID_TAGS: ['form', 'iframe', 'object', 'embed', 'script', 'style', 'link', 'meta'],
+  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
+}
+
 function renderMarkdown(md: string): string {
   const html = marked.parse(md, { async: false }) as string
-  return DOMPurify.sanitize(html)
+  return DOMPurify.sanitize(html, PURIFY_CONFIG)
 }
 
 const MessageBubble = memo(function MessageBubble({ msg }: { msg: Message }) {

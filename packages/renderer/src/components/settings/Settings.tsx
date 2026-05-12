@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
+import { ConfirmModal } from '../ConfirmModal'
 
 interface ProviderConfig {
   id: string
@@ -46,6 +47,7 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [editing, setEditing] = useState<ProviderConfig | null>(null)
   const [cloudConfig, setCloudConfig] = useState({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
   const [cloudUser, setCloudUser] = useState<{ email: string } | null>(null)
+  const [detectConfirm, setDetectConfirm] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -152,42 +154,7 @@ export function Settings({ open, onClose }: SettingsProps) {
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>已配置</span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
-                  onClick={async () => {
-                    const detected = await window.api.invoke('ai:detect-local-config', undefined)
-                    let added = 0
-                    const updated = [...providers]
-                    if (detected.claude) {
-                      const exists = updated.find((p) => p.apiKey === detected.claude!.apiKey)
-                      if (!exists) {
-                        const hasCustomBase = !!detected.claude.baseUrl
-                        const np = {
-                          id: crypto.randomUUID(),
-                          name: hasCustomBase ? 'Claude 中转站 (本地检测)' : 'Claude (本地检测)',
-                          type: (hasCustomBase ? 'custom' : 'claude') as any,
-                          baseUrl: hasCustomBase ? detected.claude.baseUrl + '/v1' : '',
-                          apiKey: detected.claude.apiKey,
-                          model: 'claude-sonnet-4-6',
-                          enabled: true
-                        }
-                        updated.push(np)
-                        added++
-                      }
-                    }
-                    if (detected.openai) {
-                      const exists = updated.find((p) => p.apiKey === detected.openai!.apiKey)
-                      if (!exists) {
-                        const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4.1-mini', enabled: true }
-                        updated.push(np)
-                        added++
-                      }
-                    }
-                    if (added > 0) {
-                      saveProviders(updated)
-                      toast(`已检测并添加 ${added} 个 AI 配置`, 'success')
-                    } else {
-                      toast('未检测到本地 AI 配置，或已存在', 'info')
-                    }
-                  }}
+                  onClick={() => setDetectConfirm(true)}
                   style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: 'pointer', padding: '3px 8px', borderRadius: 4 }}
                 >
                   自动检测
@@ -310,6 +277,50 @@ export function Settings({ open, onClose }: SettingsProps) {
           {tab === 'keys' && <KeyBindingsTab />}
         </div>
       </div>
+      <ConfirmModal
+        open={detectConfirm}
+        title="自动检测 AI 配置"
+        message="将读取本地 Claude Code / Codex 配置文件中的 API Key。确认继续？"
+        confirmText="检测"
+        onConfirm={async () => {
+          setDetectConfirm(false)
+          const detected = await window.api.invoke('ai:detect-local-config', undefined)
+          let added = 0
+          const updated = [...providers]
+          if (detected.claude) {
+            const exists = updated.find((p: any) => p.apiKey === detected.claude!.apiKey)
+            if (!exists) {
+              const hasCustomBase = !!detected.claude.baseUrl
+              const np = {
+                id: crypto.randomUUID(),
+                name: hasCustomBase ? 'Claude 中转站 (本地检测)' : 'Claude (本地检测)',
+                type: (hasCustomBase ? 'custom' : 'claude') as any,
+                baseUrl: hasCustomBase ? detected.claude.baseUrl + '/v1' : '',
+                apiKey: detected.claude.apiKey,
+                model: 'claude-sonnet-4-6',
+                enabled: true
+              }
+              updated.push(np)
+              added++
+            }
+          }
+          if (detected.openai) {
+            const exists = updated.find((p: any) => p.apiKey === detected.openai!.apiKey)
+            if (!exists) {
+              const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4.1-mini', enabled: true }
+              updated.push(np)
+              added++
+            }
+          }
+          if (added > 0) {
+            saveProviders(updated)
+            toast(`已检测并添加 ${added} 个 AI 配置`, 'success')
+          } else {
+            toast('未检测到本地 AI 配置，或已存在', 'info')
+          }
+        }}
+        onCancel={() => setDetectConfirm(false)}
+      />
     </div>
   )
 }

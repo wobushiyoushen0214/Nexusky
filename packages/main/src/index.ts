@@ -10,6 +10,14 @@ import { registerExportIPC } from './ipc/export.ipc'
 import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
 
+process.on('uncaughtException', (error) => {
+  console.error('[uncaughtException]', error)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason)
+})
+
 let mainWindow: BrowserWindow | null = null
 
 interface WindowBounds {

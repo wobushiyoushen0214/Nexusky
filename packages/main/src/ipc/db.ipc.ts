@@ -137,6 +137,31 @@ export function registerDbIPC(): void {
     pushIndex(params.vaultPath).catch(() => {})
     return { embedded }
   })
+
+  ipcMain.handle('db:chat-history-load', async (_event, params: { vaultPath: string }) => {
+    const db = getDatabase(params.vaultPath)
+    const rows = db.prepare(
+      'SELECT id, role, content, sources, created_at as createdAt FROM conversations ORDER BY created_at ASC LIMIT 200'
+    ).all() as { id: number; role: string; content: string; sources: string | null; createdAt: number }[]
+    return rows.map((r) => ({
+      id: String(r.id),
+      role: r.role,
+      content: r.content,
+      sources: r.sources ? JSON.parse(r.sources) : undefined
+    }))
+  })
+
+  ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: string; content: string; sources?: any[] }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare(
+      'INSERT INTO conversations (role, content, sources) VALUES (?, ?, ?)'
+    ).run(params.role, params.content, params.sources ? JSON.stringify(params.sources) : null)
+  })
+
+  ipcMain.handle('db:chat-history-clear', async (_event, params: { vaultPath: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('DELETE FROM conversations').run()
+  })
 }
 
 function collectMarkdownFiles(dirPath: string): string[] {

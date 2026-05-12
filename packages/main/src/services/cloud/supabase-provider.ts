@@ -185,6 +185,8 @@ export class SupabaseSyncProvider implements SyncProvider {
     const remoteFiles = await this.listRemoteFiles()
     result.total = remoteFiles.length
 
+    const pullTasks: (() => Promise<void>)[] = []
+
     for (const remote of remoteFiles) {
       const fullPath = join(vaultPath, remote.path)
       let needPull = false
@@ -198,11 +200,15 @@ export class SupabaseSyncProvider implements SyncProvider {
       }
 
       if (needPull) {
-        const ok = await this.pullFile(vaultPath, remote.path)
-        if (ok) result.pulled++
-        else result.errors.push(`pull failed: ${remote.path}`)
+        pullTasks.push(async () => {
+          const ok = await this.pullFile(vaultPath, remote.path)
+          if (ok) result.pulled++
+          else result.errors.push(`pull failed: ${remote.path}`)
+        })
       }
     }
+
+    await runConcurrent(pullTasks, 5)
 
     return result
   }

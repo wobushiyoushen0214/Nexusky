@@ -138,4 +138,14 @@ export function registerCloudIPC(): void {
   ipcMain.handle('cloud:get-queue-size', () => {
     return getOfflineQueueSize()
   })
+
+  ipcMain.handle('cloud:resolve-conflict', async (_event, params: { vaultPath: string; path: string; resolution: 'local' | 'remote' }) => {
+    if (params.resolution === 'local') {
+      const { join } = require('path')
+      const fullPath = join(params.vaultPath, params.path)
+      return pushFile(params.vaultPath, fullPath)
+    } else {
+      return pullFile(params.vaultPath, params.path)
+    }
+  })
 }

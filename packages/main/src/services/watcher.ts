@@ -12,7 +12,6 @@ export function startWatching(vaultPath: string): void {
     ignored: /(^|[\/\\])\.|node_modules/,
     persistent: true,
     ignoreInitial: true,
-    depth: 10,
     awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
   })
 

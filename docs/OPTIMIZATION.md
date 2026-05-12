@@ -1,0 +1,40 @@
+# 优化计划
+
+> 基于代码审查发现的 17 项可优化点，按优先级排序逐项实施。
+
+## 性能优化
+
+| # | 项目 | 状态 | 说明 |
+|---|------|------|------|
+| 1 | 语义搜索优化 | ✅ 已完成 | Float32Array + 预计算 norm + top-K 剪枝，避免全量排序 |
+| 2 | Embedding 批量限流 | ✅ 已完成 | 分批 20 个发送 + 指数退避重试（最多 3 次） |
+| 3 | ChatPanel 持久化 debounce | ✅ 已完成 | saveHistory 加 500ms 防抖，减少序列化开销 |
+| 4 | Editor Store 细粒度订阅 | ✅ 已完成 | 拆分为独立 selector，避免无关字段变化触发重渲染 |
+| 5 | Supabase pullAll 并发 | ✅ 已完成 | 串行改为 runConcurrent 5 并发下载 |
+
+## 架构改进
+
+| # | 项目 | 状态 | 说明 |
+|---|------|------|------|
+| 6 | 对话历史迁移 SQLite | ✅ 已完成 | 新建 conversations 表 + IPC 接口（load/append/clear） |
+| 7 | notes 表 updated_at 索引 | ✅ 已完成 | 添加 DESC 索引加速排序查询 |
+| 8 | FTS5 中文分词优化 | ✅ 已完成 | tokenize 改为 unicode61 categories "L* N* Co"，改善 CJK 字符边界识别 |
+| 9 | Watcher depth 限制移除 | ✅ 已完成 | 去掉 depth:10 硬编码，支持任意深度目录 |
+| 10 | AI edit 上下文裁剪 | ✅ 已完成 | 大文件按 heading 分段，只发送与指令相关的片段 |
+
+## 功能扩展
+
+| # | 项目 | 状态 | 说明 |
+|---|------|------|------|
+| 11 | 测试基础设施 | ✅ 已完成 | 添加 Vitest + embedding/indexer 测试用例 |
+| 12 | 同步冲突解决 | ✅ 已完成 | 添加 cloud:resolve-conflict IPC，支持选择保留本地/远端 |
+| 13 | 向量索引增量更新 | ✅ 已完成 | 对比 chunk content，只对变化的 chunk 调用 embedding API |
+| 14 | 崩溃/错误上报 | ✅ 已完成 | React ErrorBoundary + 主进程 uncaughtException/unhandledRejection |
+| 15 | Undo 历史持久化 | ✅ 已完成 | 切换标签时保存/恢复 ProseMirror EditorState（含 undo 历史） |
+
+## 安全性
+
+| # | 项目 | 状态 | 说明 |
+|---|------|------|------|
+| 16 | 本地配置读取确认 | ✅ 已完成 | 自动检测前弹出 ConfirmModal 告知用户将读取哪些文件 |
+| 17 | DOMPurify 配置加固 | ✅ 已完成 | 禁止 form/iframe/object/embed/script/style 等危险标签和事件属性 |

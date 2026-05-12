@@ -32,7 +32,20 @@ import { FindReplace } from './FindReplace'
 import { MermaidRenderer } from './MermaidRenderer'
 
 export function Editor() {
-  const { content, currentFilePath, setContent, isDirty, tabs, activeTabIndex, closeTab, switchTab, reorderTab, closeOtherTabs, closeTabsToRight, splitPath, splitContent, closeSplit } = useEditorStore()
+  const content = useEditorStore((s) => s.content)
+  const currentFilePath = useEditorStore((s) => s.currentFilePath)
+  const setContent = useEditorStore((s) => s.setContent)
+  const isDirty = useEditorStore((s) => s.isDirty)
+  const tabs = useEditorStore((s) => s.tabs)
+  const activeTabIndex = useEditorStore((s) => s.activeTabIndex)
+  const closeTab = useEditorStore((s) => s.closeTab)
+  const switchTab = useEditorStore((s) => s.switchTab)
+  const reorderTab = useEditorStore((s) => s.reorderTab)
+  const closeOtherTabs = useEditorStore((s) => s.closeOtherTabs)
+  const closeTabsToRight = useEditorStore((s) => s.closeTabsToRight)
+  const splitPath = useEditorStore((s) => s.splitPath)
+  const splitContent = useEditorStore((s) => s.splitContent)
+  const closeSplit = useEditorStore((s) => s.closeSplit)
   const focusMode = useUIStore((s) => s.focusMode)
   const previewMode = useUIStore((s) => s.previewMode)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
@@ -42,6 +55,7 @@ export function Editor() {
   const linkPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const markdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const editorStateCache = useRef<Map<string, any>>(new Map())
 
   const editor = useEditor({
     extensions: [
@@ -121,8 +135,29 @@ export function Editor() {
     if (editor) editor.setEditable(!previewMode)
   }, [editor, previewMode])
 
+  const prevFileRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (editor && content !== undefined) {
+    if (!editor) return
+
+    if (prevFileRef.current && prevFileRef.current !== currentFilePath) {
+      editorStateCache.current.set(prevFileRef.current, editor.state.toJSON())
+    }
+    prevFileRef.current = currentFilePath
+
+    if (content !== undefined) {
+      const cached = currentFilePath ? editorStateCache.current.get(currentFilePath) : null
+      if (cached) {
+        try {
+          const EditorState = (editor.state as any).constructor
+          const state = EditorState.fromJSON(
+            { schema: editor.state.schema, plugins: editor.state.plugins },
+            cached
+          )
+          editor.view.updateState(state)
+          return
+        } catch {}
+      }
       const currentMarkdown = editor.storage.markdown.getMarkdown()
       if (currentMarkdown !== content) {
         editor.commands.setContent(content)
