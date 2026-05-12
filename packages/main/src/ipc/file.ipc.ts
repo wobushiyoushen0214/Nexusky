@@ -20,14 +20,22 @@ async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> 
     const historyDir = join(vaultPath, '.history', dirname(relPath))
     await mkdir(historyDir, { recursive: true })
     const name = basename(filePath, '.md')
+
+    const entries = await readdir(historyDir)
+    const snapshots = entries.filter((e) => e.startsWith(name + '_') && e.endsWith('.md')).sort()
+
+    if (snapshots.length > 0) {
+      const latestPath = join(historyDir, snapshots[snapshots.length - 1])
+      const latestContent = await readFile(latestPath, 'utf-8')
+      if (latestContent === content) return
+    }
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     const snapshotPath = join(historyDir, `${name}_${timestamp}.md`)
     await writeFile(snapshotPath, content, 'utf-8')
 
-    const entries = await readdir(historyDir)
-    const snapshots = entries.filter((e) => e.startsWith(name + '_') && e.endsWith('.md')).sort()
-    if (snapshots.length > 50) {
-      const toDelete = snapshots.slice(0, snapshots.length - 50)
+    if (snapshots.length >= 50) {
+      const toDelete = snapshots.slice(0, snapshots.length - 49)
       for (const f of toDelete) {
         await rm(join(historyDir, f), { force: true })
       }
