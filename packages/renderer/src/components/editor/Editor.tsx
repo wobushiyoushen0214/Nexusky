@@ -94,8 +94,10 @@ export function Editor() {
   // Scroll to cursor after selection changes
   useEffect(() => {
     if (!editor) return
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null
     const scrollToCursor = () => {
-      requestAnimationFrame(() => {
+      if (scrollTimer) clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => {
         const { node } = editor.view.domAtPos(editor.state.selection.from)
         const el = node instanceof HTMLElement ? node : node.parentElement
         if (el && editorAreaRef.current) {
@@ -103,13 +105,16 @@ export function Editor() {
           const elRect = el.getBoundingClientRect()
           const containerRect = container.getBoundingClientRect()
           if (elRect.bottom > containerRect.bottom || elRect.top < containerRect.top) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.scrollIntoView({ behavior: 'auto', block: 'nearest' })
           }
         }
-      })
+      }, 80)
     }
     editor.on('selectionUpdate', scrollToCursor)
-    return () => { editor.off('selectionUpdate', scrollToCursor) }
+    return () => {
+      editor.off('selectionUpdate', scrollToCursor)
+      if (scrollTimer) clearTimeout(scrollTimer)
+    }
   }, [editor])
 
   useEffect(() => {
@@ -274,7 +279,8 @@ export function Editor() {
   // Code block folding
   useEffect(() => {
     if (!editorAreaRef.current) return
-    const observer = new MutationObserver(() => {
+    let scanTimer: ReturnType<typeof setTimeout> | null = null
+    const scan = () => {
       const blocks = editorAreaRef.current?.querySelectorAll('.code-block') || []
       blocks.forEach((block) => {
         if (block.querySelector('.code-fold-btn')) return
@@ -294,9 +300,19 @@ export function Editor() {
         block.classList.add('collapsed')
         btn.textContent = '展开'
       })
+    }
+    const observer = new MutationObserver((mutations) => {
+      const hasAdded = mutations.some((m) => m.addedNodes.length > 0)
+      if (!hasAdded) return
+      if (scanTimer) clearTimeout(scanTimer)
+      scanTimer = setTimeout(scan, 300)
     })
     observer.observe(editorAreaRef.current, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    scan()
+    return () => {
+      observer.disconnect()
+      if (scanTimer) clearTimeout(scanTimer)
+    }
   }, [currentFilePath])
 
   // Wikilink hover preview
