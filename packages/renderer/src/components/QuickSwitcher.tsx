@@ -38,7 +38,7 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
           if (bIdx >= 0) return 1
           return 0
         })
-        setResults(sorted)
+        setResults(sorted.slice(0, 50))
       })
       return
     }
