@@ -155,7 +155,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { currentFilePath, content, tabs, activeTabIndex, isDirty } = get()
     if (!currentFilePath || !isDirty) return
     const vaultPath = useVaultStore.getState().vaultPath
-    await window.api.invoke('file:write', { path: currentFilePath, content, vaultPath: vaultPath || undefined })
+    try {
+      await window.api.invoke('file:write', { path: currentFilePath, content, vaultPath: vaultPath || undefined })
+    } catch (e: any) {
+      toast(`保存失败: ${e.message || '未知错误'}`, 'error')
+      return
+    }
 
     if (activeTabIndex >= 0 && activeTabIndex < tabs.length) {
       const updated = [...tabs]
@@ -166,8 +171,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     if (vaultPath) {
-      window.api.invoke('db:index-file', { vaultPath, filePath: currentFilePath })
-      window.api.invoke('cloud:push-file', { vaultPath, filePath: currentFilePath })
+      window.api.invoke('db:index-file', { vaultPath, filePath: currentFilePath }).catch(() => {})
+      window.api.invoke('cloud:push-file', { vaultPath, filePath: currentFilePath }).catch(() => {})
 
       // AI tag suggestion (async, non-blocking)
       if (content.length > 100 && !content.includes('#')) {
