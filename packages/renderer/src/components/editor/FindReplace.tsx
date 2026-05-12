@@ -12,6 +12,7 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
   const [replaceText, setReplaceText] = useState('')
   const [matchCount, setMatchCount] = useState(0)
   const [currentMatch, setCurrentMatch] = useState(0)
+  const [caseSensitive, setCaseSensitive] = useState(false)
   const findRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -36,14 +37,14 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
     if (!editor || !findText) return []
     const doc = editor.state.doc
     const matches: { from: number; to: number }[] = []
-    const searchLower = findText.toLowerCase()
+    const searchText = caseSensitive ? findText : findText.toLowerCase()
 
     doc.descendants((node, pos) => {
       if (!node.isText || !node.text) return
-      const textLower = node.text.toLowerCase()
+      const nodeText = caseSensitive ? node.text : node.text.toLowerCase()
       let index = 0
       while (true) {
-        const found = textLower.indexOf(searchLower, index)
+        const found = nodeText.indexOf(searchText, index)
         if (found === -1) break
         matches.push({ from: pos + found, to: pos + found + findText.length })
         index = found + 1
@@ -51,7 +52,7 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
     })
 
     return matches
-  }, [editor, findText])
+  }, [editor, findText, caseSensitive])
 
   useEffect(() => {
     if (!open || !findText) { setMatchCount(0); return }
@@ -95,7 +96,8 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
     if (!editor || !findText) return
     const { from, to } = editor.state.selection
     const selectedText = editor.state.doc.textBetween(from, to)
-    if (selectedText.toLowerCase() === findText.toLowerCase()) {
+    const match = caseSensitive ? selectedText === findText : selectedText.toLowerCase() === findText.toLowerCase()
+    if (match) {
       editor.chain().focus().deleteSelection().insertContent(replaceText).run()
       handleFindNext()
     } else {
@@ -141,6 +143,9 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
           placeholder="查找"
           style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none' }}
         />
+        <button onClick={() => setCaseSensitive(!caseSensitive)} title="大小写敏感" style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: caseSensitive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)', background: caseSensitive ? 'var(--accent-muted)' : 'transparent', color: caseSensitive ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+          Aa
+        </button>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
           {matchCount > 0 ? `${currentMatch + 1}/${matchCount}` : findText ? '0' : ''}
         </span>
