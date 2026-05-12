@@ -44,6 +44,15 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'packages/renderer/index.html')
+        },
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-tiptap': ['@tiptap/core', '@tiptap/react', '@tiptap/starter-kit', '@tiptap/pm'],
+            'vendor-d3': ['d3-force', 'd3-selection', 'd3-zoom', 'd3-drag'],
+            'vendor-katex': ['katex'],
+            'vendor-marked': ['marked', 'dompurify']
+          }
         }
       }
     },
