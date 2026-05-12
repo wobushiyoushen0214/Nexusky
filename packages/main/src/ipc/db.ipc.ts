@@ -9,8 +9,15 @@ import { pushIndex } from '../services/cloud/manager'
 export function registerDbIPC(): void {
   ipcMain.handle('db:index-vault', async (_event, params: { vaultPath: string }) => {
     const files = collectMarkdownFiles(params.vaultPath)
-    for (const file of files) {
-      indexNote(params.vaultPath, file)
+    const BATCH_SIZE = 20
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE)
+      for (const file of batch) {
+        indexNote(params.vaultPath, file)
+      }
+      if (i + BATCH_SIZE < files.length) {
+        await new Promise((resolve) => setImmediate(resolve))
+      }
     }
     return { indexed: files.length }
   })
