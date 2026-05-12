@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
+import { ConfirmModal } from '../ConfirmModal'
 
 interface Message {
   id: string
@@ -255,13 +256,20 @@ export function ChatPanel() {
     }
   }
 
+  const [confirmClear, setConfirmClear] = useState(false)
+
   const handleClear = () => {
     if (messages.length > 3) {
-      const confirmed = window.confirm(`确定清空 ${messages.length} 条对话记录？`)
-      if (!confirmed) return
+      setConfirmClear(true)
+      return
     }
+    doClear()
+  }
+
+  const doClear = () => {
     setMessages([])
-    localStorage.removeItem(STORAGE_KEY)
+    try { localStorage.removeItem(STORAGE_KEY) } catch {}
+    setConfirmClear(false)
   }
 
   const handleExport = async () => {
@@ -569,26 +577,25 @@ export function ChatPanel() {
           </div>
         </div>
       </div>
+      <ConfirmModal
+        open={confirmClear}
+        title="清空对话"
+        message={`确定清空 ${messages.length} 条对话记录？此操作无法撤销。`}
+        confirmText="清空"
+        danger
+        onConfirm={doClear}
+        onCancel={() => setConfirmClear(false)}
+      />
     </div>
   )
 }
 
 import DOMPurify from 'dompurify'
+import { marked } from 'marked'
+
+marked.setOptions({ breaks: true, gfm: true })
 
 function renderMarkdown(md: string): string {
-  const html = md
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
-    .replace(/^\> (.+)$/gm, '<blockquote>$1</blockquote>')
-    .replace(/^---$/gm, '<hr>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(?!<[hupbl]|<li|<hr|<code|<pre)(.+)$/gm, '<p>$1</p>')
+  const html = marked.parse(md, { async: false }) as string
   return DOMPurify.sanitize(html)
 }
