@@ -22,23 +22,27 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
 
   useEffect(() => {
     if (!editor) return
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
     const handleSelectionUpdate = () => {
-      const { from, to } = editor.state.selection
-      const text = editor.state.doc.textBetween(from, to)
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        const { from, to } = editor.state.selection
+        const text = editor.state.doc.textBetween(from, to)
 
-      if (text.length > 5) {
-        const coords = editor.view.coordsAtPos(from)
-        setSelectedText(text)
-        setPosition({ x: coords.left, y: coords.top - 44 })
-        setVisible(true)
-      } else {
-        setVisible(false)
-      }
+        if (text.length > 5) {
+          const coords = editor.view.coordsAtPos(from)
+          setSelectedText(text)
+          setPosition({ x: coords.left, y: coords.top - 44 })
+          setVisible(true)
+        } else {
+          setVisible(false)
+        }
+      }, 200)
     }
 
     editor.on('selectionUpdate', handleSelectionUpdate)
-    return () => { editor.off('selectionUpdate', handleSelectionUpdate) }
+    return () => { editor.off('selectionUpdate', handleSelectionUpdate); if (debounceTimer) clearTimeout(debounceTimer) }
   }, [editor])
 
   const handleAction = useCallback(async (action: typeof ACTIONS[0]) => {
