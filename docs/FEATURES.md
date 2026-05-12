@@ -322,6 +322,17 @@
 | 流式滚动优化 | AI 对话流式期间用 auto 滚动，避免动画叠加 |
 | watcher 排除 .history | 快照目录变化不再触发文件监听事件 |
 | 快照去重 | 内容与最新快照相同时跳过创建，减少磁盘写入 |
+| Wikilink 预览缓存 | hover 预览内容缓存到内存，避免重复 IPC 读取 |
+| Mermaid 渲染缓存 | 相同代码不重复渲染 SVG |
+| 代码块折叠优化 | 移除 MutationObserver，改用 editor update 事件 |
+| 日历面板优化 | 减少一次 IPC 往返 |
+| 离线队列持久化 | 重启后自动恢复未完成的推送 |
+| preload 监听修复 | AI 事件不再 removeAllListeners |
+| Mermaid SVG 消毒 | DOMPurify 防止 SVG 注入 |
+| 导出进度反馈 | PDF/HTML 导出时 toast 提示 |
+| 快捷键冲突检测 | 重复绑定时 toast 警告 |
+| 正则搜索 | 搜索面板新增正则表达式模式 |
+| 文件树拖拽打开 | 拖拽文件到编辑区直接打开 |
 
 ---
 
