@@ -67,7 +67,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   refreshFiles: async () => {
     const { vaultPath } = get()
     if (!vaultPath) return
-    const files = await window.api.invoke('file:list', { dirPath: vaultPath })
+    const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
     set({ files })
   },
 

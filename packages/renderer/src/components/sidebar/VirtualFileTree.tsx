@@ -44,14 +44,29 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
         for (const item of items) {
           if (item.isDirectory) {
             set.add(item.path)
-            if (item.children) collectDirs(item.children)
+            if (item.children && item.children.length > 0) collectDirs(item.children)
           }
         }
       }
       collectDirs(entries)
       setExpandedPaths(set)
+
+      const loadExpanded = async () => {
+        const newLazy = new Map<string, FileEntry[]>()
+        for (const item of entries) {
+          if (item.isDirectory && (!item.children || item.children.length === 0)) {
+            try {
+              const children = await window.api.invoke('file:list-shallow', { dirPath: item.path })
+              newLazy.set(item.path, children)
+            } catch {}
+          }
+        }
+        if (newLazy.size > 0) setLazyChildren(newLazy)
+      }
+      loadExpanded()
     } else {
       setExpandedPaths(new Set())
+      setLazyChildren(new Map())
     }
   }, [defaultExpanded, entries])
 
