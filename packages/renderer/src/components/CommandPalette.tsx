@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
@@ -23,7 +23,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { saveFile, currentFilePath, content } = useEditorStore()
   const { vaultPath } = useVaultStore()
 
-  const commands: Command[] = [
+  const commands: Command[] = useMemo(() => [
     { id: 'save', label: '保存文件', shortcut: 'Ctrl+S', action: () => saveFile() },
     { id: 'new-note', label: '新建笔记', shortcut: 'Ctrl+N', action: () => window.dispatchEvent(new CustomEvent('create-new-note')) },
     { id: 'search', label: '全文搜索', shortcut: 'Ctrl+Shift+F', action: () => setSearchOpen(true) },
@@ -86,7 +86,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         useVaultStore.getState().refreshFiles()
       }
     }},
-  ]
+  ], [saveFile, currentFilePath, content, vaultPath])
 
   const filtered = query.trim()
     ? commands.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
