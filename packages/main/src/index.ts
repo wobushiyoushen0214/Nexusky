@@ -88,6 +88,12 @@ function createWindow(): void {
   mainWindow.on('maximize', saveWindowBounds)
   mainWindow.on('unmaximize', saveWindowBounds)
 
+  mainWindow.on('close', (e) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app:before-close')
+    }
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
   })
