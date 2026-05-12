@@ -28,7 +28,7 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
   useEffect(() => {
     if (!vaultPath || !open) return
     if (!query.trim()) {
-      window.api.invoke('db:get-all-notes', { vaultPath }).then((notes) => {
+      window.api.invoke('db:get-recent-notes', { vaultPath, limit: 50 }).then((notes) => {
         const recent = useEditorStore.getState().recentFiles
         const sorted = [...notes].sort((a, b) => {
           const aIdx = recent.indexOf(`${vaultPath}/${a.filePath}`)
@@ -38,7 +38,7 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
           if (bIdx >= 0) return 1
           return 0
         })
-        setResults(sorted.slice(0, 50))
+        setResults(sorted)
       })
       return
     }

@@ -34,6 +34,14 @@ export function registerDbIPC(): void {
     return getAllNotes(params.vaultPath)
   })
 
+  ipcMain.handle('db:get-recent-notes', async (_event, params: { vaultPath: string; limit?: number }) => {
+    const db = getDatabase(params.vaultPath)
+    const limit = params.limit || 50
+    return db.prepare(
+      'SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt FROM notes ORDER BY updated_at DESC LIMIT ?'
+    ).all(limit)
+  })
+
   ipcMain.handle('db:get-backlinks', async (_event, params: { vaultPath: string; noteId: string }) => {
     return getBacklinks(params.vaultPath, params.noteId)
   })
