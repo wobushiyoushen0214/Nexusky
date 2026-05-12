@@ -139,6 +139,11 @@ export default function App() {
     const handleDragOver = (e: DragEvent) => e.preventDefault()
     const handleDrop = (e: DragEvent) => {
       e.preventDefault()
+      const textData = e.dataTransfer?.getData('text/plain')
+      if (textData && textData.endsWith('.md')) {
+        useEditorStore.getState().openFile(textData)
+        return
+      }
       const files = e.dataTransfer?.files
       if (!files) return
       for (const file of files) {
