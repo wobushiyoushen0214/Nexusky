@@ -443,8 +443,8 @@ export function Editor() {
                 position: 'relative',
               }}
             >
+              {tab.isDirty && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
               <span>{tabName}</span>
-              {tab.isDirty && <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)' }} />}
               <button
                 onClick={(e) => { e.stopPropagation(); closeTab(i) }}
                 style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', opacity: isActive ? 1 : 0 }}
