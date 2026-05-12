@@ -24,9 +24,10 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
   useEffect(() => {
     if (!visible) return
     const handleMouseDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setVisible(false)
-      }
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) return
+      const editorEl = (e.target as HTMLElement).closest('.editor-content')
+      if (editorEl) return
+      setVisible(false)
     }
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
