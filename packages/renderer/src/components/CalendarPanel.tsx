@@ -27,7 +27,7 @@ export function CalendarPanel() {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     const path = `${vaultPath}/daily/${dateStr}.md`
     try {
-      await window.api.invoke('file:stat', { path })
+      await window.api.invoke('file:read', { path })
       openFile(path)
     } catch {
       await window.api.invoke('file:create', { path, content: `# ${dateStr}\n\n` })
