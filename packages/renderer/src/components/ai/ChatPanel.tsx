@@ -74,6 +74,7 @@ export function ChatPanel() {
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionResults, setMentionResults] = useState<{ title: string; filePath: string }[]>([])
   const [attachedNotes, setAttachedNotes] = useState<{ title: string; filePath: string }[]>([])
+  const [attachedSelections, setAttachedSelections] = useState<{ text: string; source: string }[]>([])
   const [editMode, setEditMode] = useState(false)
   const [editTarget, setEditTarget] = useState<string | null>(null)
   const [editResult, setEditResult] = useState<{ content: string; filePath: string } | null>(null)
@@ -168,6 +169,17 @@ export function ChatPanel() {
     inputRef.current?.focus()
   }
 
+  const handleAttachSelection = () => {
+    const sel = window.getSelection()?.toString()
+    if (!sel || sel.length < 3) {
+      toast('请先在编辑器中选中一段文本', 'info')
+      return
+    }
+    const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '选中文本'
+    setAttachedSelections((prev) => [...prev, { text: sel.slice(0, 2000), source }])
+    inputRef.current?.focus()
+  }
+
   const handleSend = async () => {
     if (!input.trim()) return
 
@@ -231,6 +243,12 @@ export function ChatPanel() {
         } catch {}
       }
       setAttachedNotes([])
+    }
+    if (attachedSelections.length > 0) {
+      for (const sel of attachedSelections) {
+        contextPrefix += `[选中片段: ${sel.source}]\n${sel.text}\n\n`
+      }
+      setAttachedSelections([])
     }
 
     const allMessages = [...messages, userMsg]
@@ -481,6 +499,22 @@ export function ChatPanel() {
         </div>
       )}
 
+      {/* Attached selections */}
+      {attachedSelections.length > 0 && (
+        <div style={{ padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {attachedSelections.map((sel, i) => (
+            <div key={i} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <span style={{ flex: 1, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{sel.source}:</span> {sel.text.slice(0, 80)}{sel.text.length > 80 ? '...' : ''}
+              </span>
+              <button onClick={() => setAttachedSelections((prev) => prev.filter((_, j) => j !== i))} style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Mention dropdown */}
       {showMention && mentionResults.length > 0 && (
         <div style={{ padding: '0 16px 4px' }}>
@@ -609,6 +643,21 @@ export function ChatPanel() {
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
               )}
               {editMode ? '编辑' : '对话'}
+            </button>
+            <button
+              onClick={handleAttachSelection}
+              style={{
+                height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
+                background: 'transparent',
+                color: 'var(--text-tertiary)',
+                border: 'none',
+                transition: 'all 100ms',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+              title="引用编辑器中选中的文本作为上下文"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>
+              引用选中
             </button>
             <div style={{ flex: 1 }} />
             <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.6 }}>Enter 发送 · Shift+Enter 换行</span>
