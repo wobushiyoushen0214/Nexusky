@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
 import { select } from 'd3-selection'
 import { zoom } from 'd3-zoom'
@@ -24,6 +24,8 @@ interface SimLink {
 
 export function GraphView() {
   const svgRef = useRef<SVGSVGElement>(null)
+  const simulationRef = useRef<ReturnType<typeof forceSimulation<SimNode>> | null>(null)
+  const graphBuiltForRef = useRef<string | null>(null)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -43,9 +45,57 @@ export function GraphView() {
     return () => { cleanup() }
   }, [vaultPath])
 
+  const updateHighlight = useCallback((currentTitle: string) => {
+    if (!svgRef.current) return
+    const svg = select(svgRef.current)
+
+    svg.selectAll<SVGGElement, SimNode>('g.node-group').each(function (d) {
+      const group = select(this)
+      const isCurrent = d.title === currentTitle
+
+      const getRadius = (n: SimNode) => Math.max(3, Math.min(8, 3 + n.linkCount * 1.2))
+
+      group.select('.neuron-halo')
+        .attr('r', isCurrent ? getRadius(d) + 18 : getRadius(d) + 12)
+        .attr('fill', isCurrent ? 'url(#neuron-glow)' : d.linkCount > 0 ? 'url(#neuron-glow)' : 'url(#neuron-dim)')
+        .attr('opacity', isCurrent ? 1 : Math.min(0.6, 0.2 + d.linkCount * 0.1))
+
+      group.select('.neuron-soma')
+        .attr('r', isCurrent ? getRadius(d) + 4 : getRadius(d))
+        .attr('fill', isCurrent ? '#a89cf8' : d.linkCount > 0 ? '#7c6ef5' : '#666666')
+        .attr('opacity', isCurrent ? 1 : d.linkCount > 0 ? 0.9 : 0.5)
+        .attr('filter', isCurrent || d.linkCount > 2 ? 'url(#glow)' : 'none')
+
+      group.select('.neuron-nucleus')
+        .attr('r', isCurrent ? 4 : Math.max(1.5, getRadius(d) * 0.4))
+        .attr('opacity', isCurrent ? 0.9 : d.linkCount > 0 ? 0.7 : 0.2)
+
+      group.select('.neuron-label')
+        .attr('x', isCurrent ? getRadius(d) + 14 : getRadius(d) + 10)
+        .attr('font-size', isCurrent ? '12px' : '10px')
+        .attr('font-weight', isCurrent ? '600' : '400')
+        .attr('fill', isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)')
+        .attr('opacity', isCurrent ? 1 : 0.7)
+    })
+  }, [])
+
+  // Update highlight when currentFilePath changes without rebuilding the graph
+  useEffect(() => {
+    if (!graphData || !svgRef.current) return
+    if (!graphBuiltForRef.current) return
+    const currentTitle = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
+    updateHighlight(currentTitle)
+  }, [currentFilePath, updateHighlight, graphData])
+
+  // Build the graph only when graphData changes
   useEffect(() => {
     if (!graphData || !svgRef.current) return
     if (graphData.nodes.length === 0) return
+
+    if (simulationRef.current) {
+      simulationRef.current.stop()
+      simulationRef.current = null
+    }
 
     const svg = select(svgRef.current)
     const width = svgRef.current.clientWidth
@@ -79,7 +129,6 @@ export function GraphView() {
 
     const g = svg.append('g')
 
-    // Determine current file's title for highlighting
     const currentTitle = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
 
     const linkCountMap = new Map<string, number>()
@@ -111,7 +160,8 @@ export function GraphView() {
       .force('x', forceX(width / 2).strength(0.015))
       .force('y', forceY(height / 2).strength(0.015))
 
-    // Synapse connections (curved lines like dendrites)
+    simulationRef.current = simulation
+
     const link = g.append('g')
       .selectAll('path')
       .data(links)
@@ -122,21 +172,20 @@ export function GraphView() {
       .attr('stroke-opacity', 0.35)
 
     const nodeGroup = g.append('g')
-      .selectAll('g')
+      .selectAll<SVGGElement, SimNode>('g')
       .data(nodes)
       .join('g')
+      .attr('class', 'node-group')
       .attr('cursor', 'pointer')
 
     const isCurrentNode = (d: SimNode) => d.title === currentTitle
 
-    // Outer glow (soma halo)
     nodeGroup.append('circle')
       .attr('r', (d) => isCurrentNode(d) ? getRadius(d) + 18 : getRadius(d) + 12)
       .attr('fill', (d) => isCurrentNode(d) ? 'url(#neuron-glow)' : d.linkCount > 0 ? 'url(#neuron-glow)' : 'url(#neuron-dim)')
       .attr('opacity', (d) => isCurrentNode(d) ? 1 : Math.min(0.6, 0.2 + d.linkCount * 0.1))
       .attr('class', 'neuron-halo')
 
-    // Core (soma)
     nodeGroup.append('circle')
       .attr('r', (d) => isCurrentNode(d) ? getRadius(d) + 4 : getRadius(d))
       .attr('fill', (d) => isCurrentNode(d) ? '#a89cf8' : d.linkCount > 0 ? '#7c6ef5' : '#666666')
@@ -144,13 +193,12 @@ export function GraphView() {
       .attr('filter', (d) => isCurrentNode(d) || d.linkCount > 2 ? 'url(#glow)' : 'none')
       .attr('class', 'neuron-soma')
 
-    // Inner bright spot (nucleus)
     nodeGroup.append('circle')
       .attr('r', (d) => isCurrentNode(d) ? 4 : Math.max(1.5, getRadius(d) * 0.4))
       .attr('fill', '#ffffff')
       .attr('opacity', (d) => isCurrentNode(d) ? 0.9 : d.linkCount > 0 ? 0.7 : 0.2)
+      .attr('class', 'neuron-nucleus')
 
-    // Label
     nodeGroup.append('text')
       .text((d) => d.title)
       .attr('x', (d) => (isCurrentNode(d) ? getRadius(d) + 14 : getRadius(d) + 10))
@@ -162,7 +210,6 @@ export function GraphView() {
       .attr('opacity', (d) => isCurrentNode(d) ? 1 : 0.7)
       .attr('class', 'neuron-label')
 
-    // Hover
     nodeGroup
       .on('mouseenter', function (_event, d) {
         select(this).select('.neuron-halo').attr('opacity', 0.8)
@@ -198,7 +245,6 @@ export function GraphView() {
         link.attr('stroke-opacity', 0.35).attr('stroke-width', 0.8)
       })
 
-    // Drag
     const dragBehavior = drag<SVGGElement, SimNode>()
       .on('start', (event, d) => {
         if (!event.active) simulation.alphaTarget(0.3).restart()
@@ -233,7 +279,6 @@ export function GraphView() {
 
     svg.call(zoomBehavior)
 
-    // Center on current node after simulation stabilizes
     simulation.on('end', () => {
       const currentNode = nodes.find((n) => n.title === currentTitle)
       if (currentNode && currentNode.x != null && currentNode.y != null) {
@@ -246,7 +291,6 @@ export function GraphView() {
       }
     })
 
-    // Tick - use curved paths for organic synapse look
     simulation.on('tick', () => {
       link.attr('d', (d: any) => {
         const dx = d.target.x - d.source.x
@@ -258,8 +302,10 @@ export function GraphView() {
       nodeGroup.attr('transform', (d) => `translate(${d.x},${d.y})`)
     })
 
+    graphBuiltForRef.current = JSON.stringify(graphData)
+
     return () => { simulation.stop() }
-  }, [graphData, currentFilePath])
+  }, [graphData])
 
   if (!graphData || graphData.nodes.length === 0) {
     return (
@@ -276,3 +322,4 @@ export function GraphView() {
     <svg ref={svgRef} style={{ width: '100%', height: '100%', background: 'transparent' }} />
   )
 }
+
