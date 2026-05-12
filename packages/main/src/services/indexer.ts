@@ -220,11 +220,11 @@ function extractTasks(content: string): { text: string; done: boolean }[] {
 
 export function getAllTasks(vaultPath: string): { text: string; done: boolean; noteTitle: string; filePath: string }[] {
   const db = getDatabase(vaultPath)
-  return db.prepare(`
+  const rows = db.prepare(`
     SELECT t.text, t.done, n.title as noteTitle, n.file_path as filePath
     FROM tasks t
     JOIN notes n ON n.id = t.note_id
     ORDER BY t.done ASC, n.updated_at DESC
   `).all() as { text: string; done: number; noteTitle: string; filePath: string }[]
-    .map((r) => ({ ...r, done: r.done === 1 })) as any
+  return rows.map((r) => ({ ...r, done: r.done === 1 }))
 }
