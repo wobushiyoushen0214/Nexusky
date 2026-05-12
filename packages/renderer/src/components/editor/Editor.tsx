@@ -56,6 +56,7 @@ export function Editor() {
 
   const markdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editorStateCache = useRef<Map<string, any>>(new Map())
+  const linkPreviewCache = useRef<Map<string, string>>(new Map())
 
   const editor = useEditor({
     extensions: [
@@ -187,6 +188,7 @@ export function Editor() {
   useEffect(() => {
     if (!editor) return
     const cleanup = window.api.onFileChanged(async (changedPath: string) => {
+      linkPreviewCache.current.clear()
       const normalizedChanged = changedPath.replace(/\\/g, '/')
       const normalizedCurrent = currentFilePath?.replace(/\\/g, '/')
       if (!normalizedCurrent || normalizedChanged !== normalizedCurrent) return
@@ -369,6 +371,12 @@ export function Editor() {
       const title = el.getAttribute('data-title') || el.textContent?.replace(/^\[\[|\]\]$/g, '') || ''
       if (!title) return
       linkPreviewTimer.current = setTimeout(async () => {
+        const cached = linkPreviewCache.current.get(title)
+        if (cached) {
+          const rect = el.getBoundingClientRect()
+          setLinkPreview({ x: rect.left, y: rect.bottom + 4, content: cached })
+          return
+        }
         const vault = useVaultStore.getState().vaultPath
         if (!vault) return
         try {
@@ -376,8 +384,10 @@ export function Editor() {
           const exact = results.find((r) => r.title === title)
           if (exact) {
             const text = await window.api.invoke('file:read', { path: `${vault}/${exact.filePath}` })
+            const preview = text.slice(0, 500)
+            linkPreviewCache.current.set(title, preview)
             const rect = el.getBoundingClientRect()
-            setLinkPreview({ x: rect.left, y: rect.bottom + 4, content: text.slice(0, 500) })
+            setLinkPreview({ x: rect.left, y: rect.bottom + 4, content: preview })
           }
         } catch {}
       }, 400)
