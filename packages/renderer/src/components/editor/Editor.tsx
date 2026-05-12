@@ -85,6 +85,7 @@ export function Editor() {
       }),
       Markdown.configure({
         html: false,
+        tightLists: true,
         transformPastedText: true,
         transformCopiedText: true
       })
