@@ -17,6 +17,7 @@ let ghostElement: HTMLElement | null = null
 let lastRequestText = ''
 let lastResult = ''
 let requestInFlight = false
+let abortController: AbortController | null = null
 
 function getOrCreateGhost(): HTMLElement {
   if (!ghostElement) {
@@ -26,9 +27,10 @@ function getOrCreateGhost(): HTMLElement {
   return ghostElement
 }
 
-async function fetchCompletion(textBefore: string): Promise<string> {
+async function fetchCompletion(textBefore: string, signal: AbortSignal): Promise<string> {
   try {
     const result = await (window as any).api.invoke('ai:complete', { text: textBefore })
+    if (signal.aborted) return ''
     return result || ''
   } catch {
     return ''
@@ -115,10 +117,14 @@ export const AICompletion = Extension.create({
                   return
                 }
 
+                if (abortController) abortController.abort()
+                abortController = new AbortController()
+                const signal = abortController.signal
+
                 requestInFlight = true
-                const result = await fetchCompletion(textBefore)
+                const result = await fetchCompletion(textBefore, signal)
                 requestInFlight = false
-                if (!result) return
+                if (!result || signal.aborted) return
                 if (view.state.selection.from !== from) return
 
                 const current = pluginKey.getState(view.state) as CompletionState
