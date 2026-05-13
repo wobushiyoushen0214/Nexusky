@@ -18,8 +18,20 @@ const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
   claude: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
   ollama: ['llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral'],
-  custom: []
+  custom: ['deepseek-chat', 'deepseek-reasoner', 'qwen-plus', 'qwen-turbo', 'glm-4-flash', 'moonshot-v1-8k', 'yi-lightning', 'doubao-1.5-pro-32k']
 }
+
+const PROVIDER_PRESETS: { label: string; type: 'openai' | 'claude' | 'custom' | 'ollama'; baseUrl: string; model: string }[] = [
+  { label: 'OpenAI', type: 'openai', baseUrl: '', model: 'gpt-4.1-mini' },
+  { label: 'Claude', type: 'claude', baseUrl: '', model: 'claude-sonnet-4-6' },
+  { label: 'DeepSeek', type: 'custom', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { label: '通义千问', type: 'custom', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+  { label: '智谱 GLM', type: 'custom', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
+  { label: 'Moonshot', type: 'custom', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
+  { label: '零一万物', type: 'custom', baseUrl: 'https://api.lingyiwanwu.com/v1', model: 'yi-lightning' },
+  { label: '豆包', type: 'custom', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-1.5-pro-32k' },
+  { label: 'Ollama (本地)', type: 'ollama', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
+]
 
 interface SettingsProps {
   open: boolean
@@ -44,6 +56,7 @@ const inputStyle: React.CSSProperties = {
 export function Settings({ open, onClose }: SettingsProps) {
   const [tab, setTab] = useState<Tab>('appearance')
   const [providers, setProviders] = useState<ProviderConfig[]>([])
+  const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
   const [editing, setEditing] = useState<ProviderConfig | null>(null)
   const [cloudConfig, setCloudConfig] = useState({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
   const [cloudUser, setCloudUser] = useState<{ email: string } | null>(null)
@@ -51,7 +64,11 @@ export function Settings({ open, onClose }: SettingsProps) {
 
   useEffect(() => {
     if (open) {
-      window.api.invoke('ai:get-providers', undefined).then(setProviders)
+      window.api.invoke('ai:get-providers', undefined).then((ps) => {
+        setProviders(ps)
+        const active = ps.find((p: any) => p.enabled)
+        if (active) setActiveProviderId(active.id)
+      })
       window.api.invoke('cloud:get-config', undefined).then(setCloudConfig)
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
     }
@@ -62,14 +79,14 @@ export function Settings({ open, onClose }: SettingsProps) {
     await window.api.invoke('ai:save-providers', { providers: updated })
   }
 
-  const handleAdd = () => {
+  const handleAdd = (preset?: typeof PROVIDER_PRESETS[0]) => {
     setEditing({
       id: crypto.randomUUID(),
-      name: '',
-      type: 'openai',
-      baseUrl: '',
+      name: preset?.label || '',
+      type: preset?.type || 'openai',
+      baseUrl: preset?.baseUrl || '',
       apiKey: '',
-      model: 'gpt-4.1-mini',
+      model: preset?.model || 'gpt-4.1-mini',
       enabled: true
     })
   }
@@ -90,6 +107,9 @@ export function Settings({ open, onClose }: SettingsProps) {
 
   const handleSetActive = async (id: string) => {
     await window.api.invoke('ai:set-active', { providerId: id })
+    setActiveProviderId(id)
+    const provider = providers.find((p) => p.id === id)
+    toast(`已激活: ${provider?.name || 'AI 提供商'}`, 'success')
   }
 
   if (!open) return null
@@ -160,7 +180,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                   自动检测
                 </button>
                 <button
-                  onClick={handleAdd}
+                  onClick={() => handleAdd()}
                   style={{ fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}
                 >
                   + 添加
@@ -168,38 +188,70 @@ export function Settings({ open, onClose }: SettingsProps) {
               </div>
             </div>
 
-            {/* Empty state */}
+            {/* Quick presets */}
             {providers.length === 0 && !editing && (
-              <div style={{ padding: '32px 0', textAlign: 'center', borderRadius: 8, border: '1px dashed var(--border-default)', background: 'var(--bg-base)' }}>
-                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 12 }}>未配置 AI 提供商</p>
-                <button
-                  onClick={handleAdd}
-                  style={{ height: 32, padding: '0 16px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
-                >
-                  添加第一个
-                </button>
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10 }}>快速添加</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {PROVIDER_PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => handleAdd(preset)}
+                      style={{ height: 28, padding: '0 10px', fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer', transition: 'all 100ms' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent-text)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Provider list */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {providers.map((p) => (
-                <div key={p.id} style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+              {providers.map((p) => {
+                const isActive = p.id === activeProviderId
+                return (
+                <div key={p.id} style={{ padding: '12px 14px', borderRadius: 8, border: isActive ? '1.5px solid var(--accent)' : '1px solid var(--border-subtle)', background: isActive ? 'var(--accent-muted)' : 'var(--bg-base)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {isActive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
                       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{p.name}</span>
                       <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontWeight: 500 }}>{p.type}</span>
+                      {isActive && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', fontWeight: 500 }}>使用中</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <button onClick={() => handleSetActive(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--accent-text)', background: 'transparent', border: 'none', cursor: 'pointer' }}>激活</button>
+                      {!isActive && <button onClick={() => handleSetActive(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#fff', background: 'var(--accent)', border: 'none', cursor: 'pointer', fontWeight: 500 }}>激活</button>}
                       <button onClick={() => setEditing(p)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>编辑</button>
                       <button onClick={() => handleDelete(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}>删除</button>
                     </div>
                   </div>
                   <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{p.model} · {p.baseUrl || '默认地址'}</p>
                 </div>
-              ))}
+                )
+              })}
             </div>
+
+            {/* Quick add presets (when providers exist) */}
+            {providers.length > 0 && !editing && (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>快速添加</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {PROVIDER_PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => handleAdd(preset)}
+                      style={{ height: 24, padding: '0 8px', fontSize: 10, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer', transition: 'all 100ms' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent-text)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                    >
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Edit form */}
             {editing && (
