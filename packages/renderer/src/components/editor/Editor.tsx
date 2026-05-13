@@ -174,7 +174,9 @@ export function Editor() {
     }
     prevFileRef.current = currentFilePath
 
-    if (content !== undefined) {
+    const storeContent = useEditorStore.getState().content
+    const effectiveContent = storeContent !== undefined ? storeContent : content
+    if (effectiveContent !== undefined) {
       const cached = currentFilePath ? editorStateCache.current.get(currentFilePath) : null
       if (cached) {
         try {
@@ -188,8 +190,8 @@ export function Editor() {
         } catch {}
       }
       const currentMarkdown = editor.storage.markdown.getMarkdown()
-      if (currentMarkdown !== content) {
-        editor.commands.setContent(content)
+      if (currentMarkdown !== effectiveContent) {
+        editor.commands.setContent(effectiveContent)
       }
     }
   }, [currentFilePath])
@@ -403,12 +405,14 @@ export function Editor() {
   useEffect(() => {
     const container = editorAreaRef.current
     if (!container) return
+    let cancelled = false
     const handleMouseOver = async (e: MouseEvent) => {
       const el = (e.target as HTMLElement).closest('.wiki-link-inline') as HTMLElement | null
       if (!el) { if (linkPreviewTimer.current) clearTimeout(linkPreviewTimer.current); setLinkPreview(null); return }
       const title = el.getAttribute('data-title') || el.textContent?.replace(/^\[\[|\]\]$/g, '') || ''
       if (!title) return
       linkPreviewTimer.current = setTimeout(async () => {
+        if (cancelled) return
         const cached = linkPreviewCache.current.get(title)
         if (cached) {
           const rect = el.getBoundingClientRect()
@@ -419,9 +423,11 @@ export function Editor() {
         if (!vault) return
         try {
           const results = await window.api.invoke('db:search-notes', { vaultPath: vault, query: title })
+          if (cancelled) return
           const exact = results.find((r) => r.title === title)
           if (exact) {
             const text = await window.api.invoke('file:read', { path: `${vault}/${exact.filePath}` })
+            if (cancelled) return
             const preview = text.slice(0, 500)
             linkPreviewCache.current.set(title, preview)
             const rect = el.getBoundingClientRect()
@@ -436,7 +442,7 @@ export function Editor() {
     }
     container.addEventListener('mouseover', handleMouseOver)
     container.addEventListener('mouseout', handleMouseOut)
-    return () => { container.removeEventListener('mouseover', handleMouseOver); container.removeEventListener('mouseout', handleMouseOut) }
+    return () => { cancelled = true; if (linkPreviewTimer.current) clearTimeout(linkPreviewTimer.current); setLinkPreview(null); container.removeEventListener('mouseover', handleMouseOver); container.removeEventListener('mouseout', handleMouseOut) }
   }, [currentFilePath])
 
   if (!currentFilePath) {

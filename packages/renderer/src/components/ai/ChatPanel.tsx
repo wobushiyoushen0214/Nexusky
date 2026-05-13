@@ -331,9 +331,12 @@ export function ChatPanel() {
     if (!input.trim()) return
 
     if (isStreaming) {
+      editCompleteRef.current = true
       setIsStreaming(false)
       if (streamContent) {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: streamContent }])
+        const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContent }
+        setMessages((msgs) => [...msgs, msg])
+        appendToDb(msg)
         setStreamContent('')
       }
     }
