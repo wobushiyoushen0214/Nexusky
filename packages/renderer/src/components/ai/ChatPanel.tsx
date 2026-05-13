@@ -3,7 +3,6 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
-import { safeGetJSON, safeSetJSON, safeRemove } from '../../utils/storage'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
@@ -13,8 +12,6 @@ interface Message {
   content: string
   sources?: { title: string; filePath: string; chunk: string; score: number }[]
 }
-
-const STORAGE_KEY = 'nexusky-chat-history'
 
 function friendlyError(raw: string): string {
   if (!raw) return '请求失败，请稍后重试'
@@ -41,28 +38,8 @@ function friendlyError(raw: string): string {
   return msg
 }
 
-function loadHistory(): Message[] {
-  return safeGetJSON<Message[]>(STORAGE_KEY, [])
-}
-
-function saveHistory(messages: Message[]): void {
-  // 只保留最近 100 条，避免 localStorage 配额超限
-  // 多模态图片的 base64 会非常大，进一步剔除超大消息
-  let trimmed = messages.slice(-100)
-  let ok = safeSetJSON(STORAGE_KEY, trimmed)
-  if (ok) return
-  // 写入失败（quota exceeded）：再降级保留最近 30 条
-  trimmed = messages.slice(-30)
-  ok = safeSetJSON(STORAGE_KEY, trimmed)
-  if (!ok) {
-    // 还失败：清空历史避免后续累积
-    safeRemove(STORAGE_KEY)
-    toast('对话历史过大，已清理旧记录', 'info')
-  }
-}
-
 export function ChatPanel() {
-  const [messages, setMessages] = useState<Message[]>(loadHistory)
+  const [messages, setMessages] = useState<Message[]>([])
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const pendingSourcesRef = useRef<any[]>([])
@@ -87,14 +64,20 @@ export function ChatPanel() {
   const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const debouncedSave = useCallback((msgs: Message[]) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => saveHistory(msgs), 500)
-  }, [])
+  useEffect(() => {
+    if (!vaultPath) return
+    window.api.invoke('db:chat-history-load', { vaultPath }).then((rows) => {
+      if (rows && rows.length > 0) {
+        setMessages(rows.map((r) => ({ id: r.id, role: r.role as 'user' | 'assistant', content: r.content, sources: r.sources })))
+      }
+    }).catch(() => {})
+  }, [vaultPath])
 
-  useEffect(() => { debouncedSave(messages) }, [messages, debouncedSave])
+  const appendToDb = useCallback((msg: Message) => {
+    if (!vaultPath) return
+    window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources }).catch(() => {})
+  }, [vaultPath])
 
   useEffect(() => {
     const handler = (event: { type: string; content: string }) => {
@@ -117,7 +100,9 @@ export function ChatPanel() {
   useEffect(() => {
     if (prevStreaming.current && !isStreaming && streamContent) {
       const sources = pendingSourcesRef.current.length > 0 ? [...pendingSourcesRef.current] : undefined
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: streamContent, sources }])
+      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContent, sources }
+      setMessages((msgs) => [...msgs, msg])
+      appendToDb(msg)
       pendingSourcesRef.current = []
       setStreamContent('')
     }
@@ -202,6 +187,7 @@ export function ChatPanel() {
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim() }
     setMessages((prev) => [...prev, userMsg])
+    appendToDb(userMsg)
     setInput('')
     setIsStreaming(true)
     setStreamContent('')
@@ -338,7 +324,7 @@ export function ChatPanel() {
 
   const doClear = () => {
     setMessages([])
-    try { safeRemove(STORAGE_KEY) } catch {}
+    if (vaultPath) window.api.invoke('db:chat-history-clear', { vaultPath }).catch(() => {})
     setConfirmClear(false)
   }
 
