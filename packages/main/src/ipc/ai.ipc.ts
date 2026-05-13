@@ -3,6 +3,7 @@ import { aiManager, AIProviderConfig, ChatMessage } from '../services/ai'
 import { store } from '../services/store'
 import { semanticSearch } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
+import { indexNote } from '../services/indexer'
 
 const activeAbortControllers: Map<number, AbortController> = new Map()
 
@@ -423,9 +424,10 @@ graph TD
 规则：
 1. 第一行必须是 # 标题，标题必须和给定的标题完全一致
 2. 使用 [[笔记名]] 语法引用相关笔记，笔记名必须与提供的列表中的名称完全一致（一字不差）
-3. 内容包含分节、要点，结构清晰
-4. 只输出 Markdown 内容，不要其他解释` },
-          { role: 'user', content: `标题: ${safeNames[i]}\n描述: ${item.brief}\n\n可引用的笔记（用 [[名称]] 引用，名称必须完全匹配）:\n${safeNames.filter((_, j) => j !== i).map((n) => `- ${n}`).join('\n')}` }
+3. [[]] 中只写笔记名，绝对不要加路径前缀（不要写 react/xxx 或 docs/xxx）
+4. 内容包含分节、要点，结构清晰
+5. 只输出 Markdown 内容，不要其他解释` },
+          { role: 'user', content: `标题: ${safeNames[i]}\n描述: ${item.brief}\n\n可引用的笔记（用 [[名称]] 引用，不加任何路径前缀）:\n${safeNames.filter((_, j) => j !== i).map((n) => `- ${n}`).join('\n')}` }
         ], controller.signal)) {
           if (controller.signal.aborted) break
           if (chunk.type === 'text') noteContent += chunk.content
@@ -445,10 +447,10 @@ graph TD
     // Step 3: Index all generated files so wikilinks are recognized in the knowledge graph
     if (createdFiles.length > 0) {
       window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在索引笔记关系...' })
-      const { indexNote } = require('../services/indexer')
       for (const fp of createdFiles) {
         try { indexNote(params.vaultPath, fp) } catch {}
       }
+      window.webContents.send('vault:files-changed')
     }
 
     activeAbortControllers.delete(windowId)

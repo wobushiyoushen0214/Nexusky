@@ -333,7 +333,7 @@ export function ChatPanel() {
       editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
       try {
         const isNewFile = !targetPath
-        const isBatchRequest = /几篇|多篇|一系列|一组|批量|多个/.test(userMsg.content)
+        const isBatchRequest = /几篇|多篇|一系列|一组|批量|多个|\d+\s*篇/.test(userMsg.content)
 
         if (isBatchRequest && vaultPath) {
           // Check if user specified a directory in the instruction
