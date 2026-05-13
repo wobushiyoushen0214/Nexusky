@@ -518,7 +518,7 @@ export function ChatPanel() {
         ...(isActive ? { content: editResult.content, isDirty: false } : {})
       })
       if (isActive) {
-        window.dispatchEvent(new CustomEvent('editor-reload-content', { detail: { content: editResult.content } }))
+        window.dispatchEvent(new CustomEvent('editor-apply-content', { detail: { content: editResult.content } }))
       }
     } else {
       await store.openFile(editResult.filePath)

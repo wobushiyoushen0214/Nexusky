@@ -202,8 +202,18 @@ export function Editor() {
         editor.commands.setContent(newContent)
       }
     }
+    const handleApply = (e: Event) => {
+      const newContent = (e as CustomEvent).detail?.content
+      if (newContent !== undefined) {
+        editor.chain().selectAll().insertContent(newContent).run()
+      }
+    }
     window.addEventListener('editor-reload-content', handleReload)
-    return () => window.removeEventListener('editor-reload-content', handleReload)
+    window.addEventListener('editor-apply-content', handleApply)
+    return () => {
+      window.removeEventListener('editor-reload-content', handleReload)
+      window.removeEventListener('editor-apply-content', handleApply)
+    }
   }, [editor])
 
   // External file change detection
