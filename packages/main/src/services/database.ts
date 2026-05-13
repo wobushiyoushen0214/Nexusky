@@ -117,10 +117,21 @@ function initSchema(db: Database.Database): void {
       role TEXT NOT NULL,
       content TEXT NOT NULL,
       sources TEXT,
+      session_id TEXT DEFAULT NULL,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
     CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
+
+    CREATE TABLE IF NOT EXISTS chat_sessions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated ON chat_sessions(updated_at DESC);
   `)
 }
 
