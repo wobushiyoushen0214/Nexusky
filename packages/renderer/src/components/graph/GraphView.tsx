@@ -46,7 +46,8 @@ export function GraphView() {
       window.api.invoke('db:get-graph', { vaultPath }).then(setGraphData)
     }
     const cleanup = window.api.onVaultChanged(refresh)
-    return () => { cleanup() }
+    window.addEventListener('graph-data-updated', refresh)
+    return () => { cleanup(); window.removeEventListener('graph-data-updated', refresh) }
   }, [vaultPath])
 
   const updateHighlight = useCallback((currentTitle: string) => {

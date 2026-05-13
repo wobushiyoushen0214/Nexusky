@@ -62,18 +62,21 @@ export default function App() {
         await window.api.invoke('db:index-file', { vaultPath, filePath: path })
         mdPaths = [path]
       }
-      toast('索引完成，正在 AI 分析语义关系...', 'info')
+      // Open graph immediately with basic links, then enhance with AI
+      toggleRightPanel('graph')
+      toast('正在 AI 分析语义关系...', 'info')
       try {
         const result = await window.api.invoke('ai:infer-links', { vaultPath, filePaths: mdPaths })
-        if (result.success) {
-          toast(`分析完成，发现 ${result.added} 条语义关联`, 'success')
+        if (result.success && result.added > 0) {
+          toast(`发现 ${result.added} 条语义关联，图谱已更新`, 'success')
+          // Trigger graph refresh
+          window.dispatchEvent(new CustomEvent('graph-data-updated'))
         } else {
-          toast('索引完成，已打开知识图谱', 'success')
+          toast('语义分析完成', 'success')
         }
       } catch {
-        toast('索引完成，已打开知识图谱', 'success')
+        toast('AI 语义分析失败，图谱仅显示已有关系', 'info')
       }
-      toggleRightPanel('graph')
     }
     window.addEventListener('index-and-show-graph', handler)
     return () => window.removeEventListener('index-and-show-graph', handler)
