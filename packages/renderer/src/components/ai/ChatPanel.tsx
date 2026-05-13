@@ -425,6 +425,12 @@ export function ChatPanel() {
           const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
           const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
 
+          // Build context from recent conversation for batch generation
+          const recentContext = messages.slice(-10).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 200)}`).join('\n')
+          const batchInstruction = recentContext
+            ? `对话上下文：\n${recentContext}\n\n当前指令: ${userMsg.content}`
+            : userMsg.content
+
           // Use AI to semantically detect target directory from instruction
           let specifiedDir = ''
           try {
@@ -443,10 +449,10 @@ export function ChatPanel() {
           if (specifiedDir) {
             if (editTimerRef.current) clearInterval(editTimerRef.current)
             editTimerRef.current = null
-            await executeBatchGenerate(userMsg.content, `${vaultPath}/${specifiedDir}`)
+            await executeBatchGenerate(batchInstruction, `${vaultPath}/${specifiedDir}`)
           } else {
             setFolderOptions(dirs)
-            setPendingBatch({ instruction: userMsg.content })
+            setPendingBatch({ instruction: batchInstruction })
             setIsStreaming(false)
             if (editTimerRef.current) clearInterval(editTimerRef.current)
             editTimerRef.current = null
