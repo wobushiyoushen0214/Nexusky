@@ -373,6 +373,7 @@ graph TD
       for await (const chunk of provider.chatStream([
         { role: 'system', content: `你是一个笔记规划助手。用户会给你一个主题，请规划需要创建的笔记列表。
 输出格式为 JSON 数组，每项包含 title（文件标题）和 brief（一句话描述内容方向）。
+重要：title 是纯笔记标题，绝对不要包含目录名、路径前缀或分类前缀（例如不要写"react/Hooks入门"或"reactHooks入门"，直接写"Hooks入门"）。
 只输出 JSON，不要其他文字。示例：
 [{"title":"React Hooks 入门","brief":"介绍 useState、useEffect 等基础 Hook"},{"title":"自定义 Hook","brief":"如何封装可复用的自定义 Hook"}]` },
         { role: 'user', content: params.instruction }
@@ -403,7 +404,22 @@ graph TD
       mkdirSync(targetDir, { recursive: true })
     }
 
-    const dirName = targetDir === params.vaultPath ? '根目录' : targetDir.split(/[\\/]/).pop()
+    const dirName = targetDir === params.vaultPath ? '根目录' : targetDir.split(/[\\/]/).pop() || ''
+
+    // Strip directory name prefix from titles if AI accidentally included it
+    if (dirName && dirName !== '根目录') {
+      const prefixLower = dirName.toLowerCase()
+      for (const item of plan) {
+        const titleLower = item.title.toLowerCase()
+        if (titleLower.startsWith(prefixLower) && item.title.length > dirName.length) {
+          const rest = item.title.slice(dirName.length)
+          if (/^[A-Z_\-\s]/.test(rest)) {
+            item.title = rest.replace(/^[\s_\-]+/, '')
+          }
+        }
+      }
+    }
+
     window.webContents.send('ai:generate-notes-progress', { stage: 'planned', message: `将在「${dirName}」下生成 ${plan.length} 篇笔记`, plan })
 
     // Pre-compute safe file names for consistent wikilinks
