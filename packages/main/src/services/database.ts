@@ -5,6 +5,8 @@ import { app } from 'electron'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
+const SCHEMA_VERSION = 1
+
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
 
@@ -23,6 +25,7 @@ export function getDatabase(vaultPath: string): Database.Database {
   db.pragma('foreign_keys = ON')
   currentVaultPath = vaultPath
   initSchema(db)
+  runMigrations(db)
   return db
 }
 
@@ -119,4 +122,30 @@ function initSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(created_at DESC);
   `)
+}
+
+type Migration = (db: Database.Database) => void
+
+const migrations: Migration[] = [
+  // Migration 1: initial schema — already handled by initSchema, this is a placeholder
+  () => {}
+]
+
+function runMigrations(db: Database.Database): void {
+  db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)')
+  const row = db.prepare('SELECT version FROM schema_version LIMIT 1').get() as { version: number } | undefined
+  const currentVersion = row?.version ?? 0
+
+  if (currentVersion === 0 && !row) {
+    db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(SCHEMA_VERSION)
+    return
+  }
+
+  if (currentVersion >= SCHEMA_VERSION) return
+
+  for (let i = currentVersion; i < SCHEMA_VERSION; i++) {
+    if (migrations[i]) migrations[i](db)
+  }
+
+  db.prepare('UPDATE schema_version SET version = ?').run(SCHEMA_VERSION)
 }
