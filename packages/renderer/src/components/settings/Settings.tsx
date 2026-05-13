@@ -22,12 +22,12 @@ const DEFAULT_MODELS: Record<string, string[]> = {
 }
 
 const PRESET_MODELS: Record<string, string[]> = {
-  'DeepSeek': ['deepseek-chat', 'deepseek-reasoner'],
-  '通义千问': ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long'],
-  '智谱 GLM': ['glm-4-flash', 'glm-4-plus', 'glm-4-long'],
-  'Moonshot': ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-  '零一万物': ['yi-lightning', 'yi-large', 'yi-medium'],
-  '豆包': ['doubao-1.5-pro-32k', 'doubao-1.5-lite-32k', 'doubao-pro-128k'],
+  'DeepSeek': ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
+  '通义千问': ['qwen-plus', 'qwen-max', 'qwen-turbo', 'qwen3-max', 'qwen3-max-thinking'],
+  '智谱 GLM': ['glm-5.1', 'glm-5', 'glm-5-turbo', 'glm-4.5', 'glm-4.5v'],
+  'Moonshot': ['kimi-k2.6', 'kimi-k2.5', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  '零一万物': ['yi-lightning', 'yi-large', 'yi-large-turbo', 'yi-medium', 'yi-spark'],
+  '豆包': ['doubao-seed-2.0-pro', 'doubao-seed-2.0-lite', 'doubao-1.5-pro-32k', 'doubao-1.5-pro-256k', 'doubao-1.5-thinking-pro'],
 }
 
 function getModelsForEditing(editing: ProviderConfig): string[] {
@@ -41,12 +41,12 @@ function getModelsForEditing(editing: ProviderConfig): string[] {
 const PROVIDER_PRESETS: { label: string; type: 'openai' | 'claude' | 'custom' | 'ollama'; baseUrl: string; model: string }[] = [
   { label: 'OpenAI', type: 'openai', baseUrl: '', model: 'gpt-4.1-mini' },
   { label: 'Claude', type: 'claude', baseUrl: '', model: 'claude-sonnet-4-6' },
-  { label: 'DeepSeek', type: 'custom', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { label: 'DeepSeek', type: 'custom', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-flash' },
   { label: '通义千问', type: 'custom', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
-  { label: '智谱 GLM', type: 'custom', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
-  { label: 'Moonshot', type: 'custom', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
+  { label: '智谱 GLM', type: 'custom', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.1' },
+  { label: 'Moonshot', type: 'custom', baseUrl: 'https://api.moonshot.cn/v1', model: 'kimi-k2.6' },
   { label: '零一万物', type: 'custom', baseUrl: 'https://api.lingyiwanwu.com/v1', model: 'yi-lightning' },
-  { label: '豆包', type: 'custom', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-1.5-pro-32k' },
+  { label: '豆包', type: 'custom', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-seed-2.0-pro' },
   { label: 'Ollama (本地)', type: 'ollama', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
 ]
 
