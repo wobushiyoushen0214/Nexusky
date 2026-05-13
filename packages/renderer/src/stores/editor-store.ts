@@ -35,6 +35,8 @@ interface EditorState {
   unpinTab: (index: number) => void
 }
 
+let openFileLock = false
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   tabs: [],
   activeTabIndex: -1,
@@ -68,24 +70,34 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return
     }
 
+    if (openFileLock) return
+    openFileLock = true
     try {
-      const fileStat = await window.api.invoke('file:stat', { path })
-      if (fileStat.size > 512000) {
-        toast('大文件加载中，可能需要几秒...', 'info')
+      try {
+        const fileStat = await window.api.invoke('file:stat', { path })
+        if (fileStat.size > 512000) {
+          toast('大文件加载中，可能需要几秒...', 'info')
+        }
+      } catch {
+        toast('文件不存在或无法访问', 'error')
+        return
       }
-    } catch {
-      toast('文件不存在或无法访问', 'error')
-      return
-    }
 
-    if (activeTabIndex >= 0 && tabs[activeTabIndex]?.isDirty) {
-      await get().saveFile()
-    }
+      if (activeTabIndex >= 0 && tabs[activeTabIndex]?.isDirty) {
+        await get().saveFile()
+      }
 
-    try {
       const content = await window.api.invoke('file:read', { path })
+      const currentTabs = get().tabs
+      if (currentTabs.findIndex((t) => t.path === path) >= 0) {
+        const tab = currentTabs.find((t) => t.path === path)!
+        const idx = currentTabs.indexOf(tab)
+        set({ activeTabIndex: idx, currentFilePath: path, content: tab.content, isDirty: tab.isDirty })
+        return
+      }
+
       const newTab: Tab = { path, content, isDirty: false }
-      let newTabs = [...tabs, newTab]
+      let newTabs = [...currentTabs, newTab]
 
       const MAX_TABS = 30
       if (newTabs.length > MAX_TABS) {
@@ -100,6 +112,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false, recentFiles: recent })
     } catch (e: any) {
       toast(`打开文件失败: ${e.message || '未知错误'}`, 'error')
+    } finally {
+      openFileLock = false
     }
   },
 

@@ -42,7 +42,10 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
       })
       return
     }
-    window.api.invoke('db:search-notes', { vaultPath, query: query.trim() }).then(setResults)
+    const timer = setTimeout(() => {
+      window.api.invoke('db:search-notes', { vaultPath, query: query.trim() }).then(setResults)
+    }, 150)
+    return () => clearTimeout(timer)
   }, [query, vaultPath, open])
 
   const handleSelect = (result: NoteSearchResult) => {

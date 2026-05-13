@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
+import { ConfirmModal } from '../ConfirmModal'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FileTreeProps {
@@ -105,9 +106,12 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
     await refreshFiles()
   }
 
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+
   const handleDelete = async () => {
     await window.api.invoke('file:delete', { path: entry.path, vaultPath: vaultPath || undefined })
     await refreshFiles()
+    setDeleteConfirm(false)
   }
 
   const handleCreate = async () => {
@@ -135,11 +139,11 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
     { label: '新建笔记', onClick: () => { setCreating('file'); setExpanded(true) } },
     { label: '新建文件夹', onClick: () => { setCreating('folder'); setExpanded(true) } },
     { label: '重命名', onClick: () => { setNewName(entry.name); setRenaming(true) } },
-    { label: '删除', danger: true, onClick: handleDelete },
+    { label: '删除', danger: true, onClick: () => setDeleteConfirm(true) },
   ] : [
     { label: isFavorite ? '取消收藏' : '收藏', onClick: () => toggleFavorite(entry.path) },
     { label: '重命名', onClick: () => { setNewName(entry.name.replace(/\.md$/, '')); setRenaming(true) } },
-    { label: '删除', danger: true, onClick: handleDelete },
+    { label: '删除', danger: true, onClick: () => setDeleteConfirm(true) },
   ]
 
   const [hovered, setHovered] = useState(false)
@@ -299,6 +303,15 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
         </button>
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={() => setContextMenu(null)} />}
+      <ConfirmModal
+        open={deleteConfirm}
+        title="删除确认"
+        message={`确定要删除「${entry.name}」吗？文件将移入回收站。`}
+        confirmText="删除"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm(false)}
+      />
     </>
   )
 }

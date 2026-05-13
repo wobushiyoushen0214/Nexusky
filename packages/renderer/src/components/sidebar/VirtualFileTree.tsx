@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
+import { ConfirmModal } from '../ConfirmModal'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FlatNode {
@@ -173,6 +174,7 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
   }, [flatNodes])
 
   const [multiContextMenu, setMultiContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [multiDeleteConfirm, setMultiDeleteConfirm] = useState(false)
 
   const handleMultiDelete = async () => {
     const vaultPath = useVaultStore.getState().vaultPath
@@ -184,6 +186,7 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
     }
     setSelectedPaths(new Set())
     setMultiContextMenu(null)
+    setMultiDeleteConfirm(false)
     useVaultStore.getState().refreshFiles()
   }
 
@@ -240,11 +243,20 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
           x={multiContextMenu.x}
           y={multiContextMenu.y}
           items={[
-            { label: `删除 ${selectedPaths.size} 项`, danger: true, onClick: handleMultiDelete },
+            { label: `删除 ${selectedPaths.size} 项`, danger: true, onClick: () => setMultiDeleteConfirm(true) },
           ]}
           onClose={() => setMultiContextMenu(null)}
         />
       )}
+      <ConfirmModal
+        open={multiDeleteConfirm}
+        title="批量删除确认"
+        message={`确定要删除选中的 ${selectedPaths.size} 个文件吗？文件将移入回收站。`}
+        confirmText="删除"
+        danger
+        onConfirm={handleMultiDelete}
+        onCancel={() => setMultiDeleteConfirm(false)}
+      />
     </div>
   )
 }
@@ -316,25 +328,28 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
     await refreshFiles()
   }
 
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+
   const handleDelete = async () => {
     await window.api.invoke('file:delete', { path: entry.path, vaultPath: vaultPath || undefined })
     if (vaultPath && entry.path.endsWith('.md')) {
       await window.api.invoke('db:remove-file', { vaultPath, filePath: entry.path }).catch(() => {})
     }
     await refreshFiles()
+    setDeleteConfirm(false)
   }
 
   const menuItems = entry.isDirectory ? [
     { label: '索引知识图谱', onClick: () => window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: entry.path, isDirectory: true } })) },
     { label: '在访达中显示', onClick: () => window.api.invoke('file:reveal', { path: entry.path }) },
     { label: '重命名', onClick: () => { setNewName(entry.name); setRenaming(true) } },
-    { label: '删除', danger: true, onClick: handleDelete },
+    { label: '删除', danger: true, onClick: () => setDeleteConfirm(true) },
   ] : [
     { label: '索引知识图谱', onClick: () => window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: entry.path, isDirectory: false } })) },
     { label: isFavorite ? '取消收藏' : '收藏', onClick: () => toggleFavorite(entry.path) },
     { label: '在访达中显示', onClick: () => window.api.invoke('file:reveal', { path: entry.path }) },
     { label: '重命名', onClick: () => { setNewName(entry.name.replace(/\.md$/, '')); setRenaming(true) } },
-    { label: '删除', danger: true, onClick: handleDelete },
+    { label: '删除', danger: true, onClick: () => setDeleteConfirm(true) },
   ]
 
   if (renaming) {
@@ -423,6 +438,15 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
         </button>
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={() => setContextMenu(null)} />}
+      <ConfirmModal
+        open={deleteConfirm}
+        title="删除确认"
+        message={`确定要删除「${entry.name}」吗？文件将移入回收站。`}
+        confirmText="删除"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm(false)}
+      />
     </>
   )
 }

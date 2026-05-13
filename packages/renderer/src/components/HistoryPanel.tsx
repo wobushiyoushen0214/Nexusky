@@ -31,6 +31,7 @@ export function HistoryPanel() {
       tabs[tabIndex] = { ...tabs[tabIndex], content, isDirty: false }
       useEditorStore.setState({ tabs, content, isDirty: false })
     }
+    window.dispatchEvent(new CustomEvent('editor-reload-content', { detail: { content } }))
     toast('已恢复到该版本', 'success')
     setPreview(null)
   }
