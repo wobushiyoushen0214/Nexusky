@@ -473,6 +473,55 @@ export function ChatPanel() {
     streamContentRef.current = ''
     setStreamContent('')
 
+    // Detect "generate knowledge graph" intent in both modes
+    if (vaultPath) {
+      let isGraphRequest = false
+      try {
+        const graphDetect = await window.api.invoke('ai:complete', {
+          text: `判断以下用户指令是否要求生成/索引知识图谱（如"生成知识图谱"、"索引图谱"、"建立关联关系"等）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
+        })
+        isGraphRequest = (graphDetect || '').trim().startsWith('是')
+      } catch {}
+
+      if (isGraphRequest) {
+        let targetPath: string | null = null
+        // Determine target: current file's directory, or a specified directory
+        const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+        const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
+        try {
+          const dirDetect = await window.api.invoke('ai:complete', {
+            text: dirs.length > 0
+              ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想对哪个目录生成知识图谱。如果用户提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户说"当前"或没有指定，输出"当前"。只输出目录名或"当前"，不要其他文字。`
+              : `用户指令: "${userMsg.content}"\n\n请判断用户想对哪个目录生成知识图谱。如果无法判断或用户说"当前"，输出"当前"。只输出目录名或"当前"，不要其他文字。`
+          })
+          const detected = (dirDetect || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')
+          if (detected && detected !== '当前' && detected.length < 30) {
+            const exactMatch = dirs.find((d) => d.toLowerCase() === detected.toLowerCase())
+            targetPath = `${vaultPath}/${exactMatch || detected}`
+          }
+        } catch {}
+
+        if (!targetPath) {
+          const fp = useEditorStore.getState().currentFilePath
+          if (fp) {
+            const parts = fp.replace(/\\/g, '/').split('/')
+            parts.pop()
+            targetPath = parts.join('/')
+          } else {
+            targetPath = vaultPath
+          }
+        }
+
+        const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '正在为该目录生成知识图谱...' }
+        setMessages((msgs) => [...msgs, msg])
+        appendToDb(msg)
+        editCompleteRef.current = true
+        setIsStreaming(false)
+        window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: targetPath, isDirectory: true } }))
+        return
+      }
+    }
+
     if (editMode) {
       const targetPath = editUnbound ? null : (editTarget || null)
       setEditElapsed(0)
