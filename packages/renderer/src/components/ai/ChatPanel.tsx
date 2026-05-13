@@ -56,6 +56,7 @@ export function ChatPanel() {
   const isStreamingRef = useRef(false)
   useEffect(() => { isStreamingRef.current = isStreaming }, [isStreaming])
   const [streamContent, setStreamContent] = useState('')
+  const streamContentRef = useRef('')
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
@@ -132,11 +133,13 @@ export function ChatPanel() {
     const handler = (event: { type: string; content: string }) => {
       if (!isStreamingRef.current) return
       if (event.type === 'text') {
-        setStreamContent((prev) => prev + event.content)
+        streamContentRef.current += event.content
+        setStreamContent(streamContentRef.current)
       } else if (event.type === 'done') {
         setIsStreaming(false)
       } else if (event.type === 'error') {
         setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }])
+        streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
       }
@@ -148,12 +151,13 @@ export function ChatPanel() {
   const prevStreaming = useRef(false)
   const editCompleteRef = useRef(false)
   useEffect(() => {
-    if (prevStreaming.current && !isStreaming && streamContent && !editCompleteRef.current) {
+    if (prevStreaming.current && !isStreaming && streamContentRef.current && !editCompleteRef.current) {
       const sources = pendingSourcesRef.current.length > 0 ? [...pendingSourcesRef.current] : undefined
-      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContent, sources }
+      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContentRef.current, sources }
       setMessages((msgs) => [...msgs, msg])
       appendToDb(msg)
       pendingSourcesRef.current = []
+      streamContentRef.current = ''
       setStreamContent('')
     }
     editCompleteRef.current = false
@@ -249,6 +253,7 @@ export function ChatPanel() {
 
   const executeBatchGenerate = async (instruction: string, targetDir: string) => {
     setIsStreaming(true)
+    streamContentRef.current = ''
     setStreamContent('')
     setEditElapsed(0)
     if (editTimerRef.current) clearInterval(editTimerRef.current)
@@ -363,6 +368,7 @@ export function ChatPanel() {
     appendToDb(userMsg)
     setInput('')
     setIsStreaming(true)
+    streamContentRef.current = ''
     setStreamContent('')
 
     if (editMode) {
@@ -974,7 +980,7 @@ export function ChatPanel() {
             />
             {isStreaming ? (
               <button
-                onClick={() => { window.api.invoke('ai:stop', undefined); setIsStreaming(false); setStreamContent('') }}
+                onClick={() => { window.api.invoke('ai:stop', undefined); streamContentRef.current = ''; setIsStreaming(false); setStreamContent('') }}
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'var(--bg-surface)', color: 'var(--text-secondary)',

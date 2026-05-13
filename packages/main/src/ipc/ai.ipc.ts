@@ -74,12 +74,21 @@ ${context}
       }
     }
 
-    for await (const chunk of aiManager.chat(messages, controller.signal)) {
-      if (window.isDestroyed() || controller.signal.aborted) break
-      window.webContents.send('ai:stream', chunk)
+    try {
+      for await (const chunk of aiManager.chat(messages, controller.signal)) {
+        if (window.isDestroyed() || controller.signal.aborted) break
+        window.webContents.send('ai:stream', chunk)
+      }
+    } catch (err: any) {
+      if (!window.isDestroyed()) {
+        window.webContents.send('ai:stream', { type: 'error', content: err?.message || String(err) })
+      }
+    } finally {
+      if (!window.isDestroyed()) {
+        window.webContents.send('ai:stream', { type: 'done', content: '' })
+      }
+      activeAbortControllers.delete(windowId)
     }
-
-    activeAbortControllers.delete(windowId)
   })
 
   ipcMain.handle('ai:stop', (event) => {
