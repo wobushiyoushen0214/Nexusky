@@ -59,7 +59,13 @@ export function ChatPanel() {
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
+    try { return localStorage.getItem('nexusky-chat-session-id') || null } catch { return null }
+  })
+  const updateSessionId = (id: string | null) => {
+    setCurrentSessionId(id)
+    try { if (id) localStorage.setItem('nexusky-chat-session-id', id); else localStorage.removeItem('nexusky-chat-session-id') } catch {}
+  }
   const [showSessions, setShowSessions] = useState(false)
   const [showMention, setShowMention] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
@@ -102,13 +108,13 @@ export function ChatPanel() {
     const id = crypto.randomUUID()
     const title = `对话 ${sessions.length + 1}`
     await window.api.invoke('db:chat-session-create', { vaultPath, id, title })
-    setCurrentSessionId(id)
+    updateSessionId(id)
     setMessages([])
     setSessions((prev) => [{ id, title, createdAt: Date.now() / 1000, updatedAt: Date.now() / 1000 }, ...prev])
   }
 
   const handleSwitchSession = (sessionId: string | null) => {
-    setCurrentSessionId(sessionId)
+    updateSessionId(sessionId)
     setShowSessions(false)
   }
 
@@ -117,7 +123,7 @@ export function ChatPanel() {
     await window.api.invoke('db:chat-session-delete', { vaultPath, sessionId })
     setSessions((prev) => prev.filter((s) => s.id !== sessionId))
     if (currentSessionId === sessionId) {
-      setCurrentSessionId(null)
+      updateSessionId(null)
       setMessages([])
     }
   }
@@ -244,13 +250,15 @@ export function ChatPanel() {
   const executeBatchGenerate = async (instruction: string, targetDir: string) => {
     setIsStreaming(true)
     setStreamContent('')
+    setEditElapsed(0)
+    if (editTimerRef.current) clearInterval(editTimerRef.current)
     editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
 
     const planMsgId = Date.now().toString()
     let planItems: { title: string; done: boolean }[] = []
 
     const updatePlanMsg = () => {
-      const lines = planItems.map((item) => `${item.done ? '✅' : '⬜'} ${item.title}`).join('\n')
+      const lines = planItems.map((item) => `${item.done ? '✓' : '○'} ${item.title}`).join('\n')
       setMessages((msgs) => {
         const idx = msgs.findIndex((m) => m.id === planMsgId)
         if (idx >= 0) {
@@ -268,7 +276,7 @@ export function ChatPanel() {
       } else if (data.stage === 'planned' && data.plan) {
         planItems = data.plan.map((p: any) => ({ title: p.title, done: false }))
         setStreamContent('')
-        const lines = planItems.map((item) => `⬜ ${item.title}`).join('\n')
+        const lines = planItems.map((item) => `○ ${item.title}`).join('\n')
         setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
       } else if (data.stage === 'generating' && data.current) {
         if (data.current > 1) {
@@ -357,42 +365,43 @@ export function ChatPanel() {
     if (editMode) {
       const targetPath = editUnbound ? null : (editTarget || null)
       setEditElapsed(0)
-      editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
       try {
         const isNewFile = !targetPath
-        const isBatchRequest = /几篇|多篇|一系列|一组|批量|多个|\d+\s*篇/.test(userMsg.content)
 
-        if (isBatchRequest && vaultPath) {
-          // Try to detect target directory from user instruction
+        if (vaultPath) {
+          // Use AI to semantically determine if this is a batch generation request
+          let isBatchRequest = false
+          try {
+            const batchDetect = await window.api.invoke('ai:complete', {
+              text: `判断以下用户指令是否要求批量生成多篇笔记（而非修改或生成单篇）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
+            })
+            isBatchRequest = (batchDetect || '').trim().startsWith('是')
+          } catch {}
+
+          if (isBatchRequest) {
           const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
           const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
 
-          // Strategy 1: regex patterns for explicit directory mentions
-          const dirPatterns = [
-            /(?:在|到)\s*[「"']?([^\s,，。、「"']+?)[「"']?\s*(?:目录|文件夹|路径)(?:下|中|里)/,
-            /(?:放到|存到|保存到|生成到|放在|存在|写到|写在)\s*([^\s,，。、]+?)\s*(?:目录|文件夹|下|中|里)/,
-            /(?:目录|文件夹)\s*[「"']([^「"']+)[「"']/,
-            /(?:放到|存到|保存到|生成到|放在|存在|写到|写在)\s*[「"']([^「"']+)[「"']/,
-            /(?:在|到)\s*[「"']([^「"']+)[「"']\s*(?:下|中|里)/,
-            /(?:在|到)\s*([a-zA-Z一-鿿][\w一-鿿-]*)\s*(?:下|中|里)/,
-          ]
+          // Use AI to semantically detect target directory from instruction
           let specifiedDir = ''
-          for (const pat of dirPatterns) {
-            const m = userMsg.content.match(pat)
-            if (m) { specifiedDir = m[1].replace(/[\\/:*?"<>|]/g, '').trim(); break }
-          }
-
-          // Strategy 2: check if user message contains an existing directory name
-          if (!specifiedDir) {
-            const msgLower = userMsg.content.toLowerCase()
-            const matched = dirs.find((d) => msgLower.includes(d.toLowerCase()))
-            if (matched) specifiedDir = matched
+          if (dirs.length > 0) {
+            try {
+              const detectResult = await window.api.invoke('ai:complete', {
+                text: `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想把笔记放在哪个目录下。如果用户明确提到了某个目录或主题与某个目录匹配，输出该目录名；如果用户想创建新目录，输出新目录名；如果无法判断，输出空。只输出目录名，不要其他文字。`
+              })
+              const detected = (detectResult || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')
+              if (detected && detected !== '空' && detected.length < 30) {
+                const exactMatch = dirs.find((d) => d.toLowerCase() === detected.toLowerCase())
+                specifiedDir = exactMatch || detected
+              }
+            } catch {}
           }
 
           if (specifiedDir) {
+            if (editTimerRef.current) clearInterval(editTimerRef.current)
+            editTimerRef.current = null
             await executeBatchGenerate(userMsg.content, `${vaultPath}/${specifiedDir}`)
           } else {
-            // Show folder picker
             setFolderOptions(dirs)
             setPendingBatch({ instruction: userMsg.content })
             setIsStreaming(false)
@@ -402,6 +411,7 @@ export function ChatPanel() {
             setMessages((msgs) => [...msgs, askMsg])
           }
           return
+          }
         }
 
         let fileContent = ''
@@ -410,6 +420,7 @@ export function ChatPanel() {
           fileContent = await window.api.invoke('file:read', { path: filePath })
         }
 
+        editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
         const result = await window.api.invoke('ai:edit', {
           instruction: !filePath
             ? `创建一篇新笔记。要求：${userMsg.content}`
