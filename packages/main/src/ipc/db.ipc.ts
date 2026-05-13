@@ -9,6 +9,25 @@ import { pushIndex } from '../services/cloud/manager'
 export function registerDbIPC(): void {
   ipcMain.handle('db:index-vault', async (_event, params: { vaultPath: string }) => {
     const files = collectMarkdownFiles(params.vaultPath)
+    const db = getDatabase(params.vaultPath)
+
+    // Clean up stale records for files that no longer exist
+    const allNotes = db.prepare('SELECT id, file_path FROM notes').all() as { id: string; file_path: string }[]
+    const existingRelPaths = new Set(files.map((f) => f.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')))
+    const staleNotes = allNotes.filter((n) => !existingRelPaths.has(n.file_path))
+    if (staleNotes.length > 0) {
+      const deleteNote = db.prepare('DELETE FROM notes WHERE id = ?')
+      const deleteFtsMap = db.prepare('DELETE FROM notes_fts_map WHERE note_id = ?')
+      for (const note of staleNotes) {
+        const ftsRow = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?').get(note.id) as { rowid: number } | undefined
+        if (ftsRow) {
+          db.prepare('DELETE FROM notes_fts WHERE rowid = ?').run(ftsRow.rowid)
+          deleteFtsMap.run(note.id)
+        }
+        deleteNote.run(note.id)
+      }
+    }
+
     const BATCH_SIZE = 20
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
       const batch = files.slice(i, i + BATCH_SIZE)

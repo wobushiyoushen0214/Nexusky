@@ -178,6 +178,9 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
     const vaultPath = useVaultStore.getState().vaultPath
     for (const path of selectedPaths) {
       await window.api.invoke('file:delete', { path, vaultPath: vaultPath || undefined })
+      if (vaultPath && path.endsWith('.md')) {
+        await window.api.invoke('db:remove-file', { vaultPath, filePath: path }).catch(() => {})
+      }
     }
     setSelectedPaths(new Set())
     setMultiContextMenu(null)
@@ -315,6 +318,9 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
 
   const handleDelete = async () => {
     await window.api.invoke('file:delete', { path: entry.path, vaultPath: vaultPath || undefined })
+    if (vaultPath && entry.path.endsWith('.md')) {
+      await window.api.invoke('db:remove-file', { vaultPath, filePath: entry.path }).catch(() => {})
+    }
     await refreshFiles()
   }
 
