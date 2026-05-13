@@ -463,10 +463,17 @@ graph TD
     // Step 3: Index all generated files so wikilinks are recognized in the knowledge graph
     if (createdFiles.length > 0) {
       window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在索引笔记关系...' })
+      let indexErr: string | null = null
       for (const fp of createdFiles) {
-        try { indexNote(params.vaultPath, fp) } catch {}
+        try { indexNote(params.vaultPath, fp) } catch (e: any) {
+          if (!indexErr) indexErr = e?.message || String(e)
+          console.error('[indexNote] failed for', fp, e)
+        }
       }
       window.webContents.send('vault:files-changed')
+      if (indexErr) {
+        window.webContents.send('ai:generate-notes-progress', { stage: 'index-error', message: `索引失败: ${indexErr}` })
+      }
     }
 
     activeAbortControllers.delete(windowId)

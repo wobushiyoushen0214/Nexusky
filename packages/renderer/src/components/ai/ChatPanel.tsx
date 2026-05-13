@@ -258,6 +258,9 @@ export function ChatPanel() {
         planItems = planItems.map((item) => ({ ...item, done: true }))
         updatePlanMsg()
         setStreamContent('正在索引笔记关系...')
+      } else if (data.stage === 'index-error') {
+        setStreamContent('')
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `⚠️ ${data.message}（文件已生成，但知识图谱索引失败，可手动重建索引）` }])
       } else if (data.stage === 'done') {
         planItems = planItems.map((item) => ({ ...item, done: true }))
         updatePlanMsg()
