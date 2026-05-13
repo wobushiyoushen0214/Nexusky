@@ -66,6 +66,7 @@ export interface IPCChannelMap {
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:validate': { params: { config: any }; result: boolean }
   'ai:chat': { params: { messages: { role: string; content: string }[] }; result: void }
+  'ai:stop': { params: undefined; result: void }
   'ai:complete': { params: { text: string }; result: string }
   'ai:list-ollama-models': { params: { baseUrl?: string }; result: string[] }
   'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }

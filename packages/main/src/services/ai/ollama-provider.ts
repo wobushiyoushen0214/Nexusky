@@ -14,15 +14,16 @@ export class OllamaProvider extends BaseAIProvider {
     })
   }
 
-  async *chatStream(messages: ChatMessage[]): AsyncGenerator<ChatStreamEvent> {
+  async *chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
     try {
       const stream = await this.client.chat.completions.create({
         model: this.config.model,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         stream: true
-      })
+      }, signal ? { signal } : undefined)
 
       for await (const chunk of stream) {
+        if (signal?.aborted) break
         const content = chunk.choices[0]?.delta?.content
         if (content) {
           yield { type: 'text', content }
@@ -30,6 +31,10 @@ export class OllamaProvider extends BaseAIProvider {
       }
       yield { type: 'done', content: '' }
     } catch (error: any) {
+      if (error.name === 'AbortError' || signal?.aborted) {
+        yield { type: 'done', content: '' }
+        return
+      }
       yield { type: 'error', content: error.message || 'Ollama 请求失败，请确认 Ollama 正在运行' }
     }
   }

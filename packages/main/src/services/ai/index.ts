@@ -56,14 +56,14 @@ class AIManager {
     return configs.find((c) => c.enabled) || null
   }
 
-  async *chat(messages: ChatMessage[]): AsyncGenerator<ChatStreamEvent> {
+  async *chat(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
     const config = this.getActiveConfig()
     if (!config) {
       yield { type: 'error', content: '未配置 AI 提供商，请在设置中添加' }
       return
     }
     const provider = this.getProvider(config)
-    yield* provider.chatStream(messages)
+    yield* provider.chatStream(messages, signal)
   }
 }
 

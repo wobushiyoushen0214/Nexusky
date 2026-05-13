@@ -4,6 +4,8 @@ import { store } from '../services/store'
 import { semanticSearch } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 
+const activeAbortControllers: Map<number, AbortController> = new Map()
+
 export function registerAiIPC(): void {
   ipcMain.handle('ai:get-providers', () => {
     return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
@@ -26,6 +28,13 @@ export function registerAiIPC(): void {
   ipcMain.handle('ai:chat', async (event, params: { messages: ChatMessage[]; vaultPath?: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return
+
+    const windowId = window.id
+    const prevController = activeAbortControllers.get(windowId)
+    if (prevController) prevController.abort()
+
+    const controller = new AbortController()
+    activeAbortControllers.set(windowId, controller)
 
     let messages = [...params.messages]
 
@@ -64,9 +73,21 @@ ${context}
       }
     }
 
-    for await (const chunk of aiManager.chat(messages)) {
-      if (window.isDestroyed()) break
+    for await (const chunk of aiManager.chat(messages, controller.signal)) {
+      if (window.isDestroyed() || controller.signal.aborted) break
       window.webContents.send('ai:stream', chunk)
+    }
+
+    activeAbortControllers.delete(windowId)
+  })
+
+  ipcMain.handle('ai:stop', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return
+    const controller = activeAbortControllers.get(window.id)
+    if (controller) {
+      controller.abort()
+      activeAbortControllers.delete(window.id)
     }
   })
 

@@ -12,7 +12,7 @@ export class ClaudeProvider extends BaseAIProvider {
     })
   }
 
-  async *chatStream(messages: ChatMessage[]): AsyncGenerator<ChatStreamEvent> {
+  async *chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
     try {
       const systemMsg = messages.find((m) => m.role === 'system')
       const chatMessages = messages
@@ -24,15 +24,20 @@ export class ClaudeProvider extends BaseAIProvider {
         max_tokens: 4096,
         system: systemMsg?.content || undefined,
         messages: chatMessages
-      })
+      }, signal ? { signal } : undefined)
 
       for await (const event of stream) {
+        if (signal?.aborted) break
         if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
           yield { type: 'text', content: event.delta.text }
         }
       }
       yield { type: 'done', content: '' }
     } catch (error: any) {
+      if (error.name === 'AbortError' || signal?.aborted) {
+        yield { type: 'done', content: '' }
+        return
+      }
       yield { type: 'error', content: error.message || 'Claude request failed' }
     }
   }

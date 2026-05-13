@@ -626,7 +626,7 @@ export function ChatPanel() {
             />
             {isStreaming ? (
               <button
-                onClick={() => { setIsStreaming(false); setStreamContent('') }}
+                onClick={() => { window.api.invoke('ai:stop', undefined); setIsStreaming(false); setStreamContent('') }}
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'var(--bg-surface)', color: 'var(--text-secondary)',

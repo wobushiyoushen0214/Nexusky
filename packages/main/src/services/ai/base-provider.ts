@@ -31,6 +31,6 @@ export abstract class BaseAIProvider {
     this.config = config
   }
 
-  abstract chatStream(messages: ChatMessage[]): AsyncGenerator<ChatStreamEvent>
+  abstract chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>
   abstract validate(): Promise<boolean>
 }
