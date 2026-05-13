@@ -355,16 +355,13 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
         onDragLeave={entry.isDirectory ? handleDragLeave : undefined}
         onDrop={entry.isDirectory ? handleDrop : undefined}
         style={{
-          height: ITEM_HEIGHT - 2,
-          marginTop: 1,
-          marginBottom: 1,
-          marginLeft: 4,
-          marginRight: 4,
+          height: ITEM_HEIGHT - 4,
+          margin: '2px 4px',
           display: 'flex',
           alignItems: 'center',
           borderRadius: 6,
           background: isSelected ? 'var(--accent-muted)' : isActive ? 'var(--accent-muted)' : dragOver ? 'var(--accent-muted)' : isFocused ? 'var(--bg-hover)' : 'transparent',
-          outline: dragOver ? '1px dashed var(--accent)' : isSelected ? '1px solid var(--accent)' : 'none',
+          outline: dragOver ? '1px dashed var(--accent)' : isSelected ? '1.5px solid var(--accent)' : 'none',
         }}
       >
         <button
