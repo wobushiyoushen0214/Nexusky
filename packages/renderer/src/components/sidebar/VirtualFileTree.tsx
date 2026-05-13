@@ -349,7 +349,7 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
+        onContextMenu={(e) => { if (isSelected) return; e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
         onDragOver={entry.isDirectory ? handleDragOver : undefined}
         onDragEnter={entry.isDirectory ? handleDragEnter : undefined}
         onDragLeave={entry.isDirectory ? handleDragLeave : undefined}
