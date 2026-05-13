@@ -42,6 +42,8 @@ export default function App() {
   const [trashOpen, setTrashOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
+  const [chatEverOpened, setChatEverOpened] = useState(false)
+  if (rightPanel === 'chat' && !chatEverOpened) setChatEverOpened(true)
 
   useEffect(() => {
     const handler = async (e: Event) => {
@@ -321,19 +323,26 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <Suspense fallback={null}>
                 {rightPanel === 'graph' && <GraphView />}
-                {rightPanel === 'chat' && <ChatPanel />}
                 {rightPanel === 'outline' && <OutlinePanel />}
                 {rightPanel === 'tags' && <TagsPanel />}
                 {rightPanel === 'calendar' && <CalendarPanel />}
                 {rightPanel === 'kanban' && <KanbanPanel />}
                 {rightPanel === 'history' && <HistoryPanel />}
                 </Suspense>
+                <div style={{ flex: 1, overflow: 'hidden', display: rightPanel === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
+                  <Suspense fallback={null}>{chatEverOpened && <ChatPanel />}</Suspense>
+                </div>
               </div>
             </aside>
             </>
+          )}
+          {chatEverOpened && rightPanel === 'none' && (
+            <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+              <Suspense fallback={null}><ChatPanel /></Suspense>
+            </div>
           )}
         </div>
       ) : (
