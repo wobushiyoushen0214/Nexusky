@@ -345,6 +345,12 @@ ${context}
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商', files: [] }
 
+    const windowId = window.id
+    const prevController = activeAbortControllers.get(windowId)
+    if (prevController) prevController.abort()
+    const controller = new AbortController()
+    activeAbortControllers.set(windowId, controller)
+
     const provider = aiManager.getProvider(config)
     const { writeFileSync, mkdirSync, existsSync } = require('fs')
     const { join } = require('path')
@@ -360,13 +366,17 @@ ${context}
 只输出 JSON，不要其他文字。示例：
 [{"title":"React Hooks 入门","brief":"介绍 useState、useEffect 等基础 Hook"},{"title":"自定义 Hook","brief":"如何封装可复用的自定义 Hook"}]` },
         { role: 'user', content: params.instruction }
-      ])) {
+      ], controller.signal)) {
+        if (controller.signal.aborted) break
         if (chunk.type === 'text') planResult += chunk.content
-        if (chunk.type === 'error') return { success: false, error: chunk.content, files: [] }
+        if (chunk.type === 'error') { activeAbortControllers.delete(windowId); return { success: false, error: chunk.content, files: [] } }
       }
     } catch (err: any) {
-      return { success: false, error: err.message, files: [] }
+      activeAbortControllers.delete(windowId)
+      return { success: false, error: controller.signal.aborted ? '已取消' : err.message, files: [] }
     }
+
+    if (controller.signal.aborted) { activeAbortControllers.delete(windowId); return { success: false, error: '已取消', files: [] } }
 
     let plan: { title: string; brief: string }[]
     try {
@@ -389,6 +399,7 @@ ${context}
     // Step 2: Generate each note
     const createdFiles: string[] = []
     for (let i = 0; i < plan.length; i++) {
+      if (controller.signal.aborted) break
       const item = plan[i]
       window.webContents.send('ai:generate-notes-progress', { stage: 'generating', message: `正在生成 (${i + 1}/${plan.length}): ${item.title}`, current: i + 1, total: plan.length })
 
@@ -397,13 +408,14 @@ ${context}
         for await (const chunk of provider.chatStream([
           { role: 'system', content: '你是一个知识库笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。包含标题（# 开头）、分节、要点。适当使用 [[双链]] 引用其他相关笔记。只输出 Markdown 内容。' },
           { role: 'user', content: `标题: ${item.title}\n描述: ${item.brief}\n\n相关笔记列表（可用 [[]] 引用）: ${plan.map((p) => p.title).join(', ')}` }
-        ])) {
+        ], controller.signal)) {
+          if (controller.signal.aborted) break
           if (chunk.type === 'text') noteContent += chunk.content
           if (chunk.type === 'error') break
         }
       } catch { continue }
 
-      if (noteContent.trim()) {
+      if (noteContent.trim() && !controller.signal.aborted) {
         const safeName = item.title.replace(/[\\/:*?"<>|]/g, '').trim()
         const filePath = join(targetDir, `${safeName}.md`)
         try {
@@ -414,29 +426,34 @@ ${context}
     }
 
     // Step 3: Generate knowledge graph
-    window.webContents.send('ai:generate-notes-progress', { stage: 'graph', message: '正在生成知识图谱...' })
+    if (!controller.signal.aborted) {
+      window.webContents.send('ai:generate-notes-progress', { stage: 'graph', message: '正在生成知识图谱...' })
 
-    let graphContent = ''
-    const noteSummaries = plan.map((p) => `- ${p.title}: ${p.brief}`).join('\n')
-    try {
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: '根据以下笔记列表及其关系，生成一个 Mermaid graph TD 知识图谱。只输出 mermaid 代码，不要代码块标记。' },
-        { role: 'user', content: noteSummaries }
-      ])) {
-        if (chunk.type === 'text') graphContent += chunk.content
-      }
-    } catch {}
-
-    if (graphContent.trim()) {
-      const graphPath = join(targetDir, `知识图谱.md`)
-      const graphMd = `# 知识图谱\n\n> 基于 ${plan.length} 篇笔记自动生成\n\n\`\`\`mermaid\n${graphContent.trim()}\n\`\`\`\n`
+      let graphContent = ''
+      const noteSummaries = plan.map((p) => `- ${p.title}: ${p.brief}`).join('\n')
       try {
-        writeFileSync(graphPath, graphMd, 'utf-8')
-        createdFiles.push(graphPath)
+        for await (const chunk of provider.chatStream([
+          { role: 'system', content: '根据以下笔记列表及其关系，生成一个 Mermaid graph TD 知识图谱。只输出 mermaid 代码，不要代码块标记。' },
+          { role: 'user', content: noteSummaries }
+        ], controller.signal)) {
+          if (controller.signal.aborted) break
+          if (chunk.type === 'text') graphContent += chunk.content
+        }
       } catch {}
+
+      if (graphContent.trim() && !controller.signal.aborted) {
+        const graphPath = join(targetDir, `知识图谱.md`)
+        const graphMd = `# 知识图谱\n\n> 基于 ${plan.length} 篇笔记自动生成\n\n\`\`\`mermaid\n${graphContent.trim()}\n\`\`\`\n`
+        try {
+          writeFileSync(graphPath, graphMd, 'utf-8')
+          createdFiles.push(graphPath)
+        } catch {}
+      }
     }
 
-    window.webContents.send('ai:generate-notes-progress', { stage: 'done', message: `完成！已生成 ${createdFiles.length} 个文件` })
+    activeAbortControllers.delete(windowId)
+    const aborted = controller.signal.aborted
+    window.webContents.send('ai:generate-notes-progress', { stage: 'done', message: aborted ? `已停止，已生成 ${createdFiles.length} 个文件` : `完成！已生成 ${createdFiles.length} 个文件` })
     return { success: true, files: createdFiles }
   })
 }
