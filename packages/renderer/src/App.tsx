@@ -294,56 +294,51 @@ export default function App() {
             )}
           </main>
           {rightPanel !== 'none' && (
-            <>
-              <ResizeHandle side="right" onResize={(delta) => resizeRightPanel(delta)} />
-              <aside style={{ width: rightPanelWidth, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: 4, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {rightPanel === 'graph' ? '知识图谱' : rightPanel === 'chat' ? 'AI 对话' : rightPanel === 'tags' ? '标签' : rightPanel === 'calendar' ? '日历' : rightPanel === 'kanban' ? '看板' : rightPanel === 'history' ? '版本历史' : '大纲'}
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {rightPanel === 'graph' && (
-                    <button
-                      onClick={() => { setMainView('graph'); toggleRightPanel('graph') }}
-                      style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-                      title="全屏图谱"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-                      </svg>
-                    </button>
-                  )}
+            <ResizeHandle side="right" onResize={(delta) => resizeRightPanel(delta)} />
+          )}
+          <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 4 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                {rightPanel === 'graph' ? '知识图谱' : rightPanel === 'chat' ? 'AI 对话' : rightPanel === 'tags' ? '标签' : rightPanel === 'calendar' ? '日历' : rightPanel === 'kanban' ? '看板' : rightPanel === 'history' ? '版本历史' : '大纲'}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {rightPanel === 'graph' && (
                   <button
-                    onClick={() => toggleRightPanel(rightPanel)}
+                    onClick={() => { setMainView('graph'); toggleRightPanel('graph') }}
                     style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                    title="全屏图谱"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
                     </svg>
                   </button>
-                </div>
+                )}
+                <button
+                  onClick={() => toggleRightPanel(rightPanel)}
+                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               </div>
-              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <Suspense fallback={null}>
-                {rightPanel === 'graph' && <GraphView />}
-                {rightPanel === 'outline' && <OutlinePanel />}
-                {rightPanel === 'tags' && <TagsPanel />}
-                {rightPanel === 'calendar' && <CalendarPanel />}
-                {rightPanel === 'kanban' && <KanbanPanel />}
-                {rightPanel === 'history' && <HistoryPanel />}
-                </Suspense>
-                <div style={{ flex: 1, overflow: 'hidden', display: rightPanel === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
-                  <Suspense fallback={null}>{chatEverOpened && <ChatPanel />}</Suspense>
-                </div>
-              </div>
-            </aside>
-            </>
-          )}
-          {chatEverOpened && rightPanel !== 'chat' && (
-            <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-              <Suspense fallback={null}><ChatPanel /></Suspense>
             </div>
-          )}
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <Suspense fallback={null}>
+              {rightPanel === 'graph' && <GraphView />}
+              {rightPanel === 'outline' && <OutlinePanel />}
+              {rightPanel === 'tags' && <TagsPanel />}
+              {rightPanel === 'calendar' && <CalendarPanel />}
+              {rightPanel === 'kanban' && <KanbanPanel />}
+              {rightPanel === 'history' && <HistoryPanel />}
+              </Suspense>
+              {chatEverOpened && (
+                <div style={{ flex: 1, overflow: 'hidden', display: rightPanel === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
+                  <Suspense fallback={null}><ChatPanel /></Suspense>
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       ) : (
         <WelcomeScreen />
