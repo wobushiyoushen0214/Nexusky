@@ -16,13 +16,31 @@ export function getDatabase(vaultPath: string): Database.Database {
   }
 
   const dbPath = join(vaultPath, '.nexusky', 'index.db')
-  const { mkdirSync, existsSync } = require('fs')
+  const { mkdirSync, existsSync, unlinkSync } = require('fs')
   const dir = join(vaultPath, '.nexusky')
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
 
-  db = new Database(dbPath)
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
+  try {
+    db = new Database(dbPath)
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+    // Integrity check to detect corruption early
+    const check = db.pragma('integrity_check') as { integrity_check: string }[]
+    if (check[0]?.integrity_check !== 'ok') {
+      throw new Error('integrity_check failed')
+    }
+  } catch {
+    // Database is corrupted — delete and recreate
+    if (db) { try { db.close() } catch {} }
+    db = null
+    try { unlinkSync(dbPath) } catch {}
+    try { unlinkSync(dbPath + '-wal') } catch {}
+    try { unlinkSync(dbPath + '-shm') } catch {}
+    db = new Database(dbPath)
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+  }
+
   currentVaultPath = vaultPath
   initSchema(db)
   runMigrations(db)
