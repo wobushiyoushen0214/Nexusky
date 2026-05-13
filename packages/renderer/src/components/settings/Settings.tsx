@@ -78,10 +78,6 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [cloudConfig, setCloudConfig] = useState({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
   const [cloudUser, setCloudUser] = useState<{ email: string } | null>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
-  const [appVersion, setAppVersion] = useState('')
-  const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(null)
-  const [updateStage, setUpdateStage] = useState<'idle' | 'checking' | 'downloading' | 'ready'>('idle')
-  const [downloadPercent, setDownloadPercent] = useState(0)
 
   useEffect(() => {
     if (open) {
@@ -92,20 +88,8 @@ export function Settings({ open, onClose }: SettingsProps) {
       })
       window.api.invoke('cloud:get-config', undefined).then(setCloudConfig)
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
-      window.api.invoke('app:get-version', undefined).then(setAppVersion)
     }
   }, [open])
-
-  useEffect(() => {
-    const offProgress = (window.api as any).onUpdaterProgress?.((data: { percent: number }) => {
-      setDownloadPercent(Math.round(data.percent || 0))
-      setUpdateStage('downloading')
-    })
-    const offDone = (window.api as any).onUpdaterDownloaded?.(() => {
-      setUpdateStage('ready')
-    })
-    return () => { offProgress?.(); offDone?.() }
-  }, [])
 
   const saveProviders = async (updated: ProviderConfig[]) => {
     setProviders(updated)
@@ -772,6 +756,25 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
 
 function AppearanceTab() {
   const { theme, setTheme } = useUIStore()
+  const [appVersion, setAppVersion] = useState('')
+  const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(null)
+  const [updateStage, setUpdateStage] = useState<'idle' | 'checking' | 'downloading' | 'ready'>('idle')
+  const [downloadPercent, setDownloadPercent] = useState(0)
+
+  useEffect(() => {
+    window.api.invoke('app:get-version', undefined).then(setAppVersion)
+  }, [])
+
+  useEffect(() => {
+    const offProgress = (window.api as any).onUpdaterProgress?.((data: { percent: number }) => {
+      setDownloadPercent(Math.round(data.percent || 0))
+      setUpdateStage('downloading')
+    })
+    const offDone = (window.api as any).onUpdaterDownloaded?.(() => {
+      setUpdateStage('ready')
+    })
+    return () => { offProgress?.(); offDone?.() }
+  }, [])
 
   const optionStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
