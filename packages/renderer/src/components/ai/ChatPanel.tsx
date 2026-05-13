@@ -148,12 +148,12 @@ export function ChatPanel() {
   const handleSelectMention = (note: { title: string; filePath: string }) => {
     if (editMode) {
       setEditTarget(note.filePath)
+      setShowMention(false)
     } else {
       setAttachedNotes((prev) => prev.some((n) => n.filePath === note.filePath) ? prev : [...prev, note])
     }
     const atIndex = input.lastIndexOf('@')
     setInput(atIndex >= 0 ? input.slice(0, atIndex) : input)
-    setShowMention(false)
     inputRef.current?.focus()
   }
 
@@ -227,7 +227,10 @@ export function ChatPanel() {
     if (attachedNotes.length > 0 && vaultPath) {
       for (const note of attachedNotes) {
         try {
-          const content = await window.api.invoke('file:read', { path: note.filePath })
+          const fullPath = note.filePath.startsWith('/') || note.filePath.includes(':')
+            ? note.filePath
+            : `${vaultPath}/${note.filePath}`
+          const content = await window.api.invoke('file:read', { path: fullPath })
           contextPrefix += `[笔记: ${note.title}]\n${content}\n\n`
         } catch {}
       }
@@ -355,22 +358,43 @@ export function ChatPanel() {
   const [dragOver, setDragOver] = useState(false)
 
   const handlePanelDragOver = (e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes('text/plain')) {
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'copy'
-      setDragOver(true)
-    }
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDragOver(true)
   }
 
   const handlePanelDragLeave = () => {
     setDragOver(false)
   }
 
-  const handlePanelDrop = (e: React.DragEvent) => {
+  const handlePanelDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
+
+    // Handle files dragged from file tree or OS
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      for (const file of files) {
+        if (file.name.endsWith('.md') && (file as any).path) {
+          const filePath = (file as any).path as string
+          const title = file.name.replace(/\.md$/, '')
+          setAttachedNotes((prev) => prev.some((n) => n.filePath === filePath) ? prev : [...prev, { title, filePath }])
+        }
+      }
+      return
+    }
+
+    // Handle text/plain drag (from file tree internal drag with path)
     const text = e.dataTransfer.getData('text/plain')
-    if (text && text.length >= 3 && !text.endsWith('.md')) {
+    if (text && text.endsWith('.md')) {
+      const title = text.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '笔记'
+      const filePath = text
+      setAttachedNotes((prev) => prev.some((n) => n.filePath === filePath) ? prev : [...prev, { title, filePath }])
+      return
+    }
+
+    // Handle plain text selection drag
+    if (text && text.length >= 3) {
       const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '拖入文本'
       setAttachedSelections((prev) => [...prev, { text: text.slice(0, 2000), source }])
     }
@@ -385,7 +409,7 @@ export function ChatPanel() {
     >
       {dragOver && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(124,110,240,0.06)', border: '2px dashed var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          <span style={{ fontSize: 13, color: 'var(--accent-text)', fontWeight: 500 }}>松开以引用选中文本</span>
+          <span style={{ fontSize: 13, color: 'var(--accent-text)', fontWeight: 500 }}>松开以引用文件或文本</span>
         </div>
       )}
       {/* Header */}
