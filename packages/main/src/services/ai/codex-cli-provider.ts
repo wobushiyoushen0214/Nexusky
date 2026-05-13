@@ -1,9 +1,9 @@
 import { spawn } from 'child_process'
 import { existsSync, readdirSync } from 'fs'
 import { mkdtemp, readFile, rm } from 'fs/promises'
-import { homedir, tmpdir } from 'os'
+import { homedir, tmpdir, platform } from 'os'
 import { delimiter, join } from 'path'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart } from './base-provider'
 
 function contentToText(content: string | ChatContentPart[]): string {
   if (typeof content === 'string') return content
@@ -15,16 +15,21 @@ function contentToText(content: string | ChatContentPart[]): string {
 }
 
 function buildPrompt(messages: ChatMessage[]): string {
-  const transcript = messages.map((message) => {
-    const role = message.role === 'system' ? 'System' : message.role === 'assistant' ? 'Assistant' : 'User'
-    return `${role}:\n${contentToText(message.content)}`
+  const systemMsgs = messages.filter((m) => m.role === 'system')
+  const nonSystem = messages.filter((m) => m.role !== 'system')
+
+  const parts: string[] = []
+  if (systemMsgs.length > 0) {
+    parts.push(systemMsgs.map((m) => contentToText(m.content)).join('\n'))
+  }
+
+  const conversation = nonSystem.map((m) => {
+    const role = m.role === 'assistant' ? 'Assistant' : 'User'
+    return `${role}: ${contentToText(m.content)}`
   }).join('\n\n')
 
-  return [
-    'You are running as the Codex CLI provider inside Nexusky.',
-    'Return only the final assistant response. Do not modify files or run commands unless the user explicitly asks for analysis that requires reading local files.',
-    transcript
-  ].join('\n\n')
+  parts.push(conversation)
+  return parts.join('\n\n')
 }
 
 function runProcess(command: string, args: string[], input?: string, signal?: AbortSignal): Promise<{ code: number | null; stdout: string; stderr: string }> {
@@ -32,7 +37,8 @@ function runProcess(command: string, args: string[], input?: string, signal?: Ab
     const child = spawn(command, args, {
       cwd: process.cwd(),
       env: buildProcessEnv(),
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: platform() === 'win32'
     })
 
     let stdout = ''
@@ -52,7 +58,10 @@ function runProcess(command: string, args: string[], input?: string, signal?: Ab
       resolve({ code, stdout, stderr })
     })
 
-    child.stdin.end(input || '')
+    if (input) {
+      child.stdin.write(input)
+    }
+    child.stdin.end()
   })
 }
 
@@ -60,18 +69,18 @@ function buildProcessEnv(): NodeJS.ProcessEnv {
   const home = homedir()
   const pathEntries = [
     process.env.PATH || '',
-    '/opt/homebrew/bin',
-    '/usr/local/bin',
-    join(home, '.local', 'bin')
   ]
-  const nvmRoot = join(home, '.nvm', 'versions', 'node')
 
-  if (existsSync(nvmRoot)) {
-    try {
-      for (const version of readdirSync(nvmRoot)) {
-        pathEntries.push(join(nvmRoot, version, 'bin'))
-      }
-    } catch {}
+  if (platform() !== 'win32') {
+    pathEntries.push('/opt/homebrew/bin', '/usr/local/bin', join(home, '.local', 'bin'))
+    const nvmRoot = join(home, '.nvm', 'versions', 'node')
+    if (existsSync(nvmRoot)) {
+      try {
+        for (const version of readdirSync(nvmRoot)) {
+          pathEntries.push(join(nvmRoot, version, 'bin'))
+        }
+      } catch {}
+    }
   }
 
   return {
@@ -90,27 +99,30 @@ export class CodexCliProvider extends BaseAIProvider {
     const outputFile = join(tempDir, 'last-message.txt')
 
     try {
+      const prompt = buildPrompt(messages)
+
       const args = [
         'exec',
         '--skip-git-repo-check',
         '--ephemeral',
         '--sandbox', 'read-only',
-        '--ask-for-approval', 'never',
+        '--full-auto',
         '--color', 'never',
-        '--output-last-message', outputFile
+        '-o', outputFile,
+        '-'
       ]
 
       if (this.config.model.trim()) {
-        args.push('--model', this.config.model.trim())
+        args.splice(args.length - 1, 0, '--model', this.config.model.trim())
       }
 
-      const result = await runProcess(this.command, args, buildPrompt(messages), signal)
+      const result = await runProcess(this.command, args, prompt, signal)
       if (signal?.aborted) {
         yield { type: 'done', content: '' }
         return
       }
       if (result.code !== 0) {
-        const error = result.stderr.trim() || result.stdout.trim() || 'Codex CLI request failed'
+        const error = result.stderr.trim() || result.stdout.trim() || 'Codex CLI 执行失败'
         yield { type: 'error', content: error }
         return
       }
@@ -130,7 +142,7 @@ export class CodexCliProvider extends BaseAIProvider {
         yield { type: 'done', content: '' }
         return
       }
-      yield { type: 'error', content: error.message || 'Codex CLI request failed' }
+      yield { type: 'error', content: error.message || 'Codex CLI 执行失败' }
     } finally {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {})
     }
