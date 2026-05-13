@@ -58,6 +58,7 @@ export function ChatPanel() {
   const [streamContent, setStreamContent] = useState('')
   const streamContentRef = useRef('')
   const contextSummaryRef = useRef<string | null>(null)
+  const summarizedCountRef = useRef(0)
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
@@ -113,6 +114,7 @@ export function ChatPanel() {
     updateSessionId(id)
     setMessages([])
     contextSummaryRef.current = null
+    summarizedCountRef.current = 0
     setSessions((prev) => [{ id, title, createdAt: Date.now() / 1000, updatedAt: Date.now() / 1000 }, ...prev])
   }
 
@@ -120,6 +122,7 @@ export function ChatPanel() {
     updateSessionId(sessionId)
     setShowSessions(false)
     contextSummaryRef.current = null
+    summarizedCountRef.current = 0
   }
 
   const handleDeleteSession = async (sessionId: string) => {
@@ -286,9 +289,38 @@ export function ChatPanel() {
 
     const recentMessages = allMessages.slice(-RECENT_KEEP)
     const oldMessages = allMessages.slice(0, -RECENT_KEEP)
+    const oldCount = oldMessages.length
 
-    let summary = contextSummaryRef.current
-    if (!summary) {
+    // Cache hit: if we already summarized this many old messages, reuse the summary
+    // Only regenerate when new messages have rolled into the "old" window
+    if (contextSummaryRef.current && summarizedCountRef.current === oldCount) {
+      return [
+        { role: 'system', content: `以下是之前对话的摘要，请基于此上下文继续对话：\n${contextSummaryRef.current}` },
+        ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
+      ]
+    }
+
+    // Incremental summarization: if we have an existing summary, fold new messages into it
+    let summary: string | null = null
+    const newOldMessages = oldMessages.slice(summarizedCountRef.current)
+
+    if (contextSummaryRef.current && newOldMessages.length > 0 && newOldMessages.length <= 6) {
+      // Incremental: merge existing summary with the few new messages that rolled over
+      try {
+        summary = await window.api.invoke('ai:complete', {
+          system: `你是对话摘要助手。请将已有摘要与新增对话合并为一段更新后的摘要，保留：
+1. 用户的核心意图和目标
+2. 已讨论的关键主题和决策
+3. AI 已完成的操作（如生成了哪些文件、修改了什么）
+4. 重要的上下文信息（目录名、文件名、主题等）
+用 3-5 句话概括，不要遗漏关键信息。只输出摘要。`,
+          text: `已有摘要：\n${contextSummaryRef.current}\n\n新增对话：\n${newOldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 300)}`).join('\n')}`
+        })
+      } catch {
+        summary = contextSummaryRef.current
+      }
+    } else {
+      // Full summarization: first time or too many new messages
       try {
         summary = await window.api.invoke('ai:complete', {
           system: `你是对话摘要助手。请将以下对话历史压缩为一段简洁的摘要，保留：
@@ -302,7 +334,11 @@ export function ChatPanel() {
       } catch {
         summary = oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 80)}`).join('\n')
       }
-      if (summary) contextSummaryRef.current = summary
+    }
+
+    if (summary) {
+      contextSummaryRef.current = summary
+      summarizedCountRef.current = oldCount
     }
 
     return [
