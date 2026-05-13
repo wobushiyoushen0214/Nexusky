@@ -63,6 +63,11 @@ export function ChatPanel() {
   useEffect(() => { isStreamingRef.current = isStreaming }, [isStreaming])
   const [streamContent, setStreamContent] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Multi-session state
+  const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [showSessions, setShowSessions] = useState(false)
   const [showMention, setShowMention] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionResults, setMentionResults] = useState<{ title: string; filePath: string }[]>([])
@@ -84,17 +89,45 @@ export function ChatPanel() {
 
   useEffect(() => {
     if (!vaultPath) return
-    window.api.invoke('db:chat-history-load', { vaultPath }).then((rows) => {
+    window.api.invoke('db:chat-sessions-list', { vaultPath }).then(setSessions).catch(() => {})
+    window.api.invoke('db:chat-history-load', { vaultPath, sessionId: currentSessionId || undefined }).then((rows) => {
       if (rows && rows.length > 0) {
         setMessages(rows.map((r) => ({ id: r.id, role: r.role as 'user' | 'assistant', content: r.content, sources: r.sources })))
+      } else {
+        setMessages([])
       }
     }).catch(() => {})
-  }, [vaultPath])
+  }, [vaultPath, currentSessionId])
 
   const appendToDb = useCallback((msg: Message) => {
     if (!vaultPath) return
-    window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources }).catch(() => {})
-  }, [vaultPath])
+    window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources, sessionId: currentSessionId || undefined }).catch(() => {})
+  }, [vaultPath, currentSessionId])
+
+  const handleNewSession = async () => {
+    if (!vaultPath) return
+    const id = crypto.randomUUID()
+    const title = `对话 ${sessions.length + 1}`
+    await window.api.invoke('db:chat-session-create', { vaultPath, id, title })
+    setCurrentSessionId(id)
+    setMessages([])
+    setSessions((prev) => [{ id, title, createdAt: Date.now() / 1000, updatedAt: Date.now() / 1000 }, ...prev])
+  }
+
+  const handleSwitchSession = (sessionId: string | null) => {
+    setCurrentSessionId(sessionId)
+    setShowSessions(false)
+  }
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!vaultPath) return
+    await window.api.invoke('db:chat-session-delete', { vaultPath, sessionId })
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+    if (currentSessionId === sessionId) {
+      setCurrentSessionId(null)
+      setMessages([])
+    }
+  }
 
   useEffect(() => {
     const handler = (event: { type: string; content: string }) => {
@@ -397,10 +430,18 @@ export function ChatPanel() {
 
     const allMessages = [...messages, userMsg]
     const MAX_CONTEXT_MESSAGES = 20
-    const recentMessages = allMessages.length > MAX_CONTEXT_MESSAGES
-      ? allMessages.slice(-MAX_CONTEXT_MESSAGES)
-      : allMessages
-    const chatMessages = recentMessages.map((m) => ({ role: m.role, content: m.content }))
+    let chatMessages: { role: string; content: any }[]
+    if (allMessages.length > MAX_CONTEXT_MESSAGES) {
+      const oldMessages = allMessages.slice(0, -MAX_CONTEXT_MESSAGES)
+      const recentMessages = allMessages.slice(-MAX_CONTEXT_MESSAGES)
+      const summary = oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 100)}`).join('\n')
+      chatMessages = [
+        { role: 'system', content: `以下是之前对话的摘要：\n${summary}\n\n请基于以上上下文继续对话。` },
+        ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
+      ]
+    } else {
+      chatMessages = allMessages.map((m) => ({ role: m.role, content: m.content }))
+    }
     if (contextPrefix) {
       chatMessages[chatMessages.length - 1] = {
         role: 'user',
@@ -479,7 +520,7 @@ export function ChatPanel() {
 
   const doClear = () => {
     setMessages([])
-    if (vaultPath) window.api.invoke('db:chat-history-clear', { vaultPath }).catch(() => {})
+    if (vaultPath) window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined }).catch(() => {})
     setConfirmClear(false)
   }
 
@@ -596,24 +637,77 @@ export function ChatPanel() {
         </div>
       )}
       {/* Header */}
-      <div style={{ padding: '0 14px', height: 36, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
-        {messages.length > 0 && (
-          <>
-            <button onClick={handleExport} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-            >
-              导出
-            </button>
-            <button onClick={handleClear} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-            >
-              清空
-            </button>
-          </>
-        )}
+      <div style={{ padding: '0 10px 0 14px', height: 36, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={() => setShowSessions(!showSessions)}
+            style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+            title="会话列表"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            {sessions.length > 0 && <span>{sessions.length}</span>}
+          </button>
+          <button
+            onClick={handleNewSession}
+            style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4 }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-text)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+            title="新建会话"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+          </button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {messages.length > 0 && (
+            <>
+              <button onClick={handleExport} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+              >
+                导出
+              </button>
+              <button onClick={handleClear} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+              >
+                清空
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Session list panel */}
+      {showSessions && (
+        <div style={{ borderBottom: '1px solid var(--border-subtle)', maxHeight: 200, overflowY: 'auto', flexShrink: 0 }}>
+          <button
+            onClick={() => handleSwitchSession(null)}
+            style={{ width: '100%', height: 30, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: !currentSessionId ? 'var(--accent-text)' : 'var(--text-secondary)', background: !currentSessionId ? 'var(--accent-muted)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+          >
+            默认对话
+          </button>
+          {sessions.map((s) => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', height: 30, padding: '0 14px', background: s.id === currentSessionId ? 'var(--accent-muted)' : 'transparent' }}>
+              <button
+                onClick={() => handleSwitchSession(s.id)}
+                style={{ flex: 1, height: 30, display: 'flex', alignItems: 'center', fontSize: 12, color: s.id === currentSessionId ? 'var(--accent-text)' : 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {s.title}
+              </button>
+              <button
+                onClick={() => handleDeleteSession(s.id)}
+                style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3, flexShrink: 0 }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>

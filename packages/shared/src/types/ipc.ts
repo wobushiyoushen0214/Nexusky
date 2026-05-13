@@ -61,9 +61,13 @@ export interface IPCChannelMap {
   'db:get-notes-by-tag': { params: { vaultPath: string; tag: string }; result: NoteSearchResult[] }
   'db:embed-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
   'db:embed-vault': { params: { vaultPath: string }; result: { embedded: number } }
-  'db:chat-history-load': { params: { vaultPath: string }; result: { id: string; role: string; content: string; sources?: any[] }[] }
-  'db:chat-history-append': { params: { vaultPath: string; role: string; content: string; sources?: any[] }; result: void }
-  'db:chat-history-clear': { params: { vaultPath: string }; result: void }
+  'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: { id: string; role: string; content: string; sources?: any[] }[] }
+  'db:chat-history-append': { params: { vaultPath: string; role: string; content: string; sources?: any[]; sessionId?: string }; result: void }
+  'db:chat-history-clear': { params: { vaultPath: string; sessionId?: string }; result: void }
+  'db:chat-sessions-list': { params: { vaultPath: string }; result: { id: string; title: string; createdAt: number; updatedAt: number }[] }
+  'db:chat-session-create': { params: { vaultPath: string; id: string; title: string }; result: void }
+  'db:chat-session-delete': { params: { vaultPath: string; sessionId: string }; result: void }
+  'db:chat-session-rename': { params: { vaultPath: string; sessionId: string; title: string }; result: void }
   'ai:get-providers': { params: undefined; result: any[] }
   'ai:save-providers': { params: { providers: any[] }; result: void }
   'ai:set-active': { params: { providerId: string }; result: void }

@@ -168,29 +168,58 @@ export function registerDbIPC(): void {
     return { embedded }
   })
 
-  ipcMain.handle('db:chat-history-load', async (_event, params: { vaultPath: string }) => {
+  ipcMain.handle('db:chat-history-load', async (_event, params: { vaultPath: string; sessionId?: string }) => {
     const db = getDatabase(params.vaultPath)
+    if (params.sessionId) {
+      const rows = db.prepare(
+        'SELECT id, role, content, sources, created_at as createdAt FROM conversations WHERE session_id = ? ORDER BY created_at ASC LIMIT 200'
+      ).all(params.sessionId) as { id: number; role: string; content: string; sources: string | null; createdAt: number }[]
+      return rows.map((r) => ({ id: String(r.id), role: r.role, content: r.content, sources: r.sources ? JSON.parse(r.sources) : undefined }))
+    }
     const rows = db.prepare(
-      'SELECT id, role, content, sources, created_at as createdAt FROM conversations ORDER BY created_at ASC LIMIT 200'
+      'SELECT id, role, content, sources, created_at as createdAt FROM conversations WHERE session_id IS NULL ORDER BY created_at ASC LIMIT 200'
     ).all() as { id: number; role: string; content: string; sources: string | null; createdAt: number }[]
-    return rows.map((r) => ({
-      id: String(r.id),
-      role: r.role,
-      content: r.content,
-      sources: r.sources ? JSON.parse(r.sources) : undefined
-    }))
+    return rows.map((r) => ({ id: String(r.id), role: r.role, content: r.content, sources: r.sources ? JSON.parse(r.sources) : undefined }))
   })
 
-  ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: string; content: string; sources?: any[] }) => {
+  ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: string; content: string; sources?: any[]; sessionId?: string }) => {
     const db = getDatabase(params.vaultPath)
     db.prepare(
-      'INSERT INTO conversations (role, content, sources) VALUES (?, ?, ?)'
-    ).run(params.role, params.content, params.sources ? JSON.stringify(params.sources) : null)
+      'INSERT INTO conversations (role, content, sources, session_id) VALUES (?, ?, ?, ?)'
+    ).run(params.role, params.content, params.sources ? JSON.stringify(params.sources) : null, params.sessionId || null)
+    if (params.sessionId) {
+      db.prepare('UPDATE chat_sessions SET updated_at = unixepoch() WHERE id = ?').run(params.sessionId)
+    }
   })
 
-  ipcMain.handle('db:chat-history-clear', async (_event, params: { vaultPath: string }) => {
+  ipcMain.handle('db:chat-history-clear', async (_event, params: { vaultPath: string; sessionId?: string }) => {
     const db = getDatabase(params.vaultPath)
-    db.prepare('DELETE FROM conversations').run()
+    if (params.sessionId) {
+      db.prepare('DELETE FROM conversations WHERE session_id = ?').run(params.sessionId)
+    } else {
+      db.prepare('DELETE FROM conversations WHERE session_id IS NULL').run()
+    }
+  })
+
+  ipcMain.handle('db:chat-sessions-list', async (_event, params: { vaultPath: string }) => {
+    const db = getDatabase(params.vaultPath)
+    return db.prepare('SELECT id, title, created_at as createdAt, updated_at as updatedAt FROM chat_sessions ORDER BY updated_at DESC').all()
+  })
+
+  ipcMain.handle('db:chat-session-create', async (_event, params: { vaultPath: string; id: string; title: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('INSERT INTO chat_sessions (id, title) VALUES (?, ?)').run(params.id, params.title)
+  })
+
+  ipcMain.handle('db:chat-session-delete', async (_event, params: { vaultPath: string; sessionId: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('DELETE FROM conversations WHERE session_id = ?').run(params.sessionId)
+    db.prepare('DELETE FROM chat_sessions WHERE id = ?').run(params.sessionId)
+  })
+
+  ipcMain.handle('db:chat-session-rename', async (_event, params: { vaultPath: string; sessionId: string; title: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('UPDATE chat_sessions SET title = ? WHERE id = ?').run(params.title, params.sessionId)
   })
 }
 

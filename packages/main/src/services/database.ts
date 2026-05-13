@@ -5,7 +5,7 @@ import { app } from 'electron'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -127,8 +127,24 @@ function initSchema(db: Database.Database): void {
 type Migration = (db: Database.Database) => void
 
 const migrations: Migration[] = [
-  // Migration 1: initial schema — already handled by initSchema, this is a placeholder
-  () => {}
+  () => {},
+  // Migration 2: multi-session chat
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS chat_sessions (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+      CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated ON chat_sessions(updated_at DESC);
+    `)
+    const hasSessionId = db.prepare("PRAGMA table_info(conversations)").all() as { name: string }[]
+    if (!hasSessionId.some((c) => c.name === 'session_id')) {
+      db.exec(`ALTER TABLE conversations ADD COLUMN session_id TEXT DEFAULT NULL`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id)`)
+    }
+  }
 ]
 
 function runMigrations(db: Database.Database): void {
