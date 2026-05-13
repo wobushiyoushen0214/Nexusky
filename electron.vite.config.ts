@@ -62,7 +62,7 @@ export default defineConfig({
       alias: {
         '@shared': resolve(__dirname, 'packages/shared/src'),
         '@renderer': resolve(__dirname, 'packages/renderer/src'),
-        'dompurify': resolve(__dirname, 'node_modules/.pnpm/dompurify@3.4.2/node_modules/dompurify/dist/purify.es.mjs')
+        'dompurify': resolve(__dirname, 'node_modules/dompurify/dist/purify.es.mjs')
       }
     }
   }
