@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface ConfirmModalProps {
   open: boolean
@@ -21,6 +21,8 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const overlayPointerDownRef = useRef(false)
+
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -41,7 +43,13 @@ export function ConfirmModal({
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,0,0,0.4)',
       }}
-      onClick={onCancel}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget
+      }}
+      onClick={(e) => {
+        if (overlayPointerDownRef.current && e.target === e.currentTarget) onCancel()
+        overlayPointerDownRef.current = false
+      }}
     >
       <div
         className="animate-scale-in"

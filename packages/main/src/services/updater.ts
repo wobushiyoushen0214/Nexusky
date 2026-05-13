@@ -1,5 +1,6 @@
 import { autoUpdater } from 'electron-updater'
 import { BrowserWindow, ipcMain, app, shell } from 'electron'
+import { isVersionNewer } from './version'
 
 let updateAvailable = false
 
@@ -8,7 +9,9 @@ export function setupAutoUpdater(): void {
   autoUpdater.autoInstallOnAppQuit = true
 
   autoUpdater.on('update-available', (info) => {
-    updateAvailable = true
+    updateAvailable = isVersionNewer(info.version, app.getVersion())
+    if (!updateAvailable) return
+
     const windows = BrowserWindow.getAllWindows()
     for (const win of windows) {
       if (!win.isDestroyed()) {
@@ -46,7 +49,10 @@ export function setupAutoUpdater(): void {
   ipcMain.handle('updater:check', async () => {
     try {
       const result = await autoUpdater.checkForUpdates()
-      return { available: !!result?.updateInfo, version: result?.updateInfo?.version }
+      const version = result?.updateInfo?.version
+      const available = isVersionNewer(version, app.getVersion())
+      updateAvailable = available
+      return { available, version: available ? version : undefined }
     } catch {
       return { available: false }
     }

@@ -1,7 +1,7 @@
 export interface AIProviderConfig {
   id: string
   name: string
-  type: 'openai' | 'claude' | 'custom' | 'ollama'
+  type: 'openai' | 'claude' | 'custom' | 'ollama' | 'codex'
   baseUrl: string
   apiKey: string
   model: string

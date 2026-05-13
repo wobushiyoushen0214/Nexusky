@@ -118,7 +118,8 @@ ${context}
     const { join } = require('path')
     const home = homedir()
     const os = platform()
-    const result: { claude?: { apiKey: string; baseUrl: string }; openai?: { apiKey: string } } = {}
+    const result: { claude?: { apiKey: string; baseUrl: string; source?: string }; openai?: { apiKey: string; source?: string }; codex?: { command: string; source?: string }; skipped?: string[] } = { skipped: [] }
+    const isUsableOpenAIKey = (key: unknown) => typeof key === 'string' && /^sk-[A-Za-z0-9_-]+/.test(key.trim())
 
     // Claude Code config paths per platform
     const claudePaths = [
@@ -132,10 +133,14 @@ ${context}
         const data = JSON.parse(readFileSync(p, 'utf-8'))
         const env = data.env || {}
         if (env.ANTHROPIC_AUTH_TOKEN) {
-          result.claude = { apiKey: env.ANTHROPIC_AUTH_TOKEN, baseUrl: env.ANTHROPIC_BASE_URL || '' }
+          result.claude = { apiKey: env.ANTHROPIC_AUTH_TOKEN, baseUrl: env.ANTHROPIC_BASE_URL || '', source: 'Claude Code' }
           break
         }
       } catch {}
+    }
+
+    if (isUsableOpenAIKey(process.env.OPENAI_API_KEY)) {
+      result.openai = { apiKey: process.env.OPENAI_API_KEY!.trim(), source: '环境变量 OPENAI_API_KEY' }
     }
 
     // Codex config paths per platform
@@ -148,21 +153,24 @@ ${context}
       if (!existsSync(p)) continue
       try {
         const data = JSON.parse(readFileSync(p, 'utf-8'))
-        if (data.OPENAI_API_KEY) {
-          result.openai = { apiKey: data.OPENAI_API_KEY }
+        if (!result.openai && isUsableOpenAIKey(data.OPENAI_API_KEY)) {
+          result.openai = { apiKey: data.OPENAI_API_KEY.trim(), source: 'Codex API Key' }
           break
+        }
+        if (data.auth_mode === 'chatgpt' && data.tokens) {
+          result.codex = { command: 'codex', source: 'Codex ChatGPT 登录' }
+        } else if (data.OPENAI_API_KEY && !isUsableOpenAIKey(data.OPENAI_API_KEY)) {
+          result.skipped?.push('Codex 中的 OpenAI Key 格式不符合 API Key 要求，已跳过')
         }
       } catch {}
     }
 
     // Fallback to environment variables
     if (!result.claude && process.env.ANTHROPIC_API_KEY) {
-      result.claude = { apiKey: process.env.ANTHROPIC_API_KEY, baseUrl: process.env.ANTHROPIC_BASE_URL || '' }
-    }
-    if (!result.openai && process.env.OPENAI_API_KEY) {
-      result.openai = { apiKey: process.env.OPENAI_API_KEY }
+      result.claude = { apiKey: process.env.ANTHROPIC_API_KEY, baseUrl: process.env.ANTHROPIC_BASE_URL || '', source: '环境变量 ANTHROPIC_API_KEY' }
     }
 
+    if (result.skipped?.length === 0) delete result.skipped
     return result
   })
 

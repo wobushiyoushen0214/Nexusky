@@ -7,7 +7,7 @@ import { ConfirmModal } from '../ConfirmModal'
 interface ProviderConfig {
   id: string
   name: string
-  type: 'openai' | 'claude' | 'custom' | 'ollama'
+  type: 'openai' | 'claude' | 'custom' | 'ollama' | 'codex'
   baseUrl: string
   apiKey: string
   model: string
@@ -18,6 +18,7 @@ const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
   claude: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
   ollama: ['llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral'],
+  codex: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex'],
   custom: []
 }
 
@@ -38,8 +39,10 @@ function getModelsForEditing(editing: ProviderConfig): string[] {
   return allCustom
 }
 
-const PROVIDER_PRESETS: { label: string; type: 'openai' | 'claude' | 'custom' | 'ollama'; baseUrl: string; model: string }[] = [
+const PROVIDER_PRESETS: { label: string; type: ProviderConfig['type']; baseUrl: string; model: string }[] = [
   { label: 'OpenAI', type: 'openai', baseUrl: '', model: 'gpt-4.1-mini' },
+  { label: 'OpenAI 兼容', type: 'custom', baseUrl: '', model: 'gpt-4.1-mini' },
+  { label: 'Codex CLI', type: 'codex', baseUrl: 'codex', model: 'gpt-5.4' },
   { label: 'Claude', type: 'claude', baseUrl: '', model: 'claude-sonnet-4-6' },
   { label: 'DeepSeek', type: 'custom', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-flash' },
   { label: '通义千问', type: 'custom', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
@@ -78,6 +81,8 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [cloudConfig, setCloudConfig] = useState({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
   const [cloudUser, setCloudUser] = useState<{ email: string } | null>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
+  const overlayPointerDownRef = useRef(false)
+  const providerOverlayPointerDownRef = useRef(false)
 
   useEffect(() => {
     if (open) {
@@ -109,11 +114,29 @@ export function Settings({ open, onClose }: SettingsProps) {
   }
 
   const handleSave = () => {
-    if (!editing || !editing.name.trim() || !editing.apiKey.trim()) return
+    if (!editing) return
+    const normalized = {
+      ...editing,
+      name: editing.name.trim(),
+      apiKey: editing.apiKey.trim(),
+      baseUrl: editing.type === 'codex' && !editing.baseUrl.trim() ? 'codex' : editing.baseUrl.trim()
+    }
+    if (!normalized.name) {
+      toast('请填写提供商名称', 'error')
+      return
+    }
+    if (!['ollama', 'codex'].includes(normalized.type) && !normalized.apiKey) {
+      toast('请填写 API Key', 'error')
+      return
+    }
+    if (normalized.type === 'custom' && !normalized.baseUrl) {
+      toast('请填写 OpenAI 兼容接口的 Base URL', 'error')
+      return
+    }
     const exists = providers.find((p) => p.id === editing.id)
     const updated = exists
-      ? providers.map((p) => p.id === editing.id ? editing : p)
-      : [...providers, editing]
+      ? providers.map((p) => p.id === editing.id ? normalized : p)
+      : [...providers, normalized]
     saveProviders(updated)
     setEditing(null)
   }
@@ -135,7 +158,13 @@ export function Settings({ open, onClose }: SettingsProps) {
     <div
       className="animate-overlay-in"
       style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 12, 20, 0.65)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' } as React.CSSProperties}
-      onClick={onClose}
+      onPointerDown={(e) => {
+        overlayPointerDownRef.current = e.target === e.currentTarget
+      }}
+      onClick={(e) => {
+        if (overlayPointerDownRef.current && e.target === e.currentTarget) onClose()
+        overlayPointerDownRef.current = false
+      }}
     >
       <div
         className="animate-scale-in"
@@ -244,7 +273,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                       <button onClick={() => handleDelete(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}>删除</button>
                     </div>
                   </div>
-                  <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{p.model} · {p.baseUrl || '默认地址'}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{p.model} · {p.type === 'codex' ? (p.baseUrl || 'codex') : (p.baseUrl || '默认地址')}</p>
                 </div>
                 )
               })}
@@ -288,7 +317,13 @@ export function Settings({ open, onClose }: SettingsProps) {
       {editing && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
-          onClick={() => setEditing(null)}
+          onPointerDown={(e) => {
+            providerOverlayPointerDownRef.current = e.target === e.currentTarget
+          }}
+          onClick={(e) => {
+            if (providerOverlayPointerDownRef.current && e.target === e.currentTarget) setEditing(null)
+            providerOverlayPointerDownRef.current = false
+          }}
         >
           <div
             className="animate-scale-in"
@@ -350,27 +385,37 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>协议类型</label>
                   <ModelSelect
-                    value={{ openai: 'OpenAI', claude: 'Claude (Anthropic)', custom: 'OpenAI 兼容', ollama: 'Ollama (本地)' }[editing.type] || editing.type}
-                    options={['OpenAI', 'Claude (Anthropic)', 'OpenAI 兼容', 'Ollama (本地)']}
+                    value={{ openai: 'OpenAI', claude: 'Claude (Anthropic)', custom: 'OpenAI 兼容', ollama: 'Ollama (本地)', codex: 'Codex CLI' }[editing.type] || editing.type}
+                    options={['OpenAI', 'OpenAI 兼容', 'Codex CLI', 'Claude (Anthropic)', 'Ollama (本地)']}
+                    allowCustom={false}
+                    placeholder="选择协议"
                     onChange={(val) => {
-                      const typeMap: Record<string, string> = { 'OpenAI': 'openai', 'Claude (Anthropic)': 'claude', 'OpenAI 兼容': 'custom', 'Ollama (本地)': 'ollama' }
+                      const typeMap: Record<string, ProviderConfig['type']> = { 'OpenAI': 'openai', 'Claude (Anthropic)': 'claude', 'OpenAI 兼容': 'custom', 'Ollama (本地)': 'ollama', 'Codex CLI': 'codex' }
                       const newType = typeMap[val] || 'custom'
-                      setEditing({ ...editing, type: newType as any, model: DEFAULT_MODELS[newType]?.[0] || editing.model })
+                      setEditing({
+                        ...editing,
+                        type: newType,
+                        apiKey: newType === 'codex' ? '' : editing.apiKey,
+                        baseUrl: newType === 'codex' ? (editing.type === 'codex' ? editing.baseUrl || 'codex' : 'codex') : editing.baseUrl,
+                        model: DEFAULT_MODELS[newType]?.[0] || editing.model
+                      })
                     }}
                   />
                 </div>
               </div>
+              {editing.type !== 'codex' && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>API Key</label>
+                  <input type="password" value={editing.apiKey} onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
+                    style={inputStyle} placeholder={editing.type === 'ollama' ? '无需填写' : 'sk-...'}
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                </div>
+              )}
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>API Key</label>
-                <input type="password" value={editing.apiKey} onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
-                  style={inputStyle} placeholder={editing.type === 'ollama' ? '无需填写' : 'sk-...'}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Base URL {editing.type === 'openai' || editing.type === 'claude' ? '(留空使用官方)' : ''}</label>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>{editing.type === 'codex' ? 'CLI 路径' : `Base URL ${editing.type === 'openai' || editing.type === 'claude' ? '(留空使用官方)' : ''}`}</label>
                 <input value={editing.baseUrl} onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
-                  style={inputStyle} placeholder={editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
+                  style={inputStyle} placeholder={editing.type === 'codex' ? 'codex 或 /usr/local/bin/codex' : editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
                   onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                   onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
               </div>
@@ -379,6 +424,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <ModelSelect
                   value={editing.model}
                   options={getModelsForEditing(editing)}
+                  placeholder="选择或输入模型"
                   onChange={(model) => setEditing({ ...editing, model })}
                 />
               </div>
@@ -393,12 +439,13 @@ export function Settings({ open, onClose }: SettingsProps) {
       <ConfirmModal
         open={detectConfirm}
         title="自动检测 AI 配置"
-        message="将读取本地 Claude Code / Codex 配置文件中的 API Key。确认继续？"
+        message="将读取本地 Claude Code / Codex 配置。Codex 的 ChatGPT 官方登录会添加为 Codex CLI 提供商。"
         confirmText="检测"
         onConfirm={async () => {
           setDetectConfirm(false)
           const detected = await window.api.invoke('ai:detect-local-config', undefined)
           let added = 0
+          let existed = 0
           const updated = [...providers]
           if (detected.claude) {
             const exists = updated.find((p: any) => p.apiKey === detected.claude!.apiKey)
@@ -415,7 +462,7 @@ export function Settings({ open, onClose }: SettingsProps) {
               }
               updated.push(np)
               added++
-            }
+            } else existed++
           }
           if (detected.openai) {
             const exists = updated.find((p: any) => p.apiKey === detected.openai!.apiKey)
@@ -423,11 +470,23 @@ export function Settings({ open, onClose }: SettingsProps) {
               const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4.1-mini', enabled: true }
               updated.push(np)
               added++
-            }
+            } else existed++
+          }
+          if (detected.codex) {
+            const exists = updated.find((p: any) => p.type === 'codex' && (p.baseUrl || 'codex') === detected.codex!.command)
+            if (!exists) {
+              const np = { id: crypto.randomUUID(), name: 'Codex CLI (本地登录)', type: 'codex' as const, baseUrl: detected.codex.command, apiKey: '', model: 'gpt-5.4', enabled: true }
+              updated.push(np)
+              added++
+            } else existed++
           }
           if (added > 0) {
             saveProviders(updated)
             toast(`已检测并添加 ${added} 个 AI 配置`, 'success')
+          } else if (existed > 0) {
+            toast('检测到的 AI 配置已存在', 'info')
+          } else if (detected.skipped?.length) {
+            toast(detected.skipped[0], 'info')
           } else {
             toast('未检测到本地 AI 配置，或已存在', 'info')
           }
@@ -930,58 +989,149 @@ function KeyBindingsTab() {
   )
 }
 
-function ModelSelect({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
+function ModelSelect({
+  value,
+  options,
+  onChange,
+  placeholder = '选择或输入',
+  allowCustom = true
+}: {
+  value: string
+  options: string[]
+  onChange: (v: string) => void
+  placeholder?: string
+  allowCustom?: boolean
+}) {
   const [open, setOpen] = useState(false)
-  const [customMode, setCustomMode] = useState(false)
-  const [customValue, setCustomValue] = useState('')
+  const [query, setQuery] = useState(value)
+  const [activeIndex, setActiveIndex] = useState(0)
   const [pos, setPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 })
   const ref = useRef<HTMLDivElement>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) setQuery(value)
+  }, [open, value])
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setQuery(value)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+  }, [open, value])
 
   const handleOpen = () => {
-    if (!open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect()
-      const dropHeight = Math.min((options.length + 1) * 30 + 8, 210)
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect()
+      const dropHeight = Math.min(Math.max(options.length, 1) * 30 + 8, 210)
       const spaceBelow = window.innerHeight - rect.bottom - 8
       const top = spaceBelow >= dropHeight ? rect.bottom + 4 : rect.top - dropHeight - 4
       setPos({ top, left: rect.left, width: rect.width })
     }
-    setOpen(!open)
-    setCustomMode(false)
+    setOpen(true)
   }
 
-  const isCustom = options.length > 0 && !options.includes(value)
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredOptions = normalizedQuery
+    ? options.filter((opt) => opt.toLowerCase().includes(normalizedQuery))
+    : options
+  const exactMatch = options.some((opt) => opt.toLowerCase() === normalizedQuery)
+  const canUseCustom = allowCustom && query.trim().length > 0 && !exactMatch
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [query])
+
+  const commitValue = (nextValue: string) => {
+    const trimmed = nextValue.trim()
+    if (!trimmed) return
+    onChange(trimmed)
+    setQuery(trimmed)
+    setOpen(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpen(true)
+      setActiveIndex((index) => Math.min(index + 1, Math.max(filteredOptions.length - 1, 0)))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex((index) => Math.max(index - 1, 0))
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const selected = filteredOptions[activeIndex]
+      if (selected && (!allowCustom || selected.toLowerCase() === normalizedQuery || !canUseCustom)) {
+        commitValue(selected)
+        return
+      }
+      if (canUseCustom) {
+        commitValue(query)
+        return
+      }
+      if (selected) commitValue(selected)
+      return
+    }
+    if (e.key === 'Escape') {
+      setOpen(false)
+      setQuery(value)
+    }
+  }
 
   return (
     <div ref={ref}>
-      <button
-        ref={btnRef}
-        onClick={handleOpen}
+      <div
         style={{
           width: '100%', height: 32, padding: '0 12px', fontSize: 13,
           background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-          borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer',
+          borderRadius: 6, color: 'var(--text-primary)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           transition: 'border-color 150ms',
           borderColor: open ? 'var(--accent)' : undefined,
         }}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {value || '选择模型'}
-        </span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}>
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={handleOpen}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            height: '100%',
+            padding: 0,
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            color: 'var(--text-primary)',
+            fontSize: 13,
+          }}
+        />
+        <svg
+          onMouseDown={(e) => { e.preventDefault(); open ? setOpen(false) : handleOpen() }}
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--text-tertiary)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          style={{ flexShrink: 0, cursor: 'pointer', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}
+        >
           <polyline points="6 9 12 15 18 9" />
         </svg>
-      </button>
+      </div>
       {open && (
         <div style={{
           position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999,
@@ -989,59 +1139,43 @@ function ModelSelect({ value, options, onChange }: { value: string; options: str
           borderRadius: 8, boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
           maxHeight: 200, overflowY: 'auto',
         }}>
-          {options.map((opt) => (
+          {filteredOptions.map((opt, index) => (
             <button
               key={opt}
-              onClick={() => { onChange(opt); setOpen(false) }}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => commitValue(opt)}
               style={{
                 width: '100%', height: 30, padding: '0 12px', fontSize: 12,
                 display: 'flex', alignItems: 'center', gap: 8,
-                background: opt === value ? 'var(--accent-muted)' : 'transparent',
+                background: opt === value ? 'var(--accent-muted)' : index === activeIndex ? 'var(--bg-hover)' : 'transparent',
                 color: opt === value ? 'var(--accent-text)' : 'var(--text-primary)',
                 border: 'none', cursor: 'pointer', textAlign: 'left',
                 transition: 'background 80ms',
               }}
-              onMouseEnter={(e) => { if (opt !== value) e.currentTarget.style.background = 'var(--bg-hover)' }}
-              onMouseLeave={(e) => { if (opt !== value) e.currentTarget.style.background = 'transparent' }}
             >
               {opt === value && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
               <span style={{ marginLeft: opt === value ? 0 : 18 }}>{opt}</span>
             </button>
           ))}
-          <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            {!customMode ? (
-              <button
-                onClick={() => { setCustomMode(true); setCustomValue(isCustom ? value : '') }}
-                style={{
-                  width: '100%', height: 30, padding: '0 12px', fontSize: 12,
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  background: isCustom ? 'var(--accent-muted)' : 'transparent',
-                  color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', textAlign: 'left',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = isCustom ? 'var(--accent-muted)' : 'transparent'}
-              >
-                <span style={{ fontSize: 11 }}>✎</span> 自定义{isCustom ? `: ${value}` : '...'}
-              </button>
-            ) : (
-              <div style={{ padding: '6px 8px', display: 'flex', gap: 4 }}>
-                <input
-                  autoFocus
-                  value={customValue}
-                  onChange={(e) => setCustomValue(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && customValue.trim()) { onChange(customValue.trim()); setOpen(false) } }}
-                  placeholder="输入模型名称"
-                  style={{ flex: 1, height: 26, padding: '0 8px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 4, color: 'var(--text-primary)', outline: 'none' }}
-                />
-                <button
-                  onClick={() => { if (customValue.trim()) { onChange(customValue.trim()); setOpen(false) } }}
-                  style={{ height: 26, padding: '0 8px', fontSize: 11, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  确定
-                </button>
-              </div>
-            )}
-          </div>
+          {canUseCustom && (
+            <button
+              onClick={() => commitValue(query)}
+              style={{
+                width: '100%', minHeight: 30, padding: '6px 12px', fontSize: 12,
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: filteredOptions.length === 0 ? 'var(--bg-hover)' : 'transparent',
+                color: 'var(--accent-text)', border: 'none', borderTop: filteredOptions.length > 0 ? '1px solid var(--border-subtle)' : 'none',
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              使用 “{query.trim()}”
+            </button>
+          )}
+          {filteredOptions.length === 0 && !canUseCustom && (
+            <div style={{ height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              未找到匹配项
+            </div>
+          )}
         </div>
       )}
     </div>
