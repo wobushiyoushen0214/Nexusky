@@ -1,5 +1,25 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig } from './base-provider'
+
+function convertContent(content: string | ChatContentPart[]): string | Anthropic.MessageCreateParams['messages'][0]['content'] {
+  if (typeof content === 'string') return content
+  const blocks: Anthropic.ContentBlockParam[] = []
+  for (const part of content) {
+    if (part.type === 'text' && part.text) {
+      blocks.push({ type: 'text', text: part.text })
+    } else if (part.type === 'image_url' && part.image_url?.url) {
+      const url = part.image_url.url
+      const match = url.match(/^data:(image\/\w+);base64,(.+)$/)
+      if (match) {
+        blocks.push({
+          type: 'image',
+          source: { type: 'base64', media_type: match[1] as any, data: match[2] }
+        })
+      }
+    }
+  }
+  return blocks.length > 0 ? blocks : ''
+}
 
 export class ClaudeProvider extends BaseAIProvider {
   private client: Anthropic
@@ -17,13 +37,16 @@ export class ClaudeProvider extends BaseAIProvider {
       const systemMsg = messages.find((m) => m.role === 'system')
       const chatMessages = messages
         .filter((m) => m.role !== 'system')
-        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+        .map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: convertContent(m.content)
+        }))
 
       const stream = this.client.messages.stream({
         model: this.config.model,
         max_tokens: 4096,
-        system: systemMsg?.content || undefined,
-        messages: chatMessages
+        system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
+        messages: chatMessages as any
       }, signal ? { signal } : undefined)
 
       for await (const event of stream) {
