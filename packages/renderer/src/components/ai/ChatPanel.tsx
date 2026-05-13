@@ -111,8 +111,9 @@ export function ChatPanel() {
   }, [])
 
   const prevStreaming = useRef(false)
+  const editCompleteRef = useRef(false)
   useEffect(() => {
-    if (prevStreaming.current && !isStreaming && streamContent) {
+    if (prevStreaming.current && !isStreaming && streamContent && !editCompleteRef.current) {
       const sources = pendingSourcesRef.current.length > 0 ? [...pendingSourcesRef.current] : undefined
       const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContent, sources }
       setMessages((msgs) => [...msgs, msg])
@@ -120,6 +121,7 @@ export function ChatPanel() {
       pendingSourcesRef.current = []
       setStreamContent('')
     }
+    editCompleteRef.current = false
     prevStreaming.current = isStreaming
   }, [isStreaming])
 
@@ -234,6 +236,7 @@ export function ChatPanel() {
           setStreamContent('')
           if (editTimerRef.current) clearInterval(editTimerRef.current)
           editTimerRef.current = null
+          editCompleteRef.current = true
           setIsStreaming(false)
           return
         }
@@ -277,6 +280,7 @@ export function ChatPanel() {
       }
       if (editTimerRef.current) clearInterval(editTimerRef.current)
       editTimerRef.current = null
+      editCompleteRef.current = true
       setIsStreaming(false)
       return
     }
