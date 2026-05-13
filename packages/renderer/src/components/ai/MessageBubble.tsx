@@ -27,6 +27,8 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate }: MessageBubbleProps) {
+  const isPlanList = msg.role === 'assistant' && /^[○✓] .+/m.test(msg.content) && !msg.content.includes('\n\n')
+
   return (
     <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', minWidth: 0 }}>
       <div style={{ maxWidth: '88%', minWidth: 0 }}>
@@ -40,6 +42,27 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate }: 
         }}>
           {msg.role === 'user' ? (
             <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
+          ) : isPlanList ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {msg.content.split('\n').filter(Boolean).map((line, i) => {
+                const done = line.startsWith('✓')
+                const title = line.replace(/^[○✓]\s*/, '')
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                    {done ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, animation: 'spin 2s linear infinite' }}>
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                    )}
+                    <span style={{ fontSize: 12, color: done ? 'var(--text-primary)' : 'var(--text-secondary)', opacity: done ? 1 : 0.8 }}>{title}</span>
+                  </div>
+                )
+              })}
+            </div>
           ) : (
             <div className="editor-content chat-md" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
           )}
