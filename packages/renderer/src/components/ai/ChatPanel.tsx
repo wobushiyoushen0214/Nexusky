@@ -78,6 +78,8 @@ export function ChatPanel() {
   const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
+  const [folderOptions, setFolderOptions] = useState<string[]>([])
 
   useEffect(() => {
     if (!vaultPath) return
@@ -184,6 +186,44 @@ export function ChatPanel() {
     inputRef.current?.focus()
   }
 
+  const executeBatchGenerate = async (instruction: string, targetDir: string) => {
+    setIsStreaming(true)
+    setStreamContent('')
+    editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
+    const progressMsgs: string[] = []
+    const cleanup = window.api.onAiNotesProgress((data) => {
+      progressMsgs.push(data.message)
+      setStreamContent(progressMsgs.join('\n'))
+    })
+    const result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir })
+    cleanup()
+    if (result.success && result.files.length > 0) {
+      useEditorStore.getState().openFile(result.files[0])
+      useVaultStore.getState().refreshFiles()
+      const dirName = targetDir.split(/[\\/]/).pop()
+      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件：\n${result.files.map((f) => '- ' + f.split(/[\\/]/).pop()?.replace(/\.md$/, '')).join('\n')}` }
+      setMessages((msgs) => [...msgs, msg])
+      appendToDb(msg)
+    } else {
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `生成失败: ${result.error || '未知错误'}` }])
+    }
+    setStreamContent('')
+    if (editTimerRef.current) clearInterval(editTimerRef.current)
+    editTimerRef.current = null
+    editCompleteRef.current = true
+    setIsStreaming(false)
+    setPendingBatch(null)
+    setFolderOptions([])
+  }
+
+  const handleSelectFolder = (folderName: string) => {
+    if (!pendingBatch || !vaultPath) return
+    const targetDir = `${vaultPath}/${folderName}`
+    setPendingBatch(null)
+    setFolderOptions([])
+    executeBatchGenerate(pendingBatch.instruction, targetDir)
+  }
+
   const handleSend = async () => {
     if (!input.trim()) return
 
@@ -217,27 +257,23 @@ export function ChatPanel() {
         const isBatchRequest = isNewFile && /几篇|多篇|一系列|一组|批量|多个/.test(userMsg.content)
 
         if (isBatchRequest && vaultPath) {
-          const progressMsgs: string[] = []
-          const cleanup = window.api.onAiNotesProgress((data) => {
-            progressMsgs.push(data.message)
-            setStreamContent(progressMsgs.join('\n'))
-          })
-          const result = await window.api.invoke('ai:generate-notes', { instruction: userMsg.content, vaultPath })
-          cleanup()
-          if (result.success && result.files.length > 0) {
-            useEditorStore.getState().openFile(result.files[0])
-            useVaultStore.getState().refreshFiles()
-            const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已生成 ${result.files.length} 个文件：\n${result.files.map((f) => '- ' + f.split(/[\\/]/).pop()?.replace(/\.md$/, '')).join('\n')}` }
-            setMessages((msgs) => [...msgs, msg])
-            appendToDb(msg)
+          // Check if user specified a directory in the instruction
+          const dirMatch = userMsg.content.match(/(?:放到|存到|保存到|生成到|放在|存在|目录|文件夹)[「"']?([^「"'\s,，。]+)[「"']?/)
+          if (dirMatch) {
+            const specifiedDir = dirMatch[1].replace(/[\\/:*?"<>|]/g, '').trim()
+            await executeBatchGenerate(userMsg.content, `${vaultPath}/${specifiedDir}`)
           } else {
-            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `生成失败: ${result.error || '未知错误'}` }])
+            // Show folder picker
+            const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+            const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
+            setFolderOptions(dirs)
+            setPendingBatch({ instruction: userMsg.content })
+            setIsStreaming(false)
+            if (editTimerRef.current) clearInterval(editTimerRef.current)
+            editTimerRef.current = null
+            const askMsg: Message = { id: Date.now().toString(), role: 'assistant', content: '请选择笔记存放目录：' }
+            setMessages((msgs) => [...msgs, askMsg])
           }
-          setStreamContent('')
-          if (editTimerRef.current) clearInterval(editTimerRef.current)
-          editTimerRef.current = null
-          editCompleteRef.current = true
-          setIsStreaming(false)
           return
         }
 
@@ -589,6 +625,51 @@ export function ChatPanel() {
           )}
         </div>
       </div>
+
+      {/* Folder picker for batch generation */}
+      {pendingBatch && folderOptions.length >= 0 && (
+        <div style={{ padding: '8px 14px', flexShrink: 0 }}>
+          <div style={{ background: 'var(--bg-base)', border: '1px solid var(--accent-muted)', borderRadius: 10, padding: '12px 14px' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>选择存放目录：</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {folderOptions.map((dir) => (
+                <button
+                  key={dir}
+                  onClick={() => handleSelectFolder(dir)}
+                  style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 100ms' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-muted)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                >
+                  {dir}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                autoFocus
+                placeholder="输入新目录名..."
+                onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) handleSelectFolder((e.target as HTMLInputElement).value.trim()) }}
+                style={{ flex: 1, height: 30, padding: '0 10px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
+              />
+              <button
+                onClick={(e) => {
+                  const input = (e.currentTarget.previousElementSibling as HTMLInputElement)
+                  if (input.value.trim()) handleSelectFolder(input.value.trim())
+                }}
+                style={{ height: 30, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+              >
+                新建目录
+              </button>
+              <button
+                onClick={() => { setPendingBatch(null); setFolderOptions([]) }}
+                style={{ height: 30, padding: '0 10px', fontSize: 12, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit result preview */}
       {editResult && (

@@ -338,7 +338,7 @@ ${context}
     }
   })
 
-  ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string; vaultPath: string }) => {
+  ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string; vaultPath: string; targetDir?: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在', files: [] }
 
@@ -355,12 +355,10 @@ ${context}
     let planResult = ''
     try {
       for await (const chunk of provider.chatStream([
-        { role: 'system', content: `你是一个笔记规划助手。用户会给你一个主题，请规划需要创建的笔记列表和存放目录。
-输出格式为 JSON 对象，包含：
-- folder: 目录名称（简短，用于存放所有生成的笔记）
-- notes: 数组，每项包含 title（文件标题）和 brief（一句话描述内容方向）
+        { role: 'system', content: `你是一个笔记规划助手。用户会给你一个主题，请规划需要创建的笔记列表。
+输出格式为 JSON 数组，每项包含 title（文件标题）和 brief（一句话描述内容方向）。
 只输出 JSON，不要其他文字。示例：
-{"folder":"React学习笔记","notes":[{"title":"React Hooks 入门","brief":"介绍 useState、useEffect 等基础 Hook"},{"title":"自定义 Hook","brief":"如何封装可复用的自定义 Hook"}]}` },
+[{"title":"React Hooks 入门","brief":"介绍 useState、useEffect 等基础 Hook"},{"title":"自定义 Hook","brief":"如何封装可复用的自定义 Hook"}]` },
         { role: 'user', content: params.instruction }
       ])) {
         if (chunk.type === 'text') planResult += chunk.content
@@ -370,29 +368,23 @@ ${context}
       return { success: false, error: err.message, files: [] }
     }
 
-    let folder: string
     let plan: { title: string; brief: string }[]
     try {
       const jsonStr = planResult.replace(/```json?\s*|\s*```/g, '').trim()
       const parsed = JSON.parse(jsonStr)
-      if (Array.isArray(parsed)) {
-        folder = ''
-        plan = parsed
-      } else {
-        folder = (parsed.folder || '').replace(/[\\/:*?"<>|]/g, '').trim()
-        plan = parsed.notes || parsed
-      }
+      plan = Array.isArray(parsed) ? parsed : (parsed.notes || parsed)
       if (!Array.isArray(plan) || plan.length === 0) throw new Error('empty')
     } catch {
       return { success: false, error: '规划解析失败，请重试', files: [] }
     }
 
-    const targetDir = folder ? join(params.vaultPath, folder) : params.vaultPath
-    if (folder && !existsSync(targetDir)) {
+    const targetDir = params.targetDir || params.vaultPath
+    if (!existsSync(targetDir)) {
       mkdirSync(targetDir, { recursive: true })
     }
 
-    window.webContents.send('ai:generate-notes-progress', { stage: 'planned', message: `将在 ${folder || '根目录'} 下生成 ${plan.length} 篇笔记`, plan })
+    const dirName = targetDir === params.vaultPath ? '根目录' : targetDir.split(/[\\/]/).pop()
+    window.webContents.send('ai:generate-notes-progress', { stage: 'planned', message: `将在「${dirName}」下生成 ${plan.length} 篇笔记`, plan })
 
     // Step 2: Generate each note
     const createdFiles: string[] = []
