@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
@@ -18,7 +18,24 @@ const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
   claude: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
   ollama: ['llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral'],
-  custom: ['deepseek-chat', 'deepseek-reasoner', 'qwen-plus', 'qwen-turbo', 'glm-4-flash', 'moonshot-v1-8k', 'yi-lightning', 'doubao-1.5-pro-32k']
+  custom: []
+}
+
+const PRESET_MODELS: Record<string, string[]> = {
+  'DeepSeek': ['deepseek-chat', 'deepseek-reasoner'],
+  '通义千问': ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-long'],
+  '智谱 GLM': ['glm-4-flash', 'glm-4-plus', 'glm-4-long'],
+  'Moonshot': ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  '零一万物': ['yi-lightning', 'yi-large', 'yi-medium'],
+  '豆包': ['doubao-1.5-pro-32k', 'doubao-1.5-lite-32k', 'doubao-pro-128k'],
+}
+
+function getModelsForEditing(editing: ProviderConfig): string[] {
+  if (editing.type !== 'custom') return DEFAULT_MODELS[editing.type] || []
+  const presetModels = PRESET_MODELS[editing.name]
+  if (presetModels) return presetModels
+  const allCustom = Object.values(PRESET_MODELS).flat()
+  return allCustom
 }
 
 const PROVIDER_PRESETS: { label: string; type: 'openai' | 'claude' | 'custom' | 'ollama'; baseUrl: string; model: string }[] = [
@@ -332,13 +349,15 @@ export function Settings({ open, onClose }: SettingsProps) {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>协议类型</label>
-                  <select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value as any, model: DEFAULT_MODELS[e.target.value]?.[0] || editing.model })}
-                    style={{ ...inputStyle, appearance: 'auto' as any }}>
-                    <option value="openai">OpenAI</option>
-                    <option value="claude">Claude (Anthropic)</option>
-                    <option value="custom">OpenAI 兼容 (国内厂商)</option>
-                    <option value="ollama">Ollama (本地)</option>
-                  </select>
+                  <ModelSelect
+                    value={{ openai: 'OpenAI', claude: 'Claude (Anthropic)', custom: 'OpenAI 兼容', ollama: 'Ollama (本地)' }[editing.type] || editing.type}
+                    options={['OpenAI', 'Claude (Anthropic)', 'OpenAI 兼容', 'Ollama (本地)']}
+                    onChange={(val) => {
+                      const typeMap: Record<string, string> = { 'OpenAI': 'openai', 'Claude (Anthropic)': 'claude', 'OpenAI 兼容': 'custom', 'Ollama (本地)': 'ollama' }
+                      const newType = typeMap[val] || 'custom'
+                      setEditing({ ...editing, type: newType as any, model: DEFAULT_MODELS[newType]?.[0] || editing.model })
+                    }}
+                  />
                 </div>
               </div>
               <div style={{ marginBottom: 12 }}>
@@ -357,22 +376,11 @@ export function Settings({ open, onClose }: SettingsProps) {
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>模型</label>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <select
-                    value={(DEFAULT_MODELS[editing.type] || []).includes(editing.model) ? editing.model : '__custom__'}
-                    onChange={(e) => { if (e.target.value !== '__custom__') setEditing({ ...editing, model: e.target.value }) }}
-                    style={{ ...inputStyle, flex: 1, cursor: 'pointer', appearance: 'auto' }}
-                  >
-                    {(DEFAULT_MODELS[editing.type] || []).map((m) => <option key={m} value={m}>{m}</option>)}
-                    <option value="__custom__">自定义...</option>
-                  </select>
-                </div>
-                {!(DEFAULT_MODELS[editing.type] || []).includes(editing.model) && (
-                  <input value={editing.model} onChange={(e) => setEditing({ ...editing, model: e.target.value })}
-                    style={{ ...inputStyle, marginTop: 6 }} placeholder="输入模型名称"
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                )}
+                <ModelSelect
+                  value={editing.model}
+                  options={getModelsForEditing(editing)}
+                  onChange={(model) => setEditing({ ...editing, model })}
+                />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>取消</button>
@@ -851,6 +859,109 @@ function KeyBindingsTab() {
         ))}
       </div>
       <p style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>点击快捷键按钮后按下新组合键即可修改。修改后需重启应用生效。</p>
+    </div>
+  )
+}
+
+function ModelSelect({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [customMode, setCustomMode] = useState(false)
+  const [customValue, setCustomValue] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const isCustom = options.length > 0 && !options.includes(value)
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => { setOpen(!open); setCustomMode(false) }}
+        style={{
+          width: '100%', height: 32, padding: '0 12px', fontSize: 13,
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+          borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          transition: 'border-color 150ms',
+          borderColor: open ? 'var(--accent)' : undefined,
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {value || '选择模型'}
+        </span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 100,
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+          borderRadius: 8, boxShadow: 'var(--shadow-md)', overflow: 'hidden',
+          maxHeight: 200, overflowY: 'auto',
+        }}>
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => { onChange(opt); setOpen(false) }}
+              style={{
+                width: '100%', height: 30, padding: '0 12px', fontSize: 12,
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: opt === value ? 'var(--accent-muted)' : 'transparent',
+                color: opt === value ? 'var(--accent-text)' : 'var(--text-primary)',
+                border: 'none', cursor: 'pointer', textAlign: 'left',
+                transition: 'background 80ms',
+              }}
+              onMouseEnter={(e) => { if (opt !== value) e.currentTarget.style.background = 'var(--bg-hover)' }}
+              onMouseLeave={(e) => { if (opt !== value) e.currentTarget.style.background = 'transparent' }}
+            >
+              {opt === value && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
+              <span style={{ marginLeft: opt === value ? 0 : 18 }}>{opt}</span>
+            </button>
+          ))}
+          <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            {!customMode ? (
+              <button
+                onClick={() => { setCustomMode(true); setCustomValue(isCustom ? value : '') }}
+                style={{
+                  width: '100%', height: 30, padding: '0 12px', fontSize: 12,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: isCustom ? 'var(--accent-muted)' : 'transparent',
+                  color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = isCustom ? 'var(--accent-muted)' : 'transparent'}
+              >
+                <span style={{ fontSize: 11 }}>✎</span> 自定义{isCustom ? `: ${value}` : '...'}
+              </button>
+            ) : (
+              <div style={{ padding: '6px 8px', display: 'flex', gap: 4 }}>
+                <input
+                  autoFocus
+                  value={customValue}
+                  onChange={(e) => setCustomValue(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && customValue.trim()) { onChange(customValue.trim()); setOpen(false) } }}
+                  placeholder="输入模型名称"
+                  style={{ flex: 1, height: 26, padding: '0 8px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 4, color: 'var(--text-primary)', outline: 'none' }}
+                />
+                <button
+                  onClick={() => { if (customValue.trim()) { onChange(customValue.trim()); setOpen(false) } }}
+                  style={{ height: 26, padding: '0 8px', fontSize: 11, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  确定
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
