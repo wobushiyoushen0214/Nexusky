@@ -359,6 +359,7 @@ export function ChatPanel() {
 
   const handlePanelDragOver = (e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
     setDragOver(true)
   }
@@ -369,6 +370,8 @@ export function ChatPanel() {
 
   const handlePanelDrop = async (e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
     setDragOver(false)
 
     // Handle files dragged from file tree or OS

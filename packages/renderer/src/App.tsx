@@ -138,6 +138,7 @@ export default function App() {
   useEffect(() => {
     const handleDragOver = (e: DragEvent) => e.preventDefault()
     const handleDrop = (e: DragEvent) => {
+      if (e.defaultPrevented) return
       e.preventDefault()
       const textData = e.dataTransfer?.getData('text/plain')
       if (textData && textData.endsWith('.md')) {
