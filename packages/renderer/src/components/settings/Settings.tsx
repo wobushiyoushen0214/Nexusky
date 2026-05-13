@@ -252,68 +252,6 @@ export function Settings({ open, onClose }: SettingsProps) {
                 </div>
               </div>
             )}
-
-            {/* Edit form */}
-            {editing && (
-              <div style={{ marginTop: 16, padding: 16, borderRadius: 8, border: '1px solid var(--accent-muted)', background: 'var(--bg-base)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>名称</label>
-                    <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                      style={inputStyle} placeholder="My OpenAI"
-                      onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                      onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>类型</label>
-                    <select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value as any, model: DEFAULT_MODELS[e.target.value]?.[0] || '' })}
-                      style={{ ...inputStyle, appearance: 'none' as any }}>
-                      <option value="openai">OpenAI</option>
-                      <option value="claude">Claude</option>
-                      <option value="custom">自定义 (OpenAI 兼容)</option>
-                      <option value="ollama">Ollama (本地模型)</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>API Key</label>
-                  <input type="password" value={editing.apiKey} onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
-                    style={inputStyle} placeholder="sk-..."
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Base URL (留空使用默认)</label>
-                  <input value={editing.baseUrl} onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
-                    style={inputStyle} placeholder="https://api.openai.com/v1"
-                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>模型</label>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <select
-                      value={(DEFAULT_MODELS[editing.type] || []).includes(editing.model) ? editing.model : '__custom__'}
-                      onChange={(e) => { if (e.target.value !== '__custom__') setEditing({ ...editing, model: e.target.value }) }}
-                      style={{ ...inputStyle, flex: 1, cursor: 'pointer', appearance: 'auto' }}
-                    >
-                      {(DEFAULT_MODELS[editing.type] || []).map((m) => <option key={m} value={m}>{m}</option>)}
-                      <option value="__custom__">自定义...</option>
-                    </select>
-                  </div>
-                  {!(DEFAULT_MODELS[editing.type] || []).includes(editing.model) && (
-                    <input value={editing.model} onChange={(e) => setEditing({ ...editing, model: e.target.value })}
-                      style={{ ...inputStyle, marginTop: 6 }} placeholder="输入自定义模型名称"
-                      onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                      onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
-                  )}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer' }}>取消</button>
-                  <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
-                </div>
-              </div>
-            )}
           </>)}
 
           {tab === 'cloud' && (
@@ -329,6 +267,121 @@ export function Settings({ open, onClose }: SettingsProps) {
           {tab === 'keys' && <KeyBindingsTab />}
         </div>
       </div>
+      {/* Provider edit modal */}
+      {editing && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setEditing(null)}
+        >
+          <div
+            className="animate-scale-in"
+            style={{ width: 440, background: 'var(--bg-surface)', borderRadius: 12, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {providers.find((p) => p.id === editing.id) ? '编辑提供商' : '添加提供商'}
+              </span>
+              <button onClick={() => setEditing(null)} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+            <div style={{ padding: '16px 18px 20px', maxHeight: '60vh', overflowY: 'auto' }}>
+              {/* Preset selector */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8, fontWeight: 500 }}>选择厂商</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {PROVIDER_PRESETS.map((preset) => {
+                    const isSelected = editing.name === preset.label || (editing.baseUrl === preset.baseUrl && editing.type === preset.type && preset.baseUrl !== '')
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => setEditing({ ...editing, name: preset.label, type: preset.type, baseUrl: preset.baseUrl, model: preset.model })}
+                        style={{
+                          height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer', transition: 'all 100ms',
+                          background: isSelected ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+                          color: isSelected ? 'var(--accent-text)' : 'var(--text-secondary)',
+                          border: isSelected ? '1.5px solid var(--accent)' : '1px solid var(--border-subtle)',
+                          fontWeight: isSelected ? 500 : 400,
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    )
+                  })}
+                  <button
+                    onClick={() => setEditing({ ...editing, name: editing.name || '自定义', type: 'custom', baseUrl: editing.baseUrl })}
+                    style={{
+                      height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer', transition: 'all 100ms',
+                      background: !PROVIDER_PRESETS.some((p) => p.label === editing.name) ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+                      color: !PROVIDER_PRESETS.some((p) => p.label === editing.name) ? 'var(--accent-text)' : 'var(--text-secondary)',
+                      border: !PROVIDER_PRESETS.some((p) => p.label === editing.name) ? '1.5px solid var(--accent)' : '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    其他...
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>名称</label>
+                  <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    style={inputStyle} placeholder="My Provider"
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>协议类型</label>
+                  <select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value as any, model: DEFAULT_MODELS[e.target.value]?.[0] || editing.model })}
+                    style={{ ...inputStyle, appearance: 'auto' as any }}>
+                    <option value="openai">OpenAI</option>
+                    <option value="claude">Claude (Anthropic)</option>
+                    <option value="custom">OpenAI 兼容 (国内厂商)</option>
+                    <option value="ollama">Ollama (本地)</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>API Key</label>
+                <input type="password" value={editing.apiKey} onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
+                  style={inputStyle} placeholder={editing.type === 'ollama' ? '无需填写' : 'sk-...'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Base URL {editing.type === 'openai' || editing.type === 'claude' ? '(留空使用官方)' : ''}</label>
+                <input value={editing.baseUrl} onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
+                  style={inputStyle} placeholder={editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>模型</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <select
+                    value={(DEFAULT_MODELS[editing.type] || []).includes(editing.model) ? editing.model : '__custom__'}
+                    onChange={(e) => { if (e.target.value !== '__custom__') setEditing({ ...editing, model: e.target.value }) }}
+                    style={{ ...inputStyle, flex: 1, cursor: 'pointer', appearance: 'auto' }}
+                  >
+                    {(DEFAULT_MODELS[editing.type] || []).map((m) => <option key={m} value={m}>{m}</option>)}
+                    <option value="__custom__">自定义...</option>
+                  </select>
+                </div>
+                {!(DEFAULT_MODELS[editing.type] || []).includes(editing.model) && (
+                  <input value={editing.model} onChange={(e) => setEditing({ ...editing, model: e.target.value })}
+                    style={{ ...inputStyle, marginTop: 6 }} placeholder="输入模型名称"
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>取消</button>
+                <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <ConfirmModal
         open={detectConfirm}
         title="自动检测 AI 配置"
