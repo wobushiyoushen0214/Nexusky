@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promise
 import { readdir } from 'fs/promises'
 import { join, dirname, extname, relative, basename, resolve, normalize } from 'path'
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
+import { getDatabase } from '../services/database'
 import type { FileEntry } from '@shared/types/ipc'
 
 function isPathSafe(filePath: string, vaultPath?: string): boolean {
@@ -298,6 +299,34 @@ async function listDirectoryShallow(dirPath: string): Promise<FileEntry[]> {
 }
 
 async function updateWikilinks(vaultPath: string, oldName: string, newName: string): Promise<void> {
+  const pattern = new RegExp(`\\[\\[${oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g')
+  const replacement = `[[${newName}]]`
+
+  try {
+    const db = getDatabase(vaultPath)
+    const rows = db.prepare(`
+      SELECT DISTINCT n.file_path
+      FROM links l
+      JOIN notes n ON n.id = l.source_note_id
+      WHERE l.target_title = ?
+    `).all(oldName) as { file_path: string }[]
+
+    for (const row of rows) {
+      const fullPath = join(vaultPath, row.file_path)
+      const content = await readFile(fullPath, 'utf-8')
+      if (pattern.test(content)) {
+        pattern.lastIndex = 0
+        const updated = content.replace(pattern, replacement)
+        await writeFile(fullPath, updated, 'utf-8')
+      }
+    }
+  } catch {
+    // Fallback: walk the vault if DB query fails
+    await updateWikilinksFallback(vaultPath, oldName, newName)
+  }
+}
+
+async function updateWikilinksFallback(vaultPath: string, oldName: string, newName: string): Promise<void> {
   const pattern = new RegExp(`\\[\\[${oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g')
   const replacement = `[[${newName}]]`
 
