@@ -395,16 +395,17 @@ export function ChatPanel() {
       e.stopImmediatePropagation()
       setDragOver(false)
 
-      const text = e.dataTransfer?.getData('text/plain') || ''
+      // Check for internal file tree drag (custom MIME type)
+      const nexuskyPath = e.dataTransfer?.getData('application/x-nexusky-path') || ''
+      const text = nexuskyPath || e.dataTransfer?.getData('text/plain') || ''
 
-      // From file tree: text/plain contains a path
       if (text) {
         if (text.endsWith('.md')) {
           const title = text.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '笔记'
           setAttachedNotes((prev) => prev.some((n) => n.filePath === text) ? prev : [...prev, { title, filePath: text }])
           return
         }
-        // Folder path (no extension or doesn't end with .md) — list .md files inside
+        // Folder path — list .md files inside
         if (vaultPath && !text.includes('\n') && (text.startsWith('/') || text.includes(':'))) {
           try {
             const files = await window.api.invoke('file:list', { dirPath: text })
@@ -416,7 +417,7 @@ export function ChatPanel() {
           } catch {}
         }
         // Plain text
-        if (text.length >= 3) {
+        if (!nexuskyPath && text.length >= 3) {
           const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '拖入文本'
           setAttachedSelections((prev) => [...prev, { text: text.slice(0, 2000), source }])
           return

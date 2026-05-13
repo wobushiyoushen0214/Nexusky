@@ -213,7 +213,8 @@ function VirtualFileTreeItem({ node, onToggle, isFocused }: { node: FlatNode; on
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', entry.path)
-    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('application/x-nexusky-path', entry.path)
+    e.dataTransfer.effectAllowed = 'copyMove'
   }
 
   const handleDragOver = (e: React.DragEvent) => {
