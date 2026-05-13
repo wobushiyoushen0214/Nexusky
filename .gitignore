@@ -31,3 +31,5 @@ release/
 
 # Misc
 *.tsbuildinfo
+
+test-vault/
