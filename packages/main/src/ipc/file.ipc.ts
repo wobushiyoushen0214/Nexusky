@@ -4,6 +4,7 @@ import { readdir } from 'fs/promises'
 import { join, dirname, extname, relative, basename, resolve, normalize } from 'path'
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
 import { getDatabase } from '../services/database'
+import { indexNote } from '../services/indexer'
 import type { FileEntry } from '@shared/types/ipc'
 
 function isPathSafe(filePath: string, vaultPath?: string): boolean {
@@ -62,6 +63,9 @@ export function registerFileIPC(): void {
       await saveSnapshot(params.path, params.vaultPath)
     }
     await writeFile(params.path, params.content, 'utf-8')
+    if (params.vaultPath && params.path.endsWith('.md')) {
+      try { indexNote(params.vaultPath, params.path) } catch {}
+    }
   })
 
   ipcMain.handle('file:list', async (_event, params: { dirPath: string }) => {
@@ -72,9 +76,12 @@ export function registerFileIPC(): void {
     return listDirectoryShallow(params.dirPath)
   })
 
-  ipcMain.handle('file:create', async (_event, params: { path: string; content?: string }) => {
+  ipcMain.handle('file:create', async (_event, params: { path: string; content?: string; vaultPath?: string }) => {
     await mkdir(dirname(params.path), { recursive: true })
     await writeFile(params.path, params.content || '', 'utf-8')
+    if (params.vaultPath && params.path.endsWith('.md')) {
+      try { indexNote(params.vaultPath, params.path) } catch {}
+    }
   })
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {

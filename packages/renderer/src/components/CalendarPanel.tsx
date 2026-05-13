@@ -30,7 +30,7 @@ export function CalendarPanel() {
       await window.api.invoke('file:read', { path })
       openFile(path)
     } catch {
-      await window.api.invoke('file:create', { path, content: `# ${dateStr}\n\n` })
+      await window.api.invoke('file:create', { path, content: `# ${dateStr}\n\n`, vaultPath })
       openFile(path)
     }
   }

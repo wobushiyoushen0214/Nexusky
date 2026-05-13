@@ -386,7 +386,7 @@ export function ChatPanel() {
             const titleMatch = result.content.match(/^#\s+(.+)$/m)
             const title = titleMatch ? titleMatch[1].trim().replace(/[\\/:*?"<>|]/g, '') : '新笔记'
             const newPath = `${vaultPath}/${title}.md`
-            await window.api.invoke('file:create', { path: newPath, content: result.content })
+            await window.api.invoke('file:create', { path: newPath, content: result.content, vaultPath })
             useEditorStore.getState().openFile(newPath)
             const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${title}」并打开。` }
             setMessages((msgs) => [...msgs, msg])
@@ -543,7 +543,7 @@ export function ChatPanel() {
     }
     const content = lines.join('\n')
     const path = `${vaultPath}/${fileName}`
-    await window.api.invoke('file:create', { path, content })
+    await window.api.invoke('file:create', { path, content, vaultPath })
     const { openFile } = await import('../../stores/editor-store').then((m) => m.useEditorStore.getState())
     openFile(path)
   }

@@ -308,7 +308,7 @@ export function Editor() {
         useEditorStore.getState().openFile(`${vaultPath}/${exact.filePath}`)
       } else {
         const path = `${vaultPath}/${title}.md`
-        await window.api.invoke('file:create', { path, content: `# ${title}\n\n` })
+        await window.api.invoke('file:create', { path, content: `# ${title}\n\n`, vaultPath })
         useEditorStore.getState().openFile(path)
       }
     }

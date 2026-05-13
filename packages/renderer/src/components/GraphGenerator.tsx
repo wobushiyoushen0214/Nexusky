@@ -50,7 +50,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
     const fileName = `知识图谱_${dateStr}.md`
     const content = `# 知识图谱\n\n> 基于 ${filePaths.length} 篇笔记自动生成\n\n\`\`\`mermaid\n${result}\n\`\`\`\n`
     const path = `${vaultPath}/${fileName}`
-    await window.api.invoke('file:create', { path, content })
+    await window.api.invoke('file:create', { path, content, vaultPath })
     useEditorStore.getState().openFile(path)
     toast('知识图谱已保存', 'success')
     onClose()

@@ -96,7 +96,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
     }
     const name = newFileName.trim().endsWith('.md') ? newFileName.trim() : `${newFileName.trim()}.md`
     const path = `${vaultPath}/${name}`
-    await window.api.invoke('file:create', { path, content: `# ${newFileName.trim().replace(/\.md$/, '')}\n\n` })
+    await window.api.invoke('file:create', { path, content: `# ${newFileName.trim().replace(/\.md$/, '')}\n\n`, vaultPath })
     setIsCreating(false)
     setNewFileName('')
     await refreshFiles()

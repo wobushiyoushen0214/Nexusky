@@ -119,7 +119,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
     } else {
       const name = createName.trim().endsWith('.md') ? createName.trim() : `${createName.trim()}.md`
       const path = `${basePath}/${name}`
-      await window.api.invoke('file:create', { path, content: `# ${createName.trim().replace(/\.md$/, '')}\n\n` })
+      await window.api.invoke('file:create', { path, content: `# ${createName.trim().replace(/\.md$/, '')}\n\n`, vaultPath: vaultPath || undefined })
       await refreshFiles()
       await openFile(path)
       setCreating(null)

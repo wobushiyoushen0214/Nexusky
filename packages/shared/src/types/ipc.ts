@@ -29,7 +29,7 @@ export interface IPCChannelMap {
   'file:write': { params: { path: string; content: string; vaultPath?: string }; result: void }
   'file:list': { params: { dirPath: string }; result: FileEntry[] }
   'file:list-shallow': { params: { dirPath: string }; result: FileEntry[] }
-  'file:create': { params: { path: string; content?: string }; result: void }
+  'file:create': { params: { path: string; content?: string; vaultPath?: string }; result: void }
   'file:delete': { params: { path: string; vaultPath?: string }; result: void }
   'file:rename': { params: { oldPath: string; newPath: string; vaultPath?: string }; result: void }
   'file:save-image': { params: { vaultPath: string; imageData: string; fileName: string }; result: string }
