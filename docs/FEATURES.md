@@ -406,6 +406,16 @@
 | better-sqlite3 重编译 | 改用 electron-builder install-app-deps 处理原生模块 | v0.2.4 |
 | 更新检查 state | 相关状态移入 AppearanceTab，避免全局重渲染 | v0.2.5 |
 
+### 体验优化
+
+| 优化项 | 说明 | 版本 |
+|--------|------|------|
+| ChatPanel 组件拆分 | 消息列表/气泡独立 memo 组件，流式输出不再触发整个面板重渲染 | v0.2.5 |
+| AI 重新生成按钮 | 最后一条 AI 回复下方显示"重新生成"，一键重发上一条问题 | v0.2.5 |
+| 自动保存去重 | 引入 isSaving mutex，防止高频触发导致并发写入 | v0.2.5 |
+| AI 编辑保留 Undo | 应用 AI 修改使用 editor.chain().selectAll().insertContent()，Ctrl+Z 可撤销 | v0.2.5 |
+| 关闭已保存标签 | 标签页右键菜单新增"关闭已保存"，一键清理无修改标签 | v0.2.5 |
+
 ---
 
 ## 历史版本资产格式
