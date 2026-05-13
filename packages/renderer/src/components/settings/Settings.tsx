@@ -78,6 +78,10 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [cloudConfig, setCloudConfig] = useState({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
   const [cloudUser, setCloudUser] = useState<{ email: string } | null>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+  const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(null)
+  const [updateStage, setUpdateStage] = useState<'idle' | 'checking' | 'downloading' | 'ready'>('idle')
+  const [downloadPercent, setDownloadPercent] = useState(0)
 
   useEffect(() => {
     if (open) {
@@ -88,8 +92,20 @@ export function Settings({ open, onClose }: SettingsProps) {
       })
       window.api.invoke('cloud:get-config', undefined).then(setCloudConfig)
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
+      window.api.invoke('app:get-version', undefined).then(setAppVersion)
     }
   }, [open])
+
+  useEffect(() => {
+    const offProgress = (window.api as any).onUpdaterProgress?.((data: { percent: number }) => {
+      setDownloadPercent(Math.round(data.percent || 0))
+      setUpdateStage('downloading')
+    })
+    const offDone = (window.api as any).onUpdaterDownloaded?.(() => {
+      setUpdateStage('ready')
+    })
+    return () => { offProgress?.(); offDone?.() }
+  }, [])
 
   const saveProviders = async (updated: ProviderConfig[]) => {
     setProviders(updated)
@@ -794,20 +810,68 @@ function AppearanceTab() {
       <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>关于</span>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v0.1.7</span>
-          <button
-            onClick={async () => {
-              const result = await window.api.invoke('updater:check' as any, undefined)
-              if (result.available) {
-                toast(`发现新版本 v${result.version}`, 'info')
-              } else {
-                toast('已是最新版本', 'success')
-              }
-            }}
-            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer' }}
-          >
-            检查更新
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v{appVersion || '...'}</span>
+            {updateInfo && updateStage === 'idle' && (
+              <span style={{ fontSize: 11, color: 'var(--accent)' }}>发现新版本 v{updateInfo.version}</span>
+            )}
+            {updateStage === 'downloading' && (
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>正在下载 {downloadPercent}%</span>
+            )}
+            {updateStage === 'ready' && (
+              <span style={{ fontSize: 11, color: 'var(--accent)' }}>更新已下载，重启即可安装</span>
+            )}
+          </div>
+          {updateStage === 'idle' && !updateInfo && (
+            <button
+              onClick={async () => {
+                setUpdateStage('checking')
+                const result = await window.api.invoke('updater:check', undefined)
+                if (result.available && result.version) {
+                  setUpdateInfo({ version: result.version })
+                  setUpdateStage('idle')
+                } else {
+                  setUpdateStage('idle')
+                  toast('已是最新版本', 'success')
+                }
+              }}
+              style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer' }}
+            >
+              检查更新
+            </button>
+          )}
+          {updateStage === 'checking' && (
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>检查中...</span>
+          )}
+          {updateStage === 'idle' && updateInfo && (
+            <button
+              onClick={async () => {
+                if (window.api.platform === 'darwin') {
+                  await window.api.invoke('app:open-external', { url: 'https://github.com/wobushiyoushen0214/Nexusky/releases/latest' })
+                } else {
+                  setUpdateStage('downloading')
+                  setDownloadPercent(0)
+                  try {
+                    await window.api.invoke('updater:download', undefined)
+                  } catch (e: any) {
+                    toast(`下载失败: ${e.message || ''}`, 'error')
+                    setUpdateStage('idle')
+                  }
+                }
+              }}
+              style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
+            >
+              {window.api.platform === 'darwin' ? '前往下载' : '立即更新'}
+            </button>
+          )}
+          {updateStage === 'ready' && (
+            <button
+              onClick={() => window.api.invoke('updater:install', undefined)}
+              style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
+            >
+              重启安装
+            </button>
+          )}
         </div>
       </div>
     </div>

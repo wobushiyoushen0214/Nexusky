@@ -50,6 +50,21 @@ const api = {
     ipcRenderer.on('ai:generate-notes-progress', handler)
     return () => ipcRenderer.removeListener('ai:generate-notes-progress', handler)
   },
+  onUpdaterAvailable: (callback: (data: { version: string }) => void) => {
+    const handler = (_event: unknown, data: any) => callback(data)
+    ipcRenderer.on('updater:available', handler)
+    return () => ipcRenderer.removeListener('updater:available', handler)
+  },
+  onUpdaterProgress: (callback: (data: { percent: number }) => void) => {
+    const handler = (_event: unknown, data: any) => callback(data)
+    ipcRenderer.on('updater:progress', handler)
+    return () => ipcRenderer.removeListener('updater:progress', handler)
+  },
+  onUpdaterDownloaded: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('updater:downloaded', handler)
+    return () => ipcRenderer.removeListener('updater:downloaded', handler)
+  },
   platform: process.platform,
   windowControls: {
     minimize: () => ipcRenderer.send('window:minimize'),

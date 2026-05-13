@@ -113,6 +113,11 @@ export interface IPCChannelMap {
   'cloud:sync-index': { params: { vaultPath: string }; result: { pushed: boolean; pulled: boolean } }
   'cloud:get-sync-exclude': { params: undefined; result: string[] }
   'cloud:set-sync-exclude': { params: { paths: string[] }; result: void }
+  'updater:check': { params: undefined; result: { available: boolean; version?: string } }
+  'updater:download': { params: undefined; result: void }
+  'updater:install': { params: undefined; result: void }
+  'app:get-version': { params: undefined; result: string }
+  'app:open-external': { params: { url: string }; result: void }
 }
 
 export type IPCChannel = keyof IPCChannelMap

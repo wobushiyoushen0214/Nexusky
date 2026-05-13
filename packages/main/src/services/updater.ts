@@ -1,5 +1,5 @@
 import { autoUpdater } from 'electron-updater'
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain, app, shell } from 'electron'
 
 let updateAvailable = false
 
@@ -58,6 +58,14 @@ export function setupAutoUpdater(): void {
 
   ipcMain.handle('updater:install', () => {
     autoUpdater.quitAndInstall()
+  })
+
+  ipcMain.handle('app:get-version', () => {
+    return app.getVersion()
+  })
+
+  ipcMain.handle('app:open-external', (_event, params: { url: string }) => {
+    shell.openExternal(params.url)
   })
 
   // Check for updates 30 seconds after launch
