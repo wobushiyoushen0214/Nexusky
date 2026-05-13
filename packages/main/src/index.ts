@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import { join } from 'path'
 import { registerFileIPC } from './ipc/file.ipc'
 import { registerVaultIPC } from './ipc/vault.ipc'
@@ -125,6 +125,16 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  globalShortcut.register('CommandOrControl+Shift+N', () => {
+    if (!mainWindow) {
+      createWindow()
+    }
+    if (mainWindow!.isMinimized()) mainWindow!.restore()
+    mainWindow!.show()
+    mainWindow!.focus()
+    mainWindow!.webContents.send('quick-capture')
+  })
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -140,5 +150,6 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
   store.flush()
 })

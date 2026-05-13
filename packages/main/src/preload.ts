@@ -65,6 +65,11 @@ const api = {
     ipcRenderer.on('updater:downloaded', handler)
     return () => ipcRenderer.removeListener('updater:downloaded', handler)
   },
+  onQuickCapture: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('quick-capture', handler)
+    return () => ipcRenderer.removeListener('quick-capture', handler)
+  },
   platform: process.platform,
   windowControls: {
     minimize: () => ipcRenderer.send('window:minimize'),

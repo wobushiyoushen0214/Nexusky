@@ -89,6 +89,13 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const cleanup = window.api.onQuickCapture(() => {
+      window.dispatchEvent(new CustomEvent('create-new-note'))
+    })
+    return () => { cleanup() }
+  }, [])
+
+  useEffect(() => {
     loadVault()
   }, [])
 
