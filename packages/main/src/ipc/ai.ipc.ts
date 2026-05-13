@@ -3,7 +3,7 @@ import { aiManager, AIProviderConfig, ChatMessage } from '../services/ai'
 import { store } from '../services/store'
 import { semanticSearch } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
-import { indexNote } from '../services/indexer'
+import { indexNote, resolveAllLinks } from '../services/indexer'
 
 const activeAbortControllers: Map<number, AbortController> = new Map()
 
@@ -478,6 +478,7 @@ graph TD
           console.error('[indexNote] failed for', fp, e)
         }
       }
+      try { resolveAllLinks(params.vaultPath) } catch {}
       window.webContents.send('vault:files-changed')
       if (indexErr) {
         window.webContents.send('ai:generate-notes-progress', { stage: 'index-error', message: `索引失败: ${indexErr}` })

@@ -169,6 +169,19 @@ function extractLinks(content: string): { targetTitle: string; context: string }
   return links
 }
 
+export function resolveAllLinks(vaultPath: string): void {
+  const db = getDatabase(vaultPath)
+  db.prepare(`
+    UPDATE links SET target_note_id = (
+      SELECT id FROM notes WHERE title = links.target_title
+      UNION
+      SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
+      LIMIT 1
+    )
+    WHERE target_note_id IS NULL
+  `).run()
+}
+
 function resolveLinks(db: Database.Database, noteId: string, noteTitle: string): void {
   const note = db.prepare('SELECT file_path FROM notes WHERE id = ?').get(noteId) as { file_path: string } | undefined
   const fileName = note ? note.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '') : ''
