@@ -344,6 +344,33 @@
 
 ---
 
+## v0.2.1 架构优化与功能增强
+
+### 性能优化
+
+| 优化项 | 说明 |
+|--------|------|
+| 语义搜索 top-K 排序 | 改用线性扫描找最小值替代每次 Array.sort，复杂度从 O(N·K log K) 降到 O(N·K) |
+| Wikilink 重命名精准定位 | 利用 SQLite links 表查出引用文件，不再遍历整个 vault 文件系统 |
+| 编辑器 state cache LRU | 添加 20 条上限，超出自动淘汰最早未访问的缓存，防止内存膨胀 |
+
+### 功能增强
+
+| 功能 | 说明 |
+|------|------|
+| AI 流式中断 | 停止按钮触发后端 AbortController，真正中断网络请求，不再浪费 token |
+| 数据库迁移机制 | schema_version 表 + 增量迁移函数，未来加表改列无需手动处理 |
+| 对话历史 SQLite 持久化 | 替代 localStorage，消除 5MB 配额限制，支持跨设备同步 |
+| Claude 多模态图片 | 正确转换 base64 图片为 Anthropic image content block，粘贴图片可被 Claude 识别 |
+
+### 构建修复
+
+| 修复项 | 说明 |
+|--------|------|
+| dompurify alias | 不再硬编码 pnpm store 版本路径，升级 dompurify 后构建不会断 |
+
+---
+
 ## 历史版本资产格式
 
 | 平台 | 文件名 | 安装方式 |
@@ -478,7 +505,9 @@
 - [x] Supabase 同步并发
 - [x] index-vault 分批处理
 - [x] Embedding 缓存上限
-- [ ] 向量索引增量更新优化
+- [x] 语义搜索 top-K 排序优化
+- [x] Wikilink 重命名精准定位（利用 DB 查询）
+- [x] 编辑器 state cache LRU 上限
 - [ ] Worker Thread 后台索引
 - [ ] 数据库查询缓存
 

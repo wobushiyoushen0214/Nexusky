@@ -248,3 +248,21 @@ abstract class BaseAIProvider {
 - CI 配置 `--universal` 替代独立 `--x64 --arm64`
 - electron-builder 默认 release 而非 draft（用户能直接看到下载）
 - 历史 v0.1.0~v0.1.4 release 从 draft 转为 published
+
+---
+
+## v0.2.1 架构优化（2026-05-13）
+
+### 性能
+1. **语义搜索 top-K 优化** — 线性扫描替代每次 sort，O(N·K log K) → O(N·K)
+2. **Wikilink 重命名精准定位** — 利用 links 表查引用文件，不再全 vault 遍历
+3. **编辑器 state cache LRU** — 上限 20，防止长时间使用内存膨胀
+
+### 功能
+4. **AI 流式真正中断** — AbortController 传递到 Provider，停止即断网络请求
+5. **数据库迁移机制** — schema_version 表 + migrations 数组，未来改表无痛
+6. **对话历史 SQLite 持久化** — 替代 localStorage，无配额限制，可跨设备同步
+7. **Claude 多模态图片** — base64 → Anthropic image block 正确转换
+
+### 修复
+8. **dompurify alias** — 不再硬编码 pnpm store 版本路径
