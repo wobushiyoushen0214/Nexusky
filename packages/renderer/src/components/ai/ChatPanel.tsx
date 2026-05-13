@@ -191,14 +191,48 @@ export function ChatPanel() {
     const userMsgIndex = msgIndex - 1
     if (userMsgIndex < 0 || messages[userMsgIndex].role !== 'user') return
     const userContent = messages[userMsgIndex].content
-    setMessages((msgs) => msgs.slice(0, msgIndex))
+    const remaining = messages.slice(0, msgIndex)
+    setMessages(remaining)
     if (vaultPath) {
       window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined }).catch(() => {})
-      const remaining = messages.slice(0, msgIndex)
       for (const m of remaining) { appendToDb(m) }
     }
-    setInput(userContent)
-    setTimeout(() => { inputRef.current?.focus() }, 50)
+
+    const providers = await window.api.invoke('ai:get-providers', undefined)
+    if (!providers || providers.length === 0 || !providers.some((p: any) => p.enabled)) {
+      toast('请先在设置中配置 AI 提供商', 'error')
+      return
+    }
+
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userContent }
+    setMessages((prev) => [...prev, userMsg])
+    appendToDb(userMsg)
+    setIsStreaming(true)
+    streamContentRef.current = ''
+    setStreamContent('')
+
+    const allMessages = [...remaining, userMsg]
+    const MAX_CONTEXT_MESSAGES = 20
+    let chatMessages: { role: string; content: any }[]
+    if (allMessages.length > MAX_CONTEXT_MESSAGES) {
+      const oldMessages = allMessages.slice(0, -MAX_CONTEXT_MESSAGES)
+      const recentMessages = allMessages.slice(-MAX_CONTEXT_MESSAGES)
+      const summary = oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 100)}`).join('\n')
+      chatMessages = [
+        { role: 'system', content: `以下是之前对话的摘要：\n${summary}\n\n请基于以上上下文继续对话。` },
+        ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
+      ]
+    } else {
+      chatMessages = allMessages.map((m) => ({ role: m.role, content: m.content }))
+    }
+    try {
+      await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+    } catch (e: any) {
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+      streamContentRef.current = ''
+      setStreamContent('')
+      setIsStreaming(false)
+    }
   }, [messages, isStreaming, vaultPath, currentSessionId, appendToDb])
 
   useEffect(() => {
