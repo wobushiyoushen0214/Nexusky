@@ -80,6 +80,7 @@ export function ChatPanel() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
+  const [editUnbound, setEditUnbound] = useState(false)
 
   useEffect(() => {
     if (!vaultPath) return
@@ -249,18 +250,26 @@ export function ChatPanel() {
     setStreamContent('')
 
     if (editMode) {
-      const targetPath = editTarget || currentFilePath
+      const targetPath = editUnbound ? null : (editTarget || null)
       setEditElapsed(0)
       editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
       try {
         const isNewFile = !targetPath
-        const isBatchRequest = isNewFile && /几篇|多篇|一系列|一组|批量|多个/.test(userMsg.content)
+        const isBatchRequest = /几篇|多篇|一系列|一组|批量|多个/.test(userMsg.content)
 
         if (isBatchRequest && vaultPath) {
           // Check if user specified a directory in the instruction
-          const dirMatch = userMsg.content.match(/(?:放到|存到|保存到|生成到|放在|存在|目录|文件夹)[「"']?([^「"'\s,，。]+)[「"']?/)
-          if (dirMatch) {
-            const specifiedDir = dirMatch[1].replace(/[\\/:*?"<>|]/g, '').trim()
+          const dirPatterns = [
+            /(?:放到|存到|保存到|生成到|放在|存在)\s*([^\s,，。、]+?)\s*(?:目录|文件夹|下)/,
+            /(?:目录|文件夹)\s*[「"']([^「"']+)[「"']/,
+            /(?:放到|存到|保存到|生成到|放在|存在)\s*[「"']([^「"']+)[「"']/,
+          ]
+          let specifiedDir = ''
+          for (const pat of dirPatterns) {
+            const m = userMsg.content.match(pat)
+            if (m) { specifiedDir = m[1].replace(/[\\/:*?"<>|]/g, '').trim(); break }
+          }
+          if (specifiedDir) {
             await executeBatchGenerate(userMsg.content, `${vaultPath}/${specifiedDir}`)
           } else {
             // Show folder picker
@@ -278,13 +287,13 @@ export function ChatPanel() {
         }
 
         let fileContent = ''
-        let filePath = targetPath || ''
-        if (targetPath) {
-          fileContent = await window.api.invoke('file:read', { path: targetPath })
+        let filePath = targetPath || (editUnbound ? '' : currentFilePath) || ''
+        if (filePath) {
+          fileContent = await window.api.invoke('file:read', { path: filePath })
         }
 
         const result = await window.api.invoke('ai:edit', {
-          instruction: isNewFile
+          instruction: !filePath
             ? `创建一篇新笔记。要求：${userMsg.content}`
             : userMsg.content,
           fileContent,
@@ -295,7 +304,7 @@ export function ChatPanel() {
         setAttachedImages([])
         if (result.success && result.content) {
           setEditHistory((prev) => [...prev, userMsg.content])
-          if (isNewFile && vaultPath) {
+          if (!filePath && vaultPath) {
             const titleMatch = result.content.match(/^#\s+(.+)$/m)
             const title = titleMatch ? titleMatch[1].trim().replace(/[\\/:*?"<>|]/g, '') : '新笔记'
             const newPath = `${vaultPath}/${title}.md`
@@ -781,11 +790,20 @@ export function ChatPanel() {
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
               </svg>
               <span style={{ fontSize: 11, color: 'var(--accent-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '新建文件（AI 生成）')}
+                {editTarget
+                  ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '')
+                  : editUnbound
+                    ? '无目标文件（生成新笔记）'
+                    : (currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '无目标文件（生成新笔记）')}
               </span>
-              {editTarget && (
-                <button onClick={() => setEditTarget(null)} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+              {(editTarget || (!editUnbound && currentFilePath)) && (
+                <button onClick={() => { setEditTarget(null); setEditUnbound(true) }} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }} title="取消绑定，切换为生成新文件">
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              )}
+              {editUnbound && !editTarget && currentFilePath && (
+                <button onClick={() => setEditUnbound(false)} style={{ fontSize: 10, padding: '1px 6px', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3 }} title="重新绑定当前文件">
+                  绑定当前
                 </button>
               )}
             </div>
@@ -855,7 +873,7 @@ export function ChatPanel() {
           {/* Bottom toolbar */}
           <div style={{ padding: '0 8px 6px', display: 'flex', alignItems: 'center', gap: 2 }}>
             <button
-              onClick={() => { setEditMode(!editMode); setEditTarget(null); setEditHistory([]) }}
+              onClick={() => { setEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
               style={{
                 height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
                 background: editMode ? 'var(--accent-muted)' : 'transparent',
