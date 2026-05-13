@@ -405,6 +405,8 @@
 | macOS 签名 | 加入 ad-hoc 签名，缓解 Gatekeeper "已损坏" 提示 | v0.2.3 |
 | better-sqlite3 重编译 | 改用 electron-builder install-app-deps 处理原生模块 | v0.2.4 |
 | 更新检查 state | 相关状态移入 AppearanceTab，避免全局重渲染 | v0.2.5 |
+| Codex CLI 兼容 v0.118 | 适配新版 CLI 参数（--full-auto/-o/-），修复 Windows spawn 和 PATH 查找 | v0.2.5 |
+| 批量生成笔记索引 | 生成多篇笔记后全局 resolveAllLinks，wikilink 互引在知识图谱中正确显示 | v0.2.5 |
 
 ### 体验优化
 
