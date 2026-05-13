@@ -330,6 +330,9 @@ export function ChatPanel() {
   const handleSelectFolder = (folderName: string) => {
     if (!pendingBatch || !vaultPath) return
     const targetDir = `${vaultPath}/${folderName}`
+    const confirmMsg: Message = { id: Date.now().toString(), role: 'user', content: folderName }
+    setMessages((msgs) => [...msgs, confirmMsg])
+    appendToDb(confirmMsg)
     setPendingBatch(null)
     setFolderOptions([])
     executeBatchGenerate(pendingBatch.instruction, targetDir)
@@ -384,18 +387,18 @@ export function ChatPanel() {
 
           // Use AI to semantically detect target directory from instruction
           let specifiedDir = ''
-          if (dirs.length > 0) {
-            try {
-              const detectResult = await window.api.invoke('ai:complete', {
-                text: `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想把笔记放在哪个目录下。如果用户明确提到了某个目录或主题与某个目录匹配，输出该目录名；如果用户想创建新目录，输出新目录名；如果无法判断，输出空。只输出目录名，不要其他文字。`
-              })
-              const detected = (detectResult || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')
-              if (detected && detected !== '空' && detected.length < 30) {
-                const exactMatch = dirs.find((d) => d.toLowerCase() === detected.toLowerCase())
-                specifiedDir = exactMatch || detected
-              }
-            } catch {}
-          }
+          try {
+            const detectResult = await window.api.invoke('ai:complete', {
+              text: dirs.length > 0
+                ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想把笔记放在哪个目录下。如果用户明确提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户想创建新目录（提到了不在列表中的目录名），输出用户提到的新目录名；如果无法判断，输出空。只输出目录名，不要其他文字。`
+                : `用户指令: "${userMsg.content}"\n\n请从用户指令中提取目标目录名。如果用户提到了要放在某个目录/文件夹下，输出该目录名；如果无法判断，输出空。只输出目录名，不要其他文字。`
+            })
+            const detected = (detectResult || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')
+            if (detected && detected !== '空' && detected.length < 30) {
+              const exactMatch = dirs.find((d) => d.toLowerCase() === detected.toLowerCase())
+              specifiedDir = exactMatch || detected
+            }
+          } catch {}
 
           if (specifiedDir) {
             if (editTimerRef.current) clearInterval(editTimerRef.current)
