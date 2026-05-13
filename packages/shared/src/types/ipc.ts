@@ -19,7 +19,7 @@ export interface BacklinkResult {
 }
 
 export interface GraphData {
-  nodes: { id: string; title: string }[]
+  nodes: { id: string; title: string; filePath?: string }[]
   edges: { source: string; target: string }[]
 }
 

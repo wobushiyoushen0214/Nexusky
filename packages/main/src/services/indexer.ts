@@ -124,15 +124,25 @@ export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: 
 
 export function getGraphData(vaultPath: string): { nodes: { id: string; title: string }[]; edges: { source: string; target: string }[] } {
   const db = getDatabase(vaultPath)
-  const nodes = db.prepare('SELECT id, title FROM notes').all() as { id: string; title: string }[]
-  const edges = db.prepare(`
-    SELECT l.source_note_id as source, n.id as target
-    FROM links l
-    JOIN notes n ON n.title = l.target_title
-    WHERE l.target_note_id IS NOT NULL OR n.id IS NOT NULL
-  `).all() as { source: string; target: string }[]
+  const nodes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
 
-  return { nodes, edges }
+  const titleToId = new Map<string, string>()
+  for (const n of nodes) {
+    titleToId.set(n.title, n.id)
+    const fileName = n.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '')
+    if (!titleToId.has(fileName)) titleToId.set(fileName, n.id)
+  }
+
+  const links = db.prepare('SELECT source_note_id, target_title FROM links').all() as { source_note_id: string; target_title: string }[]
+  const edges: { source: string; target: string }[] = []
+  for (const l of links) {
+    const targetId = titleToId.get(l.target_title)
+    if (targetId && targetId !== l.source_note_id) {
+      edges.push({ source: l.source_note_id, target: targetId })
+    }
+  }
+
+  return { nodes: nodes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path })), edges }
 }
 
 function extractTitle(content: string, filePath: string): string {
@@ -160,13 +170,28 @@ function extractLinks(content: string): { targetTitle: string; context: string }
 }
 
 function resolveLinks(db: Database.Database, noteId: string, noteTitle: string): void {
+  const note = db.prepare('SELECT file_path FROM notes WHERE id = ?').get(noteId) as { file_path: string } | undefined
+  const fileName = note ? note.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '') : ''
+
   db.prepare(`
     UPDATE links SET target_note_id = ?
     WHERE target_title = ? AND target_note_id IS NULL
   `).run(noteId, noteTitle)
 
+  if (fileName && fileName !== noteTitle) {
+    db.prepare(`
+      UPDATE links SET target_note_id = ?
+      WHERE target_title = ? AND target_note_id IS NULL
+    `).run(noteId, fileName)
+  }
+
   db.prepare(`
-    UPDATE links SET target_note_id = (SELECT id FROM notes WHERE title = target_title)
+    UPDATE links SET target_note_id = (
+      SELECT id FROM notes WHERE title = links.target_title
+      UNION
+      SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
+      LIMIT 1
+    )
     WHERE source_note_id = ? AND target_note_id IS NULL
   `).run(noteId)
 }

@@ -306,6 +306,11 @@ export function Editor() {
       const exact = results.find((r) => r.title === title)
       if (exact) {
         useEditorStore.getState().openFile(`${vaultPath}/${exact.filePath}`)
+        return
+      }
+      const byFileName = results.find((r) => r.filePath.replace(/^.*[\\/]/, '').replace(/\.md$/, '') === title)
+      if (byFileName) {
+        useEditorStore.getState().openFile(`${vaultPath}/${byFileName.filePath}`)
       } else {
         const path = `${vaultPath}/${title}.md`
         await window.api.invoke('file:create', { path, content: `# ${title}\n\n`, vaultPath })

@@ -10,6 +10,7 @@ import type { GraphData } from '@shared/types/ipc'
 interface SimNode {
   id: string
   title: string
+  filePath?: string
   x?: number
   y?: number
   fx?: number | null
@@ -266,9 +267,8 @@ export function GraphView() {
 
     nodeGroup.on('click', async (_event, d) => {
       if (!vaultPath) return
-      const notes = await window.api.invoke('db:search-notes', { vaultPath, query: d.title })
-      if (notes.length > 0) {
-        openFile(`${vaultPath}/${notes[0].filePath}`)
+      if (d.filePath) {
+        openFile(`${vaultPath}/${d.filePath}`)
       }
     })
 
