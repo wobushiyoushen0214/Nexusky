@@ -36,6 +36,8 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
   })
 
   const [lazyChildren, setLazyChildren] = useState<Map<string, FileEntry[]>>(new Map())
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
+  const lastClickedRef = useRef<number>(-1)
 
   useEffect(() => {
     if (defaultExpanded) {
@@ -150,6 +152,38 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
     }
   }, [flatNodes, focusedIndex, toggleExpand])
 
+  const handleItemClick = useCallback((index: number, path: string, e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      setSelectedPaths((prev) => {
+        const next = new Set(prev)
+        if (next.has(path)) next.delete(path)
+        else next.add(path)
+        return next
+      })
+      lastClickedRef.current = index
+    } else if (e.shiftKey && lastClickedRef.current >= 0) {
+      const start = Math.min(lastClickedRef.current, index)
+      const end = Math.max(lastClickedRef.current, index)
+      const paths = flatNodes.slice(start, end + 1).map((n) => n.entry.path)
+      setSelectedPaths(new Set(paths))
+    } else {
+      setSelectedPaths(new Set())
+      lastClickedRef.current = index
+    }
+  }, [flatNodes])
+
+  const [multiContextMenu, setMultiContextMenu] = useState<{ x: number; y: number } | null>(null)
+
+  const handleMultiDelete = async () => {
+    const vaultPath = useVaultStore.getState().vaultPath
+    for (const path of selectedPaths) {
+      await window.api.invoke('file:delete', { path, vaultPath: vaultPath || undefined })
+    }
+    setSelectedPaths(new Set())
+    setMultiContextMenu(null)
+    useVaultStore.getState().refreshFiles()
+  }
+
   useEffect(() => {
     if (focusedIndex >= 0 && containerRef.current) {
       const scrollNeeded = focusedIndex * ITEM_HEIGHT
@@ -175,6 +209,12 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
       tabIndex={0}
       onScroll={handleScroll}
       onKeyDown={handleKeyDown}
+      onContextMenu={(e) => {
+        if (selectedPaths.size > 1) {
+          e.preventDefault()
+          setMultiContextMenu({ x: e.clientX, y: e.clientY })
+        }
+      }}
       style={{ height: '100%', overflowY: 'auto', position: 'relative', outline: 'none' }}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
@@ -183,17 +223,30 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
             <VirtualFileTreeItem
               key={node.entry.path}
               node={node}
+              index={startIndex + i}
               onToggle={toggleExpand}
               isFocused={startIndex + i === focusedIndex}
+              isSelected={selectedPaths.has(node.entry.path)}
+              onItemClick={handleItemClick}
             />
           ))}
         </div>
       </div>
+      {multiContextMenu && (
+        <ContextMenu
+          x={multiContextMenu.x}
+          y={multiContextMenu.y}
+          items={[
+            { label: `删除 ${selectedPaths.size} 项`, danger: true, onClick: handleMultiDelete },
+          ]}
+          onClose={() => setMultiContextMenu(null)}
+        />
+      )}
     </div>
   )
 }
 
-function VirtualFileTreeItem({ node, onToggle, isFocused }: { node: FlatNode; onToggle: (path: string) => void; isFocused?: boolean }) {
+function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onItemClick }: { node: FlatNode; index: number; onToggle: (path: string) => void; isFocused?: boolean; isSelected?: boolean; onItemClick: (index: number, path: string, e: React.MouseEvent) => void }) {
   const { entry, depth, isExpanded } = node
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [hovered, setHovered] = useState(false)
@@ -306,7 +359,7 @@ function VirtualFileTreeItem({ node, onToggle, isFocused }: { node: FlatNode; on
           display: 'flex',
           alignItems: 'center',
           borderRadius: 6,
-          background: isActive ? 'var(--accent-muted)' : dragOver ? 'var(--accent-muted)' : isFocused ? 'var(--bg-hover)' : 'transparent',
+          background: isSelected ? 'var(--accent-muted)' : isActive ? 'var(--accent-muted)' : dragOver ? 'var(--accent-muted)' : isFocused ? 'var(--bg-hover)' : 'transparent',
           outline: dragOver ? '1px dashed var(--accent)' : 'none',
         }}
       >
@@ -314,7 +367,12 @@ function VirtualFileTreeItem({ node, onToggle, isFocused }: { node: FlatNode; on
           draggable
           data-file-path={entry.path}
           onDragStart={handleDragStart}
-          onClick={() => entry.isDirectory ? onToggle(entry.path) : openFile(entry.path)}
+          onClick={(e) => {
+            onItemClick(index, entry.path, e)
+            if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+              entry.isDirectory ? onToggle(entry.path) : openFile(entry.path)
+            }
+          }}
           style={{
             flex: 1, height: ITEM_HEIGHT, paddingLeft: entry.isDirectory ? paddingLeft : paddingLeft + 16, paddingRight: 4,
             display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6,

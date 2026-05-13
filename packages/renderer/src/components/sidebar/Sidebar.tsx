@@ -242,14 +242,18 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0 }}
           title="折叠全部"
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="4 14 12 6 20 14" /></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12h16" /><path d="M12 4v4" /><path d="M12 16v4" /><path d="M8 8l4-4 4 4" /><path d="M8 16l4 4 4-4" />
+          </svg>
         </button>
         <button
           onClick={() => { setDefaultExpanded(true); setTreeKey((k) => k + 1) }}
           style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0 }}
           title="展开全部"
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="4 10 12 18 20 10" /></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12h16" /><path d="M12 2v6" /><path d="M12 16v6" /><path d="M8 6l4 4 4-4" /><path d="M8 18l4-4 4 4" />
+          </svg>
         </button>
       </div>
 
