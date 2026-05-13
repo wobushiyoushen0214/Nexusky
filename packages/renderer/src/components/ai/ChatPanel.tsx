@@ -208,23 +208,42 @@ export function ChatPanel() {
 
     if (editMode) {
       const targetPath = editTarget || currentFilePath
-      if (!targetPath) { setIsStreaming(false); return }
       setEditElapsed(0)
       editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
       try {
-        const fileContent = await window.api.invoke('file:read', { path: targetPath })
+        let fileContent = ''
+        let filePath = targetPath || ''
+        if (targetPath) {
+          fileContent = await window.api.invoke('file:read', { path: targetPath })
+        }
+
+        const isNewFile = !targetPath
         const result = await window.api.invoke('ai:edit', {
-          instruction: userMsg.content,
+          instruction: isNewFile
+            ? `创建一篇新笔记。要求：${userMsg.content}`
+            : userMsg.content,
           fileContent,
-          filePath: targetPath,
+          filePath: filePath || '(新文件)',
           images: attachedImages.length > 0 ? attachedImages : undefined,
           history: editHistory.length > 0 ? editHistory : undefined
         } as any)
         setAttachedImages([])
         if (result.success && result.content) {
           setEditHistory((prev) => [...prev, userMsg.content])
-          setEditResult({ content: result.content, filePath: targetPath })
-          setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '已生成修改方案，请查看下方预览并确认应用。' }])
+          if (isNewFile && vaultPath) {
+            const titleMatch = result.content.match(/^#\s+(.+)$/m)
+            const title = titleMatch ? titleMatch[1].trim().replace(/[\\/:*?"<>|]/g, '') : '新笔记'
+            const newPath = `${vaultPath}/${title}.md`
+            await window.api.invoke('file:create', { path: newPath, content: result.content })
+            useEditorStore.getState().openFile(newPath)
+            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${title}」并打开。` }])
+            const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${title}」并打开。` }
+            setMessages((msgs) => [...msgs, msg])
+            appendToDb(msg)
+          } else {
+            setEditResult({ content: result.content, filePath: filePath })
+            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '已生成修改方案，请查看下方预览并确认应用。' }])
+          }
         } else {
           setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `编辑失败: ${result.error}` }])
         }
@@ -652,7 +671,7 @@ export function ChatPanel() {
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
               </svg>
               <span style={{ fontSize: 11, color: 'var(--accent-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '未打开文件')}
+                {editTarget ? editTarget.split(/[\\/]/).pop()?.replace(/\.md$/, '') : (currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '新建文件（AI 生成）')}
               </span>
               {editTarget && (
                 <button onClick={() => setEditTarget(null)} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
@@ -678,7 +697,7 @@ export function ChatPanel() {
                 if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }
                 if (e.key === 'Escape') setShowMention(false)
               }}
-              placeholder={editMode ? '描述你想要的修改...' : '提问，或 @ 引用笔记'}
+              placeholder={editMode ? (currentFilePath || editTarget ? '描述你想要的修改...' : '描述要生成的笔记内容...') : '提问，或 @ 引用笔记'}
               rows={1}
               onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
               style={{
