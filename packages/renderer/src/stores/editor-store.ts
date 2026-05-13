@@ -25,6 +25,7 @@ interface EditorState {
   closeTab: (index: number) => Promise<void>
   closeOtherTabs: (index: number) => void
   closeTabsToRight: (index: number) => void
+  closeSavedTabs: () => void
   switchTab: (index: number) => void
   reorderTab: (from: number, to: number) => void
   saveFile: () => Promise<void>
@@ -161,6 +162,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const newActive = Math.min(activeTabIndex, newTabs.length - 1)
     const tab = newTabs[newActive]
     set({ tabs: newTabs, activeTabIndex: newActive, currentFilePath: tab.path, content: tab.content, isDirty: tab.isDirty })
+  },
+
+  closeSavedTabs: () => {
+    const { tabs, activeTabIndex } = get()
+    const currentPath = tabs[activeTabIndex]?.path
+    const newTabs = tabs.filter((t) => t.isDirty || t.pinned || t.path === currentPath)
+    if (newTabs.length === tabs.length) return
+    const newActive = newTabs.findIndex((t) => t.path === currentPath)
+    if (newTabs.length === 0) {
+      set({ tabs: [], activeTabIndex: -1, currentFilePath: null, content: '', isDirty: false })
+      return
+    }
+    const idx = newActive >= 0 ? newActive : 0
+    const tab = newTabs[idx]
+    set({ tabs: newTabs, activeTabIndex: idx, currentFilePath: tab.path, content: tab.content, isDirty: tab.isDirty })
   },
 
   saveFile: async () => {

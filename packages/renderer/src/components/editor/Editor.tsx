@@ -517,6 +517,7 @@ export function Editor() {
             { label: '关闭', onClick: () => closeTab(tabContextMenu.index) },
             { label: '关闭其他', onClick: () => closeOtherTabs(tabContextMenu.index) },
             { label: '关闭右侧', onClick: () => closeTabsToRight(tabContextMenu.index) },
+            { label: '关闭已保存', onClick: () => useEditorStore.getState().closeSavedTabs() },
             { label: '复制路径', onClick: () => { navigator.clipboard.writeText(tabs[tabContextMenu.index]?.path || '') } },
             { label: '在右侧打开', onClick: () => { const p = tabs[tabContextMenu.index]?.path; if (p) useEditorStore.getState().openSplit(p) } },
           ]}
