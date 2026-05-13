@@ -11,7 +11,6 @@ files:
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**/*
-beforePack: ./scripts/rebuild-native.js
 afterPack: ./scripts/afterPack.js
 publish:
   provider: github
