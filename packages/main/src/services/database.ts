@@ -5,7 +5,7 @@ import { app } from 'electron'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -79,7 +79,7 @@ function initSchema(db: Database.Database): void {
       title,
       content,
       content_rowid='rowid',
-      tokenize='unicode61 categories "L* N* Co"'
+      tokenize='unicode61'
     );
 
     CREATE TABLE IF NOT EXISTS notes_fts_map (
@@ -143,6 +143,30 @@ const migrations: Migration[] = [
     if (!hasSessionId.some((c) => c.name === 'session_id')) {
       db.exec(`ALTER TABLE conversations ADD COLUMN session_id TEXT DEFAULT NULL`)
       db.exec(`CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id)`)
+    }
+  },
+  // Migration 3: fix FTS tokenize directive for older SQLite versions
+  (db) => {
+    const ftsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='notes_fts'").get()
+    if (ftsExists) {
+      try {
+        db.prepare("SELECT * FROM notes_fts LIMIT 0").all()
+      } catch {
+        db.exec(`DROP TABLE IF EXISTS notes_fts`)
+        db.exec(`DROP TABLE IF EXISTS notes_fts_map`)
+        db.exec(`
+          CREATE VIRTUAL TABLE notes_fts USING fts5(
+            title,
+            content,
+            content_rowid='rowid',
+            tokenize='unicode61'
+          );
+          CREATE TABLE notes_fts_map (
+            rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+            note_id TEXT NOT NULL UNIQUE
+          );
+        `)
+      }
     }
   }
 ]
