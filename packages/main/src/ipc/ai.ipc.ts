@@ -556,4 +556,79 @@ graph TD
     window.webContents.send('ai:generate-notes-progress', { stage: 'done', message: aborted ? `已停止，已生成 ${createdFiles.length} 个文件` : `完成！已生成 ${createdFiles.length} 个文件` })
     return { success: true, files: createdFiles }
   })
+
+  ipcMain.handle('ai:infer-links', async (event, params: { vaultPath: string; filePaths: string[] }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { success: false, error: '窗口不存在' }
+
+    const config = aiManager.getActiveConfig()
+    if (!config) return { success: false, error: '未配置 AI 提供商' }
+
+    const { readFileSync } = require('fs')
+    const { basename } = require('path')
+
+    const filePaths = params.filePaths.slice(0, 50)
+    const db = getDatabase(params.vaultPath)
+
+    const noteSummaries = filePaths.map((fp) => {
+      try {
+        const content = readFileSync(fp, 'utf-8')
+        const name = basename(fp, '.md')
+        return `[${name}]\n${content.slice(0, 600)}`
+      } catch { return null }
+    }).filter(Boolean).join('\n\n---\n\n')
+
+    if (!noteSummaries) return { success: false, error: '无法读取文件内容' }
+
+    const provider = aiManager.getProvider(config)
+    let relResult = ''
+
+    try {
+      for await (const chunk of provider.chatStream([
+        { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
+
+输出格式为 JSON 数组，每项包含：
+- source: 源笔记标题（必须与给定标题完全一致）
+- target: 目标笔记标题（必须与给定标题完全一致）
+- reason: 一句话说明关系原因（如"都涉及状态管理"、"A是B的前置知识"等）
+
+规则：
+1. 只输出真正有内容关联的关系，不要为了凑数而强行关联
+2. 关系应基于概念相关性、因果关系、层级关系、共同主题等语义理解
+3. 不要输出自引用（source 和 target 相同）
+4. 只输出 JSON，不要其他文字` },
+        { role: 'user', content: `以下是 ${filePaths.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
+      ])) {
+        if (window.isDestroyed()) break
+        if (chunk.type === 'text') relResult += chunk.content
+        if (chunk.type === 'error') return { success: false, error: chunk.content }
+      }
+
+      if (!relResult.trim()) return { success: false, error: 'AI 未返回结果' }
+
+      const jsonStr = relResult.replace(/```json?\s*|\s*```/g, '').trim()
+      const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
+      if (!Array.isArray(relations)) return { success: false, error: '解析失败' }
+
+      const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context) VALUES (?, ?, ?)')
+      const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
+      let added = 0
+
+      for (const rel of relations) {
+        const sourceNote = findNote.get(rel.source) as { id: string } | undefined
+        if (sourceNote && rel.target && rel.source !== rel.target) {
+          const existing = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?').get(sourceNote.id, rel.target)
+          if (!existing) {
+            insertLink.run(sourceNote.id, rel.target, rel.reason || '')
+            added++
+          }
+        }
+      }
+      try { resolveAllLinks(params.vaultPath) } catch {}
+
+      return { success: true, added }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }

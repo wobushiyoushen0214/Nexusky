@@ -50,17 +50,29 @@ export default function App() {
       const { path, isDirectory } = (e as CustomEvent).detail || {}
       if (!path || !vaultPath) return
       toast('正在索引笔记关系...', 'info')
+      let mdPaths: string[] = []
       if (isDirectory) {
         const files = await window.api.invoke('file:list', { dirPath: path })
-        const mdPaths = flatMdPaths(files)
+        mdPaths = flatMdPaths(files)
         if (mdPaths.length === 0) { toast('该文件夹下没有 .md 文件', 'info'); return }
         for (const fp of mdPaths) {
           await window.api.invoke('db:index-file', { vaultPath, filePath: fp })
         }
       } else {
         await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+        mdPaths = [path]
       }
-      toast('索引完成，已打开知识图谱', 'success')
+      toast('索引完成，正在 AI 分析语义关系...', 'info')
+      try {
+        const result = await window.api.invoke('ai:infer-links', { vaultPath, filePaths: mdPaths })
+        if (result.success) {
+          toast(`分析完成，发现 ${result.added} 条语义关联`, 'success')
+        } else {
+          toast('索引完成，已打开知识图谱', 'success')
+        }
+      } catch {
+        toast('索引完成，已打开知识图谱', 'success')
+      }
       toggleRightPanel('graph')
     }
     window.addEventListener('index-and-show-graph', handler)
