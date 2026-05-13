@@ -61,12 +61,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setDirty: (dirty) => set({ isDirty: dirty }),
 
   openFile: async (path) => {
+    const normPath = path.replace(/\\/g, '/')
     const { tabs, activeTabIndex } = get()
 
-    const existingIndex = tabs.findIndex((t) => t.path === path)
+    const existingIndex = tabs.findIndex((t) => t.path.replace(/\\/g, '/') === normPath)
     if (existingIndex >= 0) {
       const tab = tabs[existingIndex]
-      set({ activeTabIndex: existingIndex, currentFilePath: path, content: tab.content, isDirty: tab.isDirty })
+      set({ activeTabIndex: existingIndex, currentFilePath: tab.path, content: tab.content, isDirty: tab.isDirty })
       return
     }
 
@@ -89,10 +90,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       const content = await window.api.invoke('file:read', { path })
       const currentTabs = get().tabs
-      if (currentTabs.findIndex((t) => t.path === path) >= 0) {
-        const tab = currentTabs.find((t) => t.path === path)!
-        const idx = currentTabs.indexOf(tab)
-        set({ activeTabIndex: idx, currentFilePath: path, content: tab.content, isDirty: tab.isDirty })
+      const existingIdx = currentTabs.findIndex((t) => t.path.replace(/\\/g, '/') === normPath)
+      if (existingIdx >= 0) {
+        const tab = currentTabs[existingIdx]
+        set({ activeTabIndex: existingIdx, currentFilePath: tab.path, content: tab.content, isDirty: tab.isDirty })
         return
       }
 
