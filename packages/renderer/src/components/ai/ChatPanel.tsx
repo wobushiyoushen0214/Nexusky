@@ -75,7 +75,13 @@ export function ChatPanel() {
   const [mentionResults, setMentionResults] = useState<{ title: string; filePath: string }[]>([])
   const [attachedNotes, setAttachedNotes] = useState<{ title: string; filePath: string }[]>([])
   const [attachedSelections, setAttachedSelections] = useState<{ text: string; source: string }[]>([])
-  const [editMode, setEditMode] = useState(false)
+  const [editMode, setEditMode] = useState(() => {
+    try { return localStorage.getItem('nexusky-chat-edit-mode') === '1' } catch { return false }
+  })
+  const updateEditMode = (v: boolean) => {
+    setEditMode(v)
+    try { localStorage.setItem('nexusky-chat-edit-mode', v ? '1' : '0') } catch {}
+  }
   const [editTarget, setEditTarget] = useState<string | null>(null)
   const [editResult, setEditResult] = useState<{ content: string; filePath: string } | null>(null)
   const [editHistory, setEditHistory] = useState<string[]>([])
@@ -474,14 +480,50 @@ export function ChatPanel() {
         const isNewFile = !targetPath
 
         if (vaultPath) {
+          // Short follow-up messages in edit mode should fall through to chat if they look like conversation continuations
+          const isShortFollowUp = userMsg.content.length <= 10 && messages.length > 0
+          let isChatContinuation = false
+          if (isShortFollowUp) {
+            try {
+              const detectResult = await window.api.invoke('ai:complete', {
+                text: `用户在编辑模式下发送了: "${userMsg.content}"\n最近对话: ${messages.slice(-4).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 100)}`).join('\n')}\n\n判断用户是想继续之前的对话/追问（而非编辑文件或生成笔记）。只回答"是"或"否"。`
+              })
+              isChatContinuation = (detectResult || '').trim().startsWith('是')
+            } catch {}
+          }
+
+          if (isChatContinuation) {
+            // Fall through to normal chat path
+            editCompleteRef.current = true
+            setIsStreaming(true)
+            streamContentRef.current = ''
+            setStreamContent('')
+            const allMessages = [...messages, userMsg]
+            const chatMessages = await buildChatMessages(allMessages)
+            try {
+              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+            } catch (e: any) {
+              setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+              streamContentRef.current = ''
+              setStreamContent('')
+              setIsStreaming(false)
+            }
+            return
+          }
+
           // Use AI to semantically determine if this is a batch generation request
           let isBatchRequest = false
-          try {
-            const batchDetect = await window.api.invoke('ai:complete', {
-              text: `判断以下用户指令是否要求批量生成多篇笔记（而非修改或生成单篇）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
-            })
-            isBatchRequest = (batchDetect || '').trim().startsWith('是')
-          } catch {}
+          if (!isShortFollowUp) {
+            const recentForDetect = messages.slice(-6).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 150)}`).join('\n')
+            try {
+              const batchDetect = await window.api.invoke('ai:complete', {
+                text: recentForDetect
+                  ? `对话上下文：\n${recentForDetect}\n\n判断以下用户指令是否要求批量生成多篇笔记（而非修改单篇、继续对话、或追问）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
+                  : `判断以下用户指令是否要求批量生成多篇笔记（而非修改或生成单篇）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
+              })
+              isBatchRequest = (batchDetect || '').trim().startsWith('是')
+            } catch {}
+          }
 
           if (isBatchRequest) {
           const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
@@ -1107,7 +1149,7 @@ export function ChatPanel() {
           {/* Bottom toolbar */}
           <div style={{ padding: '0 8px 6px', display: 'flex', alignItems: 'center', gap: 2 }}>
             <button
-              onClick={() => { setEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
+              onClick={() => { updateEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
               style={{
                 height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
                 background: editMode ? 'var(--accent-muted)' : 'transparent',
