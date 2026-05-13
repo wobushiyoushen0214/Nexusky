@@ -339,8 +339,8 @@ export default function App() {
             </aside>
             </>
           )}
-          {chatEverOpened && rightPanel === 'none' && (
-            <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+          {chatEverOpened && rightPanel !== 'chat' && (
+            <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}>
               <Suspense fallback={null}><ChatPanel /></Suspense>
             </div>
           )}
