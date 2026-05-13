@@ -45,6 +45,11 @@ const api = {
     ipcRenderer.on('ai:graph-done', handler)
     return () => ipcRenderer.removeListener('ai:graph-done', handler)
   },
+  onAiNotesProgress: (callback: (data: { stage: string; message: string; plan?: any[]; current?: number; total?: number }) => void) => {
+    const handler = (_event: unknown, data: any) => callback(data)
+    ipcRenderer.on('ai:generate-notes-progress', handler)
+    return () => ipcRenderer.removeListener('ai:generate-notes-progress', handler)
+  },
   platform: process.platform,
   windowControls: {
     minimize: () => ipcRenderer.send('window:minimize'),

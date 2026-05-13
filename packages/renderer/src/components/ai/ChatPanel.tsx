@@ -211,13 +211,39 @@ export function ChatPanel() {
       setEditElapsed(0)
       editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
       try {
+        const isNewFile = !targetPath
+        const isBatchRequest = isNewFile && /几篇|多篇|一系列|一组|批量|多个/.test(userMsg.content)
+
+        if (isBatchRequest && vaultPath) {
+          const progressMsgs: string[] = []
+          const cleanup = window.api.onAiNotesProgress((data) => {
+            progressMsgs.push(data.message)
+            setStreamContent(progressMsgs.join('\n'))
+          })
+          const result = await window.api.invoke('ai:generate-notes', { instruction: userMsg.content, vaultPath })
+          cleanup()
+          if (result.success && result.files.length > 0) {
+            useEditorStore.getState().openFile(result.files[0])
+            useVaultStore.getState().refreshFiles()
+            const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已生成 ${result.files.length} 个文件：\n${result.files.map((f) => '- ' + f.split(/[\\/]/).pop()?.replace(/\.md$/, '')).join('\n')}` }
+            setMessages((msgs) => [...msgs, msg])
+            appendToDb(msg)
+          } else {
+            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `生成失败: ${result.error || '未知错误'}` }])
+          }
+          setStreamContent('')
+          if (editTimerRef.current) clearInterval(editTimerRef.current)
+          editTimerRef.current = null
+          setIsStreaming(false)
+          return
+        }
+
         let fileContent = ''
         let filePath = targetPath || ''
         if (targetPath) {
           fileContent = await window.api.invoke('file:read', { path: targetPath })
         }
 
-        const isNewFile = !targetPath
         const result = await window.api.invoke('ai:edit', {
           instruction: isNewFile
             ? `创建一篇新笔记。要求：${userMsg.content}`
@@ -236,7 +262,6 @@ export function ChatPanel() {
             const newPath = `${vaultPath}/${title}.md`
             await window.api.invoke('file:create', { path: newPath, content: result.content })
             useEditorStore.getState().openFile(newPath)
-            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${title}」并打开。` }])
             const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${title}」并打开。` }
             setMessages((msgs) => [...msgs, msg])
             appendToDb(msg)

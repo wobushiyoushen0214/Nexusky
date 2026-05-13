@@ -77,6 +77,7 @@ export interface IPCChannelMap {
   'ai:detect-local-config': { params: undefined; result: { claude?: { apiKey: string; baseUrl: string }; openai?: { apiKey: string } } }
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }
+  'ai:generate-notes': { params: { instruction: string; vaultPath: string }; result: { success: boolean; files: string[]; error?: string } }
   'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number } }
   'template:daily-note': { params: { vaultPath: string }; result: string }
   'template:get-templates': { params: undefined; result: { id: string; name: string; content: string }[] }
