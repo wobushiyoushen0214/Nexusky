@@ -31,6 +31,27 @@ import { useSyncStore } from '../../stores/sync-store'
 import { FindReplace } from './FindReplace'
 import { MermaidRenderer } from './MermaidRenderer'
 
+class LRUCache<K, V> {
+  private map = new Map<K, V>()
+  constructor(private maxSize: number) {}
+  get(key: K): V | undefined {
+    const val = this.map.get(key)
+    if (val !== undefined) {
+      this.map.delete(key)
+      this.map.set(key, val)
+    }
+    return val
+  }
+  set(key: K, value: V): void {
+    this.map.delete(key)
+    this.map.set(key, value)
+    if (this.map.size > this.maxSize) {
+      const first = this.map.keys().next().value!
+      this.map.delete(first)
+    }
+  }
+}
+
 export function Editor() {
   const content = useEditorStore((s) => s.content)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -55,7 +76,7 @@ export function Editor() {
   const linkPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const markdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const editorStateCache = useRef<Map<string, any>>(new Map())
+  const editorStateCache = useRef(new LRUCache<string, any>(20))
   const linkPreviewCache = useRef<Map<string, string>>(new Map())
 
   const editor = useEditor({
