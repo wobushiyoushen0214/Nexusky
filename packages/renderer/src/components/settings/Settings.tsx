@@ -867,7 +867,9 @@ function ModelSelect({ value, options, onChange }: { value: string; options: str
   const [open, setOpen] = useState(false)
   const [customMode, setCustomMode] = useState(false)
   const [customValue, setCustomValue] = useState('')
+  const [pos, setPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 })
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -878,12 +880,25 @@ function ModelSelect({ value, options, onChange }: { value: string; options: str
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  const handleOpen = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      const dropHeight = Math.min((options.length + 1) * 30 + 8, 210)
+      const spaceBelow = window.innerHeight - rect.bottom - 8
+      const top = spaceBelow >= dropHeight ? rect.bottom + 4 : rect.top - dropHeight - 4
+      setPos({ top, left: rect.left, width: rect.width })
+    }
+    setOpen(!open)
+    setCustomMode(false)
+  }
+
   const isCustom = options.length > 0 && !options.includes(value)
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref}>
       <button
-        onClick={() => { setOpen(!open); setCustomMode(false) }}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{
           width: '100%', height: 32, padding: '0 12px', fontSize: 13,
           background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
@@ -902,9 +917,9 @@ function ModelSelect({ value, options, onChange }: { value: string; options: str
       </button>
       {open && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 100,
+          position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999,
           background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-          borderRadius: 8, boxShadow: 'var(--shadow-md)', overflow: 'hidden',
+          borderRadius: 8, boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
           maxHeight: 200, overflowY: 'auto',
         }}>
           {options.map((opt) => (
