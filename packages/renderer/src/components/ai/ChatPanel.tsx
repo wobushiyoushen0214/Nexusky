@@ -162,12 +162,12 @@ export function ChatPanel() {
   const handleSelectMention = (note: { title: string; filePath: string }) => {
     if (editMode) {
       setEditTarget(note.filePath)
-      setShowMention(false)
     } else {
       setAttachedNotes((prev) => prev.some((n) => n.filePath === note.filePath) ? prev : [...prev, note])
     }
     const atIndex = input.lastIndexOf('@')
     setInput(atIndex >= 0 ? input.slice(0, atIndex) : input)
+    setShowMention(false)
     inputRef.current?.focus()
   }
 
