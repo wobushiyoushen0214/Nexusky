@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain, shell, BrowserWindow } from 'electron'
 import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promises'
 import { readdir } from 'fs/promises'
 import { join, dirname, extname, relative, basename, resolve, normalize } from 'path'
@@ -45,6 +45,8 @@ async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> 
   } catch {}
 }
 
+let writeNotifyTimer: ReturnType<typeof setTimeout> | null = null
+
 export function registerFileIPC(): void {
   ipcMain.handle('file:read', async (_event, params: { path: string }) => {
     return readFile(params.path, 'utf-8')
@@ -55,7 +57,7 @@ export function registerFileIPC(): void {
     return { size: s.size, mtime: s.mtimeMs }
   })
 
-  ipcMain.handle('file:write', async (_event, params: { path: string; content: string; vaultPath?: string }) => {
+  ipcMain.handle('file:write', async (event, params: { path: string; content: string; vaultPath?: string }) => {
     if (params.vaultPath && !isPathSafe(params.path, params.vaultPath)) {
       throw new Error('路径不在当前笔记空间内')
     }
@@ -65,6 +67,12 @@ export function registerFileIPC(): void {
     await writeFile(params.path, params.content, 'utf-8')
     if (params.vaultPath && params.path.endsWith('.md')) {
       try { indexNote(params.vaultPath, params.path) } catch {}
+      if (writeNotifyTimer) clearTimeout(writeNotifyTimer)
+      writeNotifyTimer = setTimeout(() => {
+        const win = BrowserWindow.fromWebContents(event.sender)
+        if (win && !win.isDestroyed()) win.webContents.send('vault:files-changed')
+        writeNotifyTimer = null
+      }, 2000)
     }
   })
 
@@ -76,11 +84,13 @@ export function registerFileIPC(): void {
     return listDirectoryShallow(params.dirPath)
   })
 
-  ipcMain.handle('file:create', async (_event, params: { path: string; content?: string; vaultPath?: string }) => {
+  ipcMain.handle('file:create', async (event, params: { path: string; content?: string; vaultPath?: string }) => {
     await mkdir(dirname(params.path), { recursive: true })
     await writeFile(params.path, params.content || '', 'utf-8')
     if (params.vaultPath && params.path.endsWith('.md')) {
       try { indexNote(params.vaultPath, params.path) } catch {}
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (win && !win.isDestroyed()) win.webContents.send('vault:files-changed')
     }
   })
 
