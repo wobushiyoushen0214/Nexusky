@@ -1,17 +1,11 @@
-import { useState, useEffect, useRef, memo, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
-import DOMPurify from 'dompurify'
-import { marked } from 'marked'
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  sources?: { title: string; filePath: string; chunk: string; score: number }[]
-}
+import { ChatMessages } from './ChatMessages'
+import { renderMarkdown } from './MessageBubble'
+import type { Message } from './MessageBubble'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 
@@ -62,7 +56,6 @@ export function ChatPanel() {
   const isStreamingRef = useRef(false)
   useEffect(() => { isStreamingRef.current = isStreaming }, [isStreaming])
   const [streamContent, setStreamContent] = useState('')
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
@@ -167,8 +160,36 @@ export function ChatPanel() {
   }, [])
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: isStreaming ? 'auto' : 'smooth' })
-  }, [messages, streamContent])
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail
+      if (text === '@ 引用笔记作为上下文') { setInput('@'); inputRef.current?.focus() }
+      else if (text === '生成知识图谱') {
+        const fp = useEditorStore.getState().currentFilePath
+        if (fp) window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: fp, isDirectory: false } }))
+        else toast('请先打开一个笔记', 'info')
+      }
+      else { setInput(text); inputRef.current?.focus() }
+    }
+    window.addEventListener('chat-hint-click', handler)
+    return () => window.removeEventListener('chat-hint-click', handler)
+  }, [])
+
+  const handleRegenerate = useCallback(async (msg: Message) => {
+    if (isStreaming) return
+    const msgIndex = messages.findIndex((m) => m.id === msg.id)
+    if (msgIndex < 0) return
+    const userMsgIndex = msgIndex - 1
+    if (userMsgIndex < 0 || messages[userMsgIndex].role !== 'user') return
+    const userContent = messages[userMsgIndex].content
+    setMessages((msgs) => msgs.slice(0, msgIndex))
+    if (vaultPath) {
+      window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined }).catch(() => {})
+      const remaining = messages.slice(0, msgIndex)
+      for (const m of remaining) { appendToDb(m) }
+    }
+    setInput(userContent)
+    setTimeout(() => { inputRef.current?.focus() }, 50)
+  }, [messages, isStreaming, vaultPath, currentSessionId, appendToDb])
 
   useEffect(() => {
     if (!showMention || !vaultPath) return
@@ -726,69 +747,14 @@ export function ChatPanel() {
       )}
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
-        {messages.length === 0 && !isStreaming && (
-          <div style={{ padding: '32px 16px' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, fontWeight: 500 }}>可以帮你做什么？</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { text: '总结当前笔记的要点', icon: '📝' },
-                { text: '基于笔记内容提问', icon: '💡' },
-                { text: '生成知识图谱', icon: '🔗' },
-                { text: '切换编辑模式修改文档', icon: '✎' },
-                { text: '@ 引用笔记作为上下文', icon: '@' },
-              ].map((hint) => (
-                <button
-                  key={hint.text}
-                  onClick={() => {
-                    if (hint.text === '@ 引用笔记作为上下文') { setInput('@'); inputRef.current?.focus() }
-                    else if (hint.text === '生成知识图谱') {
-                      if (currentFilePath) window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: currentFilePath, isDirectory: false } }))
-                      else toast('请先打开一个笔记', 'info')
-                    }
-                    else { setInput(hint.text); inputRef.current?.focus() }
-                  }}
-                  style={{
-                    width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
-                    fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-subtle)', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-                    transition: 'border-color 100ms, background 100ms',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-surface)' }}
-                >
-                  <span style={{ width: 20, textAlign: 'center', fontSize: 13, flexShrink: 0 }}>{hint.icon}</span>
-                  <span>{hint.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} msg={msg} />
-          ))}
-          {isStreaming && streamContent && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start', minWidth: 0 }}>
-              <div style={{ maxWidth: '88%', minWidth: 0, borderRadius: '14px 14px 14px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.7, background: 'var(--bg-elevated)', color: 'var(--text-primary)', wordBreak: 'break-word', overflowWrap: 'anywhere', overflow: 'hidden' }}>
-                <div className="editor-content chat-md" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(streamContent) }} />
-              </div>
-            </div>
-          )}
-          {isStreaming && !streamContent && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{ borderRadius: '14px 14px 14px 4px', padding: '12px 16px', background: 'var(--bg-elevated)', display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.2s', opacity: 0.7 }} />
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.4s', opacity: 0.7 }} />
-                {editMode && editElapsed > 0 && (
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 4 }}>{editElapsed}s</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <ChatMessages
+        messages={messages}
+        isStreaming={isStreaming}
+        streamContent={streamContent}
+        editMode={editMode}
+        editElapsed={editElapsed}
+        onRegenerate={handleRegenerate}
+      />
 
       {/* Folder picker for batch generation */}
       {pendingBatch && folderOptions.length >= 0 && (
@@ -1079,46 +1045,3 @@ export function ChatPanel() {
   )
 }
 
-marked.setOptions({ breaks: true, gfm: true })
-
-const PURIFY_CONFIG = {
-  FORBID_TAGS: ['form', 'iframe', 'object', 'embed', 'script', 'style', 'link', 'meta'],
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
-}
-
-function renderMarkdown(md: string): string {
-  const html = marked.parse(md, { async: false }) as string
-  return DOMPurify.sanitize(html, PURIFY_CONFIG)
-}
-
-const MessageBubble = memo(function MessageBubble({ msg }: { msg: Message }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', minWidth: 0 }}>
-      <div style={{ maxWidth: '88%', minWidth: 0 }}>
-        <div style={{
-          borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-          padding: '10px 14px', fontSize: 13, lineHeight: 1.7,
-          background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
-          color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-          wordBreak: 'break-word', overflowWrap: 'anywhere',
-          overflow: 'hidden',
-        }}>
-          {msg.role === 'user' ? (
-            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
-          ) : (
-            <div className="editor-content chat-md" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-          )}
-        </div>
-        {msg.sources && msg.sources.length > 0 && (
-          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {msg.sources.map((s, i) => (
-              <div key={i} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--accent-muted)', fontSize: 10, color: 'var(--accent-text)' }}>
-                [{i + 1}] {s.title}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-})
