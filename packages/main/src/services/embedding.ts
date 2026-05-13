@@ -247,6 +247,7 @@ export async function semanticSearch(vaultPath: string, query: string, topK = 10
 
   const results: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] = []
   let minScore = -Infinity
+  let minIdx = 0
 
   for (const row of embeddingCache.data) {
     if (row.norm === 0) continue
@@ -256,13 +257,19 @@ export async function semanticSearch(vaultPath: string, query: string, topK = 10
     if (results.length < topK) {
       results.push({ noteId: row.noteId, title: row.title, filePath: row.filePath, chunk: row.content, score })
       if (results.length === topK) {
-        results.sort((a, b) => a.score - b.score)
-        minScore = results[0].score
+        minIdx = 0
+        for (let i = 1; i < results.length; i++) {
+          if (results[i].score < results[minIdx].score) minIdx = i
+        }
+        minScore = results[minIdx].score
       }
     } else if (score > minScore) {
-      results[0] = { noteId: row.noteId, title: row.title, filePath: row.filePath, chunk: row.content, score }
-      results.sort((a, b) => a.score - b.score)
-      minScore = results[0].score
+      results[minIdx] = { noteId: row.noteId, title: row.title, filePath: row.filePath, chunk: row.content, score }
+      minIdx = 0
+      for (let i = 1; i < results.length; i++) {
+        if (results[i].score < results[minIdx].score) minIdx = i
+      }
+      minScore = results[minIdx].score
     }
   }
 
