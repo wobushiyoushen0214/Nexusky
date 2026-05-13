@@ -4,6 +4,7 @@ import { store } from '../services/store'
 import { semanticSearch } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { indexNote, resolveAllLinks } from '../services/indexer'
+import { getDatabase } from '../services/database'
 
 const activeAbortControllers: Map<number, AbortController> = new Map()
 
@@ -379,8 +380,8 @@ graph TD
     activeAbortControllers.set(windowId, controller)
 
     const provider = aiManager.getProvider(config)
-    const { writeFileSync, mkdirSync, existsSync } = require('fs')
-    const { join } = require('path')
+    const { writeFileSync, mkdirSync, existsSync, readFileSync } = require('fs')
+    const { join, basename } = require('path')
 
     // Step 1: Ask AI to plan the notes
     window.webContents.send('ai:generate-notes-progress', { stage: 'planning', message: '正在规划笔记结构...' })
@@ -456,11 +457,11 @@ graph TD
 
 规则：
 1. 第一行必须是 # 标题，标题必须和给定的标题完全一致
-2. 使用 [[笔记名]] 语法引用相关笔记，笔记名必须与提供的列表中的名称完全一致（一字不差）
-3. [[]] 中只写笔记名，绝对不要加路径前缀（不要写 react/xxx 或 docs/xxx）
-4. 内容包含分节、要点，结构清晰
+2. 不要使用 [[]] 双链语法，写自然流畅的内容即可
+3. 内容包含分节、要点，结构清晰
+4. 在内容中自然地提及相关概念和主题，但不要硬塞链接
 5. 只输出 Markdown 内容，不要其他解释` },
-          { role: 'user', content: `标题: ${safeNames[i]}\n描述: ${item.brief}\n\n可引用的笔记（用 [[名称]] 引用，不加任何路径前缀）:\n${safeNames.filter((_, j) => j !== i).map((n) => `- ${n}`).join('\n')}` }
+          { role: 'user', content: `标题: ${safeNames[i]}\n描述: ${item.brief}\n\n同批次的其他笔记主题（可在内容中自然提及相关概念）:\n${safeNames.filter((_, j) => j !== i).map((n) => `- ${n}`).join('\n')}` }
         ], controller.signal)) {
           if (controller.signal.aborted) break
           if (chunk.type === 'text') noteContent += chunk.content
@@ -477,7 +478,7 @@ graph TD
       }
     }
 
-    // Step 3: Index all generated files so wikilinks are recognized in the knowledge graph
+    // Step 3: Index all generated files and infer semantic relationships
     if (createdFiles.length > 0) {
       window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在索引笔记关系...' })
       let indexErr: string | null = null
@@ -488,6 +489,62 @@ graph TD
         }
       }
       try { resolveAllLinks(params.vaultPath) } catch {}
+
+      // Step 4: AI-powered semantic link inference
+      if (createdFiles.length >= 2 && !controller.signal.aborted) {
+        window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在分析笔记语义关系...' })
+        try {
+          const noteSummaries = createdFiles.map((fp) => {
+            const content = readFileSync(fp, 'utf-8')
+            const name = basename(fp, '.md')
+            return `[${name}]\n${content.slice(0, 500)}`
+          }).join('\n\n---\n\n')
+
+          let relResult = ''
+          for await (const chunk of provider.chatStream([
+            { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
+
+输出格式为 JSON 数组，每项包含：
+- source: 源笔记标题（必须与给定标题完全一致）
+- target: 目标笔记标题（必须与给定标题完全一致）
+- reason: 一句话说明关系原因
+
+规则：
+1. 只输出真正有内容关联的关系，不要为了凑数而强行关联
+2. 关系应基于概念相关性、因果关系、层级关系等语义理解
+3. 不要输出自引用（source 和 target 相同）
+4. 只输出 JSON，不要其他文字` },
+            { role: 'user', content: `以下是 ${createdFiles.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
+          ], controller.signal)) {
+            if (controller.signal.aborted) break
+            if (chunk.type === 'text') relResult += chunk.content
+          }
+
+          if (relResult.trim()) {
+            const jsonStr = relResult.replace(/```json?\s*|\s*```/g, '').trim()
+            const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
+            if (Array.isArray(relations)) {
+              const db = getDatabase(params.vaultPath)
+              const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context) VALUES (?, ?, ?)')
+              const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
+
+              for (const rel of relations) {
+                const sourceNote = findNote.get(rel.source) as { id: string } | undefined
+                if (sourceNote && rel.target && rel.source !== rel.target) {
+                  const existing = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?').get(sourceNote.id, rel.target)
+                  if (!existing) {
+                    insertLink.run(sourceNote.id, rel.target, rel.reason || '')
+                  }
+                }
+              }
+              try { resolveAllLinks(params.vaultPath) } catch {}
+            }
+          }
+        } catch (e) {
+          console.error('[semantic-links] failed', e)
+        }
+      }
+
       window.webContents.send('vault:files-changed')
       if (indexErr) {
         window.webContents.send('ai:generate-notes-progress', { stage: 'index-error', message: `索引失败: ${indexErr}` })
