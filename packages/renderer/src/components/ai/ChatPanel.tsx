@@ -336,23 +336,35 @@ export function ChatPanel() {
         const isBatchRequest = /几篇|多篇|一系列|一组|批量|多个|\d+\s*篇/.test(userMsg.content)
 
         if (isBatchRequest && vaultPath) {
-          // Check if user specified a directory in the instruction
+          // Try to detect target directory from user instruction
+          const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+          const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
+
+          // Strategy 1: regex patterns for explicit directory mentions
           const dirPatterns = [
-            /(?:放到|存到|保存到|生成到|放在|存在)\s*([^\s,，。、]+?)\s*(?:目录|文件夹|下)/,
+            /(?:在|到)\s*[「"']?([^\s,，。、「"']+?)[「"']?\s*(?:目录|文件夹|路径)(?:下|中|里)?/,
+            /(?:放到|存到|保存到|生成到|放在|存在|写到|写在)\s*([^\s,，。、]+?)\s*(?:目录|文件夹|下|中|里)/,
             /(?:目录|文件夹)\s*[「"']([^「"']+)[「"']/,
-            /(?:放到|存到|保存到|生成到|放在|存在)\s*[「"']([^「"']+)[「"']/,
+            /(?:放到|存到|保存到|生成到|放在|存在|写到|写在)\s*[「"']([^「"']+)[「"']/,
+            /(?:在|到)\s*[「"']([^「"']+)[「"']\s*(?:下|中|里)/,
           ]
           let specifiedDir = ''
           for (const pat of dirPatterns) {
             const m = userMsg.content.match(pat)
             if (m) { specifiedDir = m[1].replace(/[\\/:*?"<>|]/g, '').trim(); break }
           }
+
+          // Strategy 2: check if user message contains an existing directory name
+          if (!specifiedDir) {
+            const msgLower = userMsg.content.toLowerCase()
+            const matched = dirs.find((d) => msgLower.includes(d.toLowerCase()))
+            if (matched) specifiedDir = matched
+          }
+
           if (specifiedDir) {
             await executeBatchGenerate(userMsg.content, `${vaultPath}/${specifiedDir}`)
           } else {
             // Show folder picker
-            const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
-            const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
             setFolderOptions(dirs)
             setPendingBatch({ instruction: userMsg.content })
             setIsStreaming(false)
