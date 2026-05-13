@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promises'
 import { readdir } from 'fs/promises'
 import { join, dirname, extname, relative, basename, resolve, normalize } from 'path'
@@ -82,6 +82,10 @@ export function registerFileIPC(): void {
     if (params.vaultPath && params.path.endsWith('.md')) {
       try { indexNote(params.vaultPath, params.path) } catch {}
     }
+  })
+
+  ipcMain.handle('file:reveal', async (_event, params: { path: string }) => {
+    shell.showItemInFolder(params.path)
   })
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {

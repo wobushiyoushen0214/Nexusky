@@ -326,11 +326,13 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
 
   const menuItems = entry.isDirectory ? [
     { label: '索引知识图谱', onClick: () => window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: entry.path, isDirectory: true } })) },
+    { label: '在访达中显示', onClick: () => window.api.invoke('file:reveal', { path: entry.path }) },
     { label: '重命名', onClick: () => { setNewName(entry.name); setRenaming(true) } },
     { label: '删除', danger: true, onClick: handleDelete },
   ] : [
     { label: '索引知识图谱', onClick: () => window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: entry.path, isDirectory: false } })) },
     { label: isFavorite ? '取消收藏' : '收藏', onClick: () => toggleFavorite(entry.path) },
+    { label: '在访达中显示', onClick: () => window.api.invoke('file:reveal', { path: entry.path }) },
     { label: '重命名', onClick: () => { setNewName(entry.name.replace(/\.md$/, '')); setRenaming(true) } },
     { label: '删除', danger: true, onClick: handleDelete },
   ]
