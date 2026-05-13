@@ -32,6 +32,8 @@ export function GraphView() {
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [minLinks, setMinLinks] = useState(0)
+  const [showLabels, setShowLabels] = useState(true)
 
   useEffect(() => {
     if (!vaultPath) return
@@ -308,19 +310,23 @@ export function GraphView() {
     return () => { simulation.stop() }
   }, [graphData])
 
-  // Highlight nodes matching search query
+  // Highlight nodes matching search query and minLinks filter
   useEffect(() => {
     if (!svgRef.current || !graphData) return
     const svg = select(svgRef.current)
-    if (!searchQuery.trim()) {
-      svg.selectAll<SVGGElement, SimNode>('g.node-group').attr('opacity', 1)
-      return
-    }
-    const q = searchQuery.toLowerCase()
-    svg.selectAll<SVGGElement, SimNode>('g.node-group').attr('opacity', (d) =>
-      d.title.toLowerCase().includes(q) ? 1 : 0.15
-    )
-  }, [searchQuery, graphData])
+    const q = searchQuery.trim().toLowerCase()
+    svg.selectAll<SVGGElement, SimNode>('g.node-group').attr('opacity', (d) => {
+      if (minLinks > 0 && d.linkCount < minLinks) return 0.08
+      if (q && !d.title.toLowerCase().includes(q)) return 0.15
+      return 1
+    })
+  }, [searchQuery, minLinks, graphData])
+
+  useEffect(() => {
+    if (!svgRef.current || !graphData) return
+    const svg = select(svgRef.current)
+    svg.selectAll<SVGGElement, SimNode>('g.node-group .neuron-label').attr('opacity', showLabels ? null : 0)
+  }, [showLabels, graphData])
 
   if (!graphData || graphData.nodes.length === 0) {
     return (
@@ -335,12 +341,34 @@ export function GraphView() {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <input
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="搜索节点..."
-        style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, width: 160, height: 28, padding: '0 8px', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
-      />
+      <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="搜索节点..."
+          style={{ width: 160, height: 28, padding: '0 8px', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            链接≥
+            <select
+              value={minLinks}
+              onChange={(e) => setMinLinks(Number(e.target.value))}
+              style={{ height: 22, fontSize: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, color: 'var(--text-primary)', outline: 'none', padding: '0 4px' }}
+            >
+              <option value={0}>全部</option>
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+              <option value={5}>5</option>
+            </select>
+          </label>
+          <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
+            <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} style={{ width: 12, height: 12 }} />
+            标签
+          </label>
+        </div>
+      </div>
       <svg ref={svgRef} style={{ width: '100%', height: '100%', background: 'transparent' }} />
     </div>
   )
