@@ -266,9 +266,11 @@ function VirtualFileTreeItem({ node, onToggle, isFocused }: { node: FlatNode; on
   }
 
   const menuItems = entry.isDirectory ? [
+    { label: '生成知识图谱', onClick: () => window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: entry.path, isDirectory: true } })) },
     { label: '重命名', onClick: () => { setNewName(entry.name); setRenaming(true) } },
     { label: '删除', danger: true, onClick: handleDelete },
   ] : [
+    { label: '生成知识图谱', onClick: () => window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: entry.path, isDirectory: false } })) },
     { label: isFavorite ? '取消收藏' : '收藏', onClick: () => toggleFavorite(entry.path) },
     { label: '重命名', onClick: () => { setNewName(entry.name.replace(/\.md$/, '')); setRenaming(true) } },
     { label: '删除', danger: true, onClick: handleDelete },

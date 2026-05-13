@@ -35,6 +35,16 @@ const api = {
     ipcRenderer.on('ai:sources', handler)
     return () => ipcRenderer.removeListener('ai:sources', handler)
   },
+  onAiGraphProgress: (callback: (data: { content: string }) => void) => {
+    const handler = (_event: unknown, data: { content: string }) => callback(data)
+    ipcRenderer.on('ai:graph-progress', handler)
+    return () => ipcRenderer.removeListener('ai:graph-progress', handler)
+  },
+  onAiGraphDone: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('ai:graph-done', handler)
+    return () => ipcRenderer.removeListener('ai:graph-done', handler)
+  },
   platform: process.platform,
   windowControls: {
     minimize: () => ipcRenderer.send('window:minimize'),

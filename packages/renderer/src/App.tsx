@@ -12,6 +12,7 @@ import { QuickSwitcher } from './components/QuickSwitcher'
 import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
+import { GraphGenerator } from './components/GraphGenerator'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
@@ -25,11 +26,39 @@ const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => 
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
 
+interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
+function flatMdPaths(entries: FileEntry[]): string[] {
+  const result: string[] = []
+  for (const e of entries) {
+    if (e.isDirectory && e.children) result.push(...flatMdPaths(e.children))
+    else if (e.name.endsWith('.md')) result.push(e.path)
+  }
+  return result
+}
+
 export default function App() {
   const { vaultPath, loadVault } = useVaultStore()
   const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView } = useUIStore()
   const [trashOpen, setTrashOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
+  const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
+
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { path, isDirectory } = (e as CustomEvent).detail || {}
+      if (!path) return
+      if (isDirectory) {
+        const files = await window.api.invoke('file:list', { dirPath: path })
+        const mdPaths = flatMdPaths(files)
+        if (mdPaths.length === 0) { toast('该文件夹下没有 .md 文件', 'info'); return }
+        setGraphGenPaths(mdPaths)
+      } else {
+        setGraphGenPaths([path])
+      }
+    }
+    window.addEventListener('generate-graph', handler)
+    return () => window.removeEventListener('generate-graph', handler)
+  }, [])
 
   useEffect(() => {
     const handler = () => setTrashOpen(true)
@@ -289,6 +318,7 @@ export default function App() {
         {trashOpen && <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />}
       </Suspense>
       <ToastContainer />
+      <GraphGenerator open={graphGenPaths.length > 0} filePaths={graphGenPaths} onClose={() => setGraphGenPaths([])} />
       {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
     </div>
   )

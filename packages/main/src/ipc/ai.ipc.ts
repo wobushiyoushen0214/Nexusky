@@ -282,4 +282,59 @@ ${context}
       return { success: false, error: err.message }
     }
   })
+
+  ipcMain.handle('ai:generate-graph', async (event, params: { filePaths: string[]; vaultPath: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { success: false, error: '窗口不存在' }
+
+    const config = aiManager.getActiveConfig()
+    if (!config) return { success: false, error: '未配置 AI 提供商' }
+
+    const { readFileSync } = require('fs')
+    const { basename } = require('path')
+
+    let filesContent = ''
+    const fileNames: string[] = []
+    for (const fp of params.filePaths) {
+      try {
+        const content = readFileSync(fp, 'utf-8')
+        const name = basename(fp, '.md')
+        fileNames.push(name)
+        filesContent += `## ${name}\n${content.slice(0, 3000)}\n\n---\n\n`
+      } catch {}
+    }
+
+    if (!filesContent) return { success: false, error: '无法读取文件内容' }
+
+    const systemPrompt = `你是一个知识图谱分析专家。用户会给你一组笔记内容，请分析笔记之间的关系（引用、主题关联、概念层级等），生成一个 Mermaid 流程图来可视化这些关系。
+
+要求：
+1. 使用 mermaid graph TD 语法
+2. 节点用简短的标题标识
+3. 边用关系描述标注（如"引用"、"属于"、"相关"等）
+4. 合理分组和布局，确保图谱清晰可读
+5. 只输出 mermaid 代码，不要其他解释文字
+6. 不要用 \`\`\` 代码块包裹，直接输出 mermaid 语法`
+
+    const provider = aiManager.getProvider(config)
+    let result = ''
+
+    try {
+      for await (const chunk of provider.chatStream([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `以下是 ${fileNames.length} 篇笔记的内容，请分析它们之间的关系并生成知识图谱：\n\n${filesContent}` }
+      ])) {
+        if (window.isDestroyed()) break
+        if (chunk.type === 'text') {
+          result += chunk.content
+          window.webContents.send('ai:graph-progress', { content: chunk.content })
+        }
+        if (chunk.type === 'error') return { success: false, error: chunk.content }
+      }
+      window.webContents.send('ai:graph-done', {})
+      return { success: true, content: result.trim() }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
 }

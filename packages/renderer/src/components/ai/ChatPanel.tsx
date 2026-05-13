@@ -486,12 +486,20 @@ export function ChatPanel() {
               {[
                 { text: '总结当前笔记的要点', icon: '📝' },
                 { text: '基于笔记内容提问', icon: '💡' },
+                { text: '生成知识图谱', icon: '🔗' },
                 { text: '切换编辑模式修改文档', icon: '✎' },
                 { text: '@ 引用笔记作为上下文', icon: '@' },
               ].map((hint) => (
                 <button
                   key={hint.text}
-                  onClick={() => { setInput(hint.text === '@ 引用笔记作为上下文' ? '@' : hint.text); inputRef.current?.focus() }}
+                  onClick={() => {
+                    if (hint.text === '@ 引用笔记作为上下文') { setInput('@'); inputRef.current?.focus() }
+                    else if (hint.text === '生成知识图谱') {
+                      if (currentFilePath) window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: currentFilePath, isDirectory: false } }))
+                      else toast('请先打开一个笔记', 'info')
+                    }
+                    else { setInput(hint.text); inputRef.current?.focus() }
+                  }}
                   style={{
                     width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
                     fontSize: 12, color: 'var(--text-secondary)', background: 'var(--bg-surface)',
