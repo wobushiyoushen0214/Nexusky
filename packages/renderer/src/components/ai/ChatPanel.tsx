@@ -191,20 +191,65 @@ export function ChatPanel() {
     setIsStreaming(true)
     setStreamContent('')
     editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
-    const progressMsgs: string[] = []
+
+    const planMsgId = Date.now().toString()
+    let planItems: { title: string; done: boolean }[] = []
+
+    const updatePlanMsg = () => {
+      const lines = planItems.map((item) => `${item.done ? '✅' : '⬜'} ${item.title}`).join('\n')
+      setMessages((msgs) => {
+        const idx = msgs.findIndex((m) => m.id === planMsgId)
+        if (idx >= 0) {
+          const updated = [...msgs]
+          updated[idx] = { ...updated[idx], content: lines }
+          return updated
+        }
+        return msgs
+      })
+    }
+
     const cleanup = window.api.onAiNotesProgress((data) => {
-      progressMsgs.push(data.message)
-      setStreamContent(progressMsgs.join('\n'))
+      if (data.stage === 'planning') {
+        setStreamContent('正在规划笔记结构...')
+      } else if (data.stage === 'planned' && data.plan) {
+        planItems = data.plan.map((p: any) => ({ title: p.title, done: false }))
+        setStreamContent('')
+        const lines = planItems.map((item) => `⬜ ${item.title}`).join('\n')
+        setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
+      } else if (data.stage === 'generating' && data.current) {
+        if (data.current > 1) {
+          planItems[data.current - 2] = { ...planItems[data.current - 2], done: true }
+        }
+        updatePlanMsg()
+      } else if (data.stage === 'indexing') {
+        planItems = planItems.map((item) => ({ ...item, done: true }))
+        updatePlanMsg()
+        setStreamContent('正在索引笔记关系...')
+      } else if (data.stage === 'done') {
+        planItems = planItems.map((item) => ({ ...item, done: true }))
+        updatePlanMsg()
+        setStreamContent('')
+      }
     })
+
     const result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir })
     cleanup()
+
+    // Mark all done
+    planItems = planItems.map((item) => ({ ...item, done: true }))
+    updatePlanMsg()
+
     if (result.success && result.files.length > 0) {
       useEditorStore.getState().openFile(result.files[0])
       useVaultStore.getState().refreshFiles()
       const dirName = targetDir.split(/[\\/]/).pop()
-      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件：\n${result.files.map((f) => '- ' + f.split(/[\\/]/).pop()?.replace(/\.md$/, '')).join('\n')}` }
+      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件。` }
       setMessages((msgs) => [...msgs, msg])
       appendToDb(msg)
+    } else if (result.files.length > 0) {
+      useVaultStore.getState().refreshFiles()
+      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已停止，生成了 ${result.files.length} 个文件。` }
+      setMessages((msgs) => [...msgs, msg])
     } else {
       setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `生成失败: ${result.error || '未知错误'}` }])
     }

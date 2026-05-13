@@ -293,26 +293,35 @@ ${context}
     const { readFileSync } = require('fs')
     const { basename } = require('path')
 
+    const maxFiles = 30
+    const filesToProcess = params.filePaths.slice(0, maxFiles)
     let filesContent = ''
     const fileNames: string[] = []
-    for (const fp of params.filePaths) {
+    for (const fp of filesToProcess) {
       try {
         const content = readFileSync(fp, 'utf-8')
         const name = basename(fp, '.md')
         fileNames.push(name)
-        filesContent += `## ${name}\n${content.slice(0, 3000)}\n\n---\n\n`
+        const summary = content.slice(0, 1000)
+        filesContent += `## ${name}\n${summary}\n\n---\n\n`
       } catch {}
     }
 
     if (!filesContent) return { success: false, error: '无法读取文件内容' }
 
-    const systemPrompt = `你是一个知识图谱分析专家。用户会给你一组笔记内容，请分析笔记之间的关系（引用、主题关联、概念层级等），生成一个 Mermaid 流程图来可视化这些关系。
+    const systemPrompt = `你是一个知识图谱生成器。分析给定笔记的标题和内容，输出它们之间关系的 Mermaid 图。
 
-要求：
-1. 使用 mermaid graph TD 语法
-2. 节点用简短的标题标识
-3. 边用关系描述标注（如"引用"、"属于"、"相关"等）
-4. 合理分组和布局，确保图谱清晰可读
+严格要求：
+1. 只输出 mermaid graph TD 代码，不要任何其他文字、解释或代码块标记
+2. 节点 ID 用英文字母数字（如 A, B, C），节点标签用中括号包裹笔记标题
+3. 边用 -->|关系| 格式标注关系类型
+4. 不要输出 \`\`\`mermaid 或 \`\`\` 标记
+
+输出示例：
+graph TD
+    A[React Hooks] -->|基础| B[useState]
+    A -->|进阶| C[自定义Hook]
+    B -->|相关| C
 5. 只输出 mermaid 代码，不要其他解释文字
 6. 不要用 \`\`\` 代码块包裹，直接输出 mermaid 语法`
 
@@ -396,6 +405,9 @@ ${context}
     const dirName = targetDir === params.vaultPath ? '根目录' : targetDir.split(/[\\/]/).pop()
     window.webContents.send('ai:generate-notes-progress', { stage: 'planned', message: `将在「${dirName}」下生成 ${plan.length} 篇笔记`, plan })
 
+    // Pre-compute safe file names for consistent wikilinks
+    const safeNames = plan.map((p) => p.title.replace(/[\\/:*?"<>|]/g, '').trim())
+
     // Step 2: Generate each note
     const createdFiles: string[] = []
     for (let i = 0; i < plan.length; i++) {
@@ -406,8 +418,14 @@ ${context}
       let noteContent = ''
       try {
         for await (const chunk of provider.chatStream([
-          { role: 'system', content: '你是一个知识库笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。包含标题（# 开头）、分节、要点。适当使用 [[双链]] 引用其他相关笔记。只输出 Markdown 内容。' },
-          { role: 'user', content: `标题: ${item.title}\n描述: ${item.brief}\n\n相关笔记列表（可用 [[]] 引用）: ${plan.map((p) => p.title).join(', ')}` }
+          { role: 'system', content: `你是一个知识库笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。
+
+规则：
+1. 第一行必须是 # 标题，标题必须和给定的标题完全一致
+2. 使用 [[笔记名]] 语法引用相关笔记，笔记名必须与提供的列表中的名称完全一致（一字不差）
+3. 内容包含分节、要点，结构清晰
+4. 只输出 Markdown 内容，不要其他解释` },
+          { role: 'user', content: `标题: ${safeNames[i]}\n描述: ${item.brief}\n\n可引用的笔记（用 [[名称]] 引用，名称必须完全匹配）:\n${safeNames.filter((_, j) => j !== i).map((n) => `- ${n}`).join('\n')}` }
         ], controller.signal)) {
           if (controller.signal.aborted) break
           if (chunk.type === 'text') noteContent += chunk.content
@@ -416,8 +434,7 @@ ${context}
       } catch { continue }
 
       if (noteContent.trim() && !controller.signal.aborted) {
-        const safeName = item.title.replace(/[\\/:*?"<>|]/g, '').trim()
-        const filePath = join(targetDir, `${safeName}.md`)
+        const filePath = join(targetDir, `${safeNames[i]}.md`)
         try {
           writeFileSync(filePath, noteContent.trim(), 'utf-8')
           createdFiles.push(filePath)
@@ -425,29 +442,12 @@ ${context}
       }
     }
 
-    // Step 3: Generate knowledge graph
-    if (!controller.signal.aborted) {
-      window.webContents.send('ai:generate-notes-progress', { stage: 'graph', message: '正在生成知识图谱...' })
-
-      let graphContent = ''
-      const noteSummaries = plan.map((p) => `- ${p.title}: ${p.brief}`).join('\n')
-      try {
-        for await (const chunk of provider.chatStream([
-          { role: 'system', content: '根据以下笔记列表及其关系，生成一个 Mermaid graph TD 知识图谱。只输出 mermaid 代码，不要代码块标记。' },
-          { role: 'user', content: noteSummaries }
-        ], controller.signal)) {
-          if (controller.signal.aborted) break
-          if (chunk.type === 'text') graphContent += chunk.content
-        }
-      } catch {}
-
-      if (graphContent.trim() && !controller.signal.aborted) {
-        const graphPath = join(targetDir, `知识图谱.md`)
-        const graphMd = `# 知识图谱\n\n> 基于 ${plan.length} 篇笔记自动生成\n\n\`\`\`mermaid\n${graphContent.trim()}\n\`\`\`\n`
-        try {
-          writeFileSync(graphPath, graphMd, 'utf-8')
-          createdFiles.push(graphPath)
-        } catch {}
+    // Step 3: Index all generated files so wikilinks are recognized in the knowledge graph
+    if (createdFiles.length > 0) {
+      window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在索引笔记关系...' })
+      const { indexNote } = require('../services/indexer')
+      for (const fp of createdFiles) {
+        try { indexNote(params.vaultPath, fp) } catch {}
       }
     }
 

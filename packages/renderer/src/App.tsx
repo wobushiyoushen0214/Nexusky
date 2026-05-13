@@ -46,6 +46,28 @@ export default function App() {
   useEffect(() => {
     const handler = async (e: Event) => {
       const { path, isDirectory } = (e as CustomEvent).detail || {}
+      if (!path || !vaultPath) return
+      toast('正在索引笔记关系...', 'info')
+      if (isDirectory) {
+        const files = await window.api.invoke('file:list', { dirPath: path })
+        const mdPaths = flatMdPaths(files)
+        if (mdPaths.length === 0) { toast('该文件夹下没有 .md 文件', 'info'); return }
+        for (const fp of mdPaths) {
+          await window.api.invoke('db:index-file', { vaultPath, filePath: fp })
+        }
+      } else {
+        await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+      }
+      toast('索引完成，已打开知识图谱', 'success')
+      toggleRightPanel('graph')
+    }
+    window.addEventListener('index-and-show-graph', handler)
+    return () => window.removeEventListener('index-and-show-graph', handler)
+  }, [vaultPath])
+
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { path, isDirectory } = (e as CustomEvent).detail || {}
       if (!path) return
       if (isDirectory) {
         const files = await window.api.invoke('file:list', { dirPath: path })
