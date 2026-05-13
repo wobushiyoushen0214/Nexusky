@@ -13,6 +13,20 @@ interface Message {
   sources?: { title: string; filePath: string; chunk: string; score: number }[]
 }
 
+interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
+
+function flattenMdFiles(entries: FileEntry[]): { name: string; path: string }[] {
+  const result: { name: string; path: string }[] = []
+  for (const entry of entries) {
+    if (entry.isDirectory && entry.children) {
+      result.push(...flattenMdFiles(entry.children))
+    } else if (entry.name.endsWith('.md')) {
+      result.push({ name: entry.name, path: entry.path })
+    }
+  }
+  return result
+}
+
 function friendlyError(raw: string): string {
   if (!raw) return '请求失败，请稍后重试'
   // 屏蔽完整本地路径
@@ -356,59 +370,86 @@ export function ChatPanel() {
   }
 
   const [dragOver, setDragOver] = useState(false)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
 
-  const handlePanelDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    e.dataTransfer.dropEffect = 'copy'
-    setDragOver(true)
-  }
+  useEffect(() => {
+    const el = dropZoneRef.current
+    if (!el) return
 
-  const handlePanelDragLeave = () => {
-    setDragOver(false)
-  }
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      setDragOver(true)
+    }
 
-  const handlePanelDrop = async (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    e.nativeEvent.stopImmediatePropagation()
-    setDragOver(false)
+    const handleDragLeave = (e: DragEvent) => {
+      const related = e.relatedTarget as Node | null
+      if (related && el.contains(related)) return
+      setDragOver(false)
+    }
 
-    // Handle files dragged from file tree or OS
-    const files = e.dataTransfer.files
-    if (files && files.length > 0) {
-      for (const file of files) {
-        if (file.name.endsWith('.md') && (file as any).path) {
-          const filePath = (file as any).path as string
-          const title = file.name.replace(/\.md$/, '')
-          setAttachedNotes((prev) => prev.some((n) => n.filePath === filePath) ? prev : [...prev, { title, filePath }])
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      setDragOver(false)
+
+      const text = e.dataTransfer?.getData('text/plain') || ''
+
+      // From file tree: text/plain contains a path
+      if (text) {
+        if (text.endsWith('.md')) {
+          const title = text.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '笔记'
+          setAttachedNotes((prev) => prev.some((n) => n.filePath === text) ? prev : [...prev, { title, filePath: text }])
+          return
+        }
+        // Folder path (no extension or doesn't end with .md) — list .md files inside
+        if (vaultPath && !text.includes('\n') && (text.startsWith('/') || text.includes(':'))) {
+          try {
+            const files = await window.api.invoke('file:list', { dirPath: text })
+            const mdFiles = flattenMdFiles(files)
+            for (const f of mdFiles) {
+              setAttachedNotes((prev) => prev.some((n) => n.filePath === f.path) ? prev : [...prev, { title: f.name.replace(/\.md$/, ''), filePath: f.path }])
+            }
+            if (mdFiles.length > 0) return
+          } catch {}
+        }
+        // Plain text
+        if (text.length >= 3) {
+          const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '拖入文本'
+          setAttachedSelections((prev) => [...prev, { text: text.slice(0, 2000), source }])
+          return
         }
       }
-      return
+
+      // From OS file manager: dataTransfer.files
+      const files = e.dataTransfer?.files
+      if (files && files.length > 0) {
+        for (const file of files) {
+          if (file.name.endsWith('.md') && (file as any).path) {
+            const filePath = (file as any).path as string
+            const title = file.name.replace(/\.md$/, '')
+            setAttachedNotes((prev) => prev.some((n) => n.filePath === filePath) ? prev : [...prev, { title, filePath }])
+          }
+        }
+      }
     }
 
-    // Handle text/plain drag (from file tree internal drag with path)
-    const text = e.dataTransfer.getData('text/plain')
-    if (text && text.endsWith('.md')) {
-      const title = text.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '笔记'
-      const filePath = text
-      setAttachedNotes((prev) => prev.some((n) => n.filePath === filePath) ? prev : [...prev, { title, filePath }])
-      return
+    el.addEventListener('dragover', handleDragOver)
+    el.addEventListener('dragleave', handleDragLeave)
+    el.addEventListener('drop', handleDrop, true)
+    return () => {
+      el.removeEventListener('dragover', handleDragOver)
+      el.removeEventListener('dragleave', handleDragLeave)
+      el.removeEventListener('drop', handleDrop, true)
     }
-
-    // Handle plain text selection drag
-    if (text && text.length >= 3) {
-      const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '拖入文本'
-      setAttachedSelections((prev) => [...prev, { text: text.slice(0, 2000), source }])
-    }
-  }
+  }, [vaultPath, currentFilePath])
 
   return (
     <div
+      ref={dropZoneRef}
       style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
-      onDragOver={handlePanelDragOver}
-      onDragLeave={handlePanelDragLeave}
-      onDrop={handlePanelDrop}
     >
       {dragOver && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(124,110,240,0.06)', border: '2px dashed var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
