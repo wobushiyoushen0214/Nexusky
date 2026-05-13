@@ -104,7 +104,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   }
 
   return (
-    <aside className="animate-slide-in-left" style={{ width, height: '100%', background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+    <aside className="animate-slide-in-left" style={{ width, height: '100%', background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative' }}>
       {/* Header */}
       <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <button
@@ -120,8 +120,12 @@ export function Sidebar({ width = 240 }: { width?: number }) {
         </button>
         <div style={{ display: 'flex', gap: 2 }}>
           <button
-            onClick={() => { setCreateType('file'); setIsCreating(true) }}
-            style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              if (isCreating && createType === 'file') { setIsCreating(false); setNewFileName('') }
+              else { setCreateType('file'); setIsCreating(true) }
+            }}
+            style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: isCreating && createType === 'file' ? 'var(--bg-elevated)' : 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
             title="新建笔记 (Ctrl+N)"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -129,8 +133,12 @@ export function Sidebar({ width = 240 }: { width?: number }) {
             </svg>
           </button>
           <button
-            onClick={() => { setCreateType('folder'); setIsCreating(true) }}
-            style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              if (isCreating && createType === 'folder') { setIsCreating(false); setNewFileName('') }
+              else { setCreateType('folder'); setIsCreating(true) }
+            }}
+            style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: isCreating && createType === 'folder' ? 'var(--bg-elevated)' : 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
             title="新建文件夹"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -142,8 +150,14 @@ export function Sidebar({ width = 240 }: { width?: number }) {
 
       {/* Vault switcher dropdown */}
       {vaultMenu && (
-        <div ref={vaultMenuRef} style={{ padding: '0 8px 8px' }}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+        <div ref={vaultMenuRef} style={{ position: 'absolute', top: 44, left: 8, right: 8, zIndex: 100 }}>
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 10, padding: '6px 4px', boxShadow: '0 8px 24px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1)' }}>
+            <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 500 }}>笔记空间</span>
+            </div>
             {recentVaults.filter((p) => p !== vaultPath).map((path) => (
               <button
                 key={path}
@@ -154,23 +168,33 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                   await refreshFiles()
                   await indexVault()
                 }}
-                style={{ width: '100%', height: 28, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left' }}
+                style={{ width: '100%', height: 32, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{path.split(/[\\/]/).pop()}</span>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{path.split(/[\\/]/).pop()}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{path}</div>
+                </div>
               </button>
             ))}
-            <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 0' }} />
+            {recentVaults.filter((p) => p !== vaultPath).length === 0 && (
+              <div style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>暂无其他笔记空间</div>
+            )}
+            <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 6px' }} />
             <button
               onClick={() => { setVaultMenu(false); selectVault() }}
-              style={{ width: '100%', height: 28, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left' }}
+              style={{ width: '100%', height: 32, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                <line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
+              </svg>
               打开其他文件夹...
             </button>
           </div>
