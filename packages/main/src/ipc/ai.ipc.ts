@@ -101,7 +101,7 @@ ${context}
     }
   })
 
-  ipcMain.handle('ai:complete', async (_event, params: { text: string }) => {
+  ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
 
@@ -109,13 +109,13 @@ ${context}
       const provider = aiManager.getProvider(config)
       let result = ''
       for await (const chunk of provider.chatStream([
-        { role: 'system', content: '续写1-2句，只输出续写内容。' },
+        { role: 'system', content: params.system || '续写1-2句，只输出续写内容。' },
         { role: 'user', content: params.text }
       ])) {
         if (chunk.type === 'text') result += chunk.content
         if (chunk.type === 'error') return ''
       }
-      return result.trim().slice(0, 200)
+      return params.system ? result.trim() : result.trim().slice(0, 200)
     } catch {
       return ''
     }

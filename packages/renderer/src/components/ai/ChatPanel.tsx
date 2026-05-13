@@ -57,6 +57,7 @@ export function ChatPanel() {
   useEffect(() => { isStreamingRef.current = isStreaming }, [isStreaming])
   const [streamContent, setStreamContent] = useState('')
   const streamContentRef = useRef('')
+  const contextSummaryRef = useRef<string | null>(null)
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
@@ -111,12 +112,14 @@ export function ChatPanel() {
     await window.api.invoke('db:chat-session-create', { vaultPath, id, title })
     updateSessionId(id)
     setMessages([])
+    contextSummaryRef.current = null
     setSessions((prev) => [{ id, title, createdAt: Date.now() / 1000, updatedAt: Date.now() / 1000 }, ...prev])
   }
 
   const handleSwitchSession = (sessionId: string | null) => {
     updateSessionId(sessionId)
     setShowSessions(false)
+    contextSummaryRef.current = null
   }
 
   const handleDeleteSession = async (sessionId: string) => {
@@ -212,19 +215,7 @@ export function ChatPanel() {
     setStreamContent('')
 
     const allMessages = [...remaining, userMsg]
-    const MAX_CONTEXT_MESSAGES = 20
-    let chatMessages: { role: string; content: any }[]
-    if (allMessages.length > MAX_CONTEXT_MESSAGES) {
-      const oldMessages = allMessages.slice(0, -MAX_CONTEXT_MESSAGES)
-      const recentMessages = allMessages.slice(-MAX_CONTEXT_MESSAGES)
-      const summary = oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 100)}`).join('\n')
-      chatMessages = [
-        { role: 'system', content: `以下是之前对话的摘要：\n${summary}\n\n请基于以上上下文继续对话。` },
-        ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
-      ]
-    } else {
-      chatMessages = allMessages.map((m) => ({ role: m.role, content: m.content }))
-    }
+    const chatMessages = await buildChatMessages(allMessages)
     try {
       await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
     } catch (e: any) {
@@ -283,6 +274,41 @@ export function ChatPanel() {
     const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '选中文本'
     setAttachedSelections((prev) => [...prev, { text: sel.slice(0, 2000), source }])
     inputRef.current?.focus()
+  }
+
+  const TOKEN_THRESHOLD = 12
+  const RECENT_KEEP = 6
+
+  const buildChatMessages = async (allMessages: Message[]): Promise<{ role: string; content: any }[]> => {
+    if (allMessages.length <= TOKEN_THRESHOLD) {
+      return allMessages.map((m) => ({ role: m.role, content: m.content }))
+    }
+
+    const recentMessages = allMessages.slice(-RECENT_KEEP)
+    const oldMessages = allMessages.slice(0, -RECENT_KEEP)
+
+    let summary = contextSummaryRef.current
+    if (!summary) {
+      try {
+        summary = await window.api.invoke('ai:complete', {
+          system: `你是对话摘要助手。请将以下对话历史压缩为一段简洁的摘要，保留：
+1. 用户的核心意图和目标
+2. 已讨论的关键主题和决策
+3. AI 已完成的操作（如生成了哪些文件、修改了什么）
+4. 重要的上下文信息（目录名、文件名、主题等）
+用 3-5 句话概括，不要遗漏关键信息。只输出摘要，不要其他文字。`,
+          text: oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 300)}`).join('\n')
+        })
+      } catch {
+        summary = oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 80)}`).join('\n')
+      }
+      if (summary) contextSummaryRef.current = summary
+    }
+
+    return [
+      { role: 'system', content: `以下是之前对话的摘要，请基于此上下文继续对话：\n${summary}` },
+      ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
+    ]
   }
 
   const executeBatchGenerate = async (instruction: string, targetDir: string) => {
@@ -529,19 +555,7 @@ export function ChatPanel() {
     }
 
     const allMessages = [...messages, userMsg]
-    const MAX_CONTEXT_MESSAGES = 20
-    let chatMessages: { role: string; content: any }[]
-    if (allMessages.length > MAX_CONTEXT_MESSAGES) {
-      const oldMessages = allMessages.slice(0, -MAX_CONTEXT_MESSAGES)
-      const recentMessages = allMessages.slice(-MAX_CONTEXT_MESSAGES)
-      const summary = oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 100)}`).join('\n')
-      chatMessages = [
-        { role: 'system', content: `以下是之前对话的摘要：\n${summary}\n\n请基于以上上下文继续对话。` },
-        ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
-      ]
-    } else {
-      chatMessages = allMessages.map((m) => ({ role: m.role, content: m.content }))
-    }
+    const chatMessages = await buildChatMessages(allMessages)
     if (contextPrefix) {
       chatMessages[chatMessages.length - 1] = {
         role: 'user',
