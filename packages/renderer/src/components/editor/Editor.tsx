@@ -237,25 +237,28 @@ export function Editor() {
     return () => cleanup()
   }, [editor, currentFilePath])
 
-  // Auto-save after 3 seconds of inactivity
+  // Unified auto-save: debounced 3s idle + window blur, with dedup guard
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isSaving = useRef(false)
+  const scheduleSave = () => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = null
+    if (isSaving.current) return
+    const { isDirty, currentFilePath: fp } = useEditorStore.getState()
+    if (!isDirty || !fp) return
+    isSaving.current = true
+    useEditorStore.getState().saveFile().finally(() => { isSaving.current = false })
+  }
+
   useEffect(() => {
     if (!isDirty || !currentFilePath) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(() => {
-      useEditorStore.getState().saveFile()
-    }, 3000)
+    autoSaveTimer.current = setTimeout(scheduleSave, 3000)
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }
   }, [isDirty, content])
 
-  // Save immediately on window blur
   useEffect(() => {
-    const handleBlur = () => {
-      const { isDirty, currentFilePath } = useEditorStore.getState()
-      if (isDirty && currentFilePath) {
-        useEditorStore.getState().saveFile()
-      }
-    }
+    const handleBlur = () => scheduleSave()
     window.addEventListener('blur', handleBlur)
     return () => window.removeEventListener('blur', handleBlur)
   }, [])

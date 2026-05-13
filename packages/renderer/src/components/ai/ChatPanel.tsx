@@ -206,7 +206,7 @@ export function ChatPanel() {
     search()
   }, [showMention, mentionQuery, vaultPath])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value
     setInput(val)
     const atIndex = val.lastIndexOf('@')
