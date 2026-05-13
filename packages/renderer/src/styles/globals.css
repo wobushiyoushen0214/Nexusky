@@ -569,3 +569,34 @@ div[class*="ProseMirror"] {
   border-radius: 2px;
   padding: 0 2px;
 }
+
+/* Chat message markdown — prevent content overflow in narrow chat bubble */
+.editor-content.chat-md {
+  max-width: 100%;
+}
+.editor-content.chat-md * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.editor-content.chat-md pre,
+.editor-content.chat-md .code-block {
+  overflow-x: auto;
+  white-space: pre;
+  max-width: 100%;
+}
+.editor-content.chat-md code {
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+.editor-content.chat-md pre code,
+.editor-content.chat-md .code-block code {
+  word-break: normal;
+  white-space: pre;
+}
+.editor-content.chat-md table {
+  display: block;
+  overflow-x: auto;
+}
+.editor-content.chat-md img {
+  height: auto;
+}

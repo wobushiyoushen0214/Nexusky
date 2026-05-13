@@ -766,9 +766,9 @@ export function ChatPanel() {
             <MessageBubble key={msg.id} msg={msg} />
           ))}
           {isStreaming && streamContent && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{ maxWidth: '88%', borderRadius: '14px 14px 14px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.7, background: 'var(--bg-elevated)', color: 'var(--text-primary)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(streamContent) }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-start', minWidth: 0 }}>
+              <div style={{ maxWidth: '88%', minWidth: 0, borderRadius: '14px 14px 14px 4px', padding: '10px 14px', fontSize: 13, lineHeight: 1.7, background: 'var(--bg-elevated)', color: 'var(--text-primary)', wordBreak: 'break-word', overflowWrap: 'anywhere', overflow: 'hidden' }}>
+                <div className="editor-content chat-md" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(streamContent) }} />
               </div>
             </div>
           )}
@@ -1090,19 +1090,20 @@ function renderMarkdown(md: string): string {
 
 const MessageBubble = memo(function MessageBubble({ msg }: { msg: Message }) {
   return (
-    <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-      <div style={{ maxWidth: '88%' }}>
+    <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', minWidth: 0 }}>
+      <div style={{ maxWidth: '88%', minWidth: 0 }}>
         <div style={{
           borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
           padding: '10px 14px', fontSize: 13, lineHeight: 1.7,
           background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
           color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
           wordBreak: 'break-word', overflowWrap: 'anywhere',
+          overflow: 'hidden',
         }}>
           {msg.role === 'user' ? (
             <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
           ) : (
-            <div className="editor-content" style={{ fontSize: 13, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+            <div className="editor-content chat-md" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
           )}
         </div>
         {msg.sources && msg.sources.length > 0 && (
