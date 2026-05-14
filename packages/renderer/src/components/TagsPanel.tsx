@@ -123,19 +123,22 @@ export function TagsPanel() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Current file tags */}
       {currentFilePath && (
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 2 }}>
+        <div style={{ padding: '12px 12px 8px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
+            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               当前文件标签
             </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {currentTags.map((tag) => (
               <span
                 key={tag}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 3,
-                  padding: '2px 7px',
+                  gap: 4,
+                  padding: '3px 8px',
                   fontSize: 11,
                   borderRadius: 9999,
                   background: 'var(--accent)',
@@ -143,14 +146,13 @@ export function TagsPanel() {
                   fontWeight: 500,
                 }}
               >
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
                 {tag}
                 <button
                   onClick={() => removeTag(tag)}
                   style={{
-                    width: 12, height: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.25)',
-                    color: '#fff', cursor: 'pointer', fontSize: 10, lineHeight: 1, padding: 0,
+                    color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0,
                   }}
                 >
                   ×
@@ -166,7 +168,7 @@ export function TagsPanel() {
                 onBlur={addTag}
                 placeholder="标签名..."
                 style={{
-                  width: 72, height: 20, padding: '0 6px', fontSize: 11, borderRadius: 9999,
+                  width: 80, height: 22, padding: '0 6px', fontSize: 11, borderRadius: 9999,
                   border: '1px solid var(--border-default)', background: 'var(--bg-base)',
                   color: 'var(--text-primary)', outline: 'none',
                 }}
@@ -175,7 +177,7 @@ export function TagsPanel() {
               <button
                 onClick={() => setInputVisible(true)}
                 style={{
-                  width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '50%', border: '1px dashed var(--border-default)',
                   background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer',
                   padding: 0,
@@ -193,9 +195,12 @@ export function TagsPanel() {
 
       {/* All tags */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', padding: '8px 12px 6px', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
-          所有标签
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px 6px', flexShrink: 0 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
+          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            所有标签
+          </span>
+        </div>
         {allTags.length === 0 ? (
           <div style={{ padding: '16px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
             暂无标签
@@ -203,31 +208,26 @@ export function TagsPanel() {
         ) : (
           <>
             <div style={{ padding: '0 12px 8px', overflowY: 'auto', flex: selectedTag ? 'none' : 1, maxHeight: selectedTag ? '40%' : undefined }}>
-              {allTags.map((tag) => (
-                <button
-                  key={tag.name}
-                  onClick={() => setSelectedTag(selectedTag === tag.name ? null : tag.name)}
-                  onDoubleClick={() => addExistingTag(tag.name)}
-                  title="单击筛选笔记，双击添加到当前文件"
-                  style={{
-                    width: '100%', height: 26, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 6,
-                    fontSize: 12, borderRadius: 5, cursor: 'pointer', fontWeight: 400,
-                    background: selectedTag === tag.name ? 'var(--accent)' : 'transparent',
-                    color: selectedTag === tag.name ? '#fff' : 'var(--text-secondary)',
-                    border: 'none',
-                    transition: 'all 80ms',
-                  }}
-                  onMouseEnter={(e) => { if (selectedTag !== tag.name) e.currentTarget.style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={(e) => { if (selectedTag !== tag.name) e.currentTarget.style.background = 'transparent' }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.6 }}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{tag.name}</span>
-                  <span style={{ fontSize: 10, opacity: 0.5, flexShrink: 0 }}>{tag.count}</span>
-                  {currentTags.includes(tag.name) && (
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
-                  )}
-                </button>
-              ))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag.name}
+                    onClick={() => setSelectedTag(selectedTag === tag.name ? null : tag.name)}
+                    onDoubleClick={() => addExistingTag(tag.name)}
+                    title="单击筛选笔记，双击添加到当前文件"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '4px 10px', fontSize: 11, borderRadius: 9999, cursor: 'pointer', fontWeight: 500,
+                      background: selectedTag === tag.name ? 'var(--accent)' : currentTags.includes(tag.name) ? 'var(--bg-hover)' : 'var(--bg-elevated)',
+                      color: selectedTag === tag.name ? '#fff' : 'var(--text-secondary)',
+                      border: selectedTag === tag.name ? 'none' : currentTags.includes(tag.name) ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                      transition: 'all 100ms',
+                    }}
+                  >
+                    {tag.name} <span style={{ opacity: 0.6 }}>{tag.count}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             {selectedTag && notes.length > 0 && (
               <div style={{ flex: 1, overflowY: 'auto', borderTop: '1px solid var(--border-subtle)', padding: '8px 8px 0' }}>
@@ -239,7 +239,7 @@ export function TagsPanel() {
                     key={note.filePath}
                     onClick={() => openFile(`${vaultPath}/${note.filePath}`)}
                     style={{
-                      width: '100%', height: 26, padding: '0 8px', display: 'flex', alignItems: 'center',
+                      width: '100%', height: 28, padding: '0 8px', display: 'flex', alignItems: 'center',
                       fontSize: 12, color: 'var(--text-secondary)', background: 'transparent',
                       border: 'none', borderRadius: 5, cursor: 'pointer', textAlign: 'left',
                     }}
