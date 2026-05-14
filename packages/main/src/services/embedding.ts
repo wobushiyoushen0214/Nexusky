@@ -264,6 +264,14 @@ export async function semanticSearch(vaultPath: string, query: string, topK = 10
     }
   }
 
+  if (deduped.length <= 1) return deduped.slice(0, topK)
+
+  const topScore = deduped[0].score
+  const secondScore = deduped[1].score
+  if (topScore > 0.5 || (secondScore > 0 && topScore / secondScore > 2)) {
+    return deduped.slice(0, topK)
+  }
+
   const reranked = await rerankWithChat(query, deduped)
   return reranked.slice(0, topK)
 }
