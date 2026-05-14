@@ -640,7 +640,6 @@ export function Editor() {
 
       {/* Toolbar */}
       {!focusMode && editor && <EditorToolbar editor={editor} />}
-      {!focusMode && <TagBar />}
 
       {/* Editor area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
