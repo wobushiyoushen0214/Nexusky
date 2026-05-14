@@ -13,11 +13,12 @@ export function TagsPanel() {
   const [notes, setNotes] = useState<{ title: string; filePath: string }[]>([])
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
+  const content = useEditorStore((s) => s.content)
 
   useEffect(() => {
     if (!vaultPath) return
     window.api.invoke('db:get-tags', { vaultPath }).then(setTags)
-  }, [vaultPath])
+  }, [vaultPath, content])
 
   useEffect(() => {
     if (!selectedTag || !vaultPath) { setNotes([]); return }
