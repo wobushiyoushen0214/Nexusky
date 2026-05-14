@@ -5,6 +5,7 @@ import { useEditorStore } from './stores/editor-store'
 import { useSyncStore } from './stores/sync-store'
 import { toast } from './stores/toast-store'
 import { Sidebar } from './components/sidebar/Sidebar'
+import { ActivityBar } from './components/sidebar/ActivityBar'
 import { Editor } from './components/editor/Editor'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { TitleBar } from './components/TitleBar'
@@ -284,6 +285,7 @@ export default function App() {
       {!focusMode && <TitleBar />}
       {vaultPath ? (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'var(--sidebar-bg)', minHeight: 0, alignItems: 'stretch' }}>
+          <ActivityBar />
           {!sidebarCollapsed && (
             <>
               <Sidebar width={sidebarWidth} />
