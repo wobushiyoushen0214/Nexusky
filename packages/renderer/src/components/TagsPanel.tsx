@@ -152,10 +152,10 @@ export function TagsPanel() {
                   style={{
                     width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.25)',
-                    color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0,
+                    color: '#fff', cursor: 'pointer', padding: 0,
                   }}
                 >
-                  ×
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
               </span>
             ))}
