@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 type Panel = 'none' | 'graph' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history'
-type Theme = 'dark' | 'light'
+type Theme = 'dark' | 'light' | 'ocean' | 'amber' | 'forest' | 'rose' | 'minimal'
 type MainView = 'editor' | 'graph'
 
 interface UIState {
@@ -38,7 +38,7 @@ interface UIState {
 function getInitialTheme(): Theme {
   try {
     const saved = localStorage.getItem('nexusky-theme')
-    if (saved === 'light' || saved === 'dark') return saved
+    if (saved && ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal'].includes(saved)) return saved as Theme
   } catch {}
   return 'dark'
 }
@@ -114,7 +114,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setTheme: (theme) => { applyTheme(theme); set({ theme }) },
   toggleTheme: () => {
-    const next = get().theme === 'dark' ? 'light' : 'dark'
+    const themes: Theme[] = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal']
+    const idx = themes.indexOf(get().theme)
+    const next = themes[(idx + 1) % themes.length]
     applyTheme(next)
     set({ theme: next })
   },

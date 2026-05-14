@@ -813,12 +813,59 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
   )
 }
 
-function AppearanceTab() {
+function ThemeTab() {
   const { theme, setTheme } = useUIStore()
+
+  const themes = [
+    { id: 'dark' as const, label: '深色', icon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /> },
+    { id: 'light' as const, label: '浅色', icon: <><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></> },
+    { id: 'ocean' as const, label: '深海蓝', icon: <><path d="M2 12c2-2 4-3 6-3s4 1 6 3 4 3 6 3 4-1 6-3" /><path d="M2 18c2-2 4-3 6-3s4 1 6 3 4 3 6 3 4-1 6-3" /></> },
+    { id: 'amber' as const, label: '暖夜橙', icon: <><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2" /><circle cx="12" cy="12" r="4" /></> },
+    { id: 'forest' as const, label: '森林绿', icon: <><path d="M12 2L7 10h10L12 2z" /><path d="M5 18h14" /><path d="M9 10l-4 8h14l-4-8" /><line x1="12" y1="18" x2="12" y2="22" /></> },
+    { id: 'rose' as const, label: '玫瑰粉', icon: <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /> },
+    { id: 'minimal' as const, label: '极简灰', icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>选择主题</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 12 }}>
+        {themes.map(({ id, label, icon }) => (
+          <button
+            key={id}
+            onClick={() => setTheme(id)}
+            style={{
+              height: 88,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              borderRadius: 10,
+              border: theme === id ? '2px solid var(--accent)' : '1px solid var(--border-default)',
+              background: theme === id ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: theme === id ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>
+              {icon}
+            </svg>
+            <span style={{ fontSize: 12, color: theme === id ? 'var(--accent-text)' : 'var(--text-secondary)' }}>{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AppearanceTab() {
   const [appVersion, setAppVersion] = useState('')
   const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(null)
   const [updateStage, setUpdateStage] = useState<'idle' | 'checking' | 'downloading' | 'ready'>('idle')
   const [downloadPercent, setDownloadPercent] = useState(0)
+  const [showThemePicker, setShowThemePicker] = useState(false)
+  const { theme } = useUIStore()
 
   useEffect(() => {
     window.api.invoke('app:get-version', undefined).then(setAppVersion)
@@ -835,106 +882,104 @@ function AppearanceTab() {
     return () => { offProgress?.(); offDone?.() }
   }, [])
 
-  const optionStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1,
-    height: 80,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 10,
-    border: active ? '2px solid var(--accent)' : '1px solid var(--border-default)',
-    background: active ? 'var(--accent-muted)' : 'var(--bg-elevated)',
-    cursor: 'pointer',
-    transition: 'all 150ms',
-  })
+  if (showThemePicker) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => setShowThemePicker(false)}
+            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>选择主题</span>
+        </div>
+        <ThemeTab />
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>主题</span>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <button onClick={() => setTheme('dark')} style={optionStyle(theme === 'dark')}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: theme === 'dark' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      <div>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>主题</span>
+        <button
+          onClick={() => setShowThemePicker(true)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 140, padding: '8px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)' }}
+        >
+          <span style={{ fontSize: 12 }}>{{ dark: '深色', light: '浅色', ocean: '深海蓝', amber: '暖夜橙', forest: '森林绿', rose: '玫瑰粉', minimal: '极简灰' }[theme]}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)' }}>
+            <polyline points="9 18 15 12 9 6" />
           </svg>
-          <span style={{ fontSize: 12, color: theme === 'dark' ? 'var(--accent-text)' : 'var(--text-secondary)' }}>深色</span>
-        </button>
-        <button onClick={() => setTheme('light')} style={optionStyle(theme === 'light')}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: theme === 'light' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>
-            <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-          </svg>
-          <span style={{ fontSize: 12, color: theme === 'light' ? 'var(--accent-text)' : 'var(--text-secondary)' }}>浅色</span>
         </button>
       </div>
 
       {/* Version & Update */}
       <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>关于</span>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v{appVersion || '...'}</span>
-            {updateInfo && updateStage === 'idle' && (
-              <span style={{ fontSize: 11, color: 'var(--accent)' }}>发现新版本 v{updateInfo.version}</span>
-            )}
-            {updateStage === 'downloading' && (
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>正在下载 {downloadPercent}%</span>
-            )}
-            {updateStage === 'ready' && (
-              <span style={{ fontSize: 11, color: 'var(--accent)' }}>更新已下载，重启即可安装</span>
-            )}
-          </div>
-          {updateStage === 'idle' && !updateInfo && (
-            <button
-              onClick={async () => {
-                setUpdateStage('checking')
-                const result = await window.api.invoke('updater:check', undefined)
-                if (result.available && result.version) {
-                  setUpdateInfo({ version: result.version })
-                  setUpdateStage('idle')
-                } else {
-                  setUpdateStage('idle')
-                  toast('已是最新版本', 'success')
-                }
-              }}
-              style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer' }}
-            >
-              检查更新
-            </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v{appVersion || '...'}</span>
+          {updateInfo && updateStage === 'idle' && (
+            <span style={{ fontSize: 11, color: 'var(--accent)' }}>发现新版本 v{updateInfo.version}</span>
           )}
-          {updateStage === 'checking' && (
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>检查中...</span>
-          )}
-          {updateStage === 'idle' && updateInfo && (
-            <button
-              onClick={async () => {
-                if (window.api.platform === 'darwin') {
-                  await window.api.invoke('app:open-external', { url: 'https://github.com/wobushiyoushen0214/Nexusky/releases/latest' })
-                } else {
-                  setUpdateStage('downloading')
-                  setDownloadPercent(0)
-                  try {
-                    await window.api.invoke('updater:download', undefined)
-                  } catch (e: any) {
-                    toast(`下载失败: ${e.message || ''}`, 'error')
-                    setUpdateStage('idle')
-                  }
-                }
-              }}
-              style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
-            >
-              {window.api.platform === 'darwin' ? '前往下载' : '立即更新'}
-            </button>
+          {updateStage === 'downloading' && (
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>正在下载 {downloadPercent}%</span>
           )}
           {updateStage === 'ready' && (
-            <button
-              onClick={() => window.api.invoke('updater:install', undefined)}
-              style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
-            >
-              重启安装
-            </button>
+            <span style={{ fontSize: 11, color: 'var(--accent)' }}>更新已下载，重启即可安装</span>
           )}
         </div>
+        {updateStage === 'idle' && !updateInfo && (
+          <button
+            onClick={async () => {
+              setUpdateStage('checking')
+              const result = await window.api.invoke('updater:check', undefined)
+              if (result.available && result.version) {
+                setUpdateInfo({ version: result.version })
+                setUpdateStage('idle')
+              } else {
+                setUpdateStage('idle')
+                toast('已是最新版本', 'success')
+              }
+            }}
+            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 5, color: 'var(--text-secondary)', cursor: 'pointer' }}
+          >
+            检查更新
+          </button>
+        )}
+        {updateStage === 'checking' && (
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>检查中...</span>
+        )}
+        {updateStage === 'idle' && updateInfo && (
+          <button
+            onClick={async () => {
+              if (window.api.platform === 'darwin') {
+                await window.api.invoke('app:open-external', { url: 'https://github.com/wobushiyoushen0214/Nexusky/releases/latest' })
+              } else {
+                setUpdateStage('downloading')
+                setDownloadPercent(0)
+                try {
+                  await window.api.invoke('updater:download', undefined)
+                } catch (e: any) {
+                  toast(`下载失败: ${e.message || ''}`, 'error')
+                  setUpdateStage('idle')
+                }
+              }
+            }}
+            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
+          >
+            {window.api.platform === 'darwin' ? '前往下载' : '立即更新'}
+          </button>
+        )}
+        {updateStage === 'ready' && (
+          <button
+            onClick={() => window.api.invoke('updater:install', undefined)}
+            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
+          >
+            重启安装
+          </button>
+        )}
       </div>
     </div>
   )
