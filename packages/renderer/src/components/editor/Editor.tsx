@@ -341,23 +341,86 @@ export function Editor() {
   }, [])
 
   useEffect(() => {
+    const handleGotoHeading = (e: Event) => {
+      const index = (e as CustomEvent).detail?.index
+      if (!editor || index == null) return
+      const doc = editor.state.doc
+      let headingCount = 0
+      let targetPos = -1
+
+      doc.descendants((node, pos) => {
+        if (targetPos >= 0) return false
+        if (node.type.name === 'heading') {
+          if (headingCount === index) {
+            targetPos = pos
+            return false
+          }
+          headingCount++
+        }
+      })
+
+      if (targetPos < 0) return
+
+      editor.commands.focus()
+      editor.commands.setTextSelection(targetPos + 1)
+      setTimeout(() => {
+        try {
+          const domAtPos = editor.view.domAtPos(targetPos + 1)
+          const el = domAtPos.node instanceof HTMLElement
+            ? domAtPos.node
+            : domAtPos.node.parentElement
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } catch {}
+      }, 50)
+    }
+    window.addEventListener('editor-goto-heading', handleGotoHeading)
+    return () => window.removeEventListener('editor-goto-heading', handleGotoHeading)
+  }, [editor])
+
+  useEffect(() => {
     const handleGotoLine = (e: Event) => {
       const line = (e as CustomEvent).detail?.line
-      if (!editor || !line) return
-      let pos = 0
+      if (!editor || line == null) return
       const doc = editor.state.doc
-      for (let i = 1; i < line && pos < doc.content.size; i++) {
-        const node = doc.maybeChild(i - 1)
-        if (node) pos += node.nodeSize
-        else break
-      }
-      editor.commands.focus()
-      editor.commands.setTextSelection(Math.min(pos, doc.content.size))
-      setTimeout(() => {
-        const domAtPos = editor.view.domAtPos(Math.min(pos, doc.content.size))
-        if (domAtPos.node instanceof HTMLElement) {
-          domAtPos.node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      let targetPos = -1
+      let headingCount = 0
+      let sourceLineCount = 0
+
+      doc.forEach((node, offset) => {
+        if (targetPos >= 0) return
+        if (node.type.name === 'heading') {
+          if (sourceLineCount === line) {
+            targetPos = offset + 1
+          }
         }
+        const lines = node.textContent.split('\n').length
+        sourceLineCount += lines
+      })
+
+      if (targetPos < 0) {
+        let pos = 0
+        doc.forEach((node, offset) => {
+          if (targetPos >= 0) return
+          pos += 1
+          if (pos > line) {
+            targetPos = offset + 1
+          }
+        })
+      }
+
+      if (targetPos < 0) targetPos = 1
+
+      editor.commands.focus()
+      editor.commands.setTextSelection(Math.min(targetPos, doc.content.size))
+      setTimeout(() => {
+        const resolvedPos = Math.min(targetPos, doc.content.size)
+        try {
+          const domAtPos = editor.view.domAtPos(resolvedPos)
+          const el = domAtPos.node instanceof HTMLElement
+            ? domAtPos.node
+            : domAtPos.node.parentElement
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } catch {}
       }, 50)
     }
     window.addEventListener('editor-goto-line', handleGotoLine)

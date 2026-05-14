@@ -4,7 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 interface TocItem {
   level: number
   text: string
-  line: number
+  index: number
 }
 
 export function OutlinePanel() {
@@ -15,10 +15,12 @@ export function OutlinePanel() {
     if (!content) { setItems([]); return }
     const headings: TocItem[] = []
     const lines = content.split('\n')
+    let headingIndex = 0
     for (let i = 0; i < lines.length; i++) {
       const match = lines[i].match(/^(#{1,6})\s+(.+)$/)
       if (match) {
-        headings.push({ level: match[1].length, text: match[2].trim(), line: i })
+        headings.push({ level: match[1].length, text: match[2].trim(), index: headingIndex })
+        headingIndex++
       }
     }
     setItems(headings)
@@ -33,10 +35,11 @@ export function OutlinePanel() {
   }
 
   return (
-    <div style={{ padding: '8px 0' }}>
+    <div style={{ padding: '8px 0', overflow: 'auto', height: '100%' }}>
       {items.map((item, i) => (
         <button
           key={i}
+          onClick={() => window.dispatchEvent(new CustomEvent('editor-goto-heading', { detail: { index: item.index } }))}
           style={{
             width: '100%',
             height: 26,
