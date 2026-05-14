@@ -1,10 +1,48 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { readdirSync, readFileSync } from 'fs'
 import { join, extname } from 'path'
+import { randomUUID } from 'crypto'
 import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData, getAllTags, getNotesByTag, getAllTasks } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
-import { semanticSearch, indexNoteEmbeddings } from '../services/embedding'
+import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '../services/embedding'
 import { pushIndex } from '../services/cloud/manager'
+import { aiManager } from '../services/ai'
+
+type KanbanRelationType = 'blocks' | 'depends_on' | 'related'
+
+type EmbeddingJobStatus = {
+  state: 'idle' | 'indexing' | 'done' | 'error'
+  current: number
+  total: number
+  embedded: number
+  message?: string
+  updatedAt: number
+}
+
+interface KanbanTaskRow {
+  id: string
+  columnId: string
+  title: string
+  description: string
+  sortOrder: number
+  priority: number
+  dueDate: string | null
+  sourceNoteId?: string | null
+  sourceFilePath?: string | null
+  sourceTitle?: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+interface KanbanRelationRow {
+  id: string
+  sourceTaskId: string
+  targetTaskId: string
+  relationType: KanbanRelationType
+}
+
+const RELATION_TYPES = new Set<KanbanRelationType>(['blocks', 'depends_on', 'related'])
+const embeddingJobs = new Map<string, EmbeddingJobStatus>()
 
 export function registerDbIPC(): void {
   ipcMain.handle('db:index-vault', async (_event, params: { vaultPath: string }) => {
@@ -156,35 +194,264 @@ export function registerDbIPC(): void {
     return getAllTasks(params.vaultPath)
   })
 
+  // Kanban: columns
+  ipcMain.handle('kanban:get-columns', async (_event, params: { vaultPath: string }) => {
+    const db = getDatabase(params.vaultPath)
+    return db.prepare('SELECT id, name, sort_order as sortOrder FROM kanban_columns ORDER BY sort_order ASC').all()
+  })
+
+  ipcMain.handle('kanban:create-column', async (_event, params: { vaultPath: string; id: string; name: string }) => {
+    const db = getDatabase(params.vaultPath)
+    const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM kanban_columns').get() as { m: number | null }
+    db.prepare('INSERT INTO kanban_columns (id, name, sort_order) VALUES (?, ?, ?)').run(params.id, params.name, (maxOrder.m ?? -1) + 1)
+  })
+
+  ipcMain.handle('kanban:rename-column', async (_event, params: { vaultPath: string; id: string; name: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('UPDATE kanban_columns SET name = ? WHERE id = ?').run(params.name, params.id)
+  })
+
+  ipcMain.handle('kanban:delete-column', async (_event, params: { vaultPath: string; id: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('DELETE FROM kanban_columns WHERE id = ?').run(params.id)
+  })
+
+  ipcMain.handle('kanban:reorder-columns', async (_event, params: { vaultPath: string; columnIds: string[] }) => {
+    const db = getDatabase(params.vaultPath)
+    const stmt = db.prepare('UPDATE kanban_columns SET sort_order = ? WHERE id = ?')
+    const tx = db.transaction(() => {
+      params.columnIds.forEach((id, i) => stmt.run(i, id))
+    })
+    tx()
+  })
+
+  // Kanban: tasks
+  ipcMain.handle('kanban:get-tasks', async (_event, params: { vaultPath: string }) => {
+    const db = getDatabase(params.vaultPath)
+    return db.prepare(`
+      SELECT t.id, t.column_id as columnId, t.title, t.description, t.sort_order as sortOrder,
+             t.priority, t.due_date as dueDate, t.source_note_id as sourceNoteId,
+             t.source_file_path as sourceFilePath, n.title as sourceTitle,
+             t.created_at as createdAt, t.updated_at as updatedAt
+      FROM kanban_tasks t
+      LEFT JOIN notes n ON n.id = t.source_note_id
+      ORDER BY t.column_id ASC, t.sort_order ASC, t.created_at ASC
+    `).all() as KanbanTaskRow[]
+  })
+
+  ipcMain.handle('kanban:create-task', async (_event, params: { vaultPath: string; id: string; columnId: string; title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }) => {
+    const db = getDatabase(params.vaultPath)
+    const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM kanban_tasks WHERE column_id = ?').get(params.columnId) as { m: number | null }
+    db.prepare(`
+      INSERT INTO kanban_tasks (id, column_id, title, description, sort_order, priority, due_date, source_note_id, source_file_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(params.id, params.columnId, params.title.trim(), params.description || '', (maxOrder.m ?? -1) + 1, params.priority || 0, params.dueDate || null, params.sourceNoteId || null, params.sourceFilePath || null)
+  })
+
+  ipcMain.handle('kanban:update-task', async (_event, params: { vaultPath: string; id: string; title?: string; description?: string; columnId?: string; sortOrder?: number; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }) => {
+    const db = getDatabase(params.vaultPath)
+    const sets: string[] = []
+    const values: any[] = []
+    if (params.title !== undefined) { sets.push('title = ?'); values.push(params.title) }
+    if (params.description !== undefined) { sets.push('description = ?'); values.push(params.description) }
+    if (params.columnId !== undefined) { sets.push('column_id = ?'); values.push(params.columnId) }
+    if (params.sortOrder !== undefined) { sets.push('sort_order = ?'); values.push(params.sortOrder) }
+    if (params.priority !== undefined) { sets.push('priority = ?'); values.push(params.priority) }
+    if (params.dueDate !== undefined) { sets.push('due_date = ?'); values.push(params.dueDate) }
+    if (params.sourceNoteId !== undefined) { sets.push('source_note_id = ?'); values.push(params.sourceNoteId) }
+    if (params.sourceFilePath !== undefined) { sets.push('source_file_path = ?'); values.push(params.sourceFilePath) }
+    if (sets.length === 0) return
+    sets.push('updated_at = unixepoch()')
+    values.push(params.id)
+    db.prepare(`UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = ?`).run(...values)
+  })
+
+  ipcMain.handle('kanban:delete-task', async (_event, params: { vaultPath: string; id: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('DELETE FROM kanban_tasks WHERE id = ?').run(params.id)
+  })
+
+  ipcMain.handle('kanban:move-task', async (_event, params: { vaultPath: string; taskId: string; columnId: string; sortOrder: number }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('UPDATE kanban_tasks SET column_id = ?, sort_order = ?, updated_at = unixepoch() WHERE id = ?').run(params.columnId, params.sortOrder, params.taskId)
+  })
+
+  ipcMain.handle('kanban:reorder-tasks', async (_event, params: { vaultPath: string; moves: { id: string; columnId: string; sortOrder: number }[] }) => {
+    const db = getDatabase(params.vaultPath)
+    const stmt = db.prepare('UPDATE kanban_tasks SET column_id = ?, sort_order = ?, updated_at = unixepoch() WHERE id = ?')
+    const tx = db.transaction(() => {
+      for (const move of params.moves) {
+        stmt.run(move.columnId, move.sortOrder, move.id)
+      }
+    })
+    tx()
+  })
+
+  // Kanban: task relations
+  ipcMain.handle('kanban:get-relations', async (_event, params: { vaultPath: string; taskId?: string }) => {
+    const db = getDatabase(params.vaultPath)
+    if (params.taskId) {
+      return db.prepare(`
+        SELECT id, source_task_id as sourceTaskId, target_task_id as targetTaskId, relation_type as relationType
+        FROM kanban_task_relations
+        WHERE source_task_id = ? OR target_task_id = ?
+      `).all(params.taskId, params.taskId)
+    }
+    return db.prepare('SELECT id, source_task_id as sourceTaskId, target_task_id as targetTaskId, relation_type as relationType FROM kanban_task_relations').all() as KanbanRelationRow[]
+  })
+
+  ipcMain.handle('kanban:create-relation', async (_event, params: { vaultPath: string; id: string; sourceTaskId: string; targetTaskId: string; relationType: KanbanRelationType }) => {
+    const db = getDatabase(params.vaultPath)
+    if (params.sourceTaskId === params.targetTaskId) throw new Error('任务不能关联自身')
+    if (!RELATION_TYPES.has(params.relationType)) throw new Error('无效的任务关系类型')
+    db.prepare('INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?, ?, ?, ?)').run(params.id, params.sourceTaskId, params.targetTaskId, params.relationType)
+  })
+
+  ipcMain.handle('kanban:delete-relation', async (_event, params: { vaultPath: string; id: string }) => {
+    const db = getDatabase(params.vaultPath)
+    db.prepare('DELETE FROM kanban_task_relations WHERE id = ?').run(params.id)
+  })
+
+  ipcMain.handle('kanban:ai-analyze', async (_event, params: { vaultPath: string }) => {
+    const board = getKanbanSnapshot(params.vaultPath)
+    const text = await runKanbanAi(
+      '你是项目管理助手。请根据看板状态给出简洁的项目进度总结、风险、建议的处理顺序。输出中文，使用短段落和项目符号。',
+      JSON.stringify(board, null, 2)
+    )
+    return { summary: text }
+  })
+
+  ipcMain.handle('kanban:ai-breakdown-task', async (_event, params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string }) => {
+    const db = getDatabase(params.vaultPath)
+    const targetColumnId = params.columnId || getFirstKanbanColumnId(db)
+    const raw = await runKanbanAi(
+      `你是任务拆解助手。把输入的大任务拆成 3-8 个可执行子任务，并建立依赖关系。
+只输出 JSON，不要 Markdown。格式：
+{"tasks":[{"title":"任务名","description":"说明","priority":0-3,"dueDate":null}],"relations":[{"sourceIndex":0,"targetIndex":1,"relationType":"blocks|depends_on|related"}]}`,
+      `大任务：${params.title}\n说明：${params.description || ''}`
+    )
+    const plan = parseKanbanAiJson(raw)
+    const created = createKanbanTasks(db, targetColumnId, plan.tasks)
+    const relations = createIndexedRelations(db, created, plan.relations)
+    if (params.taskId) {
+      for (const task of created) {
+        const id = randomUUID()
+        db.prepare('INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?, ?, ?, ?)').run(id, params.taskId, task.id, 'related')
+        relations.push({ id, sourceTaskId: params.taskId, targetTaskId: task.id, relationType: 'related' })
+      }
+    }
+    return { tasks: created, relations, summary: `已生成 ${created.length} 个子任务` }
+  })
+
+  ipcMain.handle('kanban:ai-from-note', async (_event, params: { vaultPath: string; filePath: string; content?: string; columnId?: string }) => {
+    const db = getDatabase(params.vaultPath)
+    const relPath = toRelativePath(params.vaultPath, params.filePath)
+    const note = db.prepare('SELECT id, title FROM notes WHERE file_path = ?').get(relPath) as { id: string; title: string } | undefined
+    const content = params.content ?? readFileSync(params.filePath, 'utf-8')
+    const targetColumnId = params.columnId || getFirstKanbanColumnId(db)
+    const raw = await runKanbanAi(
+      `你是任务提取助手。请从笔记中提取真正需要执行的待办事项，忽略普通描述和已完成事项。
+只输出 JSON，不要 Markdown。格式：
+{"tasks":[{"title":"任务名","description":"上下文","priority":0-3,"dueDate":null}],"relations":[{"sourceIndex":0,"targetIndex":1,"relationType":"blocks|depends_on|related"}]}`,
+      `笔记：${note?.title || relPath}\n\n${content.slice(0, 8000)}`
+    )
+    const plan = parseKanbanAiJson(raw)
+    const tasks = plan.tasks.map((task) => ({ ...task, sourceNoteId: note?.id || null, sourceFilePath: relPath }))
+    const created = createKanbanTasks(db, targetColumnId, tasks)
+    const relations = createIndexedRelations(db, created, plan.relations)
+    return { tasks: created, relations, summary: `已从笔记提取 ${created.length} 个任务` }
+  })
+
   ipcMain.handle('db:embed-note', async (_event, params: { vaultPath: string; noteId: string; content: string }) => {
     await indexNoteEmbeddings(params.vaultPath, params.noteId, params.content)
   })
 
+  ipcMain.handle('db:embedding-status', async (_event, params: { vaultPath: string }) => {
+    const running = embeddingJobs.get(params.vaultPath)
+    if (running?.state === 'indexing') return running
+    return getEmbeddingStatus(params.vaultPath, running)
+  })
+
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
+    const existingJob = embeddingJobs.get(params.vaultPath)
+    if (existingJob?.state === 'indexing') {
+      return { embedded: existingJob.embedded }
+    }
+
     const files = collectMarkdownFiles(params.vaultPath)
     const db = getDatabase(params.vaultPath)
     let embedded = 0
     const total = files.length
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const content = readFileSync(file, 'utf-8')
-      const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
-      const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
-      if (note) {
-        const hasEmbedding = db.prepare('SELECT 1 FROM chunks WHERE note_id = ? AND embedding IS NOT NULL LIMIT 1').get(note.id)
-        if (!hasEmbedding) {
-          await indexNoteEmbeddings(params.vaultPath, note.id, content)
-          embedded++
-        }
-      }
-      if (window && !window.isDestroyed() && i % 5 === 0) {
-        window.webContents.send('embed:progress', { current: i + 1, total, embedded })
+    const publishProgress = (status: EmbeddingJobStatus): void => {
+      embeddingJobs.set(params.vaultPath, status)
+      if (window && !window.isDestroyed()) {
+        window.webContents.send('embed:progress', status)
       }
     }
-    pushIndex(params.vaultPath).catch(() => {})
-    return { embedded }
+
+    publishProgress({
+      state: 'indexing',
+      current: 0,
+      total,
+      embedded,
+      message: total === 0 ? '没有需要索引的笔记' : '准备建立向量索引',
+      updatedAt: Date.now()
+    })
+
+    const startTime = Date.now()
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const content = readFileSync(file, 'utf-8')
+        const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+        const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
+        if (note) {
+          const hasChunks = db.prepare('SELECT 1 FROM chunks WHERE note_id = ? LIMIT 1').get(note.id)
+          if (!hasChunks) {
+            await indexNoteEmbeddings(params.vaultPath, note.id, content)
+            embedded++
+          }
+        }
+        if (i % 3 === 0 || i === files.length - 1) {
+          publishProgress({
+            state: 'indexing',
+            current: i + 1,
+            total,
+            embedded,
+            message: `正在处理 ${i + 1}/${total}`,
+            updatedAt: Date.now()
+          })
+          await new Promise((r) => setTimeout(r, 80))
+        }
+      }
+      pushIndex(params.vaultPath).catch(() => {})
+      invalidateEmbeddingCache()
+      const elapsed = Date.now() - startTime
+      const minDuration = 1500
+      if (elapsed < minDuration) {
+        await new Promise((r) => setTimeout(r, minDuration - elapsed))
+      }
+      const finalStatus = getEmbeddingStatus(params.vaultPath)
+      publishProgress({
+        ...finalStatus,
+        state: 'done',
+        current: finalStatus.embedded,
+        message: embedded > 0 ? `已新增 ${embedded} 篇笔记的向量索引` : '向量索引已是最新',
+        updatedAt: Date.now()
+      })
+      return { embedded }
+    } catch (e: any) {
+      publishProgress({
+        state: 'error',
+        current: Math.min(total, embeddingJobs.get(params.vaultPath)?.current || 0),
+        total,
+        embedded,
+        message: e?.message || '向量索引失败',
+        updatedAt: Date.now()
+      })
+      throw e
+    }
   })
 
   ipcMain.handle('db:chat-history-load', async (_event, params: { vaultPath: string; sessionId?: string }) => {
@@ -240,6 +507,163 @@ export function registerDbIPC(): void {
     const db = getDatabase(params.vaultPath)
     db.prepare('UPDATE chat_sessions SET title = ? WHERE id = ?').run(params.title, params.sessionId)
   })
+}
+
+function getKanbanSnapshot(vaultPath: string): { columns: any[]; tasks: KanbanTaskRow[]; relations: KanbanRelationRow[] } {
+  const db = getDatabase(vaultPath)
+  const columns = db.prepare('SELECT id, name, sort_order as sortOrder FROM kanban_columns ORDER BY sort_order ASC').all()
+  const tasks = db.prepare(`
+    SELECT t.id, t.column_id as columnId, t.title, t.description, t.sort_order as sortOrder,
+           t.priority, t.due_date as dueDate, t.source_note_id as sourceNoteId,
+           t.source_file_path as sourceFilePath, n.title as sourceTitle,
+           t.created_at as createdAt, t.updated_at as updatedAt
+    FROM kanban_tasks t
+    LEFT JOIN notes n ON n.id = t.source_note_id
+    ORDER BY t.column_id ASC, t.sort_order ASC, t.created_at ASC
+  `).all() as KanbanTaskRow[]
+  const relations = db.prepare(`
+    SELECT id, source_task_id as sourceTaskId, target_task_id as targetTaskId, relation_type as relationType
+    FROM kanban_task_relations
+  `).all() as KanbanRelationRow[]
+  return { columns, tasks, relations }
+}
+
+function getEmbeddingStatus(vaultPath: string, previous?: EmbeddingJobStatus): EmbeddingJobStatus {
+  const db = getDatabase(vaultPath)
+  const totalRow = db.prepare('SELECT COUNT(*) as total FROM notes').get() as { total: number }
+  const embeddedRow = db.prepare(`
+    SELECT COUNT(DISTINCT n.id) as embedded
+    FROM notes n
+    JOIN chunks c ON c.note_id = n.id
+  `).get() as { embedded: number }
+  const total = totalRow.total || 0
+  const embedded = embeddedRow.embedded || 0
+  const state = total > 0 && embedded >= total ? 'done' : 'idle'
+  return {
+    state,
+    current: previous?.state === 'done' ? previous.current : embedded,
+    total,
+    embedded,
+    message: previous?.message,
+    updatedAt: previous?.updatedAt || Date.now()
+  }
+}
+
+function getFirstKanbanColumnId(db: any): string {
+  const row = db.prepare('SELECT id FROM kanban_columns ORDER BY sort_order ASC LIMIT 1').get() as { id: string } | undefined
+  if (row) return row.id
+  db.prepare('INSERT INTO kanban_columns (id, name, sort_order) VALUES (?, ?, ?)').run('col-todo', '待办', 0)
+  return 'col-todo'
+}
+
+async function runKanbanAi(system: string, user: string): Promise<string> {
+  if (!aiManager.getActiveConfig()) {
+    throw new Error('未配置 AI 提供商')
+  }
+
+  let result = ''
+  for await (const event of aiManager.chat([
+    { role: 'system', content: system },
+    { role: 'user', content: user }
+  ])) {
+    if (event.type === 'text') result += event.content
+    if (event.type === 'error') throw new Error(event.content)
+  }
+  return result.trim()
+}
+
+function parseKanbanAiJson(raw: string): {
+  tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]
+  relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelationType }[]
+} {
+  const cleaned = raw.replace(/```json|```/g, '').trim()
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start < 0 || end <= start) throw new Error('AI 未返回有效的任务 JSON')
+
+  const parsed = JSON.parse(cleaned.slice(start, end + 1)) as any
+  const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : []
+  const relations = Array.isArray(parsed.relations) ? parsed.relations : []
+
+  return {
+    tasks: tasks
+      .map((task: any) => ({
+        title: String(task.title || '').trim(),
+        description: String(task.description || '').trim(),
+        priority: Math.max(0, Math.min(3, Number(task.priority || 0))),
+        dueDate: task.dueDate || null,
+        sourceNoteId: task.sourceNoteId || null,
+        sourceFilePath: task.sourceFilePath || null
+      }))
+      .filter((task: any) => task.title.length > 0)
+      .slice(0, 12),
+    relations: relations
+      .map((relation: any) => ({
+        sourceIndex: Number(relation.sourceIndex),
+        targetIndex: Number(relation.targetIndex),
+        relationType: RELATION_TYPES.has(relation.relationType) ? relation.relationType : 'related'
+      }))
+      .filter((relation: any) => Number.isInteger(relation.sourceIndex) && Number.isInteger(relation.targetIndex))
+  }
+}
+
+function createKanbanTasks(db: any, columnId: string, tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]): KanbanTaskRow[] {
+  const created: KanbanTaskRow[] = []
+  const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM kanban_tasks WHERE column_id = ?').get(columnId) as { m: number | null }
+  let nextOrder = (maxOrder.m ?? -1) + 1
+  const stmt = db.prepare(`
+    INSERT INTO kanban_tasks (id, column_id, title, description, sort_order, priority, due_date, source_note_id, source_file_path)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `)
+
+  const tx = db.transaction(() => {
+    for (const task of tasks) {
+      const id = randomUUID()
+      const row = {
+        id,
+        columnId,
+        title: task.title,
+        description: task.description || '',
+        sortOrder: nextOrder++,
+        priority: task.priority || 0,
+        dueDate: task.dueDate || null,
+        sourceNoteId: task.sourceNoteId || null,
+        sourceFilePath: task.sourceFilePath || null,
+        createdAt: Math.floor(Date.now() / 1000),
+        updatedAt: Math.floor(Date.now() / 1000)
+      }
+      stmt.run(row.id, row.columnId, row.title, row.description, row.sortOrder, row.priority, row.dueDate, row.sourceNoteId, row.sourceFilePath)
+      created.push(row)
+    }
+  })
+  tx()
+  return created
+}
+
+function createIndexedRelations(db: any, tasks: KanbanTaskRow[], relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelationType }[]): KanbanRelationRow[] {
+  const created: KanbanRelationRow[] = []
+  const stmt = db.prepare('INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?, ?, ?, ?)')
+  const tx = db.transaction(() => {
+    for (const relation of relations) {
+      const source = tasks[relation.sourceIndex]
+      const target = tasks[relation.targetIndex]
+      if (!source || !target || source.id === target.id) continue
+      const row: KanbanRelationRow = {
+        id: randomUUID(),
+        sourceTaskId: source.id,
+        targetTaskId: target.id,
+        relationType: RELATION_TYPES.has(relation.relationType) ? relation.relationType : 'related'
+      }
+      stmt.run(row.id, row.sourceTaskId, row.targetTaskId, row.relationType)
+      created.push(row)
+    }
+  })
+  tx()
+  return created
+}
+
+function toRelativePath(vaultPath: string, filePath: string): string {
+  return filePath.replace(vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
 }
 
 function collectMarkdownFiles(dirPath: string): string[] {

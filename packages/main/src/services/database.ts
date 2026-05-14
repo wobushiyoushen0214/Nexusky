@@ -5,7 +5,7 @@ import { app } from 'electron'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 5
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -44,6 +44,7 @@ export function getDatabase(vaultPath: string): Database.Database {
   currentVaultPath = vaultPath
   initSchema(db)
   runMigrations(db)
+  ensureDefaultKanbanColumns(db)
   return db
 }
 
@@ -130,6 +131,42 @@ function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_tasks_note ON tasks(note_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_done ON tasks(done);
 
+    CREATE TABLE IF NOT EXISTS kanban_columns (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS kanban_tasks (
+      id TEXT PRIMARY KEY,
+      column_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      priority INTEGER NOT NULL DEFAULT 0,
+      due_date TEXT,
+      source_note_id TEXT,
+      source_file_path TEXT,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      FOREIGN KEY (column_id) REFERENCES kanban_columns(id) ON DELETE CASCADE,
+      FOREIGN KEY (source_note_id) REFERENCES notes(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS kanban_task_relations (
+      id TEXT PRIMARY KEY,
+      source_task_id TEXT NOT NULL,
+      target_task_id TEXT NOT NULL,
+      relation_type TEXT NOT NULL CHECK (relation_type IN ('blocks', 'depends_on', 'related')),
+      FOREIGN KEY (source_task_id) REFERENCES kanban_tasks(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_task_id) REFERENCES kanban_tasks(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_kanban_tasks_column ON kanban_tasks(column_id);
+    CREATE INDEX IF NOT EXISTS idx_kanban_tasks_source_note ON kanban_tasks(source_note_id);
+    CREATE INDEX IF NOT EXISTS idx_kanban_relations_source ON kanban_task_relations(source_task_id);
+    CREATE INDEX IF NOT EXISTS idx_kanban_relations_target ON kanban_task_relations(target_task_id);
+
     CREATE TABLE IF NOT EXISTS conversations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       role TEXT NOT NULL,
@@ -197,6 +234,57 @@ const migrations: Migration[] = [
         `)
       }
     }
+  },
+  // Migration 4: independent kanban board
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS kanban_columns (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS kanban_tasks (
+        id TEXT PRIMARY KEY,
+        column_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        priority INTEGER NOT NULL DEFAULT 0,
+        due_date TEXT,
+        source_note_id TEXT,
+        source_file_path TEXT,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        FOREIGN KEY (column_id) REFERENCES kanban_columns(id) ON DELETE CASCADE,
+        FOREIGN KEY (source_note_id) REFERENCES notes(id) ON DELETE SET NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS kanban_task_relations (
+        id TEXT PRIMARY KEY,
+        source_task_id TEXT NOT NULL,
+        target_task_id TEXT NOT NULL,
+        relation_type TEXT NOT NULL CHECK (relation_type IN ('blocks', 'depends_on', 'related')),
+        FOREIGN KEY (source_task_id) REFERENCES kanban_tasks(id) ON DELETE CASCADE,
+        FOREIGN KEY (target_task_id) REFERENCES kanban_tasks(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_kanban_tasks_column ON kanban_tasks(column_id);
+      CREATE INDEX IF NOT EXISTS idx_kanban_tasks_source_note ON kanban_tasks(source_note_id);
+      CREATE INDEX IF NOT EXISTS idx_kanban_relations_source ON kanban_task_relations(source_task_id);
+      CREATE INDEX IF NOT EXISTS idx_kanban_relations_target ON kanban_task_relations(target_task_id);
+    `)
+  },
+  // Migration 5: source note fields for generated kanban tasks
+  (db) => {
+    const taskColumns = db.prepare('PRAGMA table_info(kanban_tasks)').all() as { name: string }[]
+    if (!taskColumns.some((c) => c.name === 'source_note_id')) {
+      db.exec('ALTER TABLE kanban_tasks ADD COLUMN source_note_id TEXT')
+    }
+    if (!taskColumns.some((c) => c.name === 'source_file_path')) {
+      db.exec('ALTER TABLE kanban_tasks ADD COLUMN source_file_path TEXT')
+    }
+    db.exec('CREATE INDEX IF NOT EXISTS idx_kanban_tasks_source_note ON kanban_tasks(source_note_id)')
   }
 ]
 
@@ -217,4 +305,15 @@ function runMigrations(db: Database.Database): void {
   }
 
   db.prepare('UPDATE schema_version SET version = ?').run(SCHEMA_VERSION)
+}
+
+function ensureDefaultKanbanColumns(db: Database.Database): void {
+  const colCount = db.prepare('SELECT COUNT(*) as c FROM kanban_columns').get() as { c: number }
+  if (colCount.c > 0) return
+
+  db.exec(`
+    INSERT INTO kanban_columns (id, name, sort_order) VALUES ('col-todo', '待办', 0);
+    INSERT INTO kanban_columns (id, name, sort_order) VALUES ('col-in-progress', '进行中', 1);
+    INSERT INTO kanban_columns (id, name, sort_order) VALUES ('col-done', '已完成', 2);
+  `)
 }

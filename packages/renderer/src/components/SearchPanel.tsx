@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
+import type { EmbeddingStatus } from '@shared/types/ipc'
 
 interface SearchResult {
   filePath: string
@@ -18,6 +19,7 @@ interface SearchPanelProps {
 }
 
 const HISTORY_KEY = 'nexusky-search-history'
+const CACHE_KEY = 'nexusky-search-cache'
 
 function loadHistory(): string[] {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
@@ -27,6 +29,18 @@ function saveToHistory(query: string): void {
   const history = loadHistory()
   const updated = [query, ...history.filter((h) => h !== query)].slice(0, 12)
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+}
+
+function loadCache(): Record<string, SearchResult[]> {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') } catch { return {} }
+}
+
+function saveCache(key: string, results: SearchResult[]): void {
+  const cache = loadCache()
+  cache[key] = results
+  const keys = Object.keys(cache)
+  if (keys.length > 20) delete cache[keys[0]]
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
 }
 
 function highlightText(text: string, query: string): React.ReactNode {
@@ -46,7 +60,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [searching, setSearching] = useState(false)
-  const [indexing, setIndexing] = useState(false)
+  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null)
   const [history, setHistory] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -62,6 +76,28 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
+
+  useEffect(() => {
+    if (!vaultPath) return
+    let disposed = false
+    const refreshStatus = () => {
+      window.api.invoke('db:embedding-status', { vaultPath })
+        .then((status) => { if (!disposed) setEmbeddingStatus(status) })
+        .catch(() => {})
+    }
+
+    refreshStatus()
+    const pollTimer = setInterval(refreshStatus, 1500)
+    const cleanupProgress = (window.api as any).onEmbedProgress?.((status: EmbeddingStatus) => {
+      setEmbeddingStatus(status)
+    })
+
+    return () => {
+      disposed = true
+      clearInterval(pollTimer)
+      cleanupProgress?.()
+    }
+  }, [vaultPath])
 
   useEffect(() => {
     if (!open || mode === 'semantic' || !query.trim() || !vaultPath) return
@@ -83,31 +119,62 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
 
   const handleSearch = async () => {
     if (!query.trim() || !vaultPath) return
+    const cacheKey = `${mode}:${query.trim()}`
+    const cached = loadCache()[cacheKey]
+    if (cached) {
+      setResults(cached)
+      setSelectedIndex(0)
+      saveToHistory(query.trim())
+      return
+    }
+
     setSearching(true)
     setResults([])
     setSelectedIndex(0)
     saveToHistory(query.trim())
 
+    let res: SearchResult[]
     if (mode === 'keyword') {
-      const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
-      setResults(res)
+      res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
     } else {
-      const res = await window.api.invoke('db:semantic-search', { vaultPath, query: query.trim() })
-      setResults(res.map((r) => ({
+      const raw = await window.api.invoke('db:semantic-search', { vaultPath, query: query.trim() })
+      res = raw.map((r) => ({
         filePath: r.filePath,
         title: r.title,
         line: r.chunk.slice(0, 150),
         lineNumber: 0,
         score: r.score
-      })))
+      }))
     }
+    setResults(res)
+    saveCache(cacheKey, res)
     setSearching(false)
   }
   const handleBuildIndex = async () => {
     if (!vaultPath) return
-    setIndexing(true)
-    await window.api.invoke('db:embed-vault', { vaultPath })
-    setIndexing(false)
+    const total = embeddingStatus?.total || 0
+    setEmbeddingStatus({
+      state: 'indexing',
+      current: 0,
+      total,
+      embedded: embeddingStatus?.embedded || 0,
+      message: '准备建立向量索引',
+      updatedAt: Date.now()
+    })
+    try {
+      await window.api.invoke('db:embed-vault', { vaultPath })
+      const status = await window.api.invoke('db:embedding-status', { vaultPath })
+      setEmbeddingStatus(status)
+    } catch (e: any) {
+      setEmbeddingStatus((prev) => ({
+        state: 'error',
+        current: prev?.current || 0,
+        total: prev?.total || 0,
+        embedded: prev?.embedded || 0,
+        message: e?.message || '向量索引失败',
+        updatedAt: Date.now()
+      }))
+    }
   }
 
   const handleResultClick = (r: SearchResult) => {
@@ -127,6 +194,12 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   }
 
   if (!open) return null
+
+  const embeddingPercent = embeddingStatus && embeddingStatus.total > 0
+    ? Math.round((Math.min(embeddingStatus.current, embeddingStatus.total) / embeddingStatus.total) * 100)
+    : 0
+  const hasCompleteEmbedding = Boolean(embeddingStatus && embeddingStatus.total > 0 && embeddingStatus.embedded >= embeddingStatus.total)
+  const isEmbedding = embeddingStatus?.state === 'indexing'
 
   return (
     <div
@@ -228,16 +301,53 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           {mode === 'semantic' && (
             <button
               onClick={handleBuildIndex}
-              disabled={indexing}
+              disabled={isEmbedding}
               style={{
                 marginLeft: 'auto', padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer',
-                background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)',
+                background: hasCompleteEmbedding ? 'var(--accent-muted)' : 'transparent',
+                color: hasCompleteEmbedding ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                border: hasCompleteEmbedding ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
               }}
             >
-              {indexing ? '索引中...' : '建立向量索引'}
+              {isEmbedding ? '索引中...' : hasCompleteEmbedding ? '更新索引' : '建立向量索引'}
             </button>
           )}
         </div>
+
+        {mode === 'semantic' && embeddingStatus && (embeddingStatus.state === 'indexing' || embeddingStatus.state === 'error' || !hasCompleteEmbedding) && (
+          <div style={{ padding: '0 16px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 11, color: embeddingStatus.state === 'error' ? 'var(--danger)' : 'var(--text-tertiary)' }}>
+                {embeddingStatus.state === 'indexing'
+                  ? `正在建立向量索引 ${embeddingStatus.current}/${embeddingStatus.total}`
+                  : embeddingStatus.state === 'error'
+                    ? embeddingStatus.message || '向量索引失败'
+                    : embeddingStatus.total > 0
+                      ? `已索引 ${embeddingStatus.embedded}/${embeddingStatus.total} 篇`
+                      : '当前知识库还没有可索引的笔记'}
+              </span>
+              {embeddingStatus.total > 0 && embeddingStatus.state === 'indexing' && (
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{embeddingPercent}%</span>
+              )}
+            </div>
+            {embeddingStatus.state === 'indexing' && (
+              <div style={{ height: 4, overflow: 'hidden', borderRadius: 999, background: 'var(--bg-hover)' }}>
+                <div
+                  style={{
+                    width: `${embeddingPercent}%`,
+                    height: '100%',
+                    borderRadius: 999,
+                    background: embeddingStatus.state === 'error' ? 'var(--danger)' : 'var(--accent)',
+                    transition: 'width 180ms ease'
+                  }}
+                />
+              </div>
+            )}
+            {embeddingStatus.message && embeddingStatus.state !== 'error' && embeddingStatus.state === 'indexing' && (
+              <div style={{ marginTop: 5, fontSize: 10, color: 'var(--text-tertiary)' }}>{embeddingStatus.message}</div>
+            )}
+          </div>
+        )}
 
         {/* Divider */}
         <div style={{ height: 1, background: 'var(--border-subtle)' }} />
@@ -286,11 +396,6 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.title}</span>
-                {r.score !== undefined && (
-                  <span style={{ fontSize: 10, color: 'var(--accent-text)', background: 'var(--accent-muted)', padding: '1px 5px', borderRadius: 3 }}>
-                    {(r.score * 100).toFixed(0)}%
-                  </span>
-                )}
                 {r.lineNumber > 0 && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>行 {r.lineNumber}</span>}
               </div>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>

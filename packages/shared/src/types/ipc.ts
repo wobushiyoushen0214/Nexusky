@@ -23,6 +23,43 @@ export interface GraphData {
   edges: { source: string; target: string }[]
 }
 
+export interface KanbanColumn {
+  id: string
+  name: string
+  sortOrder: number
+}
+
+export interface KanbanTask {
+  id: string
+  columnId: string
+  title: string
+  description: string
+  sortOrder: number
+  priority: number
+  dueDate: string | null
+  sourceNoteId?: string | null
+  sourceFilePath?: string | null
+  sourceTitle?: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface KanbanRelation {
+  id: string
+  sourceTaskId: string
+  targetTaskId: string
+  relationType: 'blocks' | 'depends_on' | 'related'
+}
+
+export interface EmbeddingStatus {
+  state: 'idle' | 'indexing' | 'done' | 'error'
+  current: number
+  total: number
+  embedded: number
+  message?: string
+  updatedAt: number
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:stat': { params: { path: string }; result: { size: number; mtime: number } }
@@ -60,8 +97,26 @@ export interface IPCChannelMap {
   'db:fulltext-search': { params: { vaultPath: string; query: string }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }
   'db:get-tags': { params: { vaultPath: string }; result: { name: string; count: number }[] }
   'db:get-notes-by-tag': { params: { vaultPath: string; tag: string }; result: NoteSearchResult[] }
+  'kanban:get-columns': { params: { vaultPath: string }; result: KanbanColumn[] }
+  'kanban:create-column': { params: { vaultPath: string; id: string; name: string }; result: void }
+  'kanban:rename-column': { params: { vaultPath: string; id: string; name: string }; result: void }
+  'kanban:delete-column': { params: { vaultPath: string; id: string }; result: void }
+  'kanban:reorder-columns': { params: { vaultPath: string; columnIds: string[] }; result: void }
+  'kanban:get-tasks': { params: { vaultPath: string }; result: KanbanTask[] }
+  'kanban:create-task': { params: { vaultPath: string; id: string; columnId: string; title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }; result: void }
+  'kanban:update-task': { params: { vaultPath: string; id: string; title?: string; description?: string; columnId?: string; sortOrder?: number; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }; result: void }
+  'kanban:delete-task': { params: { vaultPath: string; id: string }; result: void }
+  'kanban:move-task': { params: { vaultPath: string; taskId: string; columnId: string; sortOrder: number }; result: void }
+  'kanban:reorder-tasks': { params: { vaultPath: string; moves: { id: string; columnId: string; sortOrder: number }[] }; result: void }
+  'kanban:get-relations': { params: { vaultPath: string; taskId?: string }; result: KanbanRelation[] }
+  'kanban:create-relation': { params: { vaultPath: string; id: string; sourceTaskId: string; targetTaskId: string; relationType: KanbanRelation['relationType'] }; result: void }
+  'kanban:delete-relation': { params: { vaultPath: string; id: string }; result: void }
+  'kanban:ai-analyze': { params: { vaultPath: string }; result: { summary: string } }
+  'kanban:ai-breakdown-task': { params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string }; result: { tasks: KanbanTask[]; relations: KanbanRelation[]; summary: string } }
+  'kanban:ai-from-note': { params: { vaultPath: string; filePath: string; content?: string; columnId?: string }; result: { tasks: KanbanTask[]; relations: KanbanRelation[]; summary: string } }
   'db:embed-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
   'db:embed-vault': { params: { vaultPath: string }; result: { embedded: number } }
+  'db:embedding-status': { params: { vaultPath: string }; result: EmbeddingStatus }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: { id: string; role: string; content: string; sources?: any[] }[] }
   'db:chat-history-append': { params: { vaultPath: string; role: string; content: string; sources?: any[]; sessionId?: string }; result: void }
   'db:chat-history-clear': { params: { vaultPath: string; sessionId?: string }; result: void }

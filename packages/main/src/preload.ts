@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCChannelMap, IPCChannel } from '@shared/types/ipc'
+import type { EmbeddingStatus, IPCChannelMap, IPCChannel } from '@shared/types/ipc'
 
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
@@ -49,6 +49,11 @@ const api = {
     const handler = (_event: unknown, data: any) => callback(data)
     ipcRenderer.on('ai:generate-notes-progress', handler)
     return () => ipcRenderer.removeListener('ai:generate-notes-progress', handler)
+  },
+  onEmbedProgress: (callback: (data: EmbeddingStatus) => void) => {
+    const handler = (_event: unknown, data: EmbeddingStatus) => callback(data)
+    ipcRenderer.on('embed:progress', handler)
+    return () => ipcRenderer.removeListener('embed:progress', handler)
   },
   onUpdaterAvailable: (callback: (data: { version: string }) => void) => {
     const handler = (_event: unknown, data: any) => callback(data)

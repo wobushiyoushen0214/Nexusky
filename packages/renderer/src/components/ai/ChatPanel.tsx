@@ -522,6 +522,49 @@ export function ChatPanel() {
       }
     }
 
+    if (vaultPath) {
+      let isKanbanTaskRequest = false
+      try {
+        const kanbanDetect = await window.api.invoke('ai:complete', {
+          text: `判断以下用户指令是否要求从当前笔记/选中内容中提取待办、创建看板任务、生成任务列表或加入看板。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
+        })
+        isKanbanTaskRequest = (kanbanDetect || '').trim().startsWith('是')
+      } catch {}
+
+      if (isKanbanTaskRequest) {
+        const fp = useEditorStore.getState().currentFilePath
+        if (!fp) {
+          const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '请先打开一篇笔记，再从当前笔记提取看板任务。' }
+          setMessages((msgs) => [...msgs, msg])
+          appendToDb(msg)
+          editCompleteRef.current = true
+          setIsStreaming(false)
+          return
+        }
+
+        try {
+          const content = useEditorStore.getState().content
+          const result = await window.api.invoke('kanban:ai-from-note', { vaultPath, filePath: fp, content })
+          const msg: Message = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `${result.summary || '已从当前笔记生成看板任务。'}\n\n已创建 ${result.tasks?.length || 0} 个任务、${result.relations?.length || 0} 个关系，并关联到当前笔记。`
+          }
+          setMessages((msgs) => [...msgs, msg])
+          appendToDb(msg)
+          toast('已生成看板任务', 'success')
+        } catch (e: any) {
+          const msg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }
+          setMessages((msgs) => [...msgs, msg])
+          appendToDb(msg)
+        }
+        editCompleteRef.current = true
+        setStreamContent('')
+        setIsStreaming(false)
+        return
+      }
+    }
+
     if (editMode) {
       const targetPath = editUnbound ? null : (editTarget || null)
       setEditElapsed(0)
@@ -1248,4 +1291,3 @@ export function ChatPanel() {
     </div>
   )
 }
-

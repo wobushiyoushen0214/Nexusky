@@ -8,21 +8,6 @@ const CHUNK_SIZE = 400
 const CHUNK_OVERLAP = 50
 const MAX_CACHE_CHUNKS = 2000
 
-interface CachedChunk {
-  noteId: string
-  title: string
-  filePath: string
-  content: string
-  embedding: Float32Array
-  norm: number
-}
-
-let embeddingCache: { vaultPath: string; data: CachedChunk[] } | null = null
-
-export function invalidateEmbeddingCache(): void {
-  embeddingCache = null
-}
-
 export interface TextChunk {
   noteId: string
   chunkIndex: number
@@ -71,6 +56,220 @@ export function chunkText(content: string, noteId: string): TextChunk[] {
   return chunks
 }
 
+// --- TF-IDF implementation ---
+
+const STOP_WORDS = new Set(['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这',
+  'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'and', 'but', 'or', 'nor', 'not', 'so', 'if', 'that', 'this', 'it', 'its'])
+
+function tokenize(text: string): string[] {
+  const result: string[] = []
+  const lower = text.toLowerCase()
+  const segments = lower.replace(/[^\w一-鿿぀-ゟ゠-ヿ-]/g, ' ').split(/\s+/)
+
+  for (const seg of segments) {
+    if (!seg) continue
+    if (/^[a-z0-9_-]+$/.test(seg)) {
+      if (seg.length > 1 && !STOP_WORDS.has(seg)) result.push(seg)
+    } else {
+      const chars = [...seg].filter((c) => /[一-鿿぀-ゟ゠-ヿ]/.test(c))
+      for (let i = 0; i < chars.length - 1; i++) {
+        const bigram = chars[i] + chars[i + 1]
+        if (!STOP_WORDS.has(bigram)) result.push(bigram)
+      }
+      if (chars.length >= 2) {
+        const full = chars.join('')
+        if (full.length >= 2 && full.length <= 6) result.push(full)
+      }
+    }
+  }
+  return result
+}
+
+interface TfIdfDoc {
+  noteId: string
+  title: string
+  filePath: string
+  content: string
+  headingContext: string
+  terms: Map<string, number>
+  norm: number
+}
+
+let tfidfCache: { vaultPath: string; docs: TfIdfDoc[]; idf: Map<string, number> } | null = null
+
+export function invalidateEmbeddingCache(): void {
+  tfidfCache = null
+}
+
+function buildTfIdfIndex(vaultPath: string): { docs: TfIdfDoc[]; idf: Map<string, number> } {
+  if (tfidfCache && tfidfCache.vaultPath === vaultPath) return tfidfCache
+
+  const db = getDatabase(vaultPath)
+  const rows = db.prepare(`
+    SELECT c.content, c.heading_context, c.note_id, n.title, n.file_path
+    FROM chunks c
+    JOIN notes n ON n.id = c.note_id
+    ORDER BY n.updated_at DESC
+    LIMIT ?
+  `).all(MAX_CACHE_CHUNKS) as { content: string; heading_context: string; note_id: string; title: string; file_path: string }[]
+
+  const df = new Map<string, number>()
+  const docs: TfIdfDoc[] = []
+
+  for (const row of rows) {
+    const tokens = tokenize(row.content + ' ' + row.title + ' ' + (row.heading_context || ''))
+    const tf = new Map<string, number>()
+    for (const token of tokens) {
+      tf.set(token, (tf.get(token) || 0) + 1)
+    }
+    const seen = new Set<string>()
+    for (const token of tokens) {
+      if (!seen.has(token)) {
+        df.set(token, (df.get(token) || 0) + 1)
+        seen.add(token)
+      }
+    }
+    docs.push({
+      noteId: row.note_id,
+      title: row.title,
+      filePath: row.file_path,
+      content: row.content,
+      headingContext: row.heading_context || '',
+      terms: tf,
+      norm: 0
+    })
+  }
+
+  const N = docs.length
+  const idf = new Map<string, number>()
+  for (const [term, count] of df) {
+    idf.set(term, Math.log((N + 1) / (count + 1)) + 1)
+  }
+
+  for (const doc of docs) {
+    let sumSq = 0
+    for (const [term, freq] of doc.terms) {
+      const w = freq * (idf.get(term) || 1)
+      sumSq += w * w
+    }
+    doc.norm = Math.sqrt(sumSq)
+  }
+
+  tfidfCache = { vaultPath, docs, idf }
+  return tfidfCache
+}
+
+function tfidfSearch(vaultPath: string, query: string, topK: number): { noteId: string; title: string; filePath: string; chunk: string; score: number }[] {
+  const { docs, idf } = buildTfIdfIndex(vaultPath)
+  const queryTokens = tokenize(query)
+  if (queryTokens.length === 0) return []
+
+  const queryTf = new Map<string, number>()
+  for (const t of queryTokens) queryTf.set(t, (queryTf.get(t) || 0) + 1)
+
+  let queryNorm = 0
+  for (const [term, freq] of queryTf) {
+    const w = freq * (idf.get(term) || 1)
+    queryNorm += w * w
+  }
+  queryNorm = Math.sqrt(queryNorm)
+  if (queryNorm === 0) return []
+
+  const queryLower = query.toLowerCase()
+  const scored: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] = []
+
+  for (const doc of docs) {
+    if (doc.norm === 0) continue
+    let dot = 0
+    for (const [term, qFreq] of queryTf) {
+      const docFreq = doc.terms.get(term)
+      if (docFreq) {
+        const idfVal = idf.get(term) || 1
+        dot += (qFreq * idfVal) * (docFreq * idfVal)
+      }
+    }
+    if (dot === 0) continue
+    let score = dot / (queryNorm * doc.norm)
+
+    const titleLower = doc.title.toLowerCase()
+    if (titleLower.includes(queryLower)) {
+      score *= 2.5
+    } else if (doc.headingContext.toLowerCase().includes(queryLower)) {
+      score *= 1.5
+    }
+
+    scored.push({ noteId: doc.noteId, title: doc.title, filePath: doc.filePath, chunk: doc.content, score })
+  }
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, topK)
+}
+
+// --- Chat completion reranking ---
+
+async function rerankWithChat(query: string, candidates: { noteId: string; title: string; filePath: string; chunk: string; score: number }[]): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
+  const config = aiManager.getActiveConfig()
+  if (!config || candidates.length === 0) return candidates
+
+  const snippets = candidates.slice(0, 10).map((c, i) => `[${i}] ${c.title}: ${c.chunk.slice(0, 200)}`).join('\n\n')
+
+  const prompt = `你是一个语义相关性评估器。用户搜索: "${query}"
+
+以下是候选文档片段，请按与搜索意图的语义相关性从高到低排序，只返回编号数组（如 [2,0,5,1,3,4]），不要解释。
+
+${snippets}`
+
+  try {
+    const provider = aiManager.getProvider(config)
+    let response = ''
+    for await (const event of provider.chatStream([{ role: 'user', content: prompt }])) {
+      if (event.type === 'text') response += event.content
+      if (event.type === 'error') return candidates
+    }
+
+    const match = response.match(/\[[\d,\s]+\]/)
+    if (!match) return candidates
+
+    const indices: number[] = JSON.parse(match[0])
+    const reranked: typeof candidates = []
+    const top = candidates.slice(0, 10)
+    for (const idx of indices) {
+      if (idx >= 0 && idx < top.length) {
+        reranked.push({ ...top[idx], score: 1 - reranked.length * 0.05 })
+      }
+    }
+    for (const c of top) {
+      if (!reranked.find((r) => r.noteId === c.noteId && r.chunk === c.chunk)) {
+        reranked.push(c)
+      }
+    }
+    return reranked
+  } catch {
+    return candidates
+  }
+}
+
+// --- Public API ---
+
+export async function semanticSearch(vaultPath: string, query: string, topK = 10): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
+  const candidates = tfidfSearch(vaultPath, query, topK * 3)
+  if (candidates.length === 0) return []
+
+  const deduped: typeof candidates = []
+  const seen = new Set<string>()
+  for (const c of candidates) {
+    if (!seen.has(c.noteId)) {
+      seen.add(c.noteId)
+      deduped.push(c)
+    }
+  }
+
+  const reranked = await rerankWithChat(query, deduped)
+  return reranked.slice(0, topK)
+}
+
+// --- Legacy embedding support (optional, used if provider supports it) ---
+
 export async function generateEmbeddings(texts: string[]): Promise<number[][] | null> {
   const configs = store.get('aiProviders') as AIProviderConfig[] | undefined
   if (!configs || configs.length === 0) return null
@@ -78,6 +277,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][] | 
   const config = configs.find((c) => c.enabled && (c.type === 'openai' || c.type === 'custom'))
   if (!config) return null
 
+  const embeddingModel = (store.get('embeddingModel') as string) || 'text-embedding-3-small'
   const BATCH_SIZE = 20
   const MAX_RETRIES = 3
   const allEmbeddings: number[][] = []
@@ -94,7 +294,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][] | 
       while (retries < MAX_RETRIES) {
         try {
           const response = await client.embeddings.create({
-            model: 'text-embedding-3-small',
+            model: embeddingModel,
             input: batch
           })
           allEmbeddings.push(...response.data.map((d) => d.embedding))
@@ -122,14 +322,14 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
     'SELECT id, chunk_index, content FROM chunks WHERE note_id = ?'
   ).all(noteId) as { id: string; chunk_index: number; content: string }[]
 
-  const existingMap = new Map(existingChunks.map((c) => [c.chunk_index, c.content]))
+  const existingMap = new Map(existingChunks.map((c) => [c.chunk_index, c]))
 
   const changedChunks: TextChunk[] = []
   const unchangedIndexes = new Set<number>()
 
   for (const chunk of chunks) {
     const existing = existingMap.get(chunk.chunkIndex)
-    if (existing === chunk.content) {
+    if (existing?.content === chunk.content) {
       unchangedIndexes.add(chunk.chunkIndex)
     } else {
       changedChunks.push(chunk)
@@ -152,25 +352,17 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
     return
   }
 
-  const embeddings = await generateEmbeddings(changedChunks.map((c) => c.content))
-  if (!embeddings) return
-
   const upsert = db.prepare(`
     INSERT INTO chunks (id, note_id, chunk_index, content, heading_context, token_count, embedding, embedding_model)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       content = excluded.content,
       heading_context = excluded.heading_context,
-      token_count = excluded.token_count,
-      embedding = excluded.embedding,
-      embedding_model = excluded.embedding_model
+      token_count = excluded.token_count
   `)
 
   const transaction = db.transaction(() => {
-    for (let i = 0; i < changedChunks.length; i++) {
-      const chunk = changedChunks[i]
-      const embedding = embeddings[i]
-      const embeddingBlob = Buffer.from(new Float32Array(embedding).buffer)
+    for (const chunk of changedChunks) {
       upsert.run(
         `${noteId}_${chunk.chunkIndex}`,
         noteId,
@@ -178,8 +370,8 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
         chunk.content,
         chunk.headingContext,
         chunk.tokenCount,
-        embeddingBlob,
-        'text-embedding-3-small'
+        null,
+        null
       )
     }
   })
@@ -196,83 +388,4 @@ export function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float
     normB += b[i] * b[i]
   }
   return dot / (Math.sqrt(normA) * Math.sqrt(normB))
-}
-
-function computeNorm(vec: Float32Array): number {
-  let sum = 0
-  for (let i = 0; i < vec.length; i++) sum += vec[i] * vec[i]
-  return Math.sqrt(sum)
-}
-
-function dotProduct(a: Float32Array, b: Float32Array): number {
-  let sum = 0
-  for (let i = 0; i < a.length; i++) sum += a[i] * b[i]
-  return sum
-}
-
-export async function semanticSearch(vaultPath: string, query: string, topK = 10): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
-  const db = getDatabase(vaultPath)
-  const queryEmbedding = await generateEmbeddings([query])
-  if (!queryEmbedding || queryEmbedding.length === 0) return []
-
-  const qVec = new Float32Array(queryEmbedding[0])
-  const qNorm = computeNorm(qVec)
-  if (qNorm === 0) return []
-
-  if (!embeddingCache || embeddingCache.vaultPath !== vaultPath) {
-    const allChunks = db.prepare(`
-      SELECT c.content, c.note_id, c.embedding, n.title, n.file_path
-      FROM chunks c
-      JOIN notes n ON n.id = c.note_id
-      WHERE c.embedding IS NOT NULL
-      ORDER BY n.updated_at DESC
-      LIMIT ?
-    `).all(MAX_CACHE_CHUNKS) as { content: string; note_id: string; embedding: Buffer; title: string; file_path: string }[]
-
-    embeddingCache = {
-      vaultPath,
-      data: allChunks.map((row) => {
-        const vec = new Float32Array(row.embedding.buffer, row.embedding.byteOffset, row.embedding.byteLength / 4)
-        return {
-          noteId: row.note_id,
-          title: row.title,
-          filePath: row.file_path,
-          content: row.content,
-          embedding: vec,
-          norm: computeNorm(vec)
-        }
-      })
-    }
-  }
-
-  const results: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] = []
-  let minScore = -Infinity
-  let minIdx = 0
-
-  for (const row of embeddingCache.data) {
-    if (row.norm === 0) continue
-    const dot = dotProduct(qVec, row.embedding)
-    const score = dot / (qNorm * row.norm)
-
-    if (results.length < topK) {
-      results.push({ noteId: row.noteId, title: row.title, filePath: row.filePath, chunk: row.content, score })
-      if (results.length === topK) {
-        minIdx = 0
-        for (let i = 1; i < results.length; i++) {
-          if (results[i].score < results[minIdx].score) minIdx = i
-        }
-        minScore = results[minIdx].score
-      }
-    } else if (score > minScore) {
-      results[minIdx] = { noteId: row.noteId, title: row.title, filePath: row.filePath, chunk: row.content, score }
-      minIdx = 0
-      for (let i = 1; i < results.length; i++) {
-        if (results[i].score < results[minIdx].score) minIdx = i
-      }
-      minScore = results[minIdx].score
-    }
-  }
-
-  results.sort((a, b) => b.score - a.score)
-  return results
 }
