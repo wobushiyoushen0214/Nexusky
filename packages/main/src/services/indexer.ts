@@ -3,6 +3,7 @@ import { readFileSync, statSync } from 'fs'
 import { basename, relative } from 'path'
 import type Database from 'better-sqlite3'
 import { getDatabase } from './database'
+import matter from 'gray-matter'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 
@@ -24,14 +25,15 @@ export interface LinkIndex {
 export function indexNote(vaultPath: string, filePath: string): void {
   const db = getDatabase(vaultPath)
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-  const content = readFileSync(filePath, 'utf-8')
-  const hash = createHash('md5').update(content).digest('hex')
+  const rawContent = readFileSync(filePath, 'utf-8')
+  const hash = createHash('md5').update(rawContent).digest('hex')
 
   const existing = db.prepare('SELECT content_hash FROM notes WHERE file_path = ?').get(relPath) as { content_hash: string } | undefined
   if (existing?.content_hash === hash) return
 
+  const { data: frontmatter, content } = matter(rawContent)
   const stat = statSync(filePath)
-  const title = extractTitle(content, filePath)
+  const title = (frontmatter.title as string) || extractTitle(content, filePath)
   const id = createHash('md5').update(relPath).digest('hex')
 
   const upsert = db.prepare(`
@@ -51,7 +53,9 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const insertNoteTag = db.prepare('INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?)')
 
   const links = extractLinks(content)
-  const tags = extractTags(content)
+  const fmTags = Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : []
+  const inlineTags = extractTags(content)
+  const tags = [...new Set([...fmTags, ...inlineTags])]
   const tasks = extractTasks(content)
 
   const upsertFtsMap = db.prepare('INSERT OR IGNORE INTO notes_fts_map (note_id) VALUES (?)')

@@ -29,7 +29,12 @@ import { AIWritingMenu } from './AIWritingMenu'
 import { ContextMenu } from '../ContextMenu'
 import { useSyncStore } from '../../stores/sync-store'
 import { FindReplace } from './FindReplace'
+import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
+
+function stripFrontmatter(content: string): string {
+  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
+}
 
 class LRUCache<K, V> {
   private map = new Map<K, V>()
@@ -127,7 +132,10 @@ export function Editor() {
       setLiveStats({ chars, words, readTime: Math.max(1, Math.ceil(words / 200)) })
       markdownTimer.current = setTimeout(() => {
         const markdown = editor.storage.markdown.getMarkdown()
-        setContent(markdown)
+        const fullContent = useEditorStore.getState().content
+        const fmMatch = fullContent.match(/^(---\r?\n[\s\S]*?\r?\n---\r?\n?)/)
+        const fm = fmMatch ? fmMatch[1] : ''
+        setContent(fm + markdown)
       }, 1000)
     }
   })
@@ -189,9 +197,10 @@ export function Editor() {
           return
         } catch {}
       }
+      const bodyContent = stripFrontmatter(effectiveContent)
       const currentMarkdown = editor.storage.markdown.getMarkdown()
-      if (currentMarkdown !== effectiveContent) {
-        editor.commands.setContent(effectiveContent)
+      if (currentMarkdown !== bodyContent) {
+        editor.commands.setContent(bodyContent)
       }
     }
   }, [currentFilePath])
@@ -201,7 +210,7 @@ export function Editor() {
     const handleReload = (e: Event) => {
       const newContent = (e as CustomEvent).detail?.content
       if (newContent !== undefined) {
-        editor.commands.setContent(newContent)
+        editor.commands.setContent(stripFrontmatter(newContent))
       }
     }
     const handleApply = (e: Event) => {
@@ -233,9 +242,10 @@ export function Editor() {
       }
       try {
         const newContent = await window.api.invoke('file:read', { path: changedPath })
+        const bodyContent = stripFrontmatter(newContent)
         const currentMarkdown = editor.storage.markdown.getMarkdown()
-        if (newContent !== currentMarkdown) {
-          editor.commands.setContent(newContent)
+        if (bodyContent !== currentMarkdown) {
+          editor.commands.setContent(bodyContent)
           useEditorStore.setState((state) => {
             const tabs = [...state.tabs]
             if (state.activeTabIndex >= 0 && state.activeTabIndex < tabs.length) {
@@ -630,6 +640,7 @@ export function Editor() {
 
       {/* Toolbar */}
       {!focusMode && editor && <EditorToolbar editor={editor} />}
+      {!focusMode && <TagBar />}
 
       {/* Editor area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
