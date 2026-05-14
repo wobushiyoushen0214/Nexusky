@@ -13,12 +13,22 @@ export function TagsPanel() {
   const [notes, setNotes] = useState<{ title: string; filePath: string }[]>([])
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
-  const content = useEditorStore((s) => s.content)
+  const isDirty = useEditorStore((s) => s.isDirty)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    if (isDirty === false) {
+      setRefreshKey((k) => k + 1)
+    }
+  }, [isDirty])
 
   useEffect(() => {
     if (!vaultPath) return
-    window.api.invoke('db:get-tags', { vaultPath }).then(setTags)
-  }, [vaultPath, content])
+    const timer = setTimeout(() => {
+      window.api.invoke('db:get-tags', { vaultPath }).then(setTags)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [vaultPath, refreshKey])
 
   useEffect(() => {
     if (!selectedTag || !vaultPath) { setNotes([]); return }
