@@ -369,7 +369,24 @@ export function Editor() {
           const el = domAtPos.node instanceof HTMLElement
             ? domAtPos.node
             : domAtPos.node.parentElement
-          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          if (!el || !editorAreaRef.current) return
+          const container = editorAreaRef.current
+          const elRect = el.getBoundingClientRect()
+          const containerRect = container.getBoundingClientRect()
+          const targetScroll = container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 2 + elRect.height / 2
+          const startScroll = container.scrollTop
+          const distance = targetScroll - startScroll
+          if (Math.abs(distance) < 1) return
+          const duration = Math.min(500, Math.max(200, Math.abs(distance) * 0.5))
+          const startTime = performance.now()
+          const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+          const animate = (now: number) => {
+            const elapsed = now - startTime
+            const progress = Math.min(elapsed / duration, 1)
+            container.scrollTop = startScroll + distance * easeInOutCubic(progress)
+            if (progress < 1) requestAnimationFrame(animate)
+          }
+          requestAnimationFrame(animate)
         } catch {}
       }, 50)
     }
