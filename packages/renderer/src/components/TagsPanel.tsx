@@ -143,7 +143,8 @@ export function TagsPanel() {
                   fontWeight: 500,
                 }}
               >
-                #{tag}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
+                {tag}
                 <button
                   onClick={() => removeTag(tag)}
                   style={{
@@ -174,15 +175,16 @@ export function TagsPanel() {
               <button
                 onClick={() => setInputVisible(true)}
                 style={{
-                  width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '50%', border: '1px dashed var(--border-default)',
-                  background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 13,
+                  background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer',
+                  padding: 0, lineHeight: 1,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
                 title="添加标签"
               >
-                +
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               </button>
             )}
           </div>
@@ -216,7 +218,8 @@ export function TagsPanel() {
                       transition: 'all 100ms',
                     }}
                   >
-                    #{tag.name} <span style={{ opacity: 0.6, marginLeft: 2 }}>{tag.count}</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 2, flexShrink: 0 }}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
+                    {tag.name} <span style={{ opacity: 0.6, marginLeft: 2 }}>{tag.count}</span>
                   </button>
                 ))}
               </div>
