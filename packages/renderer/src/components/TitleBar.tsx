@@ -1,14 +1,27 @@
 const isMac = window.api.platform === 'darwin'
 
 export function TitleBar() {
+  if (isMac) {
+    return (
+      <div
+        style={{
+          height: 32,
+          WebkitAppRegion: 'drag',
+          userSelect: 'none',
+          flexShrink: 0,
+        } as React.CSSProperties}
+      />
+    )
+  }
+
   return (
     <div
       style={{
         height: 40,
-        padding: isMac ? '0 16px 0 78px' : '0 0 0 16px',
+        padding: '0 0 0 16px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: isMac ? 'center' : 'space-between',
+        justifyContent: 'space-between',
         background: 'var(--sidebar-bg)',
         userSelect: 'none',
         flexShrink: 0,
@@ -40,41 +53,38 @@ export function TitleBar() {
         </span>
       </div>
 
-      {/* Window controls - only on Windows/Linux */}
-      {!isMac && (
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <button
-            onClick={() => window.api.windowControls.minimize()}
-            style={controlBtnStyle}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-          >
-            <svg width="10" height="1" viewBox="0 0 10 1">
-              <rect width="10" height="1" fill="currentColor" rx="0.5" />
-            </svg>
-          </button>
-          <button
-            onClick={() => window.api.windowControls.maximize()}
-            style={controlBtnStyle}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1" rx="1" />
-            </svg>
-          </button>
-          <button
-            onClick={() => window.api.windowControls.close()}
-            style={controlBtnStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#e81123'; e.currentTarget.style.color = '#fff' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', height: '100%', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <button
+          onClick={() => window.api.windowControls.minimize()}
+          style={controlBtnStyle}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <svg width="10" height="1" viewBox="0 0 10 1">
+            <rect width="10" height="1" fill="currentColor" rx="0.5" />
+          </svg>
+        </button>
+        <button
+          onClick={() => window.api.windowControls.maximize()}
+          style={controlBtnStyle}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1" rx="1" />
+          </svg>
+        </button>
+        <button
+          onClick={() => window.api.windowControls.close()}
+          style={controlBtnStyle}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#e81123'; e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }
