@@ -281,8 +281,12 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--sidebar-bg)' }}>
-      {!focusMode && <TitleBar />}
-      {vaultPath ? (
+      {showOnboarding ? (
+        <Onboarding onDone={() => setShowOnboarding(false)} />
+      ) : (
+        <>
+          {!focusMode && <TitleBar />}
+          {vaultPath ? (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'var(--sidebar-bg)', minHeight: 0, alignItems: 'stretch' }}>
           <ActivityBar />
           {!sidebarCollapsed && (
@@ -345,7 +349,8 @@ export default function App() {
       </Suspense>
       <ToastContainer />
       <GraphGenerator open={graphGenPaths.length > 0} filePaths={graphGenPaths} onClose={() => setGraphGenPaths([])} />
-      {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
+        </>
+      )}
     </div>
   )
 }
