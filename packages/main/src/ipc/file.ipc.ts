@@ -107,7 +107,8 @@ export function registerFileIPC(): void {
       await mkdir(trashDir, { recursive: true })
       const fileName = params.path.split(/[\\/]/).pop() || 'file'
       const timestamp = Date.now()
-      const trashPath = join(trashDir, `${timestamp}_${fileName}`)
+      const rand = Math.random().toString(36).slice(2, 6)
+      const trashPath = join(trashDir, `${timestamp}_${rand}_${fileName}`)
       await rename(params.path, trashPath)
     } else {
       await rm(params.path, { recursive: true })

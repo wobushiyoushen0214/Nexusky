@@ -178,11 +178,23 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
 
   const handleMultiDelete = async () => {
     const vaultPath = useVaultStore.getState().vaultPath
-    for (const path of selectedPaths) {
-      await window.api.invoke('file:delete', { path, vaultPath: vaultPath || undefined })
-      if (vaultPath && path.endsWith('.md')) {
-        await window.api.invoke('db:remove-file', { vaultPath, filePath: path }).catch(() => {})
-      }
+    const paths = Array.from(selectedPaths).sort((a, b) => a.length - b.length)
+    const deleted = new Set<string>()
+
+    for (const path of paths) {
+      if (Array.from(deleted).some((d) => path.startsWith(d + '/'))) continue
+
+      try {
+        await window.api.invoke('file:delete', { path, vaultPath: vaultPath || undefined })
+        deleted.add(path)
+        if (vaultPath) {
+          if (path.endsWith('.md')) {
+            await window.api.invoke('db:remove-file', { vaultPath, filePath: path }).catch(() => {})
+          } else {
+            await window.api.invoke('db:remove-folder', { vaultPath, folderPath: path }).catch(() => {})
+          }
+        }
+      } catch {}
     }
     setSelectedPaths(new Set())
     setMultiContextMenu(null)
@@ -332,8 +344,12 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
 
   const handleDelete = async () => {
     await window.api.invoke('file:delete', { path: entry.path, vaultPath: vaultPath || undefined })
-    if (vaultPath && entry.path.endsWith('.md')) {
-      await window.api.invoke('db:remove-file', { vaultPath, filePath: entry.path }).catch(() => {})
+    if (vaultPath) {
+      if (entry.path.endsWith('.md')) {
+        await window.api.invoke('db:remove-file', { vaultPath, filePath: entry.path }).catch(() => {})
+      } else if (entry.isDirectory) {
+        await window.api.invoke('db:remove-folder', { vaultPath, folderPath: entry.path }).catch(() => {})
+      }
     }
     await refreshFiles()
     setDeleteConfirm(false)

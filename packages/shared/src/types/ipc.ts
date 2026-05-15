@@ -96,6 +96,7 @@ export interface IPCChannelMap {
   'db:index-vault': { params: { vaultPath: string }; result: { indexed: number } }
   'db:index-file': { params: { vaultPath: string; filePath: string }; result: void }
   'db:remove-file': { params: { vaultPath: string; filePath: string }; result: void }
+  'db:remove-folder': { params: { vaultPath: string; folderPath: string }; result: void }
   'db:get-all-notes': { params: { vaultPath: string }; result: NoteSearchResult[] }
   'db:get-backlinks': { params: { vaultPath: string; noteId: string }; result: BacklinkResult[] }
   'db:get-graph': { params: { vaultPath: string }; result: GraphData }
