@@ -249,7 +249,9 @@ export function GraphView() {
 
     const isCurrentNode = (d: SimNode) => d.title === currentTitle
 
-    // Create gradients for multi-color nodes
+    // Create gradients and multi-color filters for multi-group nodes
+    const multiFilterIds = new Map<number, string>()
+    const multiHoverFilterIds = new Map<number, string>()
     nodes.forEach((n, i) => {
       if (n.colors && n.colors.length > 1) {
         const gradId = `node-grad-${i}`
@@ -263,6 +265,82 @@ export function GraphView() {
             .attr('offset', `${(ci / (n.colors!.length - 1)) * 100}%`)
             .attr('stop-color', c)
         })
+
+        const isFolder = n.type === 'folder'
+        const blurOuter = isFolder ? 10 : 4
+        const erodeR = isFolder ? 2 : 1
+        const blurInner = isFolder ? 3 : 1.5
+
+        // Normal filter with blended colors
+        const filterId = `multi-glow-${i}`
+        multiFilterIds.set(i, filterId)
+        const filter = defs.append('filter')
+          .attr('id', filterId)
+          .attr('x', '-150%').attr('y', '-150%')
+          .attr('width', '400%').attr('height', '400%')
+
+        // Outer glow layers per color, blended
+        n.colors.forEach((c, ci) => {
+          filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', String(blurOuter)).attr('result', `outerBlur${ci}`)
+          filter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String(0.4 / n.colors!.length * 2)).attr('result', `outerColor${ci}`)
+          filter.append('feComposite').attr('in', `outerColor${ci}`).attr('in2', `outerBlur${ci}`).attr('operator', 'in').attr('result', `outerGlow${ci}`)
+        })
+
+        // Inner shadow layers per color
+        filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', String(erodeR)).attr('result', 'eroded')
+        filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
+        filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', String(blurInner)).attr('result', 'borderBlur')
+
+        n.colors.forEach((c, ci) => {
+          filter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String((isFolder ? 0.35 : 0.5) / n.colors!.length * 2)).attr('result', `innerColor${ci}`)
+          filter.append('feComposite').attr('in', `innerColor${ci}`).attr('in2', 'borderBlur').attr('operator', 'in').attr('result', `innerGlow${ci}`)
+          filter.append('feComposite').attr('in', `innerGlow${ci}`).attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', `innerClip${ci}`)
+        })
+
+        if (isFolder) {
+          filter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', '1').attr('result', 'blurredSrc')
+          filter.append('feComposite').attr('in', 'blurredSrc').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'blurClipped')
+        }
+
+        const merge = filter.append('feMerge')
+        n.colors.forEach((_c, ci) => { merge.append('feMergeNode').attr('in', `outerGlow${ci}`) })
+        merge.append('feMergeNode').attr('in', isFolder ? 'blurClipped' : 'SourceGraphic')
+        n.colors.forEach((_c, ci) => { merge.append('feMergeNode').attr('in', `innerClip${ci}`) })
+
+        // Hover filter (brighter)
+        const hoverFilterId = `multi-hover-${i}`
+        multiHoverFilterIds.set(i, hoverFilterId)
+        const hFilter = defs.append('filter')
+          .attr('id', hoverFilterId)
+          .attr('x', '-200%').attr('y', '-200%')
+          .attr('width', '500%').attr('height', '500%')
+
+        const hBlurOuter = isFolder ? 14 : 7
+        n.colors.forEach((c, ci) => {
+          hFilter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', String(hBlurOuter)).attr('result', `outerBlur${ci}`)
+          hFilter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String(0.7 / n.colors!.length * 2)).attr('result', `outerColor${ci}`)
+          hFilter.append('feComposite').attr('in', `outerColor${ci}`).attr('in2', `outerBlur${ci}`).attr('operator', 'in').attr('result', `outerGlow${ci}`)
+        })
+
+        hFilter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', String(erodeR)).attr('result', 'eroded')
+        hFilter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
+        hFilter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', String(blurInner)).attr('result', 'borderBlur')
+
+        n.colors.forEach((c, ci) => {
+          hFilter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String((isFolder ? 0.6 : 0.8) / n.colors!.length * 2)).attr('result', `innerColor${ci}`)
+          hFilter.append('feComposite').attr('in', `innerColor${ci}`).attr('in2', 'borderBlur').attr('operator', 'in').attr('result', `innerGlow${ci}`)
+          hFilter.append('feComposite').attr('in', `innerGlow${ci}`).attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', `innerClip${ci}`)
+        })
+
+        if (isFolder) {
+          hFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', '1').attr('result', 'blurredSrc')
+          hFilter.append('feComposite').attr('in', 'blurredSrc').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'blurClipped')
+        }
+
+        const hMerge = hFilter.append('feMerge')
+        n.colors.forEach((_c, ci) => { hMerge.append('feMergeNode').attr('in', `outerGlow${ci}`) })
+        hMerge.append('feMergeNode').attr('in', isFolder ? 'blurClipped' : 'SourceGraphic')
+        n.colors.forEach((_c, ci) => { hMerge.append('feMergeNode').attr('in', `innerClip${ci}`) })
       }
     })
 
@@ -334,18 +412,26 @@ export function GraphView() {
       return 'var(--bg-base)'
     }
 
+    const nodeIndexMap = new Map<string, number>()
+    nodes.forEach((n, i) => nodeIndexMap.set(n.id, i))
+
     nodeGroup.append('circle')
       .attr('class', 'node-core')
       .attr('r', (d) => getRadius(d))
       .attr('fill', (d, i) => getNodeFill(d, i))
       .attr('opacity', 1)
       .attr('stroke', (d) => {
+        if (d.gradientId) return `url(#${d.gradientId})`
         if (d.type === 'folder') return d.color || 'var(--accent)'
         return d.color || 'var(--text-tertiary)'
       })
       .attr('stroke-width', (d) => d.type === 'folder' ? 1.5 : 1)
       .attr('stroke-opacity', (d) => d.type === 'folder' ? 0.6 : 0.5)
       .attr('filter', (d) => {
+        const idx = nodeIndexMap.get(d.id)
+        if (idx != null && multiFilterIds.has(idx)) {
+          return `url(#${multiFilterIds.get(idx)})`
+        }
         if (d.type === 'folder' && d.group) {
           const fId = folderFilterIds.get(d.group)
           return fId ? `url(#${fId})` : null
@@ -440,6 +526,10 @@ export function GraphView() {
           .attr('r', hoverR)
           .attr('stroke-opacity', 0.9)
           .attr('filter', () => {
+            const idx = nodeIndexMap.get(d.id)
+            if (idx != null && multiHoverFilterIds.has(idx)) {
+              return `url(#${multiHoverFilterIds.get(idx)})`
+            }
             if (d.type === 'folder' && d.group) {
               const fId = folderHoverFilterIds.get(d.group)
               return fId ? `url(#${fId})` : null
@@ -486,6 +576,10 @@ export function GraphView() {
             .attr('opacity', 1)
             .attr('stroke-opacity', d.type === 'folder' ? 0.6 : 0.5)
             .attr('filter', () => {
+              const idx = nodeIndexMap.get(d.id)
+              if (idx != null && multiFilterIds.has(idx)) {
+                return `url(#${multiFilterIds.get(idx)})`
+              }
               if (d.type === 'folder' && d.group) {
                 const fId = folderFilterIds.get(d.group)
                 return fId ? `url(#${fId})` : null
