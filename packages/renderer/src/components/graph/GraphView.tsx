@@ -617,8 +617,10 @@ export function GraphView() {
 
     nodeGroup.on('click', async (_event, d) => {
       if (!vaultPath) return
+      if (d.type === 'folder') return
       if (d.filePath) {
         openFile(`${vaultPath}/${d.filePath}`)
+        setMainView('editor')
       }
     })
 
