@@ -88,8 +88,17 @@ export function Settings({ open, onClose }: SettingsProps) {
     if (open) {
       window.api.invoke('ai:get-providers', undefined).then((ps) => {
         setProviders(ps)
-        const active = ps.find((p: any) => p.enabled)
-        if (active) setActiveProviderId(active.id)
+        window.api.invoke('ai:get-active-provider', undefined).then((storedActiveId) => {
+          if (storedActiveId && ps.find((p: any) => p.id === storedActiveId)) {
+            setActiveProviderId(storedActiveId)
+          } else {
+            const active = ps.find((p: any) => p.enabled)
+            setActiveProviderId(active?.id || ps[0]?.id || null)
+          }
+        }).catch(() => {
+          const active = ps.find((p: any) => p.enabled)
+          setActiveProviderId(active?.id || ps[0]?.id || null)
+        })
       })
       window.api.invoke('cloud:get-config', undefined).then(setCloudConfig)
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
@@ -298,6 +307,9 @@ export function Settings({ open, onClose }: SettingsProps) {
                 </div>
               </div>
             )}
+
+            {/* System Prompt */}
+            <SystemPromptSection />
           </>)}
 
           {tab === 'cloud' && (
@@ -985,6 +997,43 @@ function AppearanceTab() {
   )
 }
 
+function SystemPromptSection() {
+  const [prompt, setPrompt] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    window.api.invoke('ai:get-system-prompt', undefined).then((p) => setPrompt(p || ''))
+  }, [])
+
+  const handleSave = async () => {
+    await window.api.invoke('ai:set-system-prompt', { prompt })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>自定义系统提示词</span>
+        <button
+          onClick={handleSave}
+          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: 'none', background: saved ? 'rgba(74,222,128,0.15)' : 'var(--accent)', color: saved ? '#4ade80' : '#fff', cursor: 'pointer', fontWeight: 500, transition: 'all 150ms' }}
+        >
+          {saved ? '已保存' : '保存'}
+        </button>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>设置 AI 对话的默认系统提示词，留空使用内置默认提示词</p>
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="例如：你是一个专注于编程的助手，回答简洁明了..."
+        rows={4}
+        style={{ width: '100%', padding: '8px 10px', fontSize: 12, lineHeight: 1.6, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+      />
+    </div>
+  )
+}
+
 function KeyBindingsTab() {
   const { bindings, setCustomKey, resetAll } = useKeyBindingStore()
   const [recording, setRecording] = useState<string | null>(null)
@@ -1078,6 +1127,7 @@ function ModelSelect({
       const top = spaceBelow >= dropHeight ? rect.bottom + 4 : rect.top - dropHeight - 4
       setPos({ top, left: rect.left, width: rect.width })
     }
+    setQuery('')
     setOpen(true)
   }
 

@@ -59,6 +59,14 @@ export function ChatPanel() {
   const streamContentRef = useRef('')
   const contextSummaryRef = useRef<string | null>(null)
   const summarizedCountRef = useRef(0)
+  const [toolStatus, setToolStatus] = useState<string | null>(null)
+  const [agentMode, setAgentMode] = useState(() => {
+    try { return localStorage.getItem('nexusky-agent-mode') !== '0' } catch { return true }
+  })
+  const updateAgentMode = (v: boolean) => {
+    setAgentMode(v)
+    try { localStorage.setItem('nexusky-agent-mode', v ? '1' : '0') } catch {}
+  }
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
@@ -145,15 +153,28 @@ export function ChatPanel() {
     const handler = (event: { type: string; content: string }) => {
       if (!isStreamingRef.current) return
       if (event.type === 'text') {
+        setToolStatus(null)
         streamContentRef.current += event.content
         setStreamContent(streamContentRef.current)
       } else if (event.type === 'done') {
+        setToolStatus(null)
         setIsStreaming(false)
       } else if (event.type === 'error') {
+        setToolStatus(null)
         setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }])
         streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
+      } else if (event.type === 'retry') {
+        setToolStatus(event.content)
+      } else if (event.type === 'tool_call') {
+        try {
+          const data = JSON.parse(event.content)
+          const toolNames: Record<string, string> = { search_notes: '搜索笔记', read_note: '读取笔记', create_note: '创建笔记', edit_note: '编辑笔记' }
+          setToolStatus(toolNames[data.name] || data.name)
+        } catch {
+          setToolStatus('调用工具...')
+        }
       }
     }
     const cleanup = window.api.onAiStream(handler)
@@ -226,7 +247,11 @@ export function ChatPanel() {
     const allMessages = [...remaining, userMsg]
     const chatMessages = await buildChatMessages(allMessages)
     try {
-      await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+      if (agentMode && vaultPath) {
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+      } else {
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+      }
     } catch (e: any) {
       setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
       streamContentRef.current = ''
@@ -465,7 +490,18 @@ export function ChatPanel() {
       return
     }
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim() }
+    const attachments: { type: 'note' | 'selection' | 'image'; label: string }[] = []
+    if (attachedNotes.length > 0) {
+      for (const note of attachedNotes) attachments.push({ type: 'note', label: note.title })
+    }
+    if (attachedSelections.length > 0) {
+      for (const sel of attachedSelections) attachments.push({ type: 'selection', label: sel.source })
+    }
+    if (attachedImages.length > 0) {
+      for (let i = 0; i < attachedImages.length; i++) attachments.push({ type: 'image', label: `图片 ${i + 1}` })
+    }
+
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim(), attachments: attachments.length > 0 ? attachments : undefined }
     setMessages((prev) => [...prev, userMsg])
     appendToDb(userMsg)
     setInput('')
@@ -743,7 +779,11 @@ export function ChatPanel() {
       setAttachedImages([])
     }
     try {
-      await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+      if (agentMode && vaultPath) {
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+      } else {
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+      }
     } catch (e: any) {
       setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
       setStreamContent('')
@@ -1000,6 +1040,7 @@ export function ChatPanel() {
         streamContent={streamContent}
         editMode={editMode}
         editElapsed={editElapsed}
+        toolStatus={toolStatus}
         onRegenerate={handleRegenerate}
       />
 
@@ -1079,48 +1120,6 @@ export function ChatPanel() {
         </div>
       )}
 
-      {/* Attached images */}
-      {attachedImages.length > 0 && (
-        <div style={{ padding: '4px 16px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {attachedImages.map((img, i) => (
-            <div key={i} style={{ position: 'relative', width: 48, height: 48, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-              <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <button onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 2, right: 2, width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 8, padding: 0 }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Attached notes */}
-      {attachedNotes.length > 0 && (
-        <div style={{ padding: '4px 16px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {attachedNotes.map((note) => (
-            <span key={note.filePath} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'var(--accent-muted)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              {note.title}
-              <button onClick={() => setAttachedNotes((prev) => prev.filter((n) => n.filePath !== note.filePath))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--accent-text)', cursor: 'pointer', padding: 0 }}>
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Attached selections */}
-      {attachedSelections.length > 0 && (
-        <div style={{ padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {attachedSelections.map((sel, i) => (
-            <div key={i} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-              <span style={{ flex: 1, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{sel.source}:</span> {sel.text.slice(0, 80)}{sel.text.length > 80 ? '...' : ''}
-              </span>
-              <button onClick={() => setAttachedSelections((prev) => prev.filter((_, j) => j !== i))} style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Mention dropdown */}
       {showMention && mentionResults.length > 0 && (
         <div style={{ padding: '0 16px 4px' }}>
@@ -1142,14 +1141,14 @@ export function ChatPanel() {
       {/* Input */}
       <div style={{ padding: '10px 14px 14px', flexShrink: 0 }}>
         <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1.5px solid var(--border-subtle)',
-          borderRadius: 12,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 10,
           transition: 'border-color 150ms, box-shadow 150ms',
           overflow: 'hidden',
         }}
           onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,110,240,0.08)' }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none' }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none' }}
         >
           {/* Edit target indicator */}
           {editMode && (
@@ -1173,6 +1172,48 @@ export function ChatPanel() {
                 <button onClick={() => setEditUnbound(false)} style={{ fontSize: 10, padding: '1px 6px', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3 }} title="重新绑定当前文件">
                   绑定当前
                 </button>
+              )}
+            </div>
+          )}
+
+          {/* Attached items inside input box */}
+          {(attachedNotes.length > 0 || attachedSelections.length > 0 || attachedImages.length > 0) && (
+            <div style={{ padding: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {attachedImages.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {attachedImages.map((img, i) => (
+                    <div key={i} style={{ position: 'relative', width: 40, height: 40, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                      <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 1, right: 1, width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 7, padding: 0 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {attachedNotes.length > 0 && (
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {attachedNotes.map((note) => (
+                    <span key={note.filePath} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'var(--accent-muted)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {note.title}
+                      <button onClick={() => setAttachedNotes((prev) => prev.filter((n) => n.filePath !== note.filePath))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--accent-text)', cursor: 'pointer', padding: 0 }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {attachedSelections.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {attachedSelections.map((sel, i) => (
+                    <div key={i} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ flex: 1, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{sel.source}:</span> {sel.text.slice(0, 60)}{sel.text.length > 60 ? '...' : ''}
+                      </span>
+                      <button onClick={() => setAttachedSelections((prev) => prev.filter((_, j) => j !== i))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -1239,7 +1280,7 @@ export function ChatPanel() {
           </div>
 
           {/* Bottom toolbar */}
-          <div style={{ padding: '0 8px 6px', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: 2 }}>
             <button
               onClick={() => { updateEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
               style={{
@@ -1259,23 +1300,25 @@ export function ChatPanel() {
               )}
               {editMode ? '编辑' : '对话'}
             </button>
-            <button
-              onClick={handleAttachSelection}
-              style={{
-                height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
-                background: 'transparent',
-                color: 'var(--text-tertiary)',
-                border: 'none',
-                transition: 'all 100ms',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-              title="引用编辑器中选中的文本作为上下文"
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>
-              引用选中
-            </button>
+            {!editMode && (
+              <button
+                onClick={() => updateAgentMode(!agentMode)}
+                style={{
+                  height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
+                  background: agentMode ? 'var(--accent-muted)' : 'transparent',
+                  color: agentMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                  border: 'none',
+                  transition: 'all 100ms',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+                title={agentMode ? 'Agent 模式：AI 可搜索/读取/创建/编辑笔记' : '普通模式：仅对话'}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+                Agent
+              </button>
+            )}
             <div style={{ flex: 1 }} />
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.6 }}>Enter 发送 · Shift+Enter 换行</span>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.5 }}>Enter 发送</span>
           </div>
         </div>
       </div>

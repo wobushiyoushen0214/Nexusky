@@ -292,7 +292,7 @@ export default function App() {
               <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />
             </>
           )}
-          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: 4, marginRight: rightPanel !== 'none' ? 4 : 8, minWidth: 0 }}>
+          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: 4, marginRight: rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
             {mainView === 'editor' ? <Editor /> : (
               <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -313,7 +313,7 @@ export default function App() {
           {rightPanel !== 'none' && (
             <ResizeHandle side="right" onResize={(delta) => resizeRightPanel(delta)} />
           )}
-          <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 8 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
+          <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
                 {rightPanel === 'graph' ? '知识图谱' : rightPanel === 'chat' ? 'AI 对话' : rightPanel === 'tags' ? '标签' : rightPanel === 'calendar' ? '日历' : rightPanel === 'kanban' ? '看板' : rightPanel === 'history' ? '版本历史' : '大纲'}

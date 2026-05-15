@@ -19,6 +19,7 @@ export interface Message {
   role: 'user' | 'assistant'
   content: string
   sources?: { title: string; filePath: string; chunk: string; score: number }[]
+  attachments?: { type: 'note' | 'selection' | 'image'; label: string }[]
 }
 
 interface MessageBubbleProps {
@@ -41,7 +42,21 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate }: 
           overflow: 'hidden',
         }}>
           {msg.role === 'user' ? (
-            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
+            <>
+              {msg.attachments && msg.attachments.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                  {msg.attachments.map((att, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      {att.type === 'note' && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>}
+                      {att.type === 'selection' && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" /></svg>}
+                      {att.type === 'image' && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>}
+                      {att.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
+            </>
           ) : isPlanList ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {msg.content.split('\n').filter(Boolean).map((line, i) => {

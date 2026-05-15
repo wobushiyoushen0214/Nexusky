@@ -1,4 +1,4 @@
-import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent } from './base-provider'
+import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent } from './base-provider'
 import { OpenAIProvider } from './openai-provider'
 import { ClaudeProvider } from './claude-provider'
 import { OllamaProvider } from './ollama-provider'
@@ -69,7 +69,17 @@ class AIManager {
     const provider = this.getProvider(config)
     yield* provider.chatStream(messages, signal)
   }
+
+  async *chatWithTools(messages: ChatMessage[], tools: any[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
+    const config = this.getActiveConfig()
+    if (!config) {
+      yield { type: 'error', content: '未配置 AI 提供商，请在设置中添加' }
+      return
+    }
+    const provider = this.getProvider(config)
+    yield* provider.chatStreamWithTools(messages, tools, signal)
+  }
 }
 
 export const aiManager = new AIManager()
-export type { AIProviderConfig, ChatMessage, ChatStreamEvent }
+export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent }

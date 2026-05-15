@@ -20,8 +20,14 @@ export interface ChatContentPart {
 }
 
 export interface ChatStreamEvent {
-  type: 'text' | 'done' | 'error'
+  type: 'text' | 'done' | 'error' | 'retry' | 'tool_call'
   content: string
+  meta?: { finishReason?: string }
+}
+
+export interface ToolCallEvent {
+  type: 'tool_calls'
+  calls: { id: string; name: string; arguments: string }[]
 }
 
 export abstract class BaseAIProvider {
@@ -33,4 +39,13 @@ export abstract class BaseAIProvider {
 
   abstract chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>
   abstract validate(): Promise<boolean>
+
+  async *chatStreamWithTools(
+    messages: ChatMessage[],
+    tools: any[],
+    signal?: AbortSignal
+  ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
+    // Default implementation: just stream without tools
+    yield* this.chatStream(messages, signal)
+  }
 }

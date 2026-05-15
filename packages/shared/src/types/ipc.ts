@@ -127,10 +127,15 @@ export interface IPCChannelMap {
   'ai:get-providers': { params: undefined; result: any[] }
   'ai:save-providers': { params: { providers: any[] }; result: void }
   'ai:set-active': { params: { providerId: string }; result: void }
+  'ai:get-active-provider': { params: undefined; result: string | null }
   'ai:validate': { params: { config: any }; result: boolean }
-  'ai:chat': { params: { messages: { role: string; content: string }[] }; result: void }
+  'ai:chat': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string }; result: void }
+  'ai:chat-agent': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string }; result: void }
   'ai:stop': { params: undefined; result: void }
-  'ai:complete': { params: { text: string }; result: string }
+  'ai:complete': { params: { text: string; system?: string }; result: string }
+  'ai:get-system-prompt': { params: undefined; result: string }
+  'ai:set-system-prompt': { params: { prompt: string }; result: void }
+  'ai:infer-links': { params: { vaultPath: string; filePaths: string[] }; result: { success: boolean; added?: number; error?: string } }
   'ai:list-ollama-models': { params: { baseUrl?: string }; result: string[] }
   'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }
   'ai:summarize': { params: { content: string }; result: string }
