@@ -663,25 +663,35 @@ export function ChatPanel() {
             ? `对话上下文：\n${recentContext}\n\n当前指令: ${userMsg.content}`
             : userMsg.content
 
-          // Use AI to semantically detect target directory from instruction
-          let specifiedDir = ''
+          // Use AI to semantically detect target directories from instruction (supports multiple)
+          let specifiedDirs: string[] = []
           try {
             const detectResult = await window.api.invoke('ai:complete', {
               text: dirs.length > 0
-                ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想把笔记放在哪个目录下。如果用户明确提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户想创建新目录（提到了不在列表中的目录名），输出用户提到的新目录名；如果无法判断，输出空。只输出目录名，不要其他文字。`
-                : `用户指令: "${userMsg.content}"\n\n请从用户指令中提取目标目录名。如果用户提到了要放在某个目录/文件夹下，输出该目录名；如果无法判断，输出空。只输出目录名，不要其他文字。`
+                ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想把笔记放在哪些目录下。用户可能指定了多个目录（如"分别放到 react 和 vue 目录下"）。\n规则：\n- 如果用户提到多个目录，用逗号分隔输出每个目录名\n- 如果只提到一个目录或主题与某个已有目录匹配，输出该目录名\n- 如果用户想创建新目录（不在列表中），输出用户提到的新目录名\n- 如果无法判断，输出"空"\n只输出目录名（逗号分隔），不要其他文字。`
+                : `用户指令: "${userMsg.content}"\n\n请从用户指令中提取目标目录名。用户可能指定了多个目录（如"分别放到 react 和 vue 目录下"）。\n规则：\n- 如果用户提到多个目录，用逗号分隔输出每个目录名\n- 如果只提到一个目录，输出该目录名\n- 如果无法判断，输出"空"\n只输出目录名（逗号分隔），不要其他文字。`
             })
-            const detected = (detectResult || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')
-            if (detected && detected !== '空' && detected.length < 30) {
-              const exactMatch = dirs.find((d) => d.toLowerCase() === detected.toLowerCase())
-              specifiedDir = exactMatch || detected
+            const raw = (detectResult || '').trim()
+            if (raw && raw !== '空') {
+              const parts = raw.split(/[,，、]/).map((s: string) => s.trim().replace(/[\\/:*?"<>|"「」'']/g, '')).filter((s: string) => s && s !== '空' && s.length < 30)
+              for (const part of parts) {
+                const exactMatch = dirs.find((d: string) => d.toLowerCase() === part.toLowerCase())
+                specifiedDirs.push(exactMatch || part)
+              }
             }
           } catch {}
 
-          if (specifiedDir) {
+          if (specifiedDirs.length > 1) {
             if (editTimerRef.current) clearInterval(editTimerRef.current)
             editTimerRef.current = null
-            await executeBatchGenerate(batchInstruction, `${vaultPath}/${specifiedDir}`)
+            for (const dir of specifiedDirs) {
+              const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
+              await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`)
+            }
+          } else if (specifiedDirs.length === 1) {
+            if (editTimerRef.current) clearInterval(editTimerRef.current)
+            editTimerRef.current = null
+            await executeBatchGenerate(batchInstruction, `${vaultPath}/${specifiedDirs[0]}`)
           } else {
             setFolderOptions(dirs)
             setPendingBatch({ instruction: batchInstruction })
