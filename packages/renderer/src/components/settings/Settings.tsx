@@ -877,7 +877,7 @@ function AppearanceTab() {
   const [updateStage, setUpdateStage] = useState<'idle' | 'checking' | 'downloading' | 'ready'>('idle')
   const [downloadPercent, setDownloadPercent] = useState(0)
   const [showThemePicker, setShowThemePicker] = useState(false)
-  const { theme } = useUIStore()
+  const { theme, language, setLanguage } = useUIStore()
 
   useEffect(() => {
     window.api.invoke('app:get-version', undefined).then(setAppVersion)
@@ -926,6 +926,31 @@ function AppearanceTab() {
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
+      </div>
+
+      {/* Language */}
+      <div>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>语言 / Language</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {([['zh-CN', '简体中文'], ['en', 'English']] as const).map(([lang, label]) => (
+            <button
+              key={lang}
+              onClick={() => setLanguage(lang)}
+              style={{
+                padding: '8px 16px',
+                fontSize: 12,
+                borderRadius: 8,
+                border: language === lang ? '1px solid var(--accent)' : '1px solid var(--border-default)',
+                background: language === lang ? 'var(--accent-muted)' : 'var(--bg-elevated)',
+                color: language === lang ? 'var(--accent)' : 'var(--text-primary)',
+                cursor: 'pointer',
+                fontWeight: language === lang ? 600 : 400,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Version & Update */}
