@@ -449,6 +449,7 @@ export function GraphView() {
     nodeGroup.filter(isCurrentNode).append('circle')
       .attr('class', 'node-pulse')
       .attr('r', (d) => getRadius(d) + 8)
+      .style('stroke', (d) => d.color || 'var(--accent)')
 
     // Label — show for folder nodes or current node
     nodeGroup.append('text')
