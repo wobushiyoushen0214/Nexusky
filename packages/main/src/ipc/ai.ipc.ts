@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { aiManager, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent } from '../services/ai'
 import { store } from '../services/store'
-import { semanticSearch } from '../services/embedding'
+import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -539,7 +539,7 @@ graph TD
             const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
             if (Array.isArray(relations)) {
               const db = getDatabase(params.vaultPath)
-              const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context) VALUES (?, ?, ?)')
+              const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
               const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
 
               for (const rel of relations) {
@@ -547,7 +547,7 @@ graph TD
                 if (sourceNote && rel.target && rel.source !== rel.target) {
                   const existing = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?').get(sourceNote.id, rel.target)
                   if (!existing) {
-                    insertLink.run(sourceNote.id, rel.target, rel.reason || '')
+                    insertLink.run(sourceNote.id, rel.target, rel.reason || '', 'inferred')
                   }
                 }
               }
@@ -624,7 +624,7 @@ graph TD
       const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
       if (!Array.isArray(relations)) return { success: false, error: '解析失败' }
 
-      const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context) VALUES (?, ?, ?)')
+      const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
       const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
       let added = 0
 
@@ -633,7 +633,7 @@ graph TD
         if (sourceNote && rel.target && rel.source !== rel.target) {
           const existing = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?').get(sourceNote.id, rel.target)
           if (!existing) {
-            insertLink.run(sourceNote.id, rel.target, rel.reason || '')
+            insertLink.run(sourceNote.id, rel.target, rel.reason || '', 'inferred')
             added++
           }
         }
@@ -646,7 +646,104 @@ graph TD
     }
   })
 
-  // --- System prompt persistence ---
+  // --- Global cross-group semantic link inference ---
+  ipcMain.handle('ai:infer-global-links', async (event, params: { vaultPath: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { success: false, error: '窗口不存在' }
+
+    const db = getDatabase(params.vaultPath)
+    let added = 0
+
+    // Clear previous inferred links before re-inferring
+    db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
+
+    // Phase 1: TF-IDF similarity-based auto links (no AI needed)
+    const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.5)
+    const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
+
+    for (const pair of similarPairs) {
+      const existing = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(pair.sourceId, pair.targetTitle)
+      if (!existing) {
+        const reverseExisting = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(pair.targetId, pair.sourceTitle)
+        if (!reverseExisting) {
+          insertLink.run(pair.sourceId, pair.targetTitle, `相似度: ${(pair.score * 100).toFixed(0)}%`, 'inferred')
+          added++
+        }
+      }
+    }
+
+    // Phase 2: AI cross-group analysis (if provider available)
+    const config = aiManager.getActiveConfig()
+    if (config) {
+      const allNotes = db.prepare('SELECT id, title, file_path FROM notes ORDER BY updated_at DESC LIMIT 100').all() as { id: string; title: string; file_path: string }[]
+
+      if (allNotes.length > 1) {
+        const folderGroups = new Map<string, { id: string; title: string }[]>()
+        for (const note of allNotes) {
+          const folder = note.file_path.split('/').slice(0, -1).join('/') || '_root'
+          if (!folderGroups.has(folder)) folderGroups.set(folder, [])
+          folderGroups.get(folder)!.push({ id: note.id, title: note.title })
+        }
+
+        if (folderGroups.size > 1) {
+          const crossGroupSummary = Array.from(folderGroups.entries())
+            .map(([folder, notes]) => `[${folder}] ${notes.map((n) => n.title).join(', ')}`)
+            .join('\n')
+
+          const provider = aiManager.getProvider(config)
+          let relResult = ''
+
+          try {
+            for await (const chunk of provider.chatStream([
+              { role: 'system', content: `你是一个知识图谱分析助手。以下是按文件夹分组的笔记标题列表。请找出跨文件夹之间有真正语义关联的笔记对。
+
+输出格式为 JSON 数组，每项包含：
+- source: 源笔记标题（必须与给定标题完全一致）
+- target: 目标笔记标题（必须与给定标题完全一致，且必须在不同文件夹）
+- reason: 一句话说明关系原因
+
+规则：
+1. 只找跨文件夹的关系，同文件夹内的不需要
+2. 关注概念递进、知识依赖、因果关系等深层语义关系
+3. 仅标题含相同关键词（如不同框架下都有"性能优化"）不构成关联，除非它们之间有具体的知识依赖或互补关系
+4. 同一领域的平行概念（如 React 组件 vs Vue 组件）不应关联，除非一个是另一个的前置知识
+5. 宁缺毋滥，只输出你非常确信有实质关联的笔记对
+6. 只输出 JSON，不要其他文字
+7. 最多输出 10 条关系` },
+              { role: 'user', content: `以下是知识库的笔记分组：\n\n${crossGroupSummary}` }
+            ])) {
+              if (window.isDestroyed()) break
+              if (chunk.type === 'text') relResult += chunk.content
+              if (chunk.type === 'error') break
+            }
+
+            if (relResult.trim()) {
+              const jsonStr = relResult.replace(/```json?\s*|\s*```/g, '').trim()
+              try {
+                const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
+                if (Array.isArray(relations)) {
+                  const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
+                  for (const rel of relations) {
+                    const sourceNote = findNote.get(rel.source) as { id: string } | undefined
+                    if (sourceNote && rel.target && rel.source !== rel.target) {
+                      const existing = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(sourceNote.id, rel.target)
+                      if (!existing) {
+                        insertLink.run(sourceNote.id, rel.target, rel.reason || '', 'inferred')
+                        added++
+                      }
+                    }
+                  }
+                }
+              } catch {}
+            }
+          } catch {}
+        }
+      }
+    }
+
+    try { resolveAllLinks(params.vaultPath) } catch {}
+    return { success: true, added }
+  })
 
   ipcMain.handle('ai:get-system-prompt', () => {
     return (store.get('aiSystemPrompt') as string) || ''

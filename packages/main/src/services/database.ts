@@ -5,7 +5,7 @@ import { app } from 'electron'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -73,6 +73,7 @@ function initSchema(db: Database.Database): void {
       target_note_id TEXT,
       target_title TEXT NOT NULL,
       context TEXT,
+      link_type TEXT NOT NULL DEFAULT 'explicit',
       FOREIGN KEY (source_note_id) REFERENCES notes(id) ON DELETE CASCADE
     );
 
@@ -285,6 +286,13 @@ const migrations: Migration[] = [
       db.exec('ALTER TABLE kanban_tasks ADD COLUMN source_file_path TEXT')
     }
     db.exec('CREATE INDEX IF NOT EXISTS idx_kanban_tasks_source_note ON kanban_tasks(source_note_id)')
+  },
+  // Migration 6: add link_type to links table for distinguishing explicit vs inferred links
+  (db) => {
+    const linkColumns = db.prepare('PRAGMA table_info(links)').all() as { name: string }[]
+    if (!linkColumns.some((c) => c.name === 'link_type')) {
+      db.exec("ALTER TABLE links ADD COLUMN link_type TEXT NOT NULL DEFAULT 'explicit'")
+    }
   }
 ]
 
