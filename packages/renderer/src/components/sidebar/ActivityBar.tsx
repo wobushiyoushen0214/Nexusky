@@ -44,7 +44,15 @@ export function ActivityBar() {
   }, [moreOpen])
 
   const actionMap: Record<string, () => void> = {
-    files: () => toggleSidebar(),
+    files: () => {
+      const state = useUIStore.getState()
+      if (state.mainView === 'graph') {
+        setMainView('editor')
+        if (state.sidebarCollapsed) toggleSidebar()
+      } else {
+        toggleSidebar()
+      }
+    },
     search: () => setSearchOpen(true),
     chat: () => toggleRightPanel('chat'),
     graph: () => {
