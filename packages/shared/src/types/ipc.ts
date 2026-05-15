@@ -18,8 +18,15 @@ export interface BacklinkResult {
   context: string
 }
 
+export interface GraphNode {
+  id: string
+  title: string
+  filePath?: string
+  type: 'file' | 'folder'
+}
+
 export interface GraphData {
-  nodes: { id: string; title: string; filePath?: string }[]
+  nodes: GraphNode[]
   edges: { source: string; target: string }[]
 }
 

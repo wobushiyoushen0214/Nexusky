@@ -1,16 +1,28 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
 import { select } from 'd3-selection'
 import { zoom } from 'd3-zoom'
 import { drag } from 'd3-drag'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
-import type { GraphData } from '@shared/types/ipc'
+import { useUIStore } from '../../stores/ui-store'
+import type { GraphData, GraphNode } from '@shared/types/ipc'
+import './GraphView.css'
+
+const GROUP_COLORS = [
+  '#7c6ef5', '#f59e0b', '#10b981', '#ef4444', '#06b6d4',
+  '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#6366f1',
+]
 
 interface SimNode {
   id: string
   title: string
   filePath?: string
+  type: 'file' | 'folder'
+  group?: string
+  color?: string
+  colors?: string[]
+  gradientId?: string
   x?: number
   y?: number
   fx?: number | null
@@ -21,6 +33,16 @@ interface SimNode {
 interface SimLink {
   source: string | SimNode
   target: string | SimNode
+  weight?: number
+}
+
+function getRadius(d: SimNode) {
+  if (d.type === 'folder') return 24
+  if (d.linkCount >= 8) return 12
+  if (d.linkCount >= 5) return 9
+  if (d.linkCount >= 3) return 7
+  if (d.linkCount >= 1) return 5
+  return 3
 }
 
 export function GraphView() {
@@ -30,10 +52,28 @@ export function GraphView() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
+  const setMainView = useUIStore((s) => s.setMainView)
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [minLinks, setMinLinks] = useState(0)
   const [showLabels, setShowLabels] = useState(true)
+  const [showOrphans, setShowOrphans] = useState(true)
+  const [showArrows, setShowArrows] = useState(false)
+  const [showFolders, setShowFolders] = useState(true)
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const [chargeStrength, setChargeStrength] = useState(-350)
+  const [linkDistance, setLinkDistance] = useState(80)
+  const [centerStrength, setCenterStrength] = useState(0.02)
+
+  const groupColorMap = useMemo(() => {
+    if (!graphData) return new Map<string, string>()
+    const folders = graphData.nodes.filter((n: GraphNode) => n.type === 'folder')
+    const map = new Map<string, string>()
+    folders.forEach((f: GraphNode, i: number) => {
+      map.set(f.id, GROUP_COLORS[i % GROUP_COLORS.length])
+    })
+    return map
+  }, [graphData])
 
   useEffect(() => {
     if (!vaultPath) return
@@ -50,41 +90,38 @@ export function GraphView() {
     return () => { cleanup(); window.removeEventListener('graph-data-updated', refresh) }
   }, [vaultPath])
 
+  const showLabelsRef = useRef(showLabels)
+  showLabelsRef.current = showLabels
+
+  const showArrowsRef = useRef(showArrows)
+  showArrowsRef.current = showArrows
+
   const updateHighlight = useCallback((currentTitle: string) => {
     if (!svgRef.current) return
     const svg = select(svgRef.current)
 
-    svg.selectAll<SVGGElement, SimNode>('g.node-group').each(function (d) {
+    svg.selectAll<SVGGElement, SimNode>('g.graph-node').each(function (d) {
       const group = select(this)
       const isCurrent = d.title === currentTitle
+      const isFolder = d.type === 'folder'
+      const r = getRadius(d)
+      const nodeFill = isCurrent ? 'var(--accent-text)' : 'var(--bg-base)'
 
-      const getRadius = (n: SimNode) => Math.max(3, Math.min(8, 3 + n.linkCount * 1.2))
+      group.select('.node-core')
+        .attr('r', r)
+        .attr('fill', nodeFill)
+        .attr('opacity', 1)
 
-      group.select('.neuron-halo')
-        .attr('r', isCurrent ? getRadius(d) + 18 : getRadius(d) + 12)
-        .attr('fill', isCurrent ? 'url(#neuron-glow)' : d.linkCount > 0 ? 'url(#neuron-glow)' : 'url(#neuron-dim)')
-        .attr('opacity', isCurrent ? 1 : Math.min(0.6, 0.2 + d.linkCount * 0.1))
+      group.select('.node-pulse')
+        .style('display', isCurrent ? '' : 'none')
 
-      group.select('.neuron-soma')
-        .attr('r', isCurrent ? getRadius(d) + 4 : getRadius(d))
-        .attr('fill', isCurrent ? '#a89cf8' : d.linkCount > 0 ? '#7c6ef5' : '#666666')
-        .attr('opacity', isCurrent ? 1 : d.linkCount > 0 ? 0.9 : 0.5)
-        .attr('filter', isCurrent || d.linkCount > 2 ? 'url(#glow)' : 'none')
-
-      group.select('.neuron-nucleus')
-        .attr('r', isCurrent ? 4 : Math.max(1.5, getRadius(d) * 0.4))
-        .attr('opacity', isCurrent ? 0.9 : d.linkCount > 0 ? 0.7 : 0.2)
-
-      group.select('.neuron-label')
-        .attr('x', isCurrent ? getRadius(d) + 14 : getRadius(d) + 10)
-        .attr('font-size', isCurrent ? '12px' : '10px')
-        .attr('font-weight', isCurrent ? '600' : '400')
-        .attr('fill', isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)')
-        .attr('opacity', isCurrent ? 1 : 0.7)
+      group.select('.node-label')
+        .classed('active', isCurrent)
+        .classed('hub-label', isFolder)
+        .classed('hidden', !showLabelsRef.current)
     })
   }, [])
 
-  // Update highlight when currentFilePath changes without rebuilding the graph
   useEffect(() => {
     if (!graphData || !svgRef.current) return
     if (!graphBuiltForRef.current) return
@@ -92,7 +129,6 @@ export function GraphView() {
     updateHighlight(currentTitle)
   }, [currentFilePath, updateHighlight, graphData])
 
-  // Build the graph only when graphData changes
   useEffect(() => {
     if (!graphData || !svgRef.current) return
     if (graphData.nodes.length === 0) return
@@ -112,114 +148,235 @@ export function GraphView() {
 
     const defs = svg.append('defs')
 
-    if (!isLarge) {
-      const glowGrad = defs.append('radialGradient').attr('id', 'neuron-glow')
-      glowGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.6)
-      glowGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.15)
-      glowGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0)
-
-      const dimGrad = defs.append('radialGradient').attr('id', 'neuron-dim')
-      dimGrad.append('stop').attr('offset', '0%').attr('stop-color', '#999999').attr('stop-opacity', 0.4)
-      dimGrad.append('stop').attr('offset', '100%').attr('stop-color', '#999999').attr('stop-opacity', 0)
-
-      const synapseGrad = defs.append('linearGradient').attr('id', 'synapse-grad')
-      synapseGrad.append('stop').attr('offset', '0%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
-      synapseGrad.append('stop').attr('offset', '50%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.2)
-      synapseGrad.append('stop').attr('offset', '100%').attr('stop-color', '#7c6ef5').attr('stop-opacity', 0.5)
-
-      const filter = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%')
-      filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur')
-      filter.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', (d) => d)
-    }
+    defs.append('marker')
+      .attr('id', 'arrowhead')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 10)
+      .attr('refY', 0)
+      .attr('markerWidth', 4)
+      .attr('markerHeight', 4)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-4L10,0L0,4')
+      .attr('fill', 'context-stroke')
 
     const g = svg.append('g')
 
     const currentTitle = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
 
     const linkCountMap = new Map<string, number>()
-    graphData.edges.forEach((e) => {
+    graphData.edges.forEach((e: { source: string; target: string }) => {
       linkCountMap.set(e.source, (linkCountMap.get(e.source) || 0) + 1)
       linkCountMap.set(e.target, (linkCountMap.get(e.target) || 0) + 1)
     })
 
     const filteredNodes = isLarge && nodeCount > 500
-      ? graphData.nodes.filter((n) => (linkCountMap.get(n.id) || 0) > 0)
+      ? graphData.nodes.filter((n: { id: string }) => (linkCountMap.get(n.id) || 0) > 0)
       : graphData.nodes
 
-    const nodes: SimNode[] = filteredNodes.map((n) => ({
-      ...n,
-      linkCount: linkCountMap.get(n.id) || 0
-    }))
-    const nodeIds = new Set(nodes.map((n) => n.id))
-    const links: SimLink[] = graphData.edges
-      .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
-      .map((e) => ({ source: e.source, target: e.target }))
+    const folderIdSet = new Set(graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((n: GraphNode) => n.id))
+    const nodeToFolder = new Map<string, string>()
+    graphData.edges.forEach((e: { source: string; target: string }) => {
+      if (folderIdSet.has(e.source) && !folderIdSet.has(e.target)) {
+        nodeToFolder.set(e.target, e.source)
+      }
+    })
 
-    const getRadius = (d: SimNode) => Math.max(3, Math.min(8, 3 + d.linkCount * 1.2))
+    const nodes: SimNode[] = filteredNodes.map((n: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }) => {
+      const folderId = n.type === 'folder' ? n.id : nodeToFolder.get(n.id)
+      const color = folderId ? groupColorMap.get(folderId) : undefined
+
+      const incomingColors = new Set<string>()
+      if (color) incomingColors.add(color)
+      graphData.edges.forEach((e: { source: string; target: string }) => {
+        if (e.target === n.id && e.source !== n.id) {
+          const srcFolderId = folderIdSet.has(e.source) ? e.source : nodeToFolder.get(e.source)
+          if (srcFolderId) {
+            const srcColor = groupColorMap.get(srcFolderId)
+            if (srcColor) incomingColors.add(srcColor)
+          }
+        }
+      })
+
+      const colorsArr = [...incomingColors]
+      return {
+        ...n,
+        linkCount: linkCountMap.get(n.id) || 0,
+        group: folderId,
+        color: colorsArr.length > 0 ? colorsArr[0] : undefined,
+        colors: colorsArr.length > 1 ? colorsArr : undefined,
+      }
+    })
+    const nodeIds = new Set(nodes.map((n: SimNode) => n.id))
+    const links: SimLink[] = graphData.edges
+      .filter((e: { source: string; target: string }) => nodeIds.has(e.source) && nodeIds.has(e.target))
+      .map((e: { source: string; target: string }) => ({ source: e.source, target: e.target }))
 
     const simulation = forceSimulation(nodes)
-      .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(isLarge ? 50 : 80).strength(0.4))
-      .force('charge', forceManyBody().strength(isLarge ? -80 : -200).distanceMax(isLarge ? 200 : 350))
+      .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(isLarge ? 50 : linkDistance).strength(0.4))
+      .force('charge', forceManyBody().strength(isLarge ? -150 : chargeStrength).distanceMax(isLarge ? 300 : 500))
       .force('center', forceCenter(width / 2, height / 2))
-      .force('collide', forceCollide<SimNode>((d) => getRadius(d) + (isLarge ? 10 : 20)))
-      .force('x', forceX(width / 2).strength(0.015))
-      .force('y', forceY(height / 2).strength(0.015))
+      .force('collide', forceCollide<SimNode>((d) => getRadius(d) + (isLarge ? 8 : 16)))
+      .force('x', forceX(width / 2).strength(centerStrength))
+      .force('y', forceY(height / 2).strength(centerStrength))
 
     simulationRef.current = simulation
 
-    const link = g.append('g')
-      .selectAll('path')
-      .data(links)
-      .join('path')
-      .attr('fill', 'none')
-      .attr('stroke', 'url(#synapse-grad)')
-      .attr('stroke-width', 0.8)
-      .attr('stroke-opacity', 0.35)
+    const nodeMap = new Map<string, SimNode>()
+    nodes.forEach((n) => nodeMap.set(n.id, n))
 
-    const nodeGroup = g.append('g')
+    const linkGroup = g.append('g').attr('class', 'graph-links')
+    const link = linkGroup
+      .selectAll('line')
+      .data(links)
+      .join('line')
+      .attr('class', 'graph-link')
+      .attr('stroke', (l) => {
+        const sId = typeof l.source === 'string' ? l.source : l.source.id
+        const tId = typeof l.target === 'string' ? l.target : l.target.id
+        const sNode = nodeMap.get(sId)
+        const tNode = nodeMap.get(tId)
+        return sNode?.color || tNode?.color || 'var(--text-tertiary)'
+      })
+      .attr('stroke-width', 0.5)
+      .attr('marker-end', showArrowsRef.current ? 'url(#arrowhead)' : null)
+
+    const nodeGroup = g.append('g').attr('class', 'graph-nodes')
       .selectAll<SVGGElement, SimNode>('g')
       .data(nodes)
       .join('g')
-      .attr('class', 'node-group')
-      .attr('cursor', 'pointer')
+      .attr('class', 'graph-node')
 
     const isCurrentNode = (d: SimNode) => d.title === currentTitle
 
-    nodeGroup.append('circle')
-      .attr('r', (d) => isCurrentNode(d) ? getRadius(d) + 18 : getRadius(d) + 12)
-      .attr('fill', (d) => isCurrentNode(d) ? 'url(#neuron-glow)' : d.linkCount > 0 ? 'url(#neuron-glow)' : 'url(#neuron-dim)')
-      .attr('opacity', (d) => isCurrentNode(d) ? 1 : Math.min(0.6, 0.2 + d.linkCount * 0.1))
-      .attr('class', 'neuron-halo')
+    // Create gradients for multi-color nodes
+    nodes.forEach((n, i) => {
+      if (n.colors && n.colors.length > 1) {
+        const gradId = `node-grad-${i}`
+        n.gradientId = gradId
+        const grad = defs.append('linearGradient')
+          .attr('id', gradId)
+          .attr('x1', '0%').attr('y1', '100%')
+          .attr('x2', '100%').attr('y2', '0%')
+        n.colors.forEach((c, ci) => {
+          grad.append('stop')
+            .attr('offset', `${(ci / (n.colors!.length - 1)) * 100}%`)
+            .attr('stop-color', c)
+        })
+      }
+    })
+
+    // Create folder glow filters per color
+    const folderFilterIds = new Map<string, string>()
+    groupColorMap.forEach((color, folderId) => {
+      const filterId = `folder-glow-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
+      folderFilterIds.set(folderId, filterId)
+      const filter = defs.append('filter')
+        .attr('id', filterId)
+        .attr('x', '-150%').attr('y', '-150%')
+        .attr('width', '400%').attr('height', '400%')
+
+      // Outer glow
+      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '10').attr('result', 'outerBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.4').attr('result', 'outerColor')
+      filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
+
+      // Inner shadow at edges
+      filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '2').attr('result', 'eroded')
+      filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
+      filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '3').attr('result', 'borderBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.35').attr('result', 'innerColor')
+      filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
+      filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
+
+      // Blur the source slightly for glass feel
+      filter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', '1').attr('result', 'blurredSrc')
+      filter.append('feComposite').attr('in', 'blurredSrc').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'blurClipped')
+
+      // Merge: outer glow + blurred body + inner shadow
+      const merge = filter.append('feMerge')
+      merge.append('feMergeNode').attr('in', 'outerGlow')
+      merge.append('feMergeNode').attr('in', 'blurClipped')
+      merge.append('feMergeNode').attr('in', 'innerGlow')
+    })
+
+    // Small file node glow filter per color
+    const fileFilterIds = new Map<string, string>()
+    groupColorMap.forEach((color, folderId) => {
+      const filterId = `file-glow-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
+      fileFilterIds.set(folderId, filterId)
+      const filter = defs.append('filter')
+        .attr('id', filterId)
+        .attr('x', '-150%').attr('y', '-150%')
+        .attr('width', '400%').attr('height', '400%')
+
+      // Outer glow
+      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '4').attr('result', 'outerBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.4').attr('result', 'outerColor')
+      filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
+
+      // Inner shadow
+      filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '1').attr('result', 'eroded')
+      filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
+      filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '1.5').attr('result', 'borderBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.5').attr('result', 'innerColor')
+      filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
+      filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
+
+      const merge = filter.append('feMerge')
+      merge.append('feMergeNode').attr('in', 'outerGlow')
+      merge.append('feMergeNode').attr('in', 'SourceGraphic')
+      merge.append('feMergeNode').attr('in', 'innerGlow')
+    })
+
+    const getNodeFill = (d: SimNode, idx: number) => {
+      if (isCurrentNode(d)) return 'var(--accent-text)'
+      return 'var(--bg-base)'
+    }
 
     nodeGroup.append('circle')
-      .attr('r', (d) => isCurrentNode(d) ? getRadius(d) + 4 : getRadius(d))
-      .attr('fill', (d) => isCurrentNode(d) ? '#a89cf8' : d.linkCount > 0 ? '#7c6ef5' : '#666666')
-      .attr('opacity', (d) => isCurrentNode(d) ? 1 : d.linkCount > 0 ? 0.9 : 0.5)
-      .attr('filter', (d) => isCurrentNode(d) || d.linkCount > 2 ? 'url(#glow)' : 'none')
-      .attr('class', 'neuron-soma')
+      .attr('class', 'node-core')
+      .attr('r', (d) => getRadius(d))
+      .attr('fill', (d, i) => getNodeFill(d, i))
+      .attr('opacity', 1)
+      .attr('stroke', (d) => {
+        if (d.type === 'folder') return d.color || 'var(--accent)'
+        return d.color || 'var(--text-tertiary)'
+      })
+      .attr('stroke-width', (d) => d.type === 'folder' ? 1.5 : 1)
+      .attr('stroke-opacity', (d) => d.type === 'folder' ? 0.6 : 0.5)
+      .attr('filter', (d) => {
+        if (d.type === 'folder' && d.group) {
+          const fId = folderFilterIds.get(d.group)
+          return fId ? `url(#${fId})` : null
+        }
+        if (d.type === 'file' && d.group) {
+          const fId = fileFilterIds.get(d.group)
+          return fId ? `url(#${fId})` : null
+        }
+        return null
+      })
 
-    nodeGroup.append('circle')
-      .attr('r', (d) => isCurrentNode(d) ? 4 : Math.max(1.5, getRadius(d) * 0.4))
-      .attr('fill', '#ffffff')
-      .attr('opacity', (d) => isCurrentNode(d) ? 0.9 : d.linkCount > 0 ? 0.7 : 0.2)
-      .attr('class', 'neuron-nucleus')
+    // Pulse ring on current node
+    nodeGroup.filter(isCurrentNode).append('circle')
+      .attr('class', 'node-pulse')
+      .attr('r', (d) => getRadius(d) + 8)
 
+    // Label — show for folder nodes or current node
     nodeGroup.append('text')
       .text((d) => d.title)
-      .attr('x', (d) => (isCurrentNode(d) ? getRadius(d) + 14 : getRadius(d) + 10))
-      .attr('y', 3)
-      .attr('font-size', (d) => isCurrentNode(d) ? '12px' : '10px')
-      .attr('font-weight', (d) => isCurrentNode(d) ? '600' : '400')
-      .attr('fill', (d) => isCurrentNode(d) ? 'var(--text-primary)' : 'var(--text-secondary)')
-      .attr('font-family', 'Inter, system-ui, sans-serif')
-      .attr('opacity', (d) => isCurrentNode(d) ? 1 : 0.7)
-      .attr('class', 'neuron-label')
+      .attr('class', (d) => `node-label${isCurrentNode(d) ? ' active' : d.type === 'folder' ? ' hub-label' : ''}${!showLabelsRef.current ? ' hidden' : ''}`)
+      .attr('text-anchor', 'middle')
+      .attr('y', (d) => {
+        const r = getRadius(d)
+        return d.type === 'folder' ? 4 : r + 14
+      })
 
+    // Hover interactions
     nodeGroup
       .on('mouseenter', function (_event, d) {
-        select(this).select('.neuron-halo').attr('opacity', 0.8)
-        select(this).select('.neuron-soma').attr('fill', '#a89cf8').attr('opacity', 1)
-        select(this).select('.neuron-label').attr('opacity', 1).attr('fill', 'var(--text-primary)')
+        const group = select(this)
+        group.select('.node-label').classed('hidden', false).attr('opacity', 1).style('fill', 'var(--text-primary)')
 
         const connectedIds = new Set<string>()
         links.forEach((l) => {
@@ -229,25 +386,38 @@ export function GraphView() {
           if (t === d.id) connectedIds.add(s)
         })
 
-        nodeGroup.attr('opacity', (n) => n.id === d.id || connectedIds.has(n.id) ? 1 : 0.15)
-        link.attr('stroke-opacity', (l: any) => {
+        nodeGroup.classed('dimmed', (n) => n.id !== d.id && !connectedIds.has(n.id))
+
+        nodeGroup.filter((n) => connectedIds.has(n.id)).each(function (n) {
+          select(this).select('.node-core').attr('fill', 'var(--bg-base)').attr('opacity', 1)
+        })
+
+        link.classed('highlighted', (l: any) => {
           const s = typeof l.source === 'string' ? l.source : l.source.id
           const t = typeof l.target === 'string' ? l.target : l.target.id
-          return s === d.id || t === d.id ? 0.7 : 0.05
-        }).attr('stroke-width', (l: any) => {
+          return s === d.id || t === d.id
+        }).classed('dimmed', (l: any) => {
           const s = typeof l.source === 'string' ? l.source : l.source.id
           const t = typeof l.target === 'string' ? l.target : l.target.id
-          return s === d.id || t === d.id ? 1.5 : 0.8
+          return s !== d.id && t !== d.id
         })
       })
-      .on('mouseleave', function (_event, d) {
-        select(this).select('.neuron-halo').attr('opacity', Math.min(0.6, 0.2 + d.linkCount * 0.1))
-        select(this).select('.neuron-soma')
-          .attr('fill', d.linkCount > 0 ? '#7c6ef5' : '#666666')
-          .attr('opacity', d.linkCount > 0 ? 0.9 : 0.5)
-        select(this).select('.neuron-label').attr('opacity', 0.7).attr('fill', 'var(--text-secondary)')
-        nodeGroup.attr('opacity', 1)
-        link.attr('stroke-opacity', 0.35).attr('stroke-width', 0.8)
+      .on('mouseleave', function () {
+        nodeGroup.classed('dimmed', false)
+        link.classed('highlighted', false).classed('dimmed', false)
+
+        nodeGroup.each(function (d) {
+          const group = select(this)
+          const isCurrent = d.title === currentTitle
+          const nodeFill = isCurrent ? 'var(--accent-text)' : 'var(--bg-base)'
+          group.select('.node-core')
+            .attr('fill', nodeFill)
+            .attr('opacity', 1)
+          group.select('.node-label')
+            .classed('hidden', !showLabelsRef.current)
+            .attr('opacity', isCurrent ? 1 : 0.75)
+            .style('fill', isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)')
+        })
       })
 
     const dragBehavior = drag<SVGGElement, SimNode>()
@@ -276,7 +446,7 @@ export function GraphView() {
     })
 
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.2, 5])
+      .scaleExtent([0.1, 8])
       .on('zoom', (event) => {
         g.attr('transform', event.transform)
       })
@@ -288,7 +458,7 @@ export function GraphView() {
       if (currentNode && currentNode.x != null && currentNode.y != null) {
         const { x, y } = currentNode
         const transform = { k: 1.2, x: width / 2 - x * 1.2, y: height / 2 - y * 1.2 }
-        svg.transition().duration(600).call(
+        svg.transition().duration(800).call(
           zoomBehavior.transform as any,
           { k: transform.k, x: transform.x, y: transform.y } as any
         )
@@ -296,12 +466,31 @@ export function GraphView() {
     })
 
     simulation.on('tick', () => {
-      link.attr('d', (d: any) => {
-        const dx = d.target.x - d.source.x
-        const dy = d.target.y - d.source.y
-        const dr = Math.sqrt(dx * dx + dy * dy) * 1.5
-        return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`
-      })
+      link
+        .attr('x1', (d: any) => {
+          const dx = d.target.x - d.source.x
+          const dy = d.target.y - d.source.y
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          return d.source.x + (dx / dist) * getRadius(d.source as SimNode)
+        })
+        .attr('y1', (d: any) => {
+          const dx = d.target.x - d.source.x
+          const dy = d.target.y - d.source.y
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          return d.source.y + (dy / dist) * getRadius(d.source as SimNode)
+        })
+        .attr('x2', (d: any) => {
+          const dx = d.target.x - d.source.x
+          const dy = d.target.y - d.source.y
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          return d.target.x - (dx / dist) * getRadius(d.target as SimNode)
+        })
+        .attr('y2', (d: any) => {
+          const dx = d.target.x - d.source.x
+          const dy = d.target.y - d.source.y
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          return d.target.y - (dy / dist) * getRadius(d.target as SimNode)
+        })
 
       nodeGroup.attr('transform', (d) => `translate(${d.x},${d.y})`)
     })
@@ -309,69 +498,211 @@ export function GraphView() {
     graphBuiltForRef.current = JSON.stringify(graphData)
 
     return () => { simulation.stop() }
-  }, [graphData])
+  }, [graphData, groupColorMap])
 
-  // Highlight nodes matching search query and minLinks filter
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = select(svgRef.current)
+    svg.selectAll('.graph-link').attr('marker-end', showArrows ? 'url(#arrowhead)' : null)
+  }, [showArrows])
+
+  useEffect(() => {
+    if (!simulationRef.current) return
+    const sim = simulationRef.current
+    const nodeCount = graphData?.nodes.length || 0
+    const isLarge = nodeCount > 200
+    const linkForce = sim.force('link') as ReturnType<typeof forceLink<SimNode, SimLink>> | null
+    if (linkForce) {
+      linkForce.distance(isLarge ? 50 : linkDistance)
+    }
+    sim.force('charge', forceManyBody().strength(isLarge ? -150 : chargeStrength).distanceMax(isLarge ? 300 : 500))
+    sim.force('x', forceX().strength(centerStrength))
+    sim.force('y', forceY().strength(centerStrength))
+    sim.alpha(0.3).restart()
+  }, [chargeStrength, linkDistance, centerStrength])
+
   useEffect(() => {
     if (!svgRef.current || !graphData) return
     const svg = select(svgRef.current)
     const q = searchQuery.trim().toLowerCase()
-    svg.selectAll<SVGGElement, SimNode>('g.node-group').attr('opacity', (d) => {
-      if (minLinks > 0 && d.linkCount < minLinks) return 0.08
-      if (q && !d.title.toLowerCase().includes(q)) return 0.15
-      return 1
+    svg.selectAll<SVGGElement, SimNode>('g.graph-node').classed('dimmed', (d) => {
+      if (!showFolders && d.type === 'folder') return true
+      if (!showOrphans && d.linkCount === 0) return true
+      if (minLinks > 0 && d.linkCount < minLinks) return true
+      if (q && !d.title.toLowerCase().includes(q)) return true
+      return false
     })
-  }, [searchQuery, minLinks, graphData])
+  }, [searchQuery, minLinks, showOrphans, showFolders, graphData])
 
   useEffect(() => {
-    if (!svgRef.current || !graphData) return
+    if (!svgRef.current) return
     const svg = select(svgRef.current)
-    svg.selectAll<SVGGElement, SimNode>('g.node-group .neuron-label').attr('opacity', showLabels ? null : 0)
-  }, [showLabels, graphData])
+    svg.selectAll<SVGGElement, SimNode>('g.graph-node .node-label').classed('hidden', !showLabels)
+  }, [showLabels])
 
   if (!graphData || graphData.nodes.length === 0) {
     return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6 }}>暂无图谱数据</p>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', opacity: 0.6 }}>在笔记中使用 [[链接]] 建立关系</p>
+      <div className="graph-empty">
+        <div className="graph-empty-inner">
+          <p className="graph-empty-title">暂无图谱数据</p>
+          <p className="graph-empty-hint">在笔记中使用 [[链接]] 建立关系</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="搜索节点..."
-          style={{ width: 160, height: 28, padding: '0 8px', fontSize: 11, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            链接≥
-            <select
-              value={minLinks}
-              onChange={(e) => setMinLinks(Number(e.target.value))}
-              style={{ height: 22, fontSize: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, color: 'var(--text-primary)', outline: 'none', padding: '0 4px' }}
-            >
-              <option value={0}>全部</option>
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-              <option value={5}>5</option>
-            </select>
-          </label>
-          <label style={{ fontSize: 10, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}>
-            <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} style={{ width: 12, height: 12 }} />
-            标签
-          </label>
+    <div className="graph-container">
+      {panelCollapsed && (
+        <button className="graph-panel-expand" onClick={() => setPanelCollapsed(false)}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      )}
+      <div className={`graph-panel${panelCollapsed ? ' collapsed' : ''}`}>
+        <div className="graph-panel-header">
+          <div className="graph-panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="2"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>
+              <line x1="8" y1="8" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="8"/><line x1="8" y1="16" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="16"/>
+            </svg>
+            GRAPH
+          </div>
+          <button className="graph-panel-collapse" onClick={() => setPanelCollapsed(true)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
         </div>
+
+        {!panelCollapsed && (
+          <>
+            <div className="graph-panel-section">
+              <div className="graph-panel-section-title">FILTERS</div>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="graph-search"
+              />
+              <label className="graph-filter-label">
+                链接 ≥
+                <select
+                  value={minLinks}
+                  onChange={(e) => setMinLinks(Number(e.target.value))}
+                  className="graph-filter-select"
+                >
+                  <option value={0}>全部</option>
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={5}>5</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="graph-panel-section">
+              <div className="graph-panel-section-title">GROUPS</div>
+              <div className="graph-groups-list">
+                {graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((folder: GraphNode) => (
+                  <div key={folder.id} className="graph-group-item">
+                    <span className="graph-group-dot" style={{ background: groupColorMap.get(folder.id) }} />
+                    <span className="graph-group-name">{folder.title}</span>
+                  </div>
+                ))}
+                {graphData.nodes.filter((n: GraphNode) => n.type === 'folder').length === 0 && (
+                  <div className="graph-panel-info">无文件夹分组</div>
+                )}
+              </div>
+            </div>
+
+            <div className="graph-panel-section">
+              <div className="graph-panel-section-title">DISPLAY</div>
+              <label className="graph-toggle">
+                <span>Labels</span>
+                <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
+                <span className="graph-toggle-slider" />
+              </label>
+              <label className="graph-toggle">
+                <span>Orphans</span>
+                <input type="checkbox" checked={showOrphans} onChange={(e) => setShowOrphans(e.target.checked)} />
+                <span className="graph-toggle-slider" />
+              </label>
+              <label className="graph-toggle">
+                <span>Arrows</span>
+                <input type="checkbox" checked={showArrows} onChange={(e) => setShowArrows(e.target.checked)} />
+                <span className="graph-toggle-slider" />
+              </label>
+              <label className="graph-toggle">
+                <span>Folders</span>
+                <input type="checkbox" checked={showFolders} onChange={(e) => setShowFolders(e.target.checked)} />
+                <span className="graph-toggle-slider" />
+              </label>
+            </div>
+
+            <div className="graph-panel-section">
+              <div className="graph-panel-section-title">FORCES</div>
+              <label className="graph-slider-label">
+                <span>斥力</span>
+                <span className="graph-slider-value">{chargeStrength}</span>
+              </label>
+              <input
+                type="range"
+                min="-800"
+                max="-50"
+                step="10"
+                value={chargeStrength}
+                onChange={(e) => setChargeStrength(Number(e.target.value))}
+                className="graph-slider"
+              />
+              <label className="graph-slider-label">
+                <span>距离</span>
+                <span className="graph-slider-value">{linkDistance}</span>
+              </label>
+              <input
+                type="range"
+                min="20"
+                max="200"
+                step="5"
+                value={linkDistance}
+                onChange={(e) => setLinkDistance(Number(e.target.value))}
+                className="graph-slider"
+              />
+              <label className="graph-slider-label">
+                <span>聚合</span>
+                <span className="graph-slider-value">{centerStrength.toFixed(2)}</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="0.1"
+                step="0.005"
+                value={centerStrength}
+                onChange={(e) => setCenterStrength(Number(e.target.value))}
+                className="graph-slider"
+              />
+            </div>
+
+            <div className="graph-panel-section">
+              <div className="graph-panel-section-title">INFO</div>
+              <div className="graph-panel-info">
+                {graphData.nodes.length} 节点 · {graphData.edges.length} 连接
+              </div>
+            </div>
+
+            <div className="graph-panel-footer">
+              <button className="graph-back-btn" onClick={() => setMainView('editor')}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                </svg>
+                返回编辑器
+              </button>
+            </div>
+          </>
+        )}
       </div>
-      <svg ref={svgRef} style={{ width: '100%', height: '100%', background: 'transparent' }} />
+      <svg ref={svgRef} className="graph-svg" />
     </div>
   )
 }
-

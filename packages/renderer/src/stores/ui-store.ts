@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-type Panel = 'none' | 'graph' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history'
+type Panel = 'none' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history'
 type Theme = 'dark' | 'light' | 'ocean' | 'amber' | 'forest' | 'rose' | 'minimal'
 type MainView = 'editor' | 'graph'
 

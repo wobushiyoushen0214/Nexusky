@@ -126,12 +126,12 @@ export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: 
   `).all(note.title, noteId) as { sourceTitle: string; sourcePath: string; context: string }[]
 }
 
-export function getGraphData(vaultPath: string): { nodes: { id: string; title: string }[]; edges: { source: string; target: string }[] } {
+export function getGraphData(vaultPath: string): { nodes: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }[]; edges: { source: string; target: string }[] } {
   const db = getDatabase(vaultPath)
-  const nodes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
+  const notes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
 
   const titleToId = new Map<string, string>()
-  for (const n of nodes) {
+  for (const n of notes) {
     titleToId.set(n.title, n.id)
     const fileName = n.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '')
     if (!titleToId.has(fileName)) titleToId.set(fileName, n.id)
@@ -146,7 +146,38 @@ export function getGraphData(vaultPath: string): { nodes: { id: string; title: s
     }
   }
 
-  return { nodes: nodes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path })), edges }
+  const folderMap = new Map<string, string>()
+  for (const n of notes) {
+    const parts = n.file_path.split('/')
+    if (parts.length > 1) {
+      const folder = parts.slice(0, -1).join('/')
+      if (!folderMap.has(folder)) {
+        folderMap.set(folder, `folder:${folder}`)
+      }
+    }
+  }
+
+  const folderNodes = Array.from(folderMap.entries()).map(([path, id]) => ({
+    id,
+    title: path.split('/').pop() || path,
+    filePath: path,
+    type: 'folder' as const,
+  }))
+
+  for (const n of notes) {
+    const parts = n.file_path.split('/')
+    if (parts.length > 1) {
+      const folder = parts.slice(0, -1).join('/')
+      const folderId = folderMap.get(folder)
+      if (folderId) {
+        edges.push({ source: folderId, target: n.id })
+      }
+    }
+  }
+
+  const fileNodes = notes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path, type: 'file' as const }))
+
+  return { nodes: [...folderNodes, ...fileNodes], edges }
 }
 
 function extractTitle(content: string, filePath: string): string {

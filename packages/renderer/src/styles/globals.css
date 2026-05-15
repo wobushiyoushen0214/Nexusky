@@ -464,7 +464,6 @@ button:focus-visible {
   line-height: 1.8;
   color: var(--text-primary);
   caret-color: var(--accent);
-  max-width: 720px;
 }
 
 .editor-content .ProseMirror {

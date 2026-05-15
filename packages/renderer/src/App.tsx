@@ -64,7 +64,7 @@ export default function App() {
         mdPaths = [path]
       }
       // Open graph immediately with basic links, then enhance with AI
-      toggleRightPanel('graph')
+      setMainView('graph')
       toast('正在 AI 分析语义关系...', 'info')
       try {
         const result = await window.api.invoke('ai:infer-links', { vaultPath, filePaths: mdPaths })
@@ -156,16 +156,13 @@ export default function App() {
       }
       if (mod && (e.key === 'g' || e.key === 'G')) {
         e.preventDefault()
-        if (e.shiftKey) {
-          const state = useUIStore.getState()
-          if (state.mainView === 'graph') {
-            setMainView('editor')
-          } else {
-            if (state.rightPanel === 'graph') toggleRightPanel('graph')
-            setMainView('graph')
-          }
+        const state = useUIStore.getState()
+        if (state.mainView === 'graph') {
+          setMainView('editor')
+          if (state.sidebarCollapsed) toggleSidebar()
         } else {
-          toggleRightPanel('graph')
+          setMainView('graph')
+          if (!state.sidebarCollapsed) toggleSidebar()
         }
       }
       if (mod && e.key === 'l') {
@@ -292,21 +289,10 @@ export default function App() {
               <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />
             </>
           )}
-          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: 4, marginRight: rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
+          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: mainView === 'graph' ? 0 : '12px 12px 0 0', marginLeft: mainView === 'graph' ? 0 : sidebarCollapsed ? 0 : 4, marginRight: mainView === 'graph' ? 0 : rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
             {mainView === 'editor' ? <Editor /> : (
-              <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>知识图谱</span>
-                  <button
-                    onClick={() => setMainView('editor')}
-                    style={{ fontSize: 12, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                  >
-                    返回编辑器
-                  </button>
-                </div>
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <Suspense fallback={null}><GraphView /></Suspense>
-                </div>
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Suspense fallback={null}><GraphView /></Suspense>
               </div>
             )}
           </main>
@@ -316,20 +302,9 @@ export default function App() {
           <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {rightPanel === 'graph' ? '知识图谱' : rightPanel === 'chat' ? 'AI 对话' : rightPanel === 'tags' ? '标签' : rightPanel === 'calendar' ? '日历' : rightPanel === 'kanban' ? '看板' : rightPanel === 'history' ? '版本历史' : '大纲'}
+                {rightPanel === 'chat' ? 'AI 对话' : rightPanel === 'tags' ? '标签' : rightPanel === 'calendar' ? '日历' : rightPanel === 'kanban' ? '看板' : rightPanel === 'history' ? '版本历史' : '大纲'}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {rightPanel === 'graph' && (
-                  <button
-                    onClick={() => { setMainView('graph'); toggleRightPanel('graph') }}
-                    style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-                    title="全屏图谱"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-                    </svg>
-                  </button>
-                )}
                 <button
                   onClick={() => toggleRightPanel(rightPanel)}
                   style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
@@ -342,7 +317,6 @@ export default function App() {
             </div>
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <Suspense fallback={null}>
-              {rightPanel === 'graph' && <GraphView />}
               {rightPanel === 'outline' && <OutlinePanel />}
               {rightPanel === 'tags' && <TagsPanel />}
               {rightPanel === 'calendar' && <CalendarPanel />}

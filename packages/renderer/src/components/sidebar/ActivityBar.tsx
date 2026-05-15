@@ -45,7 +45,16 @@ export function ActivityBar() {
     files: () => toggleSidebar(),
     search: () => setSearchOpen(true),
     chat: () => toggleRightPanel('chat'),
-    graph: () => toggleRightPanel('graph'),
+    graph: () => {
+      const state = useUIStore.getState()
+      if (state.mainView === 'graph') {
+        setMainView('editor')
+        if (state.sidebarCollapsed) toggleSidebar()
+      } else {
+        setMainView('graph')
+        if (!state.sidebarCollapsed) toggleSidebar()
+      }
+    },
     outline: () => toggleRightPanel('outline'),
     tags: () => toggleRightPanel('tags'),
     calendar: () => toggleRightPanel('calendar'),
@@ -64,9 +73,9 @@ export function ActivityBar() {
   const hiddenItems = ACTIVITY_BAR_REGISTRY.filter((item) => !visibleIds.includes(item.id))
 
   const getActiveId = () => {
+    if (useUIStore.getState().mainView === 'graph') return 'graph'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
-    if (rightPanel === 'graph') return 'graph'
     if (rightPanel === 'outline') return 'outline'
     if (rightPanel === 'tags') return 'tags'
     if (rightPanel === 'calendar') return 'calendar'
