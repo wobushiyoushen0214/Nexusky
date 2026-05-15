@@ -1,8 +1,10 @@
 import { create } from 'zustand'
+import i18n from '../i18n'
 
 type Panel = 'none' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history'
 type Theme = 'dark' | 'light' | 'ocean' | 'amber' | 'forest' | 'rose' | 'minimal'
 type MainView = 'editor' | 'graph'
+type Language = 'zh-CN' | 'en'
 
 interface UIState {
   rightPanel: Panel
@@ -17,6 +19,7 @@ interface UIState {
   searchOpen: boolean
   commandPaletteOpen: boolean
   theme: Theme
+  language: Language
   setRightPanel: (panel: Panel) => void
   toggleRightPanel: (panel: Panel) => void
   setMainView: (view: MainView) => void
@@ -33,6 +36,7 @@ interface UIState {
   setSearchOpen: (open: boolean) => void
   setTheme: (theme: Theme) => void
   toggleTheme: () => void
+  setLanguage: (lang: Language) => void
 }
 
 function getInitialTheme(): Theme {
@@ -86,6 +90,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   searchOpen: false,
   commandPaletteOpen: false,
   theme: initialTheme,
+  language: (localStorage.getItem('nexusky-language') || 'zh-CN') as Language,
 
   setRightPanel: (panel) => set({ rightPanel: panel }),
   toggleRightPanel: (panel) => set({ rightPanel: get().rightPanel === panel ? 'none' : panel }),
@@ -119,5 +124,10 @@ export const useUIStore = create<UIState>((set, get) => ({
     const next = themes[(idx + 1) % themes.length]
     applyTheme(next)
     set({ theme: next })
+  },
+  setLanguage: (lang) => {
+    i18n.changeLanguage(lang)
+    localStorage.setItem('nexusky-language', lang)
+    set({ language: lang })
   },
 }))

@@ -1,0 +1,66 @@
+{
+  "graph": {
+    "title": "Graph",
+    "emptyTitle": "No graph data yet",
+    "emptyHint": "Use [[links]] in your notes to build connections",
+    "filters": "Filters",
+    "groups": "Groups",
+    "display": "Display",
+    "forces": "Forces",
+    "info": "Info",
+    "search": "Search...",
+    "linksGte": "Links ≥",
+    "all": "All",
+    "noFolderGroups": "No folder groups",
+    "labels": "Labels",
+    "orphans": "Orphans",
+    "arrows": "Arrows",
+    "folders": "Folders",
+    "repulsion": "Repulsion",
+    "distance": "Distance",
+    "aggregation": "Aggregation",
+    "nodes": "{{count}} nodes",
+    "connections": "{{count}} connections",
+    "backToEditor": "Back to editor"
+  },
+  "activityBar": {
+    "files": "Files",
+    "search": "Search",
+    "chat": "AI Chat",
+    "graph": "Knowledge Graph",
+    "outline": "Outline",
+    "tags": "Tags",
+    "calendar": "Calendar",
+    "kanban": "Kanban",
+    "dailyNote": "Daily Note",
+    "more": "More",
+    "settings": "Settings"
+  },
+  "panels": {
+    "chat": "AI Chat",
+    "tags": "Tags",
+    "calendar": "Calendar",
+    "kanban": "Kanban",
+    "history": "History",
+    "outline": "Outline"
+  },
+  "common": {
+    "indexing": "Indexing note relations...",
+    "noMdFiles": "No .md files in this folder",
+    "aiAnalyzing": "AI analyzing semantic relations...",
+    "semanticFound": "Found {{count}} semantic links, graph updated",
+    "semanticDone": "Semantic analysis complete",
+    "semanticFailed": "AI semantic analysis failed, showing existing relations only",
+    "syncDone": "Sync complete: ↑{{pushed}} ↓{{pulled}}",
+    "syncError": "Sync error: {{error}}",
+    "syncFailed": "Sync failed: {{error}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "title": "Language",
+      "zhCN": "简体中文",
+      "en": "English"
+    }
+  }
+}

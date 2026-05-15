@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
 import { select } from 'd3-selection'
 import { zoom } from 'd3-zoom'
@@ -46,6 +47,7 @@ function getRadius(d: SimNode) {
 }
 
 export function GraphView() {
+  const { t } = useTranslation()
   const svgRef = useRef<SVGSVGElement>(null)
   const simulationRef = useRef<ReturnType<typeof forceSimulation<SimNode>> | null>(null)
   const graphBuiltForRef = useRef<string | null>(null)
@@ -725,8 +727,8 @@ export function GraphView() {
     return (
       <div className="graph-empty">
         <div className="graph-empty-inner">
-          <p className="graph-empty-title">暂无图谱数据</p>
-          <p className="graph-empty-hint">在笔记中使用 [[链接]] 建立关系</p>
+          <p className="graph-empty-title">{t('graph.emptyTitle')}</p>
+          <p className="graph-empty-hint">{t('graph.emptyHint')}</p>
         </div>
       </div>
     )
@@ -748,7 +750,7 @@ export function GraphView() {
               <circle cx="12" cy="12" r="2"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>
               <line x1="8" y1="8" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="8"/><line x1="8" y1="16" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="16"/>
             </svg>
-            GRAPH
+            {t('graph.title').toUpperCase()}
           </div>
           <button className="graph-panel-collapse" onClick={() => setPanelCollapsed(true)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -760,21 +762,21 @@ export function GraphView() {
         {!panelCollapsed && (
           <>
             <div className="graph-panel-section">
-              <div className="graph-panel-section-title">FILTERS</div>
+              <div className="graph-panel-section-title">{t('graph.filters').toUpperCase()}</div>
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
+                placeholder={t('graph.search')}
                 className="graph-search"
               />
               <label className="graph-filter-label">
-                链接 ≥
+                {t('graph.linksGte')}
                 <select
                   value={minLinks}
                   onChange={(e) => setMinLinks(Number(e.target.value))}
                   className="graph-filter-select"
                 >
-                  <option value={0}>全部</option>
+                  <option value={0}>{t('graph.all')}</option>
                   <option value={1}>1</option>
                   <option value={2}>2</option>
                   <option value={3}>3</option>
@@ -784,7 +786,7 @@ export function GraphView() {
             </div>
 
             <div className="graph-panel-section">
-              <div className="graph-panel-section-title">GROUPS</div>
+              <div className="graph-panel-section-title">{t('graph.groups').toUpperCase()}</div>
               <div className="graph-groups-list">
                 {graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((folder: GraphNode) => (
                   <div key={folder.id} className="graph-group-item">
@@ -793,39 +795,39 @@ export function GraphView() {
                   </div>
                 ))}
                 {graphData.nodes.filter((n: GraphNode) => n.type === 'folder').length === 0 && (
-                  <div className="graph-panel-info">无文件夹分组</div>
+                  <div className="graph-panel-info">{t('graph.noFolderGroups')}</div>
                 )}
               </div>
             </div>
 
             <div className="graph-panel-section">
-              <div className="graph-panel-section-title">DISPLAY</div>
+              <div className="graph-panel-section-title">{t('graph.display').toUpperCase()}</div>
               <label className="graph-toggle">
-                <span>Labels</span>
+                <span>{t('graph.labels')}</span>
                 <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
                 <span className="graph-toggle-slider" />
               </label>
               <label className="graph-toggle">
-                <span>Orphans</span>
+                <span>{t('graph.orphans')}</span>
                 <input type="checkbox" checked={showOrphans} onChange={(e) => setShowOrphans(e.target.checked)} />
                 <span className="graph-toggle-slider" />
               </label>
               <label className="graph-toggle">
-                <span>Arrows</span>
+                <span>{t('graph.arrows')}</span>
                 <input type="checkbox" checked={showArrows} onChange={(e) => setShowArrows(e.target.checked)} />
                 <span className="graph-toggle-slider" />
               </label>
               <label className="graph-toggle">
-                <span>Folders</span>
+                <span>{t('graph.folders')}</span>
                 <input type="checkbox" checked={showFolders} onChange={(e) => setShowFolders(e.target.checked)} />
                 <span className="graph-toggle-slider" />
               </label>
             </div>
 
             <div className="graph-panel-section">
-              <div className="graph-panel-section-title">FORCES</div>
+              <div className="graph-panel-section-title">{t('graph.forces').toUpperCase()}</div>
               <label className="graph-slider-label">
-                <span>斥力</span>
+                <span>{t('graph.repulsion')}</span>
                 <span className="graph-slider-value">{chargeStrength}</span>
               </label>
               <input
@@ -838,7 +840,7 @@ export function GraphView() {
                 className="graph-slider"
               />
               <label className="graph-slider-label">
-                <span>距离</span>
+                <span>{t('graph.distance')}</span>
                 <span className="graph-slider-value">{linkDistance}</span>
               </label>
               <input
@@ -851,7 +853,7 @@ export function GraphView() {
                 className="graph-slider"
               />
               <label className="graph-slider-label">
-                <span>聚合</span>
+                <span>{t('graph.aggregation')}</span>
                 <span className="graph-slider-value">{centerStrength.toFixed(2)}</span>
               </label>
               <input
@@ -866,9 +868,9 @@ export function GraphView() {
             </div>
 
             <div className="graph-panel-section">
-              <div className="graph-panel-section-title">INFO</div>
+              <div className="graph-panel-section-title">{t('graph.info').toUpperCase()}</div>
               <div className="graph-panel-info">
-                {graphData.nodes.length} 节点 · {graphData.edges.length} 连接
+                {t('graph.nodes', { count: graphData.nodes.length })} · {t('graph.connections', { count: graphData.edges.length })}
               </div>
             </div>
 
@@ -877,7 +879,7 @@ export function GraphView() {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
                 </svg>
-                返回编辑器
+                {t('graph.backToEditor')}
               </button>
             </div>
           </>

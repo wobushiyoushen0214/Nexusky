@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -19,6 +20,7 @@ const iconMap: Record<string, React.ReactNode> = {
 }
 
 export function ActivityBar() {
+  const { t } = useTranslation()
   const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, rightPanel, sidebarCollapsed, toggleSidebar } = useUIStore()
   const { vaultPath, refreshFiles } = useVaultStore()
   const openFile = useEditorStore((s) => s.openFile)
@@ -93,7 +95,7 @@ export function ActivityBar() {
   const contextMenuItems = ACTIVITY_BAR_REGISTRY
     .filter((item) => !item.pinned)
     .map((item) => ({
-      label: `${visibleIds.includes(item.id) ? '✓ ' : '    '}${item.label}`,
+      label: `${visibleIds.includes(item.id) ? '✓ ' : '    '}${t(item.labelKey)}`,
       onClick: () => toggleVisibility(item.id),
     }))
 
@@ -120,7 +122,7 @@ export function ActivityBar() {
             <button
               key={item!.id}
               onClick={actionMap[item!.id]}
-              title={`${item!.label}${item!.shortcut ? ` (${item!.shortcut})` : ''}`}
+              title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}`}
               style={{
                 width: 40,
                 height: 40,
@@ -158,7 +160,7 @@ export function ActivityBar() {
           <button
             ref={moreButtonRef}
             onClick={() => setMoreOpen(!moreOpen)}
-            title="更多"
+            title={t('activityBar.more')}
             style={{
               width: 40,
               height: 40,
@@ -192,7 +194,7 @@ export function ActivityBar() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 12 }}>
         <button
           onClick={() => setSettingsOpen(true)}
-          title="设置 (Ctrl+,)"
+          title={t('activityBar.settings') + ' (Ctrl+,)'}
           style={{
             width: 40,
             height: 40,
@@ -241,7 +243,7 @@ export function ActivityBar() {
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
               {item.shortcut && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{item.shortcut}</span>}
             </button>
           ))}

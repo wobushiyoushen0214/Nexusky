@@ -53,6 +53,7 @@
     "dompurify": "^3.4.2",
     "electron-updater": "^6.8.3",
     "gray-matter": "^4.0.3",
+    "i18next": "^26.2.0",
     "katex": "^0.16.45",
     "lowlight": "^3.3.0",
     "marked": "^18.0.3",
@@ -60,6 +61,7 @@
     "openai": "^6.37.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-i18next": "^17.0.8",
     "tiptap-markdown": "^0.8.10",
     "ws": "^8.20.0",
     "zustand": "^5.0.0"

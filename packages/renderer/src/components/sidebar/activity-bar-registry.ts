@@ -1,6 +1,6 @@
 export interface ActivityBarItemDef {
   id: string
-  label: string
+  labelKey: string
   shortcut?: string
   defaultVisible: boolean
   defaultOrder: number
@@ -8,13 +8,13 @@ export interface ActivityBarItemDef {
 }
 
 export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
-  { id: 'files', label: '文件', shortcut: 'Ctrl+B', defaultVisible: true, defaultOrder: 0, pinned: true },
-  { id: 'search', label: '搜索', shortcut: 'Ctrl+Shift+F', defaultVisible: true, defaultOrder: 1, pinned: true },
-  { id: 'chat', label: 'AI 对话', shortcut: 'Ctrl+L', defaultVisible: true, defaultOrder: 2 },
-  { id: 'graph', label: '知识图谱', shortcut: 'Ctrl+G', defaultVisible: true, defaultOrder: 3 },
-  { id: 'outline', label: '文档大纲', shortcut: 'Ctrl+E', defaultVisible: true, defaultOrder: 4 },
-  { id: 'tags', label: '标签', defaultVisible: true, defaultOrder: 5 },
-  { id: 'calendar', label: '日历', defaultVisible: false, defaultOrder: 6 },
-  { id: 'kanban', label: '看板', defaultVisible: false, defaultOrder: 7 },
-  { id: 'daily-note', label: '今日笔记', defaultVisible: false, defaultOrder: 8 },
+  { id: 'files', labelKey: 'activityBar.files', shortcut: 'Ctrl+B', defaultVisible: true, defaultOrder: 0, pinned: true },
+  { id: 'search', labelKey: 'activityBar.search', shortcut: 'Ctrl+Shift+F', defaultVisible: true, defaultOrder: 1, pinned: true },
+  { id: 'chat', labelKey: 'activityBar.chat', shortcut: 'Ctrl+L', defaultVisible: true, defaultOrder: 2 },
+  { id: 'graph', labelKey: 'activityBar.graph', shortcut: 'Ctrl+G', defaultVisible: true, defaultOrder: 3 },
+  { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: true, defaultOrder: 4 },
+  { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: true, defaultOrder: 5 },
+  { id: 'calendar', labelKey: 'activityBar.calendar', defaultVisible: false, defaultOrder: 6 },
+  { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: false, defaultOrder: 7 },
+  { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 8 },
 ]

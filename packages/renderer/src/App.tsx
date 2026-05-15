@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
@@ -38,6 +39,7 @@ function flatMdPaths(entries: FileEntry[]): string[] {
 }
 
 export default function App() {
+  const { t } = useTranslation()
   const { vaultPath, loadVault } = useVaultStore()
   const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView } = useUIStore()
   const [trashOpen, setTrashOpen] = useState(false)
@@ -50,12 +52,12 @@ export default function App() {
     const handler = async (e: Event) => {
       const { path, isDirectory } = (e as CustomEvent).detail || {}
       if (!path || !vaultPath) return
-      toast('正在索引笔记关系...', 'info')
+      toast(t('common.indexing'), 'info')
       let mdPaths: string[] = []
       if (isDirectory) {
         const files = await window.api.invoke('file:list', { dirPath: path })
         mdPaths = flatMdPaths(files)
-        if (mdPaths.length === 0) { toast('该文件夹下没有 .md 文件', 'info'); return }
+        if (mdPaths.length === 0) { toast(t('common.noMdFiles'), 'info'); return }
         for (const fp of mdPaths) {
           await window.api.invoke('db:index-file', { vaultPath, filePath: fp })
         }
@@ -65,18 +67,18 @@ export default function App() {
       }
       // Open graph immediately with basic links, then enhance with AI
       setMainView('graph')
-      toast('正在 AI 分析语义关系...', 'info')
+      toast(t('common.aiAnalyzing'), 'info')
       try {
         const result = await window.api.invoke('ai:infer-links', { vaultPath, filePaths: mdPaths })
         if (result.success && result.added > 0) {
-          toast(`发现 ${result.added} 条语义关联，图谱已更新`, 'success')
+          toast(t('common.semanticFound', { count: result.added }), 'success')
           // Trigger graph refresh
           window.dispatchEvent(new CustomEvent('graph-data-updated'))
         } else {
-          toast('语义分析完成', 'success')
+          toast(t('common.semanticDone'), 'success')
         }
       } catch {
-        toast('AI 语义分析失败，图谱仅显示已有关系', 'info')
+        toast(t('common.semanticFailed'), 'info')
       }
     }
     window.addEventListener('index-and-show-graph', handler)
@@ -90,7 +92,7 @@ export default function App() {
       if (isDirectory) {
         const files = await window.api.invoke('file:list', { dirPath: path })
         const mdPaths = flatMdPaths(files)
-        if (mdPaths.length === 0) { toast('该文件夹下没有 .md 文件', 'info'); return }
+        if (mdPaths.length === 0) { toast(t('common.noMdFiles'), 'info'); return }
         setGraphGenPaths(mdPaths)
       } else {
         setGraphGenPaths([path])
@@ -263,14 +265,14 @@ export default function App() {
         const result = await window.api.invoke('cloud:sync', { vaultPath })
         if (result.errors.length === 0) {
           setSuccess()
-          if (result.pushed > 0 || result.pulled > 0) toast(`同步完成: ↑${result.pushed} ↓${result.pulled}`, 'success')
+          if (result.pushed > 0 || result.pulled > 0) toast(t('common.syncDone', { pushed: result.pushed, pulled: result.pulled }), 'success')
         } else {
           setError(result.errors[0])
-          toast(`同步出错: ${result.errors[0]}`, 'error')
+          toast(t('common.syncError', { error: result.errors[0] }), 'error')
         }
       } catch (e: any) {
         setError(e.message)
-        toast(`同步失败: ${e.message}`, 'error')
+        toast(t('common.syncFailed', { error: e.message }), 'error')
       }
     }, autoSyncInterval * 60 * 1000)
 
@@ -302,7 +304,7 @@ export default function App() {
           <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {rightPanel === 'chat' ? 'AI 对话' : rightPanel === 'tags' ? '标签' : rightPanel === 'calendar' ? '日历' : rightPanel === 'kanban' ? '看板' : rightPanel === 'history' ? '版本历史' : '大纲'}
+                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'kanban' ? t('panels.kanban') : rightPanel === 'history' ? t('panels.history') : t('panels.outline')}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button

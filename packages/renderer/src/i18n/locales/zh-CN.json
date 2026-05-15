@@ -1,0 +1,66 @@
+{
+  "graph": {
+    "title": "图谱",
+    "emptyTitle": "暂无图谱数据",
+    "emptyHint": "在笔记中使用 [[链接]] 建立关系",
+    "filters": "筛选",
+    "groups": "分组",
+    "display": "显示",
+    "forces": "力场",
+    "info": "信息",
+    "search": "搜索...",
+    "linksGte": "链接 ≥",
+    "all": "全部",
+    "noFolderGroups": "无文件夹分组",
+    "labels": "标签",
+    "orphans": "孤立节点",
+    "arrows": "箭头",
+    "folders": "文件夹",
+    "repulsion": "斥力",
+    "distance": "距离",
+    "aggregation": "聚合",
+    "nodes": "{{count}} 节点",
+    "connections": "{{count}} 连接",
+    "backToEditor": "返回编辑器"
+  },
+  "activityBar": {
+    "files": "文件",
+    "search": "搜索",
+    "chat": "AI 对话",
+    "graph": "知识图谱",
+    "outline": "文档大纲",
+    "tags": "标签",
+    "calendar": "日历",
+    "kanban": "看板",
+    "dailyNote": "今日笔记",
+    "more": "更多",
+    "settings": "设置"
+  },
+  "panels": {
+    "chat": "AI 对话",
+    "tags": "标签",
+    "calendar": "日历",
+    "kanban": "看板",
+    "history": "版本历史",
+    "outline": "大纲"
+  },
+  "common": {
+    "indexing": "正在索引笔记关系...",
+    "noMdFiles": "该文件夹下没有 .md 文件",
+    "aiAnalyzing": "正在 AI 分析语义关系...",
+    "semanticFound": "发现 {{count}} 条语义关联，图谱已更新",
+    "semanticDone": "语义分析完成",
+    "semanticFailed": "AI 语义分析失败，图谱仅显示已有关系",
+    "syncDone": "同步完成: ↑{{pushed}} ↓{{pulled}}",
+    "syncError": "同步出错: {{error}}",
+    "syncFailed": "同步失败: {{error}}"
+  },
+  "settings": {
+    "title": "设置",
+    "language": {
+      "title": "语言",
+      "zhCN": "简体中文",
+      "en": "English"
+    }
+  }
+}
