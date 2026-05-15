@@ -443,31 +443,6 @@ export function GraphView() {
         return null
       })
 
-    // Current node: use hover filter for stronger glow + pulse ring
-    nodeGroup.filter(isCurrentNode).select('.node-core')
-      .attr('stroke-opacity', 0.9)
-      .attr('filter', (d) => {
-        const idx = nodeIndexMap.get(d.id)
-        if (idx != null && multiHoverFilterIds.has(idx)) {
-          return `url(#${multiHoverFilterIds.get(idx)})`
-        }
-        if (d.type === 'folder' && d.group) {
-          const fId = folderHoverFilterIds.get(d.group)
-          return fId ? `url(#${fId})` : null
-        }
-        if (d.type === 'file' && d.group) {
-          const fId = fileHoverFilterIds.get(d.group)
-          return fId ? `url(#${fId})` : null
-        }
-        return null
-      })
-
-    nodeGroup.filter(isCurrentNode).append('circle')
-      .attr('class', 'node-pulse')
-      .attr('r', (d) => getRadius(d) + 8)
-      .style('stroke', (d) => d.color || 'var(--accent)')
-      .style('stroke-width', '2px')
-
     // Label — show for folder nodes or current node
     nodeGroup.append('text')
       .text((d) => d.title)
@@ -533,6 +508,31 @@ export function GraphView() {
       merge.append('feMergeNode').attr('in', 'SourceGraphic')
       merge.append('feMergeNode').attr('in', 'innerGlow')
     })
+
+    // Current node: use hover filter for stronger glow + pulse ring
+    nodeGroup.filter(isCurrentNode).select('.node-core')
+      .attr('stroke-opacity', 0.9)
+      .attr('filter', (d) => {
+        const idx = nodeIndexMap.get(d.id)
+        if (idx != null && multiHoverFilterIds.has(idx)) {
+          return `url(#${multiHoverFilterIds.get(idx)})`
+        }
+        if (d.type === 'folder' && d.group) {
+          const fId = folderHoverFilterIds.get(d.group)
+          return fId ? `url(#${fId})` : null
+        }
+        if (d.type === 'file' && d.group) {
+          const fId = fileHoverFilterIds.get(d.group)
+          return fId ? `url(#${fId})` : null
+        }
+        return null
+      })
+
+    nodeGroup.filter(isCurrentNode).append('circle')
+      .attr('class', 'node-pulse')
+      .attr('r', (d) => getRadius(d) + 8)
+      .style('stroke', (d) => d.color || 'var(--accent)')
+      .style('stroke-width', '2px')
 
     // Hover interactions
     nodeGroup
