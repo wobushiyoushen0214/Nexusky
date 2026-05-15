@@ -130,19 +130,38 @@ export function getGraphData(vaultPath: string): { nodes: { id: string; title: s
   const db = getDatabase(vaultPath)
   const notes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
 
-  const titleToId = new Map<string, string>()
-  for (const n of notes) {
-    titleToId.set(n.title, n.id)
-    const fileName = n.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '')
-    if (!titleToId.has(fileName)) titleToId.set(fileName, n.id)
-  }
+  const noteIds = new Set(notes.map((n) => n.id))
 
-  const links = db.prepare('SELECT source_note_id, target_title FROM links').all() as { source_note_id: string; target_title: string }[]
+  // Build titleToId with collision detection — ambiguous titles are excluded
+  const titleToId = new Map<string, string>()
+  const ambiguousTitles = new Set<string>()
+  for (const n of notes) {
+    if (titleToId.has(n.title) && titleToId.get(n.title) !== n.id) {
+      ambiguousTitles.add(n.title)
+    } else {
+      titleToId.set(n.title, n.id)
+    }
+    const fileName = n.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '')
+    if (titleToId.has(fileName) && titleToId.get(fileName) !== n.id) {
+      ambiguousTitles.add(fileName)
+    } else if (!titleToId.has(fileName)) {
+      titleToId.set(fileName, n.id)
+    }
+  }
+  for (const t of ambiguousTitles) titleToId.delete(t)
+
+  // Prefer resolved target_note_id; fall back to titleToId only for unresolved links
+  const links = db.prepare('SELECT source_note_id, target_note_id, target_title FROM links').all() as { source_note_id: string; target_note_id: string | null; target_title: string }[]
+  const edgeSet = new Set<string>()
   const edges: { source: string; target: string }[] = []
   for (const l of links) {
-    const targetId = titleToId.get(l.target_title)
+    const targetId = (l.target_note_id && noteIds.has(l.target_note_id)) ? l.target_note_id : titleToId.get(l.target_title)
     if (targetId && targetId !== l.source_note_id) {
-      edges.push({ source: l.source_note_id, target: targetId })
+      const key = `${l.source_note_id}->${targetId}`
+      if (!edgeSet.has(key)) {
+        edgeSet.add(key)
+        edges.push({ source: l.source_note_id, target: targetId })
+      }
     }
   }
 

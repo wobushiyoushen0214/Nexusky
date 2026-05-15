@@ -397,3 +397,65 @@ export function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float
   }
   return dot / (Math.sqrt(normA) * Math.sqrt(normB))
 }
+
+export function findSimilarNotes(vaultPath: string, topK = 5, threshold = 0.5): { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] {
+  const { docs, idf } = buildTfIdfIndex(vaultPath)
+
+  const noteMap = new Map<string, { title: string; filePath: string; terms: Map<string, number>; norm: number }>()
+  for (const doc of docs) {
+    const existing = noteMap.get(doc.noteId)
+    if (!existing) {
+      noteMap.set(doc.noteId, { title: doc.title, filePath: doc.filePath, terms: new Map(doc.terms), norm: doc.norm })
+    } else {
+      for (const [term, freq] of doc.terms) {
+        existing.terms.set(term, (existing.terms.get(term) || 0) + freq)
+      }
+    }
+  }
+
+  const notes = Array.from(noteMap.entries()).map(([id, data]) => {
+    let norm = 0
+    for (const [term, freq] of data.terms) {
+      const w = freq * (idf.get(term) || 1)
+      norm += w * w
+    }
+    const folder = data.filePath.split('/').slice(0, -1).join('/') || '_root'
+    return { id, title: data.title, folder, terms: data.terms, norm: Math.sqrt(norm) }
+  })
+
+  const results: { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] = []
+
+  for (let i = 0; i < notes.length; i++) {
+    const a = notes[i]
+    if (a.norm === 0) continue
+    const scored: { targetId: string; targetTitle: string; score: number }[] = []
+
+    for (let j = i + 1; j < notes.length; j++) {
+      const b = notes[j]
+      if (b.norm === 0) continue
+      // Only infer cross-folder links
+      if (a.folder === b.folder) continue
+
+      let dot = 0
+      for (const [term, freqA] of a.terms) {
+        const freqB = b.terms.get(term)
+        if (freqB) {
+          const idfVal = idf.get(term) || 1
+          dot += (freqA * idfVal) * (freqB * idfVal)
+        }
+      }
+      if (dot === 0) continue
+      const score = dot / (a.norm * b.norm)
+      if (score >= threshold) {
+        scored.push({ targetId: b.id, targetTitle: b.title, score })
+      }
+    }
+
+    scored.sort((x, y) => y.score - x.score)
+    for (const s of scored.slice(0, topK)) {
+      results.push({ sourceId: a.id, sourceTitle: a.title, ...s })
+    }
+  }
+
+  return results
+}
