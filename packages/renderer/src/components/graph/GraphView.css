@@ -382,7 +382,7 @@
 
 /* Core circle */
 .node-core {
-  transition: r 200ms ease, fill 200ms, opacity 200ms;
+  transition: r 200ms ease, fill 200ms, opacity 200ms, filter 300ms ease, stroke-opacity 200ms;
 }
 
 /* Pulse ring on active node */

@@ -372,11 +372,84 @@ export function GraphView() {
         return d.type === 'folder' ? 4 : r + 14
       })
 
+    // Hover filter variants (brighter glow for hover state)
+    const folderHoverFilterIds = new Map<string, string>()
+    groupColorMap.forEach((color, folderId) => {
+      const filterId = `folder-hover-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
+      folderHoverFilterIds.set(folderId, filterId)
+      const filter = defs.append('filter')
+        .attr('id', filterId)
+        .attr('x', '-200%').attr('y', '-200%')
+        .attr('width', '500%').attr('height', '500%')
+
+      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '14').attr('result', 'outerBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.7').attr('result', 'outerColor')
+      filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
+
+      filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '2').attr('result', 'eroded')
+      filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
+      filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '3').attr('result', 'borderBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.6').attr('result', 'innerColor')
+      filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
+      filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
+
+      filter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', '1').attr('result', 'blurredSrc')
+      filter.append('feComposite').attr('in', 'blurredSrc').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'blurClipped')
+
+      const merge = filter.append('feMerge')
+      merge.append('feMergeNode').attr('in', 'outerGlow')
+      merge.append('feMergeNode').attr('in', 'blurClipped')
+      merge.append('feMergeNode').attr('in', 'innerGlow')
+    })
+
+    const fileHoverFilterIds = new Map<string, string>()
+    groupColorMap.forEach((color, folderId) => {
+      const filterId = `file-hover-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
+      fileHoverFilterIds.set(folderId, filterId)
+      const filter = defs.append('filter')
+        .attr('id', filterId)
+        .attr('x', '-200%').attr('y', '-200%')
+        .attr('width', '500%').attr('height', '500%')
+
+      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '7').attr('result', 'outerBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.7').attr('result', 'outerColor')
+      filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
+
+      filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '1').attr('result', 'eroded')
+      filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
+      filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '1.5').attr('result', 'borderBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.8').attr('result', 'innerColor')
+      filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
+      filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
+
+      const merge = filter.append('feMerge')
+      merge.append('feMergeNode').attr('in', 'outerGlow')
+      merge.append('feMergeNode').attr('in', 'SourceGraphic')
+      merge.append('feMergeNode').attr('in', 'innerGlow')
+    })
+
     // Hover interactions
     nodeGroup
       .on('mouseenter', function (_event, d) {
         const group = select(this)
         group.select('.node-label').classed('hidden', false).attr('opacity', 1).style('fill', 'var(--text-primary)')
+
+        const r = getRadius(d)
+        const hoverR = Math.min(r * 1.25, r + 4)
+        group.select('.node-core')
+          .attr('r', hoverR)
+          .attr('stroke-opacity', 0.9)
+          .attr('filter', () => {
+            if (d.type === 'folder' && d.group) {
+              const fId = folderHoverFilterIds.get(d.group)
+              return fId ? `url(#${fId})` : null
+            }
+            if (d.type === 'file' && d.group) {
+              const fId = fileHoverFilterIds.get(d.group)
+              return fId ? `url(#${fId})` : null
+            }
+            return null
+          })
 
         const connectedIds = new Set<string>()
         links.forEach((l) => {
@@ -387,10 +460,6 @@ export function GraphView() {
         })
 
         nodeGroup.classed('dimmed', (n) => n.id !== d.id && !connectedIds.has(n.id))
-
-        nodeGroup.filter((n) => connectedIds.has(n.id)).each(function (n) {
-          select(this).select('.node-core').attr('fill', 'var(--bg-base)').attr('opacity', 1)
-        })
 
         link.classed('highlighted', (l: any) => {
           const s = typeof l.source === 'string' ? l.source : l.source.id
@@ -409,10 +478,24 @@ export function GraphView() {
         nodeGroup.each(function (d) {
           const group = select(this)
           const isCurrent = d.title === currentTitle
+          const r = getRadius(d)
           const nodeFill = isCurrent ? 'var(--accent-text)' : 'var(--bg-base)'
           group.select('.node-core')
+            .attr('r', r)
             .attr('fill', nodeFill)
             .attr('opacity', 1)
+            .attr('stroke-opacity', d.type === 'folder' ? 0.6 : 0.5)
+            .attr('filter', () => {
+              if (d.type === 'folder' && d.group) {
+                const fId = folderFilterIds.get(d.group)
+                return fId ? `url(#${fId})` : null
+              }
+              if (d.type === 'file' && d.group) {
+                const fId = fileFilterIds.get(d.group)
+                return fId ? `url(#${fId})` : null
+              }
+              return null
+            })
           group.select('.node-label')
             .classed('hidden', !showLabelsRef.current)
             .attr('opacity', isCurrent ? 1 : 0.75)
