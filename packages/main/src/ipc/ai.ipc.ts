@@ -95,11 +95,11 @@ ${context}
         window.webContents.send('ai:stream', chunk)
       }
     } catch (err: any) {
-      if (!window.isDestroyed()) {
+      if (!window.isDestroyed() && !controller.signal.aborted) {
         window.webContents.send('ai:stream', { type: 'error', content: err?.message || String(err) })
       }
     } finally {
-      if (!window.isDestroyed()) {
+      if (!window.isDestroyed() && !controller.signal.aborted) {
         window.webContents.send('ai:stream', { type: 'done', content: '' })
       }
       activeAbortControllers.delete(windowId)
@@ -960,11 +960,11 @@ graph TD
         // If there were tool calls, loop continues to get the model's response
       }
 
-      if (!window.isDestroyed()) {
+      if (!window.isDestroyed() && !controller.signal.aborted) {
         window.webContents.send('ai:stream', { type: 'done', content: '' })
       }
     } catch (err: any) {
-      if (!window.isDestroyed()) {
+      if (!window.isDestroyed() && !controller.signal.aborted) {
         window.webContents.send('ai:stream', { type: 'error', content: err?.message || String(err) })
         window.webContents.send('ai:stream', { type: 'done', content: '' })
       }
