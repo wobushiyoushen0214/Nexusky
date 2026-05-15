@@ -21,7 +21,9 @@
     "aggregation": "Aggregation",
     "nodes": "{{count}} nodes",
     "connections": "{{count}} connections",
-    "backToEditor": "Back to editor"
+    "backToEditor": "Back to editor",
+    "inferGlobal": "Infer cross-folder links",
+    "reindex": "Rebuild index"
   },
   "activityBar": {
     "files": "Files",

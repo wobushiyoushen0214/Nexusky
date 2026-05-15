@@ -63,6 +63,7 @@ export function GraphView() {
   const [showArrows, setShowArrows] = useState(false)
   const [showFolders, setShowFolders] = useState(true)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const [indexStatus, setIndexStatus] = useState<string | null>(null)
   const [chargeStrength, setChargeStrength] = useState(-350)
   const [linkDistance, setLinkDistance] = useState(80)
   const [centerStrength, setCenterStrength] = useState(0.02)
@@ -226,20 +227,30 @@ export function GraphView() {
     const nodeMap = new Map<string, SimNode>()
     nodes.forEach((n) => nodeMap.set(n.id, n))
 
+    // Link gradients for bone-joint style connections
+    links.forEach((l, i) => {
+      const sId = typeof l.source === 'string' ? l.source : l.source.id
+      const tId = typeof l.target === 'string' ? l.target : l.target.id
+      const sNode = nodeMap.get(sId)
+      const tNode = nodeMap.get(tId)
+      const color = sNode?.color || tNode?.color || 'var(--text-tertiary)'
+      const grad = defs.append('linearGradient')
+        .attr('id', `link-grad-${i}`)
+        .attr('gradientUnits', 'userSpaceOnUse')
+      grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', '0.7')
+      grad.append('stop').attr('offset', '30%').attr('stop-color', color).attr('stop-opacity', '0.2')
+      grad.append('stop').attr('offset', '70%').attr('stop-color', color).attr('stop-opacity', '0.2')
+      grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', '0.7')
+    })
+
     const linkGroup = g.append('g').attr('class', 'graph-links')
     const link = linkGroup
-      .selectAll('line')
+      .selectAll('path')
       .data(links)
-      .join('line')
+      .join('path')
       .attr('class', 'graph-link')
-      .attr('stroke', (l) => {
-        const sId = typeof l.source === 'string' ? l.source : l.source.id
-        const tId = typeof l.target === 'string' ? l.target : l.target.id
-        const sNode = nodeMap.get(sId)
-        const tNode = nodeMap.get(tId)
-        return sNode?.color || tNode?.color || 'var(--text-tertiary)'
-      })
-      .attr('stroke-width', 0.5)
+      .attr('stroke', (_l, i) => `url(#link-grad-${i})`)
+      .attr('stroke-width', 0.8)
       .attr('marker-end', showArrowsRef.current ? 'url(#arrowhead)' : null)
 
     const nodeGroup = g.append('g').attr('class', 'graph-nodes')
@@ -356,15 +367,15 @@ export function GraphView() {
         .attr('width', '400%').attr('height', '400%')
 
       // Outer glow
-      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '10').attr('result', 'outerBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.4').attr('result', 'outerColor')
+      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '12').attr('result', 'outerBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.65').attr('result', 'outerColor')
       filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
 
       // Inner shadow at edges
       filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '2').attr('result', 'eroded')
       filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
       filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '3').attr('result', 'borderBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.35').attr('result', 'innerColor')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.55').attr('result', 'innerColor')
       filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
       filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
 
@@ -379,34 +390,55 @@ export function GraphView() {
       merge.append('feMergeNode').attr('in', 'innerGlow')
     })
 
-    // Small file node glow filter per color
+    // Small file node glow filter per color, with brightness levels based on linkCount
+    // Level 0: linkCount 0 (dim), Level 1: 1-2, Level 2: 3-4, Level 3: 5-7, Level 4: 8+ (bright)
     const fileFilterIds = new Map<string, string>()
+    const fileLevelFilterIds = new Map<string, Map<number, string>>()
+    const BRIGHTNESS_LEVELS = [
+      { outerBlur: 2, outerOpacity: 0.12, innerOpacity: 0.15 },
+      { outerBlur: 3, outerOpacity: 0.25, innerOpacity: 0.3 },
+      { outerBlur: 4, outerOpacity: 0.4, innerOpacity: 0.5 },
+      { outerBlur: 5, outerOpacity: 0.55, innerOpacity: 0.6 },
+      { outerBlur: 6, outerOpacity: 0.7, innerOpacity: 0.75 },
+    ]
+
     groupColorMap.forEach((color, folderId) => {
-      const filterId = `file-glow-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
-      fileFilterIds.set(folderId, filterId)
-      const filter = defs.append('filter')
-        .attr('id', filterId)
-        .attr('x', '-150%').attr('y', '-150%')
-        .attr('width', '400%').attr('height', '400%')
+      const levelMap = new Map<number, string>()
+      BRIGHTNESS_LEVELS.forEach((level, li) => {
+        const filterId = `file-glow-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}-L${li}`
+        if (li === 2) fileFilterIds.set(folderId, filterId)
+        levelMap.set(li, filterId)
+        const filter = defs.append('filter')
+          .attr('id', filterId)
+          .attr('x', '-150%').attr('y', '-150%')
+          .attr('width', '400%').attr('height', '400%')
 
-      // Outer glow
-      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '4').attr('result', 'outerBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.4').attr('result', 'outerColor')
-      filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
+        filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', String(level.outerBlur)).attr('result', 'outerBlur')
+        filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', String(level.outerOpacity)).attr('result', 'outerColor')
+        filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
 
-      // Inner shadow
-      filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '1').attr('result', 'eroded')
-      filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
-      filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '1.5').attr('result', 'borderBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.5').attr('result', 'innerColor')
-      filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
-      filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
+        filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '1').attr('result', 'eroded')
+        filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
+        filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '1.5').attr('result', 'borderBlur')
+        filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', String(level.innerOpacity)).attr('result', 'innerColor')
+        filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
+        filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
 
-      const merge = filter.append('feMerge')
-      merge.append('feMergeNode').attr('in', 'outerGlow')
-      merge.append('feMergeNode').attr('in', 'SourceGraphic')
-      merge.append('feMergeNode').attr('in', 'innerGlow')
+        const merge = filter.append('feMerge')
+        merge.append('feMergeNode').attr('in', 'outerGlow')
+        merge.append('feMergeNode').attr('in', 'SourceGraphic')
+        merge.append('feMergeNode').attr('in', 'innerGlow')
+      })
+      fileLevelFilterIds.set(folderId, levelMap)
     })
+
+    function getLinkLevel(linkCount: number): number {
+      if (linkCount >= 8) return 4
+      if (linkCount >= 5) return 3
+      if (linkCount >= 3) return 2
+      if (linkCount >= 1) return 1
+      return 0
+    }
 
     const getNodeFill = (d: SimNode, idx: number) => {
       return 'var(--bg-base)'
@@ -426,7 +458,11 @@ export function GraphView() {
         return d.color || 'var(--text-tertiary)'
       })
       .attr('stroke-width', (d) => d.type === 'folder' ? 1.5 : 1)
-      .attr('stroke-opacity', (d) => d.type === 'folder' ? 0.6 : 0.5)
+      .attr('stroke-opacity', (d) => {
+        if (d.type === 'folder') return 0.9
+        const level = getLinkLevel(d.linkCount)
+        return 0.2 + level * 0.15
+      })
       .attr('filter', (d) => {
         const idx = nodeIndexMap.get(d.id)
         if (idx != null && multiFilterIds.has(idx)) {
@@ -437,8 +473,12 @@ export function GraphView() {
           return fId ? `url(#${fId})` : null
         }
         if (d.type === 'file' && d.group) {
-          const fId = fileFilterIds.get(d.group)
-          return fId ? `url(#${fId})` : null
+          const levelMap = fileLevelFilterIds.get(d.group)
+          if (levelMap) {
+            const level = getLinkLevel(d.linkCount)
+            const fId = levelMap.get(level)
+            return fId ? `url(#${fId})` : null
+          }
         }
         return null
       })
@@ -593,7 +633,7 @@ export function GraphView() {
             .attr('r', r)
             .attr('fill', 'var(--bg-base)')
             .attr('opacity', 1)
-            .attr('stroke-opacity', d.type === 'folder' ? 0.6 : 0.5)
+            .attr('stroke-opacity', d.type === 'folder' ? 0.8 : 0.2 + getLinkLevel(d.linkCount) * 0.15)
             .attr('filter', () => {
               const idx = nodeIndexMap.get(d.id)
               if (idx != null && multiFilterIds.has(idx)) {
@@ -604,8 +644,12 @@ export function GraphView() {
                 return fId ? `url(#${fId})` : null
               }
               if (d.type === 'file' && d.group) {
-                const fId = fileFilterIds.get(d.group)
-                return fId ? `url(#${fId})` : null
+                const levelMap = fileLevelFilterIds.get(d.group)
+                if (levelMap) {
+                  const level = getLinkLevel(d.linkCount)
+                  const fId = levelMap.get(level)
+                  return fId ? `url(#${fId})` : null
+                }
               }
               return null
             })
@@ -667,30 +711,31 @@ export function GraphView() {
 
     simulation.on('tick', () => {
       link
-        .attr('x1', (d: any) => {
-          const dx = d.target.x - d.source.x
-          const dy = d.target.y - d.source.y
+        .attr('d', (d: any) => {
+          const sx = d.source.x
+          const sy = d.source.y
+          const tx = d.target.x
+          const ty = d.target.y
+          const dx = tx - sx
+          const dy = ty - sy
           const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          return d.source.x + (dx / dist) * getRadius(d.source as SimNode)
+          const sr = getRadius(d.source as SimNode)
+          const tr = getRadius(d.target as SimNode)
+          const x1 = sx + (dx / dist) * sr
+          const y1 = sy + (dy / dist) * sr
+          const x2 = tx - (dx / dist) * tr
+          const y2 = ty - (dy / dist) * tr
+          return `M${x1},${y1} L${x2},${y2}`
         })
-        .attr('y1', (d: any) => {
-          const dx = d.target.x - d.source.x
-          const dy = d.target.y - d.source.y
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          return d.source.y + (dy / dist) * getRadius(d.source as SimNode)
-        })
-        .attr('x2', (d: any) => {
-          const dx = d.target.x - d.source.x
-          const dy = d.target.y - d.source.y
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          return d.target.x - (dx / dist) * getRadius(d.target as SimNode)
-        })
-        .attr('y2', (d: any) => {
-          const dx = d.target.x - d.source.x
-          const dy = d.target.y - d.source.y
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          return d.target.y - (dy / dist) * getRadius(d.target as SimNode)
-        })
+
+      // Update link gradient positions
+      link.each(function (d: any, i: number) {
+        const grad = select(defs.node()!).select(`#link-grad-${i}`)
+        if (!grad.empty()) {
+          grad.attr('x1', d.source.x).attr('y1', d.source.y)
+            .attr('x2', d.target.x).attr('y2', d.target.y)
+        }
+      })
 
       nodeGroup.attr('transform', (d) => `translate(${d.x},${d.y})`)
     })
@@ -889,6 +934,61 @@ export function GraphView() {
               <div className="graph-panel-info">
                 {t('graph.nodes', { count: graphData.nodes.length })} · {t('graph.connections', { count: graphData.edges.length })}
               </div>
+              <button
+                className="graph-back-btn"
+                style={{ marginTop: 8 }}
+                disabled={!!indexStatus}
+                onClick={async () => {
+                  if (!vaultPath) return
+                  setIndexStatus(t('common.indexing'))
+                  try {
+                    const result = await window.api.invoke('db:index-vault', { vaultPath })
+                    setIndexStatus(`${t('graph.reindex')}: ${result.indexed} ${t('graph.nodes', { count: result.indexed })}`)
+                    window.dispatchEvent(new CustomEvent('graph-data-updated'))
+                  } catch (e: any) {
+                    setIndexStatus(`Error: ${e.message}`)
+                  }
+                  setTimeout(() => setIndexStatus(null), 3000)
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3"/><path d="M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+                {t('graph.reindex')}
+              </button>
+              <button
+                className="graph-back-btn"
+                style={{ marginTop: 8 }}
+                disabled={!!indexStatus}
+                onClick={async () => {
+                  if (!vaultPath) return
+                  setIndexStatus(t('common.aiAnalyzing'))
+                  try {
+                    const result = await window.api.invoke('ai:infer-global-links', { vaultPath })
+                    if (result.success) {
+                      setIndexStatus(t('common.semanticFound', { count: result.added }))
+                      if (result.added > 0) {
+                        window.dispatchEvent(new CustomEvent('graph-data-updated'))
+                      }
+                    } else {
+                      setIndexStatus(result.error || t('common.semanticFailed'))
+                    }
+                  } catch (e: any) {
+                    setIndexStatus(e.message)
+                  }
+                  setTimeout(() => setIndexStatus(null), 3000)
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
+                </svg>
+                {t('graph.inferGlobal')}
+              </button>
+              {indexStatus && (
+                <div className="graph-panel-info" style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
+                  {indexStatus}
+                </div>
+              )}
             </div>
 
             <div className="graph-panel-footer">

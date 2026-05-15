@@ -21,7 +21,9 @@
     "aggregation": "聚合",
     "nodes": "{{count}} 节点",
     "connections": "{{count}} 连接",
-    "backToEditor": "返回编辑器"
+    "backToEditor": "返回编辑器",
+    "inferGlobal": "推断跨目录关联",
+    "reindex": "重建索引"
   },
   "activityBar": {
     "files": "文件",
