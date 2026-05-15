@@ -1,5 +1,6 @@
 import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent } from './base-provider'
 import { OpenAIProvider } from './openai-provider'
+import { OpenAIResponsesProvider } from './openai-responses-provider'
 import { ClaudeProvider } from './claude-provider'
 import { OllamaProvider } from './ollama-provider'
 import { CodexCliProvider } from './codex-cli-provider'
@@ -31,6 +32,9 @@ class AIManager {
         break
       case 'codex':
         provider = new CodexCliProvider(config)
+        break
+      case 'openai-responses':
+        provider = new OpenAIResponsesProvider(config)
         break
       case 'openai':
       case 'custom':

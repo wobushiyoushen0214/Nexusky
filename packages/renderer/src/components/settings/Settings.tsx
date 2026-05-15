@@ -7,7 +7,7 @@ import { ConfirmModal } from '../ConfirmModal'
 interface ProviderConfig {
   id: string
   name: string
-  type: 'openai' | 'claude' | 'custom' | 'ollama' | 'codex'
+  type: 'openai' | 'openai-responses' | 'claude' | 'custom' | 'ollama' | 'codex'
   baseUrl: string
   apiKey: string
   model: string
@@ -16,6 +16,7 @@ interface ProviderConfig {
 
 const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
+  'openai-responses': ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
   claude: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
   ollama: ['llama3.1', 'qwen2.5', 'deepseek-r1', 'gemma2', 'mistral'],
   codex: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex'],
@@ -41,6 +42,7 @@ function getModelsForEditing(editing: ProviderConfig): string[] {
 
 const PROVIDER_PRESETS: { label: string; type: ProviderConfig['type']; baseUrl: string; model: string }[] = [
   { label: 'OpenAI', type: 'openai', baseUrl: '', model: 'gpt-4.1-mini' },
+  { label: 'OpenAI Responses', type: 'openai-responses', baseUrl: '', model: 'gpt-4.1-mini' },
   { label: 'OpenAI 兼容', type: 'custom', baseUrl: '', model: 'gpt-4.1-mini' },
   { label: 'Codex CLI', type: 'codex', baseUrl: 'codex', model: 'gpt-5.4' },
   { label: 'Claude', type: 'claude', baseUrl: '', model: 'claude-sonnet-4-6' },
@@ -397,12 +399,12 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>协议类型</label>
                   <ModelSelect
-                    value={{ openai: 'OpenAI', claude: 'Claude (Anthropic)', custom: 'OpenAI 兼容', ollama: 'Ollama (本地)', codex: 'Codex CLI' }[editing.type] || editing.type}
+                    value={{ openai: 'OpenAI', 'openai-responses': 'OpenAI Responses', claude: 'Claude (Anthropic)', custom: 'OpenAI 兼容', ollama: 'Ollama (本地)', codex: 'Codex CLI' }[editing.type] || editing.type}
                     options={['OpenAI', 'OpenAI 兼容', 'Codex CLI', 'Claude (Anthropic)', 'Ollama (本地)']}
                     allowCustom={false}
                     placeholder="选择协议"
                     onChange={(val) => {
-                      const typeMap: Record<string, ProviderConfig['type']> = { 'OpenAI': 'openai', 'Claude (Anthropic)': 'claude', 'OpenAI 兼容': 'custom', 'Ollama (本地)': 'ollama', 'Codex CLI': 'codex' }
+                      const typeMap: Record<string, ProviderConfig['type']> = { 'OpenAI': 'openai', 'OpenAI Responses': 'openai-responses', 'Claude (Anthropic)': 'claude', 'OpenAI 兼容': 'custom', 'Ollama (本地)': 'ollama', 'Codex CLI': 'codex' }
                       const newType = typeMap[val] || 'custom'
                       setEditing({
                         ...editing,
@@ -425,7 +427,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                 </div>
               )}
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>{editing.type === 'codex' ? 'CLI 路径' : `Base URL ${editing.type === 'openai' || editing.type === 'claude' ? '(留空使用官方)' : ''}`}</label>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>{editing.type === 'codex' ? 'CLI 路径' : `Base URL ${editing.type === 'openai' || editing.type === 'openai-responses' || editing.type === 'claude' ? '(留空使用官方)' : ''}`}</label>
                 <input value={editing.baseUrl} onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
                   style={inputStyle} placeholder={editing.type === 'codex' ? 'codex 或 /usr/local/bin/codex' : editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
                   onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
