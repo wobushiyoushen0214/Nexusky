@@ -4,8 +4,16 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSy
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 
+function encodeSegment(segment: string): string {
+  if (/^[\w\-.]+$/.test(segment)) return segment
+  const ext = extname(segment)
+  const hash = createHash('md5').update(segment).digest('hex')
+  return ext ? `${hash}${ext}` : hash
+}
+
 function encodeStoragePath(relPath: string): string {
-  return relPath.split('/').map((part) => encodeURIComponent(part)).join('/')
+  if (/^[\w\-./]+$/.test(relPath)) return relPath
+  return relPath.split('/').map((seg) => encodeSegment(seg)).join('/')
 }
 
 async function runConcurrent<T>(tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]> {
