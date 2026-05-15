@@ -291,7 +291,7 @@ export default function App() {
               <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />
             </>
           )}
-          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: mainView === 'graph' ? 0 : '12px 12px 0 0', marginLeft: mainView === 'graph' ? 0 : sidebarCollapsed ? 0 : 4, marginRight: mainView === 'graph' ? 0 : rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
+          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: sidebarCollapsed ? 0 : 4, marginRight: rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
             {mainView === 'editor' ? <Editor /> : (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><GraphView /></Suspense>
