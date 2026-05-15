@@ -98,20 +98,19 @@ export function GraphView() {
   const showArrowsRef = useRef(showArrows)
   showArrowsRef.current = showArrows
 
-  const updateHighlight = useCallback((currentTitle: string) => {
+  const updateHighlight = useCallback((currentRelPath: string) => {
     if (!svgRef.current) return
     const svg = select(svgRef.current)
 
     svg.selectAll<SVGGElement, SimNode>('g.graph-node').each(function (d) {
       const group = select(this)
-      const isCurrent = d.title === currentTitle
+      const isCurrent = d.filePath === currentRelPath
       const isFolder = d.type === 'folder'
       const r = getRadius(d)
-      const nodeFill = isCurrent ? 'var(--accent-text)' : 'var(--bg-base)'
 
       group.select('.node-core')
         .attr('r', r)
-        .attr('fill', nodeFill)
+        .attr('fill', 'var(--bg-base)')
         .attr('opacity', 1)
 
       group.select('.node-pulse')
@@ -127,8 +126,8 @@ export function GraphView() {
   useEffect(() => {
     if (!graphData || !svgRef.current) return
     if (!graphBuiltForRef.current) return
-    const currentTitle = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
-    updateHighlight(currentTitle)
+    const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
+    updateHighlight(currentRelPath)
   }, [currentFilePath, updateHighlight, graphData])
 
   useEffect(() => {
@@ -164,7 +163,7 @@ export function GraphView() {
 
     const g = svg.append('g')
 
-    const currentTitle = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
+    const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
 
     const linkCountMap = new Map<string, number>()
     graphData.edges.forEach((e: { source: string; target: string }) => {
@@ -249,7 +248,7 @@ export function GraphView() {
       .join('g')
       .attr('class', 'graph-node')
 
-    const isCurrentNode = (d: SimNode) => d.title === currentTitle
+    const isCurrentNode = (d: SimNode) => d.filePath === currentRelPath
 
     // Create gradients and multi-color filters for multi-group nodes
     const multiFilterIds = new Map<number, string>()
@@ -410,7 +409,6 @@ export function GraphView() {
     })
 
     const getNodeFill = (d: SimNode, idx: number) => {
-      if (isCurrentNode(d)) return 'var(--accent-text)'
       return 'var(--bg-base)'
     }
 
@@ -570,12 +568,11 @@ export function GraphView() {
 
         nodeGroup.each(function (d) {
           const group = select(this)
-          const isCurrent = d.title === currentTitle
+          const isCurrent = d.filePath === currentRelPath
           const r = getRadius(d)
-          const nodeFill = isCurrent ? 'var(--accent-text)' : 'var(--bg-base)'
           group.select('.node-core')
             .attr('r', r)
-            .attr('fill', nodeFill)
+            .attr('fill', 'var(--bg-base)')
             .attr('opacity', 1)
             .attr('stroke-opacity', d.type === 'folder' ? 0.6 : 0.5)
             .attr('filter', () => {
@@ -638,7 +635,7 @@ export function GraphView() {
     svg.call(zoomBehavior)
 
     simulation.on('end', () => {
-      const currentNode = nodes.find((n) => n.title === currentTitle)
+      const currentNode = nodes.find((n) => n.filePath === currentRelPath)
       if (currentNode && currentNode.x != null && currentNode.y != null) {
         const { x, y } = currentNode
         const transform = { k: 1.2, x: width / 2 - x * 1.2, y: height / 2 - y * 1.2 }
