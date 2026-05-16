@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { join, dirname } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
-import { encrypt, decrypt, isEncrypted } from './secret'
+import { encrypt, decrypt, isEncrypted, isV1Encrypted } from './secret'
 
 function getStorePath(): string {
   return join(app.getPath('userData'), 'config.json')
@@ -87,12 +87,16 @@ class Store {
     this.ensureLoaded()
     const raw = this.data[key]
     const decrypted = decryptSecrets(raw)
-    // 自动迁移：发现明文敏感字段时透明 re-encrypt
-    if (this.hasPlainSecrets(raw)) {
-      this.data[key] = encryptSecrets(raw)
+    // 自动迁移：明文或 v1(safeStorage) → v2(portable)，仅在解密成功时
+    if (this.needsMigration(raw, decrypted)) {
+      this.data[key] = encryptSecrets(decrypted)
       this.scheduleSave()
     }
     return decrypted
+  }
+
+  private needsMigration(raw: unknown, decrypted: unknown): boolean {
+    return this.hasPlainSecrets(raw) || this.hasSuccessfulV1Secrets(raw, decrypted)
   }
 
   private hasPlainSecrets(value: unknown): boolean {
@@ -101,6 +105,26 @@ class Store {
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
       if (typeof v === 'string' && SECRET_FIELD_NAMES.has(k) && v.length > 0 && !isEncrypted(v)) return true
       if (typeof v === 'object' && v !== null && this.hasPlainSecrets(v)) return true
+    }
+    return false
+  }
+
+  private hasSuccessfulV1Secrets(raw: unknown, decrypted: unknown): boolean {
+    if (raw == null || typeof raw !== 'object') return false
+    if (decrypted == null || typeof decrypted !== 'object') return false
+    if (Array.isArray(raw)) {
+      return raw.some((v, i) => this.hasSuccessfulV1Secrets(v, (decrypted as unknown[])[i]))
+    }
+    const rawObj = raw as Record<string, unknown>
+    const decObj = decrypted as Record<string, unknown>
+    for (const [k, v] of Object.entries(rawObj)) {
+      if (typeof v === 'string' && SECRET_FIELD_NAMES.has(k) && isV1Encrypted(v)) {
+        const dec = decObj[k]
+        if (typeof dec === 'string' && dec.length > 0) return true
+      }
+      if (typeof v === 'object' && v !== null) {
+        if (this.hasSuccessfulV1Secrets(v, decObj[k])) return true
+      }
     }
     return false
   }

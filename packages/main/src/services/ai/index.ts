@@ -57,17 +57,33 @@ class AIManager {
     const configs = store.get('aiProviders') as AIProviderConfig[] | undefined
     if (!configs || configs.length === 0) return null
     const activeId = store.get('activeProviderId') as string | undefined
+    let config: AIProviderConfig | undefined
     if (activeId) {
-      const found = configs.find((c) => c.id === activeId && c.enabled)
-      if (found) return found
+      config = configs.find((c) => c.id === activeId && c.enabled)
     }
-    return configs.find((c) => c.enabled) || null
+    if (!config) {
+      config = configs.find((c) => c.enabled)
+    }
+    return config || null
+  }
+
+  validateConfig(config: AIProviderConfig): string | null {
+    const needsApiKey = config.type !== 'ollama' && config.type !== 'codex'
+    if (needsApiKey && !config.apiKey) {
+      return 'API Key 为空（可能是跨设备同步后解密失败），请重新配置 API Key'
+    }
+    return null
   }
 
   async *chat(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
     const config = this.getActiveConfig()
     if (!config) {
       yield { type: 'error', content: '未配置 AI 提供商，请在设置中添加' }
+      return
+    }
+    const configError = this.validateConfig(config)
+    if (configError) {
+      yield { type: 'error', content: configError }
       return
     }
     const provider = this.getProvider(config)
@@ -78,6 +94,11 @@ class AIManager {
     const config = this.getActiveConfig()
     if (!config) {
       yield { type: 'error', content: '未配置 AI 提供商，请在设置中添加' }
+      return
+    }
+    const configError = this.validateConfig(config)
+    if (configError) {
+      yield { type: 'error', content: configError }
       return
     }
     const provider = this.getProvider(config)

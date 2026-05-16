@@ -119,6 +119,7 @@ ${context}
   ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
+    if (aiManager.validateConfig(config)) return ''
 
     try {
       const provider = aiManager.getProvider(config)
@@ -205,6 +206,7 @@ ${context}
   ipcMain.handle('ai:summarize', async (_event, params: { content: string }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
+    if (aiManager.validateConfig(config)) return ''
     try {
       const provider = aiManager.getProvider(config)
       let result = ''
@@ -224,6 +226,7 @@ ${context}
   ipcMain.handle('ai:suggest-tags', async (_event, params: { content: string; existingTags: string[] }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return []
+    if (aiManager.validateConfig(config)) return []
 
     try {
       const provider = aiManager.getProvider(config)
@@ -244,6 +247,8 @@ ${context}
   ipcMain.handle('ai:edit', async (event, params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商' }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { success: false, error: configError }
 
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在' }
@@ -308,11 +313,13 @@ ${context}
         if (chunk.type === 'text') {
           result += chunk.content
         }
-        if (chunk.type === 'error') return { success: false, error: chunk.content }
+        if (chunk.type === 'error') return { success: false, error: chunk.content || 'AI 返回错误' }
       }
-      return { success: true, content: result.trim() }
+      const trimmed = result.trim()
+      if (!trimmed) return { success: false, error: 'AI 未返回有效内容，请检查 API Key 配置' }
+      return { success: true, content: trimmed }
     } catch (err: any) {
-      return { success: false, error: err.message }
+      return { success: false, error: err?.message || String(err) }
     }
   })
 
@@ -322,6 +329,8 @@ ${context}
 
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商' }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { success: false, error: configError }
 
     const { readFileSync } = require('fs')
     const { basename } = require('path')
@@ -371,12 +380,12 @@ graph TD
           result += chunk.content
           window.webContents.send('ai:graph-progress', { content: chunk.content })
         }
-        if (chunk.type === 'error') return { success: false, error: chunk.content }
+        if (chunk.type === 'error') return { success: false, error: chunk.content || 'AI 返回错误' }
       }
       window.webContents.send('ai:graph-done', {})
       return { success: true, content: result.trim() }
     } catch (err: any) {
-      return { success: false, error: err.message }
+      return { success: false, error: err?.message || String(err) }
     }
   })
 
@@ -386,6 +395,8 @@ graph TD
 
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商', files: [] }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { success: false, error: configError, files: [] }
 
     const windowId = window.id
     const prevController = activeAbortControllers.get(windowId)
@@ -577,6 +588,8 @@ graph TD
 
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商' }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { success: false, error: configError }
 
     const { readFileSync } = require('fs')
     const { basename } = require('path')
@@ -615,7 +628,7 @@ graph TD
       ])) {
         if (window.isDestroyed()) break
         if (chunk.type === 'text') relResult += chunk.content
-        if (chunk.type === 'error') return { success: false, error: chunk.content }
+        if (chunk.type === 'error') return { success: false, error: chunk.content || 'AI 返回错误' }
       }
 
       if (!relResult.trim()) return { success: false, error: 'AI 未返回结果' }
@@ -642,7 +655,7 @@ graph TD
 
       return { success: true, added }
     } catch (err: any) {
-      return { success: false, error: err.message }
+      return { success: false, error: err?.message || String(err) }
     }
   })
 
@@ -674,7 +687,7 @@ graph TD
 
     // Phase 2: AI cross-group analysis (if provider available)
     const config = aiManager.getActiveConfig()
-    if (config) {
+    if (config && !aiManager.validateConfig(config)) {
       const allNotes = db.prepare('SELECT id, title, file_path FROM notes ORDER BY updated_at DESC LIMIT 100').all() as { id: string; title: string; file_path: string }[]
 
       if (allNotes.length > 1) {
@@ -930,7 +943,7 @@ graph TD
 
     try {
       const config = aiManager.getActiveConfig()
-      if (!config) return messages
+      if (!config || aiManager.validateConfig(config)) return messages
 
       const provider = aiManager.getProvider(config)
       let summary = ''
