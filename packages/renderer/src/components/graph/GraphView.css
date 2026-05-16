@@ -438,7 +438,7 @@
 
 /* Hover */
 .graph-node:hover .node-core {
-  filter: brightness(1.3);
+  filter: brightness(1.6);
 }
 
 .graph-node:hover .node-label {

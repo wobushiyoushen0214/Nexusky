@@ -327,10 +327,10 @@ export function GraphView() {
           .attr('x', '-200%').attr('y', '-200%')
           .attr('width', '500%').attr('height', '500%')
 
-        const hBlurOuter = isFolder ? 14 : 7
+        const hBlurOuter = isFolder ? 18 : 10
         n.colors.forEach((c, ci) => {
           hFilter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', String(hBlurOuter)).attr('result', `outerBlur${ci}`)
-          hFilter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String(0.7 / n.colors!.length * 2)).attr('result', `outerColor${ci}`)
+          hFilter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String(0.95 / n.colors!.length * 2)).attr('result', `outerColor${ci}`)
           hFilter.append('feComposite').attr('in', `outerColor${ci}`).attr('in2', `outerBlur${ci}`).attr('operator', 'in').attr('result', `outerGlow${ci}`)
         })
 
@@ -339,7 +339,7 @@ export function GraphView() {
         hFilter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', String(blurInner)).attr('result', 'borderBlur')
 
         n.colors.forEach((c, ci) => {
-          hFilter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String((isFolder ? 0.6 : 0.8) / n.colors!.length * 2)).attr('result', `innerColor${ci}`)
+          hFilter.append('feFlood').attr('flood-color', c).attr('flood-opacity', String((isFolder ? 0.9 : 1.0) / n.colors!.length * 2)).attr('result', `innerColor${ci}`)
           hFilter.append('feComposite').attr('in', `innerColor${ci}`).attr('in2', 'borderBlur').attr('operator', 'in').attr('result', `innerGlow${ci}`)
           hFilter.append('feComposite').attr('in', `innerGlow${ci}`).attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', `innerClip${ci}`)
         })
@@ -503,14 +503,14 @@ export function GraphView() {
         .attr('x', '-200%').attr('y', '-200%')
         .attr('width', '500%').attr('height', '500%')
 
-      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '14').attr('result', 'outerBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.7').attr('result', 'outerColor')
+      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '18').attr('result', 'outerBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.95').attr('result', 'outerColor')
       filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
 
       filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '2').attr('result', 'eroded')
       filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
       filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '3').attr('result', 'borderBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.6').attr('result', 'innerColor')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.9').attr('result', 'innerColor')
       filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
       filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
 
@@ -532,14 +532,14 @@ export function GraphView() {
         .attr('x', '-200%').attr('y', '-200%')
         .attr('width', '500%').attr('height', '500%')
 
-      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '7').attr('result', 'outerBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.7').attr('result', 'outerColor')
+      filter.append('feGaussianBlur').attr('in', 'SourceAlpha').attr('stdDeviation', '10').attr('result', 'outerBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.95').attr('result', 'outerColor')
       filter.append('feComposite').attr('in', 'outerColor').attr('in2', 'outerBlur').attr('operator', 'in').attr('result', 'outerGlow')
 
       filter.append('feMorphology').attr('in', 'SourceAlpha').attr('operator', 'erode').attr('radius', '1').attr('result', 'eroded')
       filter.append('feComposite').attr('in', 'SourceAlpha').attr('in2', 'eroded').attr('operator', 'out').attr('result', 'borderRing')
-      filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '1.5').attr('result', 'borderBlur')
-      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '0.8').attr('result', 'innerColor')
+      filter.append('feGaussianBlur').attr('in', 'borderRing').attr('stdDeviation', '2').attr('result', 'borderBlur')
+      filter.append('feFlood').attr('flood-color', color).attr('flood-opacity', '1').attr('result', 'innerColor')
       filter.append('feComposite').attr('in', 'innerColor').attr('in2', 'borderBlur').attr('operator', 'in').attr('result', 'innerColored')
       filter.append('feComposite').attr('in', 'innerColored').attr('in2', 'SourceAlpha').attr('operator', 'in').attr('result', 'innerGlow')
 
@@ -610,6 +610,29 @@ export function GraphView() {
         })
 
         nodeGroup.classed('dimmed', (n) => n.id !== d.id && !connectedIds.has(n.id))
+
+        nodeGroup.each(function (n) {
+          if (!connectedIds.has(n.id) || n.id === d.id) return
+          const connGroup = select(this)
+          connGroup.select('.node-core')
+            .attr('stroke-opacity', 0.9)
+            .attr('filter', () => {
+              const idx = nodeIndexMap.get(n.id)
+              if (idx != null && multiHoverFilterIds.has(idx)) {
+                return `url(#${multiHoverFilterIds.get(idx)})`
+              }
+              if (n.type === 'folder' && n.group) {
+                const fId = folderHoverFilterIds.get(n.group)
+                return fId ? `url(#${fId})` : null
+              }
+              if (n.type === 'file' && n.group) {
+                const fId = fileHoverFilterIds.get(n.group)
+                return fId ? `url(#${fId})` : null
+              }
+              return null
+            })
+          connGroup.select('.node-label').classed('hidden', false).attr('opacity', 1)
+        })
 
         link.classed('highlighted', (l: any) => {
           const s = typeof l.source === 'string' ? l.source : l.source.id
