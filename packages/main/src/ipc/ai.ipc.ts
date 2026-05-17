@@ -57,14 +57,22 @@ export function registerAiIPC(): void {
         const results = await semanticSearch(params.vaultPath, queryText, 5)
         if (results.length > 0) {
           const context = results.map((r, i) => `[^${i + 1}] ${r.title}\n${r.chunk}`).join('\n\n---\n\n')
-          const systemContent = params.systemPrompt || `你是一个知识库助手。基于用户的笔记内容回答问题。
+          const systemContent = params.systemPrompt || `You are the user's personal knowledge base assistant. Answer questions based on retrieved note content. Respond in the same language as the user's question.
 
-规则：
-1. 优先基于提供的笔记内容回答
-2. 引用来源时使用 [^n] 格式标注
-3. 如果笔记中没有相关信息，可以基于自身知识回答，但要说明
+<response_strategy>
+- Direct answer found in notes: cite and answer, mark sources with [^n]
+- Multiple notes complement each other: synthesize a complete answer, cite each source separately
+- Notes contain conflicting views: highlight the discrepancy, list each perspective with its source, let the user decide
+- No relevant information in notes: explicitly state "no relevant content found in notes", then supplement with general knowledge
+</response_strategy>
 
-以下是相关笔记内容：
+<format>
+- Use [^n] citation format corresponding to note numbers below
+- Be concise and direct — do not repeat large blocks of note content verbatim
+- For factual questions, give the precise answer rather than a vague overview
+</format>
+
+Retrieved notes:
 ---
 ${context}
 ---`
@@ -255,9 +263,21 @@ ${context}
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在' }
 
-    const systemPrompt = `你是一个笔记编辑助手。用户会给你一个 Markdown 笔记的内容和修改指令。
-请直接输出修改后的完整笔记内容，不要添加任何解释、代码块标记或前后缀。
-只输出修改后的 Markdown 内容本身。`
+    const systemPrompt = `You are a Markdown note editor. You receive the original note content and a modification instruction, then output the modified complete file.
+
+<output_format>
+Output the modified complete Markdown text directly. The first character of your response must be the first character of the file content.
+- Preserve YAML frontmatter if present
+- Preserve heading levels, list marker style (- or *), and blank line conventions from the original
+- Output the ENTIRE file, not just the modified section
+</output_format>
+
+<constraints>
+- Only modify what the instruction asks for; leave everything else unchanged
+- Match the original list marker style: if the original uses -, keep -; if it uses *, keep *
+- NEVER wrap output in \`\`\`markdown or any code fence
+- NEVER prepend or append explanations, confirmations, or extra blank lines
+</constraints>`
 
     let fileContent = params.fileContent
     const TOKEN_LIMIT = 12000
@@ -359,21 +379,26 @@ ${context}
 
     if (!filesContent) return { success: false, error: '无法读取文件内容' }
 
-    const systemPrompt = `你是一个知识图谱生成器。分析给定笔记的标题和内容，输出它们之间关系的 Mermaid 图。
+    const systemPrompt = `Analyze knowledge relationships between notes and output a Mermaid graph. Output graph TD syntax directly — the first line must be "graph TD".
 
-严格要求：
-1. 只输出 mermaid graph TD 代码，不要任何其他文字、解释或代码块标记
-2. 节点 ID 用英文字母数字（如 A, B, C），节点标签用中括号包裹笔记标题
-3. 边用 -->|关系| 格式标注关系类型
-4. 不要输出 \`\`\`mermaid 或 \`\`\` 标记
+<format>
+- Node IDs use letters (A, B, C...), labels use square brackets wrapping the note title
+- Edges use -->|relationship| annotation, relationship labels are 2-4 words (e.g., foundation, advanced, comparison, depends on, contains, applies)
+- Each node has at most 3 edges — keep only the most meaningful relationships
+</format>
 
-输出示例：
+<quality>
+- Only create edges between genuinely related content — do not force connections for graph connectivity
+- Relationship labels must be specific: use "prerequisite" not "related", use "implements" not "associated"
+- When note count is large (>10), prioritize cross-topic bridging relationships
+</quality>
+
+<example>
 graph TD
-    A[React Hooks] -->|基础| B[useState]
-    A -->|进阶| C[自定义Hook]
-    B -->|相关| C
-5. 只输出 mermaid 代码，不要其他解释文字
-6. 不要用 \`\`\` 代码块包裹，直接输出 mermaid 语法`
+    A[React Hooks] -->|foundation| B[useState]
+    A -->|advanced| C[Custom Hooks]
+    B -->|applies| C
+</example>`
 
     const provider = aiManager.getProvider(config)
     let result = ''
@@ -381,7 +406,7 @@ graph TD
     try {
       for await (const chunk of provider.chatStream([
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `以下是 ${fileNames.length} 篇笔记的内容，请分析它们之间的关系并生成知识图谱：\n\n${filesContent}` }
+        { role: 'user', content: `Below are ${fileNames.length} notes. Analyze their relationships and generate a knowledge graph:\n\n${filesContent}` }
       ])) {
         if (window.isDestroyed()) break
         if (chunk.type === 'text') {

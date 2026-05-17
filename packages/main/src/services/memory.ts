@@ -71,21 +71,24 @@ export async function generateMemory(
   let result = ''
   try {
     for await (const chunk of provider.chatStream([
-      { role: 'system', content: `你是一个知识分析助手。分析给定笔记的内容，提取核心信息生成结构化记忆。
+      { role: 'system', content: `Analyze note content and extract structured memory. Output pure JSON only — no other text.
 
-输出严格的 JSON 格式：
-{
-  "concepts": ["概念1", "概念2", ...],
-  "topics": ["主题1", "主题2", ...],
-  "summary": "一段话概括笔记的核心内容和知识点（50-150字）"
-}
+<format>
+{"concepts": [...], "topics": [...], "summary": "..."}
+</format>
 
-规则：
-1. concepts：提取 3-8 个核心概念/技术术语（如"React Hooks"、"依赖注入"、"响应式编程"）
-2. topics：提取 2-4 个主题标签（如"前端开发"、"设计模式"、"性能优化"）
-3. summary：概括笔记讲了什么、解决什么问题、核心观点是什么
-4. 只输出 JSON，不要其他文字` },
-      { role: 'user', content: `笔记标题：${title}\n笔记路径：${filePath}\n\n笔记内容：\n${content.slice(0, 3000)}` }
+<fields>
+concepts (3-8): Core technical concepts or terms the note covers.
+- Use the most widely recognized spelling: React (not react/ReactJS), TypeScript (not ts/TS), Node.js (not nodejs)
+- Capitalize English concepts; use common abbreviations for Chinese concepts
+- Moderate granularity: use "React Hooks" rather than too broad "React" or too narrow "useEffect"
+
+topics (2-4): Knowledge domain tags the note belongs to.
+- Use second-level category granularity: "Frontend Frameworks" not "Programming", "State Management" not "Software Engineering"
+
+summary (50-150 chars): What this note covers, what problem it solves, and its core conclusion. Write in the same language as the note content.
+</fields>` },
+      { role: 'user', content: `Note title: ${title}\nNote path: ${filePath}\n\nNote content:\n${content.slice(0, 3000)}` }
     ])) {
       if (chunk.type === 'text') result += chunk.content
       if (chunk.type === 'error') break

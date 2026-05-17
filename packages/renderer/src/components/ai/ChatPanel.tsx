@@ -338,7 +338,7 @@ export function ChatPanel() {
     // Only regenerate when new messages have rolled into the "old" window
     if (contextSummaryRef.current && summarizedCountRef.current === oldCount) {
       return [
-        { role: 'system', content: `以下是之前对话的摘要，请基于此上下文继续对话：\n${contextSummaryRef.current}` },
+        { role: 'system', content: `Below is a summary of the prior conversation. Continue based on this context:\n${contextSummaryRef.current}` },
         ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
       ]
     }
@@ -351,13 +351,18 @@ export function ChatPanel() {
       // Incremental: merge existing summary with the few new messages that rolled over
       try {
         summary = await window.api.invoke('ai:complete', {
-          system: `你是对话摘要助手。请将已有摘要与新增对话合并为一段更新后的摘要，保留：
-1. 用户的核心意图和目标
-2. 已讨论的关键主题和决策
-3. AI 已完成的操作（如生成了哪些文件、修改了什么）
-4. 重要的上下文信息（目录名、文件名、主题等）
-用 3-5 句话概括，不要遗漏关键信息。只输出摘要。`,
-          text: `已有摘要：\n${contextSummaryRef.current}\n\n新增对话：\n${newOldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 300)}`).join('\n')}`
+          system: `Merge the existing summary with new messages into an updated summary. 3-5 sentences, output only the summary text.
+
+<priority>
+Retain information by priority (high to low):
+1. User's unfinished intents or pending requests
+2. Key decisions and constraints (e.g., specified directory, filename, tech choices)
+3. AI's completed actions (what was generated, what was modified)
+4. Discussed but resolved issues (mention briefly)
+</priority>
+
+Discard: greetings, repeated confirmations, old plans superseded by later decisions.`,
+          text: `Existing summary:\n${contextSummaryRef.current}\n\nNew messages:\n${newOldMessages.map((m) => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content.slice(0, 300)}`).join('\n')}`
         })
       } catch {
         summary = contextSummaryRef.current
@@ -366,16 +371,21 @@ export function ChatPanel() {
       // Full summarization: first time or too many new messages
       try {
         summary = await window.api.invoke('ai:complete', {
-          system: `你是对话摘要助手。请将以下对话历史压缩为一段简洁的摘要，保留：
-1. 用户的核心意图和目标
-2. 已讨论的关键主题和决策
-3. AI 已完成的操作（如生成了哪些文件、修改了什么）
-4. 重要的上下文信息（目录名、文件名、主题等）
-用 3-5 句话概括，不要遗漏关键信息。只输出摘要，不要其他文字。`,
-          text: oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 300)}`).join('\n')
+          system: `Compress conversation history into a summary. 3-5 sentences, output only the summary text.
+
+<priority>
+Retain information by priority (high to low):
+1. User's unfinished intents or pending requests
+2. Key decisions and constraints (e.g., specified directory, filename, tech choices)
+3. AI's completed actions (what was generated, what was modified)
+4. Discussed but resolved issues (mention briefly)
+</priority>
+
+Discard: greetings, repeated confirmations, old plans superseded by later decisions.`,
+          text: oldMessages.map((m) => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content.slice(0, 300)}`).join('\n')
         })
       } catch {
-        summary = oldMessages.map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 80)}`).join('\n')
+        summary = oldMessages.map((m) => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content.slice(0, 80)}`).join('\n')
       }
     }
 
@@ -385,7 +395,7 @@ export function ChatPanel() {
     }
 
     return [
-      { role: 'system', content: `以下是之前对话的摘要，请基于此上下文继续对话：\n${summary}` },
+      { role: 'system', content: `Below is a summary of the prior conversation. Continue based on this context:\n${summary}` },
       ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
     ]
   }
@@ -526,7 +536,23 @@ export function ChatPanel() {
       let detectedIntent = ''
       try {
         const intentResult = await window.api.invoke('ai:complete', {
-          text: `判断用户指令的意图类型，只输出一个词：\n- "图谱" — 生成/索引知识图谱、建立关联关系\n- "看板" — 从笔记提取待办、创建看板任务、生成任务列表\n- "其他" — 以上都不是\n\n用户指令: "${userMsg.content}"`,
+          text: `Classify the user instruction into exactly one category. Output only the category label.
+
+Categories:
+- 图谱: generate knowledge graph, analyze note relationships, build link index
+- 看板: extract todos, create tasks, generate task board
+- 其他: none of the above
+
+Examples:
+"帮我整理这些笔记的关系" → 图谱
+"生成知识图谱" → 图谱
+"把笔记里的待办提取出来" → 看板
+"创建一个任务看板" → 看板
+"总结一下这篇文章" → 其他
+"帮我写一篇关于React的笔记" → 其他
+"这些笔记有什么关联" → 图谱
+
+User instruction: "${userMsg.content}"`,
           temperature: 0
         })
         detectedIntent = (intentResult || '').trim()
@@ -616,7 +642,23 @@ export function ChatPanel() {
           let editIntent = '编辑'
           try {
             const intentResult = await window.api.invoke('ai:complete', {
-              text: `判断用户在编辑模式下的意图，只输出一个词：\n- "对话" — 继续之前的对话、追问、闲聊\n- "批量" — 批量生成多篇笔记\n- "编辑" — 修改/创建单篇笔记\n\n${recentForDetect ? `最近对话：\n${recentForDetect}\n\n` : ''}用户指令: "${userMsg.content}"`,
+              text: `Classify the user instruction in edit mode into exactly one category. Output only the category label.
+
+Categories:
+- 对话: follow-up question, chitchat, or inquiry unrelated to editing the current note
+- 批量: generate multiple notes at once (multiple topics/files)
+- 编辑: modify or create a single note
+
+Examples:
+"刚才那个方案再详细说说" → 对话
+"为什么要用这个设计模式" → 对话
+"帮我生成五篇关于不同框架的笔记" → 批量
+"每种语言写三篇入门文章" → 批量
+"把第二段改成列表" → 编辑
+"帮我写一篇关于Docker的笔记" → 编辑
+"加一个总结段落" → 编辑
+
+${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User instruction: "${userMsg.content}"`,
               temperature: 0
             })
             editIntent = (intentResult || '').trim()
