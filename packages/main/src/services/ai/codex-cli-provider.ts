@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'fs'
 import { mkdtemp, readFile, rm } from 'fs/promises'
 import { homedir, tmpdir, platform } from 'os'
 import { delimiter, join } from 'path'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, ChatOptions } from './base-provider'
 
 function contentToText(content: string | ChatContentPart[]): string {
   if (typeof content === 'string') return content
@@ -94,7 +94,7 @@ export class CodexCliProvider extends BaseAIProvider {
     return this.config.baseUrl.trim() || 'codex'
   }
 
-  async *chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  async *chatStream(messages: ChatMessage[], signal?: AbortSignal, _options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
     const tempDir = await mkdtemp(join(tmpdir(), 'nexusky-codex-'))
     const outputFile = join(tempDir, 'last-message.txt')
 

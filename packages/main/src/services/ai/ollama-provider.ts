@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ChatOptions } from './base-provider'
 import { net } from 'electron'
 
 export class OllamaProvider extends BaseAIProvider {
@@ -14,12 +14,13 @@ export class OllamaProvider extends BaseAIProvider {
     })
   }
 
-  async *chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
     try {
       const stream = await this.client.chat.completions.create({
         model: this.config.model,
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
-        stream: true
+        messages: messages.map((m) => ({ role: m.role, content: m.content })) as any,
+        stream: true,
+        ...(options?.temperature !== undefined && { temperature: options.temperature })
       }, signal ? { signal } : undefined)
 
       for await (const chunk of stream) {

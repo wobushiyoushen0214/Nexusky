@@ -509,26 +509,26 @@ export function ChatPanel() {
     streamContentRef.current = ''
     setStreamContent('')
 
-    // Detect "generate knowledge graph" intent in both modes
+    // Unified intent detection: one AI call to classify graph/kanban/other
     if (vaultPath) {
-      let isGraphRequest = false
+      let detectedIntent = ''
       try {
-        const graphDetect = await window.api.invoke('ai:complete', {
-          text: `判断以下用户指令是否要求生成/索引知识图谱（如"生成知识图谱"、"索引图谱"、"建立关联关系"等）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
+        const intentResult = await window.api.invoke('ai:complete', {
+          text: `判断用户指令的意图类型，只输出一个词：\n- "图谱" — 生成/索引知识图谱、建立关联关系\n- "看板" — 从笔记提取待办、创建看板任务、生成任务列表\n- "其他" — 以上都不是\n\n用户指令: "${userMsg.content}"`,
+          temperature: 0
         })
-        isGraphRequest = (graphDetect || '').trim().startsWith('是')
+        detectedIntent = (intentResult || '').trim()
       } catch {}
 
-      if (isGraphRequest) {
+      if (detectedIntent.startsWith('图谱')) {
         let targetPath: string | null = null
-        // Determine target: current file's directory, or a specified directory
         const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
         const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
         try {
           const dirDetect = await window.api.invoke('ai:complete', {
             text: dirs.length > 0
-              ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想对哪个目录生成知识图谱。如果用户提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户说"当前"或没有指定，输出"当前"。只输出目录名或"当前"，不要其他文字。`
-              : `用户指令: "${userMsg.content}"\n\n请判断用户想对哪个目录生成知识图谱。如果无法判断或用户说"当前"，输出"当前"。只输出目录名或"当前"，不要其他文字。`
+              ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想对哪个目录生成知识图谱。如果用户提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户说"当前"或没有指定，输出"当前"。只输出目录名或"当前"，不要其他文字。`,
+            temperature: 0
           })
           const detected = (dirDetect || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')
           if (detected && detected !== '当前' && detected.length < 30) {
@@ -556,18 +556,8 @@ export function ChatPanel() {
         window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: targetPath, isDirectory: true } }))
         return
       }
-    }
 
-    if (vaultPath) {
-      let isKanbanTaskRequest = false
-      try {
-        const kanbanDetect = await window.api.invoke('ai:complete', {
-          text: `判断以下用户指令是否要求从当前笔记/选中内容中提取待办、创建看板任务、生成任务列表或加入看板。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
-        })
-        isKanbanTaskRequest = (kanbanDetect || '').trim().startsWith('是')
-      } catch {}
-
-      if (isKanbanTaskRequest) {
+      if (detectedIntent.startsWith('看板')) {
         const fp = useEditorStore.getState().currentFilePath
         if (!fp) {
           const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '请先打开一篇笔记，再从当前笔记提取看板任务。' }
@@ -608,20 +598,21 @@ export function ChatPanel() {
         const isNewFile = !targetPath
 
         if (vaultPath) {
-          // Short follow-up messages in edit mode should fall through to chat if they look like conversation continuations
-          const isShortFollowUp = userMsg.content.length <= 10 && messages.length > 0
-          let isChatContinuation = false
-          if (isShortFollowUp) {
-            try {
-              const detectResult = await window.api.invoke('ai:complete', {
-                text: `用户在编辑模式下发送了: "${userMsg.content}"\n最近对话: ${messages.slice(-4).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 100)}`).join('\n')}\n\n判断用户是想继续之前的对话/追问（而非编辑文件或生成笔记）。只回答"是"或"否"。`
-              })
-              isChatContinuation = (detectResult || '').trim().startsWith('是')
-            } catch {}
-          }
+          // Unified edit-mode intent detection: one AI call
+          const recentForDetect = messages.slice(-6).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 150)}`).join('\n')
+          let editIntent = '编辑'
+          try {
+            const intentResult = await window.api.invoke('ai:complete', {
+              text: `判断用户在编辑模式下的意图，只输出一个词：\n- "对话" — 继续之前的对话、追问、闲聊\n- "批量" — 批量生成多篇笔记\n- "编辑" — 修改/创建单篇笔记\n\n${recentForDetect ? `最近对话：\n${recentForDetect}\n\n` : ''}用户指令: "${userMsg.content}"`,
+              temperature: 0
+            })
+            editIntent = (intentResult || '').trim()
+          } catch {}
+
+          const isChatContinuation = editIntent.startsWith('对话')
+          const isBatchRequest = editIntent.startsWith('批量')
 
           if (isChatContinuation) {
-            // Fall through to normal chat path
             editCompleteRef.current = true
             setIsStreaming(true)
             streamContentRef.current = ''
@@ -637,20 +628,6 @@ export function ChatPanel() {
               setIsStreaming(false)
             }
             return
-          }
-
-          // Use AI to semantically determine if this is a batch generation request
-          let isBatchRequest = false
-          if (!isShortFollowUp) {
-            const recentForDetect = messages.slice(-6).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 150)}`).join('\n')
-            try {
-              const batchDetect = await window.api.invoke('ai:complete', {
-                text: recentForDetect
-                  ? `对话上下文：\n${recentForDetect}\n\n判断以下用户指令是否要求批量生成多篇笔记（而非修改单篇、继续对话、或追问）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
-                  : `判断以下用户指令是否要求批量生成多篇笔记（而非修改或生成单篇）。只回答"是"或"否"。\n用户指令: "${userMsg.content}"`
-              })
-              isBatchRequest = (batchDetect || '').trim().startsWith('是')
-            } catch {}
           }
 
           if (isBatchRequest) {

@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions } from './base-provider'
 
 const RETRYABLE_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'])
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 529])
@@ -31,7 +31,7 @@ export class OpenAIProvider extends BaseAIProvider {
     })
   }
 
-  async *chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
     let lastError: any = null
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -50,7 +50,8 @@ export class OpenAIProvider extends BaseAIProvider {
         const stream = await this.client.chat.completions.create({
           model: this.config.model,
           messages: messages.map((m) => ({ role: m.role, content: m.content })) as any,
-          stream: true
+          stream: true,
+          ...(options?.temperature !== undefined && { temperature: options.temperature })
         }, signal ? { signal } : undefined)
 
         let finishReason = 'stop'

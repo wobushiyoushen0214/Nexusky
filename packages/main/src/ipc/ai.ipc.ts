@@ -117,7 +117,7 @@ ${context}
     }
   })
 
-  ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string }) => {
+  ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string; temperature?: number }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
     if (aiManager.validateConfig(config)) return ''
@@ -125,10 +125,11 @@ ${context}
     try {
       const provider = aiManager.getProvider(config)
       let result = ''
+      const options = params.temperature !== undefined ? { temperature: params.temperature } : undefined
       for await (const chunk of provider.chatStream([
         { role: 'system', content: params.system || '续写1-2句，只输出续写内容。' },
         { role: 'user', content: params.text }
-      ])) {
+      ], undefined, options)) {
         if (chunk.type === 'text') result += chunk.content
         if (chunk.type === 'error') return ''
       }

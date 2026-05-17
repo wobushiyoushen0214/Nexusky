@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions } from './base-provider'
 
 function convertContent(content: string | ChatContentPart[]): string | Anthropic.MessageCreateParams['messages'][0]['content'] {
   if (typeof content === 'string') return content
@@ -32,7 +32,7 @@ export class ClaudeProvider extends BaseAIProvider {
     })
   }
 
-  async *chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent> {
+  async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
     try {
       const systemMsg = messages.find((m) => m.role === 'system')
       const chatMessages = messages
@@ -46,7 +46,8 @@ export class ClaudeProvider extends BaseAIProvider {
         model: this.config.model,
         max_tokens: 4096,
         system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
-        messages: chatMessages as any
+        messages: chatMessages as any,
+        ...(options?.temperature !== undefined && { temperature: options.temperature })
       }, signal ? { signal } : undefined)
 
       for await (const event of stream) {

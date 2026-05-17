@@ -30,6 +30,10 @@ export interface ToolCallEvent {
   calls: { id: string; name: string; arguments: string }[]
 }
 
+export interface ChatOptions {
+  temperature?: number
+}
+
 export abstract class BaseAIProvider {
   protected config: AIProviderConfig
 
@@ -37,7 +41,7 @@ export abstract class BaseAIProvider {
     this.config = config
   }
 
-  abstract chatStream(messages: ChatMessage[], signal?: AbortSignal): AsyncGenerator<ChatStreamEvent>
+  abstract chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent>
   abstract validate(): Promise<boolean>
 
   async *chatStreamWithTools(
@@ -45,7 +49,6 @@ export abstract class BaseAIProvider {
     tools: any[],
     signal?: AbortSignal
   ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
-    // Default implementation: just stream without tools
     yield* this.chatStream(messages, signal)
   }
 }
