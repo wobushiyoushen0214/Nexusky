@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
@@ -82,27 +82,8 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate }: 
             <div className="editor-content chat-md" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
           )}
         </div>
-        {msg.role === 'assistant' && onRegenerate && (
-          <div style={{ marginTop: 4, display: 'flex', gap: 4 }}>
-            <button
-              onClick={() => onRegenerate(msg)}
-              style={{
-                height: 20, padding: '0 8px', fontSize: 10, color: 'var(--text-tertiary)',
-                background: 'transparent', border: '1px solid var(--border-subtle)',
-                borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
-                transition: 'color 100ms, border-color 100ms',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
-              title="重新生成"
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="1 4 1 10 7 10" /><polyline points="23 20 23 14 17 14" />
-                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
-              </svg>
-              重新生成
-            </button>
-          </div>
+        {msg.role === 'assistant' && (
+          <MessageActionBar content={msg.content} onRegenerate={onRegenerate ? () => onRegenerate(msg) : undefined} />
         )}
         {msg.sources && msg.sources.length > 0 && (
           <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -117,3 +98,58 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate }: 
     </div>
   )
 })
+
+const actionBtnStyle: React.CSSProperties = {
+  height: 20, padding: '0 8px', fontSize: 10, color: 'var(--text-tertiary)',
+  background: 'transparent', border: '1px solid var(--border-subtle)',
+  borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
+  transition: 'color 100ms, border-color 100ms',
+}
+
+function MessageActionBar({ content, onRegenerate }: { content: string; onRegenerate?: () => void }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div style={{ marginTop: 4, display: 'flex', gap: 4 }}>
+      <button
+        onClick={handleCopy}
+        style={actionBtnStyle}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+        title="复制"
+      >
+        {copied ? (
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+        {copied ? '已复制' : '复制'}
+      </button>
+      {onRegenerate && (
+        <button
+          onClick={onRegenerate}
+          style={actionBtnStyle}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+          title="重新生成"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10" /><polyline points="23 20 23 14 17 14" />
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+          </svg>
+          重新生成
+        </button>
+      )}
+    </div>
+  )
+}
