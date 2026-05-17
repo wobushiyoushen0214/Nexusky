@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
@@ -45,6 +45,20 @@ function friendlyError(raw: string): string {
   // 截断过长的原始错误
   if (msg.length > 200) msg = msg.slice(0, 200) + '...'
   return msg
+}
+
+function estimateTokens(text: string): number {
+  let cjk = 0, other = 0
+  for (const ch of text) {
+    const code = ch.codePointAt(0)!
+    if ((code >= 0x4E00 && code <= 0x9FFF) || (code >= 0x3400 && code <= 0x4DBF) ||
+        (code >= 0x3000 && code <= 0x303F) || (code >= 0xFF00 && code <= 0xFFEF)) {
+      cjk++
+    } else {
+      other++
+    }
+  }
+  return cjk + Math.ceil(other / 4)
 }
 
 export function ChatPanel() {
@@ -105,6 +119,14 @@ export function ChatPanel() {
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
   const [editUnbound, setEditUnbound] = useState(false)
+
+  const tokenCount = useMemo(() => {
+    let total = 0
+    for (const msg of messages) {
+      total += estimateTokens(msg.content)
+    }
+    return total
+  }, [messages])
 
   useEffect(() => {
     if (!vaultPath) return
@@ -1434,6 +1456,14 @@ ${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User ins
               </button>
             )}
             <div style={{ flex: 1 }} />
+            {tokenCount > 0 && (
+              <span
+                style={{ fontSize: 10, color: tokenCount > 5000 ? 'var(--warning, #f59e0b)' : 'var(--text-tertiary)', opacity: tokenCount > 5000 ? 0.9 : 0.5, marginRight: 6 }}
+                title={`当前对话约 ${tokenCount} tokens`}
+              >
+                ~{tokenCount > 1000 ? `${(tokenCount / 1000).toFixed(1)}k` : tokenCount} tokens
+              </span>
+            )}
             <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.5 }}>Enter 发送</span>
           </div>
         </div>
