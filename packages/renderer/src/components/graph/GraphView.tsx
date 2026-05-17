@@ -1007,6 +1007,29 @@ export function GraphView() {
                 </svg>
                 {t('graph.inferGlobal')}
               </button>
+              <button
+                className="graph-back-btn"
+                style={{ marginTop: 8 }}
+                disabled={!!indexStatus}
+                onClick={async () => {
+                  if (!vaultPath) return
+                  setIndexStatus('正在生成记忆文件...')
+                  try {
+                    const result = await window.api.invoke('ai:generate-memories', { vaultPath })
+                    if (result.success) {
+                      setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇`)
+                    }
+                  } catch (e: any) {
+                    setIndexStatus(e.message)
+                  }
+                  setTimeout(() => setIndexStatus(null), 5000)
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.4V11h3a3 3 0 0 1 3 3v1"/><path d="M6 11V9.4C4.8 8.8 4 7.5 4 6a4 4 0 0 1 8 0"/><rect x="2" y="17" width="8" height="5" rx="1"/><rect x="14" y="17" width="8" height="5" rx="1"/>
+                </svg>
+                生成记忆
+              </button>
               {indexStatus && (
                 <div className="graph-panel-info" style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
                   {indexStatus}
