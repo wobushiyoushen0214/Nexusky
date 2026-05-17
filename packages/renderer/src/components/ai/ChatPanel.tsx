@@ -527,7 +527,8 @@ export function ChatPanel() {
         try {
           const dirDetect = await window.api.invoke('ai:complete', {
             text: dirs.length > 0
-              ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想对哪个目录生成知识图谱。如果用户提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户说"当前"或没有指定，输出"当前"。只输出目录名或"当前"，不要其他文字。`,
+              ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想对哪个目录生成知识图谱。如果用户提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户说"当前"或没有指定，输出"当前"。只输出目录名或"当前"，不要其他文字。`
+              : `用户指令: "${userMsg.content}"\n\n输出"当前"。`,
             temperature: 0
           })
           const detected = (dirDetect || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')

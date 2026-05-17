@@ -21,6 +21,25 @@ function convertContent(content: string | ChatContentPart[]): string | Anthropic
   return blocks.length > 0 ? blocks : ''
 }
 
+const RETRYABLE_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'])
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 529])
+const NON_RETRYABLE_STATUS = new Set([401, 403, 404])
+const MAX_RETRIES = 3
+const BASE_DELAY = 500
+
+function isRetryableError(error: any): boolean {
+  if (error.name === 'AbortError') return false
+  if (error.code && RETRYABLE_CODES.has(error.code)) return true
+  if (error.status && RETRYABLE_STATUS.has(error.status)) return true
+  if (error.status && NON_RETRYABLE_STATUS.has(error.status)) return false
+  if (error.message?.includes('ECONNRESET') || error.message?.includes('ETIMEDOUT')) return true
+  return false
+}
+
+function getRetryDelay(attempt: number): number {
+  return BASE_DELAY * Math.pow(3, attempt)
+}
+
 export class ClaudeProvider extends BaseAIProvider {
   private client: Anthropic
 
@@ -33,37 +52,59 @@ export class ClaudeProvider extends BaseAIProvider {
   }
 
   async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
-    try {
-      const systemMsg = messages.find((m) => m.role === 'system')
-      const chatMessages = messages
-        .filter((m) => m.role !== 'system')
-        .map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: convertContent(m.content)
-        }))
+    const systemMsg = messages.find((m) => m.role === 'system')
+    const chatMessages = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: convertContent(m.content)
+      }))
 
-      const stream = this.client.messages.stream({
-        model: this.config.model,
-        max_tokens: 4096,
-        system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
-        messages: chatMessages as any,
-        ...(options?.temperature !== undefined && { temperature: options.temperature })
-      }, signal ? { signal } : undefined)
+    let lastError: any = null
 
-      for await (const event of stream) {
-        if (signal?.aborted) break
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          yield { type: 'text', content: event.delta.text }
-        }
-      }
-      yield { type: 'done', content: '' }
-    } catch (error: any) {
-      if (error.name === 'AbortError' || signal?.aborted) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (signal?.aborted) {
         yield { type: 'done', content: '' }
         return
       }
-      yield { type: 'error', content: error.message || 'Claude request failed' }
+
+      if (attempt > 0) {
+        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_RETRIES})...` }
+        const delay = getRetryDelay(attempt - 1)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+
+      try {
+        const stream = this.client.messages.stream({
+          model: this.config.model,
+          max_tokens: 4096,
+          system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
+          messages: chatMessages as any,
+          ...(options?.temperature !== undefined && { temperature: options.temperature })
+        }, signal ? { signal } : undefined)
+
+        for await (const event of stream) {
+          if (signal?.aborted) break
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            yield { type: 'text', content: event.delta.text }
+          }
+        }
+        yield { type: 'done', content: '' }
+        return
+      } catch (error: any) {
+        lastError = error
+        if (error.name === 'AbortError' || signal?.aborted) {
+          yield { type: 'done', content: '' }
+          return
+        }
+        if (!isRetryableError(error) || attempt === MAX_RETRIES) {
+          yield { type: 'error', content: error.message || 'Claude request failed' }
+          return
+        }
+      }
     }
+
+    yield { type: 'error', content: lastError?.message || 'Claude request failed' }
   }
 
   async validate(): Promise<boolean> {
