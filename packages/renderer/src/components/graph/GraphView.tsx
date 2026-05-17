@@ -461,7 +461,7 @@ export function GraphView() {
       .attr('stroke-opacity', (d) => {
         if (d.type === 'folder') return 0.9
         const level = getLinkLevel(d.linkCount)
-        return 0.2 + level * 0.15
+        return 0.35 + level * 0.15
       })
       .attr('filter', (d) => {
         const idx = nodeIndexMap.get(d.id)
@@ -656,7 +656,7 @@ export function GraphView() {
             .attr('r', r)
             .attr('fill', 'var(--bg-base)')
             .attr('opacity', 1)
-            .attr('stroke-opacity', d.type === 'folder' ? 0.8 : 0.2 + getLinkLevel(d.linkCount) * 0.15)
+            .attr('stroke-opacity', d.type === 'folder' ? 0.8 : 0.35 + getLinkLevel(d.linkCount) * 0.15)
             .attr('filter', () => {
               const idx = nodeIndexMap.get(d.id)
               if (idx != null && multiFilterIds.has(idx)) {

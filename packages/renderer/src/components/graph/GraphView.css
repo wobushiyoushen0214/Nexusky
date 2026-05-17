@@ -352,7 +352,7 @@
 .graph-link {
   fill: none;
   stroke-linecap: round;
-  stroke-opacity: 0.2;
+  stroke-opacity: 0.35;
   transition: stroke-opacity 300ms ease, stroke-width 300ms ease;
 }
 
