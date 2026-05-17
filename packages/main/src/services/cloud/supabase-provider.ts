@@ -41,6 +41,17 @@ function collectLocalFiles(dirPath: string): string[] {
     }
   }
   walk(dirPath)
+
+  const memoriesDir = join(dirPath, '.nexusky', 'memories')
+  if (existsSync(memoriesDir)) {
+    const memFiles = readdirSync(memoriesDir, { withFileTypes: true })
+    for (const entry of memFiles) {
+      if (entry.isFile() && extname(entry.name) === '.json') {
+        results.push(join(memoriesDir, entry.name))
+      }
+    }
+  }
+
   return results
 }
 
@@ -69,10 +80,14 @@ export class SupabaseSyncProvider implements SyncProvider {
     const content = readFileSync(filePath, 'utf-8')
     const hash = createHash('md5').update(content).digest('hex')
 
+    const contentType = extname(filePath) === '.json'
+      ? 'application/json; charset=utf-8'
+      : 'text/markdown; charset=utf-8'
+
     const { error } = await client.storage
       .from('notes')
       .upload(storagePath, content, {
-        contentType: 'text/markdown; charset=utf-8',
+        contentType,
         upsert: true
       })
 

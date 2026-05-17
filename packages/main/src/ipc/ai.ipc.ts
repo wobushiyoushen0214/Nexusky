@@ -5,6 +5,7 @@ import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
+import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs'
 import { join, basename } from 'path'
 
@@ -667,17 +668,28 @@ graph TD
     const db = getDatabase(params.vaultPath)
     let added = 0
 
-    // Clear previous inferred links before re-inferring
     db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
-
-    // Phase 1: TF-IDF similarity-based auto links (no AI needed)
-    const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.65)
     const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
 
-    for (const pair of similarPairs) {
+    // Phase 1: Memory-based relation (preferred — uses pre-generated memory files)
+    const memoryPairs = findRelatedByMemory(params.vaultPath, 3)
+    for (const pair of memoryPairs) {
       const existing = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(pair.sourceId, pair.targetTitle)
       if (!existing) {
         const reverseExisting = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(pair.targetId, pair.sourceTitle)
+        if (!reverseExisting) {
+          insertLink.run(pair.sourceId, pair.targetTitle, pair.reason, 'inferred')
+          added++
+        }
+      }
+    }
+
+    // Phase 2: TF-IDF fallback (for notes without memory files)
+    const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.75)
+    for (const pair of similarPairs) {
+      const existing = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?").get(pair.sourceId, pair.targetTitle)
+      if (!existing) {
+        const reverseExisting = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?").get(pair.targetId, pair.sourceTitle)
         if (!reverseExisting) {
           insertLink.run(pair.sourceId, pair.targetTitle, `相似度: ${(pair.score * 100).toFixed(0)}%`, 'inferred')
           added++
@@ -685,82 +697,36 @@ graph TD
       }
     }
 
-    // Phase 2: AI cross-group analysis (if provider available)
-    const config = aiManager.getActiveConfig()
-    if (config && !aiManager.validateConfig(config)) {
-      const allNotes = db.prepare(`
-        SELECT n.id, n.title, n.file_path,
-          (SELECT c.content FROM chunks c WHERE c.note_id = n.id ORDER BY c.chunk_index LIMIT 1) as first_chunk
-        FROM notes n ORDER BY n.updated_at DESC LIMIT 80
-      `).all() as { id: string; title: string; file_path: string; first_chunk: string | null }[]
-
-      if (allNotes.length > 1) {
-        const folderGroups = new Map<string, { id: string; title: string; summary: string }[]>()
-        for (const note of allNotes) {
-          const folder = note.file_path.split('/').slice(0, -1).join('/') || '_root'
-          if (!folderGroups.has(folder)) folderGroups.set(folder, [])
-          const summary = (note.first_chunk || '').replace(/^#+\s*.+\n/, '').trim().slice(0, 120)
-          folderGroups.get(folder)!.push({ id: note.id, title: note.title, summary })
-        }
-
-        if (folderGroups.size > 1) {
-          const crossGroupSummary = Array.from(folderGroups.entries())
-            .map(([folder, notes]) => `[${folder}]\n${notes.map((n) => `  - ${n.title}${n.summary ? `：${n.summary}` : ''}`).join('\n')}`)
-            .join('\n\n')
-
-          const provider = aiManager.getProvider(config)
-          let relResult = ''
-
-          try {
-            for await (const chunk of provider.chatStream([
-              { role: 'system', content: `你是一个知识图谱分析助手。以下是按文件夹分组的笔记列表（含标题和内容摘要）。请找出跨文件夹之间有真正语义关联的笔记对。
-
-输出格式为 JSON 数组，每项包含：
-- source: 源笔记标题（必须与给定标题完全一致）
-- target: 目标笔记标题（必须与给定标题完全一致，且必须在不同文件夹）
-- reason: 一句话说明关系原因
-
-规则：
-1. 只找跨文件夹的关系，同文件夹内的不需要
-2. 基于内容摘要判断实质关联，关注概念递进、知识依赖、因果关系等深层语义关系
-3. 仅标题或摘要含相同关键词不构成关联，必须有具体的知识依赖、互补或因果关系
-4. 同一领域的平行概念（如 React 组件 vs Vue 组件）不应关联，除非一个是另一个的前置知识
-5. 宁缺毋滥，只输出你非常确信有实质关联的笔记对，不确定的不要输出
-6. 只输出 JSON，不要其他文字
-7. 最多输出 8 条关系` },
-              { role: 'user', content: `以下是知识库的笔记分组：\n\n${crossGroupSummary}` }
-            ])) {
-              if (window.isDestroyed()) break
-              if (chunk.type === 'text') relResult += chunk.content
-              if (chunk.type === 'error') break
-            }
-
-            if (relResult.trim()) {
-              const jsonStr = relResult.replace(/```json?\s*|\s*```/g, '').trim()
-              try {
-                const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
-                if (Array.isArray(relations)) {
-                  const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
-                  for (const rel of relations) {
-                    const sourceNote = findNote.get(rel.source) as { id: string } | undefined
-                    if (sourceNote && rel.target && rel.source !== rel.target) {
-                      const existing = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(sourceNote.id, rel.target)
-                      if (!existing) {
-                        insertLink.run(sourceNote.id, rel.target, rel.reason || '', 'inferred')
-                        added++
-                      }
-                    }
-                  }
-                }
-              } catch {}
-            }
-          } catch {}
-        }
-      }
-    }
-
     try { resolveAllLinks(params.vaultPath) } catch {}
     return { success: true, added }
+  })
+
+  ipcMain.handle('ai:generate-memories', async (event, params: { vaultPath: string }) => {
+    const db = getDatabase(params.vaultPath)
+    const notes = db.prepare(`
+      SELECT n.id, n.title, n.file_path, n.content_hash
+      FROM notes n ORDER BY n.updated_at DESC LIMIT 200
+    `).all() as { id: string; title: string; file_path: string; content_hash: string }[]
+
+    let generated = 0
+    let skipped = 0
+
+    for (const note of notes) {
+      const existing = readMemory(params.vaultPath, note.id)
+      if (existing && existing.contentHash === note.content_hash) {
+        skipped++
+        continue
+      }
+
+      const fullPath = join(params.vaultPath, note.file_path)
+      if (!existsSync(fullPath)) continue
+
+      const content = readFileSync(fullPath, 'utf-8')
+      const result = await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash)
+      if (result) generated++
+    }
+
+    return { success: true, generated, skipped, total: notes.length }
   })
 
   ipcMain.handle('ai:get-system-prompt', () => {

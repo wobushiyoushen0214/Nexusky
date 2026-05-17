@@ -6,6 +6,7 @@ import { indexNote, removeNoteIndex } from './indexer'
 import { indexNoteEmbeddings, invalidateEmbeddingCache } from './embedding'
 import { getDatabase } from './database'
 import { readFileSync } from 'fs'
+import { generateMemory, readMemory, deleteMemory } from './memory'
 
 let watcher: FSWatcher | null = null
 let currentVaultPath: string | null = null
@@ -44,13 +45,22 @@ export function startWatching(vaultPath: string): void {
       try {
         indexNote(vaultPath, path)
         invalidateEmbeddingCache()
-        const db = getDatabase(vaultPath)
         const { createHash } = require('crypto')
         const { relative } = require('path')
         const relPath = relative(vaultPath, path).replace(/\\/g, '/')
         const noteId = createHash('md5').update(relPath).digest('hex')
         const content = readFileSync(path, 'utf-8')
+        const contentHash = createHash('md5').update(content).digest('hex')
         indexNoteEmbeddings(vaultPath, noteId, content).catch(() => {})
+
+        const existingMemory = readMemory(vaultPath, noteId)
+        if (!existingMemory || existingMemory.contentHash !== contentHash) {
+          const db = getDatabase(vaultPath)
+          const note = db.prepare('SELECT title, file_path FROM notes WHERE id = ?').get(noteId) as { title: string; file_path: string } | undefined
+          if (note) {
+            generateMemory(vaultPath, noteId, note.title, note.file_path, content, contentHash).catch(() => {})
+          }
+        }
       } catch {}
       const windows = BrowserWindow.getAllWindows()
       for (const win of windows) {
@@ -70,8 +80,13 @@ export function startWatching(vaultPath: string): void {
       notifyStructureChange()
       if (extname(path) === '.md') {
         try {
+          const { createHash } = require('crypto')
+          const { relative } = require('path')
+          const relPath = relative(vaultPath, path).replace(/\\/g, '/')
+          const noteId = createHash('md5').update(relPath).digest('hex')
           removeNoteIndex(vaultPath, path)
           invalidateEmbeddingCache()
+          deleteMemory(vaultPath, noteId)
         } catch {}
       }
     })

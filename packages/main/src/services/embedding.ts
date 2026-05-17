@@ -430,7 +430,7 @@ export function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float
   return dot / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
-export function findSimilarNotes(vaultPath: string, topK = 3, threshold = 0.65): { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] {
+export function findSimilarNotes(vaultPath: string, topK = 3, threshold = 0.75): { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] {
   const { docs, idf } = buildTfIdfIndex(vaultPath)
 
   const noteMap = new Map<string, { title: string; filePath: string; terms: Map<string, number>; norm: number }>()
