@@ -164,7 +164,16 @@ export function ChatPanel() {
         setIsStreaming(false)
       } else if (event.type === 'error') {
         setToolStatus(null)
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }])
+        if (streamContentRef.current) {
+          const partial = streamContentRef.current
+          const errMsg = friendlyError(event.content)
+          setMessages((msgs) => [...msgs,
+            { id: Date.now().toString(), role: 'assistant', content: partial },
+            { id: (Date.now() + 1).toString(), role: 'assistant', content: `⚠️ ${errMsg}` }
+          ])
+        } else {
+          setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }])
+        }
         streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
@@ -260,6 +269,46 @@ export function ChatPanel() {
 
     const allMessages = [...remaining, userMsg]
     const chatMessages = await buildChatMessages(allMessages)
+    try {
+      if (agentMode && vaultPath) {
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+      } else {
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+      }
+    } catch (e: any) {
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+      streamContentRef.current = ''
+      setStreamContent('')
+      setIsStreaming(false)
+    }
+  }, [messages, isStreaming, vaultPath, currentSessionId, appendToDb])
+
+  const handleContinue = useCallback(async (msg: Message) => {
+    if (isStreaming) return
+    const msgIndex = messages.findIndex((m) => m.id === msg.id)
+    if (msgIndex < 0) return
+
+    // Remove both the partial message and the error message after it
+    const remaining = messages.filter((_, i) => i !== msgIndex && i !== msgIndex + 1)
+    setMessages(remaining)
+    if (vaultPath) {
+      window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined }).catch(() => {})
+      for (const m of remaining) { appendToDb(m) }
+    }
+
+    const providers = await window.api.invoke('ai:get-providers', undefined)
+    if (!providers || providers.length === 0 || !providers.some((p: any) => p.enabled)) {
+      toast('请先在设置中配置 AI 提供商', 'error')
+      return
+    }
+
+    // Seed stream with partial content so continuation appends to it
+    setIsStreaming(true)
+    streamContentRef.current = msg.content
+    setStreamContent(msg.content)
+
+    const chatMessages = await buildChatMessages(remaining)
+    chatMessages.push({ role: 'assistant', content: msg.content })
     try {
       if (agentMode && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
@@ -1088,6 +1137,7 @@ ${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User ins
         editStreamContent={editStreamContent}
         toolStatus={toolStatus}
         onRegenerate={handleRegenerate}
+        onContinue={handleContinue}
       />
 
       {/* Folder picker for batch generation */}

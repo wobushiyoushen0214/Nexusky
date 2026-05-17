@@ -25,9 +25,10 @@ export interface Message {
 interface MessageBubbleProps {
   msg: Message
   onRegenerate?: (msg: Message) => void
+  onContinue?: (msg: Message) => void
 }
 
-export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, onContinue }: MessageBubbleProps) {
   const isPlanList = msg.role === 'assistant' && /^[○✓] .+/m.test(msg.content) && !msg.content.includes('\n\n')
 
   return (
@@ -83,7 +84,7 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate }: 
           )}
         </div>
         {msg.role === 'assistant' && (
-          <MessageActionBar content={msg.content} onRegenerate={onRegenerate ? () => onRegenerate(msg) : undefined} />
+          <MessageActionBar content={msg.content} onRegenerate={onRegenerate ? () => onRegenerate(msg) : undefined} onContinue={onContinue ? () => onContinue(msg) : undefined} />
         )}
         {msg.sources && msg.sources.length > 0 && (
           <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -106,7 +107,7 @@ const actionBtnStyle: React.CSSProperties = {
   transition: 'color 100ms, border-color 100ms',
 }
 
-function MessageActionBar({ content, onRegenerate }: { content: string; onRegenerate?: () => void }) {
+function MessageActionBar({ content, onRegenerate, onContinue }: { content: string; onRegenerate?: () => void; onContinue?: () => void }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -135,6 +136,20 @@ function MessageActionBar({ content, onRegenerate }: { content: string; onRegene
         )}
         {copied ? '已复制' : '复制'}
       </button>
+      {onContinue && (
+        <button
+          onClick={onContinue}
+          style={actionBtnStyle}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+          title="继续生成"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          继续生成
+        </button>
+      )}
       {onRegenerate && (
         <button
           onClick={onRegenerate}

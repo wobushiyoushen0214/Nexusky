@@ -11,9 +11,10 @@ interface ChatMessagesProps {
   editStreamContent: string
   toolStatus: string | null
   onRegenerate: (msg: Message) => void
+  onContinue?: (msg: Message) => void
 }
 
-export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, streamContent, editMode, editElapsed, editStreamContent, toolStatus, onRegenerate }: ChatMessagesProps) {
+export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, streamContent, editMode, editElapsed, editStreamContent, toolStatus, onRegenerate, onContinue }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -57,8 +58,10 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {messages.map((msg, i) => {
           const isLastAssistant = msg.role === 'assistant' && !isStreaming && i === messages.length - 1
+          const nextMsg = messages[i + 1]
+          const isPartialBeforeError = msg.role === 'assistant' && nextMsg?.role === 'assistant' && nextMsg.content.startsWith('⚠️') && !isStreaming
           return (
-            <MessageBubbleWithRegenerate key={msg.id} msg={msg} onRegenerate={isLastAssistant ? onRegenerate : undefined} />
+            <MessageBubbleWithRegenerate key={msg.id} msg={msg} onRegenerate={isLastAssistant ? onRegenerate : undefined} onContinue={isPartialBeforeError ? onContinue : undefined} />
           )
         })}
         {isStreaming && streamContent && (
@@ -109,6 +112,6 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
 
 import { MessageBubble } from './MessageBubble'
 
-const MessageBubbleWithRegenerate = memo(function MessageBubbleWithRegenerate({ msg, onRegenerate }: { msg: Message; onRegenerate?: (msg: Message) => void }) {
-  return <MessageBubble msg={msg} onRegenerate={onRegenerate} />
+const MessageBubbleWithRegenerate = memo(function MessageBubbleWithRegenerate({ msg, onRegenerate, onContinue }: { msg: Message; onRegenerate?: (msg: Message) => void; onContinue?: (msg: Message) => void }) {
+  return <MessageBubble msg={msg} onRegenerate={onRegenerate} onContinue={onContinue} />
 })
