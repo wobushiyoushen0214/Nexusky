@@ -671,7 +671,7 @@ graph TD
     db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
 
     // Phase 1: TF-IDF similarity-based auto links (no AI needed)
-    const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.5)
+    const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.65)
     const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
 
     for (const pair of similarPairs) {
@@ -688,27 +688,32 @@ graph TD
     // Phase 2: AI cross-group analysis (if provider available)
     const config = aiManager.getActiveConfig()
     if (config && !aiManager.validateConfig(config)) {
-      const allNotes = db.prepare('SELECT id, title, file_path FROM notes ORDER BY updated_at DESC LIMIT 100').all() as { id: string; title: string; file_path: string }[]
+      const allNotes = db.prepare(`
+        SELECT n.id, n.title, n.file_path,
+          (SELECT c.content FROM chunks c WHERE c.note_id = n.id ORDER BY c.chunk_index LIMIT 1) as first_chunk
+        FROM notes n ORDER BY n.updated_at DESC LIMIT 80
+      `).all() as { id: string; title: string; file_path: string; first_chunk: string | null }[]
 
       if (allNotes.length > 1) {
-        const folderGroups = new Map<string, { id: string; title: string }[]>()
+        const folderGroups = new Map<string, { id: string; title: string; summary: string }[]>()
         for (const note of allNotes) {
           const folder = note.file_path.split('/').slice(0, -1).join('/') || '_root'
           if (!folderGroups.has(folder)) folderGroups.set(folder, [])
-          folderGroups.get(folder)!.push({ id: note.id, title: note.title })
+          const summary = (note.first_chunk || '').replace(/^#+\s*.+\n/, '').trim().slice(0, 120)
+          folderGroups.get(folder)!.push({ id: note.id, title: note.title, summary })
         }
 
         if (folderGroups.size > 1) {
           const crossGroupSummary = Array.from(folderGroups.entries())
-            .map(([folder, notes]) => `[${folder}] ${notes.map((n) => n.title).join(', ')}`)
-            .join('\n')
+            .map(([folder, notes]) => `[${folder}]\n${notes.map((n) => `  - ${n.title}${n.summary ? `：${n.summary}` : ''}`).join('\n')}`)
+            .join('\n\n')
 
           const provider = aiManager.getProvider(config)
           let relResult = ''
 
           try {
             for await (const chunk of provider.chatStream([
-              { role: 'system', content: `你是一个知识图谱分析助手。以下是按文件夹分组的笔记标题列表。请找出跨文件夹之间有真正语义关联的笔记对。
+              { role: 'system', content: `你是一个知识图谱分析助手。以下是按文件夹分组的笔记列表（含标题和内容摘要）。请找出跨文件夹之间有真正语义关联的笔记对。
 
 输出格式为 JSON 数组，每项包含：
 - source: 源笔记标题（必须与给定标题完全一致）
@@ -717,12 +722,12 @@ graph TD
 
 规则：
 1. 只找跨文件夹的关系，同文件夹内的不需要
-2. 关注概念递进、知识依赖、因果关系等深层语义关系
-3. 仅标题含相同关键词（如不同框架下都有"性能优化"）不构成关联，除非它们之间有具体的知识依赖或互补关系
+2. 基于内容摘要判断实质关联，关注概念递进、知识依赖、因果关系等深层语义关系
+3. 仅标题或摘要含相同关键词不构成关联，必须有具体的知识依赖、互补或因果关系
 4. 同一领域的平行概念（如 React 组件 vs Vue 组件）不应关联，除非一个是另一个的前置知识
-5. 宁缺毋滥，只输出你非常确信有实质关联的笔记对
+5. 宁缺毋滥，只输出你非常确信有实质关联的笔记对，不确定的不要输出
 6. 只输出 JSON，不要其他文字
-7. 最多输出 10 条关系` },
+7. 最多输出 8 条关系` },
               { role: 'user', content: `以下是知识库的笔记分组：\n\n${crossGroupSummary}` }
             ])) {
               if (window.isDestroyed()) break

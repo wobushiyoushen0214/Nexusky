@@ -61,6 +61,19 @@ export function chunkText(content: string, noteId: string): TextChunk[] {
 const STOP_WORDS = new Set(['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这',
   'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'and', 'but', 'or', 'nor', 'not', 'so', 'if', 'that', 'this', 'it', 'its'])
 
+const DICT_WORDS = new Set([
+  '机器学习', '深度学习', '神经网络', '自然语言', '人工智能', '数据结构', '算法',
+  '操作系统', '计算机', '数据库', '编程语言', '面向对象', '函数式', '设计模式',
+  '微服务', '分布式', '云计算', '容器化', '虚拟化', '负载均衡', '消息队列',
+  '前端', '后端', '全栈', '响应式', '组件化', '状态管理', '路由', '渲染',
+  '性能优化', '内存管理', '垃圾回收', '并发编程', '异步编程', '多线程',
+  '版本控制', '持续集成', '持续部署', '自动化测试', '单元测试', '集成测试',
+  '网络协议', '加密算法', '身份认证', '权限控制', '安全漏洞',
+  '项目管理', '敏捷开发', '需求分析', '系统设计', '架构设计',
+  '知识图谱', '搜索引擎', '推荐系统', '数据分析', '数据挖掘',
+  '依赖注入', '控制反转', '生命周期', '事件驱动', '观察者',
+])
+
 function tokenize(text: string): string[] {
   const result: string[] = []
   const lower = text.toLowerCase()
@@ -72,13 +85,32 @@ function tokenize(text: string): string[] {
       if (seg.length > 1 && !STOP_WORDS.has(seg)) result.push(seg)
     } else {
       const chars = [...seg].filter((c) => /[一-鿿぀-ゟ゠-ヿ]/.test(c))
-      for (let i = 0; i < chars.length - 1; i++) {
-        const bigram = chars[i] + chars[i + 1]
-        if (!STOP_WORDS.has(bigram)) result.push(bigram)
+      if (chars.length === 0) continue
+      const str = chars.join('')
+
+      let i = 0
+      while (i < chars.length) {
+        let matched = false
+        for (let len = Math.min(4, chars.length - i); len >= 2; len--) {
+          const word = str.slice(i, i + len)
+          if (DICT_WORDS.has(word)) {
+            result.push(word)
+            i += len
+            matched = true
+            break
+          }
+        }
+        if (!matched) {
+          if (i < chars.length - 1) {
+            const bigram = chars[i] + chars[i + 1]
+            if (!STOP_WORDS.has(bigram)) result.push(bigram)
+          }
+          i++
+        }
       }
-      if (chars.length >= 2) {
-        const full = chars.join('')
-        if (full.length >= 2 && full.length <= 6) result.push(full)
+
+      if (str.length >= 2 && str.length <= 6 && !DICT_WORDS.has(str)) {
+        result.push(str)
       }
     }
   }
@@ -398,7 +430,7 @@ export function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float
   return dot / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
-export function findSimilarNotes(vaultPath: string, topK = 5, threshold = 0.5): { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] {
+export function findSimilarNotes(vaultPath: string, topK = 3, threshold = 0.65): { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] {
   const { docs, idf } = buildTfIdfIndex(vaultPath)
 
   const noteMap = new Map<string, { title: string; filePath: string; terms: Map<string, number>; norm: number }>()
