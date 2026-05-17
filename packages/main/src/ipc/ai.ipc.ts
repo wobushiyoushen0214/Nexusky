@@ -879,14 +879,29 @@ graph TD
     let total = 0
     for (const msg of messages) {
       if (typeof msg.content === 'string') {
-        total += Math.ceil(msg.content.length / 3)
+        total += estimateStringTokens(msg.content)
       } else {
         for (const part of msg.content) {
-          if (part.text) total += Math.ceil(part.text.length / 3)
+          if (part.text) total += estimateStringTokens(part.text)
         }
       }
     }
     return total
+  }
+
+  function estimateStringTokens(text: string): number {
+    let cjk = 0
+    let other = 0
+    for (const ch of text) {
+      const code = ch.codePointAt(0)!
+      if ((code >= 0x4E00 && code <= 0x9FFF) || (code >= 0x3400 && code <= 0x4DBF) ||
+          (code >= 0x3000 && code <= 0x303F) || (code >= 0xFF00 && code <= 0xFFEF)) {
+        cjk++
+      } else {
+        other++
+      }
+    }
+    return cjk + Math.ceil(other / 4)
   }
 
   async function compactMessages(messages: ChatMessage[]): Promise<ChatMessage[]> {
