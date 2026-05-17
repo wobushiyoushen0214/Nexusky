@@ -314,13 +314,19 @@ ${context}
       ])) {
         if (chunk.type === 'text') {
           result += chunk.content
+          window.webContents.send('ai:edit-stream', { type: 'text', content: chunk.content })
         }
-        if (chunk.type === 'error') return { success: false, error: chunk.content || 'AI 返回错误' }
+        if (chunk.type === 'error') {
+          window.webContents.send('ai:edit-stream', { type: 'done' })
+          return { success: false, error: chunk.content || 'AI 返回错误' }
+        }
       }
+      window.webContents.send('ai:edit-stream', { type: 'done' })
       const trimmed = result.trim()
       if (!trimmed) return { success: false, error: 'AI 未返回有效内容，请检查 API Key 配置' }
       return { success: true, content: trimmed }
     } catch (err: any) {
+      window.webContents.send('ai:edit-stream', { type: 'done' })
       return { success: false, error: err?.message || String(err) }
     }
   })

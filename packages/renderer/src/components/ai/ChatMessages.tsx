@@ -8,11 +8,12 @@ interface ChatMessagesProps {
   streamContent: string
   editMode: boolean
   editElapsed: number
+  editStreamContent: string
   toolStatus: string | null
   onRegenerate: (msg: Message) => void
 }
 
-export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, streamContent, editMode, editElapsed, toolStatus, onRegenerate }: ChatMessagesProps) {
+export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, streamContent, editMode, editElapsed, editStreamContent, toolStatus, onRegenerate }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -75,21 +76,28 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
         )}
         {isStreaming && !streamContent && (
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <div style={{ borderRadius: '14px 14px 14px 4px', padding: '12px 16px', background: 'var(--bg-elevated)', display: 'flex', gap: 8, alignItems: 'center' }}>
-              {toolStatus ? (
-                <>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{toolStatus}</span>
-                </>
-              ) : (
-                <>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.2s', opacity: 0.7 }} />
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.4s', opacity: 0.7 }} />
-                </>
-              )}
-              {editElapsed > 0 && (
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 4 }}>{editElapsed}s</span>
+            <div style={{ borderRadius: '14px 14px 14px 4px', padding: '12px 16px', background: 'var(--bg-elevated)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {toolStatus ? (
+                  <>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{toolStatus}</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.2s', opacity: 0.7 }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.4s', opacity: 0.7 }} />
+                  </>
+                )}
+                {editElapsed > 0 && (
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 4 }}>{editElapsed}s</span>
+                )}
+              </div>
+              {editStreamContent && (
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', maxHeight: 60, overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.4, opacity: 0.7 }}>
+                  {editStreamContent.slice(-200)}
+                </div>
               )}
             </div>
           </div>

@@ -96,6 +96,7 @@ export function ChatPanel() {
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
   const [editElapsed, setEditElapsed] = useState(0)
+  const [editStreamContent, setEditStreamContent] = useState('')
   const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -196,6 +197,17 @@ export function ChatPanel() {
     editCompleteRef.current = false
     prevStreaming.current = isStreaming
   }, [isStreaming])
+
+  useEffect(() => {
+    const cleanup = window.api.onAiEditStream((event: { type: string; content?: string }) => {
+      if (event.type === 'text' && event.content) {
+        setEditStreamContent((prev) => prev + event.content)
+      } else if (event.type === 'done') {
+        setEditStreamContent('')
+      }
+    })
+    return () => { cleanup() }
+  }, [])
 
   useEffect(() => {
     const cleanup = window.api.onAiSources((sources) => { pendingSourcesRef.current = sources })
@@ -1028,6 +1040,7 @@ export function ChatPanel() {
         streamContent={streamContent}
         editMode={editMode}
         editElapsed={editElapsed}
+        editStreamContent={editStreamContent}
         toolStatus={toolStatus}
         onRegenerate={handleRegenerate}
       />

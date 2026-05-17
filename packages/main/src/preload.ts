@@ -35,6 +35,11 @@ const api = {
     ipcRenderer.on('ai:sources', handler)
     return () => ipcRenderer.removeListener('ai:sources', handler)
   },
+  onAiEditStream: (callback: (event: { type: string; content?: string }) => void) => {
+    const handler = (_event: unknown, data: { type: string; content?: string }) => callback(data)
+    ipcRenderer.on('ai:edit-stream', handler)
+    return () => ipcRenderer.removeListener('ai:edit-stream', handler)
+  },
   onAiGraphProgress: (callback: (data: { content: string }) => void) => {
     const handler = (_event: unknown, data: { content: string }) => callback(data)
     ipcRenderer.on('ai:graph-progress', handler)
