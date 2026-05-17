@@ -4,6 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { ChatMessages } from './ChatMessages'
+import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
 import type { Message } from './MessageBubble'
 
@@ -91,10 +92,11 @@ export function ChatPanel() {
     try { localStorage.setItem('nexusky-chat-edit-mode', v ? '1' : '0') } catch {}
   }
   const [editTarget, setEditTarget] = useState<string | null>(null)
-  const [editResult, setEditResult] = useState<{ content: string; filePath: string } | null>(null)
+  const [editResult, setEditResult] = useState<{ content: string; original: string; filePath: string } | null>(null)
   const [editHistory, setEditHistory] = useState<string[]>([])
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
+  const [editPreviewMode, setEditPreviewMode] = useState<'diff' | 'preview'>('diff')
   const [editElapsed, setEditElapsed] = useState(0)
   const [editStreamContent, setEditStreamContent] = useState('')
   const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -766,7 +768,8 @@ ${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User ins
             setMessages((msgs) => [...msgs, msg])
             appendToDb(msg)
           } else {
-            setEditResult({ content: result.content, filePath: filePath })
+            setEditResult({ content: result.content, original: fileContent, filePath: filePath })
+            setEditPreviewMode('diff')
             setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '已生成修改方案，请查看下方预览并确认应用。' }])
           }
         } else {
@@ -1142,6 +1145,20 @@ ${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User ins
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                 </svg>
                 <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500 }}>{editResult.filePath.split(/[\\/]/).pop()}</span>
+                <div style={{ display: 'flex', marginLeft: 8, background: 'var(--bg-surface)', borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                  <button
+                    onClick={() => setEditPreviewMode('diff')}
+                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? '#fff' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
+                  >
+                    Diff
+                  </button>
+                  <button
+                    onClick={() => setEditPreviewMode('preview')}
+                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'preview' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'preview' ? '#fff' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
+                  >
+                    预览
+                  </button>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
@@ -1154,11 +1171,17 @@ ${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User ins
                 <button onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }} style={{ height: 24, padding: '0 8px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>放弃</button>
               </div>
             </div>
-            <div
-              className="editor-content"
-              style={{ padding: '12px 16px', maxHeight: editPreviewExpanded ? 'none' : 120, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(editResult.content) }}
-            />
+            {editPreviewMode === 'diff' ? (
+              <div style={{ maxHeight: editPreviewExpanded ? 'none' : 120, overflowY: 'auto', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}>
+                <DiffView original={editResult.original} modified={editResult.content} />
+              </div>
+            ) : (
+              <div
+                className="editor-content"
+                style={{ padding: '12px 16px', maxHeight: editPreviewExpanded ? 'none' : 120, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(editResult.content) }}
+              />
+            )}
           </div>
         </div>
       )}
