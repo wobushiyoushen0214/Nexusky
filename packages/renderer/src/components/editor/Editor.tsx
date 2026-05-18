@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
+import { EditorState as ProseMirrorEditorState } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
@@ -34,6 +35,19 @@ import { MermaidRenderer } from './MermaidRenderer'
 
 function stripFrontmatter(content: string): string {
   return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
+}
+
+type EditorStateSnapshot = {
+  doc?: unknown
+  selection?: unknown
+  storedMarks?: unknown
+  [key: string]: unknown
+}
+
+type EmbeddedNote = { title: string; content: string }
+
+function isEmbeddedNote(note: EmbeddedNote | null): note is EmbeddedNote {
+  return note !== null
 }
 
 class LRUCache<K, V> {
@@ -81,7 +95,7 @@ export function Editor() {
   const linkPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const markdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const editorStateCache = useRef(new LRUCache<string, any>(20))
+  const editorStateCache = useRef(new LRUCache<string, EditorStateSnapshot>(20))
   const linkPreviewCache = useRef<Map<string, string>>(new Map())
 
   const editor = useEditor({
@@ -188,8 +202,7 @@ export function Editor() {
       const cached = currentFilePath ? editorStateCache.current.get(currentFilePath) : null
       if (cached) {
         try {
-          const EditorState = (editor.state as any).constructor
-          const state = EditorState.fromJSON(
+          const state = ProseMirrorEditorState.fromJSON(
             { schema: editor.state.schema, plugins: editor.state.plugins },
             cached
           )
@@ -788,7 +801,7 @@ function MermaidBlocks({ content }: { content: string }) {
 
 function TransclusionBlocks({ content }: { content: string }) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
-  const [embeds, setEmbeds] = useState<{ title: string; content: string }[]>([])
+  const [embeds, setEmbeds] = useState<EmbeddedNote[]>([])
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -812,7 +825,7 @@ function TransclusionBlocks({ content }: { content: string }) {
           }
         } catch {}
         return null
-      })).then((results) => setEmbeds(results.filter(Boolean) as any))
+      })).then((results) => setEmbeds(results.filter(isEmbeddedNote)))
     }, 800)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [content, vaultPath])
