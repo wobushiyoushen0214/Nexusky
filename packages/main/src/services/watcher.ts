@@ -3,7 +3,7 @@ import type { FSWatcher } from 'chokidar'
 import { BrowserWindow } from 'electron'
 import { extname } from 'path'
 import { indexNote, removeNoteIndex } from './indexer'
-import { indexNoteEmbeddings, invalidateEmbeddingCache } from './embedding'
+import { indexNoteEmbeddings, invalidateNoteInCache } from './embedding'
 import { getDatabase } from './database'
 import { readFileSync } from 'fs'
 import { generateMemory, readMemory, deleteMemory } from './memory'
@@ -44,11 +44,11 @@ export function startWatching(vaultPath: string): void {
       changeTimers.delete(path)
       try {
         indexNote(vaultPath, path)
-        invalidateEmbeddingCache()
         const { createHash } = require('crypto')
         const { relative } = require('path')
         const relPath = relative(vaultPath, path).replace(/\\/g, '/')
         const noteId = createHash('md5').update(relPath).digest('hex')
+        invalidateNoteInCache(vaultPath, noteId)
         const content = readFileSync(path, 'utf-8')
         const contentHash = createHash('md5').update(content).digest('hex')
         indexNoteEmbeddings(vaultPath, noteId, content).catch(() => {})
@@ -85,7 +85,7 @@ export function startWatching(vaultPath: string): void {
           const relPath = relative(vaultPath, path).replace(/\\/g, '/')
           const noteId = createHash('md5').update(relPath).digest('hex')
           removeNoteIndex(vaultPath, path)
-          invalidateEmbeddingCache()
+          invalidateNoteInCache(vaultPath, noteId)
           deleteMemory(vaultPath, noteId)
         } catch {}
       }

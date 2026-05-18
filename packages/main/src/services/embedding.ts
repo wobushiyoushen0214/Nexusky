@@ -133,6 +133,65 @@ export function invalidateEmbeddingCache(): void {
   tfidfCache = null
 }
 
+export function invalidateNoteInCache(vaultPath: string, noteId: string): void {
+  if (!tfidfCache || tfidfCache.vaultPath !== vaultPath) return
+  const idx = tfidfCache.docs.findIndex((d) => d.noteId === noteId)
+  if (idx === -1) return
+
+  const db = getDatabase(vaultPath)
+  const rows = db.prepare(`
+    SELECT c.content, c.heading_context, c.note_id, n.title, n.file_path
+    FROM chunks c JOIN notes n ON n.id = c.note_id
+    WHERE c.note_id = ?
+  `).all(noteId) as { content: string; heading_context: string; note_id: string; title: string; file_path: string }[]
+
+  // Remove old docs for this note
+  tfidfCache.docs = tfidfCache.docs.filter((d) => d.noteId !== noteId)
+
+  if (rows.length === 0) {
+    rebuildIdf()
+    return
+  }
+
+  // Add updated docs
+  for (const row of rows) {
+    const tokens = tokenize(row.content + ' ' + row.title + ' ' + (row.heading_context || ''))
+    const tf = new Map<string, number>()
+    for (const token of tokens) tf.set(token, (tf.get(token) || 0) + 1)
+    tfidfCache.docs.push({
+      noteId: row.note_id,
+      title: row.title,
+      filePath: row.file_path,
+      content: row.content,
+      headingContext: row.heading_context || '',
+      terms: tf,
+      norm: 0
+    })
+  }
+
+  rebuildIdf()
+}
+
+function rebuildIdf(): void {
+  if (!tfidfCache) return
+  const N = tfidfCache.docs.length
+  const df = new Map<string, number>()
+  for (const doc of tfidfCache.docs) {
+    const seen = new Set<string>()
+    for (const term of doc.terms.keys()) {
+      if (!seen.has(term)) { df.set(term, (df.get(term) || 0) + 1); seen.add(term) }
+    }
+  }
+  const idf = new Map<string, number>()
+  for (const [term, count] of df) idf.set(term, Math.log((N + 1) / (count + 1)) + 1)
+  tfidfCache.idf = idf
+  for (const doc of tfidfCache.docs) {
+    let sumSq = 0
+    for (const [term, freq] of doc.terms) { const w = freq * (idf.get(term) || 1); sumSq += w * w }
+    doc.norm = Math.sqrt(sumSq)
+  }
+}
+
 function buildTfIdfIndex(vaultPath: string): { docs: TfIdfDoc[]; idf: Map<string, number> } {
   if (tfidfCache && tfidfCache.vaultPath === vaultPath) return tfidfCache
 
