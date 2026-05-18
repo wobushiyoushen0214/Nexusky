@@ -317,6 +317,15 @@ export function KanbanPanel() {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {busy && (
+              <button
+                onClick={() => { window.api.invoke('ai:stop', undefined); setBusy(null) }}
+                title="停止 AI 任务"
+                style={{ ...squareButtonStyle, color: 'var(--danger)', borderColor: 'rgba(248, 113, 113, 0.28)', background: 'var(--danger-muted)' }}
+              >
+                <Icon name="x" />
+              </button>
+            )}
             <button onClick={handleGenerateFromNote} disabled={busy === 'from-note'} title="从当前笔记生成任务" style={squareButtonStyle}>
               {busy === 'from-note' ? <span style={miniLoadingStyle} /> : <Icon name="note" />}
             </button>

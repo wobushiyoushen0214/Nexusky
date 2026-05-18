@@ -7,10 +7,9 @@ import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
+import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs'
 import { join, basename } from 'path'
-
-const activeAbortControllers: Map<number, AbortController> = new Map()
 
 export function registerAiIPC(): void {
   ipcMain.handle('ai:get-providers', () => {
@@ -76,11 +75,7 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
     if (!window) return
 
     const windowId = window.id
-    const prevController = activeAbortControllers.get(windowId)
-    if (prevController) prevController.abort()
-
-    const controller = new AbortController()
-    activeAbortControllers.set(windowId, controller)
+    const controller = startAiTask(windowId)
 
     let messages = [...params.messages]
 
@@ -147,18 +142,14 @@ ${context}
       if (!window.isDestroyed() && !controller.signal.aborted) {
         window.webContents.send('ai:stream', { type: 'done', content: '' })
       }
-      activeAbortControllers.delete(windowId)
+      finishAiTask(windowId, controller)
     }
   })
 
   ipcMain.handle('ai:stop', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return
-    const controller = activeAbortControllers.get(window.id)
-    if (controller) {
-      controller.abort()
-      activeAbortControllers.delete(window.id)
-    }
+    abortAiTask(window.id)
   })
 
   const completeAbortControllers: Map<string, AbortController> = new Map()
@@ -475,10 +466,7 @@ graph TD
     if (configError) return { success: false, error: configError, files: [] }
 
     const windowId = window.id
-    const prevController = activeAbortControllers.get(windowId)
-    if (prevController) prevController.abort()
-    const controller = new AbortController()
-    activeAbortControllers.set(windowId, controller)
+    const controller = startAiTask(windowId)
 
     const provider = aiManager.getProvider(config)
     const { writeFileSync, mkdirSync, existsSync, readFileSync } = require('fs')
@@ -499,14 +487,14 @@ graph TD
       ], controller.signal)) {
         if (controller.signal.aborted) break
         if (chunk.type === 'text') planResult += chunk.content
-        if (chunk.type === 'error') { activeAbortControllers.delete(windowId); return { success: false, error: chunk.content, files: [] } }
+        if (chunk.type === 'error') { finishAiTask(windowId, controller); return { success: false, error: chunk.content, files: [] } }
       }
     } catch (err: any) {
-      activeAbortControllers.delete(windowId)
+      finishAiTask(windowId, controller)
       return { success: false, error: controller.signal.aborted ? '已取消' : err.message, files: [] }
     }
 
-    if (controller.signal.aborted) { activeAbortControllers.delete(windowId); return { success: false, error: '已取消', files: [] } }
+    if (controller.signal.aborted) { finishAiTask(windowId, controller); return { success: false, error: '已取消', files: [] } }
 
     let plan: { title: string; brief: string }[]
     try {
@@ -652,7 +640,7 @@ graph TD
       }
     }
 
-    activeAbortControllers.delete(windowId)
+    finishAiTask(windowId, controller)
     const aborted = controller.signal.aborted
     window.webContents.send('ai:generate-notes-progress', { stage: 'done', message: aborted ? `已停止，已生成 ${createdFiles.length} 个文件` : `完成！已生成 ${createdFiles.length} 个文件` })
     return { success: true, files: createdFiles }
@@ -740,6 +728,7 @@ graph TD
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在' }
 
+    const controller = startAiTask(window.id)
     const db = getDatabase(params.vaultPath)
     const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
     const explicitLinkExists = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'")
@@ -760,44 +749,52 @@ graph TD
       inferredLinks.push(pair)
     }
 
-    // Phase 1: Memory-based relation (preferred — uses pre-generated memory files)
-    const memoryPairs = findRelatedByMemory(params.vaultPath, 3)
-    for (const pair of memoryPairs) {
-      queueInferredLink({
-        sourceId: pair.sourceId,
-        targetId: pair.targetId,
-        sourceTitle: pair.sourceTitle,
-        targetTitle: pair.targetTitle,
-        context: pair.reason
-      }, false)
-    }
-
-    // Phase 2: TF-IDF fallback (for notes without memory files)
-    const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.75)
-    for (const pair of similarPairs) {
-      queueInferredLink({
-        sourceId: pair.sourceId,
-        targetId: pair.targetId,
-        sourceTitle: pair.sourceTitle,
-        targetTitle: pair.targetTitle,
-        context: `相似度: ${(pair.score * 100).toFixed(0)}%`
-      }, true)
-    }
-
-    const replaceInferredLinks = db.transaction(() => {
-      db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
-      for (const link of inferredLinks) {
-        insertLink.run(link.sourceId, link.targetTitle, link.context, 'inferred')
+    try {
+      // Phase 1: Memory-based relation (preferred — uses pre-generated memory files)
+      const memoryPairs = findRelatedByMemory(params.vaultPath, 3)
+      for (const pair of memoryPairs) {
+        if (controller.signal.aborted) return { success: false, error: '已取消' }
+        queueInferredLink({
+          sourceId: pair.sourceId,
+          targetId: pair.targetId,
+          sourceTitle: pair.sourceTitle,
+          targetTitle: pair.targetTitle,
+          context: pair.reason
+        }, false)
       }
-    })
-    replaceInferredLinks()
 
-    try { resolveAllLinks(params.vaultPath) } catch {}
-    return { success: true, added: inferredLinks.length }
+      // Phase 2: TF-IDF fallback (for notes without memory files)
+      const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.75)
+      for (const pair of similarPairs) {
+        if (controller.signal.aborted) return { success: false, error: '已取消' }
+        queueInferredLink({
+          sourceId: pair.sourceId,
+          targetId: pair.targetId,
+          sourceTitle: pair.sourceTitle,
+          targetTitle: pair.targetTitle,
+          context: `相似度: ${(pair.score * 100).toFixed(0)}%`
+        }, true)
+      }
+
+      const replaceInferredLinks = db.transaction(() => {
+        db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
+        for (const link of inferredLinks) {
+          insertLink.run(link.sourceId, link.targetTitle, link.context, 'inferred')
+        }
+      })
+      replaceInferredLinks()
+
+      try { resolveAllLinks(params.vaultPath) } catch {}
+      return { success: true, added: inferredLinks.length }
+    } finally {
+      finishAiTask(window.id, controller)
+    }
   })
 
   ipcMain.handle('ai:generate-memories', async (event, params: { vaultPath: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { success: false, error: '窗口不存在' }
+    const controller = startAiTask(window.id)
     const db = getDatabase(params.vaultPath)
     const notes = db.prepare(`
       SELECT n.id, n.title, n.file_path, n.content_hash
@@ -814,31 +811,37 @@ graph TD
     }
     sendProgress(0, undefined)
 
-    for (let i = 0; i < notes.length; i++) {
-      const note = notes[i]
-      const existing = readMemory(params.vaultPath, note.id)
-      if (existing && existing.contentHash === note.content_hash) {
-        skipped++
+    try {
+      for (let i = 0; i < notes.length; i++) {
+        if (controller.signal.aborted) return { success: false, error: '已取消', generated, skipped, failed, total: notes.length }
+        const note = notes[i]
+        const existing = readMemory(params.vaultPath, note.id)
+        if (existing && existing.contentHash === note.content_hash) {
+          skipped++
+          sendProgress(i + 1, note.title)
+          continue
+        }
+
+        const fullPath = join(params.vaultPath, note.file_path)
+        if (!existsSync(fullPath)) {
+          failed++
+          sendProgress(i + 1, note.title)
+          continue
+        }
+
+        const content = readFileSync(fullPath, 'utf-8')
+        const result = await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, controller.signal)
+        if (controller.signal.aborted) return { success: false, error: '已取消', generated, skipped, failed, total: notes.length }
+        if (result) generated++
+        else failed++
         sendProgress(i + 1, note.title)
-        continue
       }
 
-      const fullPath = join(params.vaultPath, note.file_path)
-      if (!existsSync(fullPath)) {
-        failed++
-        sendProgress(i + 1, note.title)
-        continue
-      }
-
-      const content = readFileSync(fullPath, 'utf-8')
-      const result = await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash)
-      if (result) generated++
-      else failed++
-      sendProgress(i + 1, note.title)
+      sendProgress(notes.length, undefined, 'done')
+      return { success: true, generated, skipped, failed, total: notes.length }
+    } finally {
+      finishAiTask(window.id, controller)
     }
-
-    sendProgress(notes.length, undefined, 'done')
-    return { success: true, generated, skipped, failed, total: notes.length }
   })
 
   ipcMain.handle('ai:get-system-prompt', () => {
@@ -1040,11 +1043,7 @@ graph TD
     if (!window) return
 
     const windowId = window.id
-    const prevController = activeAbortControllers.get(windowId)
-    if (prevController) prevController.abort()
-
-    const controller = new AbortController()
-    activeAbortControllers.set(windowId, controller)
+    const controller = startAiTask(windowId)
 
     const vaultPath = params.vaultPath || ''
 
@@ -1129,7 +1128,7 @@ graph TD
             window.webContents.send('ai:stream', chunk)
           } else if (chunk.type === 'error') {
             window.webContents.send('ai:stream', chunk)
-            activeAbortControllers.delete(windowId)
+            finishAiTask(windowId, controller)
             return
           }
         }
@@ -1158,7 +1157,7 @@ graph TD
         window.webContents.send('ai:stream', { type: 'done', content: '' })
       }
     } finally {
-      activeAbortControllers.delete(windowId)
+      finishAiTask(windowId, controller)
     }
   })
 }

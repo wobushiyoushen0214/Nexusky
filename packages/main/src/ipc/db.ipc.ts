@@ -7,6 +7,7 @@ import { getDatabase, closeDatabase } from '../services/database'
 import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '../services/embedding'
 import { pushIndex } from '../services/cloud/manager'
 import { aiManager } from '../services/ai'
+import { finishAiTask, startAiTask } from '../services/ai-task-control'
 
 type KanbanRelationType = 'blocks' | 'depends_on' | 'related'
 
@@ -334,66 +335,90 @@ export function registerDbIPC(): void {
     db.prepare('DELETE FROM kanban_task_relations WHERE id = ?').run(params.id)
   })
 
-  ipcMain.handle('kanban:ai-analyze', async (_event, params: { vaultPath: string }) => {
+  ipcMain.handle('kanban:ai-analyze', async (event, params: { vaultPath: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) throw new Error('窗口不存在')
+    const controller = startAiTask(window.id)
     const board = getKanbanSnapshot(params.vaultPath)
-    const text = await runKanbanAi(
-      '你是项目管理助手。请根据看板状态给出简洁的项目进度总结、风险、建议的处理顺序。输出中文，使用短段落和项目符号。',
-      JSON.stringify(board, null, 2)
-    )
-    return { summary: text }
+    try {
+      const text = await runKanbanAi(
+        '你是项目管理助手。请根据看板状态给出简洁的项目进度总结、风险、建议的处理顺序。输出中文，使用短段落和项目符号。',
+        JSON.stringify(board, null, 2),
+        controller.signal
+      )
+      return { summary: text }
+    } finally {
+      finishAiTask(window.id, controller)
+    }
   })
 
-  ipcMain.handle('kanban:ai-breakdown-task', async (_event, params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }) => {
+  ipcMain.handle('kanban:ai-breakdown-task', async (event, params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) throw new Error('窗口不存在')
+    const controller = startAiTask(window.id)
     const db = getDatabase(params.vaultPath)
     const targetColumnId = params.columnId || getFirstKanbanColumnId(db)
-    let plan = params.plan ? normalizeKanbanAiPlan(params.plan) : null
-    if (!plan) {
-      const raw = await runKanbanAi(
-        `你是任务拆解助手。把输入的大任务拆成 3-8 个可执行子任务，并建立依赖关系。
+    try {
+      let plan = params.plan ? normalizeKanbanAiPlan(params.plan) : null
+      if (!plan) {
+        const raw = await runKanbanAi(
+          `你是任务拆解助手。把输入的大任务拆成 3-8 个可执行子任务，并建立依赖关系。
 只输出 JSON，不要 Markdown。格式：
 {"tasks":[{"title":"任务名","description":"说明","priority":0-3,"dueDate":null}],"relations":[{"sourceIndex":0,"targetIndex":1,"relationType":"blocks|depends_on|related"}]}`,
-        `大任务：${params.title}\n说明：${params.description || ''}`
-      )
-      plan = parseKanbanAiJson(raw)
-    }
-    if (params.preview) {
-      return { plan, tasks: plan.tasks, relations: plan.relations, summary: `将生成 ${plan.tasks.length} 个子任务` }
-    }
-    const created = createKanbanTasks(db, targetColumnId, plan.tasks)
-    const relations = createIndexedRelations(db, created, plan.relations)
-    if (params.taskId) {
-      for (const task of created) {
-        const id = randomUUID()
-        db.prepare('INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?, ?, ?, ?)').run(id, params.taskId, task.id, 'related')
-        relations.push({ id, sourceTaskId: params.taskId, targetTaskId: task.id, relationType: 'related' })
+          `大任务：${params.title}\n说明：${params.description || ''}`,
+          controller.signal
+        )
+        plan = parseKanbanAiJson(raw)
       }
+      if (params.preview) {
+        return { plan, tasks: plan.tasks, relations: plan.relations, summary: `将生成 ${plan.tasks.length} 个子任务` }
+      }
+      const created = createKanbanTasks(db, targetColumnId, plan.tasks)
+      const relations = createIndexedRelations(db, created, plan.relations)
+      if (params.taskId) {
+        for (const task of created) {
+          const id = randomUUID()
+          db.prepare('INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?, ?, ?, ?)').run(id, params.taskId, task.id, 'related')
+          relations.push({ id, sourceTaskId: params.taskId, targetTaskId: task.id, relationType: 'related' })
+        }
+      }
+      return { tasks: created, relations, summary: `已生成 ${created.length} 个子任务` }
+    } finally {
+      finishAiTask(window.id, controller)
     }
-    return { tasks: created, relations, summary: `已生成 ${created.length} 个子任务` }
   })
 
-  ipcMain.handle('kanban:ai-from-note', async (_event, params: { vaultPath: string; filePath: string; content?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }) => {
+  ipcMain.handle('kanban:ai-from-note', async (event, params: { vaultPath: string; filePath: string; content?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) throw new Error('窗口不存在')
+    const controller = startAiTask(window.id)
     const db = getDatabase(params.vaultPath)
     const relPath = toRelativePath(params.vaultPath, params.filePath)
     const note = db.prepare('SELECT id, title FROM notes WHERE file_path = ?').get(relPath) as { id: string; title: string } | undefined
     const content = params.content ?? readFileSync(params.filePath, 'utf-8')
     const targetColumnId = params.columnId || getFirstKanbanColumnId(db)
-    let plan = params.plan ? normalizeKanbanAiPlan(params.plan) : null
-    if (!plan) {
-      const raw = await runKanbanAi(
-        `你是任务提取助手。请从笔记中提取真正需要执行的待办事项，忽略普通描述和已完成事项。
+    try {
+      let plan = params.plan ? normalizeKanbanAiPlan(params.plan) : null
+      if (!plan) {
+        const raw = await runKanbanAi(
+          `你是任务提取助手。请从笔记中提取真正需要执行的待办事项，忽略普通描述和已完成事项。
 只输出 JSON，不要 Markdown。格式：
 {"tasks":[{"title":"任务名","description":"上下文","priority":0-3,"dueDate":null}],"relations":[{"sourceIndex":0,"targetIndex":1,"relationType":"blocks|depends_on|related"}]}`,
-        `笔记：${note?.title || relPath}\n\n${content.slice(0, 8000)}`
-      )
-      plan = parseKanbanAiJson(raw)
+          `笔记：${note?.title || relPath}\n\n${content.slice(0, 8000)}`,
+          controller.signal
+        )
+        plan = parseKanbanAiJson(raw)
+      }
+      if (params.preview) {
+        return { plan, tasks: plan.tasks, relations: plan.relations, summary: `将从笔记提取 ${plan.tasks.length} 个任务` }
+      }
+      const tasks = plan.tasks.map((task) => ({ ...task, sourceNoteId: note?.id || null, sourceFilePath: relPath }))
+      const created = createKanbanTasks(db, targetColumnId, tasks)
+      const relations = createIndexedRelations(db, created, plan.relations)
+      return { tasks: created, relations, summary: `已从笔记提取 ${created.length} 个任务` }
+    } finally {
+      finishAiTask(window.id, controller)
     }
-    if (params.preview) {
-      return { plan, tasks: plan.tasks, relations: plan.relations, summary: `将从笔记提取 ${plan.tasks.length} 个任务` }
-    }
-    const tasks = plan.tasks.map((task) => ({ ...task, sourceNoteId: note?.id || null, sourceFilePath: relPath }))
-    const created = createKanbanTasks(db, targetColumnId, tasks)
-    const relations = createIndexedRelations(db, created, plan.relations)
-    return { tasks: created, relations, summary: `已从笔记提取 ${created.length} 个任务` }
   })
 
   ipcMain.handle('db:embed-note', async (_event, params: { vaultPath: string; noteId: string; content: string }) => {
@@ -590,7 +615,7 @@ function getFirstKanbanColumnId(db: any): string {
   return 'col-todo'
 }
 
-async function runKanbanAi(system: string, user: string): Promise<string> {
+async function runKanbanAi(system: string, user: string, signal?: AbortSignal): Promise<string> {
   if (!aiManager.getActiveConfig()) {
     throw new Error('未配置 AI 提供商')
   }
@@ -599,7 +624,8 @@ async function runKanbanAi(system: string, user: string): Promise<string> {
   for await (const event of aiManager.chat([
     { role: 'system', content: system },
     { role: 'user', content: user }
-  ])) {
+  ], signal)) {
+    if (signal?.aborted) throw new Error('已取消')
     if (event.type === 'text') result += event.content
     if (event.type === 'error') throw new Error(event.content)
   }

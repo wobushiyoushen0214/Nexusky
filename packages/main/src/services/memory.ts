@@ -60,7 +60,8 @@ export async function generateMemory(
   title: string,
   filePath: string,
   content: string,
-  contentHash: string
+  contentHash: string,
+  signal?: AbortSignal
 ): Promise<NoteMemory | null> {
   const config = aiManager.getActiveConfig()
   if (!config || aiManager.validateConfig(config)) return null
@@ -89,7 +90,8 @@ topics (2-4): Knowledge domain tags the note belongs to.
 summary (50-150 chars): What this note covers, what problem it solves, and its core conclusion. Write in the same language as the note content.
 </fields>` },
       { role: 'user', content: `Note title: ${title}\nNote path: ${filePath}\n\nNote content:\n${content.slice(0, 3000)}` }
-    ])) {
+    ], signal)) {
+      if (signal?.aborted) return null
       if (chunk.type === 'text') result += chunk.content
       if (chunk.type === 'error') break
     }

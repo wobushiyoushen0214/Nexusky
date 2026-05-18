@@ -1044,6 +1044,19 @@ export function GraphView() {
                 生成记忆
               </button>
               {indexStatus && (
+                <button
+                  className="graph-back-btn"
+                  style={{ marginTop: 8 }}
+                  onClick={() => {
+                    window.api.invoke('ai:stop', undefined)
+                    setIndexStatus('正在停止...')
+                    setTimeout(() => setIndexStatus(null), 1200)
+                  }}
+                >
+                  停止
+                </button>
+              )}
+              {indexStatus && (
                 <div className="graph-panel-info" style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
                   {indexStatus}
                 </div>
