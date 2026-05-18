@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions } from './base-provider'
+import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
 
 function convertContent(content: string | ChatContentPart[]): string | Anthropic.MessageCreateParams['messages'][0]['content'] {
   if (typeof content === 'string') return content
@@ -19,25 +20,6 @@ function convertContent(content: string | ChatContentPart[]): string | Anthropic
     }
   }
   return blocks.length > 0 ? blocks : ''
-}
-
-const RETRYABLE_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'])
-const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 529])
-const NON_RETRYABLE_STATUS = new Set([401, 403, 404])
-const MAX_RETRIES = 3
-const BASE_DELAY = 500
-
-function isRetryableError(error: any): boolean {
-  if (error.name === 'AbortError') return false
-  if (error.code && RETRYABLE_CODES.has(error.code)) return true
-  if (error.status && RETRYABLE_STATUS.has(error.status)) return true
-  if (error.status && NON_RETRYABLE_STATUS.has(error.status)) return false
-  if (error.message?.includes('ECONNRESET') || error.message?.includes('ETIMEDOUT')) return true
-  return false
-}
-
-function getRetryDelay(attempt: number): number {
-  return BASE_DELAY * Math.pow(3, attempt)
 }
 
 export class ClaudeProvider extends BaseAIProvider {
@@ -60,17 +42,17 @@ export class ClaudeProvider extends BaseAIProvider {
         content: convertContent(m.content)
       }))
 
-    let lastError: any = null
+    let lastErrorMessage = 'Claude request failed'
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt <= MAX_PROVIDER_RETRIES; attempt++) {
       if (signal?.aborted) {
         yield { type: 'done', content: '' }
         return
       }
 
       if (attempt > 0) {
-        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_RETRIES})...` }
-        const delay = getRetryDelay(attempt - 1)
+        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_PROVIDER_RETRIES})...` }
+        const delay = getProviderRetryDelay(attempt - 1)
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
 
@@ -91,20 +73,21 @@ export class ClaudeProvider extends BaseAIProvider {
         }
         yield { type: 'done', content: '' }
         return
-      } catch (error: any) {
-        lastError = error
-        if (error.name === 'AbortError' || signal?.aborted) {
+      } catch (error: unknown) {
+        const normalized = normalizeProviderError(error)
+        lastErrorMessage = normalized.message
+        if (normalized.isAbort || signal?.aborted) {
           yield { type: 'done', content: '' }
           return
         }
-        if (!isRetryableError(error) || attempt === MAX_RETRIES) {
-          yield { type: 'error', content: error.message || 'Claude request failed' }
+        if (!normalized.retryable || attempt === MAX_PROVIDER_RETRIES) {
+          yield { type: 'error', content: normalized.message || 'Claude request failed' }
           return
         }
       }
     }
 
-    yield { type: 'error', content: lastError?.message || 'Claude request failed' }
+    yield { type: 'error', content: lastErrorMessage }
   }
 
   async validate(): Promise<boolean> {

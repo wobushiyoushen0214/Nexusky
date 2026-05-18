@@ -1,24 +1,6 @@
 import OpenAI from 'openai'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions } from './base-provider'
-
-const RETRYABLE_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED'])
-const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 529])
-const NON_RETRYABLE_STATUS = new Set([401, 403, 404])
-const MAX_RETRIES = 3
-const BASE_DELAY = 500
-
-function isRetryableError(error: any): boolean {
-  if (error.name === 'AbortError') return false
-  if (error.code && RETRYABLE_CODES.has(error.code)) return true
-  if (error.status && RETRYABLE_STATUS.has(error.status)) return true
-  if (error.status && NON_RETRYABLE_STATUS.has(error.status)) return false
-  if (error.message?.includes('ECONNRESET') || error.message?.includes('ETIMEDOUT')) return true
-  return false
-}
-
-function getRetryDelay(attempt: number): number {
-  return BASE_DELAY * Math.pow(3, attempt)
-}
+import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
 
 export class OpenAIResponsesProvider extends BaseAIProvider {
   private client: OpenAI
@@ -48,17 +30,17 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
   }
 
   async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
-    let lastError: any = null
+    let lastErrorMessage = 'OpenAI Responses API request failed after retries'
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt <= MAX_PROVIDER_RETRIES; attempt++) {
       if (signal?.aborted) {
         yield { type: 'done', content: '' }
         return
       }
 
       if (attempt > 0) {
-        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_RETRIES})...` }
-        const delay = getRetryDelay(attempt - 1)
+        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_PROVIDER_RETRIES})...` }
+        const delay = getProviderRetryDelay(attempt - 1)
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
 
@@ -81,20 +63,21 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         }
         yield { type: 'done', content: '' }
         return
-      } catch (error: any) {
-        lastError = error
-        if (error.name === 'AbortError' || signal?.aborted) {
+      } catch (error: unknown) {
+        const normalized = normalizeProviderError(error)
+        lastErrorMessage = normalized.message
+        if (normalized.isAbort || signal?.aborted) {
           yield { type: 'done', content: '' }
           return
         }
-        if (!isRetryableError(error) || attempt === MAX_RETRIES) {
-          yield { type: 'error', content: error.message || 'OpenAI Responses API request failed' }
+        if (!normalized.retryable || attempt === MAX_PROVIDER_RETRIES) {
+          yield { type: 'error', content: normalized.message || 'OpenAI Responses API request failed' }
           return
         }
       }
     }
 
-    yield { type: 'error', content: lastError?.message || 'OpenAI Responses API request failed after retries' }
+    yield { type: 'error', content: lastErrorMessage }
   }
 
   async *chatStreamWithTools(
@@ -102,17 +85,17 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
     tools: any[],
     signal?: AbortSignal
   ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
-    let lastError: any = null
+    let lastErrorMessage = 'OpenAI Responses API request failed after retries'
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt <= MAX_PROVIDER_RETRIES; attempt++) {
       if (signal?.aborted) {
         yield { type: 'done', content: '' }
         return
       }
 
       if (attempt > 0) {
-        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_RETRIES})...` }
-        const delay = getRetryDelay(attempt - 1)
+        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_PROVIDER_RETRIES})...` }
+        const delay = getProviderRetryDelay(attempt - 1)
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
 
@@ -171,20 +154,21 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
 
         yield { type: 'done', content: '' }
         return
-      } catch (error: any) {
-        lastError = error
-        if (error.name === 'AbortError' || signal?.aborted) {
+      } catch (error: unknown) {
+        const normalized = normalizeProviderError(error)
+        lastErrorMessage = normalized.message
+        if (normalized.isAbort || signal?.aborted) {
           yield { type: 'done', content: '' }
           return
         }
-        if (!isRetryableError(error) || attempt === MAX_RETRIES) {
-          yield { type: 'error', content: error.message || 'OpenAI Responses API request failed' }
+        if (!normalized.retryable || attempt === MAX_PROVIDER_RETRIES) {
+          yield { type: 'error', content: normalized.message || 'OpenAI Responses API request failed' }
           return
         }
       }
     }
 
-    yield { type: 'error', content: lastError?.message || 'OpenAI Responses API request failed after retries' }
+    yield { type: 'error', content: lastErrorMessage }
   }
 
   async validate(): Promise<boolean> {
