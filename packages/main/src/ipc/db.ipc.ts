@@ -8,9 +8,28 @@ import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '.
 import { pushIndex } from '../services/cloud/manager'
 import { aiManager } from '../services/ai'
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource } from '@shared/types/ipc'
+import type Database from 'better-sqlite3'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
 
-type KanbanRelationType = 'blocks' | 'depends_on' | 'related'
+type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
+type KanbanTaskInput = KanbanAiPlan['tasks'][number]
+type KanbanRelationInput = KanbanAiPlan['relations'][number]
+type KanbanColumnRow = KanbanColumn
+type SqlValue = string | number | null
+
+function getErrorMessage(error: unknown, fallback = ''): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') return message
+  }
+  return fallback
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object'
+}
 
 function normalizeChatRole(role: string): ChatHistoryRole {
   return role === 'user' ? 'user' : 'assistant'
@@ -30,11 +49,6 @@ function parseChatSources(raw: string | null): ChatSource[] | undefined {
   } catch {
     return undefined
   }
-}
-
-interface KanbanAiPlan {
-  tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]
-  relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelationType }[]
 }
 
 type EmbeddingJobStatus = {
@@ -295,7 +309,7 @@ export function registerDbIPC(): void {
   ipcMain.handle('kanban:update-task', async (_event, params: { vaultPath: string; id: string; title?: string; description?: string; columnId?: string; sortOrder?: number; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }) => {
     const db = getDatabase(params.vaultPath)
     const sets: string[] = []
-    const values: any[] = []
+    const values: SqlValue[] = []
     if (params.title !== undefined) { sets.push('title = ?'); values.push(params.title) }
     if (params.description !== undefined) { sets.push('description = ?'); values.push(params.description) }
     if (params.columnId !== undefined) { sets.push('column_id = ?'); values.push(params.columnId) }
@@ -521,13 +535,13 @@ export function registerDbIPC(): void {
         updatedAt: Date.now()
       })
       return { embedded }
-    } catch (e: any) {
+    } catch (e: unknown) {
       publishProgress({
         state: 'error',
         current: Math.min(total, embeddingJobs.get(params.vaultPath)?.current || 0),
         total,
         embedded,
-        message: e?.message || '向量索引失败',
+        message: getErrorMessage(e, '向量索引失败'),
         updatedAt: Date.now()
       })
       throw e
@@ -599,9 +613,9 @@ export function registerDbIPC(): void {
   })
 }
 
-function getKanbanSnapshot(vaultPath: string): { columns: any[]; tasks: KanbanTaskRow[]; relations: KanbanRelationRow[] } {
+function getKanbanSnapshot(vaultPath: string): { columns: KanbanColumnRow[]; tasks: KanbanTaskRow[]; relations: KanbanRelationRow[] } {
   const db = getDatabase(vaultPath)
-  const columns = db.prepare('SELECT id, name, sort_order as sortOrder FROM kanban_columns ORDER BY sort_order ASC').all()
+  const columns = db.prepare('SELECT id, name, sort_order as sortOrder FROM kanban_columns ORDER BY sort_order ASC').all() as KanbanColumnRow[]
   const tasks = db.prepare(`
     SELECT t.id, t.column_id as columnId, t.title, t.description, t.sort_order as sortOrder,
            t.priority, t.due_date as dueDate, t.source_note_id as sourceNoteId,
@@ -639,7 +653,7 @@ function getEmbeddingStatus(vaultPath: string, previous?: EmbeddingJobStatus): E
   }
 }
 
-function getFirstKanbanColumnId(db: any): string {
+function getFirstKanbanColumnId(db: Database.Database): string {
   const row = db.prepare('SELECT id FROM kanban_columns ORDER BY sort_order ASC LIMIT 1').get() as { id: string } | undefined
   if (row) return row.id
   db.prepare('INSERT INTO kanban_columns (id, name, sort_order) VALUES (?, ?, ?)').run('col-todo', '待办', 0)
@@ -669,37 +683,55 @@ function parseKanbanAiJson(raw: string): KanbanAiPlan {
   const end = cleaned.lastIndexOf('}')
   if (start < 0 || end <= start) throw new Error('AI 未返回有效的任务 JSON')
 
-  const parsed = JSON.parse(cleaned.slice(start, end + 1)) as any
+  const parsed = JSON.parse(cleaned.slice(start, end + 1)) as unknown
   return normalizeKanbanAiPlan(parsed)
 }
 
-function normalizeKanbanAiPlan(parsed: any): KanbanAiPlan {
-  const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : []
-  const relations = Array.isArray(parsed.relations) ? parsed.relations : []
+function normalizeOptionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
 
+function normalizeKanbanAiTask(value: unknown): KanbanTaskInput {
+  const task = isRecord(value) ? value : {}
   return {
-    tasks: tasks
-      .map((task: any) => ({
-        title: String(task.title || '').trim(),
-        description: String(task.description || '').trim(),
-        priority: Math.max(0, Math.min(3, Number(task.priority || 0))),
-        dueDate: task.dueDate || null,
-        sourceNoteId: task.sourceNoteId || null,
-        sourceFilePath: task.sourceFilePath || null
-      }))
-      .filter((task: any) => task.title.length > 0)
-      .slice(0, 12),
-    relations: relations
-      .map((relation: any) => ({
-        sourceIndex: Number(relation.sourceIndex),
-        targetIndex: Number(relation.targetIndex),
-        relationType: RELATION_TYPES.has(relation.relationType) ? relation.relationType : 'related'
-      }))
-      .filter((relation: any) => Number.isInteger(relation.sourceIndex) && Number.isInteger(relation.targetIndex))
+    title: String(task.title || '').trim(),
+    description: String(task.description || '').trim(),
+    priority: Math.max(0, Math.min(3, Number(task.priority || 0))),
+    dueDate: normalizeOptionalString(task.dueDate),
+    sourceNoteId: normalizeOptionalString(task.sourceNoteId),
+    sourceFilePath: normalizeOptionalString(task.sourceFilePath)
   }
 }
 
-function createKanbanTasks(db: any, columnId: string, tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]): KanbanTaskRow[] {
+function normalizeKanbanAiRelation(value: unknown): KanbanRelationInput {
+  const relation = isRecord(value) ? value : {}
+  const relationType = typeof relation.relationType === 'string' && RELATION_TYPES.has(relation.relationType as KanbanRelationType)
+    ? relation.relationType as KanbanRelationType
+    : 'related'
+  return {
+    sourceIndex: Number(relation.sourceIndex),
+    targetIndex: Number(relation.targetIndex),
+    relationType
+  }
+}
+
+function normalizeKanbanAiPlan(parsed: unknown): KanbanAiPlan {
+  const source = isRecord(parsed) ? parsed : {}
+  const tasks = Array.isArray(source.tasks) ? source.tasks : []
+  const relations = Array.isArray(source.relations) ? source.relations : []
+
+  return {
+    tasks: tasks
+      .map(normalizeKanbanAiTask)
+      .filter((task) => task.title.length > 0)
+      .slice(0, 12),
+    relations: relations
+      .map(normalizeKanbanAiRelation)
+      .filter((relation) => Number.isInteger(relation.sourceIndex) && Number.isInteger(relation.targetIndex))
+  }
+}
+
+function createKanbanTasks(db: Database.Database, columnId: string, tasks: KanbanTaskInput[]): KanbanTaskRow[] {
   const created: KanbanTaskRow[] = []
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM kanban_tasks WHERE column_id = ?').get(columnId) as { m: number | null }
   let nextOrder = (maxOrder.m ?? -1) + 1
@@ -732,7 +764,7 @@ function createKanbanTasks(db: any, columnId: string, tasks: { title: string; de
   return created
 }
 
-function createIndexedRelations(db: any, tasks: KanbanTaskRow[], relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelationType }[]): KanbanRelationRow[] {
+function createIndexedRelations(db: Database.Database, tasks: KanbanTaskRow[], relations: KanbanRelationInput[]): KanbanRelationRow[] {
   const created: KanbanRelationRow[] = []
   const stmt = db.prepare('INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?, ?, ?, ?)')
   const tx = db.transaction(() => {
