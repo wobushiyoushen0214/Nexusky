@@ -218,7 +218,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       window.api.invoke('cloud:push-file', { vaultPath, filePath: currentFilePath }).catch(() => {})
 
       // AI tag suggestion (async, non-blocking)
-      if (content.length > 100 && !content.includes('#')) {
+      const tagSuggestionEnabled = localStorage.getItem('nexusky-ai-tag-suggestion-enabled') === '1'
+      if (tagSuggestionEnabled && content.length > 100 && !content.includes('#')) {
         window.api.invoke('ai:suggest-tags', { content: content.slice(0, 2000), existingTags: [] }).then((tags) => {
           if (tags.length > 0) {
             toast(`建议标签: ${tags.map((t) => '#' + t).join(' ')}`, 'info')

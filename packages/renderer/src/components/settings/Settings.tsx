@@ -1045,14 +1045,22 @@ function InlineCompletionSection() {
   const [enabled, setEnabled] = useState(() => {
     try { return localStorage.getItem('nexusky-ai-completion-enabled') === '1' } catch { return false }
   })
+  const [tagSuggestionEnabled, setTagSuggestionEnabled] = useState(() => {
+    try { return localStorage.getItem('nexusky-ai-tag-suggestion-enabled') === '1' } catch { return false }
+  })
 
   const handleToggle = (value: boolean) => {
     setEnabled(value)
     try { localStorage.setItem('nexusky-ai-completion-enabled', value ? '1' : '0') } catch {}
   }
 
+  const handleTagSuggestionToggle = (value: boolean) => {
+    setTagSuggestionEnabled(value)
+    try { localStorage.setItem('nexusky-ai-tag-suggestion-enabled', value ? '1' : '0') } catch {}
+  }
+
   return (
-    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}>
         <div>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>行内 AI 补全</span>
@@ -1062,6 +1070,18 @@ function InlineCompletionSection() {
           type="checkbox"
           checked={enabled}
           onChange={(e) => handleToggle(e.target.checked)}
+          style={{ width: 14, height: 14, accentColor: 'var(--accent)', flexShrink: 0 }}
+        />
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}>
+        <div>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>保存时建议标签</span>
+          <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>开启后，无标签长笔记保存时会请求 AI 生成标签建议。</span>
+        </div>
+        <input
+          type="checkbox"
+          checked={tagSuggestionEnabled}
+          onChange={(e) => handleTagSuggestionToggle(e.target.checked)}
           style={{ width: 14, height: 14, accentColor: 'var(--accent)', flexShrink: 0 }}
         />
       </label>
