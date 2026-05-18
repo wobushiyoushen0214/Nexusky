@@ -107,7 +107,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
 
     refreshStatus()
     const pollTimer = setInterval(refreshStatus, 1500)
-    const cleanupProgress = (window.api as any).onEmbedProgress?.((status: EmbeddingStatus) => {
+    const cleanupProgress = window.api.onEmbedProgress((status: EmbeddingStatus) => {
       setEmbeddingStatus(status)
       if (status.state === 'done') clearCacheForVault(vaultPath)
     })
@@ -141,7 +141,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
       setSelectedIndex(0)
       try {
         if (mode === 'regex') {
-          const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim(), regex: true } as any)
+          const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim(), regex: true })
           setResults(res)
         } else {
           const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
@@ -176,7 +176,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
       if (mode === 'keyword') {
         res = await window.api.invoke('db:fulltext-search', { vaultPath, query: normalizedQuery })
       } else if (mode === 'regex') {
-        res = await window.api.invoke('db:fulltext-search', { vaultPath, query: normalizedQuery, regex: true } as any)
+        res = await window.api.invoke('db:fulltext-search', { vaultPath, query: normalizedQuery, regex: true })
       } else {
         const raw = await window.api.invoke('db:semantic-search', { vaultPath, query: normalizedQuery })
         res = raw.map((r: { filePath: string; title: string; chunk: string; score: number }) => ({

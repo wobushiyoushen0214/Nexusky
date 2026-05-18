@@ -8,8 +8,10 @@ import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
+import type { ChatContentPart, IPCChatMessage } from '@shared/types/ipc'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
+type FileWithPath = File & { path?: string }
 
 function flattenMdFiles(entries: FileEntry[]): { name: string; path: string }[] {
   const result: { name: string; path: string }[] = []
@@ -279,7 +281,7 @@ export function ChatPanel() {
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
-    if (!providers || providers.length === 0 || !providers.some((p: any) => p.enabled)) {
+    if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       toast('请先在设置中配置 AI 提供商', 'error')
       return
     }
@@ -295,9 +297,9 @@ export function ChatPanel() {
     const chatMessages = await buildChatMessages(allMessages)
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: any) {
       setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
@@ -321,7 +323,7 @@ export function ChatPanel() {
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
-    if (!providers || providers.length === 0 || !providers.some((p: any) => p.enabled)) {
+    if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       toast('请先在设置中配置 AI 提供商', 'error')
       return
     }
@@ -335,9 +337,9 @@ export function ChatPanel() {
     chatMessages.push({ role: 'assistant', content: msg.content })
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: any) {
       setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
@@ -400,7 +402,7 @@ export function ChatPanel() {
   const TOKEN_THRESHOLD = 12
   const RECENT_KEEP = 6
 
-  const buildChatMessages = async (allMessages: Message[]): Promise<{ role: string; content: any }[]> => {
+  const buildChatMessages = async (allMessages: Message[]): Promise<IPCChatMessage[]> => {
     if (allMessages.length <= TOKEN_THRESHOLD) {
       return allMessages.map((m) => ({ role: m.role, content: m.content }))
     }
@@ -582,7 +584,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
-    if (!providers || providers.length === 0 || !providers.some((p: any) => p.enabled)) {
+    if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       toast('请先在设置中配置 AI 提供商', 'error')
       return
     }
@@ -611,10 +613,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       const chatMessages = await buildChatMessages(allMessages)
       let intent = 'chat'
       try {
-        const detected = await window.api.invoke('ai:detect-intent' as any, {
+        const detected = await window.api.invoke('ai:detect-intent', {
           messages: chatMessages,
           intents: ['graph', 'kanban', 'chat']
-        } as any) as { intent?: string }
+        })
         intent = detected.intent || 'chat'
       } catch (e: any) {
         intent = 'chat'
@@ -688,9 +690,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
       try {
         if (agentMode) {
-          await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+          await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
         } else {
-          await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath } as any)
+          await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
         }
       } catch (e: any) {
         setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
@@ -718,11 +720,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
           let editIntent = 'edit'
           try {
-            const detected = await window.api.invoke('ai:detect-intent' as any, {
+            const detected = await window.api.invoke('ai:detect-intent', {
               messages: chatMessages,
               intents: ['batch', 'edit', 'chat'],
               intentContext: editIntentContext
-            } as any) as { intent?: string }
+            })
             editIntent = detected.intent || 'edit'
           } catch (e: any) {
             editIntent = 'edit'
@@ -730,7 +732,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
           if (editIntent === 'chat') {
             try {
-              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath } as any)
+              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
             } catch (e: any) {
               setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
               streamContentRef.current = ''
@@ -803,7 +805,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           filePath: filePath || '(新文件)',
           images: attachedImages.length > 0 ? attachedImages : undefined,
           history: editHistory.length > 0 ? editHistory : undefined
-        } as any)
+        })
         setAttachedImages([])
         if (result.success && result.content) {
           setEditHistory((prev) => [...prev, userMsg.content])
@@ -863,20 +865,22 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       }
     }
     if (attachedImages.length > 0) {
+      const currentContent = chatMessages[chatMessages.length - 1].content
+      const imageContent: ChatContentPart[] = [
+        { type: 'text', text: typeof currentContent === 'string' ? currentContent : '' },
+        ...attachedImages.map((img) => ({ type: 'image_url' as const, image_url: { url: img } }))
+      ]
       chatMessages[chatMessages.length - 1] = {
         role: 'user',
-        content: [
-          { type: 'text', text: chatMessages[chatMessages.length - 1].content as string },
-          ...attachedImages.map((img) => ({ type: 'image_url' as const, image_url: { url: img } }))
-        ] as any
+        content: imageContent
       }
       setAttachedImages([])
     }
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: any) {
       setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
@@ -1025,8 +1029,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       const files = e.dataTransfer?.files
       if (files && files.length > 0) {
         for (const file of files) {
-          if (file.name.endsWith('.md') && (file as any).path) {
-            const filePath = (file as any).path as string
+          const droppedFile = file as FileWithPath
+          if (file.name.endsWith('.md') && droppedFile.path) {
+            const filePath = droppedFile.path
             const title = file.name.replace(/\.md$/, '')
             setAttachedNotes((prev) => prev.some((n) => n.filePath === filePath) ? prev : [...prev, { title, filePath }])
           }
@@ -1339,8 +1344,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             <textarea
               ref={inputRef}
               value={input}
-              onChange={(e) => handleInputChange(e as any)}
-              onPaste={handleImagePaste as any}
+              onChange={handleInputChange}
+              onPaste={handleImagePaste}
               onKeyDown={(e) => {
                 if (showMention && mentionResults.length > 0) {
                   if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => Math.min(i + 1, mentionResults.length - 1)); return }

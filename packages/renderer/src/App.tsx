@@ -30,6 +30,8 @@ const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ d
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
+type FileWithPath = File & { path?: string }
+
 function flatMdPaths(entries: FileEntry[]): string[] {
   const result: string[] = []
   for (const e of entries) {
@@ -135,8 +137,8 @@ export default function App() {
 
   // Network status monitoring for offline queue
   useEffect(() => {
-    const handleOnline = () => window.api.invoke('cloud:set-online' as any, { online: true })
-    const handleOffline = () => window.api.invoke('cloud:set-online' as any, { online: false })
+    const handleOnline = () => window.api.invoke('cloud:set-online', { online: true })
+    const handleOffline = () => window.api.invoke('cloud:set-online', { online: false })
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline) }
@@ -224,8 +226,9 @@ export default function App() {
       const files = e.dataTransfer?.files
       if (!files) return
       for (const file of files) {
-        if (file.name.endsWith('.md') && (file as any).path) {
-          useEditorStore.getState().openFile((file as any).path)
+        const droppedFile = file as FileWithPath
+        if (file.name.endsWith('.md') && droppedFile.path) {
+          useEditorStore.getState().openFile(droppedFile.path)
           break
         }
       }

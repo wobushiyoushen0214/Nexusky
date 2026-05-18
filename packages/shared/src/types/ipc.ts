@@ -72,6 +72,29 @@ export interface EmbeddingStatus {
   updatedAt: number
 }
 
+export type ChatRole = 'system' | 'user' | 'assistant' | 'tool'
+
+export interface ChatContentPart {
+  type: 'text' | 'image_url'
+  text?: string
+  image_url?: { url: string }
+}
+
+export interface IPCChatMessage {
+  role: ChatRole
+  content: string | ChatContentPart[]
+}
+
+export interface AIProviderConfig {
+  id: string
+  name: string
+  type: 'openai' | 'openai-responses' | 'claude' | 'custom' | 'ollama' | 'codex'
+  baseUrl: string
+  apiKey: string
+  model: string
+  enabled: boolean
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:stat': { params: { path: string }; result: { size: number; mtime: number } }
@@ -108,7 +131,7 @@ export interface IPCChannelMap {
   'db:get-graph': { params: { vaultPath: string }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
   'db:semantic-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }
-  'db:fulltext-search': { params: { vaultPath: string; query: string }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }
+  'db:fulltext-search': { params: { vaultPath: string; query: string; regex?: boolean }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }
   'db:get-tags': { params: { vaultPath: string }; result: { name: string; count: number }[] }
   'db:get-notes-by-tag': { params: { vaultPath: string; tag: string }; result: NoteSearchResult[] }
   'kanban:get-columns': { params: { vaultPath: string }; result: KanbanColumn[] }
@@ -138,16 +161,17 @@ export interface IPCChannelMap {
   'db:chat-session-create': { params: { vaultPath: string; id: string; title: string }; result: void }
   'db:chat-session-delete': { params: { vaultPath: string; sessionId: string }; result: void }
   'db:chat-session-rename': { params: { vaultPath: string; sessionId: string; title: string }; result: void }
-  'ai:get-providers': { params: undefined; result: any[] }
-  'ai:save-providers': { params: { providers: any[] }; result: void }
+  'ai:get-providers': { params: undefined; result: AIProviderConfig[] }
+  'ai:save-providers': { params: { providers: AIProviderConfig[] }; result: void }
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:get-active-provider': { params: undefined; result: string | null }
-  'ai:validate': { params: { config: any }; result: boolean }
-  'ai:chat': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string }; result: void }
-  'ai:chat-agent': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string }; result: void }
+  'ai:validate': { params: { config: AIProviderConfig }; result: boolean }
+  'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string }; result: void }
+  'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string }; result: void }
+  'ai:detect-intent': { params: { messages: IPCChatMessage[]; intents?: string[]; intentContext?: string }; result: { intent?: string } }
   'ai:stop': { params: undefined; result: void }
-  'ai:complete': { params: { text: string; system?: string }; result: string }
-  'ai:complete-abort': { params: undefined; result: void }
+  'ai:complete': { params: { text: string; system?: string; temperature?: number; taskKey?: string }; result: string }
+  'ai:complete-abort': { params: { taskKey?: string } | undefined; result: void }
   'ai:get-system-prompt': { params: undefined; result: string }
   'ai:set-system-prompt': { params: { prompt: string }; result: void }
   'ai:infer-links': { params: { vaultPath: string; filePaths: string[] }; result: { success: boolean; added?: number; error?: string } }
@@ -190,6 +214,7 @@ export interface IPCChannelMap {
   'cloud:sync-index': { params: { vaultPath: string }; result: { pushed: boolean; pulled: boolean } }
   'cloud:get-sync-exclude': { params: undefined; result: string[] }
   'cloud:set-sync-exclude': { params: { paths: string[] }; result: void }
+  'cloud:set-online': { params: { online: boolean }; result: void }
   'updater:check': { params: undefined; result: { available: boolean; version?: string } }
   'updater:download': { params: undefined; result: void }
   'updater:install': { params: undefined; result: void }

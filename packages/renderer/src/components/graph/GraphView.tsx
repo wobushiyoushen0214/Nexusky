@@ -96,12 +96,12 @@ export function GraphView() {
   }, [vaultPath])
 
   useEffect(() => {
-    const cleanup = (window.api as any).onAiMemoryProgress?.((data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => {
+    const cleanup = window.api.onAiMemoryProgress((data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => {
       if (data.state === 'done') return
       const title = data.title ? `：${data.title}` : ''
       setIndexStatus(`正在生成记忆 ${data.current}/${data.total}${title}`)
     })
-    return () => cleanup?.()
+    return () => cleanup()
   }, [])
 
   const showLabelsRef = useRef(showLabels)

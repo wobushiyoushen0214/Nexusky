@@ -162,7 +162,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     if (!editing) return
     setTestingProvider(true)
     try {
-      const ok = await window.api.invoke('ai:validate', { config: editing } as any)
+      const ok = await window.api.invoke('ai:validate', { config: editing })
       toast(ok ? 'AI 连接测试通过' : 'AI 连接测试失败，请检查配置', ok ? 'success' : 'error')
     } catch (e: any) {
       toast(`AI 连接测试失败: ${e.message || '未知错误'}`, 'error')
@@ -483,10 +483,11 @@ export function Settings({ open, onClose }: SettingsProps) {
             const exists = updated.find((p: any) => p.apiKey === detected.claude!.apiKey)
             if (!exists) {
               const hasCustomBase = !!detected.claude.baseUrl
+              const providerType: ProviderConfig['type'] = hasCustomBase ? 'custom' : 'claude'
               const np = {
                 id: crypto.randomUUID(),
                 name: hasCustomBase ? 'Claude 中转站 (本地检测)' : 'Claude (本地检测)',
-                type: (hasCustomBase ? 'custom' : 'claude') as any,
+                type: providerType,
                 baseUrl: hasCustomBase ? detected.claude.baseUrl + '/v1' : '',
                 apiKey: detected.claude.apiKey,
                 model: 'claude-sonnet-4-6',
@@ -907,14 +908,14 @@ function AppearanceTab() {
   }, [])
 
   useEffect(() => {
-    const offProgress = (window.api as any).onUpdaterProgress?.((data: { percent: number }) => {
+    const offProgress = window.api.onUpdaterProgress((data: { percent: number }) => {
       setDownloadPercent(Math.round(data.percent || 0))
       setUpdateStage('downloading')
     })
-    const offDone = (window.api as any).onUpdaterDownloaded?.(() => {
+    const offDone = window.api.onUpdaterDownloaded(() => {
       setUpdateStage('ready')
     })
-    return () => { offProgress?.(); offDone?.() }
+    return () => { offProgress(); offDone() }
   }, [])
 
   if (showThemePicker) {
