@@ -1,4 +1,4 @@
-# My Note — Design System
+# Nexusky — Design System
 
 ## Colors (OKLCH)
 

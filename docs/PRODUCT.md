@@ -1,4 +1,4 @@
-# My Note — Product Context
+# Nexusky — Product Context
 
 ## Product Purpose
 
@@ -13,7 +13,7 @@ AI-powered knowledge base and note-taking desktop app. Combines Obsidian-style b
 
 ## Brand & Tone
 
-- **Name**: My Note
+- **Name**: Nexusky
 - **Personality**: Intelligent, calm, focused. A quiet companion that amplifies thinking.
 - **Tone**: Minimal, confident, unhurried. Never flashy or attention-seeking.
 - **Anti-references**: Notion (too busy/corporate), Evernote (dated), generic note apps (bland)
