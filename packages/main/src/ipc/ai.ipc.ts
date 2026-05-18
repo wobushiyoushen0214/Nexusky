@@ -181,20 +181,28 @@ ${params.intentContext || ''}
     }
   })
 
-  let completeAbort: AbortController | null = null
+  const completeAbortControllers: Map<string, AbortController> = new Map()
 
-  ipcMain.handle('ai:complete-abort', () => {
-    if (completeAbort) { completeAbort.abort(); completeAbort = null }
+  ipcMain.handle('ai:complete-abort', (_event, params?: { taskKey?: string }) => {
+    const taskKey = params?.taskKey || 'default'
+    const controller = completeAbortControllers.get(taskKey)
+    if (controller) {
+      controller.abort()
+      completeAbortControllers.delete(taskKey)
+    }
   })
 
-  ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string; temperature?: number }) => {
+  ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string; temperature?: number; taskKey?: string }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
     if (aiManager.validateConfig(config)) return ''
 
-    if (completeAbort) completeAbort.abort()
-    completeAbort = new AbortController()
-    const signal = completeAbort.signal
+    const taskKey = params.taskKey || 'default'
+    const previous = completeAbortControllers.get(taskKey)
+    if (previous) previous.abort()
+    const controller = new AbortController()
+    completeAbortControllers.set(taskKey, controller)
+    const signal = controller.signal
 
     try {
       const provider = aiManager.getProvider(config)
@@ -211,6 +219,10 @@ ${params.intentContext || ''}
       return signal.aborted ? '' : (params.system ? result.trim() : result.trim().slice(0, 200))
     } catch {
       return ''
+    } finally {
+      if (completeAbortControllers.get(taskKey) === controller) {
+        completeAbortControllers.delete(taskKey)
+      }
     }
   })
 
