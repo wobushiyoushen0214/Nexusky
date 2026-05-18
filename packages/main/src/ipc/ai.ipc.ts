@@ -882,31 +882,47 @@ graph TD
     name: string,
     args: Record<string, any>,
     vaultPath: string
-  ): Promise<string> {
+  ): Promise<{ content: string; sources?: { title: string; filePath: string; chunk: string; score: number }[] }> {
     switch (name) {
       case 'search_notes': {
         const results = await semanticSearch(vaultPath, args.query || '', 5)
-        if (results.length === 0) return '未找到相关笔记。'
-        return results.map((r, i) => `${i + 1}. **${r.title}**\n${r.chunk.slice(0, 200)}`).join('\n\n')
+        if (results.length === 0) return { content: '未找到相关笔记。' }
+        return {
+          content: results.map((r, i) => `${i + 1}. **${r.title}**\n${r.chunk.slice(0, 200)}`).join('\n\n'),
+          sources: results.map((r) => ({
+            title: r.title,
+            filePath: r.filePath,
+            chunk: r.chunk.slice(0, 100),
+            score: r.score
+          }))
+        }
       }
       case 'read_note': {
         const filePath = findNoteByTitle(vaultPath, args.title || '')
-        if (!filePath) return `未找到标题为「${args.title}」的笔记。`
+        if (!filePath) return { content: `未找到标题为「${args.title}」的笔记。` }
         try {
           const content = readFileSync(filePath, 'utf-8')
-          return content
+          return {
+            content,
+            sources: [{
+              title: args.title || basename(filePath, '.md'),
+              filePath,
+              chunk: content.slice(0, 100),
+              score: 1
+            }]
+          }
         } catch {
-          return `无法读取笔记「${args.title}」。`
+          return { content: `无法读取笔记「${args.title}」。` }
         }
       }
       case 'create_note': {
-        return '普通 Agent 对话不能直接创建笔记。请切换到编辑模式，生成内容会先展示预览并等待确认。'
+        return { content: '普通 Agent 对话不能直接创建笔记。请切换到编辑模式，生成内容会先展示预览并等待确认。' }
       }
       case 'edit_note': {
-        return '普通 Agent 对话不能直接修改笔记。请切换到编辑模式，修改会先展示 Diff 并等待确认。'
+        return { content: '普通 Agent 对话不能直接修改笔记。请切换到编辑模式，修改会先展示 Diff 并等待确认。' }
       }
       default:
-        return `未知工具: ${name}`
+        return { content: `未知工具: ${name}` }
     }
   }
 
@@ -1021,6 +1037,7 @@ graph TD
       const MAX_TOOL_ITERATIONS = 5
       const MAX_CONTINUATIONS = 2
       let continuations = 0
+      const agentSources: { title: string; filePath: string; chunk: string; score: number }[] = []
 
       for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
         if (window.isDestroyed() || controller.signal.aborted) break
@@ -1058,10 +1075,18 @@ graph TD
               })
 
               const result = await executeToolCall(call.name, args, vaultPath)
+              if (result.sources && result.sources.length > 0) {
+                for (const source of result.sources) {
+                  if (!agentSources.some((s) => s.filePath === source.filePath && s.title === source.title)) {
+                    agentSources.push(source)
+                  }
+                }
+                window.webContents.send('ai:sources', agentSources)
+              }
 
               messages.push({
                 role: 'tool',
-                content: result,
+                content: result.content,
                 tool_call_id: call.id
               })
             }
