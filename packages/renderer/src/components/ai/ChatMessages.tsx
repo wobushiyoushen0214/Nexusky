@@ -16,10 +16,25 @@ interface ChatMessagesProps {
 
 export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, streamContent, editMode, editElapsed, editStreamContent, toolStatus, onRegenerate, onContinue }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef<number>(0)
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: isStreaming ? 'auto' : 'smooth' })
-  }, [messages, streamContent])
+    if (!scrollRef.current) return
+    if (isStreaming) {
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = 0
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
+        })
+      }
+    } else {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }
+  }, [messages, streamContent, isStreaming])
+
+  useEffect(() => {
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [])
 
   return (
     <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
