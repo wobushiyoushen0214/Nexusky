@@ -80,6 +80,7 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
   const [editing, setEditing] = useState<ProviderConfig | null>(null)
+  const [testingProvider, setTestingProvider] = useState(false)
   const [cloudConfig, setCloudConfig] = useState({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
   const [cloudUser, setCloudUser] = useState<{ email: string } | null>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
@@ -154,6 +155,19 @@ export function Settings({ open, onClose }: SettingsProps) {
 
   const handleDelete = (id: string) => {
     saveProviders(providers.filter((p) => p.id !== id))
+  }
+
+  const handleValidateEditing = async () => {
+    if (!editing) return
+    setTestingProvider(true)
+    try {
+      const ok = await window.api.invoke('ai:validate', { config: editing } as any)
+      toast(ok ? 'AI 连接测试通过' : 'AI 连接测试失败，请检查配置', ok ? 'success' : 'error')
+    } catch (e: any) {
+      toast(`AI 连接测试失败: ${e.message || '未知错误'}`, 'error')
+    } finally {
+      setTestingProvider(false)
+    }
   }
 
   const handleSetActive = async (id: string) => {
@@ -445,6 +459,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button onClick={handleValidateEditing} disabled={testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: testingProvider ? 'wait' : 'pointer', opacity: testingProvider ? 0.6 : 1 }}>{testingProvider ? '测试中...' : '测试连接'}</button>
                 <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>取消</button>
                 <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
               </div>
