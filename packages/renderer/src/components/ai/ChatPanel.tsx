@@ -50,8 +50,18 @@ function friendlyError(raw: string): string {
   return msg
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') return message
+  }
+  return ''
+}
+
 function isAiCancelled(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || '')
+  const message = getErrorMessage(error) || String(error || '')
   return message.includes('已取消') || /aborted?|cancel/i.test(message)
 }
 
@@ -306,8 +316,8 @@ export function ChatPanel() {
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
-    } catch (e: any) {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+    } catch (e: unknown) {
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
       streamContentRef.current = ''
       setStreamContent('')
       setIsStreaming(false)
@@ -346,8 +356,8 @@ export function ChatPanel() {
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
-    } catch (e: any) {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+    } catch (e: unknown) {
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
       streamContentRef.current = ''
       setStreamContent('')
       setIsStreaming(false)
@@ -625,7 +635,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           intents: ['graph', 'kanban', 'chat']
         })
         intent = detected.intent || 'chat'
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (isAiCancelled(e)) {
           editCompleteRef.current = true
           streamContentRef.current = ''
@@ -698,8 +708,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           setMessages((msgs) => [...msgs, msg])
           appendToDb(msg)
           toast('已生成看板任务', 'success')
-        } catch (e: any) {
-          const msg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }
+        } catch (e: unknown) {
+          const msg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }
           setMessages((msgs) => [...msgs, msg])
           appendToDb(msg)
         } finally {
@@ -716,8 +726,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         } else {
           await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
         }
-      } catch (e: any) {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+      } catch (e: unknown) {
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
         streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
@@ -750,7 +760,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               intentContext: editIntentContext
             })
             editIntent = detected.intent || 'edit'
-          } catch (e: any) {
+          } catch (e: unknown) {
             if (isAiCancelled(e)) {
               editCompleteRef.current = true
               streamContentRef.current = ''
@@ -766,8 +776,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             try {
               setToolStatus('正在生成回答...')
               await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
-            } catch (e: any) {
-              setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+            } catch (e: unknown) {
+              setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
               streamContentRef.current = ''
               setStreamContent('')
               setIsStreaming(false)
@@ -863,8 +873,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         } else {
           setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `编辑失败: ${result.error}` }])
         }
-      } catch (e: any) {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+      } catch (e: unknown) {
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
       }
       if (editTimerRef.current) clearInterval(editTimerRef.current)
       editTimerRef.current = null
@@ -920,8 +930,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
-    } catch (e: any) {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+    } catch (e: unknown) {
+      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
       setStreamContent('')
       setIsStreaming(false)
     }
