@@ -50,6 +50,11 @@ function friendlyError(raw: string): string {
   return msg
 }
 
+function isAiCancelled(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || '')
+  return message.includes('已取消') || /aborted?|cancel/i.test(message)
+}
+
 function estimateTokens(text: string): number {
   let cjk = 0, other = 0
   for (const ch of text) {
@@ -619,6 +624,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         })
         intent = detected.intent || 'chat'
       } catch (e: any) {
+        if (isAiCancelled(e)) {
+          editCompleteRef.current = true
+          streamContentRef.current = ''
+          setStreamContent('')
+          setIsStreaming(false)
+          return
+        }
         intent = 'chat'
       }
 
@@ -727,6 +739,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             })
             editIntent = detected.intent || 'edit'
           } catch (e: any) {
+            if (isAiCancelled(e)) {
+              editCompleteRef.current = true
+              streamContentRef.current = ''
+              setStreamContent('')
+              setIsStreaming(false)
+              return
+            }
             editIntent = 'edit'
           }
 

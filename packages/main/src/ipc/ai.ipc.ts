@@ -30,7 +30,10 @@ export function registerAiIPC(): void {
     return (store.get('activeProviderId') as string | undefined) || null
   })
 
-  ipcMain.handle('ai:detect-intent', async (_event, params: { messages: ChatMessage[]; intents?: string[]; intentContext?: string }) => {
+  ipcMain.handle('ai:detect-intent', async (event, params: { messages: ChatMessage[]; intents?: string[]; intentContext?: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { intent: 'chat' }
+    const controller = startAiTask(window.id)
     const intents = params.intents && params.intents.length > 0 ? params.intents : ['chat']
     const descriptions: Record<string, string> = {
       graph: 'user wants to generate a knowledge graph or visualize note relationships',
@@ -54,11 +57,17 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
       for await (const chunk of aiManager.chat([
         { role: 'system', content: systemPrompt },
         ...params.messages.filter((m) => m.role !== 'system').slice(-8)
-      ])) {
+      ], controller.signal)) {
+        if (controller.signal.aborted) throw new Error('已取消')
         if (chunk.type === 'text') result += chunk.content
         if (chunk.type === 'error') break
       }
-    } catch {}
+      if (controller.signal.aborted) throw new Error('已取消')
+    } catch (err) {
+      if (controller.signal.aborted) throw err
+    } finally {
+      finishAiTask(window.id, controller)
+    }
 
     const normalized = result.trim().toLowerCase().replace(/[^a-z_-]/g, '')
     const intent = intents.includes(normalized) ? normalized : 'chat'
