@@ -10,6 +10,11 @@ import { aiManager } from '../services/ai'
 
 type KanbanRelationType = 'blocks' | 'depends_on' | 'related'
 
+interface KanbanAiPlan {
+  tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]
+  relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelationType }[]
+}
+
 type EmbeddingJobStatus = {
   state: 'idle' | 'indexing' | 'done' | 'error'
   current: number
@@ -339,16 +344,22 @@ export function registerDbIPC(): void {
     return { summary: text }
   })
 
-  ipcMain.handle('kanban:ai-breakdown-task', async (_event, params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string }) => {
+  ipcMain.handle('kanban:ai-breakdown-task', async (_event, params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }) => {
     const db = getDatabase(params.vaultPath)
     const targetColumnId = params.columnId || getFirstKanbanColumnId(db)
-    const raw = await runKanbanAi(
-      `你是任务拆解助手。把输入的大任务拆成 3-8 个可执行子任务，并建立依赖关系。
+    let plan = params.plan ? normalizeKanbanAiPlan(params.plan) : null
+    if (!plan) {
+      const raw = await runKanbanAi(
+        `你是任务拆解助手。把输入的大任务拆成 3-8 个可执行子任务，并建立依赖关系。
 只输出 JSON，不要 Markdown。格式：
 {"tasks":[{"title":"任务名","description":"说明","priority":0-3,"dueDate":null}],"relations":[{"sourceIndex":0,"targetIndex":1,"relationType":"blocks|depends_on|related"}]}`,
-      `大任务：${params.title}\n说明：${params.description || ''}`
-    )
-    const plan = parseKanbanAiJson(raw)
+        `大任务：${params.title}\n说明：${params.description || ''}`
+      )
+      plan = parseKanbanAiJson(raw)
+    }
+    if (params.preview) {
+      return { plan, tasks: plan.tasks, relations: plan.relations, summary: `将生成 ${plan.tasks.length} 个子任务` }
+    }
     const created = createKanbanTasks(db, targetColumnId, plan.tasks)
     const relations = createIndexedRelations(db, created, plan.relations)
     if (params.taskId) {
@@ -361,19 +372,25 @@ export function registerDbIPC(): void {
     return { tasks: created, relations, summary: `已生成 ${created.length} 个子任务` }
   })
 
-  ipcMain.handle('kanban:ai-from-note', async (_event, params: { vaultPath: string; filePath: string; content?: string; columnId?: string }) => {
+  ipcMain.handle('kanban:ai-from-note', async (_event, params: { vaultPath: string; filePath: string; content?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }) => {
     const db = getDatabase(params.vaultPath)
     const relPath = toRelativePath(params.vaultPath, params.filePath)
     const note = db.prepare('SELECT id, title FROM notes WHERE file_path = ?').get(relPath) as { id: string; title: string } | undefined
     const content = params.content ?? readFileSync(params.filePath, 'utf-8')
     const targetColumnId = params.columnId || getFirstKanbanColumnId(db)
-    const raw = await runKanbanAi(
-      `你是任务提取助手。请从笔记中提取真正需要执行的待办事项，忽略普通描述和已完成事项。
+    let plan = params.plan ? normalizeKanbanAiPlan(params.plan) : null
+    if (!plan) {
+      const raw = await runKanbanAi(
+        `你是任务提取助手。请从笔记中提取真正需要执行的待办事项，忽略普通描述和已完成事项。
 只输出 JSON，不要 Markdown。格式：
 {"tasks":[{"title":"任务名","description":"上下文","priority":0-3,"dueDate":null}],"relations":[{"sourceIndex":0,"targetIndex":1,"relationType":"blocks|depends_on|related"}]}`,
-      `笔记：${note?.title || relPath}\n\n${content.slice(0, 8000)}`
-    )
-    const plan = parseKanbanAiJson(raw)
+        `笔记：${note?.title || relPath}\n\n${content.slice(0, 8000)}`
+      )
+      plan = parseKanbanAiJson(raw)
+    }
+    if (params.preview) {
+      return { plan, tasks: plan.tasks, relations: plan.relations, summary: `将从笔记提取 ${plan.tasks.length} 个任务` }
+    }
     const tasks = plan.tasks.map((task) => ({ ...task, sourceNoteId: note?.id || null, sourceFilePath: relPath }))
     const created = createKanbanTasks(db, targetColumnId, tasks)
     const relations = createIndexedRelations(db, created, plan.relations)
@@ -590,16 +607,17 @@ async function runKanbanAi(system: string, user: string): Promise<string> {
   return result.trim()
 }
 
-function parseKanbanAiJson(raw: string): {
-  tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]
-  relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelationType }[]
-} {
+function parseKanbanAiJson(raw: string): KanbanAiPlan {
   const cleaned = raw.replace(/```json|```/g, '').trim()
   const start = cleaned.indexOf('{')
   const end = cleaned.lastIndexOf('}')
   if (start < 0 || end <= start) throw new Error('AI 未返回有效的任务 JSON')
 
   const parsed = JSON.parse(cleaned.slice(start, end + 1)) as any
+  return normalizeKanbanAiPlan(parsed)
+}
+
+function normalizeKanbanAiPlan(parsed: any): KanbanAiPlan {
   const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : []
   const relations = Array.isArray(parsed.relations) ? parsed.relations : []
 

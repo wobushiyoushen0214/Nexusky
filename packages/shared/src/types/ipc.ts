@@ -58,6 +58,11 @@ export interface KanbanRelation {
   relationType: 'blocks' | 'depends_on' | 'related'
 }
 
+export interface KanbanAiPlan {
+  tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]
+  relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelation['relationType'] }[]
+}
+
 export interface EmbeddingStatus {
   state: 'idle' | 'indexing' | 'done' | 'error'
   current: number
@@ -120,8 +125,8 @@ export interface IPCChannelMap {
   'kanban:create-relation': { params: { vaultPath: string; id: string; sourceTaskId: string; targetTaskId: string; relationType: KanbanRelation['relationType'] }; result: void }
   'kanban:delete-relation': { params: { vaultPath: string; id: string }; result: void }
   'kanban:ai-analyze': { params: { vaultPath: string }; result: { summary: string } }
-  'kanban:ai-breakdown-task': { params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string }; result: { tasks: KanbanTask[]; relations: KanbanRelation[]; summary: string } }
-  'kanban:ai-from-note': { params: { vaultPath: string; filePath: string; content?: string; columnId?: string }; result: { tasks: KanbanTask[]; relations: KanbanRelation[]; summary: string } }
+  'kanban:ai-breakdown-task': { params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }; result: { tasks: KanbanTask[] | KanbanAiPlan['tasks']; relations: KanbanRelation[] | KanbanAiPlan['relations']; summary: string; plan?: KanbanAiPlan } }
+  'kanban:ai-from-note': { params: { vaultPath: string; filePath: string; content?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }; result: { tasks: KanbanTask[] | KanbanAiPlan['tasks']; relations: KanbanRelation[] | KanbanAiPlan['relations']; summary: string; plan?: KanbanAiPlan } }
   'db:embed-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
   'db:embed-vault': { params: { vaultPath: string }; result: { embedded: number } }
   'db:embedding-status': { params: { vaultPath: string }; result: EmbeddingStatus }

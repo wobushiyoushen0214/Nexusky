@@ -18,6 +18,18 @@ const PRIORITY_COLOR = [
   'oklch(0.65 0.15 25)'
 ]
 
+interface KanbanAiPlan {
+  tasks: { title: string; description?: string; priority?: number; dueDate?: string | null }[]
+  relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelation['relationType'] }[]
+}
+
+function formatKanbanAiPreview(plan: KanbanAiPlan): string {
+  const titles = plan.tasks.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
+  const more = plan.tasks.length > 8 ? `\n...另有 ${plan.tasks.length - 8} 个任务` : ''
+  const relationText = plan.relations.length > 0 ? `\n\n包含 ${plan.relations.length} 条依赖/关联关系。` : ''
+  return `AI 将创建 ${plan.tasks.length} 个任务：\n\n${titles}${more}${relationText}\n\n是否写入看板？`
+}
+
 export function KanbanPanel() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -184,9 +196,24 @@ export function KanbanPanel() {
         taskId: selectedTask.id,
         title: selectedTask.title,
         description: selectedTask.description,
-        columnId: selectedTask.columnId
+        columnId: selectedTask.columnId,
+        preview: true
       })
-      toast(result.summary, 'success')
+      if (!result.plan?.tasks?.length) {
+        toast('AI 没有生成可写入的子任务', 'info')
+        return
+      }
+      if (!window.confirm(formatKanbanAiPreview(result.plan))) return
+
+      const committed = await window.api.invoke('kanban:ai-breakdown-task', {
+        vaultPath,
+        taskId: selectedTask.id,
+        title: selectedTask.title,
+        description: selectedTask.description,
+        columnId: selectedTask.columnId,
+        plan: result.plan
+      })
+      toast(committed.summary, 'success')
       await loadBoard()
     } catch (e: any) {
       toast(e.message || '任务拆解失败', 'error')
@@ -206,9 +233,23 @@ export function KanbanPanel() {
         vaultPath,
         filePath: currentFilePath,
         content: currentContent,
-        columnId: columns[0]?.id
+        columnId: columns[0]?.id,
+        preview: true
       })
-      toast(result.summary, 'success')
+      if (!result.plan?.tasks?.length) {
+        toast('AI 没有从当前笔记提取到任务', 'info')
+        return
+      }
+      if (!window.confirm(formatKanbanAiPreview(result.plan))) return
+
+      const committed = await window.api.invoke('kanban:ai-from-note', {
+        vaultPath,
+        filePath: currentFilePath,
+        content: currentContent,
+        columnId: columns[0]?.id,
+        plan: result.plan
+      })
+      toast(committed.summary, 'success')
       await loadBoard()
     } catch (e: any) {
       toast(e.message || '从笔记生成任务失败', 'error')
