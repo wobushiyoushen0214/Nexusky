@@ -240,7 +240,7 @@ export function ChatPanel() {
       } else if (event.type === 'tool_call') {
         try {
           const data = JSON.parse(event.content)
-          const toolNames: Record<string, string> = { search_notes: '搜索笔记', read_note: '读取笔记', create_note: '创建笔记', edit_note: '编辑笔记' }
+          const toolNames: Record<string, string> = { search_notes: '搜索笔记', read_note: '读取笔记', create_note: '请求创建笔记', edit_note: '请求修改笔记' }
           setToolStatus(toolNames[data.name] || data.name)
         } catch {
           setToolStatus('调用工具...')
@@ -1476,7 +1476,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   transition: 'all 100ms',
                   display: 'flex', alignItems: 'center', gap: 4,
                 }}
-                title={agentMode ? 'Agent 模式：AI 可搜索/读取/创建/编辑笔记' : '普通模式：仅对话'}
+                title={agentMode ? 'Agent 模式：AI 可搜索/读取笔记，修改请切换编辑模式' : '普通模式：仅对话'}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
                 Agent

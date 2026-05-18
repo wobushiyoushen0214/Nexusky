@@ -816,36 +816,6 @@ graph TD
         }
       }
     },
-    {
-      type: 'function',
-      function: {
-        name: 'create_note',
-        description: '创建新笔记',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: { type: 'string', description: '笔记标题' },
-            content: { type: 'string', description: 'Markdown 内容' }
-          },
-          required: ['title', 'content']
-        }
-      }
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'edit_note',
-        description: '编辑已有笔记',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: { type: 'string', description: '笔记标题' },
-            content: { type: 'string', description: '修改后的完整 Markdown 内容' }
-          },
-          required: ['title', 'content']
-        }
-      }
-    }
   ]
 
   function findNoteByTitle(vaultPath: string, title: string): string | null {
@@ -895,27 +865,10 @@ graph TD
         }
       }
       case 'create_note': {
-        const safeName = (args.title || 'untitled').replace(/[\\/:*?"<>|]/g, '').trim()
-        const filePath = join(vaultPath, `${safeName}.md`)
-        if (existsSync(filePath)) return `笔记「${args.title}」已存在。`
-        try {
-          writeFileSync(filePath, args.content || '', 'utf-8')
-          try { indexNote(vaultPath, filePath) } catch {}
-          return `已创建笔记「${args.title}」。`
-        } catch (e: any) {
-          return `创建笔记失败: ${e.message}`
-        }
+        return '普通 Agent 对话不能直接创建笔记。请切换到编辑模式，生成内容会先展示预览并等待确认。'
       }
       case 'edit_note': {
-        const filePath = findNoteByTitle(vaultPath, args.title || '')
-        if (!filePath) return `未找到标题为「${args.title}」的笔记。`
-        try {
-          writeFileSync(filePath, args.content || '', 'utf-8')
-          try { indexNote(vaultPath, filePath) } catch {}
-          return `已更新笔记「${args.title}」。`
-        } catch (e: any) {
-          return `编辑笔记失败: ${e.message}`
-        }
+        return '普通 Agent 对话不能直接修改笔记。请切换到编辑模式，修改会先展示 Diff 并等待确认。'
       }
       default:
         return `未知工具: ${name}`
@@ -1019,9 +972,10 @@ graph TD
       // Build initial messages with system prompt
       let messages = [...params.messages]
       const customPrompt = params.systemPrompt || (store.get('aiSystemPrompt') as string) || ''
-      const defaultSystemPrompt = `你是一个智能知识库助手。你可以搜索、阅读、创建和编辑笔记来帮助用户。
+      const defaultSystemPrompt = `你是一个智能知识库助手。你可以搜索和阅读笔记来帮助用户。
 使用工具来获取信息，然后基于获取的内容回答用户问题。
-如果用户的问题可以通过搜索笔记来回答，请先搜索相关内容。`
+如果用户的问题可以通过搜索笔记来回答，请先搜索相关内容。
+如果用户想创建或修改笔记，请让用户切换到编辑模式，那里会先展示预览并等待确认。`
 
       const systemContent = customPrompt || defaultSystemPrompt
       messages = [{ role: 'system', content: systemContent }, ...messages.filter((m) => m.role !== 'system')]
