@@ -525,6 +525,7 @@
 | 改进项 | 说明 |
 |--------|------|
 | AI 提示词英文化 | 所有 AI 提示词转为英文，应用 Claude Code 提示词工程最佳实践 |
+| AI/Cloud 类型边界收敛 | Provider SDK 适配、Agent 工具参数、Kanban AI JSON、renderer 错误提示、云同步配置和 preload 参数均使用显式类型或 `unknown` 窄化 |
 
 ### 知识图谱视觉优化
 

@@ -57,7 +57,7 @@ Nexusky/
 - [x] RAG 对话：自动检索相关笔记，回复携带来源引用
 - [x] 看板、日历、版本历史、回收站、模板、导出、自动更新
 - [x] Supabase / iCloud Drive / OneDrive 同步，冲突检测、离线队列、选择性同步
-- [x] AI 长任务取消、意图识别取消、安全 localStorage 包装、类型安全 IPC 和 Vitest 回归测试
+- [x] AI 长任务取消、意图识别取消、安全 localStorage 包装、类型安全 IPC/preload、Provider 工具类型和 Vitest 回归测试
 
 ## 历史分阶段开发计划
 
@@ -204,7 +204,7 @@ abstract class BaseAIProvider {
 
 ## 关键技术决策
 
-1. **IPC 类型安全**：在 shared 包定义 channel map 类型，封装类型安全的 invoke/handle
+1. **IPC 类型安全**：在 shared 包定义 channel map 类型，封装类型安全的 invoke/handle；preload 入口和 AI/Cloud 工具边界使用 `unknown` 窄化，避免异常对象和模型工具参数绕过类型检查
 2. **Markdown 双向转换**：tiptap-markdown + 自定义 wikilink 解析规则，保证幂等
 3. **语义检索性能**：SQLite chunks + TF-IDF 内存缓存 + top-K 剪枝，高置信度结果跳过 AI rerank
 4. **文件一致性**：chokidar 监听 + content_hash 判断真实变更，避免无意义重索引
