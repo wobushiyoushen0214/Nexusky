@@ -640,36 +640,21 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     streamContentRef.current = ''
     setStreamContent('')
 
-    // AI-based intent detection via stream markers
     if (vaultPath && !editMode) {
-      intentBufferRef.current = ''
-      intentDetectedRef.current = null
-
-      const intentPromise = new Promise<string>((resolve) => {
-        intentCallbackRef.current = resolve
-      })
-
       const allMessages = [...messages, userMsg]
       const chatMessages = await buildChatMessages(allMessages)
+      let intent = 'chat'
       try {
-        if (agentMode) {
-          await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, detectIntent: true } as any)
-        } else {
-          await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath, detectIntent: true } as any)
-        }
+        const detected = await window.api.invoke('ai:detect-intent' as any, {
+          messages: chatMessages,
+          intents: ['graph', 'kanban', 'chat']
+        } as any) as { intent?: string }
+        intent = detected.intent || 'chat'
       } catch (e: any) {
-        intentCallbackRef.current = null
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
-        streamContentRef.current = ''
-        setStreamContent('')
-        setIsStreaming(false)
-        return
+        intent = 'chat'
       }
 
-      const intent = intentDetectedRef.current || 'chat'
-
       if (intent === 'graph') {
-        window.api.invoke('ai:stop', undefined)
         editCompleteRef.current = true
         streamContentRef.current = ''
         setStreamContent('')
@@ -735,7 +720,18 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         return
       }
 
-      // intent === 'chat': stream already flowing, just return
+      try {
+        if (agentMode) {
+          await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath } as any)
+        } else {
+          await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath } as any)
+        }
+      } catch (e: any) {
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+        streamContentRef.current = ''
+        setStreamContent('')
+        setIsStreaming(false)
+      }
       return
     }
 

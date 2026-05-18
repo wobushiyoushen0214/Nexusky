@@ -31,6 +31,41 @@ export function registerAiIPC(): void {
     return (store.get('activeProviderId') as string | undefined) || null
   })
 
+  ipcMain.handle('ai:detect-intent', async (_event, params: { messages: ChatMessage[]; intents?: string[]; intentContext?: string }) => {
+    const intents = params.intents && params.intents.length > 0 ? params.intents : ['chat']
+    const descriptions: Record<string, string> = {
+      graph: 'user wants to generate a knowledge graph or visualize note relationships',
+      kanban: 'user wants to extract tasks, create a kanban board, or manage todos from notes',
+      batch: 'user wants to generate multiple separate note files',
+      edit: 'user wants to modify or create a single note file',
+      chat: 'normal conversation, Q&A, explanation, or anything else'
+    }
+    const tagList = intents.map((intent) => `- ${intent}: ${descriptions[intent] || intent}`).join('\n')
+    const systemPrompt = `Classify the user's latest intent.
+
+Available intents:
+${tagList}
+
+${params.intentContext || ''}
+
+Output exactly one intent name from the list. No punctuation, no explanation.`
+
+    let result = ''
+    try {
+      for await (const chunk of aiManager.chat([
+        { role: 'system', content: systemPrompt },
+        ...params.messages.filter((m) => m.role !== 'system').slice(-8)
+      ])) {
+        if (chunk.type === 'text') result += chunk.content
+        if (chunk.type === 'error') break
+      }
+    } catch {}
+
+    const normalized = result.trim().toLowerCase().replace(/[^a-z_-]/g, '')
+    const intent = intents.includes(normalized) ? normalized : 'chat'
+    return { intent }
+  })
+
   ipcMain.handle('ai:validate', async (_event, params: { config: AIProviderConfig }) => {
     const provider = aiManager.getProvider(params.config)
     return provider.validate()
