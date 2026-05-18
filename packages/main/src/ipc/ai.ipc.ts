@@ -761,39 +761,59 @@ graph TD
     if (!window) return { success: false, error: '窗口不存在' }
 
     const db = getDatabase(params.vaultPath)
-    let added = 0
-
-    db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
     const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
+    const explicitLinkExists = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'")
+    const anyLinkExists = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?')
+    const inferredLinks: { sourceId: string; targetId?: string; targetTitle: string; sourceTitle?: string; context: string }[] = []
+    const pendingKeys = new Set<string>()
+
+    const queueInferredLink = (pair: { sourceId: string; targetId?: string; sourceTitle?: string; targetTitle: string; context: string }, checkAnyLink: boolean) => {
+      const exists = checkAnyLink ? anyLinkExists : explicitLinkExists
+      if (exists.get(pair.sourceId, pair.targetTitle)) return
+      if (pair.targetId && pair.sourceTitle && exists.get(pair.targetId, pair.sourceTitle)) return
+
+      const key = `${pair.sourceId}\u0000${pair.targetTitle}`
+      const reverseKey = pair.targetId && pair.sourceTitle ? `${pair.targetId}\u0000${pair.sourceTitle}` : ''
+      if (pendingKeys.has(key) || (reverseKey && pendingKeys.has(reverseKey))) return
+
+      pendingKeys.add(key)
+      inferredLinks.push(pair)
+    }
 
     // Phase 1: Memory-based relation (preferred — uses pre-generated memory files)
     const memoryPairs = findRelatedByMemory(params.vaultPath, 3)
     for (const pair of memoryPairs) {
-      const existing = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(pair.sourceId, pair.targetTitle)
-      if (!existing) {
-        const reverseExisting = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'").get(pair.targetId, pair.sourceTitle)
-        if (!reverseExisting) {
-          insertLink.run(pair.sourceId, pair.targetTitle, pair.reason, 'inferred')
-          added++
-        }
-      }
+      queueInferredLink({
+        sourceId: pair.sourceId,
+        targetId: pair.targetId,
+        sourceTitle: pair.sourceTitle,
+        targetTitle: pair.targetTitle,
+        context: pair.reason
+      }, false)
     }
 
     // Phase 2: TF-IDF fallback (for notes without memory files)
     const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.75)
     for (const pair of similarPairs) {
-      const existing = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?").get(pair.sourceId, pair.targetTitle)
-      if (!existing) {
-        const reverseExisting = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?").get(pair.targetId, pair.sourceTitle)
-        if (!reverseExisting) {
-          insertLink.run(pair.sourceId, pair.targetTitle, `相似度: ${(pair.score * 100).toFixed(0)}%`, 'inferred')
-          added++
-        }
-      }
+      queueInferredLink({
+        sourceId: pair.sourceId,
+        targetId: pair.targetId,
+        sourceTitle: pair.sourceTitle,
+        targetTitle: pair.targetTitle,
+        context: `相似度: ${(pair.score * 100).toFixed(0)}%`
+      }, true)
     }
 
+    const replaceInferredLinks = db.transaction(() => {
+      db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
+      for (const link of inferredLinks) {
+        insertLink.run(link.sourceId, link.targetTitle, link.context, 'inferred')
+      }
+    })
+    replaceInferredLinks()
+
     try { resolveAllLinks(params.vaultPath) } catch {}
-    return { success: true, added }
+    return { success: true, added: inferredLinks.length }
   })
 
   ipcMain.handle('ai:generate-memories', async (event, params: { vaultPath: string }) => {

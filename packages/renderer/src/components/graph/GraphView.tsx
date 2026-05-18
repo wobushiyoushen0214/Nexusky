@@ -985,14 +985,14 @@ export function GraphView() {
                 disabled={!!indexStatus}
                 onClick={async () => {
                   if (!vaultPath) return
+                  const confirmed = window.confirm('将重新计算全库语义关联，并替换现有的 AI 推理链接。是否继续？')
+                  if (!confirmed) return
                   setIndexStatus(t('common.aiAnalyzing'))
                   try {
                     const result = await window.api.invoke('ai:infer-global-links', { vaultPath })
                     if (result.success) {
                       setIndexStatus(t('common.semanticFound', { count: result.added }))
-                      if (result.added > 0) {
-                        window.dispatchEvent(new CustomEvent('graph-data-updated'))
-                      }
+                      window.dispatchEvent(new CustomEvent('graph-data-updated'))
                     } else {
                       setIndexStatus(result.error || t('common.semanticFailed'))
                     }
