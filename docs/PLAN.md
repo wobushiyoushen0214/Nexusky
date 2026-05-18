@@ -1,27 +1,27 @@
-# My-Note: AI 驱动的知识库笔记应用
+# Nexusky: AI 驱动的知识库笔记应用
 
 ## Context
 
-开发一个类似 Obsidian + AI 的桌面端知识库笔记软件。核心理念：笔记即文件（Markdown），AI 自动发现知识关联，对话式检索个人知识库。项目从零开始，目录为 `f:/proj/my-note`。
+Nexusky 是一个类似 Obsidian + AI 的桌面端知识库笔记软件。核心理念：笔记即文件（Markdown），AI 自动发现知识关联，对话式检索个人知识库。本文件保留原始阶段规划，同时补充当前实现状态；完整功能清单以 `docs/FEATURES.md` 为准。
 
 ## 技术栈
 
 | 层级 | 选型 |
 |------|------|
 | 桌面框架 | Electron + electron-vite |
-| 前端 | React 19 + Zustand + Tailwind CSS + shadcn/ui |
+| 前端 | React 19 + Zustand + CSS/Tailwind |
 | 编辑器 | TipTap 2.x (ProseMirror) |
-| 数据库 | better-sqlite3 + FTS5 全文搜索 |
-| 向量存储 | hnswlib-node (内存索引) + SQLite (持久化) |
-| AI SDK | openai (兼容中转站) + @anthropic-ai/sdk |
-| 图谱可视化 | D3-force + React Flow |
+| 数据库 | better-sqlite3 + FTS5 全文搜索 + SQLite 迁移 |
+| 语义检索 | SQLite chunks + TF-IDF 中文 bigram + AI rerank |
+| AI SDK | openai / @anthropic-ai/sdk / Ollama / Codex CLI / OpenAI Responses |
+| 图谱可视化 | D3-force |
 | 包管理 | pnpm monorepo |
 | 语言 | TypeScript 全栈 |
 
 ## 项目结构
 
-```
-f:/proj/my-note/
+```text
+Nexusky/
 ├── package.json
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
@@ -32,7 +32,7 @@ f:/proj/my-note/
 │   │       ├── index.ts
 │   │       ├── window.ts
 │   │       ├── ipc/       # IPC 通信处理
-│   │       └── services/  # 文件、数据库、向量、文件监听服务
+│   │       └── services/  # 文件、数据库、索引、AI、云端同步服务
 │   ├── renderer/          # React 渲染进程
 │   │   └── src/
 │   │       ├── components/
@@ -42,19 +42,26 @@ f:/proj/my-note/
 │   │       │   ├── ai/        # 对话面板、AI 工具栏
 │   │       │   └── settings/  # 设置页面
 │   │       ├── stores/        # Zustand 状态管理
-│   │       └── hooks/
+│   │       └── utils/
 │   ├── shared/            # 共享类型和工具
-│   │   └── src/types/     # Note, Link, AI, IPC 类型定义
-│   └── ai-core/           # AI 服务核心
-│       └── src/
-│           ├── providers/     # 多 Provider 适配器
-│           ├── embedding/     # 向量嵌入服务
-│           ├── rag/           # RAG 管线
-│           └── completion/    # 补全服务
+│   │   └── src/types/     # IPC / Kanban / Graph / AI 类型定义
 └── resources/
 ```
 
-## 分阶段开发计划
+## 当前实现状态
+
+- [x] Electron + React + TipTap 基础应用、文件树、Vault、Markdown 编辑和保存
+- [x] SQLite schema/migration、FTS5、wikilink 解析、反向链接、知识图谱
+- [x] 多 AI Provider、流式对话、AI 写作辅助、AI 编辑、AI 行内补全
+- [x] 语义搜索：FTS/TF-IDF 初筛，高置信度直返，必要时 AI rerank
+- [x] RAG 对话：自动检索相关笔记，回复携带来源引用
+- [x] 看板、日历、版本历史、回收站、模板、导出、自动更新
+- [x] Supabase / iCloud Drive / OneDrive 同步，冲突检测、离线队列、选择性同步
+- [x] AI 长任务取消、意图识别取消、安全 localStorage 包装、类型安全 IPC 和 Vitest 回归测试
+
+## 历史分阶段开发计划
+
+> 下方是早期从零实现时的拆分计划，已完成项不再逐条维护；当前状态以上方摘要和 `docs/FEATURES.md` 为准。
 
 ### Phase 1: 基础骨架 (2 周)
 
@@ -96,14 +103,14 @@ f:/proj/my-note/
 - [ ] 写作辅助：选中文本 → 总结/扩展/改写/翻译
 - [ ] TipTap slash-command 扩展（`/ai` 触发）
 
-### Phase 4: 向量嵌入 + 语义搜索 (2 周)
+### Phase 4: 语义索引 + 语义搜索 (2 周)
 
-**目标**：笔记向量化，语义搜索，自动关联推荐。
+**目标**：笔记分块索引，语义搜索，自动关联推荐。
 
 - [ ] 文本分块器（按标题分块，200-500 tokens/块，50 token 重叠）
-- [ ] 嵌入服务（支持 OpenAI embedding API + 本地 @xenova/transformers）
-- [ ] 后台 Worker Thread 处理嵌入队列
-- [ ] hnswlib 向量索引（启动时从 SQLite 加载）
+- [ ] TF-IDF 中文 bigram 语义检索
+- [ ] FTS5/TF-IDF 初筛 + AI rerank
+- [ ] 搜索缓存与索引失效机制
 - [ ] 语义搜索界面
 - [ ] 编辑时自动推荐相关笔记
 - [ ] 增量更新（只处理变更的块）
@@ -112,8 +119,8 @@ f:/proj/my-note/
 
 **目标**：基于知识库的 AI 问答，带来源引用。
 
-- [ ] 混合检索器（向量 + FTS5 关键词 + 图谱遍历）
-- [ ] RRF (Reciprocal Rank Fusion) 融合排序
+- [ ] 混合检索器（FTS5 关键词 + TF-IDF + 图谱关系）
+- [ ] top-K 剪枝 + 高置信度直返
 - [ ] Prompt 模板（系统提示 + 检索结果 + 来源标记）
 - [ ] Token 预算管理（计数 + 截断）
 - [ ] 回答中的来源引用（[^n] 标记 → 可点击跳转）
@@ -191,24 +198,24 @@ abstract class BaseAIProvider {
 ### RAG 流程
 
 ```
-用户提问 → 混合检索(向量+FTS5+图谱) → RRF排序 → 取top-k
-→ 构建prompt(系统提示+检索块+来源标记) → 流式生成 → 解析引用 → 展示
+用户提问 → FTS/TF-IDF 初筛 → 高置信度直返或 AI rerank → 取 top-k
+→ 构建 prompt（系统提示+检索块+来源标记）→ 流式生成 → 展示引用来源
 ```
 
 ## 关键技术决策
 
 1. **IPC 类型安全**：在 shared 包定义 channel map 类型，封装类型安全的 invoke/handle
 2. **Markdown 双向转换**：tiptap-markdown + 自定义 wikilink 解析规则，保证幂等
-3. **向量索引性能**：hnswlib 内存索引 + SQLite 持久化，后台 Worker 增量更新
+3. **语义检索性能**：SQLite chunks + TF-IDF 内存缓存 + top-K 剪枝，高置信度结果跳过 AI rerank
 4. **文件一致性**：chokidar 监听 + content_hash 判断真实变更，避免无意义重索引
-5. **本地嵌入备选**：@xenova/transformers 加载 all-MiniLM-L6-v2，离线可用
+5. **AI 成本控制**：搜索先本地排序，只有模糊语义场景才调用 AI rerank；长任务统一 AbortController 取消
 
 ## 验证方式
 
 - Phase 1: 能打开 vault 目录，新建/编辑/保存 .md 文件，编辑器渲染正确
 - Phase 2: 输入 `[[` 弹出补全，图谱显示链接关系，反向链接面板正确
 - Phase 3: 配置 API Key 后能对话，选中文本能触发 AI 操作
-- Phase 4: 搜索框输入自然语言能返回语义相关的笔记
+- Phase 4: 搜索框输入自然语言能通过 TF-IDF/AI rerank 返回语义相关笔记
 - Phase 5: 对话中提问能引用笔记内容并标注来源
 - Phase 6: 打包后的应用能正常安装运行
 
@@ -233,7 +240,7 @@ abstract class BaseAIProvider {
 13. **QuickSwitcher 结果限流** — 空查询显示前 50 条
 14. **Supabase 同步 5 并发** — push/pull 提速 3-5 倍
 15. **index-vault 分批处理** — 每 20 文件让出事件循环
-16. **Embedding 缓存上限** — 最多 2000 chunk 防内存膨胀
+16. **语义检索缓存上限** — 最多 2000 chunk 防内存膨胀
 
 ### Bug 修复
 
