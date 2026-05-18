@@ -9,8 +9,10 @@ export interface AIProviderConfig {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant' | 'system' | 'tool'
   content: string | ChatContentPart[]
+  tool_call_id?: string
+  tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[]
 }
 
 export interface ChatContentPart {

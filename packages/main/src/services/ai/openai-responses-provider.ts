@@ -36,6 +36,10 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
     for (const m of messages) {
       if (m.role === 'system') {
         input.push({ role: 'developer', content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })
+      } else if (m.role === 'assistant' && m.tool_calls) {
+        input.push({ type: 'function_call', call_id: m.tool_calls[0].id, name: m.tool_calls[0].function.name, arguments: m.tool_calls[0].function.arguments })
+      } else if (m.role === 'tool') {
+        input.push({ type: 'function_call_output', call_id: m.tool_call_id, output: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })
       } else {
         input.push({ role: m.role, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })
       }

@@ -1043,20 +1043,22 @@ graph TD
             hasToolCalls = true
             const toolCallEvent = chunk as ToolCallEvent
 
-            // Add assistant message with tool calls to conversation
             messages.push({
               role: 'assistant',
-              content: '' // The model's response that triggered tool calls
+              content: '',
+              tool_calls: toolCallEvent.calls.map((c) => ({
+                id: c.id,
+                type: 'function' as const,
+                function: { name: c.name, arguments: c.arguments }
+              }))
             })
 
-            // Execute each tool call and feed results back
             for (const call of toolCallEvent.calls) {
               let args: Record<string, any> = {}
               try {
                 args = JSON.parse(call.arguments)
               } catch {}
 
-              // Notify UI about tool call
               window.webContents.send('ai:stream', {
                 type: 'tool_call',
                 content: JSON.stringify({ name: call.name, args })
@@ -1064,10 +1066,10 @@ graph TD
 
               const result = await executeToolCall(call.name, args, vaultPath)
 
-              // Add tool result as a user message (OpenAI format for tool results)
               messages.push({
-                role: 'user',
-                content: `[工具调用结果] ${call.name}: ${result}`
+                role: 'tool',
+                content: result,
+                tool_call_id: call.id
               })
             }
             break
