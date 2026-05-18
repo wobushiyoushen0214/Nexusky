@@ -1395,7 +1395,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             />
             {isStreaming ? (
               <button
-                onClick={() => { window.api.invoke('ai:stop', undefined); isStreamingRef.current = false; streamContentRef.current = ''; setIsStreaming(false); setStreamContent(''); setToolStatus(null) }}
+                onClick={() => { window.api.invoke('ai:stop', undefined); isStreamingRef.current = false; setIsStreaming(false); setToolStatus(null) }}
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'var(--bg-surface)', color: 'var(--text-secondary)',
