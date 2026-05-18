@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
 import { select } from 'd3-selection'
-import { zoom } from 'd3-zoom'
+import { zoom, zoomIdentity } from 'd3-zoom'
 import { drag } from 'd3-drag'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -36,6 +36,18 @@ interface SimLink {
   source: string | SimNode
   target: string | SimNode
   weight?: number
+}
+
+function getLinkEndpointId(endpoint: string | SimNode): string {
+  return typeof endpoint === 'string' ? endpoint : endpoint.id
+}
+
+function getLinkEndpoint(endpoint: string | SimNode, nodeMap: Map<string, SimNode>): SimNode | null {
+  return typeof endpoint === 'string' ? nodeMap.get(endpoint) ?? null : endpoint
+}
+
+function hasPosition(node: SimNode | null): node is SimNode & { x: number; y: number } {
+  return !!node && node.x != null && node.y != null
 }
 
 function getRadius(d: SimNode) {
@@ -284,7 +296,7 @@ export function GraphView() {
 
     const linkGroup = g.append('g').attr('class', 'graph-links')
     const link = linkGroup
-      .selectAll('path')
+      .selectAll<SVGPathElement, SimLink>('path')
       .data(links)
       .join('path')
       .attr('class', 'graph-link')
@@ -638,12 +650,12 @@ export function GraphView() {
               return fId ? `url(#${fId})` : null
             }
             return null
-          })
+        })
 
         const connectedIds = new Set<string>()
         links.forEach((l) => {
-          const s = typeof l.source === 'string' ? l.source : l.source.id
-          const t = typeof l.target === 'string' ? l.target : l.target.id
+          const s = getLinkEndpointId(l.source)
+          const t = getLinkEndpointId(l.target)
           if (s === d.id) connectedIds.add(t)
           if (t === d.id) connectedIds.add(s)
         })
@@ -673,13 +685,13 @@ export function GraphView() {
           connGroup.select('.node-label').classed('hidden', false).attr('opacity', 1)
         })
 
-        link.classed('highlighted', (l: any) => {
-          const s = typeof l.source === 'string' ? l.source : l.source.id
-          const t = typeof l.target === 'string' ? l.target : l.target.id
+        link.classed('highlighted', (l) => {
+          const s = getLinkEndpointId(l.source)
+          const t = getLinkEndpointId(l.target)
           return s === d.id || t === d.id
-        }).classed('dimmed', (l: any) => {
-          const s = typeof l.source === 'string' ? l.source : l.source.id
-          const t = typeof l.target === 'string' ? l.target : l.target.id
+        }).classed('dimmed', (l) => {
+          const s = getLinkEndpointId(l.source)
+          const t = getLinkEndpointId(l.target)
           return s !== d.id && t !== d.id
         })
       })
@@ -765,24 +777,27 @@ export function GraphView() {
         const { x, y } = currentNode
         const transform = { k: 1.2, x: width / 2 - x * 1.2, y: height / 2 - y * 1.2 }
         svg.transition().duration(800).call(
-          zoomBehavior.transform as any,
-          { k: transform.k, x: transform.x, y: transform.y } as any
+          zoomBehavior.transform,
+          zoomIdentity.translate(transform.x, transform.y).scale(transform.k)
         )
       }
     })
 
     simulation.on('tick', () => {
       link
-        .attr('d', (d: any) => {
-          const sx = d.source.x
-          const sy = d.source.y
-          const tx = d.target.x
-          const ty = d.target.y
+        .attr('d', (d) => {
+          const source = getLinkEndpoint(d.source, nodeMap)
+          const target = getLinkEndpoint(d.target, nodeMap)
+          if (!hasPosition(source) || !hasPosition(target)) return ''
+          const sx = source.x
+          const sy = source.y
+          const tx = target.x
+          const ty = target.y
           const dx = tx - sx
           const dy = ty - sy
           const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          const sr = getRadius(d.source as SimNode)
-          const tr = getRadius(d.target as SimNode)
+          const sr = getRadius(source)
+          const tr = getRadius(target)
           const x1 = sx + (dx / dist) * sr
           const y1 = sy + (dy / dist) * sr
           const x2 = tx - (dx / dist) * tr
@@ -791,11 +806,14 @@ export function GraphView() {
         })
 
       // Update link gradient positions
-      link.each(function (d: any, i: number) {
+      link.each(function (d, i) {
+        const source = getLinkEndpoint(d.source, nodeMap)
+        const target = getLinkEndpoint(d.target, nodeMap)
+        if (!hasPosition(source) || !hasPosition(target)) return
         const grad = select(defs.node()!).select(`#link-grad-${i}`)
         if (!grad.empty()) {
-          grad.attr('x1', d.source.x).attr('y1', d.source.y)
-            .attr('x2', d.target.x).attr('y2', d.target.y)
+          grad.attr('x1', source.x).attr('y1', source.y)
+            .attr('x2', target.x).attr('y2', target.y)
         }
       })
 
