@@ -214,6 +214,7 @@
 | 索引分批处理 | index-vault 每 20 个文件让出事件循环，避免大 vault 索引时主进程冻结 |
 | Embedding 缓存上限 | 限制最多 2000 条 chunk 缓存，按 updated_at DESC 排序，防止内存膨胀 |
 | 搜索缓存作用域 | 搜索结果缓存区分 vault 和搜索模式，避免跨知识库命中旧结果 |
+| 搜索缓存失效 | 文件变更或向量索引完成后清理当前 vault 搜索缓存，避免展示旧结果 |
 | 编辑器滚动优化 | selectionUpdate 改为 80ms debounce 且去除 smooth 动画，连续按方向键不再叠加滚动 |
 | 代码块折叠优化 | MutationObserver 加 300ms debounce 且仅在节点新增时触发，全屏切换不再卡顿 |
 
@@ -267,6 +268,7 @@
 | ChatPanel 错误信息友好化 | 隐藏内部路径与技术细节，用户看到可理解的错误提示 |
 | 敏感凭据加密存储 | 使用 Electron safeStorage 加密 API Key 等敏感信息 |
 | ChatPanel Markdown 渲染 | 用 marked 替代手写渲染器，修复格式异常；自定义 ConfirmModal 替换 window.confirm |
+| 统一确认弹窗 | 图谱推理、Kanban AI 写入、回收站清空统一使用 ConfirmModal |
 | 弹出菜单关闭 | Sidebar/Vault 切换等弹出菜单点击外部正确关闭 |
 | AI 对话清空确认 | 超过 3 条消息时弹出确认弹窗，防止误操作 |
 | Wikilink 预览边界 | 预览弹窗自动避免超出屏幕边界 |
@@ -275,6 +277,7 @@
 | QuickSwitcher 滚动 | 键盘导航时选中项自动滚动到可视区域 |
 | 同步定时器热更新 | 自动同步定时器响应配置变更，无需重启即可生效 |
 | 自动同步设置即时生效 | 设置页修改自动同步间隔后立即通知主界面刷新定时器 |
+| 重建索引保留推理链接 | db:index-vault 不再清空全部 inferred 链接，只清理失效笔记关联 |
 | 数据库 vault 校验 | 切换 vault 时数据库单例自动重连，避免跨 vault 数据错乱 |
 | AI XSS 防护 | ChatPanel AI 输出添加 DOMPurify 消毒，防止 XSS 注入 |
 | saveFile 错误处理 | 保存失败时 Toast 提示，不再静默丢失 |
@@ -495,9 +498,10 @@
 | i18next 多语言框架 | 引入 i18next，支持中英文切换，设置中新增语言入口 |
 | OpenAI Responses 协议 | 新增 OpenAI Responses 协议类型支持 |
 | 笔记记忆文件系统 | 基于文件系统的记忆机制，提升跨目录关联准确性 |
-| 知识图谱"生成记忆"按钮 | 图谱面板一键触发 AI 生成笔记记忆，显示逐篇进度和失败统计 |
+| 知识图谱"生成记忆"按钮 | 图谱面板一键触发 AI 生成笔记记忆，显示逐篇进度、失败统计和处理范围 |
 | AI 语义关联推断 | AI 推断链接标记 link_type，全局语义关联先生成结果再事务替换旧推理链接 |
 | Kanban AI 写入预览 | 从笔记提取任务和任务拆解会先展示待创建任务，确认后再写入看板 |
+| AI 长任务取消 | 聊天、批量生成、Agent、Kanban AI、记忆生成与全局推理共享取消控制 |
 | 文件监听自动索引 | 文件变更时自动索引笔记内容和嵌入向量 |
 | Claude/Ollama 重试机制 | Provider 请求失败时自动重试 |
 | 编辑模式流式反馈 | 编辑模式实时显示生成进度 |
@@ -513,6 +517,8 @@
 | 优化项 | 说明 |
 |--------|------|
 | 意图识别独立调用 | 使用轻量 ai:detect-intent 先分类，再进入聊天、图谱、看板或编辑流程 |
+| TypeScript 验证 | 根 typecheck 脚本覆盖 shared/main/renderer，IPC 类型补齐后可完整通过 |
+| 测试验证 | 恢复向量相似度测试辅助函数，Vitest 全量测试可通过 |
 
 ### 重构
 
@@ -639,6 +645,7 @@
 - [x] AI 对话导出为笔记
 - [x] AI 笔记摘要生成
 - [x] Kanban AI 任务预览确认
+- [x] AI 长任务取消
 - [ ] AI 闪卡生成（Anki 风格复习）
 - [ ] AI 知识图谱自动扩展（发现隐含关联）
 - [ ] 语音输入转文字
@@ -692,6 +699,7 @@
 - [x] 语义搜索 top-K 排序优化
 - [x] Wikilink 重命名精准定位（利用 DB 查询）
 - [x] 编辑器 state cache LRU 上限
+- [x] localStorage 安全包装统一用于核心 UI 状态
 - [ ] Worker Thread 后台索引
 - [ ] 数据库查询缓存
 
