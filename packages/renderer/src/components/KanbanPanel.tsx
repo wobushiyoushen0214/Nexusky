@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
@@ -28,6 +28,11 @@ type PendingKanbanAiWrite =
   | { mode: 'breakdown'; plan: KanbanAiPlan; taskId: string; title: string; description?: string; columnId: string }
   | { mode: 'from-note'; plan: KanbanAiPlan; filePath: string; content: string; columnId?: string }
 
+function isAiCancelled(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || '')
+  return message.includes('已取消') || /aborted?|cancel/i.test(message)
+}
+
 function formatKanbanAiPreview(plan: KanbanAiPlan): string {
   const titles = plan.tasks.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
   const more = plan.tasks.length > 8 ? `\n...另有 ${plan.tasks.length - 8} 个任务` : ''
@@ -50,6 +55,7 @@ export function KanbanPanel() {
   const [newTitle, setNewTitle] = useState('')
   const [analysis, setAnalysis] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const aiStopRequestedRef = useRef(false)
   const [detailDraft, setDetailDraft] = useState<Partial<KanbanTask>>({})
   const [newRelationTarget, setNewRelationTarget] = useState('')
   const [newRelationType, setNewRelationType] = useState<KanbanRelation['relationType']>('related')
@@ -181,12 +187,14 @@ export function KanbanPanel() {
 
   const handleAnalyze = async () => {
     if (!vaultPath) return
+    aiStopRequestedRef.current = false
     setBusy('analyze')
     setAnalysis('')
     try {
       const result = await window.api.invoke('kanban:ai-analyze', { vaultPath })
       setAnalysis(result.summary)
     } catch (e: any) {
+      if (aiStopRequestedRef.current || isAiCancelled(e)) return
       toast(e.message || 'AI 分析失败', 'error')
     } finally {
       setBusy(null)
@@ -195,6 +203,7 @@ export function KanbanPanel() {
 
   const handleBreakdown = async () => {
     if (!vaultPath || !selectedTask) return
+    aiStopRequestedRef.current = false
     setBusy('breakdown')
     try {
       const result = await window.api.invoke('kanban:ai-breakdown-task', {
@@ -218,6 +227,7 @@ export function KanbanPanel() {
         columnId: selectedTask.columnId
       })
     } catch (e: any) {
+      if (aiStopRequestedRef.current || isAiCancelled(e)) return
       toast(e.message || '任务拆解失败', 'error')
     } finally {
       setBusy(null)
@@ -229,6 +239,7 @@ export function KanbanPanel() {
       toast('请先打开一篇笔记', 'info')
       return
     }
+    aiStopRequestedRef.current = false
     setBusy('from-note')
     try {
       const result = await window.api.invoke('kanban:ai-from-note', {
@@ -250,6 +261,7 @@ export function KanbanPanel() {
         columnId: columns[0]?.id
       })
     } catch (e: any) {
+      if (aiStopRequestedRef.current || isAiCancelled(e)) return
       toast(e.message || '从笔记生成任务失败', 'error')
     } finally {
       setBusy(null)
@@ -260,6 +272,7 @@ export function KanbanPanel() {
     if (!vaultPath || !pendingAiWrite) return
     const pending = pendingAiWrite
     setPendingAiWrite(null)
+    aiStopRequestedRef.current = false
     setBusy(pending.mode === 'breakdown' ? 'breakdown' : 'from-note')
     try {
       if (pending.mode === 'breakdown') {
@@ -284,10 +297,18 @@ export function KanbanPanel() {
       }
       await loadBoard()
     } catch (e: any) {
+      if (aiStopRequestedRef.current || isAiCancelled(e)) return
       toast(e.message || 'AI 任务写入失败', 'error')
     } finally {
       setBusy(null)
     }
+  }
+
+  const handleStopAiTask = () => {
+    aiStopRequestedRef.current = true
+    window.api.invoke('ai:stop', undefined).catch(() => {})
+    setBusy(null)
+    toast('已请求停止 AI 任务', 'info')
   }
 
   const selectedRelations = selectedTask
@@ -319,7 +340,7 @@ export function KanbanPanel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             {busy && (
               <button
-                onClick={() => { window.api.invoke('ai:stop', undefined); setBusy(null) }}
+                onClick={handleStopAiTask}
                 title="停止 AI 任务"
                 style={{ ...squareButtonStyle, color: 'var(--danger)', borderColor: 'rgba(248, 113, 113, 0.28)', background: 'var(--danger-muted)' }}
               >

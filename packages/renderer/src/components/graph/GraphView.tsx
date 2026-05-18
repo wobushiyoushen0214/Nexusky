@@ -47,11 +47,17 @@ function getRadius(d: SimNode) {
   return 3
 }
 
+function isAiCancelled(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || '')
+  return message.includes('已取消') || /aborted?|cancel/i.test(message)
+}
+
 export function GraphView() {
   const { t } = useTranslation()
   const svgRef = useRef<SVGSVGElement>(null)
   const simulationRef = useRef<ReturnType<typeof forceSimulation<SimNode>> | null>(null)
   const graphBuiltForRef = useRef<string | null>(null)
+  const aiStopRequestedRef = useRef(false)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -97,6 +103,7 @@ export function GraphView() {
 
   useEffect(() => {
     const cleanup = window.api.onAiMemoryProgress((data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => {
+      if (aiStopRequestedRef.current) return
       if (data.state === 'done') return
       const title = data.title ? `：${data.title}` : ''
       setIndexStatus(`正在生成记忆 ${data.current}/${data.total}${title}`)
@@ -112,6 +119,7 @@ export function GraphView() {
 
   const runGlobalInference = async () => {
     if (!vaultPath) return
+    aiStopRequestedRef.current = false
     setConfirmInferOpen(false)
     setIndexStatus(t('common.aiAnalyzing'))
     try {
@@ -119,11 +127,13 @@ export function GraphView() {
       if (result.success) {
         setIndexStatus(t('common.semanticFound', { count: result.added }))
         window.dispatchEvent(new CustomEvent('graph-data-updated'))
+      } else if (result.error && isAiCancelled(result.error)) {
+        setIndexStatus('已停止 AI 分析')
       } else {
         setIndexStatus(result.error || t('common.semanticFailed'))
       }
     } catch (e: any) {
-      setIndexStatus(e.message)
+      setIndexStatus(isAiCancelled(e) ? '已停止 AI 分析' : e.message)
     }
     setTimeout(() => setIndexStatus(null), 3000)
   }
@@ -1025,6 +1035,7 @@ export function GraphView() {
                 disabled={!!indexStatus}
                 onClick={async () => {
                   if (!vaultPath) return
+                  aiStopRequestedRef.current = false
                   setIndexStatus('正在生成记忆文件...')
                   try {
                     const result = await window.api.invoke('ai:generate-memories', { vaultPath })
@@ -1032,11 +1043,13 @@ export function GraphView() {
                       const failedText = result.failed ? `，失败 ${result.failed} 篇` : ''
                       const scopeText = result.limited ? `（本次处理最近 ${result.total}/${result.totalNotes} 篇）` : ''
                       setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇${failedText}${scopeText}`)
+                    } else if (result.error && isAiCancelled(result.error)) {
+                      setIndexStatus('已停止记忆生成')
                     } else {
                       setIndexStatus(result.error || '记忆生成已停止')
                     }
                   } catch (e: any) {
-                    setIndexStatus(e.message)
+                    setIndexStatus(isAiCancelled(e) ? '已停止记忆生成' : e.message)
                   }
                   setTimeout(() => setIndexStatus(null), 5000)
                 }}
@@ -1051,9 +1064,9 @@ export function GraphView() {
                   className="graph-back-btn"
                   style={{ marginTop: 8 }}
                   onClick={() => {
-                    window.api.invoke('ai:stop', undefined)
-                    setIndexStatus('正在停止...')
-                    setTimeout(() => setIndexStatus(null), 1200)
+                    aiStopRequestedRef.current = true
+                    window.api.invoke('ai:stop', undefined).catch(() => {})
+                    setIndexStatus('已请求停止 AI 任务')
                   }}
                 >
                   停止
