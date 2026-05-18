@@ -316,25 +316,9 @@ Output the modified complete Markdown text directly. The first character of your
     const estimatedTokens = Math.ceil(fileContent.length / 4)
 
     if (estimatedTokens > TOKEN_LIMIT) {
-      const sections = fileContent.split(/(?=^#{1,3}\s)/m)
-      const instruction = params.instruction.toLowerCase()
-      const scored = sections.map((s, i) => ({
-        section: s,
-        index: i,
-        score: instruction.split(/\s+/).filter((w) => w.length > 1 && s.toLowerCase().includes(w)).length
-      }))
-      scored.sort((a, b) => b.score - a.score)
-      let selected: typeof scored = []
-      let totalLen = 0
-      for (const s of scored) {
-        if (totalLen + s.section.length > TOKEN_LIMIT * 4) break
-        selected.push(s)
-        totalLen += s.section.length
-      }
-      if (selected.length < sections.length) {
-        selected.sort((a, b) => a.index - b.index)
-        fileContent = selected.map((s) => s.section).join('')
-        fileContent = `[注意: 以下为文件的相关片段，非完整内容。请基于这些片段输出修改后的完整内容]\n\n${fileContent}`
+      return {
+        success: false,
+        error: '当前笔记过大，无法安全生成完整文件修改。请先选中需要修改的段落，或把笔记拆成更小的文件后再使用 AI 编辑。'
       }
     }
 
