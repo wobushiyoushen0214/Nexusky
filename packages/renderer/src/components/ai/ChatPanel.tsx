@@ -742,15 +742,6 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         const isNewFile = !targetPath
 
         if (vaultPath) {
-          // AI-based edit-mode intent detection via stream markers
-          intentBufferRef.current = ''
-          intentDetectedRef.current = null
-
-          const editIntentPromise = new Promise<string>((resolve) => {
-            intentCallbackRef.current = resolve
-            setTimeout(() => { if (!intentDetectedRef.current) { intentCallbackRef.current = null; resolve('edit') } }, 5000)
-          })
-
           const allMessages = [...messages, userMsg]
           const chatMessages = await buildChatMessages(allMessages)
 
@@ -759,32 +750,31 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 - <<INTENT:chat>> — user is asking a question, seeking explanation, or having a conversation (NOT requesting file edits)
 - <<INTENT:edit>> — user wants to modify or create a single note file (default for edit mode)`
 
+          let editIntent = 'edit'
           try {
-            await window.api.invoke('ai:chat', {
+            const detected = await window.api.invoke('ai:detect-intent' as any, {
               messages: chatMessages,
-              vaultPath,
-              detectIntent: true,
-              intentContext: editIntentContext
-            } as any)
+              intents: ['batch', 'edit', 'chat'],
+              intentContext: editIntentContext.replaceAll('<<INTENT:', '').replaceAll('>>', '')
+            } as any) as { intent?: string }
+            editIntent = detected.intent || 'edit'
           } catch (e: any) {
-            intentCallbackRef.current = null
-            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
-            streamContentRef.current = ''
-            setStreamContent('')
-            setIsStreaming(false)
-            return
+            editIntent = 'edit'
           }
 
-          const editIntent = intentDetectedRef.current || 'edit'
-
           if (editIntent === 'chat') {
-            // Stream already flowing with chat content, just return
-            editCompleteRef.current = true
+            try {
+              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath } as any)
+            } catch (e: any) {
+              setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+              streamContentRef.current = ''
+              setStreamContent('')
+              setIsStreaming(false)
+            }
             return
           }
 
           if (editIntent === 'batch') {
-            window.api.invoke('ai:stop', undefined)
             streamContentRef.current = ''
             setStreamContent('')
 
@@ -827,8 +817,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             return
           }
 
-          // editIntent === 'edit': stop the intent-detection stream, proceed with normal edit flow
-          window.api.invoke('ai:stop', undefined)
+          // editIntent === 'edit': proceed with normal edit flow
           streamContentRef.current = ''
           setStreamContent('')
         }
