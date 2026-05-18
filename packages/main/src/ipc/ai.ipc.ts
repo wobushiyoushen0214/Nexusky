@@ -11,6 +11,21 @@ import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-cont
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs'
 import { join, basename } from 'path'
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') return message
+  }
+  return String(error)
+}
+
+function getStringArg(args: Record<string, unknown>, key: string): string {
+  const value = args[key]
+  return typeof value === 'string' ? value : ''
+}
+
 export function registerAiIPC(): void {
   ipcMain.handle('ai:get-providers', () => {
     return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
@@ -143,9 +158,9 @@ ${context}
         if (window.isDestroyed() || controller.signal.aborted) break
         window.webContents.send('ai:stream', chunk)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!window.isDestroyed() && !controller.signal.aborted) {
-        window.webContents.send('ai:stream', { type: 'error', content: err?.message || String(err) })
+        window.webContents.send('ai:stream', { type: 'error', content: getErrorMessage(err) })
       }
     } finally {
       if (!window.isDestroyed() && !controller.signal.aborted) {
@@ -388,9 +403,9 @@ Output the modified complete Markdown text directly. The first character of your
       const trimmed = result.trim()
       if (!trimmed) return { success: false, error: 'AI 未返回有效内容，请检查 API Key 配置' }
       return { success: true, content: trimmed }
-    } catch (err: any) {
+    } catch (err: unknown) {
       window.webContents.send('ai:edit-stream', { type: 'done' })
-      return { success: false, error: err?.message || String(err) }
+      return { success: false, error: getErrorMessage(err) }
     }
   })
 
@@ -460,8 +475,8 @@ graph TD
       }
       window.webContents.send('ai:graph-done', {})
       return { success: true, content: result.trim() }
-    } catch (err: any) {
-      return { success: false, error: err?.message || String(err) }
+    } catch (err: unknown) {
+      return { success: false, error: getErrorMessage(err) }
     }
   })
 
@@ -498,9 +513,9 @@ graph TD
         if (chunk.type === 'text') planResult += chunk.content
         if (chunk.type === 'error') { finishAiTask(windowId, controller); return { success: false, error: chunk.content, files: [] } }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       finishAiTask(windowId, controller)
-      return { success: false, error: controller.signal.aborted ? '已取消' : err.message, files: [] }
+      return { success: false, error: controller.signal.aborted ? '已取消' : getErrorMessage(err), files: [] }
     }
 
     if (controller.signal.aborted) { finishAiTask(windowId, controller); return { success: false, error: '已取消', files: [] } }
@@ -581,8 +596,8 @@ graph TD
       window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在索引笔记关系...' })
       let indexErr: string | null = null
       for (const fp of createdFiles) {
-        try { indexNote(params.vaultPath, fp) } catch (e: any) {
-          if (!indexErr) indexErr = e?.message || String(e)
+        try { indexNote(params.vaultPath, fp) } catch (e: unknown) {
+          if (!indexErr) indexErr = getErrorMessage(e)
           logger.error('indexNote failed', e, { file: fp })
         }
       }
@@ -727,8 +742,8 @@ graph TD
       try { resolveAllLinks(params.vaultPath) } catch {}
 
       return { success: true, added }
-    } catch (err: any) {
-      return { success: false, error: err?.message || String(err) }
+    } catch (err: unknown) {
+      return { success: false, error: getErrorMessage(err) }
     }
   })
 
@@ -923,12 +938,13 @@ graph TD
 
   async function executeToolCall(
     name: string,
-    args: Record<string, any>,
+    args: Record<string, unknown>,
     vaultPath: string
   ): Promise<{ content: string; sources?: { title: string; filePath: string; chunk: string; score: number }[] }> {
     switch (name) {
       case 'search_notes': {
-        const results = await semanticSearch(vaultPath, args.query || '', 5)
+        const query = getStringArg(args, 'query')
+        const results = await semanticSearch(vaultPath, query, 5)
         if (results.length === 0) return { content: '未找到相关笔记。' }
         return {
           content: results.map((r, i) => `${i + 1}. **${r.title}**\n${r.chunk.slice(0, 200)}`).join('\n\n'),
@@ -941,21 +957,22 @@ graph TD
         }
       }
       case 'read_note': {
-        const filePath = findNoteByTitle(vaultPath, args.title || '')
-        if (!filePath) return { content: `未找到标题为「${args.title}」的笔记。` }
+        const title = getStringArg(args, 'title')
+        const filePath = findNoteByTitle(vaultPath, title)
+        if (!filePath) return { content: `未找到标题为「${title}」的笔记。` }
         try {
           const content = readFileSync(filePath, 'utf-8')
           return {
             content,
             sources: [{
-              title: args.title || basename(filePath, '.md'),
+              title: title || basename(filePath, '.md'),
               filePath,
               chunk: content.slice(0, 100),
               score: 1
             }]
           }
         } catch {
-          return { content: `无法读取笔记「${args.title}」。` }
+          return { content: `无法读取笔记「${title}」。` }
         }
       }
       case 'create_note': {
@@ -1103,7 +1120,7 @@ graph TD
             })
 
             for (const call of toolCallEvent.calls) {
-              let args: Record<string, any> = {}
+              let args: Record<string, unknown> = {}
               try {
                 args = JSON.parse(call.arguments)
               } catch {}
@@ -1162,9 +1179,9 @@ graph TD
       if (!window.isDestroyed() && !controller.signal.aborted) {
         window.webContents.send('ai:stream', { type: 'done', content: '' })
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!window.isDestroyed() && !controller.signal.aborted) {
-        window.webContents.send('ai:stream', { type: 'error', content: err?.message || String(err) })
+        window.webContents.send('ai:stream', { type: 'error', content: getErrorMessage(err) })
         window.webContents.send('ai:stream', { type: 'done', content: '' })
       }
     } finally {
