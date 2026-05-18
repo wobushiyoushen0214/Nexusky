@@ -604,50 +604,22 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     streamContentRef.current = ''
     setStreamContent('')
 
-    // Unified intent detection: one AI call to classify graph/kanban/other
+    // Local keyword-based intent detection (no AI call)
     if (vaultPath) {
-      let detectedIntent = ''
-      try {
-        const intentResult = await window.api.invoke('ai:complete', {
-          text: `Classify the user instruction into exactly one category. Output only the category label.
+      const text = userMsg.content.toLowerCase()
+      const graphKeywords = ['知识图谱', '图谱', '关系图', '笔记关系', '笔记的关系', '关联关系', '生成图', 'graph', 'link index']
+      const kanbanKeywords = ['看板', '待办', '提取任务', '任务板', 'todo', 'task board', '生成任务']
+      const isGraph = graphKeywords.some((k) => text.includes(k))
+      const isKanban = !isGraph && kanbanKeywords.some((k) => text.includes(k))
 
-Categories:
-- 图谱: generate knowledge graph, analyze note relationships, build link index
-- 看板: extract todos, create tasks, generate task board
-- 其他: none of the above
-
-Examples:
-"帮我整理这些笔记的关系" → 图谱
-"生成知识图谱" → 图谱
-"把笔记里的待办提取出来" → 看板
-"创建一个任务看板" → 看板
-"总结一下这篇文章" → 其他
-"帮我写一篇关于React的笔记" → 其他
-"这些笔记有什么关联" → 图谱
-
-User instruction: "${userMsg.content}"`,
-          temperature: 0
-        })
-        detectedIntent = (intentResult || '').trim()
-      } catch {}
-
-      if (detectedIntent.startsWith('图谱')) {
+      if (isGraph) {
         let targetPath: string | null = null
         const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
         const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
-        try {
-          const dirDetect = await window.api.invoke('ai:complete', {
-            text: dirs.length > 0
-              ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想对哪个目录生成知识图谱。如果用户提到了某个目录或主题与某个已有目录匹配，输出该目录名；如果用户说"当前"或没有指定，输出"当前"。只输出目录名或"当前"，不要其他文字。`
-              : `用户指令: "${userMsg.content}"\n\n输出"当前"。`,
-            temperature: 0
-          })
-          const detected = (dirDetect || '').trim().replace(/[\\/:*?"<>|"「」'']/g, '')
-          if (detected && detected !== '当前' && detected.length < 30) {
-            const exactMatch = dirs.find((d) => d.toLowerCase() === detected.toLowerCase())
-            targetPath = `${vaultPath}/${exactMatch || detected}`
-          }
-        } catch {}
+        const matchedDir = dirs.find((d: string) => text.includes(d.toLowerCase()))
+        if (matchedDir) {
+          targetPath = `${vaultPath}/${matchedDir}`
+        }
 
         if (!targetPath) {
           const fp = useEditorStore.getState().currentFilePath
@@ -669,7 +641,7 @@ User instruction: "${userMsg.content}"`,
         return
       }
 
-      if (detectedIntent.startsWith('看板')) {
+      if (isKanban) {
         const fp = useEditorStore.getState().currentFilePath
         if (!fp) {
           const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '请先打开一篇笔记，再从当前笔记提取看板任务。' }
@@ -710,35 +682,13 @@ User instruction: "${userMsg.content}"`,
         const isNewFile = !targetPath
 
         if (vaultPath) {
-          // Unified edit-mode intent detection: one AI call
-          const recentForDetect = messages.slice(-6).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 150)}`).join('\n')
-          let editIntent = '编辑'
-          try {
-            const intentResult = await window.api.invoke('ai:complete', {
-              text: `Classify the user instruction in edit mode into exactly one category. Output only the category label.
-
-Categories:
-- 对话: follow-up question, chitchat, or inquiry unrelated to editing the current note
-- 批量: generate multiple notes at once (multiple topics/files)
-- 编辑: modify or create a single note
-
-Examples:
-"刚才那个方案再详细说说" → 对话
-"为什么要用这个设计模式" → 对话
-"帮我生成五篇关于不同框架的笔记" → 批量
-"每种语言写三篇入门文章" → 批量
-"把第二段改成列表" → 编辑
-"帮我写一篇关于Docker的笔记" → 编辑
-"加一个总结段落" → 编辑
-
-${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User instruction: "${userMsg.content}"`,
-              temperature: 0
-            })
-            editIntent = (intentResult || '').trim()
-          } catch {}
-
-          const isChatContinuation = editIntent.startsWith('对话')
-          const isBatchRequest = editIntent.startsWith('批量')
+          // Local keyword-based edit-mode intent detection (no AI call)
+          const editText = userMsg.content.toLowerCase()
+          const batchKeywords = ['生成多篇', '多篇笔记', '批量生成', '每种', '每个', '分别写', '五篇', '三篇', '四篇', '六篇', '七篇', '八篇', '九篇', '十篇', '多个主题', '不同框架', '不同语言']
+          const chatKeywords = ['为什么', '怎么理解', '什么意思', '解释一下', '详细说说', '再说说', '你觉得', '对比一下', '区别是', '是什么']
+          const hasBatchNumber = /[生成写创建].*[0-9一二三四五六七八九十]+\s*[篇个份]/.test(userMsg.content)
+          const isBatchRequest = hasBatchNumber || batchKeywords.some((k) => editText.includes(k))
+          const isChatContinuation = !isBatchRequest && chatKeywords.some((k) => editText.includes(k)) && !/[写改加删修创建生成插入替换]/.test(userMsg.content)
 
           if (isChatContinuation) {
             editCompleteRef.current = true
@@ -768,23 +718,14 @@ ${recentForDetect ? `Recent conversation:\n${recentForDetect}\n\n` : ''}User ins
             ? `对话上下文：\n${recentContext}\n\n当前指令: ${userMsg.content}`
             : userMsg.content
 
-          // Use AI to semantically detect target directories from instruction (supports multiple)
+          // Local keyword matching for target directories
           let specifiedDirs: string[] = []
-          try {
-            const detectResult = await window.api.invoke('ai:complete', {
-              text: dirs.length > 0
-                ? `用户指令: "${userMsg.content}"\n可用目录: ${dirs.join(', ')}\n\n请判断用户想把笔记放在哪些目录下。\n规则：\n- 如果用户明确提到目录名，用逗号分隔输出\n- 如果用户提到的主题与某个已有目录匹配，输出该目录名\n- 如果用户想创建新目录（不在列表中），输出用户提到的新目录名\n- 如果用户的意图隐含了多个分类/主题（如"五个不同前端框架"、"三种编程语言"），即使没有明确说目录名，也要根据语义推断出合理的目录名并输出\n- 只有当完全无法从指令中推断出任何目录归属时，才输出"空"\n只输出目录名（逗号分隔），不要其他文字。`
-                : `用户指令: "${userMsg.content}"\n\n请从用户指令中判断目标目录名。\n规则：\n- 如果用户明确提到目录名，用逗号分隔输出\n- 如果用户的意图隐含了多个分类/主题（如"五个不同前端框架"、"三种编程语言"、"不同领域"），即使没有明确说目录名，也要根据语义推断出合理的具体目录名并输出\n- 只有当完全无法从指令中推断出任何目录归属时，才输出"空"\n只输出目录名（逗号分隔），不要其他文字。`
-            })
-            const raw = (detectResult || '').trim()
-            if (raw && raw !== '空') {
-              const parts = raw.split(/[,，、]/).map((s: string) => s.trim().replace(/[\\/:*?"<>|"「」'']/g, '')).filter((s: string) => s && s !== '空' && s.length < 30)
-              for (const part of parts) {
-                const exactMatch = dirs.find((d: string) => d.toLowerCase() === part.toLowerCase())
-                specifiedDirs.push(exactMatch || part)
-              }
+          const msgLower = userMsg.content.toLowerCase()
+          for (const dir of dirs) {
+            if (msgLower.includes(dir.toLowerCase())) {
+              specifiedDirs.push(dir)
             }
-          } catch {}
+          }
 
           if (specifiedDirs.length > 1) {
             if (editTimerRef.current) clearInterval(editTimerRef.current)
