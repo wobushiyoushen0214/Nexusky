@@ -3,6 +3,7 @@ import { aiManager, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEven
 import { store } from '../services/store'
 import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
+import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
@@ -543,7 +544,7 @@ graph TD
       for (const fp of createdFiles) {
         try { indexNote(params.vaultPath, fp) } catch (e: any) {
           if (!indexErr) indexErr = e?.message || String(e)
-          console.error('[indexNote] failed for', fp, e)
+          logger.error('indexNote failed', e, { file: fp })
         }
       }
       try { resolveAllLinks(params.vaultPath) } catch {}
@@ -599,7 +600,7 @@ graph TD
             }
           }
         } catch (e) {
-          console.error('[semantic-links] failed', e)
+          logger.error('semantic-links failed', e)
         }
       }
 

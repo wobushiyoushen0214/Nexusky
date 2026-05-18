@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { net, BrowserWindow } from 'electron'
+import { logger } from '../logger'
 import { store } from '../store'
 
 export interface OneDriveConfig {
@@ -191,7 +192,7 @@ export class OneDriveSyncProvider implements SyncProvider {
       })
       return true
     } catch (err: any) {
-      console.error('OneDrive push failed:', err.message)
+      logger.error('OneDrive push failed', err)
       return false
     }
   }
@@ -207,7 +208,7 @@ export class OneDriveSyncProvider implements SyncProvider {
       writeFileSync(fullPath, content, 'utf-8')
       return true
     } catch (err: any) {
-      console.error('OneDrive pull failed:', err.message)
+      logger.error('OneDrive pull failed', err)
       return false
     }
   }

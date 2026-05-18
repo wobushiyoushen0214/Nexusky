@@ -1,6 +1,7 @@
 import { autoUpdater } from 'electron-updater'
 import { BrowserWindow, ipcMain, app, shell } from 'electron'
 import { isVersionNewer } from './version'
+import { logger } from './logger'
 
 let updateAvailable = false
 
@@ -43,7 +44,7 @@ export function setupAutoUpdater(): void {
   })
 
   autoUpdater.on('error', (err) => {
-    console.error('Auto-updater error:', err.message)
+    logger.error('Auto-updater error', err)
   })
 
   ipcMain.handle('updater:check', async () => {

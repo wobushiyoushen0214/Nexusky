@@ -3,6 +3,7 @@ import { getSupabaseClient, getAdminClient } from './client'
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync } from 'fs'
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
+import { logger } from '../logger'
 
 function encodeSegment(segment: string): string {
   if (/^[\w\-.]+$/.test(segment)) return segment
@@ -92,7 +93,7 @@ export class SupabaseSyncProvider implements SyncProvider {
       })
 
     if (error) {
-      console.error('Push failed:', relPath, error.message)
+      logger.error('Supabase push failed', new Error(error.message), { file: relPath })
       return false
     }
 
@@ -114,7 +115,7 @@ export class SupabaseSyncProvider implements SyncProvider {
       .download(storagePath)
 
     if (error || !data) {
-      console.error('Pull failed:', relPath, error?.message)
+      logger.error('Supabase pull failed', error ? new Error(error.message) : undefined, { file: relPath })
       return false
     }
 
