@@ -1,8 +1,5 @@
 import { getDatabase } from './database'
 import { aiManager } from './ai'
-import OpenAI from 'openai'
-import { store } from './store'
-import type { AIProviderConfig } from './ai/base-provider'
 
 const CHUNK_SIZE = 400
 const CHUNK_OVERLAP = 50
@@ -367,51 +364,6 @@ export async function semanticSearch(vaultPath: string, query: string, topK = 10
   return reranked.slice(0, topK)
 }
 
-// --- Legacy embedding support (optional, used if provider supports it) ---
-
-export async function generateEmbeddings(texts: string[]): Promise<number[][] | null> {
-  const configs = store.get('aiProviders') as AIProviderConfig[] | undefined
-  if (!configs || configs.length === 0) return null
-
-  const config = configs.find((c) => c.enabled && (c.type === 'openai' || c.type === 'custom'))
-  if (!config) return null
-
-  const embeddingModel = (store.get('embeddingModel') as string) || 'text-embedding-3-small'
-  const BATCH_SIZE = 20
-  const MAX_RETRIES = 3
-  const allEmbeddings: number[][] = []
-
-  try {
-    const client = new OpenAI({
-      apiKey: config.apiKey,
-      baseURL: config.baseUrl || undefined
-    })
-
-    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-      const batch = texts.slice(i, i + BATCH_SIZE)
-      let retries = 0
-      while (retries < MAX_RETRIES) {
-        try {
-          const response = await client.embeddings.create({
-            model: embeddingModel,
-            input: batch
-          })
-          allEmbeddings.push(...response.data.map((d) => d.embedding))
-          break
-        } catch (e: any) {
-          retries++
-          if (retries >= MAX_RETRIES) throw e
-          const delay = Math.min(1000 * Math.pow(2, retries), 8000)
-          await new Promise((r) => setTimeout(r, delay))
-        }
-      }
-    }
-
-    return allEmbeddings
-  } catch {
-    return null
-  }
-}
 
 export async function indexNoteEmbeddings(vaultPath: string, noteId: string, content: string): Promise<void> {
   const db = getDatabase(vaultPath)
@@ -477,16 +429,6 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
 
   transaction()
   invalidateEmbeddingCache()
-}
-
-export function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array): number {
-  let dot = 0, normA = 0, normB = 0
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i]
-    normA += a[i] * a[i]
-    normB += b[i] * b[i]
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB))
 }
 
 export function findSimilarNotes(vaultPath: string, topK = 3, threshold = 0.75): { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] {
