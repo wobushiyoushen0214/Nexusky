@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
+import { getErrorMessage, isCancellationError } from '../utils/errors'
 import { ConfirmModal } from './ConfirmModal'
 import type { KanbanAiPlan, KanbanColumn, KanbanRelation, KanbanTask } from '@shared/types/ipc'
 
@@ -22,21 +23,6 @@ const PRIORITY_COLOR = [
 type PendingKanbanAiWrite =
   | { mode: 'breakdown'; plan: KanbanAiPlan; taskId: string; title: string; description?: string; columnId: string }
   | { mode: 'from-note'; plan: KanbanAiPlan; filePath: string; content: string; columnId?: string }
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string') return message
-  }
-  return ''
-}
-
-function isAiCancelled(error: unknown): boolean {
-  const message = getErrorMessage(error) || String(error || '')
-  return message.includes('已取消') || /aborted?|cancel/i.test(message)
-}
 
 function formatKanbanAiPreview(plan: KanbanAiPlan): string {
   const titles = plan.tasks.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
@@ -199,7 +185,7 @@ export function KanbanPanel() {
       const result = await window.api.invoke('kanban:ai-analyze', { vaultPath })
       setAnalysis(result.summary)
     } catch (e: unknown) {
-      if (aiStopRequestedRef.current || isAiCancelled(e)) return
+      if (aiStopRequestedRef.current || isCancellationError(e)) return
       toast(getErrorMessage(e) || 'AI 分析失败', 'error')
     } finally {
       setBusy(null)
@@ -232,7 +218,7 @@ export function KanbanPanel() {
         columnId: selectedTask.columnId
       })
     } catch (e: unknown) {
-      if (aiStopRequestedRef.current || isAiCancelled(e)) return
+      if (aiStopRequestedRef.current || isCancellationError(e)) return
       toast(getErrorMessage(e) || '任务拆解失败', 'error')
     } finally {
       setBusy(null)
@@ -266,7 +252,7 @@ export function KanbanPanel() {
         columnId: columns[0]?.id
       })
     } catch (e: unknown) {
-      if (aiStopRequestedRef.current || isAiCancelled(e)) return
+      if (aiStopRequestedRef.current || isCancellationError(e)) return
       toast(getErrorMessage(e) || '从笔记生成任务失败', 'error')
     } finally {
       setBusy(null)
@@ -302,7 +288,7 @@ export function KanbanPanel() {
       }
       await loadBoard()
     } catch (e: unknown) {
-      if (aiStopRequestedRef.current || isAiCancelled(e)) return
+      if (aiStopRequestedRef.current || isCancellationError(e)) return
       toast(getErrorMessage(e) || 'AI 任务写入失败', 'error')
     } finally {
       setBusy(null)

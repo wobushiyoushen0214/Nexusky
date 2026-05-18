@@ -6,6 +6,7 @@ import { ConfirmModal } from '../ConfirmModal'
 import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
+import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
 import type { ChatContentPart, ChatSource, IPCChatMessage } from '@shared/types/ipc'
@@ -48,21 +49,6 @@ function friendlyError(raw: string): string {
   // 截断过长的原始错误
   if (msg.length > 200) msg = msg.slice(0, 200) + '...'
   return msg
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string') return message
-  }
-  return ''
-}
-
-function isAiCancelled(error: unknown): boolean {
-  const message = getErrorMessage(error) || String(error || '')
-  return message.includes('已取消') || /aborted?|cancel/i.test(message)
 }
 
 function estimateTokens(text: string): number {
@@ -636,7 +622,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         })
         intent = detected.intent || 'chat'
       } catch (e: unknown) {
-        if (isAiCancelled(e)) {
+        if (isCancellationError(e)) {
           editCompleteRef.current = true
           streamContentRef.current = ''
           setStreamContent('')
@@ -761,7 +747,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             })
             editIntent = detected.intent || 'edit'
           } catch (e: unknown) {
-            if (isAiCancelled(e)) {
+            if (isCancellationError(e)) {
               editCompleteRef.current = true
               streamContentRef.current = ''
               setStreamContent('')

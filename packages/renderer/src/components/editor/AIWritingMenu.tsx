@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 import { toast } from '../../stores/toast-store'
+import { getErrorMessage } from '../../utils/errors'
 import type { IPCChatMessage } from '@shared/types/ipc'
 
 interface AIWritingMenuProps {
@@ -115,9 +116,9 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
         { role: 'user', content: `${action.prompt}\n\n${selectedText}` }
       ]
       await window.api.invoke('ai:chat', { messages })
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!done) {
-        toast(`${action.label}失败: ${e.message || '未知错误'}`, 'error')
+        toast(`${action.label}失败: ${getErrorMessage(e, '未知错误')}`, 'error')
         setPreview(null)
         cleanup()
         cleanupRef.current = null

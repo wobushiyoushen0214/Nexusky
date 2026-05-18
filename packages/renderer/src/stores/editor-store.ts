@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useVaultStore } from './vault-store'
 import { toast } from './toast-store'
+import { getErrorMessage } from '../utils/errors'
 import { safeGet, safeGetJSON, safeSetJSON } from '../utils/storage'
 
 interface Tab {
@@ -112,8 +113,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const recent = [path, ...get().recentFiles.filter((p) => p !== path)].slice(0, 10)
       safeSetJSON('nexusky-recent', recent)
       set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false, recentFiles: recent })
-    } catch (e: any) {
-      toast(`打开文件失败: ${e.message || '未知错误'}`, 'error')
+    } catch (e: unknown) {
+      toast(`打开文件失败: ${getErrorMessage(e, '未知错误')}`, 'error')
     } finally {
       openFileLock = false
     }
@@ -201,8 +202,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const vaultPath = useVaultStore.getState().vaultPath
     try {
       await window.api.invoke('file:write', { path: currentFilePath, content, vaultPath: vaultPath || undefined })
-    } catch (e: any) {
-      toast(`保存失败: ${e.message || '未知错误'}`, 'error')
+    } catch (e: unknown) {
+      toast(`保存失败: ${getErrorMessage(e, '未知错误')}`, 'error')
       return
     }
 

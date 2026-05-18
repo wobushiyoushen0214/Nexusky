@@ -29,6 +29,7 @@ import { BacklinksPanel } from './BacklinksPanel'
 import { AIWritingMenu } from './AIWritingMenu'
 import { ContextMenu } from '../ContextMenu'
 import { useSyncStore } from '../../stores/sync-store'
+import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
@@ -733,8 +734,8 @@ function SyncIndicator() {
       const result = await window.api.invoke('cloud:sync', { vaultPath })
       if (result.errors.length === 0) setSuccess()
       else setError(result.errors[0])
-    } catch (e: any) {
-      setError(e.message || '同步失败')
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, '同步失败'))
     }
   }
 
