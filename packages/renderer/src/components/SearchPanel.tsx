@@ -43,6 +43,10 @@ function saveCache(key: string, results: SearchResult[]): void {
   localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
 }
 
+function getCacheKey(vaultPath: string, mode: SearchMode, query: string): string {
+  return `${vaultPath}:${mode}:${query.trim()}`
+}
+
 function highlightText(text: string, query: string): React.ReactNode {
   if (!query.trim()) return text
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -67,6 +71,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const skipAutoSearchRef = useRef(false)
 
   useEffect(() => {
     if (open) {
@@ -101,54 +106,67 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
 
   useEffect(() => {
     if (!open || mode === 'semantic' || !query.trim() || !vaultPath) return
+    if (skipAutoSearchRef.current) {
+      skipAutoSearchRef.current = false
+      return
+    }
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     searchTimerRef.current = setTimeout(async () => {
       setSearching(true)
       setSelectedIndex(0)
-      if (mode === 'regex') {
-        const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim(), regex: true } as any)
-        setResults(res)
-      } else {
-        const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
-        setResults(res)
+      try {
+        if (mode === 'regex') {
+          const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim(), regex: true } as any)
+          setResults(res)
+        } else {
+          const res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
+          setResults(res)
+        }
+      } finally {
+        setSearching(false)
       }
-      setSearching(false)
     }, 300)
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
   }, [query, mode, vaultPath, open])
 
-  const handleSearch = async () => {
-    if (!query.trim() || !vaultPath) return
-    const cacheKey = `${mode}:${query.trim()}`
+  const handleSearch = async (nextQuery = query) => {
+    const normalizedQuery = nextQuery.trim()
+    if (!normalizedQuery || !vaultPath) return
+    const cacheKey = getCacheKey(vaultPath, mode, normalizedQuery)
     const cached = loadCache()[cacheKey]
     if (cached) {
       setResults(cached)
       setSelectedIndex(0)
-      saveToHistory(query.trim())
+      saveToHistory(normalizedQuery)
       return
     }
 
     setSearching(true)
     setResults([])
     setSelectedIndex(0)
-    saveToHistory(query.trim())
+    saveToHistory(normalizedQuery)
 
-    let res: SearchResult[]
-    if (mode === 'keyword') {
-      res = await window.api.invoke('db:fulltext-search', { vaultPath, query: query.trim() })
-    } else {
-      const raw = await window.api.invoke('db:semantic-search', { vaultPath, query: query.trim() })
-      res = raw.map((r) => ({
-        filePath: r.filePath,
-        title: r.title,
-        line: r.chunk.slice(0, 150),
-        lineNumber: 0,
-        score: r.score
-      }))
+    try {
+      let res: SearchResult[]
+      if (mode === 'keyword') {
+        res = await window.api.invoke('db:fulltext-search', { vaultPath, query: normalizedQuery })
+      } else if (mode === 'regex') {
+        res = await window.api.invoke('db:fulltext-search', { vaultPath, query: normalizedQuery, regex: true } as any)
+      } else {
+        const raw = await window.api.invoke('db:semantic-search', { vaultPath, query: normalizedQuery })
+        res = raw.map((r: { filePath: string; title: string; chunk: string; score: number }) => ({
+          filePath: r.filePath,
+          title: r.title,
+          line: r.chunk.slice(0, 150),
+          lineNumber: 0,
+          score: r.score
+        }))
+      }
+      setResults(res)
+      saveCache(cacheKey, res)
+    } finally {
+      setSearching(false)
     }
-    setResults(res)
-    saveCache(cacheKey, res)
-    setSearching(false)
   }
   const handleBuildIndex = async () => {
     if (!vaultPath) return
@@ -189,8 +207,9 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   }
 
   const handleHistoryClick = (h: string) => {
+    skipAutoSearchRef.current = true
     setQuery(h)
-    setTimeout(() => handleSearch(), 0)
+    void handleSearch(h)
   }
 
   if (!open) return null
@@ -254,7 +273,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           />
           {query && (
             <button
-              onClick={handleSearch}
+              onClick={() => handleSearch()}
               style={{ padding: '4px 10px', fontSize: 12, background: 'var(--accent)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
             >
               搜索
