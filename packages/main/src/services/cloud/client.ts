@@ -3,6 +3,9 @@ import WebSocket from 'ws'
 import { store } from '../store'
 
 let client: SupabaseClient | null = null
+type SupabaseClientOptions = NonNullable<Parameters<typeof createClient>[2]>
+type RealtimeTransport = NonNullable<NonNullable<SupabaseClientOptions['realtime']>['transport']>
+const realtimeTransport = WebSocket as unknown as RealtimeTransport
 
 export interface CloudConfig {
   supabaseUrl: string
@@ -23,7 +26,7 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   if (!client) {
     client = createClient(config.supabaseUrl, config.supabaseKey, {
-      realtime: { transport: WebSocket as any }
+      realtime: { transport: realtimeTransport }
     })
   }
   return client
@@ -35,7 +38,7 @@ export function getAdminClient(): SupabaseClient | null {
 
   return createClient(config.supabaseUrl, config.serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
-    realtime: { transport: WebSocket as any }
+    realtime: { transport: realtimeTransport }
   })
 }
 
