@@ -174,18 +174,54 @@ export function ChatPanel() {
     }
   }
 
+  const intentBufferRef = useRef('')
+  const intentDetectedRef = useRef<string | null>(null)
+  const intentCallbackRef = useRef<((intent: string) => void) | null>(null)
+
   useEffect(() => {
     const handler = (event: { type: string; content: string }) => {
       if (!isStreamingRef.current) return
       if (event.type === 'text') {
         setToolStatus(null)
+
+        if (intentCallbackRef.current && !intentDetectedRef.current) {
+          intentBufferRef.current += event.content
+          const match = intentBufferRef.current.match(/<<INTENT:(graph|kanban|batch|edit|chat)>>/)
+          if (match) {
+            intentDetectedRef.current = match[1]
+            const remaining = intentBufferRef.current.replace(/<<INTENT:(graph|kanban|batch|edit|chat)>>/, '')
+            if (match[1] !== 'chat') {
+              intentCallbackRef.current(match[1])
+              intentCallbackRef.current = null
+              return
+            }
+            intentCallbackRef.current = null
+            streamContentRef.current = remaining
+            setStreamContent(remaining)
+          } else if (intentBufferRef.current.length > 40) {
+            intentCallbackRef.current = null
+            streamContentRef.current = intentBufferRef.current
+            setStreamContent(intentBufferRef.current)
+          }
+          return
+        }
+
         streamContentRef.current += event.content
         setStreamContent(streamContentRef.current)
       } else if (event.type === 'done') {
         setToolStatus(null)
+        if (intentCallbackRef.current && intentBufferRef.current) {
+          const cleaned = intentBufferRef.current.replace(/<<INTENT:\w+>>/, '')
+          if (cleaned) {
+            streamContentRef.current = cleaned
+            setStreamContent(cleaned)
+          }
+          intentCallbackRef.current = null
+        }
         setIsStreaming(false)
       } else if (event.type === 'error') {
         setToolStatus(null)
+        intentCallbackRef.current = null
         if (streamContentRef.current) {
           const partial = streamContentRef.current
           const errMsg = friendlyError(event.content)
@@ -604,23 +640,49 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     streamContentRef.current = ''
     setStreamContent('')
 
-    // Local keyword-based intent detection (no AI call)
-    if (vaultPath) {
-      const text = userMsg.content.toLowerCase()
-      const graphKeywords = ['知识图谱', '图谱', '关系图', '笔记关系', '笔记的关系', '关联关系', '生成图', 'graph', 'link index']
-      const kanbanKeywords = ['看板', '待办', '提取任务', '任务板', 'todo', 'task board', '生成任务']
-      const isGraph = graphKeywords.some((k) => text.includes(k))
-      const isKanban = !isGraph && kanbanKeywords.some((k) => text.includes(k))
+    // AI-based intent detection via stream markers
+    if (vaultPath && !editMode) {
+      intentBufferRef.current = ''
+      intentDetectedRef.current = null
 
-      if (isGraph) {
+      const intentPromise = new Promise<string>((resolve) => {
+        intentCallbackRef.current = resolve
+      })
+
+      const allMessages = [...messages, userMsg]
+      const chatMessages = await buildChatMessages(allMessages)
+      try {
+        if (agentMode) {
+          await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, detectIntent: true } as any)
+        } else {
+          await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath, detectIntent: true } as any)
+        }
+      } catch (e: any) {
+        intentCallbackRef.current = null
+        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
+        streamContentRef.current = ''
+        setStreamContent('')
+        setIsStreaming(false)
+        return
+      }
+
+      const intent = intentDetectedRef.current || 'chat'
+
+      if (intent === 'graph') {
+        window.api.invoke('ai:stop', undefined)
+        editCompleteRef.current = true
+        streamContentRef.current = ''
+        setStreamContent('')
+        setIsStreaming(false)
+
         let targetPath: string | null = null
         const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
         const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
+        const text = userMsg.content.toLowerCase()
         const matchedDir = dirs.find((d: string) => text.includes(d.toLowerCase()))
         if (matchedDir) {
           targetPath = `${vaultPath}/${matchedDir}`
         }
-
         if (!targetPath) {
           const fp = useEditorStore.getState().currentFilePath
           if (fp) {
@@ -635,20 +697,22 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '正在为该目录生成知识图谱...' }
         setMessages((msgs) => [...msgs, msg])
         appendToDb(msg)
-        editCompleteRef.current = true
-        setIsStreaming(false)
         window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: targetPath, isDirectory: true } }))
         return
       }
 
-      if (isKanban) {
+      if (intent === 'kanban') {
+        window.api.invoke('ai:stop', undefined)
+        editCompleteRef.current = true
+        streamContentRef.current = ''
+        setStreamContent('')
+        setIsStreaming(false)
+
         const fp = useEditorStore.getState().currentFilePath
         if (!fp) {
           const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '请先打开一篇笔记，再从当前笔记提取看板任务。' }
           setMessages((msgs) => [...msgs, msg])
           appendToDb(msg)
-          editCompleteRef.current = true
-          setIsStreaming(false)
           return
         }
 
@@ -668,11 +732,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           setMessages((msgs) => [...msgs, msg])
           appendToDb(msg)
         }
-        editCompleteRef.current = true
-        setStreamContent('')
-        setIsStreaming(false)
         return
       }
+
+      // intent === 'chat': stream already flowing, just return
+      return
     }
 
     if (editMode) {
@@ -682,73 +746,95 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         const isNewFile = !targetPath
 
         if (vaultPath) {
-          // Local keyword-based edit-mode intent detection (no AI call)
-          const editText = userMsg.content.toLowerCase()
-          const batchKeywords = ['生成多篇', '多篇笔记', '批量生成', '每种', '每个', '分别写', '五篇', '三篇', '四篇', '六篇', '七篇', '八篇', '九篇', '十篇', '多个主题', '不同框架', '不同语言']
-          const chatKeywords = ['为什么', '怎么理解', '什么意思', '解释一下', '详细说说', '再说说', '你觉得', '对比一下', '区别是', '是什么']
-          const hasBatchNumber = /[生成写创建].*[0-9一二三四五六七八九十]+\s*[篇个份]/.test(userMsg.content)
-          const isBatchRequest = hasBatchNumber || batchKeywords.some((k) => editText.includes(k))
-          const isChatContinuation = !isBatchRequest && chatKeywords.some((k) => editText.includes(k)) && !/[写改加删修创建生成插入替换]/.test(userMsg.content)
+          // AI-based edit-mode intent detection via stream markers
+          intentBufferRef.current = ''
+          intentDetectedRef.current = null
 
-          if (isChatContinuation) {
-            editCompleteRef.current = true
-            setIsStreaming(true)
+          const editIntentPromise = new Promise<string>((resolve) => {
+            intentCallbackRef.current = resolve
+            setTimeout(() => { if (!intentDetectedRef.current) { intentCallbackRef.current = null; resolve('edit') } }, 5000)
+          })
+
+          const allMessages = [...messages, userMsg]
+          const chatMessages = await buildChatMessages(allMessages)
+
+          const editIntentContext = `Context: user is in EDIT MODE (editing notes). Available intents:
+- <<INTENT:batch>> — user wants to generate MULTIPLE separate note files (e.g. "generate 5 notes about...", "write notes for each framework")
+- <<INTENT:chat>> — user is asking a question, seeking explanation, or having a conversation (NOT requesting file edits)
+- <<INTENT:edit>> — user wants to modify or create a single note file (default for edit mode)`
+
+          try {
+            await window.api.invoke('ai:chat', {
+              messages: chatMessages,
+              vaultPath,
+              detectIntent: true,
+              intentContext: editIntentContext
+            } as any)
+          } catch (e: any) {
+            intentCallbackRef.current = null
+            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
             streamContentRef.current = ''
             setStreamContent('')
-            const allMessages = [...messages, userMsg]
-            const chatMessages = await buildChatMessages(allMessages)
-            try {
-              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined } as any)
-            } catch (e: any) {
-              setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
-              streamContentRef.current = ''
-              setStreamContent('')
+            setIsStreaming(false)
+            return
+          }
+
+          const editIntent = intentDetectedRef.current || 'edit'
+
+          if (editIntent === 'chat') {
+            // Stream already flowing with chat content, just return
+            editCompleteRef.current = true
+            return
+          }
+
+          if (editIntent === 'batch') {
+            window.api.invoke('ai:stop', undefined)
+            streamContentRef.current = ''
+            setStreamContent('')
+
+            const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+            const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
+
+            const recentContext = messages.slice(-10).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 200)}`).join('\n')
+            const batchInstruction = recentContext
+              ? `对话上下文：\n${recentContext}\n\n当前指令: ${userMsg.content}`
+              : userMsg.content
+
+            let specifiedDirs: string[] = []
+            const msgLower = userMsg.content.toLowerCase()
+            for (const dir of dirs) {
+              if (msgLower.includes(dir.toLowerCase())) {
+                specifiedDirs.push(dir)
+              }
+            }
+
+            if (specifiedDirs.length > 1) {
+              if (editTimerRef.current) clearInterval(editTimerRef.current)
+              editTimerRef.current = null
+              for (const dir of specifiedDirs) {
+                const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
+                await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`)
+              }
+            } else if (specifiedDirs.length === 1) {
+              if (editTimerRef.current) clearInterval(editTimerRef.current)
+              editTimerRef.current = null
+              await executeBatchGenerate(batchInstruction, `${vaultPath}/${specifiedDirs[0]}`)
+            } else {
+              setFolderOptions(dirs)
+              setPendingBatch({ instruction: batchInstruction })
               setIsStreaming(false)
+              if (editTimerRef.current) clearInterval(editTimerRef.current)
+              editTimerRef.current = null
+              const askMsg: Message = { id: Date.now().toString(), role: 'assistant', content: '请选择笔记存放目录：' }
+              setMessages((msgs) => [...msgs, askMsg])
             }
             return
           }
 
-          if (isBatchRequest) {
-          const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
-          const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
-
-          // Build context from recent conversation for batch generation
-          const recentContext = messages.slice(-10).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 200)}`).join('\n')
-          const batchInstruction = recentContext
-            ? `对话上下文：\n${recentContext}\n\n当前指令: ${userMsg.content}`
-            : userMsg.content
-
-          // Local keyword matching for target directories
-          let specifiedDirs: string[] = []
-          const msgLower = userMsg.content.toLowerCase()
-          for (const dir of dirs) {
-            if (msgLower.includes(dir.toLowerCase())) {
-              specifiedDirs.push(dir)
-            }
-          }
-
-          if (specifiedDirs.length > 1) {
-            if (editTimerRef.current) clearInterval(editTimerRef.current)
-            editTimerRef.current = null
-            for (const dir of specifiedDirs) {
-              const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
-              await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`)
-            }
-          } else if (specifiedDirs.length === 1) {
-            if (editTimerRef.current) clearInterval(editTimerRef.current)
-            editTimerRef.current = null
-            await executeBatchGenerate(batchInstruction, `${vaultPath}/${specifiedDirs[0]}`)
-          } else {
-            setFolderOptions(dirs)
-            setPendingBatch({ instruction: batchInstruction })
-            setIsStreaming(false)
-            if (editTimerRef.current) clearInterval(editTimerRef.current)
-            editTimerRef.current = null
-            const askMsg: Message = { id: Date.now().toString(), role: 'assistant', content: '请选择笔记存放目录：' }
-            setMessages((msgs) => [...msgs, askMsg])
-          }
-          return
-          }
+          // editIntent === 'edit': stop the intent-detection stream, proceed with normal edit flow
+          window.api.invoke('ai:stop', undefined)
+          streamContentRef.current = ''
+          setStreamContent('')
         }
 
         let fileContent = ''

@@ -137,8 +137,8 @@ export interface IPCChannelMap {
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:get-active-provider': { params: undefined; result: string | null }
   'ai:validate': { params: { config: any }; result: boolean }
-  'ai:chat': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string }; result: void }
-  'ai:chat-agent': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string }; result: void }
+  'ai:chat': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string; detectIntent?: boolean; intentContext?: string }; result: void }
+  'ai:chat-agent': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string; detectIntent?: boolean; intentContext?: string }; result: void }
   'ai:stop': { params: undefined; result: void }
   'ai:complete': { params: { text: string; system?: string }; result: string }
   'ai:complete-abort': { params: undefined; result: void }
