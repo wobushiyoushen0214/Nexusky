@@ -3,7 +3,7 @@ import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
 import { ConfirmModal } from './ConfirmModal'
-import type { KanbanColumn, KanbanRelation, KanbanTask } from '@shared/types/ipc'
+import type { KanbanAiPlan, KanbanColumn, KanbanRelation, KanbanTask } from '@shared/types/ipc'
 
 const RELATION_LABEL: Record<KanbanRelation['relationType'], string> = {
   blocks: '阻塞',
@@ -19,17 +19,22 @@ const PRIORITY_COLOR = [
   'oklch(0.65 0.15 25)'
 ]
 
-interface KanbanAiPlan {
-  tasks: { title: string; description?: string; priority?: number; dueDate?: string | null }[]
-  relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelation['relationType'] }[]
-}
-
 type PendingKanbanAiWrite =
   | { mode: 'breakdown'; plan: KanbanAiPlan; taskId: string; title: string; description?: string; columnId: string }
   | { mode: 'from-note'; plan: KanbanAiPlan; filePath: string; content: string; columnId?: string }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') return message
+  }
+  return ''
+}
+
 function isAiCancelled(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || '')
+  const message = getErrorMessage(error) || String(error || '')
   return message.includes('已取消') || /aborted?|cancel/i.test(message)
 }
 
@@ -193,9 +198,9 @@ export function KanbanPanel() {
     try {
       const result = await window.api.invoke('kanban:ai-analyze', { vaultPath })
       setAnalysis(result.summary)
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (aiStopRequestedRef.current || isAiCancelled(e)) return
-      toast(e.message || 'AI 分析失败', 'error')
+      toast(getErrorMessage(e) || 'AI 分析失败', 'error')
     } finally {
       setBusy(null)
     }
@@ -226,9 +231,9 @@ export function KanbanPanel() {
         description: selectedTask.description,
         columnId: selectedTask.columnId
       })
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (aiStopRequestedRef.current || isAiCancelled(e)) return
-      toast(e.message || '任务拆解失败', 'error')
+      toast(getErrorMessage(e) || '任务拆解失败', 'error')
     } finally {
       setBusy(null)
     }
@@ -260,9 +265,9 @@ export function KanbanPanel() {
         content: currentContent,
         columnId: columns[0]?.id
       })
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (aiStopRequestedRef.current || isAiCancelled(e)) return
-      toast(e.message || '从笔记生成任务失败', 'error')
+      toast(getErrorMessage(e) || '从笔记生成任务失败', 'error')
     } finally {
       setBusy(null)
     }
@@ -296,9 +301,9 @@ export function KanbanPanel() {
         toast(committed.summary, 'success')
       }
       await loadBoard()
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (aiStopRequestedRef.current || isAiCancelled(e)) return
-      toast(e.message || 'AI 任务写入失败', 'error')
+      toast(getErrorMessage(e) || 'AI 任务写入失败', 'error')
     } finally {
       setBusy(null)
     }
