@@ -719,7 +719,10 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>自动同步</span>
         <select
           defaultValue={localStorage.getItem('nexusky-auto-sync') || '0'}
-          onChange={(e) => localStorage.setItem('nexusky-auto-sync', e.target.value)}
+          onChange={(e) => {
+            localStorage.setItem('nexusky-auto-sync', e.target.value)
+            window.dispatchEvent(new CustomEvent('sync-interval-changed'))
+          }}
           style={{ height: 30, padding: '0 10px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
         >
           <option value="0">关闭</option>
@@ -728,7 +731,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           <option value="30">每 30 分钟</option>
           <option value="60">每 60 分钟</option>
         </select>
-        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>修改后重启应用生效</p>
+        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>修改后立即生效</p>
       </div>
 
       {/* Sync actions */}
