@@ -555,6 +555,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `生成失败: ${result.error || '未知错误'}` }])
     }
     setStreamContent('')
+    setToolStatus(null)
     if (editTimerRef.current) clearInterval(editTimerRef.current)
     editTimerRef.current = null
     editCompleteRef.current = true
@@ -618,6 +619,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       const chatMessages = await buildChatMessages(allMessages)
       let intent = 'chat'
       try {
+        setToolStatus('识别请求意图...')
         const detected = await window.api.invoke('ai:detect-intent', {
           messages: chatMessages,
           intents: ['graph', 'kanban', 'chat']
@@ -629,6 +631,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           streamContentRef.current = ''
           setStreamContent('')
           setIsStreaming(false)
+          setToolStatus(null)
           return
         }
         intent = 'chat'
@@ -639,6 +642,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
+        setToolStatus(null)
 
         let targetPath: string | null = null
         const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
@@ -671,10 +675,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         editCompleteRef.current = true
         streamContentRef.current = ''
         setStreamContent('')
-        setIsStreaming(false)
+        setToolStatus('正在从当前笔记提取看板任务...')
 
         const fp = useEditorStore.getState().currentFilePath
         if (!fp) {
+          setToolStatus(null)
+          setIsStreaming(false)
           const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '请先打开一篇笔记，再从当前笔记提取看板任务。' }
           setMessages((msgs) => [...msgs, msg])
           appendToDb(msg)
@@ -696,11 +702,15 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           const msg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }
           setMessages((msgs) => [...msgs, msg])
           appendToDb(msg)
+        } finally {
+          setToolStatus(null)
+          setIsStreaming(false)
         }
         return
       }
 
       try {
+        setToolStatus(agentMode ? 'Agent 正在处理...' : '正在生成回答...')
         if (agentMode) {
           await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
         } else {
@@ -711,6 +721,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
+        setToolStatus(null)
       }
       return
     }
@@ -732,6 +743,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
           let editIntent = 'edit'
           try {
+            setToolStatus('识别编辑意图...')
             const detected = await window.api.invoke('ai:detect-intent', {
               messages: chatMessages,
               intents: ['batch', 'edit', 'chat'],
@@ -744,6 +756,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               streamContentRef.current = ''
               setStreamContent('')
               setIsStreaming(false)
+              setToolStatus(null)
               return
             }
             editIntent = 'edit'
@@ -751,17 +764,20 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
           if (editIntent === 'chat') {
             try {
+              setToolStatus('正在生成回答...')
               await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
             } catch (e: any) {
               setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(e.message || '') }])
               streamContentRef.current = ''
               setStreamContent('')
               setIsStreaming(false)
+              setToolStatus(null)
             }
             return
           }
 
           if (editIntent === 'batch') {
+            setToolStatus('正在规划批量笔记...')
             streamContentRef.current = ''
             setStreamContent('')
 
@@ -796,6 +812,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               setFolderOptions(dirs)
               setPendingBatch({ instruction: batchInstruction })
               setIsStreaming(false)
+              setToolStatus(null)
               if (editTimerRef.current) clearInterval(editTimerRef.current)
               editTimerRef.current = null
               const askMsg: Message = { id: Date.now().toString(), role: 'assistant', content: '请选择笔记存放目录：' }
@@ -805,6 +822,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           }
 
           // editIntent === 'edit': proceed with normal edit flow
+          setToolStatus(isNewFile ? '正在生成新笔记...' : '正在生成修改方案...')
           streamContentRef.current = ''
           setStreamContent('')
         }
@@ -852,6 +870,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       editTimerRef.current = null
       editCompleteRef.current = true
       setIsStreaming(false)
+      setToolStatus(null)
       return
     }
 
