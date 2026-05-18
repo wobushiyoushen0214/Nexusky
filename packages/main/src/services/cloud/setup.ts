@@ -1,6 +1,16 @@
 import { getSupabaseClient, getAdminClient } from './client'
 import { clipboard } from 'electron'
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') return message
+  }
+  return fallback
+}
+
 const SCHEMA_SQL = `-- 在 Supabase SQL Editor 中执行以下 SQL：
 
 create table if not exists note_sync (
@@ -71,8 +81,8 @@ export async function initializeCloud(): Promise<{ success: boolean; error?: str
     }
 
     return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err.message || '初始化失败' }
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err, '初始化失败') }
   }
 }
 

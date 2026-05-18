@@ -38,6 +38,16 @@ interface OneDriveChildrenResponse {
 
 type GraphRequestBody = string | Buffer | Record<string, unknown>
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') return message
+  }
+  return String(error)
+}
+
 function getConfig(): OneDriveConfig | null {
   const config = store.get('onedriveConfig') as OneDriveConfig | undefined
   if (!config || !config.accessToken) return null
@@ -163,9 +173,9 @@ export async function startOneDriveAuth(clientId: string): Promise<{ success: bo
         })
         win.close()
         resolve({ success: true })
-      } catch (err: any) {
+      } catch (err: unknown) {
         win.close()
-        resolve({ success: false, error: err.message })
+        resolve({ success: false, error: getErrorMessage(err) })
       }
     })
 
@@ -203,8 +213,8 @@ export class OneDriveSyncProvider implements SyncProvider {
     try {
       await graphRequest('/me/drive')
       return { ok: true }
-    } catch (err: any) {
-      return { ok: false, error: err.message }
+    } catch (err: unknown) {
+      return { ok: false, error: getErrorMessage(err) }
     }
   }
 
@@ -221,7 +231,7 @@ export class OneDriveSyncProvider implements SyncProvider {
         headers: { 'Content-Type': 'text/plain; charset=utf-8' }
       })
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('OneDrive push failed', err)
       return false
     }
@@ -237,7 +247,7 @@ export class OneDriveSyncProvider implements SyncProvider {
       mkdirSync(dirname(fullPath), { recursive: true })
       writeFileSync(fullPath, content, 'utf-8')
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('OneDrive pull failed', err)
       return false
     }

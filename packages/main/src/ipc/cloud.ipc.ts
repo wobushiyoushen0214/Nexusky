@@ -21,7 +21,7 @@ import {
   getProvider
 } from '../services/cloud/manager'
 import { SyncProviderType } from '../services/cloud/provider'
-import { startOneDriveAuth } from '../services/cloud/onedrive-provider'
+import { OneDriveConfig, startOneDriveAuth } from '../services/cloud/onedrive-provider'
 import { ICloudSyncProvider } from '../services/cloud/icloud-provider'
 
 export function registerCloudIPC(): void {
@@ -97,13 +97,13 @@ export function registerCloudIPC(): void {
   })
 
   ipcMain.handle('cloud:get-onedrive-config', () => {
-    const config = store.get('onedriveConfig') as any
+    const config = store.get('onedriveConfig') as Partial<OneDriveConfig> | undefined
     if (!config) return null
     return { clientId: config.clientId, folder: config.folder, hasToken: !!config.accessToken }
   })
 
   ipcMain.handle('cloud:save-onedrive-config', (_event, params: { clientId: string; folder: string }) => {
-    const existing = (store.get('onedriveConfig') as any) || {}
+    const existing = (store.get('onedriveConfig') as Partial<OneDriveConfig> | undefined) || {}
     store.set('onedriveConfig', { ...existing, clientId: params.clientId, folder: params.folder })
   })
 
