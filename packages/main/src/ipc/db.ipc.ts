@@ -8,8 +8,29 @@ import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '.
 import { pushIndex } from '../services/cloud/manager'
 import { aiManager } from '../services/ai'
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource } from '@shared/types/ipc'
 
 type KanbanRelationType = 'blocks' | 'depends_on' | 'related'
+
+function normalizeChatRole(role: string): ChatHistoryRole {
+  return role === 'user' ? 'user' : 'assistant'
+}
+
+function parseChatSources(raw: string | null): ChatSource[] | undefined {
+  if (!raw) return undefined
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return undefined
+    return parsed.filter((source): source is ChatSource => (
+      typeof source?.title === 'string' &&
+      typeof source?.filePath === 'string' &&
+      typeof source?.chunk === 'string' &&
+      typeof source?.score === 'number'
+    ))
+  } catch {
+    return undefined
+  }
+}
 
 interface KanbanAiPlan {
   tasks: { title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }[]
@@ -519,15 +540,25 @@ export function registerDbIPC(): void {
       const rows = db.prepare(
         'SELECT id, role, content, sources, created_at as createdAt FROM conversations WHERE session_id = ? ORDER BY created_at ASC LIMIT 200'
       ).all(params.sessionId) as { id: number; role: string; content: string; sources: string | null; createdAt: number }[]
-      return rows.map((r) => ({ id: String(r.id), role: r.role, content: r.content, sources: r.sources ? JSON.parse(r.sources) : undefined }))
+      return rows.map((r): ChatHistoryEntry => ({
+        id: String(r.id),
+        role: normalizeChatRole(r.role),
+        content: r.content,
+        sources: parseChatSources(r.sources)
+      }))
     }
     const rows = db.prepare(
       'SELECT id, role, content, sources, created_at as createdAt FROM conversations WHERE session_id IS NULL ORDER BY created_at ASC LIMIT 200'
     ).all() as { id: number; role: string; content: string; sources: string | null; createdAt: number }[]
-    return rows.map((r) => ({ id: String(r.id), role: r.role, content: r.content, sources: r.sources ? JSON.parse(r.sources) : undefined }))
+    return rows.map((r): ChatHistoryEntry => ({
+      id: String(r.id),
+      role: normalizeChatRole(r.role),
+      content: r.content,
+      sources: parseChatSources(r.sources)
+    }))
   })
 
-  ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: string; content: string; sources?: any[]; sessionId?: string }) => {
+  ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }) => {
     const db = getDatabase(params.vaultPath)
     db.prepare(
       'INSERT INTO conversations (role, content, sources, session_id) VALUES (?, ?, ?, ?)'

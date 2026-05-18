@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { EmbeddingStatus, IPCChannelMap, IPCChannel } from '@shared/types/ipc'
+import type { AIStreamEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel } from '@shared/types/ipc'
 
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
@@ -25,13 +25,13 @@ const api = {
     ipcRenderer.on('vault:files-changed', handler)
     return () => { ipcRenderer.removeListener('vault:files-changed', handler) }
   },
-  onAiStream: (callback: (event: { type: string; content: string }) => void) => {
-    const handler = (_event: unknown, data: { type: string; content: string }) => callback(data)
+  onAiStream: (callback: (event: AIStreamEvent) => void) => {
+    const handler = (_event: unknown, data: AIStreamEvent) => callback(data)
     ipcRenderer.on('ai:stream', handler)
     return () => { ipcRenderer.removeListener('ai:stream', handler) }
   },
-  onAiSources: (callback: (sources: any[]) => void) => {
-    const handler = (_event: unknown, data: any[]) => callback(data)
+  onAiSources: (callback: (sources: ChatSource[]) => void) => {
+    const handler = (_event: unknown, data: ChatSource[]) => callback(data)
     ipcRenderer.on('ai:sources', handler)
     return () => { ipcRenderer.removeListener('ai:sources', handler) }
   },

@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+import type { ChatSource } from '@shared/types/ipc'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -18,7 +19,7 @@ export interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
-  sources?: { title: string; filePath: string; chunk: string; score: number }[]
+  sources?: ChatSource[]
   attachments?: { type: 'note' | 'selection' | 'image'; label: string }[]
 }
 

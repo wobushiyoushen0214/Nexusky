@@ -85,6 +85,27 @@ export interface IPCChatMessage {
   content: string | ChatContentPart[]
 }
 
+export interface ChatSource {
+  title: string
+  filePath: string
+  chunk: string
+  score: number
+}
+
+export type ChatHistoryRole = 'user' | 'assistant'
+
+export interface ChatHistoryEntry {
+  id: string
+  role: ChatHistoryRole
+  content: string
+  sources?: ChatSource[]
+}
+
+export interface AIStreamEvent {
+  type: 'text' | 'done' | 'error' | 'retry' | 'tool_call'
+  content: string
+}
+
 export interface AIProviderConfig {
   id: string
   name: string
@@ -154,8 +175,8 @@ export interface IPCChannelMap {
   'db:embed-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
   'db:embed-vault': { params: { vaultPath: string }; result: { embedded: number } }
   'db:embedding-status': { params: { vaultPath: string }; result: EmbeddingStatus }
-  'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: { id: string; role: string; content: string; sources?: any[] }[] }
-  'db:chat-history-append': { params: { vaultPath: string; role: string; content: string; sources?: any[]; sessionId?: string }; result: void }
+  'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
+  'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }
   'db:chat-history-clear': { params: { vaultPath: string; sessionId?: string }; result: void }
   'db:chat-sessions-list': { params: { vaultPath: string }; result: { id: string; title: string; createdAt: number; updatedAt: number }[] }
   'db:chat-session-create': { params: { vaultPath: string; id: string; title: string }; result: void }

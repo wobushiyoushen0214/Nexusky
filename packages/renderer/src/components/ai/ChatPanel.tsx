@@ -8,7 +8,7 @@ import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
-import type { ChatContentPart, IPCChatMessage } from '@shared/types/ipc'
+import type { ChatContentPart, ChatSource, IPCChatMessage } from '@shared/types/ipc'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
@@ -73,7 +73,7 @@ export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([])
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
-  const pendingSourcesRef = useRef<any[]>([])
+  const pendingSourcesRef = useRef<ChatSource[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const isStreamingRef = useRef(false)
@@ -142,7 +142,7 @@ export function ChatPanel() {
     window.api.invoke('db:chat-sessions-list', { vaultPath }).then(setSessions).catch(() => {})
     window.api.invoke('db:chat-history-load', { vaultPath, sessionId: currentSessionId || undefined }).then((rows) => {
       if (rows && rows.length > 0) {
-        setMessages(rows.map((r) => ({ id: r.id, role: r.role as 'user' | 'assistant', content: r.content, sources: r.sources })))
+        setMessages(rows.map((r) => ({ id: r.id, role: r.role, content: r.content, sources: r.sources })))
       } else {
         setMessages([])
       }
