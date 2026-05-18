@@ -15,6 +15,7 @@ import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
 import { GraphGenerator } from './components/GraphGenerator'
+import { getErrorMessage } from './utils/errors'
 import { safeGet } from './utils/storage'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
@@ -274,9 +275,10 @@ export default function App() {
           setError(result.errors[0])
           toast(t('common.syncError', { error: result.errors[0] }), 'error')
         }
-      } catch (e: any) {
-        setError(e.message)
-        toast(t('common.syncFailed', { error: e.message }), 'error')
+      } catch (e: unknown) {
+        const message = getErrorMessage(e, '同步失败')
+        setError(message)
+        toast(t('common.syncFailed', { error: message }), 'error')
       }
     }, autoSyncInterval * 60 * 1000)
 

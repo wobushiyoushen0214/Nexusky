@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
+import { getErrorMessage } from '../utils/errors'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
 import type { EmbeddingStatus } from '@shared/types/ipc'
 
@@ -208,13 +209,13 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
       await window.api.invoke('db:embed-vault', { vaultPath })
       const status = await window.api.invoke('db:embedding-status', { vaultPath })
       setEmbeddingStatus(status)
-    } catch (e: any) {
+    } catch (e: unknown) {
       setEmbeddingStatus((prev) => ({
         state: 'error',
         current: prev?.current || 0,
         total: prev?.total || 0,
         embedded: prev?.embedded || 0,
-        message: e?.message || '向量索引失败',
+        message: getErrorMessage(e, '向量索引失败'),
         updatedAt: Date.now()
       }))
     }

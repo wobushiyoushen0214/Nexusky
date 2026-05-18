@@ -3,6 +3,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { ConfirmModal } from '../ConfirmModal'
+import { getErrorMessage } from '../../utils/errors'
 import { safeGet, safeSet } from '../../utils/storage'
 import type { AIProviderConfig } from '@shared/types/ipc'
 
@@ -159,8 +160,8 @@ export function Settings({ open, onClose }: SettingsProps) {
     try {
       const ok = await window.api.invoke('ai:validate', { config: editing })
       toast(ok ? 'AI 连接测试通过' : 'AI 连接测试失败，请检查配置', ok ? 'success' : 'error')
-    } catch (e: any) {
-      toast(`AI 连接测试失败: ${e.message || '未知错误'}`, 'error')
+    } catch (e: unknown) {
+      toast(`AI 连接测试失败: ${getErrorMessage(e, '未知错误')}`, 'error')
     } finally {
       setTestingProvider(false)
     }
@@ -1017,8 +1018,8 @@ function AppearanceTab() {
                 setDownloadPercent(0)
                 try {
                   await window.api.invoke('updater:download', undefined)
-                } catch (e: any) {
-                  toast(`下载失败: ${e.message || ''}`, 'error')
+                } catch (e: unknown) {
+                  toast(`下载失败: ${getErrorMessage(e)}`, 'error')
                   setUpdateStage('idle')
                 }
               }

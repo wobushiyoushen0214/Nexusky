@@ -7,6 +7,7 @@ import { drag } from 'd3-drag'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
+import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
 import type { GraphData, GraphNode } from '@shared/types/ipc'
 import './GraphView.css'
@@ -57,11 +58,6 @@ function getRadius(d: SimNode) {
   if (d.linkCount >= 3) return 7
   if (d.linkCount >= 1) return 5
   return 3
-}
-
-function isAiCancelled(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error || '')
-  return message.includes('已取消') || /aborted?|cancel/i.test(message)
 }
 
 export function GraphView() {
@@ -139,13 +135,13 @@ export function GraphView() {
       if (result.success) {
         setIndexStatus(t('common.semanticFound', { count: result.added }))
         window.dispatchEvent(new CustomEvent('graph-data-updated'))
-      } else if (result.error && isAiCancelled(result.error)) {
+      } else if (result.error && isCancellationError(result.error)) {
         setIndexStatus('已停止 AI 分析')
       } else {
         setIndexStatus(result.error || t('common.semanticFailed'))
       }
-    } catch (e: any) {
-      setIndexStatus(isAiCancelled(e) ? '已停止 AI 分析' : e.message)
+    } catch (e: unknown) {
+      setIndexStatus(isCancellationError(e) ? '已停止 AI 分析' : getErrorMessage(e, t('common.semanticFailed')))
     }
     setTimeout(() => setIndexStatus(null), 3000)
   }
@@ -1025,8 +1021,8 @@ export function GraphView() {
                     const result = await window.api.invoke('db:index-vault', { vaultPath })
                     setIndexStatus(`${t('graph.reindex')}: ${result.indexed} ${t('graph.nodes', { count: result.indexed })}`)
                     window.dispatchEvent(new CustomEvent('graph-data-updated'))
-                  } catch (e: any) {
-                    setIndexStatus(`Error: ${e.message}`)
+                  } catch (e: unknown) {
+                    setIndexStatus(`Error: ${getErrorMessage(e, t('common.semanticFailed'))}`)
                   }
                   setTimeout(() => setIndexStatus(null), 3000)
                 }}
@@ -1061,13 +1057,13 @@ export function GraphView() {
                       const failedText = result.failed ? `，失败 ${result.failed} 篇` : ''
                       const scopeText = result.limited ? `（本次处理最近 ${result.total}/${result.totalNotes} 篇）` : ''
                       setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇${failedText}${scopeText}`)
-                    } else if (result.error && isAiCancelled(result.error)) {
+                    } else if (result.error && isCancellationError(result.error)) {
                       setIndexStatus('已停止记忆生成')
                     } else {
                       setIndexStatus(result.error || '记忆生成已停止')
                     }
-                  } catch (e: any) {
-                    setIndexStatus(isAiCancelled(e) ? '已停止记忆生成' : e.message)
+                  } catch (e: unknown) {
+                    setIndexStatus(isCancellationError(e) ? '已停止记忆生成' : getErrorMessage(e, '记忆生成已停止'))
                   }
                   setTimeout(() => setIndexStatus(null), 5000)
                 }}
