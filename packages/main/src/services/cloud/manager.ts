@@ -39,7 +39,7 @@ export function getOfflineQueueSize(): number {
   return offlineQueue.length
 }
 
-const providers: Map<SyncProviderType, SyncProvider> = new Map([
+const providers = new Map<SyncProviderType, SyncProvider>([
   ['supabase', new SupabaseSyncProvider()],
   ['icloud', new ICloudSyncProvider()],
   ['onedrive', new OneDriveSyncProvider()]

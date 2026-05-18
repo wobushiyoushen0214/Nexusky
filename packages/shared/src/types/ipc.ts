@@ -103,6 +103,7 @@ export interface IPCChannelMap {
   'db:remove-file': { params: { vaultPath: string; filePath: string }; result: void }
   'db:remove-folder': { params: { vaultPath: string; folderPath: string }; result: void }
   'db:get-all-notes': { params: { vaultPath: string }; result: NoteSearchResult[] }
+  'db:get-recent-notes': { params: { vaultPath: string; limit?: number }; result: NoteSearchResult[] }
   'db:get-backlinks': { params: { vaultPath: string; noteId: string }; result: BacklinkResult[] }
   'db:get-graph': { params: { vaultPath: string }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
@@ -150,6 +151,8 @@ export interface IPCChannelMap {
   'ai:get-system-prompt': { params: undefined; result: string }
   'ai:set-system-prompt': { params: { prompt: string }; result: void }
   'ai:infer-links': { params: { vaultPath: string; filePaths: string[] }; result: { success: boolean; added?: number; error?: string } }
+  'ai:infer-global-links': { params: { vaultPath: string }; result: { success: boolean; added?: number; error?: string } }
+  'ai:generate-memories': { params: { vaultPath: string }; result: { success: boolean; generated: number; skipped: number; failed: number; total: number; error?: string } }
   'ai:list-ollama-models': { params: { baseUrl?: string }; result: string[] }
   'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }
   'ai:summarize': { params: { content: string }; result: string }

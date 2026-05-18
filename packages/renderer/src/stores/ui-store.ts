@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import i18n from '../i18n'
 
-type Panel = 'none' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history'
+type Panel = 'none' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
 type Theme = 'dark' | 'light' | 'ocean' | 'amber' | 'forest' | 'rose' | 'minimal'
 type MainView = 'editor' | 'graph'
 type Language = 'zh-CN' | 'en'

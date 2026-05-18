@@ -380,7 +380,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
                     width: `${embeddingPercent}%`,
                     height: '100%',
                     borderRadius: 999,
-                    background: embeddingStatus.state === 'error' ? 'var(--danger)' : 'var(--accent)',
+                    background: 'var(--accent)',
                     transition: 'width 180ms ease'
                   }}
                 />

@@ -70,7 +70,7 @@ export default function App() {
       toast(t('common.aiAnalyzing'), 'info')
       try {
         const result = await window.api.invoke('ai:infer-links', { vaultPath, filePaths: mdPaths })
-        if (result.success && result.added > 0) {
+        if (result.success && (result.added ?? 0) > 0) {
           toast(t('common.semanticFound', { count: result.added }), 'success')
           // Trigger graph refresh
           window.dispatchEvent(new CustomEvent('graph-data-updated'))

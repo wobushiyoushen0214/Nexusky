@@ -1,14 +1,24 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "paths": {
-      "@shared/*": ["../shared/src/*"],
-      "@renderer/*": ["./src/*"]
-    }
-  },
-  "include": ["src/**/*", "env.d.ts"]
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        "jsx": "react-jsx",
+        "lib": [
+            "ES2022",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "paths": {
+            "@shared/*": [
+                "packages/shared/src/*"
+            ],
+            "@renderer/*": [
+                "./src/*"
+            ]
+        }
+    },
+    "include": [
+        "src/**/*",
+        "env.d.ts"
+    ]
 }
