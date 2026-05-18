@@ -12,21 +12,6 @@ interface CompletionState {
 
 const EMPTY_STATE: CompletionState = { text: '', pos: -1, decorations: DecorationSet.empty }
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-let ghostElement: HTMLElement | null = null
-let lastRequestText = ''
-let lastResult = ''
-let requestInFlight = false
-let abortController: AbortController | null = null
-
-function getOrCreateGhost(): HTMLElement {
-  if (!ghostElement) {
-    ghostElement = document.createElement('span')
-    ghostElement.className = 'ai-ghost-text'
-  }
-  return ghostElement
-}
-
 async function fetchCompletion(textBefore: string, signal: AbortSignal): Promise<string> {
   try {
     const abortHandler = () => { (window as any).api.invoke('ai:complete-abort', undefined) }
@@ -55,8 +40,7 @@ export const AICompletion = Extension.create({
             const meta = tr.getMeta(pluginKey)
             if (meta?.clear) return EMPTY_STATE
             if (meta?.set) {
-              const { text, pos } = meta.set
-              const ghost = getOrCreateGhost()
+              const { text, pos, ghost } = meta.set
               ghost.textContent = text
               const widget = Decoration.widget(pos, ghost, { side: 1, key: 'ai-ghost' })
               return { text, pos, decorations: DecorationSet.create(tr.doc, [widget]) }
@@ -74,24 +58,24 @@ export const AICompletion = Extension.create({
             const completion = pluginKey.getState(view.state) as CompletionState
             if (!completion.text) return false
 
+            const ghost = view.dom.querySelector('.ai-ghost-text') as HTMLElement | null
+
             if (event.key === 'Tab') {
               event.preventDefault()
-              // Immediately hide ghost to prevent visual duplication
-              if (ghostElement) ghostElement.style.display = 'none'
+              if (ghost) ghost.style.display = 'none'
               const { tr } = view.state
               tr.insertText(completion.text, completion.pos)
               tr.setMeta(pluginKey, { clear: true })
               view.dispatch(tr)
-              // Reset ghost visibility for next use
-              if (ghostElement) ghostElement.style.display = ''
+              if (ghost) ghost.style.display = ''
               return true
             }
 
             if (event.key === 'Escape') {
               event.preventDefault()
-              if (ghostElement) ghostElement.style.display = 'none'
+              if (ghost) ghost.style.display = 'none'
               view.dispatch(view.state.tr.setMeta(pluginKey, { clear: true }))
-              if (ghostElement) ghostElement.style.display = ''
+              if (ghost) ghost.style.display = ''
               return true
             }
 
@@ -99,6 +83,21 @@ export const AICompletion = Extension.create({
           }
         },
         view() {
+          let debounceTimer: ReturnType<typeof setTimeout> | null = null
+          let ghostElement: HTMLElement | null = null
+          let lastRequestText = ''
+          let lastResult = ''
+          let requestInFlight = false
+          let abortController: AbortController | null = null
+
+          function getOrCreateGhost(): HTMLElement {
+            if (!ghostElement) {
+              ghostElement = document.createElement('span')
+              ghostElement.className = 'ai-ghost-text'
+            }
+            return ghostElement
+          }
+
           return {
             update(view) {
               if (debounceTimer) clearTimeout(debounceTimer)
@@ -116,7 +115,7 @@ export const AICompletion = Extension.create({
                 if (textBefore.length < 10) return
 
                 if (textBefore === lastRequestText && lastResult) {
-                  view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: lastResult, pos: from } }))
+                  view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: lastResult, pos: from, ghost: getOrCreateGhost() } }))
                   return
                 }
 
@@ -135,11 +134,12 @@ export const AICompletion = Extension.create({
 
                 lastRequestText = textBefore
                 lastResult = result
-                view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: result, pos: from } }))
+                view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: result, pos: from, ghost: getOrCreateGhost() } }))
               }, 800)
             },
             destroy() {
               if (debounceTimer) clearTimeout(debounceTimer)
+              if (abortController) abortController.abort()
               ghostElement = null
             }
           }
