@@ -3,6 +3,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { ConfirmModal } from '../ConfirmModal'
+import { safeGet, safeSet } from '../../utils/storage'
 
 interface ProviderConfig {
   id: string
@@ -718,9 +719,9 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>自动同步</span>
         <select
-          defaultValue={localStorage.getItem('nexusky-auto-sync') || '0'}
+          defaultValue={safeGet('nexusky-auto-sync') || '0'}
           onChange={(e) => {
-            localStorage.setItem('nexusky-auto-sync', e.target.value)
+            safeSet('nexusky-auto-sync', e.target.value)
             window.dispatchEvent(new CustomEvent('sync-interval-changed'))
           }}
           style={{ height: 30, padding: '0 10px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
@@ -1046,20 +1047,20 @@ function AppearanceTab() {
 
 function InlineCompletionSection() {
   const [enabled, setEnabled] = useState(() => {
-    try { return localStorage.getItem('nexusky-ai-completion-enabled') === '1' } catch { return false }
+    return safeGet('nexusky-ai-completion-enabled') === '1'
   })
   const [tagSuggestionEnabled, setTagSuggestionEnabled] = useState(() => {
-    try { return localStorage.getItem('nexusky-ai-tag-suggestion-enabled') === '1' } catch { return false }
+    return safeGet('nexusky-ai-tag-suggestion-enabled') === '1'
   })
 
   const handleToggle = (value: boolean) => {
     setEnabled(value)
-    try { localStorage.setItem('nexusky-ai-completion-enabled', value ? '1' : '0') } catch {}
+    safeSet('nexusky-ai-completion-enabled', value ? '1' : '0')
   }
 
   const handleTagSuggestionToggle = (value: boolean) => {
     setTagSuggestionEnabled(value)
-    try { localStorage.setItem('nexusky-ai-tag-suggestion-enabled', value ? '1' : '0') } catch {}
+    safeSet('nexusky-ai-tag-suggestion-enabled', value ? '1' : '0')
   }
 
   return (

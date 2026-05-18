@@ -4,7 +4,14 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { VirtualFileTree } from './VirtualFileTree'
 import { ContextMenu } from '../ContextMenu'
+import { safeGet, safeSet } from '../../utils/storage'
 import type { FileEntry } from '@shared/types/ipc'
+
+type SortMode = 'name' | 'mtime'
+
+function getInitialSortMode(): SortMode {
+  return safeGet('nexusky-sort') === 'mtime' ? 'mtime' : 'name'
+}
 
 function sortFiles(entries: FileEntry[], by: 'name' | 'mtime'): FileEntry[] {
   const sorted = [...entries].sort((a, b) => {
@@ -43,9 +50,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const [newFileName, setNewFileName] = useState('')
   const [filterQuery, setFilterQuery] = useState('')
   const [blankContextMenu, setBlankContextMenu] = useState<{ x: number; y: number } | null>(null)
-  const [sortBy, setSortBy] = useState<'name' | 'mtime'>(() => {
-    try { return (localStorage.getItem('nexusky-sort') as any) || 'name' } catch { return 'name' }
-  })
+  const [sortBy, setSortBy] = useState<SortMode>(getInitialSortMode)
   const [treeKey, setTreeKey] = useState(0)
   const [defaultExpanded, setDefaultExpanded] = useState(true)
   const [vaultMenu, setVaultMenu] = useState(false)
@@ -248,7 +253,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           onClick={() => {
             const next = sortBy === 'name' ? 'mtime' : 'name'
             setSortBy(next)
-            localStorage.setItem('nexusky-sort', next)
+            safeSet('nexusky-sort', next)
           }}
           style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0 }}
           title={sortBy === 'name' ? '按名称排序（点击切换为按时间）' : '按修改时间排序（点击切换为按名称）'}
@@ -337,4 +342,3 @@ export function Sidebar({ width = 240 }: { width?: number }) {
     </aside>
   )
 }
-

@@ -1,6 +1,7 @@
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { safeGet } from '../../../utils/storage'
 
 const pluginKey = new PluginKey('aiCompletion')
 const INLINE_COMPLETION_KEY = 'nexusky-ai-completion-enabled'
@@ -14,11 +15,7 @@ interface CompletionState {
 const EMPTY_STATE: CompletionState = { text: '', pos: -1, decorations: DecorationSet.empty }
 
 function isInlineCompletionEnabled(): boolean {
-  try {
-    return window.localStorage.getItem(INLINE_COMPLETION_KEY) === '1'
-  } catch {
-    return false
-  }
+  return safeGet(INLINE_COMPLETION_KEY) === '1'
 }
 
 async function fetchCompletion(textBefore: string, signal: AbortSignal): Promise<string> {

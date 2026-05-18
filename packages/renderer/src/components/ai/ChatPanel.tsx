@@ -6,6 +6,7 @@ import { ConfirmModal } from '../ConfirmModal'
 import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
+import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
@@ -76,21 +77,22 @@ export function ChatPanel() {
   const summarizedCountRef = useRef(0)
   const [toolStatus, setToolStatus] = useState<string | null>(null)
   const [agentMode, setAgentMode] = useState(() => {
-    try { return localStorage.getItem('nexusky-agent-mode') !== '0' } catch { return true }
+    return safeGet('nexusky-agent-mode') !== '0'
   })
   const updateAgentMode = (v: boolean) => {
     setAgentMode(v)
-    try { localStorage.setItem('nexusky-agent-mode', v ? '1' : '0') } catch {}
+    safeSet('nexusky-agent-mode', v ? '1' : '0')
   }
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
-    try { return localStorage.getItem('nexusky-chat-session-id') || null } catch { return null }
+    return safeGet('nexusky-chat-session-id')
   })
   const updateSessionId = (id: string | null) => {
     setCurrentSessionId(id)
-    try { if (id) localStorage.setItem('nexusky-chat-session-id', id); else localStorage.removeItem('nexusky-chat-session-id') } catch {}
+    if (id) safeSet('nexusky-chat-session-id', id)
+    else safeRemove('nexusky-chat-session-id')
   }
   const [showSessions, setShowSessions] = useState(false)
   const [showMention, setShowMention] = useState(false)
@@ -99,11 +101,11 @@ export function ChatPanel() {
   const [attachedNotes, setAttachedNotes] = useState<{ title: string; filePath: string }[]>([])
   const [attachedSelections, setAttachedSelections] = useState<{ text: string; source: string }[]>([])
   const [editMode, setEditMode] = useState(() => {
-    try { return localStorage.getItem('nexusky-chat-edit-mode') === '1' } catch { return false }
+    return safeGet('nexusky-chat-edit-mode') === '1'
   })
   const updateEditMode = (v: boolean) => {
     setEditMode(v)
-    try { localStorage.setItem('nexusky-chat-edit-mode', v ? '1' : '0') } catch {}
+    safeSet('nexusky-chat-edit-mode', v ? '1' : '0')
   }
   const [editTarget, setEditTarget] = useState<string | null>(null)
   const [editResult, setEditResult] = useState<{ content: string; original: string; filePath: string } | null>(null)

@@ -15,6 +15,7 @@ import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
 import { GraphGenerator } from './components/GraphGenerator'
+import { safeGet } from './utils/storage'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
@@ -240,12 +241,12 @@ export default function App() {
   // Auto sync timer
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [autoSyncInterval, setAutoSyncInterval] = useState(() => {
-    try { return Number(localStorage.getItem('nexusky-auto-sync') || '0') } catch { return 0 }
+    return Number(safeGet('nexusky-auto-sync') || '0')
   })
 
   useEffect(() => {
     const handler = () => {
-      try { setAutoSyncInterval(Number(localStorage.getItem('nexusky-auto-sync') || '0')) } catch {}
+      setAutoSyncInterval(Number(safeGet('nexusky-auto-sync') || '0'))
     }
     window.addEventListener('storage', handler)
     window.addEventListener('sync-interval-changed', handler)
