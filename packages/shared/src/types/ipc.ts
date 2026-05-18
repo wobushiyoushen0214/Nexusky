@@ -141,6 +141,7 @@ export interface IPCChannelMap {
   'ai:chat-agent': { params: { messages: { role: string; content: string }[]; vaultPath?: string; systemPrompt?: string }; result: void }
   'ai:stop': { params: undefined; result: void }
   'ai:complete': { params: { text: string; system?: string }; result: string }
+  'ai:complete-abort': { params: undefined; result: void }
   'ai:get-system-prompt': { params: undefined; result: string }
   'ai:set-system-prompt': { params: { prompt: string }; result: void }
   'ai:infer-links': { params: { vaultPath: string; filePaths: string[] }; result: { success: boolean; added?: number; error?: string } }

@@ -29,7 +29,10 @@ function getOrCreateGhost(): HTMLElement {
 
 async function fetchCompletion(textBefore: string, signal: AbortSignal): Promise<string> {
   try {
+    const abortHandler = () => { (window as any).api.invoke('ai:complete-abort', undefined) }
+    signal.addEventListener('abort', abortHandler, { once: true })
     const result = await (window as any).api.invoke('ai:complete', { text: textBefore })
+    signal.removeEventListener('abort', abortHandler)
     if (signal.aborted) return ''
     return result || ''
   } catch {

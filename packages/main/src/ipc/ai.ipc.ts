@@ -126,10 +126,20 @@ ${context}
     }
   })
 
+  let completeAbort: AbortController | null = null
+
+  ipcMain.handle('ai:complete-abort', () => {
+    if (completeAbort) { completeAbort.abort(); completeAbort = null }
+  })
+
   ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string; temperature?: number }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
     if (aiManager.validateConfig(config)) return ''
+
+    if (completeAbort) completeAbort.abort()
+    completeAbort = new AbortController()
+    const signal = completeAbort.signal
 
     try {
       const provider = aiManager.getProvider(config)
@@ -138,11 +148,12 @@ ${context}
       for await (const chunk of provider.chatStream([
         { role: 'system', content: params.system || '续写1-2句，只输出续写内容。' },
         { role: 'user', content: params.text }
-      ], undefined, options)) {
+      ], signal, options)) {
+        if (signal.aborted) return ''
         if (chunk.type === 'text') result += chunk.content
         if (chunk.type === 'error') return ''
       }
-      return params.system ? result.trim() : result.trim().slice(0, 200)
+      return signal.aborted ? '' : (params.system ? result.trim() : result.trim().slice(0, 200))
     } catch {
       return ''
     }
