@@ -43,6 +43,19 @@ function saveCache(key: string, results: SearchResult[]): void {
   localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
 }
 
+function clearCacheForVault(vaultPath: string): void {
+  const cache = loadCache()
+  const prefix = `${vaultPath}:`
+  let changed = false
+  for (const key of Object.keys(cache)) {
+    if (key.startsWith(prefix)) {
+      delete cache[key]
+      changed = true
+    }
+  }
+  if (changed) localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+}
+
 function getCacheKey(vaultPath: string, mode: SearchMode, query: string): string {
   return `${vaultPath}:${mode}:${query.trim()}`
 }
@@ -95,6 +108,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     const pollTimer = setInterval(refreshStatus, 1500)
     const cleanupProgress = (window.api as any).onEmbedProgress?.((status: EmbeddingStatus) => {
       setEmbeddingStatus(status)
+      if (status.state === 'done') clearCacheForVault(vaultPath)
     })
 
     return () => {
@@ -102,6 +116,16 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
       clearInterval(pollTimer)
       cleanupProgress?.()
     }
+  }, [vaultPath])
+
+  useEffect(() => {
+    if (!vaultPath) return
+    const cleanup = window.api.onVaultChanged(() => {
+      clearCacheForVault(vaultPath)
+      setResults([])
+      setSelectedIndex(0)
+    })
+    return cleanup
   }, [vaultPath])
 
   useEffect(() => {
