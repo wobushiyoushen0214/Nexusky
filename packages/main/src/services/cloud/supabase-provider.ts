@@ -5,6 +5,12 @@ import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { logger } from '../logger'
 
+interface NoteSyncRow {
+  file_path: string
+  content_hash: string
+  updated_at: string
+}
+
 function encodeSegment(segment: string): string {
   if (/^[\w\-.]+$/.test(segment)) return segment
   const ext = extname(segment)
@@ -131,10 +137,11 @@ export class SupabaseSyncProvider implements SyncProvider {
     if (!client) return []
 
     const { data } = await client.from('note_sync').select('file_path, content_hash, updated_at')
-    return (data || []).map((f: any) => ({
-      path: f.file_path,
-      hash: f.content_hash,
-      updatedAt: f.updated_at
+    const rows = (data || []) as NoteSyncRow[]
+    return rows.map((row) => ({
+      path: row.file_path,
+      hash: row.content_hash,
+      updatedAt: row.updated_at
     }))
   }
 

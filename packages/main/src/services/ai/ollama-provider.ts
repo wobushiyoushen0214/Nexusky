@@ -8,6 +8,10 @@ const NON_RETRYABLE_STATUS = new Set([401, 403, 404])
 const MAX_RETRIES = 3
 const BASE_DELAY = 500
 
+interface OllamaTagsResponse {
+  models?: { name?: string }[]
+}
+
 function isRetryableError(error: any): boolean {
   if (error.name === 'AbortError') return false
   if (error.code && RETRYABLE_CODES.has(error.code)) return true
@@ -97,8 +101,10 @@ export async function listOllamaModels(baseUrl?: string): Promise<string[]> {
     const url = baseUrl || 'http://localhost:11434'
     const response = await net.fetch(`${url}/api/tags`)
     if (!response.ok) return []
-    const data = await response.json() as any
-    return (data.models || []).map((m: any) => m.name)
+    const data = await response.json() as OllamaTagsResponse
+    return (data.models || [])
+      .map((model) => model.name)
+      .filter((name): name is string => typeof name === 'string' && name.length > 0)
   } catch {
     return []
   }

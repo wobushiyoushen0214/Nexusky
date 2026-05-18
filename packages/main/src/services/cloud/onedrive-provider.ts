@@ -14,6 +14,30 @@ export interface OneDriveConfig {
   folder: string
 }
 
+interface OneDriveTokenResponse {
+  access_token: string
+  refresh_token?: string
+  expires_in: number
+}
+
+interface OneDriveDriveItem {
+  name: string
+  eTag?: string
+  lastModifiedDateTime: string
+  folder?: unknown
+  file?: {
+    hashes?: {
+      sha256Hash?: string
+    }
+  }
+}
+
+interface OneDriveChildrenResponse {
+  value?: OneDriveDriveItem[]
+}
+
+type GraphRequestBody = string | Buffer | Record<string, unknown>
+
 function getConfig(): OneDriveConfig | null {
   const config = store.get('onedriveConfig') as OneDriveConfig | undefined
   if (!config || !config.accessToken) return null
@@ -24,7 +48,7 @@ function saveConfig(config: OneDriveConfig): void {
   store.set('onedriveConfig', config)
 }
 
-async function graphRequest(path: string, options: { method?: string; body?: any; headers?: Record<string, string> } = {}): Promise<any> {
+async function graphRequest<T = unknown>(path: string, options: { method?: string; body?: GraphRequestBody; headers?: Record<string, string> } = {}): Promise<T> {
   const config = getConfig()
   if (!config) throw new Error('OneDrive 未配置')
 
@@ -41,7 +65,7 @@ async function graphRequest(path: string, options: { method?: string; body?: any
     ...options.headers
   }
 
-  const fetchOptions: any = { method, headers }
+  const fetchOptions: NonNullable<Parameters<typeof net.fetch>[1]> = { method, headers }
   if (options.body !== undefined) {
     if (typeof options.body === 'string' || Buffer.isBuffer(options.body)) {
       fetchOptions.body = options.body
@@ -59,9 +83,9 @@ async function graphRequest(path: string, options: { method?: string; body?: any
 
   const contentType = response.headers.get('content-type') || ''
   if (contentType.includes('application/json')) {
-    return response.json()
+    return await response.json() as T
   }
-  return response.text()
+  return await response.text() as T
 }
 async function refreshAccessToken(): Promise<void> {
   const config = getConfig()
@@ -82,7 +106,8 @@ async function refreshAccessToken(): Promise<void> {
 
   if (!response.ok) throw new Error('Token 刷新失败')
 
-  const data = await response.json() as any
+  const data = await response.json() as Partial<OneDriveTokenResponse>
+  if (!data.access_token || !data.expires_in) throw new Error('Token 刷新响应无效')
   saveConfig({
     ...config,
     accessToken: data.access_token,
@@ -123,7 +148,12 @@ export async function startOneDriveAuth(clientId: string): Promise<{ success: bo
 
         if (!response.ok) { win.close(); resolve({ success: false, error: 'Token 交换失败' }); return }
 
-        const data = await response.json() as any
+        const data = await response.json() as Partial<OneDriveTokenResponse>
+        if (!data.access_token || !data.refresh_token || !data.expires_in) {
+          win.close()
+          resolve({ success: false, error: 'Token 交换响应无效' })
+          return
+        }
         saveConfig({
           clientId,
           accessToken: data.access_token,
@@ -201,7 +231,7 @@ export class OneDriveSyncProvider implements SyncProvider {
     try {
       const remotePath = `${this.folder}/${relPath}`
       const encodedPath = remotePath.split('/').map(encodeURIComponent).join('/')
-      const content = await graphRequest(`/me/drive/root:${encodedPath}:/content`)
+      const content = await graphRequest<string>(`/me/drive/root:${encodedPath}:/content`)
 
       const fullPath = join(vaultPath, relPath)
       mkdirSync(dirname(fullPath), { recursive: true })
@@ -220,7 +250,7 @@ export class OneDriveSyncProvider implements SyncProvider {
     async function listFolder(path: string): Promise<void> {
       try {
         const encodedPath = path.split('/').map(encodeURIComponent).join('/')
-        const data = await graphRequest(`/me/drive/root:${encodedPath}:/children`)
+        const data = await graphRequest<OneDriveChildrenResponse>(`/me/drive/root:${encodedPath}:/children`)
         for (const item of data.value || []) {
           if (item.folder) {
             await listFolder(`${path}/${item.name}`)
