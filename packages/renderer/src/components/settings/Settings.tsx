@@ -310,6 +310,8 @@ export function Settings({ open, onClose }: SettingsProps) {
               </div>
             )}
 
+            <InlineCompletionSection />
+
             {/* System Prompt */}
             <SystemPromptSection />
           </>)}
@@ -1020,6 +1022,34 @@ function AppearanceTab() {
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+function InlineCompletionSection() {
+  const [enabled, setEnabled] = useState(() => {
+    try { return localStorage.getItem('nexusky-ai-completion-enabled') === '1' } catch { return false }
+  })
+
+  const handleToggle = (value: boolean) => {
+    setEnabled(value)
+    try { localStorage.setItem('nexusky-ai-completion-enabled', value ? '1' : '0') } catch {}
+  }
+
+  return (
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}>
+        <div>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>行内 AI 补全</span>
+          <span style={{ display: 'block', marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>开启后，写作停顿时会请求当前 AI 提供商生成 ghost text。</span>
+        </div>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => handleToggle(e.target.checked)}
+          style={{ width: 14, height: 14, accentColor: 'var(--accent)', flexShrink: 0 }}
+        />
+      </label>
     </div>
   )
 }

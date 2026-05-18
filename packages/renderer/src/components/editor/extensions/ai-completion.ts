@@ -3,6 +3,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 const pluginKey = new PluginKey('aiCompletion')
+const INLINE_COMPLETION_KEY = 'nexusky-ai-completion-enabled'
 
 interface CompletionState {
   text: string
@@ -11,6 +12,14 @@ interface CompletionState {
 }
 
 const EMPTY_STATE: CompletionState = { text: '', pos: -1, decorations: DecorationSet.empty }
+
+function isInlineCompletionEnabled(): boolean {
+  try {
+    return window.localStorage.getItem(INLINE_COMPLETION_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 async function fetchCompletion(textBefore: string, signal: AbortSignal): Promise<string> {
   try {
@@ -103,6 +112,10 @@ export const AICompletion = Extension.create({
               if (debounceTimer) clearTimeout(debounceTimer)
 
               const completion = pluginKey.getState(view.state) as CompletionState
+              if (!isInlineCompletionEnabled()) {
+                if (completion.text) view.dispatch(view.state.tr.setMeta(pluginKey, { clear: true }))
+                return
+              }
               if (completion.text) return
 
               debounceTimer = setTimeout(async () => {
