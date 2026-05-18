@@ -1030,7 +1030,10 @@ export function GraphView() {
                     const result = await window.api.invoke('ai:generate-memories', { vaultPath })
                     if (result.success) {
                       const failedText = result.failed ? `，失败 ${result.failed} 篇` : ''
-                      setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇${failedText}`)
+                      const scopeText = result.limited ? `（本次处理最近 ${result.total}/${result.totalNotes} 篇）` : ''
+                      setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇${failedText}${scopeText}`)
+                    } else {
+                      setIndexStatus(result.error || '记忆生成已停止')
                     }
                   } catch (e: any) {
                     setIndexStatus(e.message)

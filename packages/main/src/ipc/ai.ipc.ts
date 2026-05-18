@@ -796,10 +796,12 @@ graph TD
     if (!window) return { success: false, error: '窗口不存在' }
     const controller = startAiTask(window.id)
     const db = getDatabase(params.vaultPath)
+    const totalRow = db.prepare('SELECT COUNT(*) as count FROM notes').get() as { count: number }
     const notes = db.prepare(`
       SELECT n.id, n.title, n.file_path, n.content_hash
       FROM notes n ORDER BY n.updated_at DESC LIMIT 200
     `).all() as { id: string; title: string; file_path: string; content_hash: string }[]
+    const totalNotes = totalRow.count || notes.length
 
     let generated = 0
     let skipped = 0
@@ -813,7 +815,7 @@ graph TD
 
     try {
       for (let i = 0; i < notes.length; i++) {
-        if (controller.signal.aborted) return { success: false, error: '已取消', generated, skipped, failed, total: notes.length }
+        if (controller.signal.aborted) return { success: false, error: '已取消', generated, skipped, failed, total: notes.length, totalNotes, limited: totalNotes > notes.length }
         const note = notes[i]
         const existing = readMemory(params.vaultPath, note.id)
         if (existing && existing.contentHash === note.content_hash) {
@@ -831,14 +833,14 @@ graph TD
 
         const content = readFileSync(fullPath, 'utf-8')
         const result = await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, controller.signal)
-        if (controller.signal.aborted) return { success: false, error: '已取消', generated, skipped, failed, total: notes.length }
+        if (controller.signal.aborted) return { success: false, error: '已取消', generated, skipped, failed, total: notes.length, totalNotes, limited: totalNotes > notes.length }
         if (result) generated++
         else failed++
         sendProgress(i + 1, note.title)
       }
 
       sendProgress(notes.length, undefined, 'done')
-      return { success: true, generated, skipped, failed, total: notes.length }
+      return { success: true, generated, skipped, failed, total: notes.length, totalNotes, limited: totalNotes > notes.length }
     } finally {
       finishAiTask(window.id, controller)
     }
