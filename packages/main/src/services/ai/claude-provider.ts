@@ -2,6 +2,12 @@ import Anthropic from '@anthropic-ai/sdk'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
 
+type AnthropicImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+
+function isAnthropicImageMediaType(value: string): value is AnthropicImageMediaType {
+  return value === 'image/jpeg' || value === 'image/png' || value === 'image/gif' || value === 'image/webp'
+}
+
 function convertContent(content: string | ChatContentPart[]): string | Anthropic.MessageCreateParams['messages'][0]['content'] {
   if (typeof content === 'string') return content
   const blocks: Anthropic.ContentBlockParam[] = []
@@ -11,10 +17,10 @@ function convertContent(content: string | ChatContentPart[]): string | Anthropic
     } else if (part.type === 'image_url' && part.image_url?.url) {
       const url = part.image_url.url
       const match = url.match(/^data:(image\/\w+);base64,(.+)$/)
-      if (match) {
+      if (match && isAnthropicImageMediaType(match[1])) {
         blocks.push({
           type: 'image',
-          source: { type: 'base64', media_type: match[1] as any, data: match[2] }
+          source: { type: 'base64', media_type: match[1], data: match[2] }
         })
       }
     }
@@ -36,9 +42,9 @@ export class ClaudeProvider extends BaseAIProvider {
   async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
     const systemMsg = messages.find((m) => m.role === 'system')
     const chatMessages = messages
-      .filter((m) => m.role !== 'system')
+      .filter((m): m is ChatMessage & { role: 'user' | 'assistant' } => m.role === 'user' || m.role === 'assistant')
       .map((m) => ({
-        role: m.role as 'user' | 'assistant',
+        role: m.role,
         content: convertContent(m.content)
       }))
 
@@ -61,7 +67,7 @@ export class ClaudeProvider extends BaseAIProvider {
           model: this.config.model,
           max_tokens: 4096,
           system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
-          messages: chatMessages as any,
+          messages: chatMessages,
           ...(options?.temperature !== undefined && { temperature: options.temperature })
         }, signal ? { signal } : undefined)
 

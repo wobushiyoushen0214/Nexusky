@@ -1,6 +1,63 @@
 import OpenAI from 'openai'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions } from './base-provider'
+import type {
+  ChatCompletionContentPart,
+  ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall,
+  ChatCompletionTool,
+} from 'openai/resources/chat/completions'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
+
+function contentToString(content: ChatMessage['content']): string {
+  return typeof content === 'string' ? content : JSON.stringify(content)
+}
+
+function toOpenAIContent(content: ChatMessage['content']): string | ChatCompletionContentPart[] {
+  if (typeof content === 'string') return content
+  return content.map((part): ChatCompletionContentPart => {
+    if (part.type === 'text') return { type: 'text', text: part.text || '' }
+    return { type: 'image_url', image_url: { url: part.image_url?.url || '' } }
+  })
+}
+
+function toOpenAIToolCalls(toolCalls: NonNullable<ChatMessage['tool_calls']>): ChatCompletionMessageToolCall[] {
+  return toolCalls.map((toolCall) => ({
+    id: toolCall.id,
+    type: 'function',
+    function: {
+      name: toolCall.function.name,
+      arguments: toolCall.function.arguments
+    }
+  }))
+}
+
+function toOpenAIMessage(message: ChatMessage): ChatCompletionMessageParam {
+  if (message.role === 'tool') {
+    return { role: 'tool', content: contentToString(message.content), tool_call_id: message.tool_call_id || '' }
+  }
+  if (message.role === 'assistant') {
+    return {
+      role: 'assistant',
+      content: contentToString(message.content),
+      ...(message.tool_calls && { tool_calls: toOpenAIToolCalls(message.tool_calls) })
+    }
+  }
+  if (message.role === 'system') {
+    return { role: 'system', content: contentToString(message.content) }
+  }
+  return { role: 'user', content: toOpenAIContent(message.content) }
+}
+
+function toOpenAITools(tools: ToolDefinition[]): ChatCompletionTool[] {
+  return tools.map((tool) => ({
+    type: 'function',
+    function: {
+      name: tool.function.name,
+      description: tool.function.description,
+      parameters: tool.function.parameters || { type: 'object', properties: {} }
+    }
+  }))
+}
 
 export class OpenAIProvider extends BaseAIProvider {
   private client: OpenAI
@@ -31,7 +88,7 @@ export class OpenAIProvider extends BaseAIProvider {
       try {
         const stream = await this.client.chat.completions.create({
           model: this.config.model,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })) as any,
+          messages: messages.map(toOpenAIMessage),
           stream: true,
           ...(options?.temperature !== undefined && { temperature: options.temperature })
         }, signal ? { signal } : undefined)
@@ -71,7 +128,7 @@ export class OpenAIProvider extends BaseAIProvider {
 
   async *chatStreamWithTools(
     messages: ChatMessage[],
-    tools: any[],
+    tools: ToolDefinition[],
     signal?: AbortSignal
   ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
     let lastErrorMessage = 'OpenAI request failed after retries'
@@ -89,20 +146,10 @@ export class OpenAIProvider extends BaseAIProvider {
       }
 
       try {
-        const apiMessages = messages.map((m) => {
-          if (m.role === 'tool') {
-            return { role: 'tool' as const, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content), tool_call_id: m.tool_call_id }
-          }
-          if (m.role === 'assistant' && m.tool_calls) {
-            return { role: 'assistant' as const, content: m.content || null, tool_calls: m.tool_calls }
-          }
-          return { role: m.role, content: m.content }
-        })
-
         const stream = await this.client.chat.completions.create({
           model: this.config.model,
-          messages: apiMessages as any,
-          tools: tools.length > 0 ? tools : undefined,
+          messages: messages.map(toOpenAIMessage),
+          tools: tools.length > 0 ? toOpenAITools(tools) : undefined,
           stream: true
         }, signal ? { signal } : undefined)
 

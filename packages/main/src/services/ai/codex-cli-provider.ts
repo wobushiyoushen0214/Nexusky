@@ -137,12 +137,13 @@ export class CodexCliProvider extends BaseAIProvider {
       const trimmed = content.trim()
       if (trimmed) yield { type: 'text', content: trimmed }
       yield { type: 'done', content: '' }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (signal?.aborted) {
         yield { type: 'done', content: '' }
         return
       }
-      yield { type: 'error', content: error.message || 'Codex CLI 执行失败' }
+      const message = error instanceof Error ? error.message : String(error || 'Codex CLI 执行失败')
+      yield { type: 'error', content: message }
     } finally {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {})
     }

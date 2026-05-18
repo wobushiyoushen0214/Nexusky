@@ -2,9 +2,20 @@ import OpenAI from 'openai'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ChatOptions } from './base-provider'
 import { net } from 'electron'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
 interface OllamaTagsResponse {
   models?: { name?: string }[]
+}
+
+function toOllamaMessage(message: ChatMessage): ChatCompletionMessageParam {
+  const content = typeof message.content === 'string' ? message.content : JSON.stringify(message.content)
+  if (message.role === 'tool') {
+    return { role: 'tool', content, tool_call_id: message.tool_call_id || '' }
+  }
+  if (message.role === 'assistant') return { role: 'assistant', content }
+  if (message.role === 'system') return { role: 'system', content }
+  return { role: 'user', content }
 }
 
 export class OllamaProvider extends BaseAIProvider {
@@ -37,7 +48,7 @@ export class OllamaProvider extends BaseAIProvider {
       try {
         const stream = await this.client.chat.completions.create({
           model: this.config.model,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })) as any,
+          messages: messages.map(toOllamaMessage),
           stream: true,
           ...(options?.temperature !== undefined && { temperature: options.temperature })
         }, signal ? { signal } : undefined)

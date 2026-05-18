@@ -32,6 +32,15 @@ export interface ToolCallEvent {
   calls: { id: string; name: string; arguments: string }[]
 }
 
+export interface ToolDefinition {
+  type: 'function'
+  function: {
+    name: string
+    description?: string
+    parameters?: { [key: string]: unknown }
+  }
+}
+
 export interface ChatOptions {
   temperature?: number
 }
@@ -48,7 +57,7 @@ export abstract class BaseAIProvider {
 
   async *chatStreamWithTools(
     messages: ChatMessage[],
-    tools: any[],
+    tools: ToolDefinition[],
     signal?: AbortSignal
   ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
     yield* this.chatStream(messages, signal)

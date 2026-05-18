@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { aiManager, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent } from '../services/ai'
+import { aiManager, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ToolDefinition } from '../services/ai'
 import { store } from '../services/store'
 import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
@@ -865,7 +865,7 @@ graph TD
 
   // --- Agent chat with tool use ---
 
-  const AGENT_TOOLS = [
+  const AGENT_TOOLS: ToolDefinition[] = [
     {
       type: 'function',
       function: {
