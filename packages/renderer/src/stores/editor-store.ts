@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useVaultStore } from './vault-store'
 import { toast } from './toast-store'
+import { safeGet, safeGetJSON, safeSetJSON } from '../utils/storage'
 
 interface Tab {
   path: string
@@ -43,7 +44,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentFilePath: null,
   content: '',
   isDirty: false,
-  recentFiles: JSON.parse(localStorage.getItem('nexusky-recent') || '[]'),
+  recentFiles: safeGetJSON<string[]>('nexusky-recent', []),
   splitPath: null,
   splitContent: null,
 
@@ -109,7 +110,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
 
       const recent = [path, ...get().recentFiles.filter((p) => p !== path)].slice(0, 10)
-      localStorage.setItem('nexusky-recent', JSON.stringify(recent))
+      safeSetJSON('nexusky-recent', recent)
       set({ tabs: newTabs, activeTabIndex: newTabs.length - 1, currentFilePath: path, content, isDirty: false, recentFiles: recent })
     } catch (e: any) {
       toast(`打开文件失败: ${e.message || '未知错误'}`, 'error')
@@ -218,7 +219,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       window.api.invoke('cloud:push-file', { vaultPath, filePath: currentFilePath }).catch(() => {})
 
       // AI tag suggestion (async, non-blocking)
-      const tagSuggestionEnabled = localStorage.getItem('nexusky-ai-tag-suggestion-enabled') === '1'
+      const tagSuggestionEnabled = safeGet('nexusky-ai-tag-suggestion-enabled') === '1'
       if (tagSuggestionEnabled && content.length > 100 && !content.includes('#')) {
         window.api.invoke('ai:suggest-tags', { content: content.slice(0, 2000), existingTags: [] }).then((tags) => {
           if (tags.length > 0) {

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { safeGetJSON, safeSetJSON } from '../utils/storage'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface VaultState {
@@ -17,7 +18,7 @@ interface VaultState {
 }
 
 function loadFavorites(): string[] {
-  try { return JSON.parse(localStorage.getItem('nexusky-favorites') || '[]') } catch { return [] }
+  return safeGetJSON<string[]>('nexusky-favorites', [])
 }
 
 export const useVaultStore = create<VaultState>((set, get) => ({
@@ -31,7 +32,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   toggleFavorite: (path) => {
     const { favorites } = get()
     const next = favorites.includes(path) ? favorites.filter((f) => f !== path) : [...favorites, path]
-    localStorage.setItem('nexusky-favorites', JSON.stringify(next))
+    safeSetJSON('nexusky-favorites', next)
     set({ favorites: next })
   },
 

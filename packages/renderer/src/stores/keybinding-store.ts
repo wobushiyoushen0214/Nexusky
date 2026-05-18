@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { safeGetJSON, safeRemove, safeSetJSON } from '../utils/storage'
 
 export interface KeyBinding {
   id: string
@@ -31,14 +32,8 @@ interface KeyBindingState {
 }
 
 function loadBindings(): KeyBinding[] {
-  try {
-    const saved = localStorage.getItem('nexusky-keybindings')
-    if (saved) {
-      const custom = JSON.parse(saved) as Record<string, string>
-      return DEFAULT_BINDINGS.map((b) => ({ ...b, customKey: custom[b.id] || null }))
-    }
-  } catch {}
-  return DEFAULT_BINDINGS.map((b) => ({ ...b }))
+  const custom = safeGetJSON<Record<string, string>>('nexusky-keybindings', {})
+  return DEFAULT_BINDINGS.map((b) => ({ ...b, customKey: custom[b.id] || null }))
 }
 
 function saveBindings(bindings: KeyBinding[]): void {
@@ -46,7 +41,7 @@ function saveBindings(bindings: KeyBinding[]): void {
   for (const b of bindings) {
     if (b.customKey) custom[b.id] = b.customKey
   }
-  localStorage.setItem('nexusky-keybindings', JSON.stringify(custom))
+  safeSetJSON('nexusky-keybindings', custom)
 }
 
 export const useKeyBindingStore = create<KeyBindingState>((set, get) => ({
@@ -73,7 +68,7 @@ export const useKeyBindingStore = create<KeyBindingState>((set, get) => ({
 
   resetAll: () => {
     const bindings = DEFAULT_BINDINGS.map((b) => ({ ...b, customKey: null }))
-    localStorage.removeItem('nexusky-keybindings')
+    safeRemove('nexusky-keybindings')
     set({ bindings })
   },
 }))

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ACTIVITY_BAR_REGISTRY } from '../components/sidebar/activity-bar-registry'
+import { safeGetJSON, safeSetJSON } from '../utils/storage'
 
 const STORAGE_KEY = 'nexusky-activity-bar'
 
@@ -18,19 +19,14 @@ function getDefaults(): string[] {
 }
 
 function load(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const config = JSON.parse(saved)
-      const validIds = new Set(ACTIVITY_BAR_REGISTRY.map((i) => i.id))
-      return (config.visibleIds as string[]).filter((id) => validIds.has(id))
-    }
-  } catch {}
-  return getDefaults()
+  const config = safeGetJSON<{ visibleIds?: string[] }>(STORAGE_KEY, {})
+  if (!Array.isArray(config.visibleIds)) return getDefaults()
+  const validIds = new Set(ACTIVITY_BAR_REGISTRY.map((i) => i.id))
+  return config.visibleIds.filter((id) => validIds.has(id))
 }
 
 function save(visibleIds: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ visibleIds }))
+  safeSetJSON(STORAGE_KEY, { visibleIds })
 }
 
 export const useActivityBarStore = create<ActivityBarState>((set, get) => ({

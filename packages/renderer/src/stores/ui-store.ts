@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import i18n from '../i18n'
+import { safeGet, safeSet } from '../utils/storage'
 
 type Panel = 'none' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
 type Theme = 'dark' | 'light' | 'ocean' | 'amber' | 'forest' | 'rose' | 'minimal'
@@ -40,10 +41,8 @@ interface UIState {
 }
 
 function getInitialTheme(): Theme {
-  try {
-    const saved = localStorage.getItem('nexusky-theme')
-    if (saved && ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal'].includes(saved)) return saved as Theme
-  } catch {}
+  const saved = safeGet('nexusky-theme')
+  if (saved && ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal'].includes(saved)) return saved as Theme
   return 'dark'
 }
 
@@ -51,24 +50,18 @@ function applyTheme(theme: Theme) {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', theme)
   }
-  try {
-    localStorage.setItem('nexusky-theme', theme)
-  } catch {}
+  safeSet('nexusky-theme', theme)
 }
 
 function getInitialSidebarWidth(): number {
-  try {
-    const saved = localStorage.getItem('nexusky-sidebar-width')
-    if (saved) return Math.max(180, Math.min(400, Number(saved)))
-  } catch {}
+  const saved = safeGet('nexusky-sidebar-width')
+  if (saved) return Math.max(180, Math.min(400, Number(saved)))
   return 240
 }
 
 function getInitialRightPanelWidth(): number {
-  try {
-    const saved = localStorage.getItem('nexusky-right-panel-width')
-    if (saved) return Math.max(260, Math.min(600, Number(saved)))
-  } catch {}
+  const saved = safeGet('nexusky-right-panel-width')
+  if (saved) return Math.max(260, Math.min(600, Number(saved)))
   return 360
 }
 
@@ -90,7 +83,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   searchOpen: false,
   commandPaletteOpen: false,
   theme: initialTheme,
-  language: (localStorage.getItem('nexusky-language') || 'zh-CN') as Language,
+  language: (safeGet('nexusky-language') || 'zh-CN') as Language,
 
   setRightPanel: (panel) => set({ rightPanel: panel }),
   toggleRightPanel: (panel) => set({ rightPanel: get().rightPanel === panel ? 'none' : panel }),
@@ -105,12 +98,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   setRightPanelWidth: (width) => set({ rightPanelWidth: Math.max(260, Math.min(600, width)) }),
   resizeSidebar: (delta: number) => {
     const width = Math.max(180, Math.min(400, get().sidebarWidth + delta))
-    localStorage.setItem('nexusky-sidebar-width', String(width))
+    safeSet('nexusky-sidebar-width', String(width))
     set({ sidebarWidth: width })
   },
   resizeRightPanel: (delta: number) => {
     const width = Math.max(260, Math.min(600, get().rightPanelWidth + delta))
-    localStorage.setItem('nexusky-right-panel-width', String(width))
+    safeSet('nexusky-right-panel-width', String(width))
     set({ rightPanelWidth: width })
   },
   setQuickSwitcherOpen: (open) => set({ quickSwitcherOpen: open }),
@@ -127,7 +120,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   setLanguage: (lang) => {
     i18n.changeLanguage(lang)
-    localStorage.setItem('nexusky-language', lang)
+    safeSet('nexusky-language', lang)
     set({ language: lang })
   },
 }))

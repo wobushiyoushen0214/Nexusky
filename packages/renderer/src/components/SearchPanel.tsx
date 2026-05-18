@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
+import { safeGetJSON, safeSetJSON } from '../utils/storage'
 import type { EmbeddingStatus } from '@shared/types/ipc'
 
 interface SearchResult {
@@ -22,17 +23,17 @@ const HISTORY_KEY = 'nexusky-search-history'
 const CACHE_KEY = 'nexusky-search-cache'
 
 function loadHistory(): string[] {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
+  return safeGetJSON<string[]>(HISTORY_KEY, [])
 }
 
 function saveToHistory(query: string): void {
   const history = loadHistory()
   const updated = [query, ...history.filter((h) => h !== query)].slice(0, 12)
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+  safeSetJSON(HISTORY_KEY, updated)
 }
 
 function loadCache(): Record<string, SearchResult[]> {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') } catch { return {} }
+  return safeGetJSON<Record<string, SearchResult[]>>(CACHE_KEY, {})
 }
 
 function saveCache(key: string, results: SearchResult[]): void {
@@ -40,7 +41,7 @@ function saveCache(key: string, results: SearchResult[]): void {
   cache[key] = results
   const keys = Object.keys(cache)
   if (keys.length > 20) delete cache[keys[0]]
-  localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+  safeSetJSON(CACHE_KEY, cache)
 }
 
 function clearCacheForVault(vaultPath: string): void {
@@ -53,7 +54,7 @@ function clearCacheForVault(vaultPath: string): void {
       changed = true
     }
   }
-  if (changed) localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+  if (changed) safeSetJSON(CACHE_KEY, cache)
 }
 
 function getCacheKey(vaultPath: string, mode: SearchMode, query: string): string {

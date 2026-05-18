@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { safeGet, safeSet } from '../utils/storage'
 
 const ONBOARDING_KEY = 'nexusky-onboarding-done'
 
@@ -113,7 +114,7 @@ export function Onboarding({ onDone }: OnboardingProps) {
   const [step, setStep] = useState(0)
 
   const handleFinish = () => {
-    localStorage.setItem(ONBOARDING_KEY, '1')
+    safeSet(ONBOARDING_KEY, '1')
     onDone()
   }
 
@@ -183,5 +184,5 @@ export function Onboarding({ onDone }: OnboardingProps) {
 }
 
 export function shouldShowOnboarding(): boolean {
-  return !localStorage.getItem(ONBOARDING_KEY)
+  return !safeGet(ONBOARDING_KEY)
 }
