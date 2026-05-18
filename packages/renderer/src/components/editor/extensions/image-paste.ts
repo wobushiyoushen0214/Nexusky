@@ -1,4 +1,5 @@
 import { Extension } from '@tiptap/core'
+import type { Editor } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 
 export const ImagePaste = Extension.create({
@@ -44,7 +45,7 @@ export const ImagePaste = Extension.create({
   }
 })
 
-async function handleImageFile(file: File, editor: any) {
+async function handleImageFile(file: File, editor: Editor) {
   const reader = new FileReader()
   reader.onload = async () => {
     const base64 = reader.result as string

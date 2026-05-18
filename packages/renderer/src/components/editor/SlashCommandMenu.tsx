@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import type { Editor } from '@tiptap/react'
 
 interface SlashItem {
   title: string
   description: string
   icon: string
   keywords: string[]
-  action: (editor: any) => void
+  action: (editor: Editor) => void
 }
 
 const SLASH_ITEMS: SlashItem[] = [
@@ -105,7 +106,7 @@ const SLASH_ITEMS: SlashItem[] = [
   },
 ]
 
-export function SlashCommandMenu({ editor }: { editor: any }) {
+export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [query, setQuery] = useState('')

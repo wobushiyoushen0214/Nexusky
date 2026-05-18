@@ -1,11 +1,12 @@
 import { Extension } from '@tiptap/core'
+import type { Editor } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 
 export interface SlashCommandItem {
   title: string
   description: string
   icon: string
-  command: (editor: any) => void
+  command: (editor: Editor) => void
 }
 
 const pluginKey = new PluginKey('slashCommand')
