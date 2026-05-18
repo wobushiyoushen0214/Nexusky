@@ -53,6 +53,22 @@ export function chunkText(content: string, noteId: string): TextChunk[] {
   return chunks
 }
 
+export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
+  const length = Math.min(a.length, b.length)
+  if (length === 0) return 0
+
+  let dot = 0
+  let normA = 0
+  let normB = 0
+  for (let i = 0; i < length; i++) {
+    dot += a[i] * b[i]
+    normA += a[i] * a[i]
+    normB += b[i] * b[i]
+  }
+  if (normA === 0 || normB === 0) return 0
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB))
+}
+
 // --- TF-IDF implementation ---
 
 const STOP_WORDS = new Set(['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这',
