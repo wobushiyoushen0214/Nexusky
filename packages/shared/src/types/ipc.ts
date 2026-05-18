@@ -106,6 +106,14 @@ export interface AIStreamEvent {
   content: string
 }
 
+export interface AINotesProgress {
+  stage: 'planning' | 'planned' | 'generating' | 'indexing' | 'index-error' | 'done' | string
+  message: string
+  plan?: { title: string; brief?: string }[]
+  current?: number
+  total?: number
+}
+
 export interface AIProviderConfig {
   id: string
   name: string

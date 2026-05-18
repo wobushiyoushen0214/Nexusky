@@ -80,7 +80,7 @@ export function TagsPanel() {
   useEffect(() => {
     if (!selectedTag || !vaultPath) { setNotes([]); return }
     window.api.invoke('db:get-notes-by-tag', { vaultPath, tag: selectedTag }).then(
-      (results) => setNotes(results.map((r: any) => ({ title: r.title, filePath: r.filePath })))
+      (results) => setNotes(results.map((r) => ({ title: r.title, filePath: r.filePath })))
     )
   }, [selectedTag, vaultPath])
 

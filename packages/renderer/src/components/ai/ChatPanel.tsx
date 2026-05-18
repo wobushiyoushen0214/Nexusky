@@ -510,7 +510,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       if (data.stage === 'planning') {
         setStreamContent('正在规划笔记结构...')
       } else if (data.stage === 'planned' && data.plan) {
-        planItems = data.plan.map((p: any) => ({ title: p.title, done: false }))
+        planItems = data.plan.map((p) => ({ title: p.title, done: false }))
         setStreamContent('')
         const lines = planItems.map((item) => `○ ${item.title}`).join('\n')
         setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
@@ -642,7 +642,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
         let targetPath: string | null = null
         const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
-        const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
+        const dirs = files.filter((f) => f.isDirectory && !f.name.startsWith('.')).map((f) => f.name)
         const text = userMsg.content.toLowerCase()
         const matchedDir = dirs.find((d: string) => text.includes(d.toLowerCase()))
         if (matchedDir) {
@@ -766,7 +766,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             setStreamContent('')
 
             const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
-            const dirs = files.filter((f: any) => f.isDirectory && !f.name.startsWith('.')).map((f: any) => f.name)
+            const dirs = files.filter((f) => f.isDirectory && !f.name.startsWith('.')).map((f) => f.name)
 
             const recentContext = messages.slice(-10).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 200)}`).join('\n')
             const batchInstruction = recentContext

@@ -4,16 +4,11 @@ import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { safeGet, safeSet } from '../../utils/storage'
+import type { AIProviderConfig } from '@shared/types/ipc'
 
-interface ProviderConfig {
-  id: string
-  name: string
-  type: 'openai' | 'openai-responses' | 'claude' | 'custom' | 'ollama' | 'codex'
-  baseUrl: string
-  apiKey: string
-  model: string
-  enabled: boolean
-}
+type ProviderConfig = AIProviderConfig
+type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean }
+type CloudUser = { email: string } | null
 
 const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
@@ -82,8 +77,8 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
   const [editing, setEditing] = useState<ProviderConfig | null>(null)
   const [testingProvider, setTestingProvider] = useState(false)
-  const [cloudConfig, setCloudConfig] = useState({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
-  const [cloudUser, setCloudUser] = useState<{ email: string } | null>(null)
+  const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
+  const [cloudUser, setCloudUser] = useState<CloudUser>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
   const overlayPointerDownRef = useRef(false)
   const providerOverlayPointerDownRef = useRef(false)
@@ -93,14 +88,14 @@ export function Settings({ open, onClose }: SettingsProps) {
       window.api.invoke('ai:get-providers', undefined).then((ps) => {
         setProviders(ps)
         window.api.invoke('ai:get-active-provider', undefined).then((storedActiveId) => {
-          if (storedActiveId && ps.find((p: any) => p.id === storedActiveId)) {
+          if (storedActiveId && ps.find((p) => p.id === storedActiveId)) {
             setActiveProviderId(storedActiveId)
           } else {
-            const active = ps.find((p: any) => p.enabled)
+            const active = ps.find((p) => p.enabled)
             setActiveProviderId(active?.id || ps[0]?.id || null)
           }
         }).catch(() => {
-          const active = ps.find((p: any) => p.enabled)
+          const active = ps.find((p) => p.enabled)
           setActiveProviderId(active?.id || ps[0]?.id || null)
         })
       })
@@ -480,7 +475,7 @@ export function Settings({ open, onClose }: SettingsProps) {
           let existed = 0
           const updated = [...providers]
           if (detected.claude) {
-            const exists = updated.find((p: any) => p.apiKey === detected.claude!.apiKey)
+            const exists = updated.find((p) => p.apiKey === detected.claude!.apiKey)
             if (!exists) {
               const hasCustomBase = !!detected.claude.baseUrl
               const providerType: ProviderConfig['type'] = hasCustomBase ? 'custom' : 'claude'
@@ -498,7 +493,7 @@ export function Settings({ open, onClose }: SettingsProps) {
             } else existed++
           }
           if (detected.openai) {
-            const exists = updated.find((p: any) => p.apiKey === detected.openai!.apiKey)
+            const exists = updated.find((p) => p.apiKey === detected.openai!.apiKey)
             if (!exists) {
               const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4.1-mini', enabled: true }
               updated.push(np)
@@ -506,7 +501,7 @@ export function Settings({ open, onClose }: SettingsProps) {
             } else existed++
           }
           if (detected.codex) {
-            const exists = updated.find((p: any) => p.type === 'codex' && (p.baseUrl || 'codex') === detected.codex!.command)
+            const exists = updated.find((p) => p.type === 'codex' && (p.baseUrl || 'codex') === detected.codex!.command)
             if (!exists) {
               const np = { id: crypto.randomUUID(), name: 'Codex CLI (本地登录)', type: 'codex' as const, baseUrl: detected.codex.command, apiKey: '', model: 'gpt-5.4', enabled: true }
               updated.push(np)
@@ -531,10 +526,10 @@ export function Settings({ open, onClose }: SettingsProps) {
 }
 
 interface CloudTabProps {
-  cloudConfig: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean }
-  setCloudConfig: (c: any) => void
-  cloudUser: { email: string } | null
-  setCloudUser: (u: any) => void
+  cloudConfig: CloudConfig
+  setCloudConfig: React.Dispatch<React.SetStateAction<CloudConfig>>
+  cloudUser: CloudUser
+  setCloudUser: React.Dispatch<React.SetStateAction<CloudUser>>
   inputStyle: React.CSSProperties
 }
 

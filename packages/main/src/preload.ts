@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AIStreamEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel } from '@shared/types/ipc'
+import type { AINotesProgress, AIStreamEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel } from '@shared/types/ipc'
 
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
@@ -50,13 +50,13 @@ const api = {
     ipcRenderer.on('ai:graph-done', handler)
     return () => { ipcRenderer.removeListener('ai:graph-done', handler) }
   },
-  onAiNotesProgress: (callback: (data: { stage: string; message: string; plan?: any[]; current?: number; total?: number }) => void) => {
-    const handler = (_event: unknown, data: any) => callback(data)
+  onAiNotesProgress: (callback: (data: AINotesProgress) => void) => {
+    const handler = (_event: unknown, data: AINotesProgress) => callback(data)
     ipcRenderer.on('ai:generate-notes-progress', handler)
     return () => { ipcRenderer.removeListener('ai:generate-notes-progress', handler) }
   },
   onAiMemoryProgress: (callback: (data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => void) => {
-    const handler = (_event: unknown, data: any) => callback(data)
+    const handler = (_event: unknown, data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => callback(data)
     ipcRenderer.on('ai:memory-progress', handler)
     return () => { ipcRenderer.removeListener('ai:memory-progress', handler) }
   },
@@ -66,12 +66,12 @@ const api = {
     return () => { ipcRenderer.removeListener('embed:progress', handler) }
   },
   onUpdaterAvailable: (callback: (data: { version: string }) => void) => {
-    const handler = (_event: unknown, data: any) => callback(data)
+    const handler = (_event: unknown, data: { version: string }) => callback(data)
     ipcRenderer.on('updater:available', handler)
     return () => { ipcRenderer.removeListener('updater:available', handler) }
   },
   onUpdaterProgress: (callback: (data: { percent: number }) => void) => {
-    const handler = (_event: unknown, data: any) => callback(data)
+    const handler = (_event: unknown, data: { percent: number }) => callback(data)
     ipcRenderer.on('updater:progress', handler)
     return () => { ipcRenderer.removeListener('updater:progress', handler) }
   },
