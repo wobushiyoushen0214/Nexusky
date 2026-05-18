@@ -817,6 +817,7 @@ graph TD
   })
 
   ipcMain.handle('ai:generate-memories', async (event, params: { vaultPath: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
     const db = getDatabase(params.vaultPath)
     const notes = db.prepare(`
       SELECT n.id, n.title, n.file_path, n.content_hash
@@ -825,23 +826,39 @@ graph TD
 
     let generated = 0
     let skipped = 0
+    let failed = 0
+    const sendProgress = (current: number, title: string | undefined, state: 'running' | 'done' = 'running') => {
+      if (window && !window.isDestroyed()) {
+        window.webContents.send('ai:memory-progress', { current, total: notes.length, generated, skipped, failed, title, state })
+      }
+    }
+    sendProgress(0, undefined)
 
-    for (const note of notes) {
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i]
       const existing = readMemory(params.vaultPath, note.id)
       if (existing && existing.contentHash === note.content_hash) {
         skipped++
+        sendProgress(i + 1, note.title)
         continue
       }
 
       const fullPath = join(params.vaultPath, note.file_path)
-      if (!existsSync(fullPath)) continue
+      if (!existsSync(fullPath)) {
+        failed++
+        sendProgress(i + 1, note.title)
+        continue
+      }
 
       const content = readFileSync(fullPath, 'utf-8')
       const result = await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash)
       if (result) generated++
+      else failed++
+      sendProgress(i + 1, note.title)
     }
 
-    return { success: true, generated, skipped, total: notes.length }
+    sendProgress(notes.length, undefined, 'done')
+    return { success: true, generated, skipped, failed, total: notes.length }
   })
 
   ipcMain.handle('ai:get-system-prompt', () => {

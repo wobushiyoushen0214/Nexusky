@@ -93,6 +93,15 @@ export function GraphView() {
     return () => { cleanup(); window.removeEventListener('graph-data-updated', refresh) }
   }, [vaultPath])
 
+  useEffect(() => {
+    const cleanup = (window.api as any).onAiMemoryProgress?.((data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => {
+      if (data.state === 'done') return
+      const title = data.title ? `：${data.title}` : ''
+      setIndexStatus(`正在生成记忆 ${data.current}/${data.total}${title}`)
+    })
+    return () => cleanup?.()
+  }, [])
+
   const showLabelsRef = useRef(showLabels)
   showLabelsRef.current = showLabels
 
@@ -1017,7 +1026,8 @@ export function GraphView() {
                   try {
                     const result = await window.api.invoke('ai:generate-memories', { vaultPath })
                     if (result.success) {
-                      setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇`)
+                      const failedText = result.failed ? `，失败 ${result.failed} 篇` : ''
+                      setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇${failedText}`)
                     }
                   } catch (e: any) {
                     setIndexStatus(e.message)

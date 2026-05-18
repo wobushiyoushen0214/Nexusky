@@ -55,6 +55,11 @@ const api = {
     ipcRenderer.on('ai:generate-notes-progress', handler)
     return () => ipcRenderer.removeListener('ai:generate-notes-progress', handler)
   },
+  onAiMemoryProgress: (callback: (data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => void) => {
+    const handler = (_event: unknown, data: any) => callback(data)
+    ipcRenderer.on('ai:memory-progress', handler)
+    return () => ipcRenderer.removeListener('ai:memory-progress', handler)
+  },
   onEmbedProgress: (callback: (data: EmbeddingStatus) => void) => {
     const handler = (_event: unknown, data: EmbeddingStatus) => callback(data)
     ipcRenderer.on('embed:progress', handler)
