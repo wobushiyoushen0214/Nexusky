@@ -7,6 +7,7 @@ import { drag } from 'd3-drag'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
+import { ConfirmModal } from '../ConfirmModal'
 import type { GraphData, GraphNode } from '@shared/types/ipc'
 import './GraphView.css'
 
@@ -67,6 +68,7 @@ export function GraphView() {
   const [chargeStrength, setChargeStrength] = useState(-350)
   const [linkDistance, setLinkDistance] = useState(80)
   const [centerStrength, setCenterStrength] = useState(0.02)
+  const [confirmInferOpen, setConfirmInferOpen] = useState(false)
 
   const groupColorMap = useMemo(() => {
     if (!graphData) return new Map<string, string>()
@@ -107,6 +109,24 @@ export function GraphView() {
 
   const showArrowsRef = useRef(showArrows)
   showArrowsRef.current = showArrows
+
+  const runGlobalInference = async () => {
+    if (!vaultPath) return
+    setConfirmInferOpen(false)
+    setIndexStatus(t('common.aiAnalyzing'))
+    try {
+      const result = await window.api.invoke('ai:infer-global-links', { vaultPath })
+      if (result.success) {
+        setIndexStatus(t('common.semanticFound', { count: result.added }))
+        window.dispatchEvent(new CustomEvent('graph-data-updated'))
+      } else {
+        setIndexStatus(result.error || t('common.semanticFailed'))
+      }
+    } catch (e: any) {
+      setIndexStatus(e.message)
+    }
+    setTimeout(() => setIndexStatus(null), 3000)
+  }
 
   const updateHighlight = useCallback((currentRelPath: string) => {
     if (!svgRef.current) return
@@ -992,24 +1012,7 @@ export function GraphView() {
                 className="graph-back-btn"
                 style={{ marginTop: 8 }}
                 disabled={!!indexStatus}
-                onClick={async () => {
-                  if (!vaultPath) return
-                  const confirmed = window.confirm('将重新计算全库语义关联，并替换现有的 AI 推理链接。是否继续？')
-                  if (!confirmed) return
-                  setIndexStatus(t('common.aiAnalyzing'))
-                  try {
-                    const result = await window.api.invoke('ai:infer-global-links', { vaultPath })
-                    if (result.success) {
-                      setIndexStatus(t('common.semanticFound', { count: result.added }))
-                      window.dispatchEvent(new CustomEvent('graph-data-updated'))
-                    } else {
-                      setIndexStatus(result.error || t('common.semanticFailed'))
-                    }
-                  } catch (e: any) {
-                    setIndexStatus(e.message)
-                  }
-                  setTimeout(() => setIndexStatus(null), 3000)
-                }}
+                onClick={() => setConfirmInferOpen(true)}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
@@ -1059,6 +1062,14 @@ export function GraphView() {
         )}
       </div>
       <svg ref={svgRef} className="graph-svg" />
+      <ConfirmModal
+        open={confirmInferOpen}
+        title="重新计算语义关联"
+        message="将重新计算全库语义关联，并替换现有的 AI 推理链接。是否继续？"
+        confirmText="重新计算"
+        onConfirm={runGlobalInference}
+        onCancel={() => setConfirmInferOpen(false)}
+      />
     </div>
   )
 }

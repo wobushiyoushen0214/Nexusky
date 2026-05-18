@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
+import { ConfirmModal } from './ConfirmModal'
 import type { KanbanColumn, KanbanRelation, KanbanTask } from '@shared/types/ipc'
 
 const RELATION_LABEL: Record<KanbanRelation['relationType'], string> = {
@@ -22,6 +23,10 @@ interface KanbanAiPlan {
   tasks: { title: string; description?: string; priority?: number; dueDate?: string | null }[]
   relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelation['relationType'] }[]
 }
+
+type PendingKanbanAiWrite =
+  | { mode: 'breakdown'; plan: KanbanAiPlan; taskId: string; title: string; description?: string; columnId: string }
+  | { mode: 'from-note'; plan: KanbanAiPlan; filePath: string; content: string; columnId?: string }
 
 function formatKanbanAiPreview(plan: KanbanAiPlan): string {
   const titles = plan.tasks.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
@@ -48,6 +53,7 @@ export function KanbanPanel() {
   const [detailDraft, setDetailDraft] = useState<Partial<KanbanTask>>({})
   const [newRelationTarget, setNewRelationTarget] = useState('')
   const [newRelationType, setNewRelationType] = useState<KanbanRelation['relationType']>('related')
+  const [pendingAiWrite, setPendingAiWrite] = useState<PendingKanbanAiWrite | null>(null)
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) || null, [tasks, selectedTaskId])
   const totalTasks = tasks.length
@@ -203,18 +209,14 @@ export function KanbanPanel() {
         toast('AI 没有生成可写入的子任务', 'info')
         return
       }
-      if (!window.confirm(formatKanbanAiPreview(result.plan))) return
-
-      const committed = await window.api.invoke('kanban:ai-breakdown-task', {
-        vaultPath,
+      setPendingAiWrite({
+        mode: 'breakdown',
+        plan: result.plan,
         taskId: selectedTask.id,
         title: selectedTask.title,
         description: selectedTask.description,
-        columnId: selectedTask.columnId,
-        plan: result.plan
+        columnId: selectedTask.columnId
       })
-      toast(committed.summary, 'success')
-      await loadBoard()
     } catch (e: any) {
       toast(e.message || '任务拆解失败', 'error')
     } finally {
@@ -240,19 +242,49 @@ export function KanbanPanel() {
         toast('AI 没有从当前笔记提取到任务', 'info')
         return
       }
-      if (!window.confirm(formatKanbanAiPreview(result.plan))) return
-
-      const committed = await window.api.invoke('kanban:ai-from-note', {
-        vaultPath,
+      setPendingAiWrite({
+        mode: 'from-note',
+        plan: result.plan,
         filePath: currentFilePath,
         content: currentContent,
-        columnId: columns[0]?.id,
-        plan: result.plan
+        columnId: columns[0]?.id
       })
-      toast(committed.summary, 'success')
-      await loadBoard()
     } catch (e: any) {
       toast(e.message || '从笔记生成任务失败', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const confirmAiWrite = async () => {
+    if (!vaultPath || !pendingAiWrite) return
+    const pending = pendingAiWrite
+    setPendingAiWrite(null)
+    setBusy(pending.mode === 'breakdown' ? 'breakdown' : 'from-note')
+    try {
+      if (pending.mode === 'breakdown') {
+        const committed = await window.api.invoke('kanban:ai-breakdown-task', {
+          vaultPath,
+          taskId: pending.taskId,
+          title: pending.title,
+          description: pending.description,
+          columnId: pending.columnId,
+          plan: pending.plan
+        })
+        toast(committed.summary, 'success')
+      } else {
+        const committed = await window.api.invoke('kanban:ai-from-note', {
+          vaultPath,
+          filePath: pending.filePath,
+          content: pending.content,
+          columnId: pending.columnId,
+          plan: pending.plan
+        })
+        toast(committed.summary, 'success')
+      }
+      await loadBoard()
+    } catch (e: any) {
+      toast(e.message || 'AI 任务写入失败', 'error')
     } finally {
       setBusy(null)
     }
@@ -444,6 +476,14 @@ export function KanbanPanel() {
           </div>
         </aside>
       )}
+      <ConfirmModal
+        open={!!pendingAiWrite}
+        title="确认写入看板"
+        message={pendingAiWrite ? formatKanbanAiPreview(pendingAiWrite.plan) : ''}
+        confirmText="写入"
+        onConfirm={confirmAiWrite}
+        onCancel={() => setPendingAiWrite(null)}
+      />
     </div>
   )
 }
