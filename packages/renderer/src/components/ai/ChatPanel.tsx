@@ -174,54 +174,18 @@ export function ChatPanel() {
     }
   }
 
-  const intentBufferRef = useRef('')
-  const intentDetectedRef = useRef<string | null>(null)
-  const intentCallbackRef = useRef<((intent: string) => void) | null>(null)
-
   useEffect(() => {
     const handler = (event: { type: string; content: string }) => {
       if (!isStreamingRef.current) return
       if (event.type === 'text') {
         setToolStatus(null)
-
-        if (intentCallbackRef.current && !intentDetectedRef.current) {
-          intentBufferRef.current += event.content
-          const match = intentBufferRef.current.match(/<<INTENT:(graph|kanban|batch|edit|chat)>>/)
-          if (match) {
-            intentDetectedRef.current = match[1]
-            const remaining = intentBufferRef.current.replace(/<<INTENT:(graph|kanban|batch|edit|chat)>>/, '')
-            if (match[1] !== 'chat') {
-              intentCallbackRef.current(match[1])
-              intentCallbackRef.current = null
-              return
-            }
-            intentCallbackRef.current = null
-            streamContentRef.current = remaining
-            setStreamContent(remaining)
-          } else if (intentBufferRef.current.length > 40) {
-            intentCallbackRef.current = null
-            streamContentRef.current = intentBufferRef.current
-            setStreamContent(intentBufferRef.current)
-          }
-          return
-        }
-
         streamContentRef.current += event.content
         setStreamContent(streamContentRef.current)
       } else if (event.type === 'done') {
         setToolStatus(null)
-        if (intentCallbackRef.current && intentBufferRef.current) {
-          const cleaned = intentBufferRef.current.replace(/<<INTENT:\w+>>/, '')
-          if (cleaned) {
-            streamContentRef.current = cleaned
-            setStreamContent(cleaned)
-          }
-          intentCallbackRef.current = null
-        }
         setIsStreaming(false)
       } else if (event.type === 'error') {
         setToolStatus(null)
-        intentCallbackRef.current = null
         if (streamContentRef.current) {
           const partial = streamContentRef.current
           const errMsg = friendlyError(event.content)
@@ -746,16 +710,16 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           const chatMessages = await buildChatMessages(allMessages)
 
           const editIntentContext = `Context: user is in EDIT MODE (editing notes). Available intents:
-- <<INTENT:batch>> — user wants to generate MULTIPLE separate note files (e.g. "generate 5 notes about...", "write notes for each framework")
-- <<INTENT:chat>> — user is asking a question, seeking explanation, or having a conversation (NOT requesting file edits)
-- <<INTENT:edit>> — user wants to modify or create a single note file (default for edit mode)`
+- batch: user wants to generate MULTIPLE separate note files (e.g. "generate 5 notes about...", "write notes for each framework")
+- chat: user is asking a question, seeking explanation, or having a conversation (NOT requesting file edits)
+- edit: user wants to modify or create a single note file (default for edit mode)`
 
           let editIntent = 'edit'
           try {
             const detected = await window.api.invoke('ai:detect-intent' as any, {
               messages: chatMessages,
               intents: ['batch', 'edit', 'chat'],
-              intentContext: editIntentContext.replaceAll('<<INTENT:', '').replaceAll('>>', '')
+              intentContext: editIntentContext
             } as any) as { intent?: string }
             editIntent = detected.intent || 'edit'
           } catch (e: any) {

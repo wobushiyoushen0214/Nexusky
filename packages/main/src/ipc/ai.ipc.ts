@@ -71,7 +71,7 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
     return provider.validate()
   })
 
-  ipcMain.handle('ai:chat', async (event, params: { messages: ChatMessage[]; vaultPath?: string; systemPrompt?: string; detectIntent?: boolean; intentContext?: string }) => {
+  ipcMain.handle('ai:chat', async (event, params: { messages: ChatMessage[]; vaultPath?: string; systemPrompt?: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return
 
@@ -132,26 +132,6 @@ ${context}
       }
     } else if (params.systemPrompt) {
       messages = [{ role: 'system', content: params.systemPrompt }, ...messages.filter((m) => m.role !== 'system')]
-    }
-
-    if (params.detectIntent) {
-      const intentInstruction = `\n\n<intent_classification>
-IMPORTANT: You must output an intent tag as the VERY FIRST thing in your response, before any other text.
-Based on the user's message, classify the intent and output exactly one of these tags:
-- <<INTENT:graph>> — user wants to generate a knowledge graph or visualize note relationships
-- <<INTENT:kanban>> — user wants to extract tasks, create a kanban board, or manage todos from notes
-- <<INTENT:chat>> — normal conversation, Q&A, explanation, or anything else
-
-Output the tag immediately, then continue with your normal response.
-${params.intentContext || ''}
-</intent_classification>`
-
-      const sysIdx = messages.findIndex((m) => m.role === 'system')
-      if (sysIdx >= 0) {
-        messages[sysIdx] = { ...messages[sysIdx], content: (messages[sysIdx].content as string) + intentInstruction }
-      } else {
-        messages = [{ role: 'system', content: intentInstruction.trim() }, ...messages]
-      }
     }
 
     try {
