@@ -52,6 +52,55 @@ describe('ui store workspace widths', () => {
     })
   })
 
+  it('stores workspace layout per vault scope', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setWorkspaceScope('workspace:/vault/a')
+    store.setMainView('graph')
+    store.toggleSidebar()
+    store.setRightPanel('chat')
+
+    store.setWorkspaceScope('workspace:/vault/b')
+    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(false)
+    expect(useUIStore.getState().rightPanel).toBe('none')
+    store.setRightPanel('tags')
+
+    store.setWorkspaceScope('workspace:/vault/a')
+    expect(useUIStore.getState().mainView).toBe('graph')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+    expect(useUIStore.getState().rightPanel).toBe('chat')
+
+    store.setWorkspaceScope('workspace:/vault/b')
+    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(false)
+    expect(useUIStore.getState().rightPanel).toBe('tags')
+    expect(JSON.parse(localStorage.getItem('nexusky-workspace-layouts') || '{}')).toEqual({
+      'workspace:/vault/a': { mainView: 'graph', rightPanel: 'chat', sidebarCollapsed: true },
+      'workspace:/vault/b': { mainView: 'editor', rightPanel: 'tags', sidebarCollapsed: false },
+    })
+  })
+
+  it('uses legacy global workspace layout only as a fallback', async () => {
+    localStorage.setItem('nexusky-workspace-main-view', 'canvas')
+    localStorage.setItem('nexusky-workspace-right-panel', 'chat')
+    localStorage.setItem('nexusky-workspace-sidebar-collapsed', 'true')
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setWorkspaceScope('workspace:/vault/a')
+    expect(useUIStore.getState().mainView).toBe('canvas')
+    expect(useUIStore.getState().rightPanel).toBe('chat')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+
+    store.setMainView('editor')
+    expect(localStorage.getItem('nexusky-workspace-main-view')).toBe('canvas')
+    expect(JSON.parse(localStorage.getItem('nexusky-workspace-layouts') || '{}')).toEqual({
+      'workspace:/vault/a': { mainView: 'editor', rightPanel: 'chat', sidebarCollapsed: true },
+    })
+  })
+
   it('uses the legacy global sidebar width only as a fallback', async () => {
     localStorage.setItem('nexusky-sidebar-width', '315')
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
@@ -72,11 +121,18 @@ describe('ui store workspace widths', () => {
     const store = useUIStore.getState()
 
     store.setSidebarWidthScope('files:/vault/a')
+    store.setWorkspaceScope('workspace:/vault/a')
+    store.setMainView('graph')
     store.setSidebarWidth(300)
     store.resetWorkspaceLayout()
 
+    expect(useUIStore.getState().workspaceScope).toBe('workspace:/vault/a')
+    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().rightPanel).toBe('none')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(false)
     expect(useUIStore.getState().sidebarWidthScope).toBe('files:/vault/a')
     expect(useUIStore.getState().sidebarWidth).toBe(240)
+    expect(localStorage.getItem('nexusky-workspace-layouts')).toBeNull()
     expect(localStorage.getItem('nexusky-sidebar-widths')).toBeNull()
 
     store.resizeSidebar(10)

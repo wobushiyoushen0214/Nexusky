@@ -72,7 +72,7 @@ function flatMdPaths(entries: FileEntry[]): string[] {
 export default function App() {
   const { t } = useTranslation()
   const { vaultPath, loadVault } = useVaultStore()
-  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setSidebarWidthScope } = useUIStore()
+  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setWorkspaceScope, setSidebarWidthScope } = useUIStore()
   const [trashOpen, setTrashOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
@@ -83,8 +83,9 @@ export default function App() {
   }, [rightPanel])
 
   useEffect(() => {
+    setWorkspaceScope(vaultPath ? `workspace:${vaultPath}` : 'workspace')
     setSidebarWidthScope(vaultPath ? `files:${vaultPath}` : 'files')
-  }, [vaultPath, setSidebarWidthScope])
+  }, [vaultPath, setWorkspaceScope, setSidebarWidthScope])
 
   useEffect(() => {
     const handler = async (e: Event) => {

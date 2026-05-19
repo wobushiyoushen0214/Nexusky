@@ -9,12 +9,18 @@ const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
 export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph' | 'bases' | 'canvas'
 type Language = 'zh-CN' | 'en'
+type WorkspaceLayout = {
+  mainView: MainView
+  rightPanel: Panel
+  sidebarCollapsed: boolean
+}
 
 const WORKSPACE_KEYS = {
   mainView: 'nexusky-workspace-main-view',
   rightPanel: 'nexusky-workspace-right-panel',
   sidebarCollapsed: 'nexusky-workspace-sidebar-collapsed',
 }
+const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
@@ -26,6 +32,7 @@ interface UIState {
   rightPanel: Panel
   mainView: MainView
   sidebarCollapsed: boolean
+  workspaceScope: string
   sidebarWidth: number
   sidebarWidthScope: string
   rightPanelWidth: number
@@ -41,6 +48,7 @@ interface UIState {
   setRightPanel: (panel: Panel) => void
   toggleRightPanel: (panel: Panel) => void
   setMainView: (view: MainView) => void
+  setWorkspaceScope: (scope: string) => void
   toggleSidebar: () => void
   toggleFocusMode: () => void
   togglePreviewMode: () => void
@@ -193,27 +201,58 @@ function getInitialSidebarCollapsed(): boolean {
   return safeGet(WORKSPACE_KEYS.sidebarCollapsed) === 'true'
 }
 
-function persistWorkspace(partial: Partial<Pick<UIState, 'mainView' | 'rightPanel' | 'sidebarCollapsed'>>) {
-  if (partial.mainView) safeSet(WORKSPACE_KEYS.mainView, partial.mainView)
-  if (partial.rightPanel) safeSet(WORKSPACE_KEYS.rightPanel, partial.rightPanel)
-  if (partial.sidebarCollapsed !== undefined) safeSet(WORKSPACE_KEYS.sidebarCollapsed, String(partial.sidebarCollapsed))
+function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
+  return safeGetJSON<Record<string, WorkspaceLayout>>(WORKSPACE_LAYOUTS_KEY, {})
+}
+
+function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
+  const scoped = getSavedWorkspaceLayouts()[scope]
+  if (scoped && MAIN_VIEW_IDS.includes(scoped.mainView) && PANEL_IDS.includes(scoped.rightPanel) && typeof scoped.sidebarCollapsed === 'boolean') {
+    return scoped
+  }
+  return {
+    mainView: getInitialMainView(),
+    rightPanel: getInitialRightPanel(),
+    sidebarCollapsed: getInitialSidebarCollapsed(),
+  }
+}
+
+function saveWorkspaceLayout(scope: string, partial: Partial<WorkspaceLayout>): WorkspaceLayout {
+  const next = { ...getInitialWorkspaceLayout(scope), ...partial }
+  safeSetJSON(WORKSPACE_LAYOUTS_KEY, { ...getSavedWorkspaceLayouts(), [scope]: next })
+  return next
+}
+
+function removeWorkspaceLayout(scope: string): void {
+  const layouts = getSavedWorkspaceLayouts()
+  delete layouts[scope]
+  if (Object.keys(layouts).length === 0) safeRemove(WORKSPACE_LAYOUTS_KEY)
+  else safeSetJSON(WORKSPACE_LAYOUTS_KEY, layouts)
+}
+
+function resetSidebarWidth(scope: string): void {
+  const widths = getSavedSidebarWidths()
+  delete widths[scope]
+  if (Object.keys(widths).length === 0) safeRemove(SIDEBAR_WIDTHS_KEY)
+  else safeSetJSON(SIDEBAR_WIDTHS_KEY, widths)
 }
 
 const initialTheme = getInitialTheme()
 const initialAccentColor = normalizeHexColor(safeGet(ACCENT_STORAGE_KEY))
-const initialRightPanel = getInitialRightPanel()
+const initialWorkspaceLayout = getInitialWorkspaceLayout()
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', initialTheme)
   applyAccentColor(initialAccentColor)
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  rightPanel: initialRightPanel,
-  mainView: getInitialMainView(),
-  sidebarCollapsed: getInitialSidebarCollapsed(),
+  rightPanel: initialWorkspaceLayout.rightPanel,
+  mainView: initialWorkspaceLayout.mainView,
+  sidebarCollapsed: initialWorkspaceLayout.sidebarCollapsed,
+  workspaceScope: 'workspace',
   sidebarWidthScope: 'files',
   sidebarWidth: getInitialSidebarWidth(),
-  rightPanelWidth: getInitialRightPanelWidth(initialRightPanel),
+  rightPanelWidth: getInitialRightPanelWidth(initialWorkspaceLayout.rightPanel),
   focusMode: false,
   previewMode: false,
   quickSwitcherOpen: false,
@@ -225,23 +264,34 @@ export const useUIStore = create<UIState>((set, get) => ({
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
 
   setRightPanel: (panel) => {
-    persistWorkspace({ rightPanel: panel })
-    set({ rightPanel: panel, ...(panel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(panel) } : {}) })
+    const layout = saveWorkspaceLayout(get().workspaceScope, { rightPanel: panel })
+    set({ rightPanel: layout.rightPanel, ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {}) })
   },
   toggleRightPanel: (panel) => {
     const next = get().rightPanel === panel ? 'none' : panel
-    persistWorkspace({ rightPanel: next })
-    set({ rightPanel: next, ...(next !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(next) } : {}) })
+    const layout = saveWorkspaceLayout(get().workspaceScope, { rightPanel: next })
+    set({ rightPanel: layout.rightPanel, ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {}) })
   },
   setMainView: (view) => {
     const currentPanel = get().rightPanel
     const rightPanel = view === 'editor' || !NOTE_SCOPED_PANELS.has(currentPanel) ? currentPanel : 'none'
-    persistWorkspace({ mainView: view, rightPanel })
-    set({ mainView: view, rightPanel, ...(rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(rightPanel) } : {}) })
+    const layout = saveWorkspaceLayout(get().workspaceScope, { mainView: view, rightPanel })
+    set({ mainView: layout.mainView, rightPanel: layout.rightPanel, ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {}) })
+  },
+  setWorkspaceScope: (scope) => {
+    const nextScope = scope.trim() || 'workspace'
+    const layout = getInitialWorkspaceLayout(nextScope)
+    set({
+      workspaceScope: nextScope,
+      mainView: layout.mainView,
+      rightPanel: layout.rightPanel,
+      sidebarCollapsed: layout.sidebarCollapsed,
+      rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel),
+    })
   },
   toggleSidebar: () => {
     const next = !get().sidebarCollapsed
-    persistWorkspace({ sidebarCollapsed: next })
+    saveWorkspaceLayout(get().workspaceScope, { sidebarCollapsed: next })
     set({ sidebarCollapsed: next })
   },
   toggleFocusMode: () => {
@@ -298,11 +348,13 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ language: lang })
   },
   resetWorkspaceLayout: () => {
+    const { workspaceScope, sidebarWidthScope } = get()
+    removeWorkspaceLayout(workspaceScope)
+    resetSidebarWidth(sidebarWidthScope)
     safeRemove(WORKSPACE_KEYS.mainView)
     safeRemove(WORKSPACE_KEYS.rightPanel)
     safeRemove(WORKSPACE_KEYS.sidebarCollapsed)
     safeRemove('nexusky-sidebar-width')
-    safeRemove(SIDEBAR_WIDTHS_KEY)
     safeRemove('nexusky-right-panel-width')
     safeRemove(RIGHT_PANEL_WIDTHS_KEY)
     set({
