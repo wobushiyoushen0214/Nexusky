@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -39,6 +39,11 @@ function getNoteFolderPath(filePath: string): string {
 
 function normalizeFolderArg(folder: string): string {
   return folder.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+}
+
+function hasPropertyTags(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some((item) => formatPropertyValue(item).trim().length > 0)
+  return formatPropertyValue(value).trim().length > 0
 }
 
 export function registerAiIPC(): void {
@@ -1124,6 +1129,20 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_untagged_notes',
+        description: '列出没有任何标签的笔记，可按标题或路径过滤。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_duplicate_note_titles',
         description: '列出标题重复的笔记及其路径，帮助避免 read_note 歧义。',
         parameters: {
@@ -1475,6 +1494,24 @@ graph TD
             title: note.title,
             filePath: note.filePath,
             chunk: 'Orphan note: no resolved outgoing links or backlinks',
+            score: 1
+          }))
+        }
+      }
+      case 'list_untagged_notes': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getPropertyRows(vaultPath)
+          .filter((row) => !hasPropertyTags(row.properties.tags))
+          .filter((row) => !query || [row.title, row.filePath].some((value) => value.toLowerCase().includes(query)))
+          .map((row) => ({ title: row.title, filePath: row.filePath, updatedAt: row.updatedAt }))
+          .slice(0, limit)
+        return {
+          content: formatUntaggedNotesToolResult(notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: 'Untagged note',
             score: 1
           }))
         }

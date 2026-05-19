@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -289,5 +289,19 @@ describe('formatDuplicateNoteTitlesToolResult', () => {
 
   it('marks empty duplicate title results explicitly', () => {
     expect(formatDuplicateNoteTitlesToolResult([])).toBe('No duplicate note titles found.')
+  })
+})
+
+describe('formatUntaggedNotesToolResult', () => {
+  it('formats untagged notes with paths and timestamps', () => {
+    const output = formatUntaggedNotesToolResult([
+      { title: 'Inbox', filePath: 'Inbox.md', updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('1. **Inbox**\nPath: Inbox.md\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty untagged note results explicitly', () => {
+    expect(formatUntaggedNotesToolResult([])).toBe('No untagged notes found.')
   })
 })
