@@ -31,8 +31,10 @@ interface PreferredPosition {
 }
 
 interface PendingScroll {
-  left: number
-  top: number
+  left?: number
+  top?: number
+  focusX?: number
+  focusY?: number
 }
 
 interface CanvasViewportState {
@@ -46,6 +48,7 @@ const CARD_HEIGHT = 112
 const BASE_CANVAS_WIDTH = 1200
 const BASE_CANVAS_HEIGHT = 760
 const CANVAS_PADDING = 760
+const CARD_GAP = 32
 
 function getCanvasStorageKey(vaultPath: string): string {
   return `nexusky-canvas-layout:${encodeURIComponent(vaultPath)}`
@@ -59,6 +62,47 @@ function defaultPosition(index: number): CanvasPosition {
   const column = index % 4
   const row = Math.floor(index / 4)
   return { x: 40 + column * 250, y: 40 + row * 170 }
+}
+
+function cardsOverlap(a: CanvasPosition, b: CanvasPosition): boolean {
+  return (
+    a.x < b.x + CARD_WIDTH + CARD_GAP &&
+    a.x + CARD_WIDTH + CARD_GAP > b.x &&
+    a.y < b.y + CARD_HEIGHT + CARD_GAP &&
+    a.y + CARD_HEIGHT + CARD_GAP > b.y
+  )
+}
+
+export function findAvailablePosition(origin: CanvasPosition, occupied: CanvasPosition[]): CanvasPosition {
+  const stepX = CARD_WIDTH + CARD_GAP
+  const stepY = CARD_HEIGHT + CARD_GAP
+  const candidates: CanvasPosition[] = [origin]
+  for (let radius = 1; radius <= 12; radius++) {
+    const ring: CanvasPosition[] = []
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue
+        ring.push({
+          x: origin.x + dx * stepX,
+          y: origin.y + dy * stepY
+        })
+      }
+    }
+    ring.sort((a, b) => {
+      const ax = (a.x - origin.x) / stepX
+      const ay = (a.y - origin.y) / stepY
+      const bx = (b.x - origin.x) / stepX
+      const by = (b.y - origin.y) / stepY
+      const scoreA = Math.abs(ay) * 4 + (ax < 0 ? 2 : 0) + (ay < 0 ? 1 : 0)
+      const scoreB = Math.abs(by) * 4 + (bx < 0 ? 2 : 0) + (by < 0 ? 1 : 0)
+      return scoreA - scoreB || Math.abs(ax) - Math.abs(bx)
+    })
+    candidates.push(...ring)
+  }
+  return candidates.find((candidate) => occupied.every((position) => !cardsOverlap(candidate, position))) || {
+    x: origin.x + occupied.length * stepX,
+    y: origin.y
+  }
 }
 
 function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>) {
@@ -137,8 +181,13 @@ export function CanvasView() {
     const pendingScroll = pendingScrollRef.current
     if (pendingScroll) {
       pendingScrollRef.current = null
-      viewport.scrollLeft = Math.max(0, pendingScroll.left)
-      viewport.scrollTop = Math.max(0, pendingScroll.top)
+      if (typeof pendingScroll.focusX === 'number' && typeof pendingScroll.focusY === 'number') {
+        viewport.scrollLeft = Math.max(0, (pendingScroll.focusX - canvasMetrics.minX) * zoom - viewport.clientWidth / 2)
+        viewport.scrollTop = Math.max(0, (pendingScroll.focusY - canvasMetrics.minY) * zoom - viewport.clientHeight / 2)
+      } else {
+        viewport.scrollLeft = Math.max(0, pendingScroll.left || 0)
+        viewport.scrollTop = Math.max(0, pendingScroll.top || 0)
+      }
       return
     }
     const dx = (previous.minX - canvasMetrics.minX) * zoom
@@ -412,10 +461,18 @@ export function CanvasView() {
     await window.api.invoke('db:index-file', { vaultPath, filePath: path })
     const viewport = canvasRef.current
     const metrics = metricsRef.current
-    const position = viewport ? {
+    const origin = viewport ? {
       x: (viewport.scrollLeft + viewport.clientWidth / 2) / zoomRef.current + metrics.minX - CARD_WIDTH / 2,
       y: (viewport.scrollTop + viewport.clientHeight / 2) / zoomRef.current + metrics.minY - CARD_HEIGHT / 2
     } : defaultPosition(rows.length)
+    const existingPositions = rows.map((row, index) => positionsRef.current[row.id] || defaultPosition(index))
+    const position = findAvailablePosition(origin, existingPositions)
+    if (viewport) {
+      pendingScrollRef.current = {
+        focusX: position.x + CARD_WIDTH / 2,
+        focusY: position.y + CARD_HEIGHT / 2
+      }
+    }
     await loadRows({ filePath: path.slice(vaultPath.length + 1), position })
     toast(t('canvas.created'), 'success')
   }
