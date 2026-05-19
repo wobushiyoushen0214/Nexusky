@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use tauri::Emitter;
 use walkdir::WalkDir;
 
 fn config_path() -> Result<std::path::PathBuf, String> {
@@ -208,6 +209,110 @@ fn list_ollama_models(base_url: Option<&str>) -> Value {
             .map(|name| Value::String(name.to_string()))
             .collect(),
     )
+}
+
+fn ai_config_text<'a>(config: &'a Value, key: &str) -> &'a str {
+    config.get(key).and_then(Value::as_str).unwrap_or("")
+}
+
+fn ai_config_error(config: &Value) -> Option<String> {
+    let provider_type = ai_config_text(config, "type");
+    let needs_api_key = provider_type != "ollama" && provider_type != "codex";
+    if needs_api_key && ai_config_text(config, "apiKey").trim().is_empty() {
+        return Some("API Key 为空（可能是跨设备同步后解密失败），请重新配置 API Key".into());
+    }
+    if ai_config_text(config, "model").trim().is_empty() {
+        return Some("模型名称为空，请填写要使用的模型".into());
+    }
+    if provider_type == "custom" && ai_config_text(config, "baseUrl").trim().is_empty() {
+        return Some("自定义提供商需要填写 API Base URL".into());
+    }
+    None
+}
+
+fn ai_base_url(config: &Value) -> String {
+    let raw = ai_config_text(config, "baseUrl").trim();
+    if !raw.is_empty() {
+        return raw.trim_end_matches('/').to_string();
+    }
+    match ai_config_text(config, "type") {
+        "claude" => "https://api.anthropic.com".into(),
+        "ollama" => "http://localhost:11434/v1".into(),
+        _ => "https://api.openai.com/v1".into(),
+    }
+}
+
+fn validate_ollama(config: &Value) -> Value {
+    let raw = ai_base_url(config);
+    let url = raw.strip_suffix("/v1").unwrap_or(&raw);
+    match reqwest::blocking::get(format!("{url}/api/tags")) {
+        Ok(response) if response.status().is_success() => json!({ "ok": true }),
+        Ok(response) => {
+            json!({ "ok": false, "error": format!("Ollama 返回 HTTP {}", response.status()) })
+        }
+        Err(error) => json!({ "ok": false, "error": error.to_string() }),
+    }
+}
+
+fn validate_codex(config: &Value) -> Value {
+    let command = ai_config_text(config, "baseUrl").trim();
+    let command = if command.is_empty() { "codex" } else { command };
+    match Command::new(command).arg("--version").output() {
+        Ok(output) if output.status.success() => json!({ "ok": true }),
+        Ok(output) => {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let message = if !stderr.is_empty() { stderr } else { stdout };
+            json!({ "ok": false, "error": if message.is_empty() { format!("Codex CLI 退出码 {}", output.status.code().unwrap_or(-1)) } else { message } })
+        }
+        Err(error) => json!({ "ok": false, "error": error.to_string() }),
+    }
+}
+
+fn validate_claude(config: &Value) -> Value {
+    let response = reqwest::blocking::Client::new()
+        .post(format!("{}/v1/messages", ai_base_url(config)))
+        .header("x-api-key", ai_config_text(config, "apiKey"))
+        .header("anthropic-version", "2023-06-01")
+        .json(&json!({
+            "model": ai_config_text(config, "model"),
+            "max_tokens": 1,
+            "messages": [{ "role": "user", "content": "hi" }]
+        }))
+        .send();
+    match response {
+        Ok(response) if response.status().is_success() => json!({ "ok": true }),
+        Ok(response) => {
+            json!({ "ok": false, "error": format!("Claude 返回 HTTP {}", response.status()) })
+        }
+        Err(error) => json!({ "ok": false, "error": error.to_string() }),
+    }
+}
+
+fn validate_openai_compatible(config: &Value) -> Value {
+    let response = reqwest::blocking::Client::new()
+        .get(format!("{}/models", ai_base_url(config)))
+        .bearer_auth(ai_config_text(config, "apiKey"))
+        .send();
+    match response {
+        Ok(response) if response.status().is_success() => json!({ "ok": true }),
+        Ok(response) => {
+            json!({ "ok": false, "error": format!("Provider 返回 HTTP {}", response.status()) })
+        }
+        Err(error) => json!({ "ok": false, "error": error.to_string() }),
+    }
+}
+
+fn validate_ai_provider(config: &Value) -> Value {
+    if let Some(error) = ai_config_error(config) {
+        return json!({ "ok": false, "error": error });
+    }
+    match ai_config_text(config, "type") {
+        "ollama" => validate_ollama(config),
+        "codex" => validate_codex(config),
+        "claude" => validate_claude(config),
+        _ => validate_openai_compatible(config),
+    }
 }
 
 fn default_templates() -> Value {
@@ -620,6 +725,13 @@ fn icloud_sync(vault_path: &Path, pull_only: bool) -> Result<Value, String> {
 
 fn supabase_config() -> Option<(String, String)> {
     let config = get_config("cloudConfig", json!({}));
+    if !config
+        .get("enabled")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
+        return None;
+    }
     let url = config
         .get("supabaseUrl")?
         .as_str()?
@@ -636,6 +748,158 @@ fn supabase_config() -> Option<(String, String)> {
     } else {
         Some((url.to_string(), key.to_string()))
     }
+}
+
+fn supabase_auth_config() -> Result<(String, String), String> {
+    let config = get_config("cloudConfig", json!({}));
+    if !config
+        .get("enabled")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
+        return Err("未启用 Supabase".into());
+    }
+    let url = config
+        .get("supabaseUrl")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|url| !url.is_empty())
+        .ok_or_else(|| "未配置 Supabase URL".to_string())?
+        .trim_end_matches('/')
+        .to_string();
+    let key = config
+        .get("supabaseKey")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|key| !key.is_empty())
+        .ok_or_else(|| "未配置 Supabase Anon Key".to_string())?
+        .to_string();
+    Ok((url, key))
+}
+
+fn supabase_error(value: &Value, fallback: &str) -> String {
+    value
+        .get("error_description")
+        .or_else(|| value.get("msg"))
+        .or_else(|| value.get("message"))
+        .or_else(|| value.get("error"))
+        .and_then(Value::as_str)
+        .filter(|message| !message.is_empty())
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn save_supabase_session(value: &Value) -> Result<(), String> {
+    let Some(access_token) = value.get("access_token").and_then(Value::as_str) else {
+        return Ok(());
+    };
+    let user = value.get("user").unwrap_or(&Value::Null);
+    let email = user
+        .get("email")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    set_config(
+        "supabaseSession",
+        json!({
+            "accessToken": access_token,
+            "refreshToken": value.get("refresh_token").and_then(Value::as_str).unwrap_or(""),
+            "email": email
+        }),
+    )
+}
+
+fn supabase_sign_in(email: &str, password: &str) -> Value {
+    let Ok((url, key)) = supabase_auth_config() else {
+        return json!({ "success": false, "error": "未配置云端" });
+    };
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .post(format!("{url}/auth/v1/token?grant_type=password"))
+        .header("apikey", &key)
+        .header("content-type", "application/json")
+        .json(&json!({ "email": email, "password": password }))
+        .send();
+    let Ok(response) = response else {
+        return json!({ "success": false, "error": response.err().map(|e| e.to_string()).unwrap_or_else(|| "登录失败".into()) });
+    };
+    let status = response.status();
+    let body = response.json::<Value>().unwrap_or_else(|_| json!({}));
+    if !status.is_success() {
+        return json!({ "success": false, "error": supabase_error(&body, "登录失败") });
+    }
+    if let Err(error) = save_supabase_session(&body) {
+        return json!({ "success": false, "error": error });
+    }
+    json!({ "success": true })
+}
+
+fn supabase_sign_up(email: &str, password: &str) -> Value {
+    let Ok((url, key)) = supabase_auth_config() else {
+        return json!({ "success": false, "error": "未配置云端" });
+    };
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .post(format!("{url}/auth/v1/signup"))
+        .header("apikey", &key)
+        .header("content-type", "application/json")
+        .json(&json!({ "email": email, "password": password }))
+        .send();
+    let Ok(response) = response else {
+        return json!({ "success": false, "error": response.err().map(|e| e.to_string()).unwrap_or_else(|| "注册失败".into()) });
+    };
+    let status = response.status();
+    let body = response.json::<Value>().unwrap_or_else(|_| json!({}));
+    if !status.is_success() {
+        return json!({ "success": false, "error": supabase_error(&body, "注册失败") });
+    }
+    if let Err(error) = save_supabase_session(&body) {
+        return json!({ "success": false, "error": error });
+    }
+    json!({ "success": true })
+}
+
+fn supabase_sign_out() -> Result<(), String> {
+    if let (Ok((url, key)), Some(access_token)) = (
+        supabase_auth_config(),
+        get_config("supabaseSession", Value::Null)
+            .get("accessToken")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    ) {
+        let _ = reqwest::blocking::Client::new()
+            .post(format!("{url}/auth/v1/logout"))
+            .header("apikey", key)
+            .bearer_auth(access_token)
+            .send();
+    }
+    set_config("supabaseSession", Value::Null)
+}
+
+fn supabase_get_user() -> Value {
+    let session = get_config("supabaseSession", Value::Null);
+    let Some(access_token) = session.get("accessToken").and_then(Value::as_str) else {
+        return Value::Null;
+    };
+    let Ok((url, key)) = supabase_auth_config() else {
+        return Value::Null;
+    };
+    let response = reqwest::blocking::Client::new()
+        .get(format!("{url}/auth/v1/user"))
+        .header("apikey", key)
+        .bearer_auth(access_token)
+        .send();
+    let Ok(response) = response else {
+        return Value::Null;
+    };
+    if !response.status().is_success() {
+        return Value::Null;
+    }
+    let body = response.json::<Value>().unwrap_or_else(|_| json!({}));
+    body.get("email")
+        .and_then(Value::as_str)
+        .map(|email| json!({ "email": email }))
+        .unwrap_or(Value::Null)
 }
 
 fn supabase_test_connection() -> Value {
@@ -852,6 +1116,76 @@ fn active_cloud_test_connection(provider: &str) -> Value {
     }
 }
 
+fn version_parts(version: &str) -> Vec<u64> {
+    version
+        .trim()
+        .trim_start_matches('v')
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|part| !part.is_empty())
+        .filter_map(|part| part.parse::<u64>().ok())
+        .collect()
+}
+
+fn is_version_newer(candidate: &str, current: &str) -> bool {
+    let candidate_parts = version_parts(candidate);
+    let current_parts = version_parts(current);
+    let len = candidate_parts.len().max(current_parts.len()).max(3);
+    for i in 0..len {
+        let candidate_part = candidate_parts.get(i).copied().unwrap_or(0);
+        let current_part = current_parts.get(i).copied().unwrap_or(0);
+        if candidate_part > current_part {
+            return true;
+        }
+        if candidate_part < current_part {
+            return false;
+        }
+    }
+    false
+}
+
+fn check_github_update() -> Value {
+    let response = reqwest::blocking::Client::new()
+        .get("https://api.github.com/repos/wobushiyoushen0214/Nexusky/releases/latest")
+        .header("user-agent", "Nexusky")
+        .send();
+    let Ok(response) = response else {
+        return json!({ "available": false });
+    };
+    if !response.status().is_success() {
+        return json!({ "available": false });
+    }
+    let body = response.json::<Value>().unwrap_or_else(|_| json!({}));
+    let Some(version) = body
+        .get("tag_name")
+        .or_else(|| body.get("name"))
+        .and_then(Value::as_str)
+    else {
+        return json!({ "available": false });
+    };
+    let available = is_version_newer(version, env!("CARGO_PKG_VERSION"));
+    json!({
+        "available": available,
+        "version": if available { Value::String(version.trim_start_matches('v').to_string()) } else { Value::Null }
+    })
+}
+
+pub fn start_update_check(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(30));
+        let result = check_github_update();
+        if !result
+            .get("available")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            return;
+        }
+        if let Some(version) = result.get("version").and_then(Value::as_str) {
+            let _ = app.emit("updater:available", json!({ "version": version }));
+        }
+    });
+}
+
 fn percent_encode(value: &str) -> String {
     value
         .bytes()
@@ -1043,12 +1377,94 @@ fn onedrive_auth(client_id: &str) -> Result<Value, String> {
     Ok(json!({ "success": true }))
 }
 
-fn cloud_push_file(vault_path: &str, file_path: &str) -> Result<bool, String> {
+fn raw_cloud_push_file(vault_path: &str, file_path: &str) -> Result<bool, String> {
     match active_sync_provider().as_str() {
         "icloud" => icloud_push_file(Path::new(vault_path), Path::new(file_path)),
         "supabase" => supabase_push_file(Path::new(vault_path), Path::new(file_path)),
         "onedrive" => onedrive_push_file(Path::new(vault_path), Path::new(file_path)),
         _ => Ok(false),
+    }
+}
+
+fn sync_excludes() -> Vec<String> {
+    get_config("syncExclude", json!([]))
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect()
+}
+
+fn is_sync_excluded(rel_path: &str) -> bool {
+    sync_excludes()
+        .iter()
+        .any(|exclude| rel_path == exclude || rel_path.starts_with(&format!("{exclude}/")))
+}
+
+fn cloud_is_online() -> bool {
+    get_config("cloudOnline", Value::Bool(true))
+        .as_bool()
+        .unwrap_or(true)
+}
+
+fn offline_queue() -> Vec<Value> {
+    get_config("offlineQueue", json!([]))
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+}
+
+fn set_offline_queue(queue: Vec<Value>) -> Result<(), String> {
+    set_config("offlineQueue", Value::Array(queue))
+}
+
+fn queue_offline_push(vault_path: &str, file_path: &str) -> Result<(), String> {
+    let mut queue = offline_queue();
+    let exists = queue.iter().any(|item| {
+        item.get("vaultPath").and_then(Value::as_str) == Some(vault_path)
+            && item.get("filePath").and_then(Value::as_str) == Some(file_path)
+    });
+    if !exists {
+        queue.push(json!({ "vaultPath": vault_path, "filePath": file_path }));
+        set_offline_queue(queue)?;
+    }
+    Ok(())
+}
+
+fn flush_offline_queue() -> Result<(), String> {
+    let mut pending = Vec::<Value>::new();
+    for item in offline_queue() {
+        let Some(vault_path) = item.get("vaultPath").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(file_path) = item.get("filePath").and_then(Value::as_str) else {
+            continue;
+        };
+        match raw_cloud_push_file(vault_path, file_path) {
+            Ok(true) => {}
+            _ => pending.push(item),
+        }
+    }
+    set_offline_queue(pending)
+}
+
+fn cloud_push_file(vault_path: &str, file_path: &str) -> Result<bool, String> {
+    let rel = rel_sync_path(Path::new(vault_path), Path::new(file_path))?;
+    if is_sync_excluded(&rel) {
+        return Ok(false);
+    }
+    if !cloud_is_online() {
+        queue_offline_push(vault_path, file_path)?;
+        return Ok(false);
+    }
+    match raw_cloud_push_file(vault_path, file_path) {
+        Ok(true) => Ok(true),
+        Ok(false) => Ok(false),
+        Err(_) => {
+            queue_offline_push(vault_path, file_path)?;
+            Ok(false)
+        }
     }
 }
 
@@ -1160,13 +1576,19 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             Ok(Some(Value::Null))
         }
         "ai:set-active" => {
-            set_config(
-                "activeAIProvider",
-                Value::String(as_str(&params, "providerId")?.to_string()),
-            )?;
+            let provider_id = Value::String(as_str(&params, "providerId")?.to_string());
+            set_config("activeAIProvider", provider_id.clone())?;
+            set_config("activeProviderId", provider_id)?;
             Ok(Some(Value::Null))
         }
-        "ai:get-active-provider" => Ok(Some(get_config("activeAIProvider", Value::Null))),
+        "ai:get-active-provider" => {
+            let value = get_config("activeAIProvider", Value::Null);
+            if value.is_null() {
+                Ok(Some(get_config("activeProviderId", Value::Null)))
+            } else {
+                Ok(Some(value))
+            }
+        }
         "ai:get-system-prompt" => Ok(Some(get_config(
             "systemPrompt",
             Value::String(String::new()),
@@ -1178,7 +1600,9 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             )?;
             Ok(Some(Value::Null))
         }
-        "ai:validate" => Ok(Some(json!({ "ok": true }))),
+        "ai:validate" => Ok(Some(validate_ai_provider(
+            params.get("config").unwrap_or(&Value::Null),
+        ))),
         "ai:detect-local-config" => Ok(Some(detect_local_ai_config())),
         "ai:list-ollama-models" => Ok(Some(list_ollama_models(
             params.get("baseUrl").and_then(Value::as_str),
@@ -1192,15 +1616,38 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 "cloudConfig",
                 params.get("config").cloned().unwrap_or_else(|| json!({})),
             )?;
+            set_config("supabaseSession", Value::Null)?;
             Ok(Some(Value::Null))
         }
         "cloud:init" => Ok(Some(active_cloud_test_connection(&active_sync_provider()))),
-        "cloud:sign-in" | "cloud:sign-up" => Ok(Some(json!({
-          "success": supabase_config().is_some(),
-          "error": if supabase_config().is_some() { Value::Null } else { Value::String("未配置 Supabase".into()) }
-        }))),
-        "cloud:get-user" => Ok(Some(Value::Null)),
-        "cloud:sign-out" | "cloud:set-online" => Ok(Some(Value::Null)),
+        "cloud:sign-in" => Ok(Some(supabase_sign_in(
+            as_str(&params, "email")?,
+            as_str(&params, "password")?,
+        ))),
+        "cloud:sign-up" => Ok(Some(supabase_sign_up(
+            as_str(&params, "email")?,
+            as_str(&params, "password")?,
+        ))),
+        "cloud:get-user" => Ok(Some(supabase_get_user())),
+        "cloud:sign-out" => {
+            supabase_sign_out()?;
+            Ok(Some(Value::Null))
+        }
+        "cloud:set-online" => {
+            set_config(
+                "cloudOnline",
+                Value::Bool(
+                    params
+                        .get("online")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(true),
+                ),
+            )?;
+            if cloud_is_online() {
+                flush_offline_queue()?;
+            }
+            Ok(Some(Value::Null))
+        }
         "cloud:onedrive-auth" => Ok(Some(onedrive_auth(as_str(&params, "clientId")?)?)),
         "cloud:sync" => Ok(Some(cloud_sync(as_str(&params, "vaultPath")?, false)?)),
         "cloud:pull-all" => Ok(Some(cloud_sync(as_str(&params, "vaultPath")?, true)?)),
@@ -1254,7 +1701,7 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             Ok(Some(Value::Null))
         }
         "cloud:get-all-providers" => Ok(Some(json!([
-          { "type": "supabase", "name": "Supabase", "configured": false },
+          { "type": "supabase", "name": "Supabase", "configured": supabase_config().is_some() },
           { "type": "icloud", "name": "iCloud Drive", "configured": get_config("icloudPath", Value::Null).is_string() },
           { "type": "onedrive", "name": "OneDrive", "configured": get_config("onedriveConfig", Value::Null).is_object() }
         ]))),
@@ -1264,9 +1711,29 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 .and_then(Value::as_str)
                 .unwrap_or(&active_sync_provider()),
         ))),
-        "cloud:get-onedrive-config" => Ok(Some(get_config("onedriveConfig", Value::Null))),
+        "cloud:get-onedrive-config" => {
+            let config = get_config("onedriveConfig", Value::Null);
+            if config.is_null() {
+                Ok(Some(Value::Null))
+            } else {
+                Ok(Some(json!({
+                    "clientId": config.get("clientId").and_then(Value::as_str).unwrap_or(""),
+                    "folder": config.get("folder").and_then(Value::as_str).unwrap_or("/Nexusky"),
+                    "hasToken": config.get("accessToken").and_then(Value::as_str).map(|token| !token.is_empty()).unwrap_or(false)
+                })))
+            }
+        }
         "cloud:save-onedrive-config" => {
-            set_config("onedriveConfig", params)?;
+            let existing = get_config("onedriveConfig", json!({}));
+            set_config(
+                "onedriveConfig",
+                json!({
+                    "clientId": as_str(&params, "clientId")?,
+                    "folder": as_str(&params, "folder")?,
+                    "accessToken": existing.get("accessToken").and_then(Value::as_str).unwrap_or(""),
+                    "refreshToken": existing.get("refreshToken").and_then(Value::as_str).unwrap_or("")
+                }),
+            )?;
             Ok(Some(Value::Null))
         }
         "cloud:get-icloud-path" => Ok(Some(get_config("icloudPath", Value::Null))),
@@ -1285,7 +1752,7 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             )?;
             Ok(Some(Value::Null))
         }
-        "cloud:get-queue-size" => Ok(Some(Value::Number(0.into()))),
+        "cloud:get-queue-size" => Ok(Some(Value::Number(offline_queue().len().into()))),
         "cloud:resolve-conflict" => {
             let vault = as_str(&params, "vaultPath")?;
             let rel = as_str(&params, "path")?;
@@ -1303,8 +1770,11 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 )?)))
             }
         }
-        "updater:check" => Ok(Some(json!({ "available": false }))),
-        "updater:download" | "updater:install" => Ok(Some(Value::Null)),
+        "updater:check" => Ok(Some(check_github_update())),
+        "updater:download" | "updater:install" => {
+            open_external("https://github.com/wobushiyoushen0214/Nexusky/releases/latest")?;
+            Ok(Some(Value::Null))
+        }
         "export:html" => {
             let title = as_str(&params, "title")?;
             let Some(path) = save_dialog(&format!("{title}.html"), "html", "HTML") else {
@@ -1359,5 +1829,13 @@ mod tests {
         assert!(is_usable_openai_key("sk-test_123"));
         assert!(!is_usable_openai_key("sess-not-an-api-key"));
         assert!(!is_usable_openai_key(""));
+    }
+
+    #[test]
+    fn compares_release_versions() {
+        assert!(is_version_newer("v0.3.8", "0.3.7"));
+        assert!(is_version_newer("1.0.0", "0.9.9"));
+        assert!(!is_version_newer("0.3.7", "0.3.7"));
+        assert!(!is_version_newer("0.3.6", "0.3.7"));
     }
 }

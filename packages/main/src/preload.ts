@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AINotesProgress, AIStreamEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel } from '@shared/types/ipc'
 
+type AppRuntime = 'electron' | 'tauri'
+
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
   params: IPCChannelMap[K]['params']
@@ -85,6 +87,7 @@ const api = {
     ipcRenderer.on('quick-capture', handler)
     return () => { ipcRenderer.removeListener('quick-capture', handler) }
   },
+  runtime: 'electron' as AppRuntime,
   platform: process.platform,
   windowControls: {
     minimize: () => ipcRenderer.send('window:minimize'),

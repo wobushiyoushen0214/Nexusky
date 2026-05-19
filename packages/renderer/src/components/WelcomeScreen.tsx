@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 
 export function WelcomeScreen() {
-  const { selectVault, createVault } = useVaultStore()
+  const { selectVault, createVault, openVault } = useVaultStore()
   const [isCreating, setIsCreating] = useState(false)
   const [vaultName, setVaultName] = useState('')
   const [recentVaults, setRecentVaults] = useState<string[]>([])
@@ -20,10 +20,7 @@ export function WelcomeScreen() {
   }
 
   const handleOpenRecent = async (path: string) => {
-    const { setVaultPath, refreshFiles, indexVault } = useVaultStore.getState()
-    setVaultPath(path)
-    await refreshFiles()
-    await indexVault()
+    await openVault(path)
   }
 
   return (

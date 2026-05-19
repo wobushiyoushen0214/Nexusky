@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
+use tauri::Emitter;
 use walkdir::WalkDir;
 
 fn as_str<'a>(params: &'a Value, key: &str) -> Result<&'a str, String> {
@@ -486,7 +487,17 @@ fn remove_note_index(conn: &Connection, vault_path: &str, file_path: &Path) -> R
     Ok(())
 }
 
-pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
+fn emit_embed_progress(app: Option<&tauri::AppHandle>, status: Value) {
+    if let Some(app) = app {
+        let _ = app.emit("embed:progress", status);
+    }
+}
+
+pub fn handle(
+    app: Option<&tauri::AppHandle>,
+    channel: &str,
+    params: Value,
+) -> Result<Option<Value>, String> {
     match channel {
         "db:index-vault" => {
             let vault = as_str(&params, "vaultPath")?;
@@ -976,7 +987,20 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
         "db:embed-vault" => {
             let vault = as_str(&params, "vaultPath")?;
             let mut conn = connection(vault)?;
-            for file in collect_markdown_files(vault) {
+            let files = collect_markdown_files(vault);
+            let total = files.len();
+            emit_embed_progress(
+                app,
+                json!({
+                    "state": "indexing",
+                    "current": 0,
+                    "total": total,
+                    "embedded": 0,
+                    "message": if total == 0 { "没有需要索引的笔记" } else { "准备建立语义索引" },
+                    "updatedAt": chrono::Utc::now().timestamp_millis()
+                }),
+            );
+            for file in files {
                 index_note(&mut conn, vault, &file)?;
             }
             let mut stmt = conn
@@ -988,13 +1012,36 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 .filter_map(Result::ok)
                 .collect::<Vec<_>>();
             let mut embedded = 0;
-            for (note_id, file_path) in notes {
+            let total = notes.len();
+            for (index, (note_id, file_path)) in notes.into_iter().enumerate() {
                 let content =
                     fs::read_to_string(Path::new(vault).join(&file_path)).unwrap_or_default();
                 if index_note_chunks(&conn, &note_id, &content, "tauri-lexical")? > 0 {
                     embedded += 1;
                 }
+                emit_embed_progress(
+                    app,
+                    json!({
+                        "state": "indexing",
+                        "current": index + 1,
+                        "total": total,
+                        "embedded": embedded,
+                        "message": format!("正在处理 {}/{}", index + 1, total),
+                        "updatedAt": chrono::Utc::now().timestamp_millis()
+                    }),
+                );
             }
+            emit_embed_progress(
+                app,
+                json!({
+                    "state": "done",
+                    "current": total,
+                    "total": total,
+                    "embedded": embedded,
+                    "message": "语义索引完成",
+                    "updatedAt": chrono::Utc::now().timestamp_millis()
+                }),
+            );
             Ok(Some(json!({ "embedded": embedded })))
         }
         _ => Ok(None),

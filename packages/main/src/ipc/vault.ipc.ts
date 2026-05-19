@@ -27,6 +27,14 @@ export function registerVaultIPC(): void {
     return vaultPath
   })
 
+  ipcMain.handle('vault:open', async (_event, params: { path: string }) => {
+    const vaultPath = params.path
+    store.set('vaultPath', vaultPath)
+    addToRecentVaults(vaultPath)
+    startWatching(vaultPath)
+    return vaultPath
+  })
+
   ipcMain.handle('vault:create', async (_event, params: { name: string }) => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory'],

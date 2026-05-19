@@ -40,7 +40,25 @@ fn add_recent(config: &mut Value, vault_path: &str) {
     config["recentVaults"] = Value::Array(recent);
 }
 
-pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
+fn persist_current_vault(app: &tauri::AppHandle, vault_path: String) -> Result<Value, String> {
+    let metadata = fs::metadata(&vault_path).map_err(|e| e.to_string())?;
+    if !metadata.is_dir() {
+        return Err("所选路径不是文件夹".to_string());
+    }
+
+    let mut config = read_config();
+    config["vaultPath"] = Value::String(vault_path.clone());
+    add_recent(&mut config, &vault_path);
+    write_config(&config)?;
+    crate::watcher::start_watching(app.clone(), vault_path.clone());
+    Ok(Value::String(vault_path))
+}
+
+pub fn handle(
+    app: &tauri::AppHandle,
+    channel: &str,
+    params: Value,
+) -> Result<Option<Value>, String> {
     match channel {
         "vault:select" => {
             let Some(path) = rfd::FileDialog::new()
@@ -49,12 +67,17 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             else {
                 return Ok(Some(Value::Null));
             };
-            let vault_path = path.to_string_lossy().to_string();
-            let mut config = read_config();
-            config["vaultPath"] = Value::String(vault_path.clone());
-            add_recent(&mut config, &vault_path);
-            write_config(&config)?;
-            Ok(Some(Value::String(vault_path)))
+            Ok(Some(persist_current_vault(
+                app,
+                path.to_string_lossy().to_string(),
+            )?))
+        }
+        "vault:open" => {
+            let vault_path = params
+                .get("path")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "missing path".to_string())?;
+            Ok(Some(persist_current_vault(app, vault_path.to_string())?))
         }
         "vault:create" => {
             let Some(parent) = rfd::FileDialog::new()
@@ -76,13 +99,16 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             config["vaultPath"] = Value::String(vault_path.clone());
             add_recent(&mut config, &vault_path);
             write_config(&config)?;
+            crate::watcher::start_watching(app.clone(), vault_path.clone());
             Ok(Some(Value::String(vault_path)))
         }
         "vault:get" => {
             let config = read_config();
-            Ok(Some(
-                config.get("vaultPath").cloned().unwrap_or(Value::Null),
-            ))
+            let value = config.get("vaultPath").cloned().unwrap_or(Value::Null);
+            if let Some(vault_path) = value.as_str() {
+                crate::watcher::start_watching(app.clone(), vault_path.to_string());
+            }
+            Ok(Some(value))
         }
         "vault:get-recent" => {
             let config = read_config();
@@ -97,6 +123,7 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             let mut config = read_config();
             config["vaultPath"] = Value::Null;
             write_config(&config)?;
+            crate::watcher::stop_watching();
             Ok(Some(Value::Null))
         }
         _ => Ok(None),

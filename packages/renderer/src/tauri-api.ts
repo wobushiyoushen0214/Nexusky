@@ -92,6 +92,7 @@ function createTauriApi(tauri: TauriGlobal): ElectronAPI {
     onUpdaterProgress: (callback: (data: { percent: number }) => void) => listen<{ percent: number }>('updater:progress', callback),
     onUpdaterDownloaded: (callback: () => void) => listen<unknown>('updater:downloaded', () => callback()),
     onQuickCapture: (callback: () => void) => listen<unknown>('quick-capture', () => callback()),
+    runtime: 'tauri',
     platform: getPlatform(),
     windowControls: {
       minimize: () => { void currentWindow.minimize() },

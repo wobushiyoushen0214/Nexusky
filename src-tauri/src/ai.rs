@@ -1,8 +1,13 @@
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use tauri::{AppHandle, Emitter};
+
+static CHAT_GENERATION: AtomicU64 = AtomicU64::new(0);
+static COMPLETE_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 fn config_path() -> Result<std::path::PathBuf, String> {
     let base = dirs::config_dir().ok_or_else(|| "无法定位用户配置目录".to_string())?;
@@ -22,7 +27,10 @@ fn read_config() -> Value {
 fn active_provider() -> Option<Value> {
     let config = read_config();
     let providers = config.get("aiProviders")?.as_array()?;
-    let active = config.get("activeAIProvider").and_then(Value::as_str);
+    let active = config
+        .get("activeAIProvider")
+        .or_else(|| config.get("activeProviderId"))
+        .and_then(Value::as_str);
     providers
         .iter()
         .find(|p| active.is_some() && p.get("id").and_then(Value::as_str) == active)
@@ -48,6 +56,114 @@ fn message_text(content: &Value) -> String {
                 .join("\n")
         })
         .unwrap_or_default()
+}
+
+fn last_user_query(messages: &[Value]) -> Option<String> {
+    messages
+        .iter()
+        .rev()
+        .find_map(|message| {
+            (message.get("role").and_then(Value::as_str) == Some("user"))
+                .then(|| message_text(message.get("content").unwrap_or(&Value::Null)))
+        })
+        .filter(|text| !text.trim().is_empty())
+}
+
+fn with_chat_context(app: &AppHandle, params: &Value, messages: Vec<Value>) -> Vec<Value> {
+    let system_prompt = params.get("systemPrompt").and_then(Value::as_str);
+    let Some(vault_path) = params.get("vaultPath").and_then(Value::as_str) else {
+        if let Some(prompt) = system_prompt {
+            let mut next = vec![json!({ "role": "system", "content": prompt })];
+            next.extend(
+                messages
+                    .into_iter()
+                    .filter(|m| m.get("role").and_then(Value::as_str) != Some("system")),
+            );
+            return next;
+        }
+        return messages;
+    };
+    let Some(query) = last_user_query(&messages) else {
+        return messages;
+    };
+    let results = crate::db::handle(
+        None,
+        "db:semantic-search",
+        json!({ "vaultPath": vault_path, "query": query }),
+    )
+    .ok()
+    .flatten()
+    .and_then(|value| value.as_array().cloned())
+    .unwrap_or_default()
+    .into_iter()
+    .take(5)
+    .collect::<Vec<_>>();
+
+    if results.is_empty() {
+        if let Some(prompt) = system_prompt {
+            let mut next = vec![json!({ "role": "system", "content": prompt })];
+            next.extend(
+                messages
+                    .into_iter()
+                    .filter(|m| m.get("role").and_then(Value::as_str) != Some("system")),
+            );
+            return next;
+        }
+        return messages;
+    }
+
+    let context = results
+        .iter()
+        .enumerate()
+        .map(|(index, result)| {
+            format!(
+                "[^{}] {}\n{}",
+                index + 1,
+                result
+                    .get("title")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Untitled"),
+                result.get("chunk").and_then(Value::as_str).unwrap_or("")
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n---\n\n");
+    let default_system = format!(
+        "You are the user's personal knowledge base assistant. Answer questions based on retrieved note content. Respond in the same language as the user's question.\n\n<response_strategy>\n- Direct answer found in notes: cite and answer, mark sources with [^n]\n- Multiple notes complement each other: synthesize a complete answer, cite each source separately\n- Notes contain conflicting views: highlight the discrepancy, list each perspective with its source, let the user decide\n- No relevant information in notes: explicitly state \"no relevant content found in notes\", then supplement with general knowledge\n</response_strategy>\n\n<format>\n- Use [^n] citation format corresponding to note numbers below\n- Be concise and direct — do not repeat large blocks of note content verbatim\n- For factual questions, give the precise answer rather than a vague overview\n</format>\n\nRetrieved notes:\n---\n{context}\n---"
+    );
+    let system_content = system_prompt
+        .map(|prompt| format!("{prompt}\n\n以下是相关笔记内容：\n---\n{context}\n---"))
+        .unwrap_or(default_system);
+    let _ = app.emit(
+        "ai:sources",
+        Value::Array(
+            results
+                .iter()
+                .map(|result| {
+                    let chunk = result
+                        .get("chunk")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .chars()
+                        .take(100)
+                        .collect::<String>();
+                    json!({
+                        "title": result.get("title").and_then(Value::as_str).unwrap_or("Untitled"),
+                        "filePath": result.get("filePath").and_then(Value::as_str).unwrap_or(""),
+                        "chunk": chunk,
+                        "score": result.get("score").and_then(Value::as_f64).unwrap_or(0.0)
+                    })
+                })
+                .collect(),
+        ),
+    );
+    let mut next = vec![json!({ "role": "system", "content": system_content })];
+    next.extend(
+        messages
+            .into_iter()
+            .filter(|m| m.get("role").and_then(Value::as_str) != Some("system")),
+    );
+    next
 }
 
 fn normalize_messages(messages: &[Value]) -> Vec<Value> {
@@ -161,6 +277,102 @@ fn run_chat(messages: Vec<Value>) -> Result<String, String> {
     } else {
         openai_chat(&provider, normalize_messages(&messages))
     }
+}
+
+fn emit_openai_stream(app: &AppHandle, provider: &Value, messages: Vec<Value>, generation: u64) -> Result<(), String> {
+    let client = reqwest::blocking::Client::new();
+    let url = format!("{}/chat/completions", base_url(provider));
+    let mut req = client.post(url).json(&json!({
+      "model": provider_field(provider, "model"),
+      "messages": normalize_messages(&messages),
+      "temperature": 0.7,
+      "stream": true
+    }));
+    let api_key = provider_field(provider, "apiKey");
+    if !api_key.is_empty() {
+        req = req.bearer_auth(api_key);
+    }
+    let response = req
+        .send()
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())?;
+    let reader = BufReader::new(response);
+
+    for line in reader.lines() {
+        if !is_chat_task_current(generation) {
+            let _ = app.emit("ai:stream", json!({ "type": "done", "content": "" }));
+            return Ok(());
+        }
+        let line = line.map_err(|e| e.to_string())?;
+        let Some(data) = line.strip_prefix("data:") else {
+            continue;
+        };
+        let data = data.trim();
+        if data.is_empty() {
+            continue;
+        }
+        if data == "[DONE]" {
+            break;
+        }
+        let value: Value = match serde_json::from_str(data) {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
+        let content = value
+            .pointer("/choices/0/delta/content")
+            .or_else(|| value.pointer("/choices/0/message/content"))
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if !content.is_empty() {
+            let _ = app.emit("ai:stream", json!({ "type": "text", "content": content }));
+        }
+    }
+    let _ = app.emit("ai:stream", json!({ "type": "done", "content": "" }));
+    Ok(())
+}
+
+fn can_stream_chat(provider: &Value) -> bool {
+    matches!(
+        provider
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("openai"),
+        "openai" | "custom" | "ollama"
+    )
+}
+
+fn stream_chat(app: &AppHandle, messages: Vec<Value>, generation: u64) -> Result<bool, String> {
+    let provider = active_provider().ok_or_else(|| "未配置 AI Provider".to_string())?;
+    if !can_stream_chat(&provider) {
+        return Ok(false);
+    }
+    emit_openai_stream(app, &provider, messages, generation)?;
+    Ok(true)
+}
+
+fn begin_chat_task() -> u64 {
+    CHAT_GENERATION.fetch_add(1, Ordering::SeqCst) + 1
+}
+
+fn begin_complete_task() -> u64 {
+    COMPLETE_GENERATION.fetch_add(1, Ordering::SeqCst) + 1
+}
+
+fn cancel_chat_tasks() {
+    CHAT_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
+fn cancel_complete_tasks() {
+    COMPLETE_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
+fn is_chat_task_current(generation: u64) -> bool {
+    CHAT_GENERATION.load(Ordering::SeqCst) == generation
+}
+
+fn is_complete_task_current(generation: u64) -> bool {
+    COMPLETE_GENERATION.load(Ordering::SeqCst) == generation
 }
 
 fn emit_text(app: &AppHandle, content: &str) {
@@ -503,18 +715,32 @@ fn create_kanban_from_plan(
 pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Value>, String> {
     match channel {
         "ai:chat" | "ai:chat-agent" => {
+            let generation = begin_chat_task();
             let messages = params
                 .get("messages")
                 .and_then(Value::as_array)
                 .cloned()
                 .unwrap_or_default();
-            match run_chat(messages) {
-                Ok(content) => emit_text(app, &content),
-                Err(err) => emit_error(app, &err),
+            let messages = with_chat_context(app, &params, messages);
+            match stream_chat(app, messages.clone(), generation) {
+                Ok(true) => {}
+                Ok(false) => match run_chat(messages) {
+                    Ok(content) if is_chat_task_current(generation) => emit_text(app, &content),
+                    Err(err) if is_chat_task_current(generation) => emit_error(app, &err),
+                    _ => {
+                        let _ = app.emit("ai:stream", json!({ "type": "done", "content": "" }));
+                    }
+                },
+                Err(err) => {
+                    if is_chat_task_current(generation) {
+                        emit_error(app, &err);
+                    }
+                }
             }
             Ok(Some(Value::Null))
         }
         "ai:complete" => {
+            let generation = begin_complete_task();
             let text = params.get("text").and_then(Value::as_str).unwrap_or("");
             let system = params.get("system").and_then(Value::as_str).unwrap_or("");
             let mut messages = Vec::new();
@@ -522,7 +748,12 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
                 messages.push(json!({ "role": "system", "content": system }));
             }
             messages.push(json!({ "role": "user", "content": text }));
-            Ok(Some(Value::String(run_chat(messages)?)))
+            let result = run_chat(messages)?;
+            if is_complete_task_current(generation) {
+                Ok(Some(Value::String(result)))
+            } else {
+                Ok(Some(Value::String(String::new())))
+            }
         }
         "ai:summarize" => {
             let content = params.get("content").and_then(Value::as_str).unwrap_or("");
@@ -589,7 +820,14 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
                 .unwrap_or_else(|_| "chat".into());
             Ok(Some(json!({ "intent": intent })))
         }
-        "ai:stop" | "ai:complete-abort" => Ok(Some(Value::Null)),
+        "ai:stop" => {
+            cancel_chat_tasks();
+            Ok(Some(Value::Null))
+        }
+        "ai:complete-abort" => {
+            cancel_complete_tasks();
+            Ok(Some(Value::Null))
+        }
         "ai:suggest-tags" => {
             let content = params.get("content").and_then(Value::as_str).unwrap_or("");
             let existing = params
@@ -623,6 +861,7 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
             for file_path in &file_paths {
                 if let Some(path) = file_path.as_str() {
                     let _ = crate::db::handle(
+                        None,
                         "db:index-file",
                         json!({ "vaultPath": vault_path, "filePath": path }),
                     );
@@ -644,7 +883,7 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
                 .get("vaultPath")
                 .and_then(Value::as_str)
                 .unwrap_or("");
-            let _ = crate::db::handle("db:index-vault", json!({ "vaultPath": vault_path }));
+            let _ = crate::db::handle(None, "db:index-vault", json!({ "vaultPath": vault_path }));
             let conn = match open_index(vault_path) {
                 Ok(conn) => conn,
                 Err(error) => return Ok(Some(json!({ "success": false, "error": error }))),
@@ -690,7 +929,7 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
                 .get("vaultPath")
                 .and_then(Value::as_str)
                 .unwrap_or("");
-            let _ = crate::db::handle("db:index-vault", json!({ "vaultPath": vault_path }));
+            let _ = crate::db::handle(None, "db:index-vault", json!({ "vaultPath": vault_path }));
             let conn = match open_index(vault_path) {
                 Ok(conn) => conn,
                 Err(error) => {
@@ -1002,6 +1241,7 @@ Output the modified complete Markdown text directly. The first character of your
                 if fs::write(&file_path, note_content).is_ok() {
                     let file_path_str = file_path.to_string_lossy().to_string();
                     let _ = crate::db::handle(
+                        None,
                         "db:index-file",
                         json!({ "vaultPath": vault_path, "filePath": file_path_str }),
                     );
@@ -1022,9 +1262,9 @@ Output the modified complete Markdown text directly. The first character of your
                 .and_then(Value::as_str)
                 .unwrap_or("");
             let board = json!({
-              "columns": crate::db::handle("kanban:get-columns", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([])),
-              "tasks": crate::db::handle("kanban:get-tasks", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([])),
-              "relations": crate::db::handle("kanban:get-relations", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([]))
+              "columns": crate::db::handle(None, "kanban:get-columns", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([])),
+              "tasks": crate::db::handle(None, "kanban:get-tasks", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([])),
+              "relations": crate::db::handle(None, "kanban:get-relations", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([]))
             });
             let summary = run_chat(vec![
                 json!({ "role": "system", "content": "你是项目管理助手。请根据看板状态给出简洁的项目进度总结、风险、建议的处理顺序。输出中文，使用短段落和项目符号。" }),
@@ -1037,7 +1277,11 @@ Output the modified complete Markdown text directly. The first character of your
                 .get("vaultPath")
                 .and_then(Value::as_str)
                 .unwrap_or("");
-            let _ = crate::db::handle("kanban:get-columns", json!({ "vaultPath": vault_path }));
+            let _ = crate::db::handle(
+                None,
+                "kanban:get-columns",
+                json!({ "vaultPath": vault_path }),
+            );
             let conn = open_index(vault_path)?;
             let target_column_id = params
                 .get("columnId")
@@ -1103,6 +1347,7 @@ Output the modified complete Markdown text directly. The first character of your
                 .unwrap_or("");
             let file_path = params.get("filePath").and_then(Value::as_str).unwrap_or("");
             let _ = crate::db::handle(
+                None,
                 "db:index-file",
                 json!({ "vaultPath": vault_path, "filePath": file_path }),
             );

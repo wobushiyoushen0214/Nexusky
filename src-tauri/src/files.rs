@@ -6,6 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::UNIX_EPOCH;
+use tauri::Emitter;
 
 const ENCRYPTED_MARKER: &str = "---encrypted---\n";
 
@@ -177,7 +178,79 @@ fn save_snapshot(file_path: &Path, vault_path: &Path) {
     }
 }
 
-pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
+fn emit_vault_changed(app: Option<&tauri::AppHandle>) {
+    if let Some(app) = app {
+        let _ = app.emit("vault:files-changed", json!({}));
+    }
+}
+
+fn index_markdown_file(vault_path: &str, file_path: &Path) {
+    let _ = crate::db::handle(
+        None,
+        "db:index-file",
+        json!({
+            "vaultPath": vault_path,
+            "filePath": file_path.to_string_lossy()
+        }),
+    );
+}
+
+fn remove_markdown_file(vault_path: &str, file_path: &Path) {
+    let _ = crate::db::handle(
+        None,
+        "db:remove-file",
+        json!({
+            "vaultPath": vault_path,
+            "filePath": file_path.to_string_lossy()
+        }),
+    );
+}
+
+fn update_wikilinks(vault_path: &Path, old_name: &str, new_name: &str) -> Result<(), String> {
+    let escaped = regex::escape(old_name);
+    let pattern = regex::Regex::new(&format!(r"\[\[{escaped}\]\]")).map_err(|e| e.to_string())?;
+    let replacement = format!("[[{new_name}]]");
+
+    fn walk(
+        dir: &Path,
+        pattern: &regex::Regex,
+        replacement: &str,
+        vault_path: &Path,
+    ) -> Result<(), String> {
+        for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') {
+                continue;
+            }
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, pattern, replacement, vault_path)?;
+                continue;
+            }
+            if path.extension().and_then(|e| e.to_str()) != Some("md") {
+                continue;
+            }
+
+            let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+            if !pattern.is_match(&content) {
+                continue;
+            }
+            let updated = pattern.replace_all(&content, replacement).to_string();
+            fs::write(&path, updated).map_err(|e| e.to_string())?;
+            index_markdown_file(&vault_path.to_string_lossy(), &path);
+        }
+        Ok(())
+    }
+
+    walk(vault_path, &pattern, &replacement, vault_path)
+}
+
+pub fn handle(
+    app: Option<&tauri::AppHandle>,
+    channel: &str,
+    params: Value,
+) -> Result<Option<Value>, String> {
     match channel {
         "file:read" => Ok(Some(Value::String(
             fs::read_to_string(as_str(&params, "path")?).map_err(|e| e.to_string())?,
@@ -199,6 +272,12 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 save_snapshot(path, Path::new(vault));
             }
             fs::write(path, as_str(&params, "content")?).map_err(|e| e.to_string())?;
+            if let Some(vault) =
+                vault_path.filter(|_| path.extension().and_then(|e| e.to_str()) == Some("md"))
+            {
+                index_markdown_file(vault, path);
+                emit_vault_changed(app);
+            }
             Ok(Some(Value::Null))
         }
         "file:list" => Ok(Some(list_directory(
@@ -219,6 +298,14 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 params.get("content").and_then(Value::as_str).unwrap_or(""),
             )
             .map_err(|e| e.to_string())?;
+            if let Some(vault) = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .filter(|_| path.extension().and_then(|e| e.to_str()) == Some("md"))
+            {
+                index_markdown_file(vault, path);
+                emit_vault_changed(app);
+            }
             Ok(Some(Value::Null))
         }
         "file:reveal" => {
@@ -241,6 +328,10 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                     file_name
                 ));
                 fs::rename(path, trash_path).map_err(|e| e.to_string())?;
+                if path.extension().and_then(|e| e.to_str()) == Some("md") {
+                    remove_markdown_file(vault, path);
+                }
+                emit_vault_changed(app);
             } else if path.is_dir() {
                 fs::remove_dir_all(path).map_err(|e| e.to_string())?;
             } else {
@@ -255,6 +346,20 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
             fs::rename(old_path, new_path).map_err(|e| e.to_string())?;
+            if let Some(vault) = params.get("vaultPath").and_then(Value::as_str) {
+                if old_path.extension().and_then(|e| e.to_str()) == Some("md")
+                    && new_path.extension().and_then(|e| e.to_str()) == Some("md")
+                {
+                    let old_name = old_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                    let new_name = new_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                    if !old_name.is_empty() && old_name != new_name {
+                        update_wikilinks(Path::new(vault), old_name, new_name)?;
+                    }
+                    remove_markdown_file(vault, old_path);
+                    index_markdown_file(vault, new_path);
+                }
+                emit_vault_changed(app);
+            }
             Ok(Some(Value::Null))
         }
         "file:save-image" => {
@@ -405,6 +510,7 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
             fs::rename(trash_path, dest).map_err(|e| e.to_string())?;
+            emit_vault_changed(app);
             Ok(Some(Value::Null))
         }
         "file:empty-trash" => {
@@ -412,6 +518,7 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             if trash_dir.exists() {
                 fs::remove_dir_all(trash_dir).map_err(|e| e.to_string())?;
             }
+            emit_vault_changed(app);
             Ok(Some(Value::Null))
         }
         "file:import-obsidian" => {
@@ -507,12 +614,21 @@ mod tests {
         std::env::temp_dir().join(format!("nexusky-{name}-{timestamp}.md"))
     }
 
+    fn temp_vault_dir(name: &str) -> PathBuf {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("nexusky-{name}-{timestamp}"))
+    }
+
     #[test]
     fn encrypt_and_decrypt_note_payloads() {
         let path = temp_note_path("encrypted-note");
         fs::write(&path, "hello encrypted note").expect("write temp note");
 
         let encrypted = handle(
+            None,
             "file:encrypt",
             json!({ "path": path.to_string_lossy(), "password": "secret" }),
         )
@@ -524,6 +640,7 @@ mod tests {
         assert!(raw.starts_with(ENCRYPTED_MARKER));
 
         let wrong_password = handle(
+            None,
             "file:decrypt",
             json!({ "path": path.to_string_lossy(), "password": "wrong" }),
         )
@@ -532,6 +649,7 @@ mod tests {
         assert_eq!(wrong_password["success"], Value::Bool(false));
 
         let decrypted = handle(
+            None,
             "file:decrypt",
             json!({ "path": path.to_string_lossy(), "password": "secret" }),
         )
@@ -544,5 +662,28 @@ mod tests {
         );
 
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn update_wikilinks_rewrites_renamed_note_links() {
+        let vault = temp_vault_dir("wikilinks");
+        fs::create_dir_all(vault.join("nested")).expect("create temp vault");
+        let source = vault.join("source.md");
+        let nested = vault.join("nested").join("child.md");
+        fs::write(&source, "See [[Old Title]] and [[Other]].").expect("write source note");
+        fs::write(&nested, "[[Old Title]]").expect("write nested note");
+
+        update_wikilinks(&vault, "Old Title", "New Title").expect("wikilinks should update");
+
+        assert_eq!(
+            fs::read_to_string(&source).expect("read source"),
+            "See [[New Title]] and [[Other]]."
+        );
+        assert_eq!(
+            fs::read_to_string(&nested).expect("read nested"),
+            "[[New Title]]"
+        );
+
+        let _ = fs::remove_dir_all(vault);
     }
 }

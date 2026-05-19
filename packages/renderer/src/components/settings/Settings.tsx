@@ -1011,7 +1011,7 @@ function AppearanceTab() {
         {updateStage === 'idle' && updateInfo && (
           <button
             onClick={async () => {
-              if (window.api.platform === 'darwin') {
+              if (window.api.runtime === 'tauri' || window.api.platform === 'darwin') {
                 await window.api.invoke('app:open-external', { url: 'https://github.com/wobushiyoushen0214/Nexusky/releases/latest' })
               } else {
                 setUpdateStage('downloading')
@@ -1026,7 +1026,7 @@ function AppearanceTab() {
             }}
             style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
           >
-            {window.api.platform === 'darwin' ? '前往下载' : '立即更新'}
+            {window.api.runtime === 'tauri' || window.api.platform === 'darwin' ? '前往下载' : '立即更新'}
           </button>
         )}
         {updateStage === 'ready' && (

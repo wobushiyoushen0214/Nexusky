@@ -9,6 +9,7 @@ interface VaultState {
   setVaultPath: (path: string | null) => void
   setFiles: (files: FileEntry[]) => void
   selectVault: () => Promise<void>
+  openVault: (path: string) => Promise<void>
   createVault: (name: string) => Promise<void>
   loadVault: () => Promise<void>
   refreshFiles: () => Promise<void>
@@ -42,6 +43,15 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const path = await window.api.invoke('vault:select', undefined)
     if (path) {
       set({ vaultPath: path })
+      await get().refreshFiles()
+      await get().indexVault()
+    }
+  },
+
+  openVault: async (path: string) => {
+    const opened = await window.api.invoke('vault:open', { path })
+    if (opened) {
+      set({ vaultPath: opened })
       await get().refreshFiles()
       await get().indexVault()
     }

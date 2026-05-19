@@ -151,6 +151,7 @@ export interface IPCChannelMap {
   'export:pdf': { params: { content: string; title: string }; result: boolean }
   'export:share': { params: { content: string; title: string }; result: string }
   'vault:select': { params: undefined; result: string | null }
+  'vault:open': { params: { path: string }; result: string }
   'vault:create': { params: { name: string }; result: string | null }
   'vault:get': { params: undefined; result: string | null }
   'vault:get-recent': { params: undefined; result: string[] }

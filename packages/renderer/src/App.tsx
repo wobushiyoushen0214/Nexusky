@@ -198,7 +198,7 @@ export default function App() {
         e.preventDefault()
         setCommandPaletteOpen(true)
       }
-      if (mod && e.key === 'n' && !e.shiftKey) {
+      if (mod && e.key === 'n') {
         e.preventDefault()
         window.dispatchEvent(new CustomEvent('create-new-note'))
       }

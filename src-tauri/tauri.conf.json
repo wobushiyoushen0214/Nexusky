@@ -15,11 +15,16 @@
       {
         "label": "main",
         "title": "Nexusky",
-        "width": 1280,
-        "height": 820,
-        "minWidth": 900,
+        "width": 1400,
+        "height": 900,
+        "minWidth": 800,
         "minHeight": 600,
-        "decorations": false,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 16, "y": 12 },
+        "backgroundColor": "#1e1e1e",
+        "shadow": true,
         "dragDropEnabled": true
       }
     ],

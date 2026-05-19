@@ -43,6 +43,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const favorites = useVaultStore((s) => s.favorites)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
   const selectVault = useVaultStore((s) => s.selectVault)
+  const openVault = useVaultStore((s) => s.openVault)
   const openFile = useEditorStore((s) => s.openFile)
   const { setSearchOpen, setQuickSwitcherOpen, toggleRightPanel, setSettingsOpen, setMainView } = useUIStore()
   const [isCreating, setIsCreating] = useState(false)
@@ -57,6 +58,9 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const vaultMenuRef = useRef<HTMLDivElement>(null)
   const vaultMenuButtonRef = useRef<HTMLButtonElement>(null)
   const [recentVaults, setRecentVaults] = useState<string[]>([])
+  const loadRecentVaults = () => {
+    window.api.invoke('vault:get-recent', undefined).then(setRecentVaults)
+  }
 
   const sortedFiles = useMemo(() => sortFiles(filterFiles(files, filterQuery), sortBy), [files, filterQuery, sortBy])
 
@@ -73,7 +77,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   }, [vaultMenu])
 
   useEffect(() => {
-    window.api.invoke('vault:get-recent', undefined).then(setRecentVaults)
+    loadRecentVaults()
   }, [])
 
   useEffect(() => {
@@ -168,10 +172,8 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                 key={path}
                 onClick={async () => {
                   setVaultMenu(false)
-                  const { setVaultPath, refreshFiles, indexVault } = useVaultStore.getState()
-                  setVaultPath(path)
-                  await refreshFiles()
-                  await indexVault()
+                  await openVault(path)
+                  loadRecentVaults()
                 }}
                 style={{ width: '100%', height: 32, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
@@ -191,7 +193,11 @@ export function Sidebar({ width = 240 }: { width?: number }) {
             )}
             <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 6px' }} />
             <button
-              onClick={() => { setVaultMenu(false); selectVault() }}
+              onClick={async () => {
+                setVaultMenu(false)
+                await selectVault()
+                loadRecentVaults()
+              }}
               style={{ width: '100%', height: 32, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
