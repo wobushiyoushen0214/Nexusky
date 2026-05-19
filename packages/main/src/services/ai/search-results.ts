@@ -56,6 +56,12 @@ export interface AiPropertyNoteResult {
   value: string
 }
 
+export interface AiRecentNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -162,7 +168,20 @@ export function formatPropertyValue(value: unknown): string {
   return String(value)
 }
 
+export function formatRecentNotesToolResult(notes: AiRecentNoteResult[]): string {
+  if (notes.length === 0) return 'No recent notes found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
 function formatLinkContext(context: string): string {
   const trimmed = context.trim()
   return trimmed ? ` - ${trimmed.slice(0, 120)}` : ''
+}
+
+function formatTimestamp(value: number): string {
+  return Number.isFinite(value) ? new Date(value).toISOString() : 'unknown'
 }

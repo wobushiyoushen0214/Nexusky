@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -176,5 +176,20 @@ describe('property tool formatting', () => {
   it('stringifies property values for tool output', () => {
     expect(formatPropertyValue(['active', 2, true])).toBe('active, 2, true')
     expect(formatPropertyValue(null)).toBe('')
+  })
+})
+
+describe('formatRecentNotesToolResult', () => {
+  it('formats recent notes with paths and timestamps', () => {
+    const output = formatRecentNotesToolResult([
+      { title: 'Today', filePath: 'Daily/Today.md', updatedAt: 1700000000000 },
+      { title: 'Project', filePath: 'Project.md', updatedAt: 1700000100000 }
+    ])
+
+    expect(output).toBe('1. **Today**\nPath: Daily/Today.md\nUpdated: 2023-11-14T22:13:20.000Z\n\n2. **Project**\nPath: Project.md\nUpdated: 2023-11-14T22:15:00.000Z')
+  })
+
+  it('marks empty recent notes explicitly', () => {
+    expect(formatRecentNotesToolResult([])).toBe('No recent notes found.')
   })
 })

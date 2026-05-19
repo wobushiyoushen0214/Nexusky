@@ -6,11 +6,11 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
-import { getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getPropertyRows, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
+import { getAllNotes, getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getPropertyRows, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
@@ -1016,6 +1016,20 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_recent_notes',
+        description: '列出最近更新的笔记，可按标题或路径过滤。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -1196,6 +1210,22 @@ graph TD
             title: note.title,
             filePath: note.filePath,
             chunk: `${key}: ${note.value}`.slice(0, 100),
+            score: 1
+          }))
+        }
+      }
+      case 'list_recent_notes': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getAllNotes(vaultPath)
+          .filter((note) => !query || [note.title, note.filePath].some((value) => value.toLowerCase().includes(query)))
+          .slice(0, limit)
+        return {
+          content: formatRecentNotesToolResult(notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Updated: ${new Date(note.updatedAt).toISOString()}`,
             score: 1
           }))
         }
