@@ -127,6 +127,7 @@
     "guideOpen": "2. Double-click a card to open its Markdown note.",
     "guideLinks": "3. Arrows between cards come from [[wikilink]] relations in notes.",
     "guideZoom": "4. Ctrl/Cmd + mouse wheel or trackpad pinch zooms around the pointer.",
+    "guidePan": "5. Drag an empty canvas area to pan the view.",
     "searchPlaceholder": "Search note cards...",
     "empty": "No matching note cards",
     "noTags": "No tags"

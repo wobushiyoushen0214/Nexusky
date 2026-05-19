@@ -1,4 +1,4 @@
-import { type WheelEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type PointerEvent as ReactPointerEvent, type WheelEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -16,6 +16,13 @@ interface DragState {
   id: string
   offsetX: number
   offsetY: number
+}
+
+interface PanState {
+  startX: number
+  startY: number
+  scrollLeft: number
+  scrollTop: number
 }
 
 const CARD_WIDTH = 210
@@ -78,6 +85,7 @@ export function CanvasView() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [dragging, setDragging] = useState<DragState | null>(null)
+  const [panning, setPanning] = useState<PanState | null>(null)
   const [showGuide, setShowGuide] = useState(false)
   const [zoom, setZoom] = useState(1)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -155,6 +163,23 @@ export function CanvasView() {
       window.removeEventListener('pointerup', handlePointerUp)
     }
   }, [dragging, vaultPath, zoom])
+
+  useEffect(() => {
+    if (!panning) return
+    const handlePointerMove = (event: PointerEvent) => {
+      const viewport = canvasRef.current
+      if (!viewport) return
+      viewport.scrollLeft = panning.scrollLeft - (event.clientX - panning.startX)
+      viewport.scrollTop = panning.scrollTop - (event.clientY - panning.startY)
+    }
+    const handlePointerUp = () => setPanning(null)
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [panning])
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -251,6 +276,22 @@ export function CanvasView() {
     zoomAtViewportPoint(nextZoom, event.clientX, event.clientY)
   }
 
+  const handleCanvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-canvas-card]')) return
+    if (target.closest('button,input,textarea,select,a')) return
+    if (event.button !== 0 && event.button !== 1) return
+    const viewport = canvasRef.current
+    if (!viewport) return
+    event.preventDefault()
+    setPanning({
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop
+    })
+  }
+
   const fitToView = () => {
     const viewport = canvasRef.current
     if (!viewport || filteredRows.length === 0) return
@@ -339,10 +380,23 @@ export function CanvasView() {
           <div>{t('canvas.guideOpen')}</div>
           <div>{t('canvas.guideLinks')}</div>
           <div>{t('canvas.guideZoom')}</div>
+          <div>{t('canvas.guidePan')}</div>
         </div>
       )}
 
-      <div ref={canvasRef} onWheel={handleCanvasWheel} style={{ flex: 1, overflow: 'auto', position: 'relative', background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
+      <div
+        ref={canvasRef}
+        onWheel={handleCanvasWheel}
+        onPointerDown={handleCanvasPointerDown}
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          position: 'relative',
+          background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)',
+          backgroundSize: '24px 24px',
+          cursor: panning ? 'grabbing' : 'grab'
+        }}
+      >
         {filteredRows.length === 0 ? (
           <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
             <div>{loading ? t('canvas.loading') : t('canvas.empty')}</div>
@@ -367,6 +421,7 @@ export function CanvasView() {
               return (
                 <div
                   key={row.id}
+                  data-canvas-card
                   onPointerDown={(event) => {
                     const rect = event.currentTarget.getBoundingClientRect()
                     setDragging({ id: row.id, offsetX: (event.clientX - rect.left) / zoom, offsetY: (event.clientY - rect.top) / zoom })

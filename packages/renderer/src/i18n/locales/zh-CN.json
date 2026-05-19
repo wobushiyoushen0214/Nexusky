@@ -127,6 +127,7 @@
     "guideOpen": "2. 双击卡片打开对应 Markdown 笔记。",
     "guideLinks": "3. 卡片之间的箭头来自笔记里的 [[wikilink]] 关系。",
     "guideZoom": "4. Ctrl/Cmd + 鼠标滚轮或触控板捏合可围绕指针位置缩放画布。",
+    "guidePan": "5. 按住画布空白区域拖动可平移视图。",
     "searchPlaceholder": "搜索笔记卡片...",
     "empty": "没有匹配的笔记卡片",
     "noTags": "无标签"
