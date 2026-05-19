@@ -5,12 +5,13 @@ import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
+import { findNoteForAiTool } from '../services/ai/note-lookup'
 import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
-import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join, basename } from 'path'
 
 function getErrorMessage(error: unknown): string {
@@ -929,31 +930,6 @@ graph TD
     },
   ]
 
-  function findNoteByTitle(vaultPath: string, title: string): string | null {
-    const db = getDatabase(vaultPath)
-    const row = db.prepare('SELECT file_path FROM notes WHERE title = ?').get(title) as { file_path: string } | undefined
-    if (row) return row.file_path
-
-    // Fallback: scan directory for matching filename
-    function scanDir(dir: string): string | null {
-      try {
-        const entries = readdirSync(dir, { withFileTypes: true })
-        for (const entry of entries) {
-          const fullPath = join(dir, entry.name)
-          if (entry.isDirectory() && !entry.name.startsWith('.')) {
-            const found = scanDir(fullPath)
-            if (found) return found
-          } else if (entry.isFile() && entry.name.endsWith('.md')) {
-            const name = basename(entry.name, '.md')
-            if (name === title) return fullPath
-          }
-        }
-      } catch {}
-      return null
-    }
-    return scanDir(vaultPath)
-  }
-
   async function executeToolCall(
     name: string,
     args: Record<string, unknown>,
@@ -980,15 +956,15 @@ graph TD
       case 'read_note': {
         const title = getStringArg(args, 'title')
         if (!title.trim()) return { content: 'read_note 缺少 title 参数。请先搜索笔记，或提供要读取的笔记标题。' }
-        const filePath = findNoteByTitle(vaultPath, title)
-        if (!filePath) return { content: `未找到标题为「${title}」的笔记。` }
+        const note = findNoteForAiTool(vaultPath, title)
+        if (!note) return { content: `未找到标题为「${title}」的笔记。` }
         try {
-          const content = readFileSync(filePath, 'utf-8')
+          const content = readFileSync(note.absolutePath, 'utf-8')
           return {
             content,
             sources: [{
-              title: title || basename(filePath, '.md'),
-              filePath,
+              title: note.title,
+              filePath: note.filePath,
               chunk: content.slice(0, 100),
               score: 1
             }]
