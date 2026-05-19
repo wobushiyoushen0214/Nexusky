@@ -184,9 +184,13 @@ ${context}
   })
 
   const completeAbortControllers: Map<string, AbortController> = new Map()
+  const getCompleteTaskKey = (windowId: number | undefined, taskKey?: string) => {
+    return `${windowId ?? 'global'}:${taskKey || 'default'}`
+  }
 
-  ipcMain.handle('ai:complete-abort', (_event, params?: { taskKey?: string }) => {
-    const taskKey = params?.taskKey || 'default'
+  ipcMain.handle('ai:complete-abort', (event, params?: { taskKey?: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    const taskKey = getCompleteTaskKey(window?.id, params?.taskKey)
     const controller = completeAbortControllers.get(taskKey)
     if (controller) {
       controller.abort()
@@ -194,12 +198,13 @@ ${context}
     }
   })
 
-  ipcMain.handle('ai:complete', async (_event, params: { text: string; system?: string; temperature?: number; taskKey?: string }) => {
+  ipcMain.handle('ai:complete', async (event, params: { text: string; system?: string; temperature?: number; taskKey?: string }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
     if (aiManager.validateConfig(config)) return ''
 
-    const taskKey = params.taskKey || 'default'
+    const window = BrowserWindow.fromWebContents(event.sender)
+    const taskKey = getCompleteTaskKey(window?.id, params.taskKey)
     const previous = completeAbortControllers.get(taskKey)
     if (previous) previous.abort()
     const controller = new AbortController()

@@ -19,15 +19,16 @@ function isInlineCompletionEnabled(): boolean {
 }
 
 async function fetchCompletion(textBefore: string, signal: AbortSignal): Promise<string> {
+  const abortHandler = () => { window.api.invoke('ai:complete-abort', { taskKey: 'inline-completion' }) }
+  signal.addEventListener('abort', abortHandler, { once: true })
   try {
-    const abortHandler = () => { window.api.invoke('ai:complete-abort', { taskKey: 'inline-completion' }) }
-    signal.addEventListener('abort', abortHandler, { once: true })
     const result = await window.api.invoke('ai:complete', { text: textBefore, taskKey: 'inline-completion' })
-    signal.removeEventListener('abort', abortHandler)
     if (signal.aborted) return ''
     return result || ''
   } catch {
     return ''
+  } finally {
+    signal.removeEventListener('abort', abortHandler)
   }
 }
 
