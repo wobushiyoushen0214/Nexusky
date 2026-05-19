@@ -1,7 +1,8 @@
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use walkdir::WalkDir;
@@ -656,24 +657,397 @@ fn supabase_test_connection() -> Value {
     }
 }
 
+fn encode_segment(segment: &str) -> String {
+    if segment
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
+    {
+        return segment.to_string();
+    }
+    let ext = Path::new(segment)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| format!(".{ext}"))
+        .unwrap_or_default();
+    format!("{:x}{ext}", md5::compute(segment))
+}
+
+fn supabase_storage_path(rel_path: &str) -> String {
+    if rel_path
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | '/'))
+    {
+        rel_path.to_string()
+    } else {
+        rel_path
+            .split('/')
+            .map(encode_segment)
+            .collect::<Vec<_>>()
+            .join("/")
+    }
+}
+
+fn supabase_client() -> Option<(reqwest::blocking::Client, String, String)> {
+    let (url, key) = supabase_config()?;
+    Some((reqwest::blocking::Client::new(), url, key))
+}
+
+fn supabase_push_file(vault_path: &Path, file_path: &Path) -> Result<bool, String> {
+    let Some((client, url, key)) = supabase_client() else {
+        return Ok(false);
+    };
+    let rel = rel_sync_path(vault_path, file_path)?;
+    let content = fs::read_to_string(file_path).map_err(|e| e.to_string())?;
+    let hash = format!("{:x}", md5::compute(&content));
+    let storage_path = supabase_storage_path(&rel);
+    let upload = client
+        .post(format!("{url}/storage/v1/object/notes/{storage_path}"))
+        .header("apikey", &key)
+        .bearer_auth(&key)
+        .header("x-upsert", "true")
+        .header(
+            "content-type",
+            if file_path.extension().and_then(|ext| ext.to_str()) == Some("json") {
+                "application/json; charset=utf-8"
+            } else {
+                "text/markdown; charset=utf-8"
+            },
+        )
+        .body(content)
+        .send()
+        .map_err(|e| e.to_string())?;
+    if !upload.status().is_success() {
+        return Ok(false);
+    }
+    let upsert = client
+        .post(format!("{url}/rest/v1/note_sync?on_conflict=file_path"))
+        .header("apikey", &key)
+        .bearer_auth(&key)
+        .header("content-type", "application/json")
+        .header("prefer", "resolution=merge-duplicates")
+        .json(&json!({
+          "file_path": rel,
+          "content_hash": hash,
+          "updated_at": chrono::Utc::now().to_rfc3339()
+        }))
+        .send()
+        .map_err(|e| e.to_string())?;
+    Ok(upsert.status().is_success())
+}
+
+fn supabase_pull_file(vault_path: &Path, rel_path: &str) -> Result<bool, String> {
+    let Some((client, url, key)) = supabase_client() else {
+        return Ok(false);
+    };
+    let storage_path = supabase_storage_path(rel_path);
+    let response = client
+        .get(format!("{url}/storage/v1/object/notes/{storage_path}"))
+        .header("apikey", &key)
+        .bearer_auth(&key)
+        .send()
+        .map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+        return Ok(false);
+    }
+    let content = response.text().map_err(|e| e.to_string())?;
+    let dest = vault_path.join(rel_path);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(dest, content).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+fn supabase_remote_files() -> Result<Vec<(String, String, String)>, String> {
+    let Some((client, url, key)) = supabase_client() else {
+        return Ok(Vec::new());
+    };
+    let response = client
+        .get(format!(
+            "{url}/rest/v1/note_sync?select=file_path,content_hash,updated_at"
+        ))
+        .header("apikey", &key)
+        .bearer_auth(&key)
+        .send()
+        .map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+        return Ok(Vec::new());
+    }
+    let rows = response.json::<Value>().map_err(|e| e.to_string())?;
+    Ok(rows
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|row| {
+            Some((
+                row.get("file_path")?.as_str()?.to_string(),
+                row.get("content_hash")?.as_str()?.to_string(),
+                row.get("updated_at")?.as_str()?.to_string(),
+            ))
+        })
+        .collect())
+}
+
+fn supabase_sync(vault_path: &Path, pull_only: bool) -> Result<Value, String> {
+    if supabase_config().is_none() {
+        return Ok(
+            json!({ "total": 0, "pushed": 0, "pulled": 0, "conflicts": [], "errors": ["未配置 Supabase"] }),
+        );
+    }
+    let mut pushed = 0;
+    let mut pulled = 0;
+    let mut conflicts = Vec::<Value>::new();
+    let mut errors = Vec::<String>::new();
+    let mut remote_map = std::collections::HashMap::new();
+    for (path, hash, updated_at) in supabase_remote_files()? {
+        remote_map.insert(path, (hash, updated_at));
+    }
+    let local_files = collect_sync_files(vault_path);
+    for local in &local_files {
+        let rel = rel_sync_path(vault_path, local)?;
+        let local_hash = file_hash(local)?;
+        if let Some((remote_hash, remote_updated_at)) = remote_map.remove(&rel) {
+            if remote_hash != local_hash {
+                let local_mtime = fs::metadata(local)
+                    .and_then(|m| m.modified())
+                    .ok()
+                    .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|duration| duration.as_millis() as i64)
+                    .unwrap_or(0);
+                let remote_mtime = chrono::DateTime::parse_from_rfc3339(&remote_updated_at)
+                    .map(|dt| dt.timestamp_millis())
+                    .unwrap_or(0);
+                if remote_mtime > local_mtime {
+                    conflicts.push(json!({ "path": rel, "localHash": local_hash, "remoteHash": remote_hash, "remoteUpdatedAt": remote_updated_at }));
+                } else if !pull_only && supabase_push_file(vault_path, local)? {
+                    pushed += 1;
+                }
+            }
+        } else if !pull_only && supabase_push_file(vault_path, local)? {
+            pushed += 1;
+        }
+    }
+    for (rel, _) in remote_map {
+        if !vault_path.join(&rel).exists() && supabase_pull_file(vault_path, &rel)? {
+            pulled += 1;
+        } else if !vault_path.join(&rel).exists() {
+            errors.push(format!("pull failed: {rel}"));
+        }
+    }
+    Ok(
+        json!({ "total": local_files.len() + pulled, "pushed": pushed, "pulled": pulled, "conflicts": conflicts, "errors": errors }),
+    )
+}
+
 fn active_cloud_test_connection(provider: &str) -> Value {
     match provider {
         "icloud" => configured_icloud_path()
             .map(|_| json!({ "ok": true }))
             .unwrap_or_else(|| json!({ "ok": false, "error": "未找到 iCloud Drive 路径。请确保已登录 iCloud 并启用 iCloud Drive。" })),
         "supabase" => supabase_test_connection(),
-        "onedrive" => get_config("onedriveConfig", Value::Null)
-            .as_object()
+        "onedrive" => onedrive_request("/me/drive", "GET", None)
             .map(|_| json!({ "ok": true }))
-            .unwrap_or_else(|| json!({ "ok": false, "error": "未配置 OneDrive" })),
+            .unwrap_or_else(|error| json!({ "ok": false, "error": error })),
         _ => json!({ "ok": false, "error": "未知同步后端" }),
     }
+}
+
+fn percent_encode(value: &str) -> String {
+    value
+        .bytes()
+        .flat_map(|byte| {
+            if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+                vec![byte as char]
+            } else {
+                format!("%{byte:02X}").chars().collect()
+            }
+        })
+        .collect()
+}
+
+fn encode_graph_path(path: &str) -> String {
+    path.split('/')
+        .map(percent_encode)
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn onedrive_config() -> Option<Value> {
+    let value = get_config("onedriveConfig", Value::Null);
+    value
+        .get("accessToken")
+        .and_then(Value::as_str)
+        .filter(|token| !token.is_empty())?;
+    Some(value)
+}
+
+fn onedrive_request(path: &str, method: &str, body: Option<String>) -> Result<Value, String> {
+    let config = onedrive_config().ok_or_else(|| "OneDrive 未配置".to_string())?;
+    let token = config
+        .get("accessToken")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "OneDrive 未配置".to_string())?;
+    let client = reqwest::blocking::Client::new();
+    let mut request = client
+        .request(
+            reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?,
+            format!("https://graph.microsoft.com/v1.0{path}"),
+        )
+        .bearer_auth(token);
+    if let Some(body) = body {
+        request = request
+            .header("content-type", "text/plain; charset=utf-8")
+            .body(body);
+    }
+    let response = request.send().map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!("Graph API HTTP {}", response.status()));
+    }
+    let text = response.text().map_err(|e| e.to_string())?;
+    if text.trim_start().starts_with('{') || text.trim_start().starts_with('[') {
+        serde_json::from_str(&text).map_err(|e| e.to_string())
+    } else {
+        Ok(Value::String(text))
+    }
+}
+
+fn onedrive_folder() -> String {
+    get_config("onedriveConfig", Value::Null)
+        .get("folder")
+        .and_then(Value::as_str)
+        .filter(|folder| !folder.is_empty())
+        .unwrap_or("/Nexusky")
+        .to_string()
+}
+
+fn onedrive_push_file(vault_path: &Path, file_path: &Path) -> Result<bool, String> {
+    let rel = rel_sync_path(vault_path, file_path)?;
+    let content = fs::read_to_string(file_path).map_err(|e| e.to_string())?;
+    let remote = format!("{}/{}", onedrive_folder().trim_end_matches('/'), rel);
+    onedrive_request(
+        &format!("/me/drive/root:{}:/content", encode_graph_path(&remote)),
+        "PUT",
+        Some(content),
+    )
+    .map(|_| true)
+}
+
+fn onedrive_pull_file(vault_path: &Path, rel_path: &str) -> Result<bool, String> {
+    let remote = format!("{}/{}", onedrive_folder().trim_end_matches('/'), rel_path);
+    let value = onedrive_request(
+        &format!("/me/drive/root:{}:/content", encode_graph_path(&remote)),
+        "GET",
+        None,
+    )?;
+    let content = value.as_str().unwrap_or("").to_string();
+    let dest = vault_path.join(rel_path);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(dest, content).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+fn onedrive_auth(client_id: &str) -> Result<Value, String> {
+    let redirect_uri = "http://localhost:23847/callback";
+    let scope = "Files.ReadWrite.All offline_access";
+    let listener = TcpListener::bind("127.0.0.1:23847").map_err(|e| e.to_string())?;
+    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+    let auth_url = format!(
+        "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id={}&response_type=code&redirect_uri={}&scope={}&response_mode=query",
+        percent_encode(client_id),
+        percent_encode(redirect_uri),
+        percent_encode(scope)
+    );
+    open_external(&auth_url)?;
+    let start = std::time::Instant::now();
+    let mut code = String::new();
+    while start.elapsed().as_secs() < 180 {
+        match listener.accept() {
+            Ok((mut stream, _)) => {
+                let mut buffer = [0_u8; 4096];
+                let read = stream.read(&mut buffer).unwrap_or(0);
+                let request = String::from_utf8_lossy(&buffer[..read]);
+                if let Some(path) = request.split_whitespace().nth(1) {
+                    if let Some(query) = path.split_once('?').map(|(_, q)| q) {
+                        for pair in query.split('&') {
+                            if let Some(value) = pair.strip_prefix("code=") {
+                                code = value.replace("%2F", "/").replace("%2B", "+");
+                                break;
+                            }
+                        }
+                    }
+                }
+                let body = if code.is_empty() {
+                    "Nexusky OneDrive auth failed"
+                } else {
+                    "Nexusky OneDrive auth complete. You can close this page."
+                };
+                let _ = stream.write_all(
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
+                        body.len(), body
+                    )
+                    .as_bytes(),
+                );
+                break;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(std::time::Duration::from_millis(250));
+            }
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    if code.is_empty() {
+        return Ok(json!({ "success": false, "error": "授权超时或被取消" }));
+    }
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(format!(
+            "client_id={}&code={}&redirect_uri={}&grant_type=authorization_code&scope={}",
+            percent_encode(client_id),
+            percent_encode(&code),
+            percent_encode(redirect_uri),
+            percent_encode(scope)
+        ))
+        .send()
+        .map_err(|e| e.to_string())?;
+    if !response.status().is_success() {
+        return Ok(
+            json!({ "success": false, "error": format!("Token 交换失败: HTTP {}", response.status()) }),
+        );
+    }
+    let data = response.json::<Value>().map_err(|e| e.to_string())?;
+    let Some(access_token) = data.get("access_token").and_then(Value::as_str) else {
+        return Ok(json!({ "success": false, "error": "Token 交换响应无效" }));
+    };
+    let Some(refresh_token) = data.get("refresh_token").and_then(Value::as_str) else {
+        return Ok(json!({ "success": false, "error": "Token 交换响应无效" }));
+    };
+    let expires_in = data
+        .get("expires_in")
+        .and_then(Value::as_i64)
+        .unwrap_or(3600);
+    set_config(
+        "onedriveConfig",
+        json!({
+          "clientId": client_id,
+          "accessToken": access_token,
+          "refreshToken": refresh_token,
+          "expiresAt": chrono::Utc::now().timestamp_millis() + expires_in * 1000,
+          "folder": "/Nexusky"
+        }),
+    )?;
+    Ok(json!({ "success": true }))
 }
 
 fn cloud_push_file(vault_path: &str, file_path: &str) -> Result<bool, String> {
     match active_sync_provider().as_str() {
         "icloud" => icloud_push_file(Path::new(vault_path), Path::new(file_path)),
-        "supabase" => Ok(false),
+        "supabase" => supabase_push_file(Path::new(vault_path), Path::new(file_path)),
+        "onedrive" => onedrive_push_file(Path::new(vault_path), Path::new(file_path)),
         _ => Ok(false),
     }
 }
@@ -681,7 +1055,8 @@ fn cloud_push_file(vault_path: &str, file_path: &str) -> Result<bool, String> {
 fn cloud_pull_file(vault_path: &str, rel_path: &str) -> Result<bool, String> {
     match active_sync_provider().as_str() {
         "icloud" => icloud_pull_file(Path::new(vault_path), rel_path),
-        "supabase" => Ok(false),
+        "supabase" => supabase_pull_file(Path::new(vault_path), rel_path),
+        "onedrive" => onedrive_pull_file(Path::new(vault_path), rel_path),
         _ => Ok(false),
     }
 }
@@ -689,9 +1064,24 @@ fn cloud_pull_file(vault_path: &str, rel_path: &str) -> Result<bool, String> {
 fn cloud_sync(vault_path: &str, pull_only: bool) -> Result<Value, String> {
     match active_sync_provider().as_str() {
         "icloud" => icloud_sync(Path::new(vault_path), pull_only),
-        "supabase" => Ok(
-            json!({ "total": 0, "pushed": 0, "pulled": 0, "conflicts": [], "errors": ["Supabase 同步需要在 Electron 版本或后续 Tauri 云端适配中使用"] }),
-        ),
+        "supabase" => supabase_sync(Path::new(vault_path), pull_only),
+        "onedrive" => {
+            let local_files = collect_sync_files(Path::new(vault_path));
+            let mut pushed = 0;
+            let mut errors = Vec::<String>::new();
+            if !pull_only {
+                for file in &local_files {
+                    if onedrive_push_file(Path::new(vault_path), file).unwrap_or(false) {
+                        pushed += 1;
+                    } else {
+                        errors.push(format!("push failed: {}", file.to_string_lossy()));
+                    }
+                }
+            }
+            Ok(
+                json!({ "total": local_files.len(), "pushed": pushed, "pulled": 0, "conflicts": [], "errors": errors }),
+            )
+        }
         _ => Ok(
             json!({ "total": 0, "pushed": 0, "pulled": 0, "conflicts": [], "errors": ["未配置同步后端"] }),
         ),
@@ -811,10 +1201,7 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
         }))),
         "cloud:get-user" => Ok(Some(Value::Null)),
         "cloud:sign-out" | "cloud:set-online" => Ok(Some(Value::Null)),
-        "cloud:onedrive-auth" => Ok(Some(json!({
-          "success": false,
-          "error": "OneDrive OAuth 需要系统浏览器回调，Tauri 版本暂未启用该登录入口"
-        }))),
+        "cloud:onedrive-auth" => Ok(Some(onedrive_auth(as_str(&params, "clientId")?)?)),
         "cloud:sync" => Ok(Some(cloud_sync(as_str(&params, "vaultPath")?, false)?)),
         "cloud:pull-all" => Ok(Some(cloud_sync(as_str(&params, "vaultPath")?, true)?)),
         "cloud:push-file" => Ok(Some(Value::Bool(cloud_push_file(
