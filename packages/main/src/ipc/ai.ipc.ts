@@ -395,29 +395,37 @@ Output the modified complete Markdown text directly. The first character of your
       userMessage = { role: 'user', content: textContent }
     }
 
+    const windowId = window.id
+    const controller = startAiTask(windowId)
+
     try {
       const provider = aiManager.getProvider(config)
       let result = ''
       for await (const chunk of provider.chatStream([
         { role: 'system', content: systemPrompt },
         userMessage
-      ])) {
+      ], controller.signal)) {
+        if (window.isDestroyed() || controller.signal.aborted) break
         if (chunk.type === 'text') {
           result += chunk.content
           window.webContents.send('ai:edit-stream', { type: 'text', content: chunk.content })
         }
         if (chunk.type === 'error') {
-          window.webContents.send('ai:edit-stream', { type: 'done' })
           return { success: false, error: chunk.content || 'AI 返回错误' }
         }
       }
-      window.webContents.send('ai:edit-stream', { type: 'done' })
+      if (controller.signal.aborted) return { success: false, error: '已取消' }
       const trimmed = result.trim()
       if (!trimmed) return { success: false, error: 'AI 未返回有效内容，请检查 API Key 配置' }
       return { success: true, content: trimmed }
     } catch (err: unknown) {
-      window.webContents.send('ai:edit-stream', { type: 'done' })
+      if (controller.signal.aborted) return { success: false, error: '已取消' }
       return { success: false, error: getErrorMessage(err) }
+    } finally {
+      if (!window.isDestroyed()) {
+        window.webContents.send('ai:edit-stream', { type: 'done' })
+      }
+      finishAiTask(windowId, controller)
     }
   })
 

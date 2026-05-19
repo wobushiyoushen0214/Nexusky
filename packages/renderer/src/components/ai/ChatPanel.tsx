@@ -983,7 +983,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             appendAssistantMessage('已生成修改方案，请查看下方预览并确认应用。')
           }
         } else {
-          appendAssistantMessage(`编辑失败: ${result.error}`)
+          appendAssistantMessage(isCancellationError(result.error) ? '已停止生成修改方案。' : `编辑失败: ${result.error}`)
         }
       } catch (e: unknown) {
         appendAssistantMessage(friendlyError(getErrorMessage(e)))
