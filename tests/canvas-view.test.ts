@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { findAvailablePosition } from '../packages/renderer/src/components/canvas/CanvasView'
+import { findAvailablePosition, getCanvasInitialScrollKey } from '../packages/renderer/src/components/canvas/CanvasView'
 
 describe('canvas card placement', () => {
+  it('keys initial scroll by vault only', () => {
+    expect(getCanvasInitialScrollKey('/vault/a')).toBe('/vault/a')
+    expect(getCanvasInitialScrollKey(null)).toBe('no-vault')
+  })
+
   it('keeps a new card at the requested origin when the space is free', () => {
     expect(findAvailablePosition({ x: 100, y: 120 }, [])).toEqual({ x: 100, y: 120 })
   })

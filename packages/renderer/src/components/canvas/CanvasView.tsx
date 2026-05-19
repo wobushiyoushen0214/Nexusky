@@ -58,6 +58,10 @@ function getCanvasViewportStorageKey(vaultPath: string): string {
   return `nexusky-canvas-viewport:${encodeURIComponent(vaultPath)}`
 }
 
+export function getCanvasInitialScrollKey(vaultPath: string | null | undefined): string {
+  return vaultPath || 'no-vault'
+}
+
 function defaultPosition(index: number): CanvasPosition {
   const column = index % 4
   const row = Math.floor(index / 4)
@@ -274,7 +278,7 @@ export function CanvasView() {
   useEffect(() => {
     const viewport = canvasRef.current
     if (!viewport || filteredRows.length === 0) return
-    const key = `${vaultPath || 'no-vault'}:${rows.length}`
+    const key = getCanvasInitialScrollKey(vaultPath)
     if (initialScrollKeyRef.current === key) return
     initialScrollKeyRef.current = key
     if (vaultPath && restoredViewportKeyRef.current !== key) {
