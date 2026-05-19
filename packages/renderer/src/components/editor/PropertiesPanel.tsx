@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { parseNoteProperties, updateNoteProperties, type NoteProperties } from '../../utils/frontmatter'
 import { toast } from '../../stores/toast-store'
@@ -15,6 +16,7 @@ function textToList(value: string): string[] {
 }
 
 export function PropertiesPanel() {
+  const { t } = useTranslation()
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const content = useEditorStore((s) => s.content)
   const setContent = useEditorStore((s) => s.setContent)
@@ -49,9 +51,9 @@ export function PropertiesPanel() {
       const nextContent = updateNoteProperties(content, nextProperties)
       setContent(nextContent)
       await useEditorStore.getState().saveFile()
-      toast('属性已保存', 'success')
+      toast(t('propertiesPanel.saved'), 'success')
     } catch {
-      toast('属性保存失败', 'error')
+      toast(t('propertiesPanel.saveFailed'), 'error')
     } finally {
       setSaving(false)
     }
@@ -60,7 +62,7 @@ export function PropertiesPanel() {
   if (!currentFilePath) {
     return (
       <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>
-        打开一篇笔记后编辑属性。
+        {t('propertiesPanel.empty')}
       </div>
     )
   }
@@ -70,24 +72,24 @@ export function PropertiesPanel() {
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '12px 14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>当前笔记</div>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>{t('propertiesPanel.currentNote')}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
       </div>
 
-      <PropertyField label="标题" hint="覆盖文件内首个 H1 作为展示标题">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="未设置" style={inputStyle} />
+      <PropertyField label={t('propertiesPanel.title')} hint={t('propertiesPanel.titleHint')}>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('propertiesPanel.titlePlaceholder')} style={inputStyle} />
       </PropertyField>
 
-      <PropertyField label="别名" hint="每行一个别名，支持 [[别名]] 解析">
-        <textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="别名一&#10;别名二" rows={4} style={textareaStyle} />
+      <PropertyField label={t('propertiesPanel.aliases')} hint={t('propertiesPanel.aliasesHint')}>
+        <textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder={t('propertiesPanel.aliasesPlaceholder')} rows={4} style={textareaStyle} />
       </PropertyField>
 
-      <PropertyField label="标签" hint="每行一个标签，可省略 #">
-        <textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder="项目&#10;进行中" rows={4} style={textareaStyle} />
+      <PropertyField label={t('propertiesPanel.tags')} hint={t('propertiesPanel.tagsHint')}>
+        <textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t('propertiesPanel.tagsPlaceholder')} rows={4} style={textareaStyle} />
       </PropertyField>
 
-      <PropertyField label="CSS 类" hint="兼容 Obsidian cssclasses">
-        <textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder="宽页面" rows={3} style={textareaStyle} />
+      <PropertyField label={t('propertiesPanel.cssclasses')} hint={t('propertiesPanel.cssclassesHint')}>
+        <textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder={t('propertiesPanel.cssclassesPlaceholder')} rows={3} style={textareaStyle} />
       </PropertyField>
 
       <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
@@ -106,7 +108,7 @@ export function PropertiesPanel() {
             cursor: dirty ? 'pointer' : 'default'
           }}
         >
-          {saving ? '保存中...' : '保存属性'}
+          {saving ? t('propertiesPanel.saving') : t('propertiesPanel.save')}
         </button>
         {dirty && (
           <button
@@ -118,7 +120,7 @@ export function PropertiesPanel() {
             }}
             style={{ height: 30, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
           >
-            重置
+            {t('propertiesPanel.reset')}
           </button>
         )}
       </div>

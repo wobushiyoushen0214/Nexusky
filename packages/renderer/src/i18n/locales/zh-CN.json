@@ -48,6 +48,27 @@
     "properties": "属性",
     "outline": "大纲"
   },
+  "propertiesPanel": {
+    "empty": "打开一篇笔记后编辑属性。",
+    "currentNote": "当前笔记",
+    "title": "标题",
+    "titleHint": "覆盖文件内首个 H1 作为展示标题",
+    "titlePlaceholder": "未设置",
+    "aliases": "别名",
+    "aliasesHint": "每行一个别名，支持 [[别名]] 解析",
+    "aliasesPlaceholder": "别名一\n别名二",
+    "tags": "标签",
+    "tagsHint": "每行一个标签，可省略 #",
+    "tagsPlaceholder": "项目\n进行中",
+    "cssclasses": "CSS 类",
+    "cssclassesHint": "兼容 Obsidian cssclasses",
+    "cssclassesPlaceholder": "wide-page",
+    "save": "保存属性",
+    "saving": "保存中...",
+    "reset": "重置",
+    "saved": "属性已保存",
+    "saveFailed": "属性保存失败"
+  },
   "common": {
     "indexing": "正在索引笔记关系...",
     "noMdFiles": "该文件夹下没有 .md 文件",

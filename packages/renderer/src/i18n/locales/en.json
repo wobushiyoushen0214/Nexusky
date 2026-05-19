@@ -48,6 +48,27 @@
     "properties": "Properties",
     "outline": "Outline"
   },
+  "propertiesPanel": {
+    "empty": "Open a note to edit its properties.",
+    "currentNote": "Current note",
+    "title": "Title",
+    "titleHint": "Overrides the first H1 in the file as the display title",
+    "titlePlaceholder": "Not set",
+    "aliases": "Aliases",
+    "aliasesHint": "One alias per line, supports [[alias]] resolution",
+    "aliasesPlaceholder": "Alias One\nAlias Two",
+    "tags": "Tags",
+    "tagsHint": "One tag per line, # is optional",
+    "tagsPlaceholder": "project\nactive",
+    "cssclasses": "CSS Classes",
+    "cssclassesHint": "Compatible with Obsidian cssclasses",
+    "cssclassesPlaceholder": "wide-page",
+    "save": "Save properties",
+    "saving": "Saving...",
+    "reset": "Reset",
+    "saved": "Properties saved",
+    "saveFailed": "Failed to save properties"
+  },
   "common": {
     "indexing": "Indexing note relations...",
     "noMdFiles": "No .md files in this folder",
