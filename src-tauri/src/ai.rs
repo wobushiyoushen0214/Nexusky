@@ -171,6 +171,29 @@ fn emit_error(app: &AppHandle, error: &str) {
     let _ = app.emit("ai:stream", json!({ "type": "done", "content": "" }));
 }
 
+fn parse_tags(value: &str) -> Vec<Value> {
+    value
+        .split(|c| [',', '，', '、', '\n'].contains(&c))
+        .map(str::trim)
+        .filter(|tag| !tag.is_empty() && tag.chars().count() < 20)
+        .map(|tag| Value::String(tag.trim_start_matches('#').to_string()))
+        .collect()
+}
+
+fn normalize_intent(value: &str, allowed: &[String]) -> String {
+    let normalized = value
+        .trim()
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic() || *c == '_' || *c == '-')
+        .collect::<String>();
+    if allowed.iter().any(|intent| intent == &normalized) {
+        normalized
+    } else {
+        "chat".into()
+    }
+}
+
 pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Value>, String> {
     match channel {
         "ai:chat" | "ai:chat-agent" => {
@@ -202,18 +225,167 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
             ];
             Ok(Some(Value::String(run_chat(messages)?)))
         }
-        "ai:detect-intent" => Ok(Some(json!({}))),
+        "ai:detect-intent" => {
+            let intents = params
+                .get("intents")
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect::<Vec<_>>()
+                })
+                .filter(|items| !items.is_empty())
+                .unwrap_or_else(|| vec!["chat".into()]);
+            let descriptions = json!({
+              "graph": "user wants to generate a knowledge graph or visualize note relationships",
+              "kanban": "user wants to extract tasks, create a kanban board, or manage todos from notes",
+              "batch": "user wants to generate multiple separate note files",
+              "edit": "user wants to modify or create a single note file",
+              "chat": "normal conversation, Q&A, explanation, or anything else"
+            });
+            let tag_list = intents
+                .iter()
+                .map(|intent| {
+                    format!(
+                        "- {intent}: {}",
+                        descriptions
+                            .get(intent)
+                            .and_then(Value::as_str)
+                            .unwrap_or(intent)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let context = params
+                .get("intentContext")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let system = format!(
+                "Classify the user's latest intent.\n\nAvailable intents:\n{tag_list}\n\n{context}\n\nOutput exactly one intent name from the list. No punctuation, no explanation."
+            );
+            let mut messages = vec![json!({ "role": "system", "content": system })];
+            let recent = params
+                .get("messages")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let start = recent.len().saturating_sub(8);
+            messages.extend(
+                recent[start..]
+                    .iter()
+                    .filter(|message| message.get("role").and_then(Value::as_str) != Some("system"))
+                    .cloned(),
+            );
+            let intent = run_chat(messages)
+                .map(|response| normalize_intent(&response, &intents))
+                .unwrap_or_else(|_| "chat".into());
+            Ok(Some(json!({ "intent": intent })))
+        }
         "ai:stop" | "ai:complete-abort" => Ok(Some(Value::Null)),
-        "ai:suggest-tags" => Ok(Some(json!([]))),
+        "ai:suggest-tags" => {
+            let content = params.get("content").and_then(Value::as_str).unwrap_or("");
+            let existing = params
+                .get("existingTags")
+                .and_then(Value::as_array)
+                .map(|tags| {
+                    tags.iter()
+                        .filter_map(Value::as_str)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_default();
+            let result = run_chat(vec![
+                json!({ "role": "system", "content": format!("你是一个标签建议助手。根据笔记内容建议 2-4 个标签。只输出标签，用逗号分隔，不要 # 前缀，不要解释。已有标签: {existing}") }),
+                json!({ "role": "user", "content": content.chars().take(2000).collect::<String>() }),
+            ]);
+            Ok(Some(Value::Array(
+                result.map(|text| parse_tags(&text)).unwrap_or_default(),
+            )))
+        }
         "ai:infer-links" | "ai:infer-global-links" => Ok(Some(
             json!({ "success": false, "error": "Tauri AI link inference is not migrated yet" }),
         )),
         "ai:generate-memories" => Ok(Some(
             json!({ "success": false, "generated": 0, "skipped": 0, "failed": 0, "total": 0, "error": "Tauri AI memory generation is not migrated yet" }),
         )),
-        "ai:edit" => Ok(Some(
-            json!({ "success": false, "error": "Tauri AI edit is not migrated yet" }),
-        )),
+        "ai:edit" => {
+            let instruction = params
+                .get("instruction")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let file_content = params
+                .get("fileContent")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            if file_content.len().div_ceil(4) > 12000 {
+                return Ok(Some(json!({
+                  "success": false,
+                  "error": "当前笔记过大，无法安全生成完整文件修改。请先选中需要修改的段落，或把笔记拆成更小的文件后再使用 AI 编辑。"
+                })));
+            }
+
+            let system = r#"You are a Markdown note editor. You receive the original note content and a modification instruction, then output the modified complete file.
+
+<output_format>
+Output the modified complete Markdown text directly. The first character of your response must be the first character of the file content.
+- Preserve YAML frontmatter if present
+- Preserve heading levels, list marker style (- or *), and blank line conventions from the original
+- Output the ENTIRE file, not just the modified section
+</output_format>
+
+<constraints>
+- Only modify what the instruction asks for; leave everything else unchanged
+- Match the original list marker style: if the original uses -, keep -; if it uses *, keep *
+- NEVER wrap output in ```markdown or any code fence
+- NEVER prepend or append explanations, confirmations, or extra blank lines
+</constraints>"#;
+            let history = params
+                .get("history")
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .enumerate()
+                        .map(|(index, item)| format!("{}. {item}", index + 1))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .filter(|text| !text.is_empty())
+                .map(|text| format!("之前的修改指令（已应用）:\n{text}\n\n"))
+                .unwrap_or_default();
+            let file_path = params.get("filePath").and_then(Value::as_str).unwrap_or("");
+            let user_content = format!(
+                "文件: {file_path}\n\n当前内容:\n{file_content}\n\n{history}本次修改指令: {instruction}"
+            );
+
+            match run_chat(vec![
+                json!({ "role": "system", "content": system }),
+                json!({ "role": "user", "content": user_content }),
+            ]) {
+                Ok(content) => {
+                    let trimmed = content.trim().to_string();
+                    if trimmed.is_empty() {
+                        Ok(Some(
+                            json!({ "success": false, "error": "AI 未返回有效内容，请检查 API Key 配置" }),
+                        ))
+                    } else {
+                        let _ = app.emit(
+                            "ai:edit-stream",
+                            json!({ "type": "text", "content": trimmed }),
+                        );
+                        let _ = app.emit("ai:edit-stream", json!({ "type": "done" }));
+                        Ok(Some(json!({ "success": true, "content": trimmed })))
+                    }
+                }
+                Err(error) => {
+                    let _ = app.emit("ai:edit-stream", json!({ "type": "done" }));
+                    Ok(Some(json!({ "success": false, "error": error })))
+                }
+            }
+        }
         "ai:generate-graph" => Ok(Some(
             json!({ "success": false, "error": "Tauri AI graph generation is not migrated yet" }),
         )),
@@ -227,5 +399,29 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
             json!({ "tasks": [], "relations": [], "summary": "Tauri kanban AI is not migrated yet" }),
         )),
         _ => Ok(None),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_tag_responses() {
+        assert_eq!(
+            parse_tags("rust, Tauri，#笔记\nvery-very-very-very-long-tag-name"),
+            vec![
+                Value::String("rust".into()),
+                Value::String("Tauri".into()),
+                Value::String("笔记".into())
+            ]
+        );
+    }
+
+    #[test]
+    fn normalizes_intent_responses() {
+        let allowed = vec!["chat".into(), "edit".into()];
+        assert_eq!(normalize_intent("Edit.", &allowed), "edit");
+        assert_eq!(normalize_intent("delete", &allowed), "chat");
     }
 }
