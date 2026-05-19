@@ -18,6 +18,7 @@ const WORKSPACE_KEYS = {
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph']
 const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas']
+const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'history'])
 
 interface UIState {
   rightPanel: Panel
@@ -190,8 +191,10 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ rightPanel: next })
   },
   setMainView: (view) => {
-    persistWorkspace({ mainView: view })
-    set({ mainView: view })
+    const currentPanel = get().rightPanel
+    const rightPanel = view === 'editor' || !NOTE_SCOPED_PANELS.has(currentPanel) ? currentPanel : 'none'
+    persistWorkspace({ mainView: view, rightPanel })
+    set({ mainView: view, rightPanel })
   },
   toggleSidebar: () => {
     const next = !get().sidebarCollapsed
