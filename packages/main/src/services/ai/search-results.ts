@@ -205,6 +205,17 @@ export function formatReadNoteToolResult(note: { title: string; filePath: string
   ].join('\n')
 }
 
+export function formatReadNoteLinesToolResult(note: { title: string; filePath: string; content: string; startLine: number; endLine: number }): string {
+  const body = note.content.trim() || '(empty range)'
+  return [
+    `Title: ${note.title}`,
+    `Path: ${note.filePath}`,
+    `Lines: ${note.startLine}-${note.endLine}`,
+    '',
+    body
+  ].join('\n')
+}
+
 export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
   const outgoing = summary.outgoing.length > 0
     ? summary.outgoing.map((link, index) => {

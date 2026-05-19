@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -63,6 +63,32 @@ describe('formatReadNoteToolResult', () => {
     })
 
     expect(output).toBe('Title: Topic\nPath: Topic.md\nBlock: ^todo-1\n\n- Task body')
+  })
+})
+
+describe('formatReadNoteLinesToolResult', () => {
+  it('includes title, path, and line range before content', () => {
+    const output = formatReadNoteLinesToolResult({
+      title: 'Topic',
+      filePath: 'A/Topic.md',
+      startLine: 3,
+      endLine: 5,
+      content: 'Line 3\nLine 4\nLine 5'
+    })
+
+    expect(output).toBe('Title: Topic\nPath: A/Topic.md\nLines: 3-5\n\nLine 3\nLine 4\nLine 5')
+  })
+
+  it('marks empty line ranges explicitly', () => {
+    const output = formatReadNoteLinesToolResult({
+      title: 'Empty',
+      filePath: 'Empty.md',
+      startLine: 1,
+      endLine: 1,
+      content: '   '
+    })
+
+    expect(output).toBe('Title: Empty\nPath: Empty.md\nLines: 1-1\n\n(empty range)')
   })
 })
 

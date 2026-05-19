@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -66,6 +66,13 @@ function normalizeMinCharacters(value: unknown): number {
 function normalizeLinkHubMode(mode: string): 'backlinks' | 'outgoing' | 'total' {
   if (mode === 'backlinks' || mode === 'outgoing') return mode
   return 'total'
+}
+
+function getPositiveIntegerArg(value: unknown): number | null {
+  const number = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(number)) return null
+  const integer = Math.floor(number)
+  return integer > 0 ? integer : null
 }
 
 function isEmptyMarkdownNote(content: string): boolean {
@@ -975,6 +982,22 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'read_note_lines',
+        description: '读取指定笔记的行号范围。适合先通过搜索、目录或块引用定位，再读取局部内容；单次最多 200 行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '笔记标题、alias、路径或 wikilink' },
+            startLine: { type: 'number', description: '起始行号，从 1 开始' },
+            endLine: { type: 'number', description: '结束行号，可选；默认读取起始行后的 80 行，最多 200 行' }
+          },
+          required: ['title', 'startLine']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'get_vault_overview',
         description: '获取当前知识库的摘要，包括笔记、标签、任务、属性、链接、断链和孤岛笔记数量。',
         parameters: { type: 'object', properties: {} }
@@ -1361,6 +1384,41 @@ graph TD
           const selectedContent = block || section || content
           return {
             content: formatReadNoteToolResult({ title: note.title, filePath: note.filePath, content: selectedContent, section: section ? heading || undefined : undefined, blockId: block ? blockId || undefined : undefined }),
+            sources: [{
+              title: note.title,
+              filePath: note.filePath,
+              chunk: selectedContent.slice(0, 100),
+              score: 1
+            }]
+          }
+        } catch {
+          return { content: `无法读取笔记「${title}」。` }
+        }
+      }
+      case 'read_note_lines': {
+        const title = getStringArg(args, 'title')
+        const startLineArg = getPositiveIntegerArg(args.startLine)
+        if (!title.trim()) return { content: 'read_note_lines 缺少 title 参数。请先搜索笔记，或提供要读取的笔记标题。' }
+        if (!startLineArg) return { content: 'read_note_lines 缺少有效的 startLine 参数。请提供从 1 开始的行号。' }
+        const note = findNoteForAiTool(vaultPath, title)
+        if (!note) {
+          const candidates = findNoteCandidatesForAiTool(vaultPath, title)
+          if (candidates.length > 1) {
+            return {
+              content: `找到多个可能的笔记，请用 read_note_lines 的 title 参数传入精确路径重试：\n${candidates.map((item) => `- ${item.filePath} (${item.title})`).join('\n')}`
+            }
+          }
+          return { content: `未找到标题为「${title}」的笔记。` }
+        }
+        try {
+          const content = readFileSync(note.absolutePath, 'utf-8')
+          const lines = content.split('\n')
+          const startLine = Math.min(startLineArg, lines.length || 1)
+          const requestedEndLine = getPositiveIntegerArg(args.endLine) || startLine + 79
+          const endLine = Math.min(lines.length || 1, Math.max(startLine, requestedEndLine), startLine + 199)
+          const selectedContent = lines.slice(startLine - 1, endLine).join('\n')
+          return {
+            content: formatReadNoteLinesToolResult({ title: note.title, filePath: note.filePath, content: selectedContent, startLine, endLine }),
             sources: [{
               title: note.title,
               filePath: note.filePath,
