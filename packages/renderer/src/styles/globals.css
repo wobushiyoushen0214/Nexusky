@@ -314,6 +314,158 @@
   --shadow-glow: none;
 }
 
+[data-theme="obsidian"] {
+  --bg-base: #19151f;
+  --bg-surface: #211b2a;
+  --bg-elevated: #2b2335;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active: rgba(255, 255, 255, 0.09);
+
+  --bg-glass: rgba(25, 21, 31, 0.68);
+  --bg-glass-hover: rgba(33, 27, 42, 0.74);
+  --bg-glass-solid: rgba(25, 21, 31, 0.94);
+
+  --border-subtle: rgba(214, 197, 255, 0.07);
+  --border-default: rgba(214, 197, 255, 0.12);
+  --border-glow: rgba(180, 146, 255, 0.09);
+  --border-shine: rgba(255, 255, 255, 0.04);
+
+  --text-primary: #ebe5f5;
+  --text-secondary: #b9accb;
+  --text-tertiary: #756781;
+
+  --accent: #9f7aea;
+  --accent-hover: #b08cff;
+  --accent-muted: rgba(159, 122, 234, 0.15);
+  --accent-text: #c8b4ff;
+  --accent-glow: rgba(159, 122, 234, 0.11);
+
+  --danger: #ff7a90;
+  --danger-muted: rgba(255, 122, 144, 0.13);
+
+  --sidebar-bg: #14101a;
+  --editor-bg: #19151f;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.28);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.36);
+  --shadow-lg: 0 18px 54px rgba(0,0,0,0.48);
+  --shadow-glow: 0 0 24px rgba(159, 122, 234, 0.06);
+}
+
+[data-theme="nord"] {
+  --bg-base: #2e3440;
+  --bg-surface: #343b49;
+  --bg-elevated: #3b4252;
+  --bg-hover: rgba(236, 239, 244, 0.055);
+  --bg-active: rgba(236, 239, 244, 0.085);
+
+  --bg-glass: rgba(46, 52, 64, 0.68);
+  --bg-glass-hover: rgba(59, 66, 82, 0.72);
+  --bg-glass-solid: rgba(46, 52, 64, 0.94);
+
+  --border-subtle: rgba(216, 222, 233, 0.07);
+  --border-default: rgba(216, 222, 233, 0.12);
+  --border-glow: rgba(136, 192, 208, 0.08);
+  --border-shine: rgba(255, 255, 255, 0.04);
+
+  --text-primary: #eceff4;
+  --text-secondary: #c8d1df;
+  --text-tertiary: #7f8a9b;
+
+  --accent: #88c0d0;
+  --accent-hover: #9ad4e6;
+  --accent-muted: rgba(136, 192, 208, 0.14);
+  --accent-text: #9ad4e6;
+  --accent-glow: rgba(136, 192, 208, 0.1);
+
+  --danger: #bf616a;
+  --danger-muted: rgba(191, 97, 106, 0.14);
+
+  --sidebar-bg: #252b35;
+  --editor-bg: #2e3440;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.24);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.32);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.44);
+  --shadow-glow: 0 0 20px rgba(136, 192, 208, 0.05);
+}
+
+[data-theme="solarized"] {
+  --bg-base: #fdf6e3;
+  --bg-surface: #eee8d5;
+  --bg-elevated: #fffaf0;
+  --bg-hover: rgba(7, 54, 66, 0.045);
+  --bg-active: rgba(7, 54, 66, 0.07);
+
+  --bg-glass: rgba(253, 246, 227, 0.72);
+  --bg-glass-hover: rgba(238, 232, 213, 0.78);
+  --bg-glass-solid: rgba(253, 246, 227, 0.95);
+
+  --border-subtle: rgba(7, 54, 66, 0.08);
+  --border-default: rgba(7, 54, 66, 0.13);
+  --border-glow: rgba(38, 139, 210, 0.08);
+  --border-shine: rgba(255, 255, 255, 0.74);
+
+  --text-primary: #073642;
+  --text-secondary: #586e75;
+  --text-tertiary: #93a1a1;
+
+  --accent: #268bd2;
+  --accent-hover: #1f78b8;
+  --accent-muted: rgba(38, 139, 210, 0.11);
+  --accent-text: #1f78b8;
+  --accent-glow: rgba(38, 139, 210, 0.07);
+
+  --danger: #dc322f;
+  --danger-muted: rgba(220, 50, 47, 0.1);
+
+  --sidebar-bg: #eee8d5;
+  --editor-bg: #fdf6e3;
+
+  --shadow-sm: 0 1px 2px rgba(7,54,66,0.06);
+  --shadow-md: 0 4px 12px rgba(7,54,66,0.1);
+  --shadow-lg: 0 16px 48px rgba(7,54,66,0.16);
+  --shadow-glow: 0 0 22px rgba(38, 139, 210, 0.04);
+}
+
+[data-theme="contrast"] {
+  --bg-base: #050505;
+  --bg-surface: #101010;
+  --bg-elevated: #1a1a1a;
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  --bg-active: rgba(255, 255, 255, 0.12);
+
+  --bg-glass: rgba(5, 5, 5, 0.78);
+  --bg-glass-hover: rgba(16, 16, 16, 0.82);
+  --bg-glass-solid: rgba(5, 5, 5, 0.96);
+
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-default: rgba(255, 255, 255, 0.2);
+  --border-glow: rgba(255, 214, 10, 0.12);
+  --border-shine: rgba(255, 255, 255, 0.08);
+
+  --text-primary: #ffffff;
+  --text-secondary: #d8d8d8;
+  --text-tertiary: #909090;
+
+  --accent: #ffd60a;
+  --accent-hover: #ffea61;
+  --accent-muted: rgba(255, 214, 10, 0.16);
+  --accent-text: #ffe45c;
+  --accent-glow: rgba(255, 214, 10, 0.1);
+
+  --danger: #ff5c5c;
+  --danger-muted: rgba(255, 92, 92, 0.16);
+
+  --sidebar-bg: #000000;
+  --editor-bg: #050505;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.42);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.54);
+  --shadow-lg: 0 18px 60px rgba(0,0,0,0.68);
+  --shadow-glow: 0 0 22px rgba(255, 214, 10, 0.05);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

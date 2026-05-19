@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { useUIStore } from '../../stores/ui-store'
+import { THEME_IDS, useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { getErrorMessage } from '../../utils/errors'
 import { safeGet, safeSet } from '../../utils/storage'
 import type { AIProviderConfig } from '@shared/types/ipc'
+import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
 type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean }
@@ -848,44 +849,61 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
 function ThemeTab() {
   const { theme, setTheme } = useUIStore()
 
-  const themes = [
-    { id: 'dark' as const, label: '深色', icon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /> },
-    { id: 'light' as const, label: '浅色', icon: <><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></> },
-    { id: 'ocean' as const, label: '深海蓝', icon: <><path d="M2 12c2-2 4-3 6-3s4 1 6 3 4 3 6 3 4-1 6-3" /><path d="M2 18c2-2 4-3 6-3s4 1 6 3 4 3 6 3 4-1 6-3" /></> },
-    { id: 'amber' as const, label: '暖夜橙', icon: <><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2" /><circle cx="12" cy="12" r="4" /></> },
-    { id: 'forest' as const, label: '森林绿', icon: <><path d="M12 2L7 10h10L12 2z" /><path d="M5 18h14" /><path d="M9 10l-4 8h14l-4-8" /><line x1="12" y1="18" x2="12" y2="22" /></> },
-    { id: 'rose' as const, label: '玫瑰粉', icon: <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /> },
-    { id: 'minimal' as const, label: '极简灰', icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
-  ]
+  const themeMeta: Record<Theme, { label: string; detail: string; swatches: [string, string, string] }> = {
+    dark: { label: '深色', detail: '默认低眩光', swatches: ['#1e1e1e', '#2d2d2d', '#7c6ef5'] },
+    light: { label: '浅色', detail: '明亮阅读', swatches: ['#ffffff', '#f7f7f7', '#6c5ce7'] },
+    ocean: { label: '深海蓝', detail: '冷静专注', swatches: ['#1a2332', '#243242', '#4facfe'] },
+    amber: { label: '暖夜橙', detail: '夜间暖调', swatches: ['#1c1a17', '#2c2820', '#f0a050'] },
+    forest: { label: '森林绿', detail: '柔和护眼', swatches: ['#1a2420', '#24332d', '#4ec9a0'] },
+    rose: { label: '玫瑰粉', detail: '浅色柔和', swatches: ['#fffbfa', '#faf5f4', '#e8577a'] },
+    minimal: { label: '极简灰', detail: '去色干扰', swatches: ['#1a1a1a', '#2a2a2a', '#b0b0b0'] },
+    obsidian: { label: 'Obsidian', detail: '紫调知识库', swatches: ['#19151f', '#2b2335', '#9f7aea'] },
+    nord: { label: 'Nord', detail: '冷灰蓝', swatches: ['#2e3440', '#3b4252', '#88c0d0'] },
+    solarized: { label: 'Solarized', detail: '长读友好', swatches: ['#fdf6e3', '#eee8d5', '#268bd2'] },
+    contrast: { label: '高对比', detail: '强可读性', swatches: ['#050505', '#1a1a1a', '#ffd60a'] },
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>选择主题</span>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 12 }}>
-        {themes.map(({ id, label, icon }) => (
+      <div>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>选择主题</span>
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>新增主题会同步应用到侧边栏、编辑器、弹窗和 AI 面板。</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(132px, 1fr))', gap: 12 }}>
+        {THEME_IDS.map((id) => {
+          const meta = themeMeta[id]
+          return (
           <button
             key={id}
             onClick={() => setTheme(id)}
             style={{
-              height: 88,
+              minHeight: 104,
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
+              alignItems: 'stretch',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: 12,
               borderRadius: 10,
               border: theme === id ? '2px solid var(--accent)' : '1px solid var(--border-default)',
               background: theme === id ? 'var(--accent-muted)' : 'var(--bg-elevated)',
               cursor: 'pointer',
               transition: 'all 150ms',
+              textAlign: 'left',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: theme === id ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>
-              {icon}
-            </svg>
-            <span style={{ fontSize: 12, color: theme === id ? 'var(--accent-text)' : 'var(--text-secondary)' }}>{label}</span>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {meta.swatches.map((color) => (
+                <span key={color} style={{ flex: 1, height: 24, borderRadius: 5, background: color, border: '1px solid var(--border-subtle)' }} />
+              ))}
+            </div>
+            <span>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: theme === id ? 'var(--accent-text)' : 'var(--text-primary)' }}>{meta.label}</span>
+              <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{meta.detail}</span>
+            </span>
           </button>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -941,7 +959,7 @@ function AppearanceTab() {
           onClick={() => setShowThemePicker(true)}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 140, padding: '8px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)' }}
         >
-          <span style={{ fontSize: 12 }}>{{ dark: '深色', light: '浅色', ocean: '深海蓝', amber: '暖夜橙', forest: '森林绿', rose: '玫瑰粉', minimal: '极简灰' }[theme]}</span>
+          <span style={{ fontSize: 12 }}>{{ dark: '深色', light: '浅色', ocean: '深海蓝', amber: '暖夜橙', forest: '森林绿', rose: '玫瑰粉', minimal: '极简灰', obsidian: 'Obsidian', nord: 'Nord', solarized: 'Solarized', contrast: '高对比' }[theme]}</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)' }}>
             <polyline points="9 18 15 12 9 6" />
           </svg>

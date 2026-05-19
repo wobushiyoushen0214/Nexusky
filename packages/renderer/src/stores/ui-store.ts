@@ -3,7 +3,9 @@ import i18n from '../i18n'
 import { safeGet, safeSet } from '../utils/storage'
 
 type Panel = 'none' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
-type Theme = 'dark' | 'light' | 'ocean' | 'amber' | 'forest' | 'rose' | 'minimal'
+export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
+
+export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph'
 type Language = 'zh-CN' | 'en'
 
@@ -42,7 +44,7 @@ interface UIState {
 
 function getInitialTheme(): Theme {
   const saved = safeGet('nexusky-theme')
-  if (saved && ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal'].includes(saved)) return saved as Theme
+  if (saved && (THEME_IDS as readonly string[]).includes(saved)) return saved as Theme
   return 'dark'
 }
 
@@ -112,9 +114,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setTheme: (theme) => { applyTheme(theme); set({ theme }) },
   toggleTheme: () => {
-    const themes: Theme[] = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal']
-    const idx = themes.indexOf(get().theme)
-    const next = themes[(idx + 1) % themes.length]
+    const idx = THEME_IDS.indexOf(get().theme)
+    const next = THEME_IDS[(idx + 1) % THEME_IDS.length]
     applyTheme(next)
     set({ theme: next })
   },
