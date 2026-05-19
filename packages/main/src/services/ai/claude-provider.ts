@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions, ToolCallEvent, ToolDefinition } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
 
 type AnthropicImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
@@ -28,6 +28,71 @@ function convertContent(content: string | ChatContentPart[]): string | Anthropic
   return blocks.length > 0 ? blocks : ''
 }
 
+function contentToString(content: ChatMessage['content']): string {
+  return typeof content === 'string' ? content : JSON.stringify(content)
+}
+
+function parseToolInput(argumentsJson: string): unknown {
+  try {
+    return JSON.parse(argumentsJson)
+  } catch {
+    return {}
+  }
+}
+
+function toAnthropicMessages(messages: ChatMessage[]): Anthropic.MessageParam[] {
+  const result: Anthropic.MessageParam[] = []
+  for (const message of messages) {
+    if (message.role === 'system') continue
+
+    if (message.role === 'tool') {
+      result.push({
+        role: 'user',
+        content: [{
+          type: 'tool_result',
+          tool_use_id: message.tool_call_id || '',
+          content: contentToString(message.content)
+        }]
+      })
+      continue
+    }
+
+    if (message.role === 'assistant' && message.tool_calls) {
+      const content: Anthropic.ContentBlockParam[] = []
+      const text = contentToString(message.content).trim()
+      if (text) content.push({ type: 'text', text })
+      for (const toolCall of message.tool_calls) {
+        content.push({
+          type: 'tool_use',
+          id: toolCall.id,
+          name: toolCall.function.name,
+          input: parseToolInput(toolCall.function.arguments)
+        })
+      }
+      result.push({ role: 'assistant', content })
+      continue
+    }
+
+    result.push({
+      role: message.role,
+      content: convertContent(message.content)
+    })
+  }
+  return result
+}
+
+function toAnthropicTools(tools: ToolDefinition[]): Anthropic.Tool[] {
+  return tools.map((tool) => ({
+    name: tool.function.name,
+    description: tool.function.description,
+    input_schema: (tool.function.parameters || { type: 'object', properties: {} }) as Anthropic.Tool.InputSchema
+  }))
+}
+
+function toFinishReason(stopReason: Anthropic.StopReason | null | undefined): string {
+  return stopReason === 'max_tokens' ? 'length' : (stopReason || 'stop')
+}
+
 export class ClaudeProvider extends BaseAIProvider {
   private client: Anthropic
 
@@ -41,12 +106,7 @@ export class ClaudeProvider extends BaseAIProvider {
 
   async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
     const systemMsg = messages.find((m) => m.role === 'system')
-    const chatMessages = messages
-      .filter((m): m is ChatMessage & { role: 'user' | 'assistant' } => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({
-        role: m.role,
-        content: convertContent(m.content)
-      }))
+    const chatMessages = toAnthropicMessages(messages)
 
     let lastErrorMessage = 'Claude request failed'
 
@@ -71,13 +131,101 @@ export class ClaudeProvider extends BaseAIProvider {
           ...(options?.temperature !== undefined && { temperature: options.temperature })
         }, signal ? { signal } : undefined)
 
+        let finishReason = 'stop'
         for await (const event of stream) {
           if (signal?.aborted) break
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
             yield { type: 'text', content: event.delta.text }
+          } else if (event.type === 'message_delta') {
+            finishReason = toFinishReason(event.delta.stop_reason)
           }
         }
+        yield { type: 'done', content: '', meta: { finishReason } }
+        return
+      } catch (error: unknown) {
+        const normalized = normalizeProviderError(error)
+        lastErrorMessage = normalized.message
+        if (normalized.isAbort || signal?.aborted) {
+          yield { type: 'done', content: '' }
+          return
+        }
+        if (!normalized.retryable || attempt === MAX_PROVIDER_RETRIES) {
+          yield { type: 'error', content: normalized.message || 'Claude request failed' }
+          return
+        }
+      }
+    }
+
+    yield { type: 'error', content: lastErrorMessage }
+  }
+
+  async *chatStreamWithTools(
+    messages: ChatMessage[],
+    tools: ToolDefinition[],
+    signal?: AbortSignal
+  ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
+    const systemMsg = messages.find((m) => m.role === 'system')
+    const chatMessages = toAnthropicMessages(messages)
+    const anthropicTools = toAnthropicTools(tools)
+    let lastErrorMessage = 'Claude request failed'
+
+    for (let attempt = 0; attempt <= MAX_PROVIDER_RETRIES; attempt++) {
+      if (signal?.aborted) {
         yield { type: 'done', content: '' }
+        return
+      }
+
+      if (attempt > 0) {
+        yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_PROVIDER_RETRIES})...` }
+        const delay = getProviderRetryDelay(attempt - 1)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+
+      try {
+        const stream = this.client.messages.stream({
+          model: this.config.model,
+          max_tokens: 4096,
+          system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
+          messages: chatMessages,
+          tools: anthropicTools.length > 0 ? anthropicTools : undefined
+        }, signal ? { signal } : undefined)
+
+        let finishReason = 'stop'
+        const toolCalls = new Map<number, { id: string; name: string; arguments: string; initialInput: unknown }>()
+
+        for await (const event of stream) {
+          if (signal?.aborted) break
+
+          if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
+            toolCalls.set(event.index, {
+              id: event.content_block.id,
+              name: event.content_block.name,
+              arguments: '',
+              initialInput: event.content_block.input
+            })
+          } else if (event.type === 'content_block_delta' && event.delta.type === 'input_json_delta') {
+            const existing = toolCalls.get(event.index)
+            if (existing) existing.arguments += event.delta.partial_json
+          } else if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            yield { type: 'text', content: event.delta.text }
+          } else if (event.type === 'message_delta') {
+            finishReason = toFinishReason(event.delta.stop_reason)
+          }
+        }
+
+        if (toolCalls.size > 0) {
+          yield {
+            type: 'tool_calls',
+            calls: Array.from(toolCalls.values()).map((call) => ({
+              id: call.id,
+              name: call.name,
+              arguments: call.arguments || JSON.stringify(call.initialInput || {})
+            }))
+          }
+          return
+        }
+
+        yield { type: 'done', content: '', meta: { finishReason } }
         return
       } catch (error: unknown) {
         const normalized = normalizeProviderError(error)
