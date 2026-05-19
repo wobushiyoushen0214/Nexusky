@@ -25,6 +25,11 @@ interface PanState {
   scrollTop: number
 }
 
+interface PreferredPosition {
+  filePath: string
+  position: CanvasPosition
+}
+
 const CARD_WIDTH = 210
 const CARD_HEIGHT = 112
 const BASE_CANVAS_WIDTH = 1200
@@ -117,7 +122,7 @@ export function CanvasView() {
     if (dy !== 0) viewport.scrollTop += dy
   }, [canvasMetrics, zoom])
 
-  const loadRows = async () => {
+  const loadRows = async (preferred?: PreferredPosition) => {
     if (!vaultPath) return
     setLoading(true)
     try {
@@ -128,8 +133,9 @@ export function CanvasView() {
       const saved = safeGetJSON<Record<string, CanvasPosition>>(getCanvasStorageKey(vaultPath), {})
       const merged: Record<string, CanvasPosition> = {}
       result.forEach((row, index) => {
-        merged[row.id] = saved[row.id] || defaultPosition(index)
+        merged[row.id] = row.filePath === preferred?.filePath ? preferred.position : saved[row.id] || defaultPosition(index)
       })
+      if (preferred) safeSetJSON(getCanvasStorageKey(vaultPath), merged)
       setPositions(merged)
     } finally {
       setLoading(false)
@@ -341,7 +347,13 @@ export function CanvasView() {
     }
     await window.api.invoke('file:create', { path, vaultPath, content: `# ${title}\n\n` })
     await window.api.invoke('db:index-file', { vaultPath, filePath: path })
-    await loadRows()
+    const viewport = canvasRef.current
+    const metrics = metricsRef.current
+    const position = viewport ? {
+      x: (viewport.scrollLeft + viewport.clientWidth / 2) / zoomRef.current + metrics.minX - CARD_WIDTH / 2,
+      y: (viewport.scrollTop + viewport.clientHeight / 2) / zoomRef.current + metrics.minY - CARD_HEIGHT / 2
+    } : defaultPosition(rows.length)
+    await loadRows({ filePath: path.slice(vaultPath.length + 1), position })
     toast(t('canvas.created'), 'success')
   }
 
@@ -369,7 +381,7 @@ export function CanvasView() {
           </div>
           <button onClick={fitToView} style={buttonStyle}>{t('canvas.fitView')}</button>
           <button onClick={resetLayout} style={buttonStyle}>{t('canvas.reset')}</button>
-          <button onClick={loadRows} disabled={loading} style={buttonStyle}>{loading ? t('canvas.loading') : t('canvas.refresh')}</button>
+          <button onClick={() => loadRows()} disabled={loading} style={buttonStyle}>{loading ? t('canvas.loading') : t('canvas.refresh')}</button>
         </div>
       </div>
 
@@ -381,6 +393,7 @@ export function CanvasView() {
           <div>{t('canvas.guideLinks')}</div>
           <div>{t('canvas.guideZoom')}</div>
           <div>{t('canvas.guidePan')}</div>
+          <div>{t('canvas.guideCreate')}</div>
         </div>
       )}
 

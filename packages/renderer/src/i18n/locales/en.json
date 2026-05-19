@@ -128,6 +128,7 @@
     "guideLinks": "3. Arrows between cards come from [[wikilink]] relations in notes.",
     "guideZoom": "4. Ctrl/Cmd + mouse wheel or trackpad pinch zooms around the pointer.",
     "guidePan": "5. Drag an empty canvas area to pan the view.",
+    "guideCreate": "6. New cards appear at the center of the current view.",
     "searchPlaceholder": "Search note cards...",
     "empty": "No matching note cards",
     "noTags": "No tags"
