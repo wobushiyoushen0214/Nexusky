@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import i18n from '../i18n'
-import { safeGet, safeRemove, safeSet } from '../utils/storage'
+import { safeGet, safeGetJSON, safeRemove, safeSet, safeSetJSON } from '../utils/storage'
 
 type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
@@ -15,6 +15,7 @@ const WORKSPACE_KEYS = {
   rightPanel: 'nexusky-workspace-right-panel',
   sidebarCollapsed: 'nexusky-workspace-sidebar-collapsed',
 }
+const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph']
 const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas']
@@ -132,10 +133,31 @@ function getInitialSidebarWidth(): number {
   return 240
 }
 
-function getInitialRightPanelWidth(): number {
+function clampRightPanelWidth(width: number): number {
+  return Number.isFinite(width) ? Math.max(260, Math.min(600, width)) : 360
+}
+
+function getSavedRightPanelWidths(): Partial<Record<Exclude<Panel, 'none'>, number>> {
+  return safeGetJSON<Partial<Record<Exclude<Panel, 'none'>, number>>>(RIGHT_PANEL_WIDTHS_KEY, {})
+}
+
+function getInitialRightPanelWidth(panel: Panel = 'none'): number {
+  if (panel !== 'none') {
+    const savedForPanel = getSavedRightPanelWidths()[panel]
+    if (typeof savedForPanel === 'number') return clampRightPanelWidth(savedForPanel)
+  }
   const saved = safeGet('nexusky-right-panel-width')
-  if (saved) return Math.max(260, Math.min(600, Number(saved)))
+  if (saved) return clampRightPanelWidth(Number(saved))
   return 360
+}
+
+function saveRightPanelWidth(panel: Panel, width: number): number {
+  const next = clampRightPanelWidth(width)
+  safeSet('nexusky-right-panel-width', String(next))
+  if (panel !== 'none') {
+    safeSetJSON(RIGHT_PANEL_WIDTHS_KEY, { ...getSavedRightPanelWidths(), [panel]: next })
+  }
+  return next
 }
 
 function getInitialMainView(): MainView {
@@ -160,17 +182,18 @@ function persistWorkspace(partial: Partial<Pick<UIState, 'mainView' | 'rightPane
 
 const initialTheme = getInitialTheme()
 const initialAccentColor = normalizeHexColor(safeGet(ACCENT_STORAGE_KEY))
+const initialRightPanel = getInitialRightPanel()
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', initialTheme)
   applyAccentColor(initialAccentColor)
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  rightPanel: getInitialRightPanel(),
+  rightPanel: initialRightPanel,
   mainView: getInitialMainView(),
   sidebarCollapsed: getInitialSidebarCollapsed(),
   sidebarWidth: getInitialSidebarWidth(),
-  rightPanelWidth: getInitialRightPanelWidth(),
+  rightPanelWidth: getInitialRightPanelWidth(initialRightPanel),
   focusMode: false,
   previewMode: false,
   quickSwitcherOpen: false,
@@ -183,18 +206,18 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   setRightPanel: (panel) => {
     persistWorkspace({ rightPanel: panel })
-    set({ rightPanel: panel })
+    set({ rightPanel: panel, ...(panel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(panel) } : {}) })
   },
   toggleRightPanel: (panel) => {
     const next = get().rightPanel === panel ? 'none' : panel
     persistWorkspace({ rightPanel: next })
-    set({ rightPanel: next })
+    set({ rightPanel: next, ...(next !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(next) } : {}) })
   },
   setMainView: (view) => {
     const currentPanel = get().rightPanel
     const rightPanel = view === 'editor' || !NOTE_SCOPED_PANELS.has(currentPanel) ? currentPanel : 'none'
     persistWorkspace({ mainView: view, rightPanel })
-    set({ mainView: view, rightPanel })
+    set({ mainView: view, rightPanel, ...(rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(rightPanel) } : {}) })
   },
   toggleSidebar: () => {
     const next = !get().sidebarCollapsed
@@ -212,8 +235,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ sidebarWidth: next })
   },
   setRightPanelWidth: (width) => {
-    const next = Math.max(260, Math.min(600, width))
-    safeSet('nexusky-right-panel-width', String(next))
+    const next = saveRightPanelWidth(get().rightPanel, width)
     set({ rightPanelWidth: next })
   },
   resizeSidebar: (delta: number) => {
@@ -222,8 +244,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ sidebarWidth: width })
   },
   resizeRightPanel: (delta: number) => {
-    const width = Math.max(260, Math.min(600, get().rightPanelWidth + delta))
-    safeSet('nexusky-right-panel-width', String(width))
+    const width = saveRightPanelWidth(get().rightPanel, get().rightPanelWidth + delta)
     set({ rightPanelWidth: width })
   },
   setQuickSwitcherOpen: (open) => set({ quickSwitcherOpen: open }),
@@ -260,6 +281,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     safeRemove(WORKSPACE_KEYS.sidebarCollapsed)
     safeRemove('nexusky-sidebar-width')
     safeRemove('nexusky-right-panel-width')
+    safeRemove(RIGHT_PANEL_WIDTHS_KEY)
     set({
       mainView: 'editor',
       rightPanel: 'none',
