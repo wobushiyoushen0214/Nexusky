@@ -50,6 +50,20 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should index Obsidian nested tags from note body', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllTags } = await import('../packages/main/src/services/indexer')
+
+    const filePath = join(vaultPath, 'nested-tags.md')
+    writeFileSync(filePath, '# Nested Tags\n\n#project/research #area/中文')
+
+    indexNote(vaultPath, filePath)
+
+    expect(getAllTags(vaultPath).map((tag) => tag.name).sort()).toEqual(['area/中文', 'project/research'])
+
+    closeDatabase()
+  })
+
   it('should skip re-indexing unchanged files', async () => {
     const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote } = await import('../packages/main/src/services/indexer')

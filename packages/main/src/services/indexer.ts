@@ -575,7 +575,7 @@ function resolveLinks(db: Database.Database, noteId: string, noteTitle: string, 
   `).run(noteId)
 }
 
-const TAG_REGEX = /(?:^|[^&\w一-鿿])#([a-zA-Z一-鿿][\w一-鿿-]*)/g
+const TAG_REGEX = /(?:^|[^&\w一-鿿])#([a-zA-Z一-鿿][\w一-鿿/-]*)/g
 
 function extractTags(content: string): string[] {
   const tags = new Set<string>()
