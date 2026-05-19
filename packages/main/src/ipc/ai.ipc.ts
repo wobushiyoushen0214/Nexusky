@@ -4,6 +4,7 @@ import { store } from '../services/store'
 import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
+import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -565,24 +566,15 @@ graph TD
 
     const dirName = targetDir === params.vaultPath ? '根目录' : targetDir.split(/[\\/]/).pop() || ''
 
-    // Strip directory name prefix from titles if AI accidentally included it
-    if (dirName && dirName !== '根目录') {
-      const prefixLower = dirName.toLowerCase()
-      for (const item of plan) {
-        const titleLower = item.title.toLowerCase()
-        if (titleLower.startsWith(prefixLower) && item.title.length > dirName.length) {
-          const rest = item.title.slice(dirName.length)
-          if (/^[A-Z_\-\s]/.test(rest)) {
-            item.title = rest.replace(/^[\s_\-]+/, '')
-          }
-        }
-      }
-    }
+    plan = normalizeGeneratedNotePlan(plan, {
+      dirName,
+      isNameTaken: (title) => existsSync(join(targetDir, `${title}.md`))
+    })
 
     window.webContents.send('ai:generate-notes-progress', { stage: 'planned', message: `将在「${dirName}」下生成 ${plan.length} 篇笔记`, plan })
 
     // Pre-compute safe file names for consistent wikilinks
-    const safeNames = plan.map((p) => p.title.replace(/[\\/:*?"<>|]/g, '').trim())
+    const safeNames = plan.map((p) => p.title)
 
     // Step 2: Generate each note
     const createdFiles: string[] = []
