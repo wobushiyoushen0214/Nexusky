@@ -27,6 +27,10 @@ function getStringArg(args: Record<string, unknown>, key: string): string {
   return typeof value === 'string' ? value : ''
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
 export function registerAiIPC(): void {
   ipcMain.handle('ai:get-providers', () => {
     return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
@@ -942,9 +946,12 @@ graph TD
     args: Record<string, unknown>,
     vaultPath: string
   ): Promise<{ content: string; sources?: { title: string; filePath: string; chunk: string; score: number }[] }> {
+    if (!vaultPath) return { content: '未打开知识库，无法使用笔记工具。' }
+
     switch (name) {
       case 'search_notes': {
         const query = getStringArg(args, 'query')
+        if (!query.trim()) return { content: 'search_notes 缺少 query 参数。请根据用户问题提供明确的搜索关键词。' }
         const results = await semanticSearch(vaultPath, query, 5)
         if (results.length === 0) return { content: '未找到相关笔记。' }
         return {
@@ -959,6 +966,7 @@ graph TD
       }
       case 'read_note': {
         const title = getStringArg(args, 'title')
+        if (!title.trim()) return { content: 'read_note 缺少 title 参数。请先搜索笔记，或提供要读取的笔记标题。' }
         const filePath = findNoteByTitle(vaultPath, title)
         if (!filePath) return { content: `未找到标题为「${title}」的笔记。` }
         try {
@@ -984,6 +992,18 @@ graph TD
       }
       default:
         return { content: `未知工具: ${name}` }
+    }
+  }
+
+  function parseToolArguments(raw: string): { args: Record<string, unknown>; error?: string } {
+    try {
+      const parsed = JSON.parse(raw)
+      if (!isRecord(parsed)) {
+        return { args: {}, error: '工具参数必须是 JSON 对象。' }
+      }
+      return { args: parsed }
+    } catch {
+      return { args: {}, error: `工具参数不是有效 JSON: ${raw.slice(0, 200)}` }
     }
   }
 
@@ -1121,17 +1141,23 @@ graph TD
             })
 
             for (const call of toolCallEvent.calls) {
-              let args: Record<string, unknown> = {}
-              try {
-                args = JSON.parse(call.arguments)
-              } catch {}
+              const parsedArgs = parseToolArguments(call.arguments)
 
               window.webContents.send('ai:stream', {
                 type: 'tool_call',
-                content: JSON.stringify({ name: call.name, args })
+                content: JSON.stringify({ name: call.name, args: parsedArgs.args })
               })
 
-              const result = await executeToolCall(call.name, args, vaultPath)
+              let result: Awaited<ReturnType<typeof executeToolCall>> = { content: parsedArgs.error || '' }
+              if (parsedArgs.error) {
+                result = { content: parsedArgs.error }
+              } else {
+                try {
+                  result = await executeToolCall(call.name, parsedArgs.args, vaultPath)
+                } catch (err: unknown) {
+                  result = { content: `工具 ${call.name} 执行失败: ${getErrorMessage(err)}` }
+                }
+              }
               if (result.sources && result.sources.length > 0) {
                 for (const source of result.sources) {
                   if (!agentSources.some((s) => s.filePath === source.filePath && s.title === source.title)) {
