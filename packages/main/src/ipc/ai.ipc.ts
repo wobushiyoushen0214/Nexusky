@@ -5,7 +5,7 @@ import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
-import { findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
+import { extractMarkdownHeadingSection, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
 import { formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
@@ -968,12 +968,15 @@ graph TD
         }
         try {
           const content = readFileSync(note.absolutePath, 'utf-8')
+          const heading = extractNoteReferenceHeading(title)
+          const section = heading ? extractMarkdownHeadingSection(content, heading) : null
+          const selectedContent = section || content
           return {
-            content: formatReadNoteToolResult({ title: note.title, filePath: note.filePath, content }),
+            content: formatReadNoteToolResult({ title: note.title, filePath: note.filePath, content: selectedContent, section: section ? heading || undefined : undefined }),
             sources: [{
               title: note.title,
               filePath: note.filePath,
-              chunk: content.slice(0, 100),
+              chunk: selectedContent.slice(0, 100),
               score: 1
             }]
           }

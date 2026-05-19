@@ -60,3 +60,39 @@ describe('findNoteForAiTool', () => {
     expect(findNoteForAiTool(vaultPath, 'B/Topic')?.filePath).toBe('B/Topic.md')
   })
 })
+
+describe('note reference headings', () => {
+  it('extracts headings from wikilinks and path references', async () => {
+    const { extractNoteReferenceHeading } = await import('../packages/main/src/services/ai/note-lookup')
+
+    expect(extractNoteReferenceHeading('[[Folder/Target#Details|label]]')).toBe('Details')
+    expect(extractNoteReferenceHeading('Folder/Target.md#Details')).toBe('Details')
+    expect(extractNoteReferenceHeading('Folder/Target.md')).toBeNull()
+  })
+
+  it('extracts a markdown heading section without spilling into sibling sections', async () => {
+    const { extractMarkdownHeadingSection } = await import('../packages/main/src/services/ai/note-lookup')
+    const markdown = [
+      '# Title',
+      '',
+      'Intro',
+      '',
+      '## Details',
+      'Important context.',
+      '',
+      '### Child',
+      'Child context.',
+      '',
+      '## Next',
+      'Other context.'
+    ].join('\n')
+
+    expect(extractMarkdownHeadingSection(markdown, 'Details')).toBe([
+      '## Details',
+      'Important context.',
+      '',
+      '### Child',
+      'Child context.'
+    ].join('\n'))
+  })
+})

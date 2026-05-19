@@ -16,6 +16,53 @@ function normalizeQuery(input: string): string {
   return value.replace(/\.md$/i, '')
 }
 
+export function extractNoteReferenceHeading(input: string): string | null {
+  let value = input.trim()
+  const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
+  if (wikiMatch) value = wikiMatch[1]
+  const target = value.split('|')[0]
+  const hashIndex = target.indexOf('#')
+  if (hashIndex < 0) return null
+  const heading = target.slice(hashIndex + 1).trim()
+  return heading || null
+}
+
+function normalizeHeadingText(value: string): string {
+  return value.replace(/\s+#+$/, '').trim().toLowerCase()
+}
+
+export function extractMarkdownHeadingSection(content: string, heading: string): string | null {
+  const target = normalizeHeadingText(heading)
+  if (!target) return null
+
+  const lines = content.split('\n')
+  let start = -1
+  let level = 0
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(/^(#{1,6})\s+(.+?)\s*$/)
+    if (!match) continue
+    if (normalizeHeadingText(match[2]) === target) {
+      start = i
+      level = match[1].length
+      break
+    }
+  }
+
+  if (start < 0) return null
+
+  let end = lines.length
+  for (let i = start + 1; i < lines.length; i++) {
+    const match = lines[i].match(/^(#{1,6})\s+/)
+    if (match && match[1].length <= level) {
+      end = i
+      break
+    }
+  }
+
+  return lines.slice(start, end).join('\n').trim()
+}
+
 function notePathTarget(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/\.md$/i, '')
 }

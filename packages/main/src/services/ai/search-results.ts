@@ -13,11 +13,16 @@ export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   ].join('\n')).join('\n\n')
 }
 
-export function formatReadNoteToolResult(note: { title: string; filePath: string; content: string }): string {
+export function formatReadNoteToolResult(note: { title: string; filePath: string; content: string; section?: string }): string {
   const body = note.content.trim() || '(empty note)'
-  return [
+  const header = [
     `Title: ${note.title}`,
-    `Path: ${note.filePath}`,
+    `Path: ${note.filePath}`
+  ]
+  if (note.section) header.push(`Section: ${note.section}`)
+
+  return [
+    ...header,
     '',
     body
   ].join('\n')

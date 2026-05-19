@@ -42,4 +42,15 @@ describe('formatReadNoteToolResult', () => {
 
     expect(output).toBe('Title: Empty\nPath: Empty.md\n\n(empty note)')
   })
+
+  it('includes section metadata when reading a note section', () => {
+    const output = formatReadNoteToolResult({
+      title: 'Topic',
+      filePath: 'Topic.md',
+      section: 'Details',
+      content: '## Details\nBody.'
+    })
+
+    expect(output).toBe('Title: Topic\nPath: Topic.md\nSection: Details\n\n## Details\nBody.')
+  })
 })
