@@ -41,9 +41,25 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     window.dispatchEvent(new CustomEvent('ai-command-draft', { detail: draft }))
   }, [setRightPanel])
 
+  const getCurrentNoteTitle = useCallback(() => {
+    const heading = content.match(/^#\s+(.+)$/m)?.[1]?.trim()
+    const fallback = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
+    return (heading || fallback).replace(/[\[\]]/g, '').trim()
+  }, [content, currentFilePath])
+
   const commands: Command[] = useMemo(() => [
     { id: 'save', category: '文件', label: '保存当前笔记', shortcut: 'Ctrl+S', keywords: ['save'], action: () => saveFile() },
     { id: 'new-note', category: '文件', label: '新建笔记', shortcut: 'Ctrl+N', keywords: ['new', 'note'], action: () => window.dispatchEvent(new CustomEvent('create-new-note')) },
+    { id: 'copy-wikilink', category: '文件', label: '复制当前笔记 Wikilink', description: '复制为 [[笔记标题]]，可直接粘贴到其他笔记', keywords: ['wikilink', 'copy', 'obsidian'], action: async () => {
+      const title = getCurrentNoteTitle()
+      const { toast } = await import('../stores/toast-store')
+      if (!title) {
+        toast('请先打开一篇笔记', 'info')
+        return
+      }
+      await navigator.clipboard.writeText(`[[${title}]]`)
+      toast('已复制 Wikilink', 'success')
+    }},
     { id: 'daily', category: '文件', label: '打开今日笔记', keywords: ['daily', 'journal'], action: async () => {
       if (!vaultPath) return
       const path = await window.api.invoke('template:daily-note', { vaultPath })
@@ -138,7 +154,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'sidebar', category: '界面', label: '切换侧边栏', shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
     { id: 'focus', category: '界面', label: '切换聚焦模式', shortcut: 'F11', keywords: ['focus'], action: () => toggleFocusMode() },
     { id: 'theme', category: '界面', label: '切换主题', keywords: ['theme'], action: () => toggleTheme() },
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, queueAiDraft])
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, queueAiDraft, getCurrentNoteTitle])
 
   const filtered = query.trim()
     ? commands.filter((c) => {
