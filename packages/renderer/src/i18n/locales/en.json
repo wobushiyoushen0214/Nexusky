@@ -115,6 +115,7 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "zoomReset": "Reset zoom",
+    "fitView": "Fit view",
     "guideTitle": "How to use Canvas",
     "guideDrag": "1. Drag cards to arrange them spatially; layout is saved per vault.",
     "guideOpen": "2. Double-click a card to open its Markdown note.",

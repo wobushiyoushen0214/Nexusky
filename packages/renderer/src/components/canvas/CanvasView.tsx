@@ -138,6 +138,31 @@ export function CanvasView() {
   const canvasHeight = Math.max(760, Math.ceil(rows.length / 4) * 180 + 120)
   const setClampedZoom = (value: number) => setZoom(Math.max(0.5, Math.min(1.8, value)))
 
+  const fitToView = () => {
+    const viewport = canvasRef.current
+    if (!viewport || filteredRows.length === 0) return
+    const bounds = filteredRows.reduce(
+      (acc, row, index) => {
+        const pos = positions[row.id] || defaultPosition(index)
+        return {
+          minX: Math.min(acc.minX, pos.x),
+          minY: Math.min(acc.minY, pos.y),
+          maxX: Math.max(acc.maxX, pos.x + 210),
+          maxY: Math.max(acc.maxY, pos.y + 112)
+        }
+      },
+      { minX: Infinity, minY: Infinity, maxX: 0, maxY: 0 }
+    )
+    const width = Math.max(1, bounds.maxX - bounds.minX)
+    const height = Math.max(1, bounds.maxY - bounds.minY)
+    const nextZoom = Math.max(0.5, Math.min(1.4, Math.min((viewport.clientWidth - 80) / width, (viewport.clientHeight - 80) / height)))
+    setZoom(nextZoom)
+    requestAnimationFrame(() => {
+      viewport.scrollLeft = Math.max(0, bounds.minX * nextZoom - 40)
+      viewport.scrollTop = Math.max(0, bounds.minY * nextZoom - 40)
+    })
+  }
+
   const createCanvasNote = async () => {
     if (!vaultPath) return
     const now = new Date()
@@ -187,6 +212,7 @@ export function CanvasView() {
             <button onClick={() => setZoom(1)} title={t('canvas.zoomReset')} style={{ ...zoomButtonStyle, minWidth: 52 }}>{Math.round(zoom * 100)}%</button>
             <button onClick={() => setClampedZoom(zoom + 0.1)} title={t('canvas.zoomIn')} style={{ ...zoomButtonStyle, borderRight: 'none' }}>+</button>
           </div>
+          <button onClick={fitToView} style={buttonStyle}>{t('canvas.fitView')}</button>
           <button onClick={resetLayout} style={buttonStyle}>{t('canvas.reset')}</button>
           <button onClick={loadRows} disabled={loading} style={buttonStyle}>{loading ? t('canvas.loading') : t('canvas.refresh')}</button>
         </div>
