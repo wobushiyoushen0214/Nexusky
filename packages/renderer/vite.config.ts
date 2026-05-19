@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   root: __dirname,
+  base: './',
   server: {
     port: 5188,
     strictPort: true
