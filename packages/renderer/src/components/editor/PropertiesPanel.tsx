@@ -74,20 +74,20 @@ export function PropertiesPanel() {
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
       </div>
 
-      <PropertyField label="Title" hint="覆盖文件内首个 H1 作为展示标题">
+      <PropertyField label="标题" hint="覆盖文件内首个 H1 作为展示标题">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="未设置" style={inputStyle} />
       </PropertyField>
 
-      <PropertyField label="Aliases" hint="每行一个别名，支持 [[别名]] 解析">
-        <textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="Alias One&#10;Alias Two" rows={4} style={textareaStyle} />
+      <PropertyField label="别名" hint="每行一个别名，支持 [[别名]] 解析">
+        <textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="别名一&#10;别名二" rows={4} style={textareaStyle} />
       </PropertyField>
 
-      <PropertyField label="Tags" hint="每行一个标签，可省略 #">
-        <textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder="project&#10;active" rows={4} style={textareaStyle} />
+      <PropertyField label="标签" hint="每行一个标签，可省略 #">
+        <textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder="项目&#10;进行中" rows={4} style={textareaStyle} />
       </PropertyField>
 
-      <PropertyField label="CSS Classes" hint="兼容 Obsidian cssclasses">
-        <textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder="wide-page" rows={3} style={textareaStyle} />
+      <PropertyField label="CSS 类" hint="兼容 Obsidian cssclasses">
+        <textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder="宽页面" rows={3} style={textareaStyle} />
       </PropertyField>
 
       <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
