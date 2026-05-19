@@ -10,6 +10,8 @@ import { generateMemory, readMemory, deleteMemory } from './memory'
 
 let watcher: FSWatcher | null = null
 let currentVaultPath: string | null = null
+let structureTimer: ReturnType<typeof setTimeout> | null = null
+const changeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
 
 export function startWatching(vaultPath: string): void {
   stopWatching()
@@ -21,9 +23,6 @@ export function startWatching(vaultPath: string): void {
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
   })
-
-  let structureTimer: ReturnType<typeof setTimeout> | null = null
-  const changeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
 
   const notifyStructureChange = () => {
     if (structureTimer) clearTimeout(structureTimer)
@@ -100,8 +99,18 @@ export function startWatching(vaultPath: string): void {
 }
 
 export function stopWatching(): void {
+  if (structureTimer) {
+    clearTimeout(structureTimer)
+    structureTimer = null
+  }
+  for (const timer of changeTimers.values()) {
+    clearTimeout(timer)
+  }
+  changeTimers.clear()
+
   if (watcher) {
     watcher.close()
     watcher = null
   }
+  currentVaultPath = null
 }

@@ -4,7 +4,25 @@ import DOMPurify from 'dompurify'
 let mermaidInstance: typeof import('mermaid').default | null = null
 let mermaidLoading: Promise<typeof import('mermaid').default> | null = null
 let mermaidId = 0
+const MAX_SVG_CACHE_SIZE = 50
 const svgCache = new Map<string, string>()
+
+function getCachedSvg(code: string): string | undefined {
+  const cached = svgCache.get(code)
+  if (!cached) return undefined
+  svgCache.delete(code)
+  svgCache.set(code, cached)
+  return cached
+}
+
+function setCachedSvg(code: string, svg: string): void {
+  if (svgCache.has(code)) svgCache.delete(code)
+  svgCache.set(code, svg)
+  if (svgCache.size > MAX_SVG_CACHE_SIZE) {
+    const oldest = svgCache.keys().next().value
+    if (oldest) svgCache.delete(oldest)
+  }
+}
 
 async function getMermaid() {
   if (mermaidInstance) return mermaidInstance
@@ -20,14 +38,14 @@ async function getMermaid() {
 
 export function MermaidRenderer({ code }: { code: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [svg, setSvg] = useState(() => svgCache.get(code.trim()) || '')
+  const [svg, setSvg] = useState(() => getCachedSvg(code.trim()) || '')
   const [error, setError] = useState('')
 
   useEffect(() => {
     const trimmed = code.trim()
     if (!trimmed) return
 
-    const cached = svgCache.get(trimmed)
+    const cached = getCachedSvg(trimmed)
     if (cached) { setSvg(cached); setError(''); return }
 
     let cancelled = false
@@ -36,7 +54,7 @@ export function MermaidRenderer({ code }: { code: string }) {
     getMermaid().then((mermaid) => {
       if (cancelled) return
       mermaid.render(id, trimmed).then(
-        (result) => { if (!cancelled) { svgCache.set(trimmed, result.svg); setSvg(result.svg); setError('') } },
+        (result) => { if (!cancelled) { setCachedSvg(trimmed, result.svg); setSvg(result.svg); setError('') } },
         (err) => { if (!cancelled) { setError(err.message || '渲染失败'); setSvg('') } }
       )
     })

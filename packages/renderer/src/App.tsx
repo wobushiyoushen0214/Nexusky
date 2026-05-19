@@ -50,7 +50,10 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
   const [chatEverOpened, setChatEverOpened] = useState(false)
-  if (rightPanel === 'chat' && !chatEverOpened) setChatEverOpened(true)
+
+  useEffect(() => {
+    if (rightPanel === 'chat') setChatEverOpened(true)
+  }, [rightPanel])
 
   useEffect(() => {
     const handler = async (e: Event) => {
