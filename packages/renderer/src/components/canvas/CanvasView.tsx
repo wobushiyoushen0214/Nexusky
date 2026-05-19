@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -18,6 +18,12 @@ interface DragState {
   offsetY: number
 }
 
+const CARD_WIDTH = 210
+const CARD_HEIGHT = 112
+const BASE_CANVAS_WIDTH = 1200
+const BASE_CANVAS_HEIGHT = 760
+const CANVAS_PADDING = 760
+
 function getCanvasStorageKey(vaultPath: string): string {
   return `nexusky-canvas-layout:${encodeURIComponent(vaultPath)}`
 }
@@ -26,6 +32,39 @@ function defaultPosition(index: number): CanvasPosition {
   const column = index % 4
   const row = Math.floor(index / 4)
   return { x: 40 + column * 250, y: 40 + row * 170 }
+}
+
+function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>) {
+  if (rows.length === 0) {
+    return {
+      minX: -CANVAS_PADDING,
+      minY: -CANVAS_PADDING,
+      width: BASE_CANVAS_WIDTH + CANVAS_PADDING * 2,
+      height: BASE_CANVAS_HEIGHT + CANVAS_PADDING * 2
+    }
+  }
+  const bounds = rows.reduce(
+    (acc, row, index) => {
+      const pos = positions[row.id] || defaultPosition(index)
+      return {
+        minX: Math.min(acc.minX, pos.x),
+        minY: Math.min(acc.minY, pos.y),
+        maxX: Math.max(acc.maxX, pos.x + CARD_WIDTH),
+        maxY: Math.max(acc.maxY, pos.y + CARD_HEIGHT)
+      }
+    },
+    { minX: Infinity, minY: Infinity, maxX: 0, maxY: 0 }
+  )
+  const minX = Math.min(0, bounds.minX) - CANVAS_PADDING
+  const minY = Math.min(0, bounds.minY) - CANVAS_PADDING
+  const maxX = Math.max(BASE_CANVAS_WIDTH, bounds.maxX) + CANVAS_PADDING
+  const maxY = Math.max(BASE_CANVAS_HEIGHT, bounds.maxY) + CANVAS_PADDING
+  return {
+    minX,
+    minY,
+    width: maxX - minX,
+    height: maxY - minY
+  }
 }
 
 export function CanvasView() {
@@ -43,10 +82,27 @@ export function CanvasView() {
   const [zoom, setZoom] = useState(1)
   const canvasRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef<Record<string, CanvasPosition>>({})
+  const metricsRef = useRef(getCanvasMetrics([], {}))
+  const previousMetricsRef = useRef(metricsRef.current)
+  const initialScrollKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     positionsRef.current = positions
   }, [positions])
+
+  const canvasMetrics = useMemo(() => getCanvasMetrics(rows, positions), [rows, positions])
+
+  useLayoutEffect(() => {
+    const previous = previousMetricsRef.current
+    metricsRef.current = canvasMetrics
+    previousMetricsRef.current = canvasMetrics
+    const viewport = canvasRef.current
+    if (!viewport) return
+    const dx = (previous.minX - canvasMetrics.minX) * zoom
+    const dy = (previous.minY - canvasMetrics.minY) * zoom
+    if (dx !== 0) viewport.scrollLeft += dx
+    if (dy !== 0) viewport.scrollTop += dy
+  }, [canvasMetrics, zoom])
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -78,8 +134,9 @@ export function CanvasView() {
       if (!rect) return
       const scrollLeft = canvasRef.current!.scrollLeft
       const scrollTop = canvasRef.current!.scrollTop
-      const x = Math.max(0, (event.clientX - rect.left + scrollLeft) / zoom - dragging.offsetX)
-      const y = Math.max(0, (event.clientY - rect.top + scrollTop) / zoom - dragging.offsetY)
+      const metrics = metricsRef.current
+      const x = (event.clientX - rect.left + scrollLeft) / zoom + metrics.minX - dragging.offsetX
+      const y = (event.clientY - rect.top + scrollTop) / zoom + metrics.minY - dragging.offsetY
       setPositions((current) => ({ ...current, [dragging.id]: { x, y } }))
     }
     const handlePointerUp = () => {
@@ -104,6 +161,19 @@ export function CanvasView() {
     ].join(' ').toLowerCase().includes(q))
   }, [rows, query])
 
+  useEffect(() => {
+    const viewport = canvasRef.current
+    if (!viewport || filteredRows.length === 0) return
+    const key = `${vaultPath || 'no-vault'}:${rows.length}`
+    if (initialScrollKeyRef.current === key) return
+    initialScrollKeyRef.current = key
+    requestAnimationFrame(() => {
+      const metrics = metricsRef.current
+      viewport.scrollLeft = Math.max(0, -metrics.minX * zoom - 44)
+      viewport.scrollTop = Math.max(0, -metrics.minY * zoom - 44)
+    })
+  }, [filteredRows.length, rows.length, vaultPath, zoom])
+
   const visibleIds = useMemo(() => new Set(filteredRows.map((row) => row.id)), [filteredRows])
 
   const canvasEdges = useMemo(() => {
@@ -116,14 +186,14 @@ export function CanvasView() {
         if (!source || !target) return null
         return {
           key: `${edge.source}->${edge.target}`,
-          x1: source.x + 105,
-          y1: source.y + 56,
-          x2: target.x + 105,
-          y2: target.y + 56
+          x1: source.x - canvasMetrics.minX + CARD_WIDTH / 2,
+          y1: source.y - canvasMetrics.minY + CARD_HEIGHT / 2,
+          x2: target.x - canvasMetrics.minX + CARD_WIDTH / 2,
+          y2: target.y - canvasMetrics.minY + CARD_HEIGHT / 2
         }
       })
       .filter((edge): edge is { key: string; x1: number; y1: number; x2: number; y2: number } => edge !== null)
-  }, [graph, positions, visibleIds])
+  }, [canvasMetrics.minX, canvasMetrics.minY, graph, positions, visibleIds])
 
   const resetLayout = () => {
     const next: Record<string, CanvasPosition> = {}
@@ -132,10 +202,17 @@ export function CanvasView() {
     })
     setPositions(next)
     if (vaultPath) safeSetJSON(getCanvasStorageKey(vaultPath), next)
+    requestAnimationFrame(() => {
+      const viewport = canvasRef.current
+      if (!viewport) return
+      const metrics = metricsRef.current
+      viewport.scrollLeft = Math.max(0, -metrics.minX * zoom - 44)
+      viewport.scrollTop = Math.max(0, -metrics.minY * zoom - 44)
+    })
   }
 
-  const canvasWidth = 1200
-  const canvasHeight = Math.max(760, Math.ceil(rows.length / 4) * 180 + 120)
+  const canvasWidth = canvasMetrics.width
+  const canvasHeight = canvasMetrics.height
   const setClampedZoom = (value: number) => setZoom(Math.max(0.5, Math.min(1.8, value)))
 
   const fitToView = () => {
@@ -147,8 +224,8 @@ export function CanvasView() {
         return {
           minX: Math.min(acc.minX, pos.x),
           minY: Math.min(acc.minY, pos.y),
-          maxX: Math.max(acc.maxX, pos.x + 210),
-          maxY: Math.max(acc.maxY, pos.y + 112)
+          maxX: Math.max(acc.maxX, pos.x + CARD_WIDTH),
+          maxY: Math.max(acc.maxY, pos.y + CARD_HEIGHT)
         }
       },
       { minX: Infinity, minY: Infinity, maxX: 0, maxY: 0 }
@@ -158,8 +235,9 @@ export function CanvasView() {
     const nextZoom = Math.max(0.5, Math.min(1.4, Math.min((viewport.clientWidth - 80) / width, (viewport.clientHeight - 80) / height)))
     setZoom(nextZoom)
     requestAnimationFrame(() => {
-      viewport.scrollLeft = Math.max(0, bounds.minX * nextZoom - 40)
-      viewport.scrollTop = Math.max(0, bounds.minY * nextZoom - 40)
+      const metrics = metricsRef.current
+      viewport.scrollLeft = Math.max(0, (bounds.minX - metrics.minX) * nextZoom - 40)
+      viewport.scrollTop = Math.max(0, (bounds.minY - metrics.minY) * nextZoom - 40)
     })
   }
 
@@ -260,9 +338,9 @@ export function CanvasView() {
                   onDoubleClick={() => openRow(row)}
                   style={{
                     position: 'absolute',
-                    left: pos.x,
-                    top: pos.y,
-                    width: 210,
+                    left: pos.x - canvasMetrics.minX,
+                    top: pos.y - canvasMetrics.minY,
+                    width: CARD_WIDTH,
                     minHeight: 112,
                     padding: '12px 12px 10px',
                     borderRadius: 8,

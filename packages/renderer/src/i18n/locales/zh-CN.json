@@ -123,7 +123,7 @@
     "zoomReset": "重置缩放",
     "fitView": "适应视图",
     "guideTitle": "自由画布使用方式",
-    "guideDrag": "1. 拖拽卡片整理空间位置，布局会按 vault 自动保存。",
+    "guideDrag": "1. 拖拽卡片整理空间位置，可向上、下、左、右继续展开，布局会按 vault 自动保存。",
     "guideOpen": "2. 双击卡片打开对应 Markdown 笔记。",
     "guideLinks": "3. 卡片之间的箭头来自笔记里的 [[wikilink]] 关系。",
     "searchPlaceholder": "搜索笔记卡片...",
