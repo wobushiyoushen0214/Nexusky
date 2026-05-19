@@ -145,6 +145,15 @@ export interface AiSimilarNotePairResult {
   score: number
 }
 
+export interface AiMemoryRelatedNotePairResult {
+  sourceTitle: string
+  sourcePath: string
+  targetTitle: string
+  targetPath: string
+  score: number
+  reason: string
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -441,6 +450,17 @@ export function formatSimilarNotesToolResult(pairs: AiSimilarNotePairResult[]): 
     `${index + 1}. **${pair.sourceTitle}** -> **${pair.targetTitle}**`,
     `Source: ${pair.sourcePath}`,
     `Target: ${pair.targetPath}`,
+    `Score: ${pair.score.toFixed(3)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatMemoryRelatedNotesToolResult(pairs: AiMemoryRelatedNotePairResult[]): string {
+  if (pairs.length === 0) return 'No memory-related notes found.'
+  return pairs.map((pair, index) => [
+    `${index + 1}. **${pair.sourceTitle}** -> **${pair.targetTitle}**`,
+    `Source: ${pair.sourcePath}`,
+    `Target: ${pair.targetPath}`,
+    `Reason: ${pair.reason || '(none)'}`,
     `Score: ${pair.score.toFixed(3)}`
   ].join('\n')).join('\n\n')
 }

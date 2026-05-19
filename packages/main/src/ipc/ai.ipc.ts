@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -66,6 +66,12 @@ function normalizeMinCharacters(value: unknown): number {
 function normalizeSimilarityThreshold(value: unknown): number {
   const number = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(number)) return 0.75
+  return Math.min(1, Math.max(0, number))
+}
+
+function normalizeMemoryRelationThreshold(value: unknown): number {
+  const number = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(number)) return 0.3
   return Math.min(1, Math.max(0, number))
 }
 
@@ -989,6 +995,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'find_memory_related_notes',
+        description: '基于已生成的笔记记忆查找共享概念或主题的跨文件夹笔记对，适合发现高层知识关系。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按来源/目标标题、路径或关联原因过滤，可选' },
+            threshold: { type: 'number', description: '关系分数阈值，0-1，默认 0.3' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note',
         description: '读取指定笔记的完整内容。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
@@ -1434,6 +1455,52 @@ graph TD
               title: pair.targetTitle,
               filePath: pair.targetPath,
               chunk: `Similar to ${pair.sourceTitle}: ${pair.score.toFixed(3)}`,
+              score: pair.score
+            }
+          ])
+        }
+      }
+      case 'find_memory_related_notes': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const threshold = normalizeMemoryRelationThreshold(args.threshold)
+        const notesById = new Map(getAllNotes(vaultPath).map((note) => [note.id, note]))
+        const memories = readAllMemories(vaultPath)
+        if (memories.length < 2) {
+          return { content: 'No note memories found. Generate note memories before using find_memory_related_notes.' }
+        }
+        const pairs = findRelatedByMemory(vaultPath, Math.max(3, limit))
+          .map((pair) => {
+            const source = notesById.get(pair.sourceId)
+            const target = notesById.get(pair.targetId)
+            if (!source || !target) return null
+            return {
+              sourceTitle: source.title || pair.sourceTitle,
+              sourcePath: source.filePath,
+              targetTitle: target.title || pair.targetTitle,
+              targetPath: target.filePath,
+              score: pair.score,
+              reason: pair.reason
+            }
+          })
+          .filter((pair): pair is { sourceTitle: string; sourcePath: string; targetTitle: string; targetPath: string; score: number; reason: string } => pair !== null)
+          .filter((pair) => pair.score >= threshold)
+          .filter((pair) => !query || [pair.sourceTitle, pair.sourcePath, pair.targetTitle, pair.targetPath, pair.reason].some((value) => value.toLowerCase().includes(query)))
+          .sort((a, b) => b.score - a.score || a.sourcePath.localeCompare(b.sourcePath) || a.targetPath.localeCompare(b.targetPath))
+          .slice(0, limit)
+        return {
+          content: formatMemoryRelatedNotesToolResult(pairs),
+          sources: pairs.flatMap((pair) => [
+            {
+              title: pair.sourceTitle,
+              filePath: pair.sourcePath,
+              chunk: `${pair.reason}; related to ${pair.targetTitle}`,
+              score: pair.score
+            },
+            {
+              title: pair.targetTitle,
+              filePath: pair.targetPath,
+              chunk: `${pair.reason}; related to ${pair.sourceTitle}`,
               score: pair.score
             }
           ])
