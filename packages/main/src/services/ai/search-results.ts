@@ -114,6 +114,14 @@ export interface AiDuplicateNoteTitleResult {
   filePaths: string[]
 }
 
+export interface AiDuplicateAliasResult {
+  alias: string
+  notes: {
+    title: string
+    filePath: string
+  }[]
+}
+
 export interface AiUntaggedNoteResult {
   title: string
   filePath: string
@@ -311,6 +319,14 @@ export function formatDuplicateNoteTitlesToolResult(groups: AiDuplicateNoteTitle
   return groups.map((group, index) => [
     `${index + 1}. **${group.title}** (${group.filePaths.length})`,
     ...group.filePaths.map((filePath) => `- ${filePath}`)
+  ].join('\n')).join('\n\n')
+}
+
+export function formatDuplicateAliasesToolResult(groups: AiDuplicateAliasResult[]): string {
+  if (groups.length === 0) return 'No duplicate aliases found.'
+  return groups.map((group, index) => [
+    `${index + 1}. **${group.alias}** (${group.notes.length})`,
+    ...group.notes.map((note) => `- ${note.title}: ${note.filePath}`)
   ].join('\n')).join('\n\n')
 }
 

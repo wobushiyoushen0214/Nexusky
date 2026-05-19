@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -44,6 +44,11 @@ function normalizeFolderArg(folder: string): string {
 function hasPropertyTags(value: unknown): boolean {
   if (Array.isArray(value)) return value.some((item) => formatPropertyValue(item).trim().length > 0)
   return formatPropertyValue(value).trim().length > 0
+}
+
+function getPropertyTextValues(value: unknown): string[] {
+  const values = Array.isArray(value) ? value : [value]
+  return values.map((item) => formatPropertyValue(item).trim()).filter((item) => item.length > 0)
 }
 
 function isEmptyMarkdownNote(content: string): boolean {
@@ -1190,6 +1195,20 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_duplicate_aliases',
+        description: '列出被多个笔记共用的 alias，帮助排查 read_note 和 wikilink 解析歧义。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按 alias、标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回重复 alias 组数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -1614,6 +1633,33 @@ graph TD
             title: group.title,
             filePath,
             chunk: `Duplicate title: ${group.title}`,
+            score: 1
+          })))
+        }
+      }
+      case 'list_duplicate_aliases': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const groups = new Map<string, { alias: string; notes: { title: string; filePath: string }[] }>()
+        for (const row of getPropertyRows(vaultPath)) {
+          for (const alias of getPropertyTextValues(row.properties.aliases)) {
+            const key = alias.toLowerCase()
+            const group = groups.get(key) || { alias, notes: [] }
+            group.notes.push({ title: row.title, filePath: row.filePath })
+            groups.set(key, group)
+          }
+        }
+        const duplicates = Array.from(groups.values())
+          .filter((group) => group.notes.length > 1)
+          .filter((group) => !query || group.alias.toLowerCase().includes(query) || group.notes.some((note) => [note.title, note.filePath].some((value) => value.toLowerCase().includes(query))))
+          .sort((a, b) => b.notes.length - a.notes.length || a.alias.localeCompare(b.alias))
+          .slice(0, limit)
+        return {
+          content: formatDuplicateAliasesToolResult(duplicates),
+          sources: duplicates.flatMap((group) => group.notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Duplicate alias: ${group.alias}`,
             score: 1
           })))
         }

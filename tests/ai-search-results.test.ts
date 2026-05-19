@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -303,6 +303,26 @@ describe('formatDuplicateNoteTitlesToolResult', () => {
 
   it('marks empty duplicate title results explicitly', () => {
     expect(formatDuplicateNoteTitlesToolResult([])).toBe('No duplicate note titles found.')
+  })
+})
+
+describe('formatDuplicateAliasesToolResult', () => {
+  it('formats duplicate aliases with note titles and paths', () => {
+    const output = formatDuplicateAliasesToolResult([
+      {
+        alias: 'Project',
+        notes: [
+          { title: 'Alpha', filePath: 'Projects/Alpha.md' },
+          { title: 'Beta', filePath: 'Projects/Beta.md' }
+        ]
+      }
+    ])
+
+    expect(output).toBe('1. **Project** (2)\n- Alpha: Projects/Alpha.md\n- Beta: Projects/Beta.md')
+  })
+
+  it('marks empty duplicate aliases explicitly', () => {
+    expect(formatDuplicateAliasesToolResult([])).toBe('No duplicate aliases found.')
   })
 })
 
