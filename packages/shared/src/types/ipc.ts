@@ -18,6 +18,13 @@ export interface BacklinkResult {
   context: string
 }
 
+export interface UnlinkedMentionResult {
+  sourceTitle: string
+  sourcePath: string
+  context: string
+  mention: string
+}
+
 export interface GraphNode {
   id: string
   title: string
@@ -162,6 +169,7 @@ export interface IPCChannelMap {
   'db:get-all-notes': { params: { vaultPath: string }; result: NoteSearchResult[] }
   'db:get-recent-notes': { params: { vaultPath: string; limit?: number }; result: NoteSearchResult[] }
   'db:get-backlinks': { params: { vaultPath: string; noteId: string }; result: BacklinkResult[] }
+  'db:get-unlinked-mentions': { params: { vaultPath: string; noteId: string }; result: UnlinkedMentionResult[] }
   'db:get-graph': { params: { vaultPath: string }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
   'db:semantic-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }

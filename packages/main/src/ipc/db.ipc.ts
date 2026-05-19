@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { readdirSync, readFileSync } from 'fs'
 import { join, extname } from 'path'
 import { randomUUID } from 'crypto'
-import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getGraphData, getAllTags, getNotesByTag, getAllTasks } from '../services/indexer'
+import { indexNote, removeNoteIndex, getAllNotes, getBacklinks, getUnlinkedMentions, getGraphData, getAllTags, getNotesByTag, getAllTasks } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
 import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '../services/embedding'
 import { pushIndex } from '../services/cloud/manager'
@@ -160,6 +160,10 @@ export function registerDbIPC(): void {
 
   ipcMain.handle('db:get-backlinks', async (_event, params: { vaultPath: string; noteId: string }) => {
     return getBacklinks(params.vaultPath, params.noteId)
+  })
+
+  ipcMain.handle('db:get-unlinked-mentions', async (_event, params: { vaultPath: string; noteId: string }) => {
+    return getUnlinkedMentions(params.vaultPath, params.noteId)
   })
 
   ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string }) => {

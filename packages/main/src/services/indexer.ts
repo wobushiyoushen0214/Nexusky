@@ -22,6 +22,13 @@ export interface LinkIndex {
   context: string
 }
 
+export interface UnlinkedMentionIndex {
+  sourceTitle: string
+  sourcePath: string
+  context: string
+  mention: string
+}
+
 export function indexNote(vaultPath: string, filePath: string): void {
   const db = getDatabase(vaultPath)
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
@@ -126,6 +133,47 @@ export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: 
   `).all(note.title, noteId) as { sourceTitle: string; sourcePath: string; context: string }[]
 }
 
+export function getUnlinkedMentions(vaultPath: string, noteId: string): UnlinkedMentionIndex[] {
+  const db = getDatabase(vaultPath)
+  const note = db.prepare('SELECT title, file_path FROM notes WHERE id = ?').get(noteId) as { title: string; file_path: string } | undefined
+  if (!note) return []
+
+  const fileTitle = basename(note.file_path, '.md')
+  const aliases = Array.from(new Set([note.title, fileTitle].map((title) => title.trim()).filter((title) => title.length >= 2)))
+  if (aliases.length === 0) return []
+
+  const rows = db.prepare(`
+    SELECT n.id, n.title, n.file_path as filePath, f.content
+    FROM notes n
+    JOIN notes_fts_map m ON m.note_id = n.id
+    JOIN notes_fts f ON f.rowid = m.rowid
+    WHERE n.id != ?
+    ORDER BY n.updated_at DESC
+  `).all(noteId) as { id: string; title: string; filePath: string; content: string }[]
+
+  const hasExplicitLink = db.prepare(`
+    SELECT 1
+    FROM links
+    WHERE source_note_id = ?
+      AND (target_note_id = ? OR target_title IN (${aliases.map(() => '?').join(',')}))
+    LIMIT 1
+  `)
+
+  const mentions: UnlinkedMentionIndex[] = []
+  for (const row of rows) {
+    if (hasExplicitLink.get(row.id, noteId, ...aliases)) continue
+    const match = findPlainMention(row.content, aliases)
+    if (!match) continue
+    mentions.push({
+      sourceTitle: row.title,
+      sourcePath: row.filePath,
+      context: createMentionContext(row.content, match.index),
+      mention: match.alias
+    })
+  }
+  return mentions
+}
+
 export function getGraphData(vaultPath: string): { nodes: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }[]; edges: { source: string; target: string }[] } {
   const db = getDatabase(vaultPath)
   const notes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
@@ -221,6 +269,36 @@ function extractLinks(content: string): { targetTitle: string; context: string }
   }
 
   return links
+}
+
+function findPlainMention(content: string, aliases: string[]): { alias: string; index: number } | null {
+  const lowerContent = content.toLowerCase()
+  const sortedAliases = [...aliases].sort((a, b) => b.length - a.length)
+  for (const alias of sortedAliases) {
+    const lowerAlias = alias.toLowerCase()
+    let index = lowerContent.indexOf(lowerAlias)
+    while (index >= 0) {
+      const before = content.slice(Math.max(0, index - 2), index)
+      const after = content.slice(index + alias.length, index + alias.length + 2)
+      const insideWikiLink = before === '[[' && (after.startsWith(']') || after.startsWith('|'))
+      if (!insideWikiLink) return { alias, index }
+      index = lowerContent.indexOf(lowerAlias, index + alias.length)
+    }
+  }
+  return null
+}
+
+function createMentionContext(content: string, index: number): string {
+  const lineStart = content.lastIndexOf('\n', index) + 1
+  const nextBreak = content.indexOf('\n', index)
+  const lineEnd = nextBreak >= 0 ? nextBreak : content.length
+  const line = content.slice(lineStart, lineEnd).trim()
+  if (line.length <= 220) return line
+
+  const localIndex = index - lineStart
+  const start = Math.max(0, localIndex - 90)
+  const end = Math.min(line.length, localIndex + 130)
+  return `${start > 0 ? '...' : ''}${line.slice(start, end).trim()}${end < line.length ? '...' : ''}`
 }
 
 export function resolveAllLinks(vaultPath: string): void {
