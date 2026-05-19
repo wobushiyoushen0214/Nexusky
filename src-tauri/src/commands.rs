@@ -4,7 +4,10 @@ pub fn dispatch(_app: &tauri::AppHandle, channel: &str, params: Value) -> Result
   if let Some(value) = crate::files::handle(channel, params.clone())? {
     return Ok(value);
   }
-  if let Some(value) = crate::vault::handle(channel, params)? {
+  if let Some(value) = crate::vault::handle(channel, params.clone())? {
+    return Ok(value);
+  }
+  if let Some(value) = crate::db::handle(channel, params)? {
     return Ok(value);
   }
 
