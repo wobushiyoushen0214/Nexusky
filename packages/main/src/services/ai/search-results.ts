@@ -19,6 +19,12 @@ export interface AiNoteLinksSummary {
     sourcePath: string
     context: string
   }[]
+  unlinkedMentions?: {
+    sourceTitle: string
+    sourcePath: string
+    context: string
+    mention: string
+  }[]
 }
 
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
@@ -58,6 +64,11 @@ export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
       `${index + 1}. ${link.sourceTitle} (${link.sourcePath})${formatLinkContext(link.context)}`
     )).join('\n')
     : '(none)'
+  const unlinkedMentions = summary.unlinkedMentions && summary.unlinkedMentions.length > 0
+    ? summary.unlinkedMentions.map((mention, index) => (
+      `${index + 1}. ${mention.sourceTitle} (${mention.sourcePath}) - "${mention.mention}"${formatLinkContext(mention.context)}`
+    )).join('\n')
+    : '(none)'
 
   return [
     `Title: ${summary.title}`,
@@ -67,7 +78,10 @@ export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
     outgoing,
     '',
     'Backlinks:',
-    backlinks
+    backlinks,
+    '',
+    'Unlinked Mentions:',
+    unlinkedMentions
   ].join('\n')
 }
 

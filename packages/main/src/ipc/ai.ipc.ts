@@ -10,7 +10,7 @@ import { formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesT
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
-import { getBacklinks, getOutgoingLinks, indexNote, resolveAllLinks } from '../services/indexer'
+import { getBacklinks, getOutgoingLinks, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
@@ -1020,12 +1020,13 @@ graph TD
 
         const outgoing = getOutgoingLinks(vaultPath, row.id)
         const backlinks = getBacklinks(vaultPath, row.id)
+        const unlinkedMentions = getUnlinkedMentions(vaultPath, row.id)
         return {
-          content: formatNoteLinksToolResult({ title: note.title, filePath: note.filePath, outgoing, backlinks }),
+          content: formatNoteLinksToolResult({ title: note.title, filePath: note.filePath, outgoing, backlinks, unlinkedMentions }),
           sources: [{
             title: note.title,
             filePath: note.filePath,
-            chunk: `Outgoing: ${outgoing.length}; Backlinks: ${backlinks.length}`,
+            chunk: `Outgoing: ${outgoing.length}; Backlinks: ${backlinks.length}; Unlinked mentions: ${unlinkedMentions.length}`,
             score: 1
           }]
         }

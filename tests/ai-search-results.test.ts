@@ -77,6 +77,9 @@ describe('formatNoteLinksToolResult', () => {
       ],
       backlinks: [
         { sourceTitle: 'Source', sourcePath: 'Source.md', context: 'References [[Topic]].' }
+      ],
+      unlinkedMentions: [
+        { sourceTitle: 'Loose', sourcePath: 'Loose.md', context: 'Topic appears without a link.', mention: 'Topic' }
       ]
     })
 
@@ -85,6 +88,7 @@ describe('formatNoteLinksToolResult', () => {
     expect(output).toContain('1. Next (Folder/Next.md) - See [[Next]] for details.')
     expect(output).toContain('2. Missing (unresolved) - See [[Missing]].')
     expect(output).toContain('1. Source (Source.md) - References [[Topic]].')
+    expect(output).toContain('1. Loose (Loose.md) - "Topic" - Topic appears without a link.')
   })
 
   it('marks empty link sections explicitly', () => {
@@ -95,6 +99,6 @@ describe('formatNoteLinksToolResult', () => {
       backlinks: []
     })
 
-    expect(output).toBe('Title: Solo\nPath: Solo.md\n\nOutgoing:\n(none)\n\nBacklinks:\n(none)')
+    expect(output).toBe('Title: Solo\nPath: Solo.md\n\nOutgoing:\n(none)\n\nBacklinks:\n(none)\n\nUnlinked Mentions:\n(none)')
   })
 })
