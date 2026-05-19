@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -61,6 +61,11 @@ function normalizeMinCharacters(value: unknown): number {
   const number = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(number)) return 8000
   return Math.max(1000, Math.floor(number))
+}
+
+function normalizeLinkHubMode(mode: string): 'backlinks' | 'outgoing' | 'total' {
+  if (mode === 'backlinks' || mode === 'outgoing') return mode
+  return 'total'
 }
 
 function isEmptyMarkdownNote(content: string): boolean {
@@ -1212,6 +1217,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_link_hubs',
+        description: '列出链接最多的枢纽笔记，可按反链、出链或总连接数排序，帮助理解知识库结构。',
+        parameters: {
+          type: 'object',
+          properties: {
+            mode: { type: 'string', description: 'backlinks、outgoing 或 total，默认 total' },
+            query: { type: 'string', description: '按标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_untagged_notes',
         description: '列出没有任何标签的笔记，可按标题或路径过滤。',
         parameters: {
@@ -1714,6 +1734,30 @@ graph TD
             filePath: note.filePath,
             chunk: 'Unreferenced note: no backlinks',
             score: 1
+          }))
+        }
+      }
+      case 'list_link_hubs': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const mode = normalizeLinkHubMode(getStringArg(args, 'mode').trim().toLowerCase())
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getAllNotes(vaultPath)
+          .filter((note) => !query || [note.title, note.filePath].some((value) => value.toLowerCase().includes(query)))
+          .map((note) => {
+            const backlinks = getBacklinks(vaultPath, note.id).length
+            const outgoing = getOutgoingLinks(vaultPath, note.id).filter((link) => link.resolved).length
+            return { title: note.title, filePath: note.filePath, backlinks, outgoing, total: backlinks + outgoing }
+          })
+          .filter((note) => note.total > 0)
+          .sort((a, b) => b[mode] - a[mode] || b.total - a.total || a.title.localeCompare(b.title))
+          .slice(0, limit)
+        return {
+          content: formatLinkHubsToolResult(notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Backlinks: ${note.backlinks}; outgoing: ${note.outgoing}; total: ${note.total}`,
+            score: note.total
           }))
         }
       }

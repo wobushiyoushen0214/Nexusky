@@ -113,6 +113,14 @@ export interface AiUnreferencedNoteResult {
   updatedAt: number
 }
 
+export interface AiLinkHubResult {
+  title: string
+  filePath: string
+  backlinks: number
+  outgoing: number
+  total: number
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -354,6 +362,17 @@ export function formatUnreferencedNotesToolResult(notes: AiUnreferencedNoteResul
     `${index + 1}. **${note.title}**`,
     `Path: ${note.filePath}`,
     `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatLinkHubsToolResult(notes: AiLinkHubResult[]): string {
+  if (notes.length === 0) return 'No link hubs found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Backlinks: ${note.backlinks}`,
+    `Outgoing: ${note.outgoing}`,
+    `Total: ${note.total}`
   ].join('\n')).join('\n\n')
 }
 
