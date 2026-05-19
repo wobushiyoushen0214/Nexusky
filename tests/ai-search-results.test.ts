@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -233,6 +233,20 @@ describe('formatOrphanNotesToolResult', () => {
 
   it('marks empty orphan note results explicitly', () => {
     expect(formatOrphanNotesToolResult([])).toBe('No orphan notes found.')
+  })
+})
+
+describe('formatUnreferencedNotesToolResult', () => {
+  it('formats unreferenced notes with paths and timestamps', () => {
+    const output = formatUnreferencedNotesToolResult([
+      { title: 'Standalone', filePath: 'Notes/Standalone.md', updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('1. **Standalone**\nPath: Notes/Standalone.md\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty unreferenced note results explicitly', () => {
+    expect(formatUnreferencedNotesToolResult([])).toBe('No unreferenced notes found.')
   })
 })
 

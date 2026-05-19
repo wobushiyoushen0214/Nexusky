@@ -81,6 +81,12 @@ export interface AiOrphanNoteResult {
   updatedAt: number
 }
 
+export interface AiUnreferencedNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -256,6 +262,15 @@ export function formatUnresolvedLinksToolResult(links: AiUnresolvedLinkResult[])
 
 export function formatOrphanNotesToolResult(notes: AiOrphanNoteResult[]): string {
   if (notes.length === 0) return 'No orphan notes found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatUnreferencedNotesToolResult(notes: AiUnreferencedNoteResult[]): string {
+  if (notes.length === 0) return 'No unreferenced notes found.'
   return notes.map((note, index) => [
     `${index + 1}. **${note.title}**`,
     `Path: ${note.filePath}`,
