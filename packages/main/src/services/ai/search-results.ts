@@ -97,6 +97,11 @@ export interface AiFolderNoteResult {
   updatedAt: number
 }
 
+export interface AiDuplicateNoteTitleResult {
+  title: string
+  filePaths: string[]
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -257,6 +262,14 @@ export function formatNotesByFolderToolResult(folder: string, notes: AiFolderNot
     `Updated: ${formatTimestamp(note.updatedAt)}`
   ].join('\n')).join('\n\n')
   return `Folder: ${folder}\n\n${body}`
+}
+
+export function formatDuplicateNoteTitlesToolResult(groups: AiDuplicateNoteTitleResult[]): string {
+  if (groups.length === 0) return 'No duplicate note titles found.'
+  return groups.map((group, index) => [
+    `${index + 1}. **${group.title}** (${group.filePaths.length})`,
+    ...group.filePaths.map((filePath) => `- ${filePath}`)
+  ].join('\n')).join('\n\n')
 }
 
 function formatLinkContext(context: string): string {

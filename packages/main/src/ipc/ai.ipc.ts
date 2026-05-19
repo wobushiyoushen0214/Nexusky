@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1105,6 +1105,20 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_duplicate_note_titles',
+        description: '列出标题重复的笔记及其路径，帮助避免 read_note 歧义。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回重复标题组数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -1420,6 +1434,32 @@ graph TD
             chunk: 'Orphan note: no resolved outgoing links or backlinks',
             score: 1
           }))
+        }
+      }
+      case 'list_duplicate_note_titles': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const groups = new Map<string, { title: string; filePaths: string[] }>()
+        for (const note of getAllNotes(vaultPath)) {
+          const key = note.title.trim().toLowerCase()
+          if (!key) continue
+          const group = groups.get(key) || { title: note.title, filePaths: [] }
+          group.filePaths.push(note.filePath)
+          groups.set(key, group)
+        }
+        const duplicates = Array.from(groups.values())
+          .filter((group) => group.filePaths.length > 1)
+          .filter((group) => !query || group.title.toLowerCase().includes(query) || group.filePaths.some((filePath) => filePath.toLowerCase().includes(query)))
+          .sort((a, b) => b.filePaths.length - a.filePaths.length || a.title.localeCompare(b.title))
+          .slice(0, limit)
+        return {
+          content: formatDuplicateNoteTitlesToolResult(duplicates),
+          sources: duplicates.flatMap((group) => group.filePaths.map((filePath) => ({
+            title: group.title,
+            filePath,
+            chunk: `Duplicate title: ${group.title}`,
+            score: 1
+          })))
         }
       }
       case 'create_note': {

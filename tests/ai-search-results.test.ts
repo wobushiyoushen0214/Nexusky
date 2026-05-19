@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -261,5 +261,20 @@ describe('folder tool formatting', () => {
   it('marks empty folder results explicitly', () => {
     expect(formatListFoldersToolResult([])).toBe('No folders found.')
     expect(formatNotesByFolderToolResult('Missing', [])).toBe('No notes found in folder Missing.')
+  })
+})
+
+describe('formatDuplicateNoteTitlesToolResult', () => {
+  it('formats duplicate title groups with paths', () => {
+    const output = formatDuplicateNoteTitlesToolResult([
+      { title: 'Topic', filePaths: ['A/Topic.md', 'B/Topic.md'] },
+      { title: 'Project', filePaths: ['Project.md', 'Archive/Project.md', 'Old/Project.md'] }
+    ])
+
+    expect(output).toBe('1. **Topic** (2)\n- A/Topic.md\n- B/Topic.md\n\n2. **Project** (3)\n- Project.md\n- Archive/Project.md\n- Old/Project.md')
+  })
+
+  it('marks empty duplicate title results explicitly', () => {
+    expect(formatDuplicateNoteTitlesToolResult([])).toBe('No duplicate note titles found.')
   })
 })
