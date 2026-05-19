@@ -5,12 +5,17 @@ import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
 import { updateFrontmatterProperty } from '../../utils/frontmatter'
+import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 type SortKey = 'updatedAt' | 'title' | 'filePath'
 type EditState = { rowId: string; key: string; value: string; list: boolean } | null
 
 const PRIMARY_COLUMNS = ['tags', 'aliases', 'cssclasses']
+
+function getColumnsStorageKey(vaultPath: string): string {
+  return `nexusky-bases-columns:${encodeURIComponent(vaultPath)}`
+}
 
 function valueToText(value: PropertyValue | undefined): string {
   if (value == null) return ''
@@ -35,6 +40,8 @@ export function BasesView() {
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState<EditState>(null)
   const [showGuide, setShowGuide] = useState(false)
+  const [columnsOpen, setColumnsOpen] = useState(false)
+  const [selectedPropertyKeys, setSelectedPropertyKeys] = useState<string[]>([])
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -51,7 +58,7 @@ export function BasesView() {
     loadRows()
   }, [vaultPath])
 
-  const propertyKeys = useMemo(() => {
+  const allPropertyKeys = useMemo(() => {
     const keys = new Set<string>()
     for (const row of rows) {
       Object.keys(row.properties).forEach((key) => keys.add(key))
@@ -59,8 +66,19 @@ export function BasesView() {
     return Array.from(keys)
       .filter((key) => key !== 'title' && !PRIMARY_COLUMNS.includes(key))
       .sort((a, b) => a.localeCompare(b))
-      .slice(0, 8)
   }, [rows])
+
+  useEffect(() => {
+    if (!vaultPath) return
+    const saved = safeGetJSON<{ keys?: string[] }>(getColumnsStorageKey(vaultPath), {})
+    const validSaved = Array.isArray(saved.keys) ? saved.keys.filter((key) => allPropertyKeys.includes(key)) : null
+    setSelectedPropertyKeys(validSaved ?? allPropertyKeys.slice(0, 8))
+  }, [vaultPath, allPropertyKeys.join('\n')])
+
+  const propertyKeys = useMemo(() => {
+    const selected = new Set(selectedPropertyKeys)
+    return allPropertyKeys.filter((key) => selected.has(key))
+  }, [allPropertyKeys, selectedPropertyKeys])
 
   const allTags = useMemo(() => {
     const tags = new Set<string>()
@@ -123,6 +141,18 @@ export function BasesView() {
 
   const cancelEdit = () => setEditing(null)
 
+  const saveSelectedColumns = (keys: string[]) => {
+    setSelectedPropertyKeys(keys)
+    if (vaultPath) safeSetJSON(getColumnsStorageKey(vaultPath), { keys })
+  }
+
+  const toggleColumn = (key: string) => {
+    const selected = new Set(selectedPropertyKeys)
+    if (selected.has(key)) selected.delete(key)
+    else selected.add(key)
+    saveSelectedColumns(allPropertyKeys.filter((item) => selected.has(item)))
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--editor-bg)' }}>
       <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
@@ -149,7 +179,7 @@ export function BasesView() {
         </div>
       </div>
 
-      <div style={{ padding: '10px 18px', display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 160px 160px', gap: 8, borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+      <div style={{ padding: '10px 18px', display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 160px 160px 120px', gap: 8, borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -165,7 +195,37 @@ export function BasesView() {
           <option value="title">{t('bases.sortTitle')}</option>
           <option value="filePath">{t('bases.sortPath')}</option>
         </select>
+        <button onClick={() => setColumnsOpen((value) => !value)} style={headerButtonStyle}>
+          {t('bases.columns', { count: propertyKeys.length })}
+        </button>
       </div>
+
+      {columnsOpen && (
+        <div style={{ margin: '12px 18px 0', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{t('bases.columnsTitle')}</div>
+              <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('bases.columnsHint')}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button onClick={() => saveSelectedColumns(allPropertyKeys)} style={miniButtonStyle}>{t('bases.showAllColumns')}</button>
+              <button onClick={() => saveSelectedColumns(allPropertyKeys.slice(0, 8))} style={miniButtonStyle}>{t('bases.resetColumns')}</button>
+            </div>
+          </div>
+          {allPropertyKeys.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{t('bases.noCustomColumns')}</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+              {allPropertyKeys.map((key) => (
+                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: selectedPropertyKeys.includes(key) ? 'var(--accent-muted)' : 'var(--bg-base)', color: selectedPropertyKeys.includes(key) ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={selectedPropertyKeys.includes(key)} onChange={() => toggleColumn(key)} style={{ width: 13, height: 13, accentColor: 'var(--accent)', flexShrink: 0 }} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{key}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showGuide && (
         <div style={{ margin: '12px 18px 0', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.7, flexShrink: 0 }}>
@@ -183,7 +243,7 @@ export function BasesView() {
             {!loading && <div style={{ marginTop: 6, fontSize: 12 }}>{t('bases.emptyHint')}</div>}
           </div>
         ) : (
-          <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <table style={{ width: '100%', minWidth: 880 + propertyKeys.length * 140, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead>
               <tr>
                 <HeaderCell width={220}>{t('bases.note')}</HeaderCell>
@@ -368,6 +428,17 @@ const headerButtonStyle: React.CSSProperties = {
   fontSize: 12,
   cursor: 'pointer',
   flexShrink: 0
+}
+
+const miniButtonStyle: React.CSSProperties = {
+  height: 26,
+  padding: '0 9px',
+  borderRadius: 5,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-secondary)',
+  fontSize: 11,
+  cursor: 'pointer'
 }
 
 const cellInputStyle: React.CSSProperties = {
