@@ -15,6 +15,7 @@ const WORKSPACE_KEYS = {
   rightPanel: 'nexusky-workspace-right-panel',
   sidebarCollapsed: 'nexusky-workspace-sidebar-collapsed',
 }
+const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph']
@@ -26,6 +27,7 @@ interface UIState {
   mainView: MainView
   sidebarCollapsed: boolean
   sidebarWidth: number
+  sidebarWidthScope: string
   rightPanelWidth: number
   focusMode: boolean
   previewMode: boolean
@@ -43,6 +45,7 @@ interface UIState {
   toggleFocusMode: () => void
   togglePreviewMode: () => void
   setSidebarWidth: (width: number) => void
+  setSidebarWidthScope: (scope: string) => void
   setRightPanelWidth: (width: number) => void
   setCommandPaletteOpen: (open: boolean) => void
   resizeSidebar: (delta: number) => void
@@ -127,10 +130,26 @@ function applyAccentColor(value: string | null) {
   root.style.setProperty('--accent-glow', rgba(color, 0.08))
 }
 
-function getInitialSidebarWidth(): number {
+function clampSidebarWidth(width: number): number {
+  return Number.isFinite(width) ? Math.max(180, Math.min(400, width)) : 240
+}
+
+function getSavedSidebarWidths(): Record<string, number> {
+  return safeGetJSON<Record<string, number>>(SIDEBAR_WIDTHS_KEY, {})
+}
+
+function getInitialSidebarWidth(scope = 'files'): number {
+  const scoped = getSavedSidebarWidths()[scope]
+  if (typeof scoped === 'number') return clampSidebarWidth(scoped)
   const saved = safeGet('nexusky-sidebar-width')
-  if (saved) return Math.max(180, Math.min(400, Number(saved)))
+  if (saved) return clampSidebarWidth(Number(saved))
   return 240
+}
+
+function saveSidebarWidth(scope: string, width: number): number {
+  const next = clampSidebarWidth(width)
+  safeSetJSON(SIDEBAR_WIDTHS_KEY, { ...getSavedSidebarWidths(), [scope]: next })
+  return next
 }
 
 function clampRightPanelWidth(width: number): number {
@@ -192,6 +211,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   rightPanel: initialRightPanel,
   mainView: getInitialMainView(),
   sidebarCollapsed: getInitialSidebarCollapsed(),
+  sidebarWidthScope: 'files',
   sidebarWidth: getInitialSidebarWidth(),
   rightPanelWidth: getInitialRightPanelWidth(initialRightPanel),
   focusMode: false,
@@ -230,17 +250,19 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   togglePreviewMode: () => set({ previewMode: !get().previewMode }),
   setSidebarWidth: (width) => {
-    const next = Math.max(180, Math.min(400, width))
-    safeSet('nexusky-sidebar-width', String(next))
+    const next = saveSidebarWidth(get().sidebarWidthScope, width)
     set({ sidebarWidth: next })
+  },
+  setSidebarWidthScope: (scope) => {
+    const nextScope = scope.trim() || 'files'
+    set({ sidebarWidthScope: nextScope, sidebarWidth: getInitialSidebarWidth(nextScope) })
   },
   setRightPanelWidth: (width) => {
     const next = saveRightPanelWidth(get().rightPanel, width)
     set({ rightPanelWidth: next })
   },
   resizeSidebar: (delta: number) => {
-    const width = Math.max(180, Math.min(400, get().sidebarWidth + delta))
-    safeSet('nexusky-sidebar-width', String(width))
+    const width = saveSidebarWidth(get().sidebarWidthScope, get().sidebarWidth + delta)
     set({ sidebarWidth: width })
   },
   resizeRightPanel: (delta: number) => {
@@ -280,6 +302,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     safeRemove(WORKSPACE_KEYS.rightPanel)
     safeRemove(WORKSPACE_KEYS.sidebarCollapsed)
     safeRemove('nexusky-sidebar-width')
+    safeRemove(SIDEBAR_WIDTHS_KEY)
     safeRemove('nexusky-right-panel-width')
     safeRemove(RIGHT_PANEL_WIDTHS_KEY)
     set({
