@@ -117,6 +117,7 @@
     "guide": "如何使用",
     "createNote": "新建卡片",
     "createFirst": "新建第一张卡片",
+    "defaultCardTitle": "未命名卡片",
     "created": "画布笔记已创建",
     "zoomIn": "放大画布",
     "zoomOut": "缩小画布",

@@ -30,6 +30,11 @@ interface PreferredPosition {
   position: CanvasPosition
 }
 
+interface PendingScroll {
+  left: number
+  top: number
+}
+
 const CARD_WIDTH = 210
 const CARD_HEIGHT = 112
 const BASE_CANVAS_WIDTH = 1200
@@ -99,6 +104,7 @@ export function CanvasView() {
   const previousMetricsRef = useRef(metricsRef.current)
   const initialScrollKeyRef = useRef<string | null>(null)
   const zoomRef = useRef(zoom)
+  const pendingScrollRef = useRef<PendingScroll | null>(null)
 
   useEffect(() => {
     positionsRef.current = positions
@@ -116,6 +122,13 @@ export function CanvasView() {
     previousMetricsRef.current = canvasMetrics
     const viewport = canvasRef.current
     if (!viewport) return
+    const pendingScroll = pendingScrollRef.current
+    if (pendingScroll) {
+      pendingScrollRef.current = null
+      viewport.scrollLeft = Math.max(0, pendingScroll.left)
+      viewport.scrollTop = Math.max(0, pendingScroll.top)
+      return
+    }
     const dx = (previous.minX - canvasMetrics.minX) * zoom
     const dy = (previous.minY - canvasMetrics.minY) * zoom
     if (dx !== 0) viewport.scrollLeft += dx
@@ -267,11 +280,11 @@ export function CanvasView() {
     const canvasX = (viewport.scrollLeft + focalX) / currentZoom
     const canvasY = (viewport.scrollTop + focalY) / currentZoom
     zoomRef.current = clamped
+    pendingScrollRef.current = {
+      left: canvasX * clamped - focalX,
+      top: canvasY * clamped - focalY
+    }
     setZoom(clamped)
-    requestAnimationFrame(() => {
-      viewport.scrollLeft = Math.max(0, canvasX * clamped - focalX)
-      viewport.scrollTop = Math.max(0, canvasY * clamped - focalY)
-    })
   }
 
   const handleCanvasWheel = (event: WheelEvent<HTMLDivElement>) => {
@@ -316,30 +329,24 @@ export function CanvasView() {
     const width = Math.max(1, bounds.maxX - bounds.minX)
     const height = Math.max(1, bounds.maxY - bounds.minY)
     const nextZoom = Math.max(0.5, Math.min(1.4, Math.min((viewport.clientWidth - 80) / width, (viewport.clientHeight - 80) / height)))
+    zoomRef.current = nextZoom
+    const metrics = metricsRef.current
+    pendingScrollRef.current = {
+      left: (bounds.minX - metrics.minX) * nextZoom - 40,
+      top: (bounds.minY - metrics.minY) * nextZoom - 40
+    }
     setZoom(nextZoom)
-    requestAnimationFrame(() => {
-      const metrics = metricsRef.current
-      viewport.scrollLeft = Math.max(0, (bounds.minX - metrics.minX) * nextZoom - 40)
-      viewport.scrollTop = Math.max(0, (bounds.minY - metrics.minY) * nextZoom - 40)
-    })
   }
 
   const createCanvasNote = async () => {
     if (!vaultPath) return
-    const now = new Date()
-    const stamp = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, '0'),
-      String(now.getDate()).padStart(2, '0'),
-      String(now.getHours()).padStart(2, '0'),
-      String(now.getMinutes()).padStart(2, '0')
-    ].join('')
-    let title = `Canvas Note ${stamp}`
+    const baseTitle = t('canvas.defaultCardTitle')
+    let title = baseTitle
     let path = `${vaultPath}/${title}.md`
-    for (let index = 2; index < 20; index++) {
+    for (let index = 2; index < 1000; index++) {
       try {
         await window.api.invoke('file:stat', { path })
-        title = `Canvas Note ${stamp}-${index}`
+        title = `${baseTitle} ${index}`
         path = `${vaultPath}/${title}.md`
       } catch {
         break

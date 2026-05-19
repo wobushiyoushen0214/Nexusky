@@ -117,6 +117,7 @@
     "guide": "How to use",
     "createNote": "New card",
     "createFirst": "Create first card",
+    "defaultCardTitle": "Untitled card",
     "created": "Canvas note created",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
