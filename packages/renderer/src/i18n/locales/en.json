@@ -87,7 +87,9 @@
     "aliases": "Aliases",
     "cssclasses": "CSS Classes",
     "updated": "Updated",
-    "path": "Path"
+    "path": "Path",
+    "propertySaved": "Property saved",
+    "propertySaveFailed": "Failed to save property"
   },
   "canvas": {
     "title": "Canvas",

@@ -3,9 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
+import { toast } from '../../stores/toast-store'
+import { updateFrontmatterProperty } from '../../utils/frontmatter'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 type SortKey = 'updatedAt' | 'title' | 'filePath'
+type EditState = { rowId: string; key: string; value: string; list: boolean } | null
 
 const PRIMARY_COLUMNS = ['tags', 'aliases', 'cssclasses']
 
@@ -30,6 +33,7 @@ export function BasesView() {
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt')
   const [selectedTag, setSelectedTag] = useState('')
   const [loading, setLoading] = useState(false)
+  const [editing, setEditing] = useState<EditState>(null)
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -90,6 +94,33 @@ export function BasesView() {
     setMainView('editor')
     await openFile(`${vaultPath}/${row.filePath}`)
   }
+
+  const startEdit = (row: PropertyTableRow, key: string, list: boolean) => {
+    setEditing({ rowId: row.id, key, value: valueToText(row.properties[key]), list })
+  }
+
+  const saveEdit = async () => {
+    if (!editing || !vaultPath) return
+    const row = rows.find((item) => item.id === editing.rowId)
+    if (!row) return
+    try {
+      const path = `${vaultPath}/${row.filePath}`
+      const content = await window.api.invoke('file:read', { path })
+      const nextValue = editing.list
+        ? editing.value.split(/\n|,/).map((item) => item.trim()).filter(Boolean)
+        : editing.value.trim()
+      const nextContent = updateFrontmatterProperty(content, editing.key, nextValue)
+      await window.api.invoke('file:write', { path, content: nextContent, vaultPath })
+      await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+      setEditing(null)
+      await loadRows()
+      toast(t('bases.propertySaved'), 'success')
+    } catch {
+      toast(t('bases.propertySaveFailed'), 'error')
+    }
+  }
+
+  const cancelEdit = () => setEditing(null)
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--editor-bg)' }}>
@@ -153,10 +184,21 @@ export function BasesView() {
                       {row.title}
                     </button>
                   </BodyCell>
-                  <ChipCell value={row.properties.tags} />
-                  <ChipCell value={row.properties.aliases} />
-                  <ChipCell value={row.properties.cssclasses} subtle />
-                  {propertyKeys.map((key) => <BodyCell key={key}>{valueToText(row.properties[key]) || '—'}</BodyCell>)}
+                  <ChipCell value={row.properties.tags} onEdit={() => startEdit(row, 'tags', true)} editing={editing?.rowId === row.id && editing.key === 'tags'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
+                  <ChipCell value={row.properties.aliases} onEdit={() => startEdit(row, 'aliases', true)} editing={editing?.rowId === row.id && editing.key === 'aliases'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
+                  <ChipCell value={row.properties.cssclasses} subtle onEdit={() => startEdit(row, 'cssclasses', true)} editing={editing?.rowId === row.id && editing.key === 'cssclasses'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
+                  {propertyKeys.map((key) => (
+                    <EditableBodyCell
+                      key={key}
+                      value={valueToText(row.properties[key])}
+                      editing={editing?.rowId === row.id && editing.key === key}
+                      editValue={editing?.value || ''}
+                      onEdit={() => startEdit(row, key, Array.isArray(row.properties[key]))}
+                      onChange={(value) => setEditing(editing ? { ...editing, value } : editing)}
+                      onSave={saveEdit}
+                      onCancel={cancelEdit}
+                    />
+                  ))}
                   <BodyCell>{formatDate(row.updatedAt) || '—'}</BodyCell>
                   <BodyCell muted>{row.filePath}</BodyCell>
                 </tr>
@@ -185,10 +227,87 @@ function BodyCell({ children, muted = false }: { children: React.ReactNode; mute
   )
 }
 
-function ChipCell({ value, subtle = false }: { value: PropertyValue | undefined; subtle?: boolean }) {
-  const items = Array.isArray(value) ? value.map(String).filter(Boolean) : value ? [String(value)] : []
+function EditableBodyCell({
+  value,
+  editing,
+  editValue,
+  onEdit,
+  onChange,
+  onSave,
+  onCancel
+}: {
+  value: string
+  editing: boolean
+  editValue: string
+  onEdit: () => void
+  onChange: (value: string) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  if (editing) {
+    return (
+      <td style={{ padding: 4, borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+        <input
+          autoFocus
+          value={editValue}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={onSave}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') onSave()
+            if (event.key === 'Escape') onCancel()
+          }}
+          style={{ ...cellInputStyle, width: '100%' }}
+        />
+      </td>
+    )
+  }
+
   return (
-    <td style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+    <td onDoubleClick={onEdit} title="Double click to edit" style={{ padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'text' }}>
+      {value || '—'}
+    </td>
+  )
+}
+
+function ChipCell({
+  value,
+  subtle = false,
+  onEdit,
+  editing,
+  editValue,
+  onChange,
+  onSave,
+  onCancel
+}: {
+  value: PropertyValue | undefined
+  subtle?: boolean
+  onEdit: () => void
+  editing: boolean
+  editValue: string
+  onChange: (value: string) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  const items = Array.isArray(value) ? value.map(String).filter(Boolean) : value ? [String(value)] : []
+  if (editing) {
+    return (
+      <td style={{ padding: 4, borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+        <input
+          autoFocus
+          value={editValue}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={onSave}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') onSave()
+            if (event.key === 'Escape') onCancel()
+          }}
+          style={{ ...cellInputStyle, width: '100%' }}
+        />
+      </td>
+    )
+  }
+  return (
+    <td onDoubleClick={onEdit} title="Double click to edit" style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', cursor: 'text' }}>
       <div style={{ display: 'flex', gap: 4, overflow: 'hidden' }}>
         {items.length === 0 ? (
           <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
@@ -209,6 +328,17 @@ const controlStyle: React.CSSProperties = {
   padding: '0 9px',
   borderRadius: 6,
   border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+  outline: 'none'
+}
+
+const cellInputStyle: React.CSSProperties = {
+  height: 28,
+  padding: '0 8px',
+  borderRadius: 5,
+  border: '1px solid var(--accent)',
   background: 'var(--bg-surface)',
   color: 'var(--text-primary)',
   fontSize: 12,

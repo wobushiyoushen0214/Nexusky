@@ -46,6 +46,20 @@ export function updateNoteProperties(markdown: string, next: NoteProperties): st
   return `---\n${trimmedRaw}\n---\n${body.replace(/^\n+/, '')}`
 }
 
+export function updateFrontmatterProperty(markdown: string, key: string, value: string | string[]): string {
+  const safeKey = key.trim()
+  if (!safeKey || !/^[A-Za-z0-9_-]+$/.test(safeKey)) return markdown
+
+  const block = extractFrontmatter(markdown)
+  const body = block ? markdown.slice(block.end) : markdown
+  let raw = block?.raw || ''
+  raw = writeProperty(raw, safeKey, Array.isArray(value) ? normalizeList(value) : value.trim())
+
+  const trimmedRaw = raw.trim()
+  if (!trimmedRaw) return body.replace(/^\n+/, '')
+  return `---\n${trimmedRaw}\n---\n${body.replace(/^\n+/, '')}`
+}
+
 function extractFrontmatter(markdown: string): { raw: string; end: number } | null {
   if (!markdown.startsWith('---\n') && markdown !== '---') return null
   const endMarker = markdown.indexOf('\n---', 4)

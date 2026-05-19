@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseNoteProperties, updateNoteProperties } from '../packages/renderer/src/utils/frontmatter'
+import { parseNoteProperties, updateFrontmatterProperty, updateNoteProperties } from '../packages/renderer/src/utils/frontmatter'
 
 describe('frontmatter properties', () => {
   it('parses Obsidian-style properties', () => {
@@ -58,5 +58,27 @@ tags:
     expect(next).toContain('title: "Note"')
     expect(next).toContain('tags:\n  - "idea"')
     expect(next).toContain('# Note')
+  })
+
+  it('updates arbitrary frontmatter properties', () => {
+    const next = updateFrontmatterProperty(`---
+status: draft
+tags:
+  - old
+---
+# Body
+`, 'status', 'active')
+
+    expect(next).toContain('status: "active"')
+    expect(next).toContain('tags:\n  - old')
+    expect(next).toContain('# Body')
+  })
+
+  it('writes arbitrary list properties', () => {
+    const next = updateFrontmatterProperty('# Body\n', 'aliases', ['One', 'Two'])
+
+    expect(next.startsWith('---\n')).toBe(true)
+    expect(next).toContain('aliases:\n  - "One"\n  - "Two"')
+    expect(next).toContain('# Body')
   })
 })

@@ -87,7 +87,9 @@
     "aliases": "别名",
     "cssclasses": "CSS 类",
     "updated": "更新",
-    "path": "路径"
+    "path": "路径",
+    "propertySaved": "属性已保存",
+    "propertySaveFailed": "属性保存失败"
   },
   "canvas": {
     "title": "自由画布",
