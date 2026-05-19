@@ -32,4 +32,6 @@ release/
 # Misc
 *.tsbuildinfo
 
+.ccpanes/
+
 test-vault/
