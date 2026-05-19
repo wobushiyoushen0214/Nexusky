@@ -366,14 +366,20 @@ function extractLinks(content: string): { targetTitle: string; context: string }
     let match: RegExpExecArray | null
     WIKILINK_REGEX.lastIndex = 0
     while ((match = WIKILINK_REGEX.exec(line)) !== null) {
+      const targetTitle = normalizeWikiLinkTarget(match[1])
+      if (!targetTitle) continue
       links.push({
-        targetTitle: match[1].trim(),
+        targetTitle,
         context: line.trim().slice(0, 200)
       })
     }
   }
 
   return links
+}
+
+function normalizeWikiLinkTarget(target: string): string {
+  return target.split('#')[0].trim()
 }
 
 function extractAliases(frontmatter: Record<string, unknown>): string[] {

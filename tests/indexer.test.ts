@@ -133,6 +133,30 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should resolve Obsidian heading wikilinks to the note target', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
+
+    const targetPath = join(vaultPath, 'Target.md')
+    const sourcePath = join(vaultPath, 'Source.md')
+
+    writeFileSync(targetPath, '# Target\n\n## Details\n\nLinked note.')
+    writeFileSync(sourcePath, '# Source\n\nSee [[Target#Details]] and [[Target#Details|details]].')
+
+    indexNote(vaultPath, targetPath)
+    indexNote(vaultPath, sourcePath)
+
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Source')
+    expect(source).toBeTruthy()
+
+    const links = getOutgoingLinks(vaultPath, source!.id)
+    expect(links).toHaveLength(2)
+    expect(links.every((link) => link.targetTitle === 'Target')).toBe(true)
+    expect(links.every((link) => link.targetPath === 'Target.md' && link.resolved)).toBe(true)
+
+    closeDatabase()
+  })
+
   it('should resolve wikilinks through frontmatter aliases', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes, getBacklinks, getOutgoingLinks, getGraphData } = await import('../packages/main/src/services/indexer')
