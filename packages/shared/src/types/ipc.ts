@@ -32,6 +32,21 @@ export interface PropertyTableRow {
   properties: Record<string, PropertyValue>
 }
 
+export interface PluginCommand {
+  id: string
+  title: string
+  description?: string
+  prompt: string
+  mode?: 'chat' | 'edit'
+}
+
+export interface LocalPlugin {
+  id: string
+  name: string
+  version?: string
+  commands: PluginCommand[]
+}
+
 export interface BacklinkResult {
   sourceTitle: string
   sourcePath: string
@@ -261,6 +276,7 @@ export interface IPCChannelMap {
   'template:get-templates': { params: undefined; result: { id: string; name: string; content: string }[] }
   'template:save-templates': { params: { templates: { id: string; name: string; content: string }[] }; result: void }
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
+  'plugins:list': { params: { vaultPath: string }; result: LocalPlugin[] }
   'cloud:get-config': { params: undefined; result: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }
   'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }; result: void }
   'cloud:init': { params: undefined; result: { success: boolean; error?: string } }

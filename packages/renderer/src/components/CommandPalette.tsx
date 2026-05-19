@@ -3,11 +3,12 @@ import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
 import { safeSet } from '../utils/storage'
+import type { LocalPlugin } from '@shared/types/ipc'
 
 interface Command {
   id: string
   label: string
-  category: '文件' | '检索' | 'AI' | '知识图谱' | '同步' | '导出' | '界面'
+  category: '文件' | '检索' | 'AI' | '插件' | '知识图谱' | '同步' | '导出' | '界面'
   description?: string
   shortcut?: string
   keywords?: string[]
@@ -30,6 +31,7 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [plugins, setPlugins] = useState<LocalPlugin[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout } = useUIStore()
   const { saveFile, currentFilePath, content } = useEditorStore()
@@ -164,7 +166,15 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'reset-workspace', category: '界面', label: '重置工作区布局', description: '恢复编辑器、侧栏和右侧面板默认布局', keywords: ['workspace', 'layout', 'reset'], action: () => resetWorkspaceLayout() },
     { id: 'focus', category: '界面', label: '切换聚焦模式', shortcut: 'F11', keywords: ['focus'], action: () => toggleFocusMode() },
     { id: 'theme', category: '界面', label: '切换主题', keywords: ['theme'], action: () => toggleTheme() },
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle])
+    ...plugins.flatMap((plugin) => plugin.commands.map((command) => ({
+      id: `plugin:${plugin.id}:${command.id}`,
+      category: '插件' as const,
+      label: `${plugin.name}: ${command.title}`,
+      description: command.description || plugin.version,
+      keywords: ['plugin', plugin.id, command.id],
+      action: () => queueAiDraft({ mode: command.mode || 'chat', prompt: command.prompt })
+    }))),
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle, plugins])
 
   const filtered = query.trim()
     ? commands.filter((c) => {
@@ -179,15 +189,18 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return acc
   }, {})
 
-  const categoryOrder: Command['category'][] = ['AI', '知识图谱', '检索', '文件', '同步', '导出', '界面']
+  const categoryOrder: Command['category'][] = ['AI', '插件', '知识图谱', '检索', '文件', '同步', '导出', '界面']
 
   useEffect(() => {
     if (open) {
       setQuery('')
       setSelectedIndex(0)
       setTimeout(() => inputRef.current?.focus(), 50)
+      if (vaultPath) {
+        window.api.invoke('plugins:list', { vaultPath }).then(setPlugins).catch(() => setPlugins([]))
+      }
     }
-  }, [open])
+  }, [open, vaultPath])
 
   const listRef = useRef<HTMLDivElement>(null)
   const commandRefs = useRef<Record<string, HTMLButtonElement | null>>({})

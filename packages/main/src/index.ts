@@ -7,6 +7,7 @@ import { registerAiIPC } from './ipc/ai.ipc'
 import { registerTemplateIPC } from './ipc/template.ipc'
 import { registerCloudIPC } from './ipc/cloud.ipc'
 import { registerExportIPC } from './ipc/export.ipc'
+import { registerPluginIPC } from './ipc/plugin.ipc'
 import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
 import { logger } from './services/logger'
@@ -108,6 +109,7 @@ app.whenReady().then(() => {
   registerTemplateIPC()
   registerCloudIPC()
   registerExportIPC()
+  registerPluginIPC()
   setupAutoUpdater()
 
   ipcMain.on('window:minimize', () => mainWindow?.minimize())
