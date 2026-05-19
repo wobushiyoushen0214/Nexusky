@@ -5,6 +5,7 @@ import { join, dirname, extname, relative, basename, resolve, normalize } from '
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
 import { getDatabase } from '../services/database'
 import { indexNote } from '../services/indexer'
+import { importObsidianVault } from '../services/obsidian-importer'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
 function isPathSafe(filePath: string, vaultPath?: string): boolean {
@@ -272,42 +273,7 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:import-obsidian', async (_event, params: { sourcePath: string; vaultPath: string }) => {
-    let imported = 0
-    let converted = 0
-
-    async function importDir(src: string, dest: string): Promise<void> {
-      await mkdir(dest, { recursive: true })
-      const entries = await readdir(src, { withFileTypes: true })
-      for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue
-        const srcPath = join(src, entry.name)
-        const destPath = join(dest, entry.name)
-        if (entry.isDirectory()) {
-          await importDir(srcPath, destPath)
-        } else if (extname(entry.name) === '.md') {
-          let content = await readFile(srcPath, 'utf-8')
-          let didConvert = false
-          // Convert Obsidian callouts to standard blockquotes
-          content = content.replace(/^> \[!(\w+)\]\s*(.*)$/gm, (_, type, title) => {
-            didConvert = true
-            return `> **${type.charAt(0).toUpperCase() + type.slice(1)}${title ? ': ' + title : ''}**`
-          })
-          // Convert Obsidian embed syntax ![[file]] is already supported
-          // Convert Obsidian highlight ==text== is already supported
-          await writeFile(destPath, content, 'utf-8')
-          imported++
-          if (didConvert) converted++
-        } else {
-          // Copy non-md files (images, etc)
-          const data = await readFile(srcPath)
-          await writeFile(destPath, data)
-          imported++
-        }
-      }
-    }
-
-    await importDir(params.sourcePath, params.vaultPath)
-    return { imported, converted }
+    return importObsidianVault(params.sourcePath, params.vaultPath)
   })
 }
 

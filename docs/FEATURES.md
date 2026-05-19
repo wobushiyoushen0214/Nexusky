@@ -162,7 +162,7 @@
 | 文件监听 | chokidar 监听变化，自动刷新文件树 |
 | 每日笔记 | 自动创建 daily/YYYY-MM-DD.md |
 | 模板系统 | 空白、会议记录、读书笔记、项目文档 |
-| Obsidian 导入 | 命令面板导入，自动转换 callout 语法 |
+| Obsidian 导入 | 命令面板导入，自动转换 callout 语法，并在导入时索引 frontmatter、Dataview 内联字段、别名和链接 |
 
 ### UI 与体验
 
@@ -755,7 +755,7 @@ scripts/          → 开发脚本
 ## 下一步可优化/扩展方向
 
 ### 产品体验
-- [ ] Obsidian vault 导入兼容（解析 frontmatter、dataview 语法）
+- [x] Obsidian vault 导入兼容（解析 frontmatter、dataview 语法）
 - [ ] 笔记模板市场（社区共享模板）
 - [x] 全局快捷键唤起（类 Raycast，系统级快速记录）
 - [ ] 多窗口支持（同时打开多个笔记窗口）

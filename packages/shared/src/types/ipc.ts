@@ -287,7 +287,7 @@ export interface IPCChannelMap {
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string }; result: { success: boolean; files: string[]; error?: string } }
-  'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number } }
+  'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number } }
   'template:daily-note': { params: { vaultPath: string }; result: string }
   'template:get-templates': { params: undefined; result: { id: string; name: string; content: string }[] }
   'template:save-templates': { params: { templates: { id: string; name: string; content: string }[] }; result: void }
