@@ -18,6 +18,13 @@ export interface BacklinkResult {
   context: string
 }
 
+export interface OutgoingLinkResult {
+  targetTitle: string
+  targetPath?: string
+  context: string
+  resolved: boolean
+}
+
 export interface UnlinkedMentionResult {
   sourceTitle: string
   sourcePath: string
@@ -168,6 +175,7 @@ export interface IPCChannelMap {
   'db:remove-folder': { params: { vaultPath: string; folderPath: string }; result: void }
   'db:get-all-notes': { params: { vaultPath: string }; result: NoteSearchResult[] }
   'db:get-recent-notes': { params: { vaultPath: string; limit?: number }; result: NoteSearchResult[] }
+  'db:get-outgoing-links': { params: { vaultPath: string; noteId: string }; result: OutgoingLinkResult[] }
   'db:get-backlinks': { params: { vaultPath: string; noteId: string }; result: BacklinkResult[] }
   'db:get-unlinked-mentions': { params: { vaultPath: string; noteId: string }; result: UnlinkedMentionResult[] }
   'db:get-graph': { params: { vaultPath: string }; result: GraphData }

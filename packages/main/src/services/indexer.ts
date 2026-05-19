@@ -22,6 +22,13 @@ export interface LinkIndex {
   context: string
 }
 
+export interface OutgoingLinkIndex {
+  targetTitle: string
+  targetPath?: string
+  context: string
+  resolved: boolean
+}
+
 export interface UnlinkedMentionIndex {
   sourceTitle: string
   sourcePath: string
@@ -118,6 +125,24 @@ export function removeNoteIndex(vaultPath: string, filePath: string): void {
 export function getAllNotes(vaultPath: string): NoteIndex[] {
   const db = getDatabase(vaultPath)
   return db.prepare('SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt, content_hash as contentHash FROM notes ORDER BY updated_at DESC').all() as NoteIndex[]
+}
+
+export function getOutgoingLinks(vaultPath: string, noteId: string): OutgoingLinkIndex[] {
+  const db = getDatabase(vaultPath)
+  const rows = db.prepare(`
+    SELECT l.target_title as targetTitle, n.file_path as targetPath, l.context,
+           CASE WHEN n.id IS NULL THEN 0 ELSE 1 END as resolved
+    FROM links l
+    LEFT JOIN notes n ON n.id = l.target_note_id
+    WHERE l.source_note_id = ?
+    ORDER BY resolved DESC, l.target_title ASC
+  `).all(noteId) as { targetTitle: string; targetPath: string | null; context: string | null; resolved: number }[]
+  return rows.map((row) => ({
+    targetTitle: row.targetTitle,
+    targetPath: row.targetPath || undefined,
+    context: row.context || '',
+    resolved: row.resolved === 1
+  }))
 }
 
 export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: string; sourcePath: string; context: string }[] {

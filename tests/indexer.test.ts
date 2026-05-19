@@ -93,4 +93,28 @@ describe('indexer', () => {
 
     closeDatabase()
   })
+
+  it('should return resolved and unresolved outgoing links', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
+
+    const targetPath = join(vaultPath, 'Target.md')
+    const sourcePath = join(vaultPath, 'Source.md')
+
+    writeFileSync(targetPath, '# Target\n\nLinked note.')
+    writeFileSync(sourcePath, '# Source\n\nSee [[Target]] and [[Missing Note]] for context.')
+
+    indexNote(vaultPath, targetPath)
+    indexNote(vaultPath, sourcePath)
+
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Source')
+    expect(source).toBeTruthy()
+
+    const links = getOutgoingLinks(vaultPath, source!.id)
+    expect(links).toHaveLength(2)
+    expect(links.find((link) => link.targetTitle === 'Target')).toMatchObject({ targetPath: 'Target.md', resolved: true })
+    expect(links.find((link) => link.targetTitle === 'Missing Note')).toMatchObject({ resolved: false })
+
+    closeDatabase()
+  })
 })
