@@ -202,12 +202,15 @@ export function ChatPanel() {
         if (streamContentRef.current) {
           const partial = streamContentRef.current
           const errMsg = friendlyError(event.content)
-          setMessages((msgs) => [...msgs,
-            { id: Date.now().toString(), role: 'assistant', content: partial },
-            { id: (Date.now() + 1).toString(), role: 'assistant', content: `⚠️ ${errMsg}` }
-          ])
+          const partialMsg: Message = { id: Date.now().toString(), role: 'assistant', content: partial }
+          const errorMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: `⚠️ ${errMsg}` }
+          setMessages((msgs) => [...msgs, partialMsg, errorMsg])
+          appendToDb(partialMsg)
+          appendToDb(errorMsg)
         } else {
-          setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }])
+          const errorMsg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }
+          setMessages((msgs) => [...msgs, errorMsg])
+          appendToDb(errorMsg)
         }
         streamContentRef.current = ''
         setStreamContent('')
@@ -226,7 +229,7 @@ export function ChatPanel() {
     }
     const cleanup = window.api.onAiStream(handler)
     return () => { cleanup() }
-  }, [])
+  }, [appendToDb])
 
   const prevStreaming = useRef(false)
   const editCompleteRef = useRef(false)
