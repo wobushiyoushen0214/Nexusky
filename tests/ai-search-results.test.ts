@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -237,5 +237,29 @@ describe('formatVaultOverviewToolResult', () => {
     })
 
     expect(output).toBe('Vault Overview\nNotes: 12\nTags: 4\nProperties: 6\nTasks: 3 open, 2 done\nResolved Links: 20\nUnresolved Links: 1\nOrphan Notes: 5')
+  })
+})
+
+describe('folder tool formatting', () => {
+  it('formats folders with note counts', () => {
+    const output = formatListFoldersToolResult([
+      { path: 'Projects', count: 3 },
+      { path: 'Daily/2026', count: 2 }
+    ])
+
+    expect(output).toBe('1. Projects (3)\n2. Daily/2026 (2)')
+  })
+
+  it('formats notes by folder with paths and timestamps', () => {
+    const output = formatNotesByFolderToolResult('Projects', [
+      { title: 'Alpha', filePath: 'Projects/Alpha.md', updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('Folder: Projects\n\n1. **Alpha**\nPath: Projects/Alpha.md\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty folder results explicitly', () => {
+    expect(formatListFoldersToolResult([])).toBe('No folders found.')
+    expect(formatNotesByFolderToolResult('Missing', [])).toBe('No notes found in folder Missing.')
   })
 })

@@ -86,6 +86,17 @@ export interface AiVaultOverview {
   orphanNotes: number
 }
 
+export interface AiFolderSummary {
+  path: string
+  count: number
+}
+
+export interface AiFolderNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -231,6 +242,21 @@ export function formatVaultOverviewToolResult(overview: AiVaultOverview): string
     `Unresolved Links: ${overview.unresolvedLinks}`,
     `Orphan Notes: ${overview.orphanNotes}`
   ].join('\n')
+}
+
+export function formatListFoldersToolResult(folders: AiFolderSummary[]): string {
+  if (folders.length === 0) return 'No folders found.'
+  return folders.map((folder, index) => `${index + 1}. ${folder.path} (${folder.count})`).join('\n')
+}
+
+export function formatNotesByFolderToolResult(folder: string, notes: AiFolderNoteResult[]): string {
+  if (notes.length === 0) return `No notes found in folder ${folder}.`
+  const body = notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+  return `Folder: ${folder}\n\n${body}`
 }
 
 function formatLinkContext(context: string): string {

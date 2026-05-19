@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -30,6 +30,15 @@ function getErrorMessage(error: unknown): string {
 function getStringArg(args: Record<string, unknown>, key: string): string {
   const value = args[key]
   return typeof value === 'string' ? value : ''
+}
+
+function getNoteFolderPath(filePath: string): string {
+  const index = filePath.lastIndexOf('/')
+  return index > 0 ? filePath.slice(0, index) : ''
+}
+
+function normalizeFolderArg(folder: string): string {
+  return folder.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
 }
 
 export function registerAiIPC(): void {
@@ -982,6 +991,36 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_folders',
+        description: '列出知识库中的笔记文件夹及其笔记数量，可按文件夹路径过滤。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按文件夹路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'list_notes_by_folder',
+        description: '列出指定文件夹中的笔记。folder 使用相对路径，例如 Projects 或 Daily/2026。',
+        parameters: {
+          type: 'object',
+          properties: {
+            folder: { type: 'string', description: '文件夹相对路径' },
+            recursive: { type: 'boolean', description: '是否包含子文件夹，默认 true' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          },
+          required: ['folder']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_notes_by_tag',
         description: '列出指定标签下的笔记。tag 可带或不带 # 前缀。',
         parameters: {
@@ -1218,6 +1257,45 @@ graph TD
           .filter((tag) => !query || tag.name.toLowerCase().includes(query))
           .slice(0, limit)
         return { content: formatListTagsToolResult(tags) }
+      }
+      case 'list_folders': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const counts = new Map<string, number>()
+        for (const note of getAllNotes(vaultPath)) {
+          const folder = getNoteFolderPath(note.filePath)
+          if (!folder) continue
+          counts.set(folder, (counts.get(folder) || 0) + 1)
+        }
+        const folders = Array.from(counts.entries())
+          .map(([path, count]) => ({ path, count }))
+          .filter((folder) => !query || folder.path.toLowerCase().includes(query))
+          .sort((a, b) => b.count - a.count || a.path.localeCompare(b.path))
+          .slice(0, limit)
+        return { content: formatListFoldersToolResult(folders) }
+      }
+      case 'list_notes_by_folder': {
+        const folder = normalizeFolderArg(getStringArg(args, 'folder'))
+        if (!folder) return { content: 'list_notes_by_folder 缺少 folder 参数。请提供要查询的文件夹路径。' }
+        const recursive = args.recursive !== false
+        const prefix = `${folder}/`
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getAllNotes(vaultPath)
+          .filter((note) => {
+            const path = note.filePath
+            if (recursive) return path.startsWith(prefix)
+            return getNoteFolderPath(path) === folder
+          })
+          .slice(0, limit)
+        return {
+          content: formatNotesByFolderToolResult(folder, notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Folder: ${folder}`,
+            score: 1
+          }))
+        }
       }
       case 'list_notes_by_tag': {
         const tag = getStringArg(args, 'tag').trim().replace(/^#/, '')
