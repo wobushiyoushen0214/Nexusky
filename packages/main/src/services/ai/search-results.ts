@@ -56,6 +56,12 @@ export interface AiPropertyNoteResult {
   value: string
 }
 
+export interface AiPropertyValueSummary {
+  value: string
+  count: number
+  samplePaths: string[]
+}
+
 export interface AiRecentNoteResult {
   title: string
   filePath: string
@@ -200,6 +206,15 @@ export function formatNotesByPropertyToolResult(key: string, notes: AiPropertyNo
     `Value: ${note.value}`
   ].join('\n')).join('\n\n')
   return `${header}\n\n${body}`
+}
+
+export function formatPropertyValuesToolResult(key: string, values: AiPropertyValueSummary[]): string {
+  if (values.length === 0) return `No values found for property ${key}.`
+  const body = values.map((item, index) => [
+    `${index + 1}. ${item.value} (${item.count})`,
+    `Examples: ${item.samplePaths.join(', ')}`
+  ].join('\n')).join('\n\n')
+  return `Property Values: ${key}\n\n${body}`
 }
 
 export function formatPropertyValue(value: unknown): string {

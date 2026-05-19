@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1066,6 +1066,22 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_property_values',
+        description: '列出指定结构化属性的不同取值、数量和样例路径。',
+        parameters: {
+          type: 'object',
+          properties: {
+            key: { type: 'string', description: '属性键，例如 status、priority、tags' },
+            query: { type: 'string', description: '按属性值过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          },
+          required: ['key']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_recent_notes',
         description: '列出最近更新的笔记，可按标题或路径过滤。',
         parameters: {
@@ -1372,6 +1388,33 @@ graph TD
             score: 1
           }))
         }
+      }
+      case 'list_property_values': {
+        const key = getStringArg(args, 'key').trim()
+        if (!key) return { content: 'list_property_values 缺少 key 参数。请提供要查询的属性键。' }
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const values = new Map<string, { value: string; count: number; samplePaths: string[] }>()
+        for (const row of getPropertyRows(vaultPath)) {
+          const matchedKey = Object.keys(row.properties).find((propertyKey) => propertyKey.toLowerCase() === key.toLowerCase())
+          if (!matchedKey) continue
+          const raw = row.properties[matchedKey]
+          const rawValues = Array.isArray(raw) ? raw : [raw]
+          for (const value of rawValues) {
+            const text = formatPropertyValue(value).trim()
+            if (!text || (query && !text.toLowerCase().includes(query))) continue
+            const current = values.get(text) || { value: text, count: 0, samplePaths: [] }
+            current.count += 1
+            if (!current.samplePaths.includes(row.filePath) && current.samplePaths.length < 3) {
+              current.samplePaths.push(row.filePath)
+            }
+            values.set(text, current)
+          }
+        }
+        const summaries = Array.from(values.values())
+          .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+          .slice(0, limit)
+        return { content: formatPropertyValuesToolResult(key, summaries) }
       }
       case 'list_recent_notes': {
         const query = getStringArg(args, 'query').trim().toLowerCase()

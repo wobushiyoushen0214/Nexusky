@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -176,6 +176,19 @@ describe('property tool formatting', () => {
   it('stringifies property values for tool output', () => {
     expect(formatPropertyValue(['active', 2, true])).toBe('active, 2, true')
     expect(formatPropertyValue(null)).toBe('')
+  })
+
+  it('formats property value summaries with sample paths', () => {
+    const output = formatPropertyValuesToolResult('status', [
+      { value: 'active', count: 3, samplePaths: ['A.md', 'B.md'] },
+      { value: 'paused', count: 1, samplePaths: ['C.md'] }
+    ])
+
+    expect(output).toBe('Property Values: status\n\n1. active (3)\nExamples: A.md, B.md\n\n2. paused (1)\nExamples: C.md')
+  })
+
+  it('marks empty property value results explicitly', () => {
+    expect(formatPropertyValuesToolResult('status', [])).toBe('No values found for property status.')
   })
 })
 
