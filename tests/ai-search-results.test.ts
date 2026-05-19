@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -125,6 +125,31 @@ describe('formatNoteHeadingsToolResult', () => {
     })
 
     expect(output).toBe('No headings found for Plain (Plain.md).')
+  })
+})
+
+describe('formatNoteBlocksToolResult', () => {
+  it('formats note block references with ids, lines, and previews', () => {
+    const output = formatNoteBlocksToolResult({
+      title: 'Topic',
+      filePath: 'Notes/Topic.md',
+      blocks: [
+        { id: 'p1', line: 3, preview: 'First paragraph.' },
+        { id: 'todo-1', line: 8, preview: '- Task body' }
+      ]
+    })
+
+    expect(output).toBe('Title: Topic\nPath: Notes/Topic.md\n\nBlocks:\n1. ^p1 (line 3) - First paragraph.\n2. ^todo-1 (line 8) - - Task body')
+  })
+
+  it('marks notes without block references explicitly', () => {
+    const output = formatNoteBlocksToolResult({
+      title: 'Plain',
+      filePath: 'Plain.md',
+      blocks: []
+    })
+
+    expect(output).toBe('No block references found for Plain (Plain.md).')
   })
 })
 

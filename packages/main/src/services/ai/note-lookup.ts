@@ -14,6 +14,12 @@ export interface MarkdownHeading {
   line: number
 }
 
+export interface MarkdownBlockReference {
+  id: string
+  line: number
+  preview: string
+}
+
 function normalizeQuery(input: string): string {
   let value = input.trim()
   const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
@@ -114,6 +120,15 @@ export function extractMarkdownBlockReference(content: string, blockId: string):
   const block = lines.slice(start, end).join('\n').trim()
   const withoutMarker = block.replace(new RegExp(`\\s*\\^${escapeRegExp(normalized)}\\s*$`), '').trim()
   return withoutMarker || block
+}
+
+export function extractMarkdownBlockReferences(content: string): MarkdownBlockReference[] {
+  return content.split('\n').flatMap((line, index) => {
+    const match = line.match(/(?:^|\s)\^([A-Za-z0-9_-]+)\s*$/)
+    if (!match) return []
+    const preview = line.replace(new RegExp(`\\s*\\^${escapeRegExp(match[1])}\\s*$`), '').trim()
+    return [{ id: match[1], line: index + 1, preview }]
+  })
 }
 
 function escapeRegExp(value: string): string {

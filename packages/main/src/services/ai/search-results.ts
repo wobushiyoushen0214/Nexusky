@@ -37,6 +37,16 @@ export interface AiNoteHeadingSummary {
   }[]
 }
 
+export interface AiNoteBlockSummary {
+  title: string
+  filePath: string
+  blocks: {
+    id: string
+    line: number
+    preview: string
+  }[]
+}
+
 export interface AiTaskResult {
   text: string
   done: boolean
@@ -220,6 +230,20 @@ export function formatNoteHeadingsToolResult(summary: AiNoteHeadingSummary): str
     '',
     'Headings:',
     headings
+  ].join('\n')
+}
+
+export function formatNoteBlocksToolResult(summary: AiNoteBlockSummary): string {
+  if (summary.blocks.length === 0) return `No block references found for ${summary.title} (${summary.filePath}).`
+  const blocks = summary.blocks.map((block, index) => (
+    `${index + 1}. ^${block.id} (line ${block.line})${formatLinkContext(block.preview)}`
+  )).join('\n')
+  return [
+    `Title: ${summary.title}`,
+    `Path: ${summary.filePath}`,
+    '',
+    'Blocks:',
+    blocks
   ].join('\n')
 }
 

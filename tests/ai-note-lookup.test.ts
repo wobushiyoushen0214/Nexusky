@@ -117,6 +117,22 @@ describe('note reference headings', () => {
     ].join('\n'))
   })
 
+  it('lists Obsidian block references with ids, lines, and previews', async () => {
+    const { extractMarkdownBlockReferences } = await import('../packages/main/src/services/ai/note-lookup')
+    const markdown = [
+      '# Title',
+      '',
+      'First paragraph. ^p1',
+      '',
+      '- keep this list item ^todo-1'
+    ].join('\n')
+
+    expect(extractMarkdownBlockReferences(markdown)).toEqual([
+      { id: 'p1', line: 3, preview: 'First paragraph.' },
+      { id: 'todo-1', line: 5, preview: '- keep this list item' }
+    ])
+  })
+
   it('lists markdown headings with levels and line numbers', async () => {
     const { extractMarkdownHeadings } = await import('../packages/main/src/services/ai/note-lookup')
     const markdown = [

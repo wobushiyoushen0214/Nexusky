@@ -5,8 +5,8 @@ import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
-import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1000,6 +1000,20 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_note_blocks',
+        description: '列出指定笔记中的 Obsidian block id。适合先发现块引用，再用 read_note 读取 Note#^block。',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '笔记标题、alias、路径或 wikilink' }
+          },
+          required: ['title']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_tasks',
         description: '查询知识库中从 Markdown 任务列表索引出来的任务，默认返回未完成任务。',
         parameters: {
@@ -1385,6 +1399,34 @@ graph TD
               title: note.title,
               filePath: note.filePath,
               chunk: `${headings.length} headings`,
+              score: 1
+            }]
+          }
+        } catch {
+          return { content: `无法读取笔记「${title}」。` }
+        }
+      }
+      case 'list_note_blocks': {
+        const title = getStringArg(args, 'title')
+        if (!title.trim()) return { content: 'list_note_blocks 缺少 title 参数。请先搜索笔记，或提供要查看块引用的笔记标题。' }
+        const note = findNoteForAiTool(vaultPath, title)
+        if (!note) {
+          const candidates = findNoteCandidatesForAiTool(vaultPath, title)
+          if (candidates.length > 1) {
+            return {
+              content: `找到多个可能的笔记，请用 list_note_blocks 的 title 参数传入精确路径重试：\n${candidates.map((item) => `- ${item.filePath} (${item.title})`).join('\n')}`
+            }
+          }
+          return { content: `未找到标题为「${title}」的笔记。` }
+        }
+        try {
+          const blocks = extractMarkdownBlockReferences(readFileSync(note.absolutePath, 'utf-8'))
+          return {
+            content: formatNoteBlocksToolResult({ title: note.title, filePath: note.filePath, blocks }),
+            sources: [{
+              title: note.title,
+              filePath: note.filePath,
+              chunk: `${blocks.length} block references`,
               score: 1
             }]
           }
