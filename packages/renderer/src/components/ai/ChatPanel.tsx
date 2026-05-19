@@ -150,6 +150,14 @@ export function ChatPanel() {
     window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources, sessionId: currentSessionId || undefined }).catch(() => {})
   }, [vaultPath, currentSessionId])
 
+  const rewriteDbHistory = useCallback(async (nextMessages: Message[]) => {
+    if (!vaultPath) return
+    await window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined })
+    for (const msg of nextMessages) {
+      await window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources, sessionId: currentSessionId || undefined })
+    }
+  }, [vaultPath, currentSessionId])
+
   const handleNewSession = async () => {
     if (!vaultPath) return
     const id = crypto.randomUUID()
@@ -273,12 +281,10 @@ export function ChatPanel() {
     if (msgIndex < 0) return
     const userMsgIndex = msgIndex - 1
     if (userMsgIndex < 0 || messages[userMsgIndex].role !== 'user') return
-    const userContent = messages[userMsgIndex].content
     const remaining = messages.slice(0, msgIndex)
     setMessages(remaining)
     if (vaultPath) {
-      window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined }).catch(() => {})
-      for (const m of remaining) { appendToDb(m) }
+      await rewriteDbHistory(remaining)
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
@@ -287,15 +293,11 @@ export function ChatPanel() {
       return
     }
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userContent }
-    setMessages((prev) => [...prev, userMsg])
-    appendToDb(userMsg)
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')
 
-    const allMessages = [...remaining, userMsg]
-    const chatMessages = await buildChatMessages(allMessages)
+    const chatMessages = await buildChatMessages(remaining)
     try {
       if (agentMode && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
@@ -308,7 +310,7 @@ export function ChatPanel() {
       setStreamContent('')
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, currentSessionId, appendToDb])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode])
 
   const handleContinue = useCallback(async (msg: Message) => {
     if (isStreaming) return
@@ -319,8 +321,7 @@ export function ChatPanel() {
     const remaining = messages.filter((_, i) => i !== msgIndex && i !== msgIndex + 1)
     setMessages(remaining)
     if (vaultPath) {
-      window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined }).catch(() => {})
-      for (const m of remaining) { appendToDb(m) }
+      await rewriteDbHistory(remaining)
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
@@ -348,7 +349,7 @@ export function ChatPanel() {
       setStreamContent('')
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, currentSessionId, appendToDb])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode])
 
   useEffect(() => {
     if (!showMention || !vaultPath) return
