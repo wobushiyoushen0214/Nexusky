@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type WheelEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -85,10 +85,15 @@ export function CanvasView() {
   const metricsRef = useRef(getCanvasMetrics([], {}))
   const previousMetricsRef = useRef(metricsRef.current)
   const initialScrollKeyRef = useRef<string | null>(null)
+  const zoomRef = useRef(zoom)
 
   useEffect(() => {
     positionsRef.current = positions
   }, [positions])
+
+  useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
 
   const canvasMetrics = useMemo(() => getCanvasMetrics(rows, positions), [rows, positions])
 
@@ -213,7 +218,38 @@ export function CanvasView() {
 
   const canvasWidth = canvasMetrics.width
   const canvasHeight = canvasMetrics.height
-  const setClampedZoom = (value: number) => setZoom(Math.max(0.5, Math.min(1.8, value)))
+
+  const zoomAtViewportPoint = (nextZoom: number, clientX?: number, clientY?: number) => {
+    const viewport = canvasRef.current
+    const clamped = Math.max(0.5, Math.min(1.8, nextZoom))
+    const currentZoom = zoomRef.current
+    if (!viewport) {
+      zoomRef.current = clamped
+      setZoom(clamped)
+      return
+    }
+    const rect = viewport.getBoundingClientRect()
+    const focalClientX = clientX ?? rect.left + viewport.clientWidth / 2
+    const focalClientY = clientY ?? rect.top + viewport.clientHeight / 2
+    const focalX = focalClientX - rect.left
+    const focalY = focalClientY - rect.top
+    const canvasX = (viewport.scrollLeft + focalX) / currentZoom
+    const canvasY = (viewport.scrollTop + focalY) / currentZoom
+    zoomRef.current = clamped
+    setZoom(clamped)
+    requestAnimationFrame(() => {
+      viewport.scrollLeft = Math.max(0, canvasX * clamped - focalX)
+      viewport.scrollTop = Math.max(0, canvasY * clamped - focalY)
+    })
+  }
+
+  const handleCanvasWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (!event.ctrlKey && !event.metaKey) return
+    event.preventDefault()
+    const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+    const nextZoom = zoomRef.current * Math.exp(-delta * 0.002)
+    zoomAtViewportPoint(nextZoom, event.clientX, event.clientY)
+  }
 
   const fitToView = () => {
     const viewport = canvasRef.current
@@ -286,9 +322,9 @@ export function CanvasView() {
           <button onClick={() => setShowGuide((value) => !value)} style={buttonStyle}>{t('canvas.guide')}</button>
           <button onClick={createCanvasNote} disabled={!vaultPath} style={buttonStyle}>{t('canvas.createNote')}</button>
           <div style={{ display: 'flex', alignItems: 'center', height: 30, borderRadius: 6, border: '1px solid var(--border-subtle)', overflow: 'hidden', background: 'var(--bg-elevated)', flexShrink: 0 }}>
-            <button onClick={() => setClampedZoom(zoom - 0.1)} title={t('canvas.zoomOut')} style={zoomButtonStyle}>-</button>
-            <button onClick={() => setZoom(1)} title={t('canvas.zoomReset')} style={{ ...zoomButtonStyle, minWidth: 52 }}>{Math.round(zoom * 100)}%</button>
-            <button onClick={() => setClampedZoom(zoom + 0.1)} title={t('canvas.zoomIn')} style={{ ...zoomButtonStyle, borderRight: 'none' }}>+</button>
+            <button onClick={() => zoomAtViewportPoint(zoom - 0.1)} title={t('canvas.zoomOut')} style={zoomButtonStyle}>-</button>
+            <button onClick={() => zoomAtViewportPoint(1)} title={t('canvas.zoomReset')} style={{ ...zoomButtonStyle, minWidth: 52 }}>{Math.round(zoom * 100)}%</button>
+            <button onClick={() => zoomAtViewportPoint(zoom + 0.1)} title={t('canvas.zoomIn')} style={{ ...zoomButtonStyle, borderRight: 'none' }}>+</button>
           </div>
           <button onClick={fitToView} style={buttonStyle}>{t('canvas.fitView')}</button>
           <button onClick={resetLayout} style={buttonStyle}>{t('canvas.reset')}</button>
@@ -302,10 +338,11 @@ export function CanvasView() {
           <div>{t('canvas.guideDrag')}</div>
           <div>{t('canvas.guideOpen')}</div>
           <div>{t('canvas.guideLinks')}</div>
+          <div>{t('canvas.guideZoom')}</div>
         </div>
       )}
 
-      <div ref={canvasRef} style={{ flex: 1, overflow: 'auto', position: 'relative', background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
+      <div ref={canvasRef} onWheel={handleCanvasWheel} style={{ flex: 1, overflow: 'auto', position: 'relative', background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
         {filteredRows.length === 0 ? (
           <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
             <div>{loading ? t('canvas.loading') : t('canvas.empty')}</div>
