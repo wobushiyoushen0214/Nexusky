@@ -564,8 +564,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       }
     })
 
-    const result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir })
-    cleanup()
+    let result: { success: boolean; error?: string; files: string[] }
+    try {
+      result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir })
+    } catch (e: unknown) {
+      result = { success: false, error: friendlyError(getErrorMessage(e)), files: [] }
+    } finally {
+      cleanup()
+    }
 
     // Mark all done
     planItems = planItems.map((item) => ({ ...item, done: true }))
