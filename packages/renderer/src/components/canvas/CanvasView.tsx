@@ -4,7 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
-import type { PropertyTableRow } from '@shared/types/ipc'
+import type { GraphData, PropertyTableRow } from '@shared/types/ipc'
 
 interface CanvasPosition {
   x: number
@@ -33,6 +33,7 @@ export function CanvasView() {
   const openFile = useEditorStore((s) => s.openFile)
   const setMainView = useUIStore((s) => s.setMainView)
   const [rows, setRows] = useState<PropertyTableRow[]>([])
+  const [graph, setGraph] = useState<GraphData | null>(null)
   const [positions, setPositions] = useState<Record<string, CanvasPosition>>({})
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -49,7 +50,9 @@ export function CanvasView() {
     setLoading(true)
     try {
       const result = await window.api.invoke('db:get-property-rows', { vaultPath })
+      const graphData = await window.api.invoke('db:get-graph', { vaultPath })
       setRows(result)
+      setGraph(graphData)
       const saved = safeGetJSON<Record<string, CanvasPosition>>(getCanvasStorageKey(vaultPath), {})
       const merged: Record<string, CanvasPosition> = {}
       result.forEach((row, index) => {
@@ -96,6 +99,27 @@ export function CanvasView() {
     ].join(' ').toLowerCase().includes(q))
   }, [rows, query])
 
+  const visibleIds = useMemo(() => new Set(filteredRows.map((row) => row.id)), [filteredRows])
+
+  const canvasEdges = useMemo(() => {
+    if (!graph) return []
+    return graph.edges
+      .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
+      .map((edge) => {
+        const source = positions[edge.source]
+        const target = positions[edge.target]
+        if (!source || !target) return null
+        return {
+          key: `${edge.source}->${edge.target}`,
+          x1: source.x + 105,
+          y1: source.y + 56,
+          x2: target.x + 105,
+          y2: target.y + 56
+        }
+      })
+      .filter((edge): edge is { key: string; x1: number; y1: number; x2: number; y2: number } => edge !== null)
+  }, [graph, positions, visibleIds])
+
   const resetLayout = () => {
     const next: Record<string, CanvasPosition> = {}
     rows.forEach((row, index) => {
@@ -130,6 +154,16 @@ export function CanvasView() {
           <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center' }}>{loading ? t('canvas.loading') : t('canvas.empty')}</div>
         ) : (
           <div style={{ position: 'relative', width: 1200, height: Math.max(760, Math.ceil(rows.length / 4) * 180 + 120) }}>
+            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
+              <defs>
+                <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L8,4 L0,8 Z" fill="var(--border-default)" />
+                </marker>
+              </defs>
+              {canvasEdges.map((edge) => (
+                <line key={edge.key} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="var(--border-default)" strokeWidth="1.4" strokeOpacity="0.75" markerEnd="url(#canvas-arrow)" />
+              ))}
+            </svg>
             {filteredRows.map((row, index) => {
               const pos = positions[row.id] || defaultPosition(index)
               const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []
