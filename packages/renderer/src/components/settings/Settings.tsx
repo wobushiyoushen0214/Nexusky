@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { THEME_IDS, useUIStore } from '../../stores/ui-store'
+import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { getErrorMessage } from '../../utils/errors'
 import { safeGet, safeSet } from '../../utils/storage'
-import type { AIProviderConfig } from '@shared/types/ipc'
+import type { AIProviderConfig, LocalPlugin } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
@@ -58,7 +59,7 @@ interface SettingsProps {
   onClose: () => void
 }
 
-type Tab = 'appearance' | 'ai' | 'cloud' | 'keys'
+type Tab = 'appearance' | 'ai' | 'cloud' | 'plugins' | 'keys'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -209,7 +210,7 @@ export function Settings({ open, onClose }: SettingsProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', padding: '0 20px' }}>
-          {(['appearance', 'ai', 'cloud', 'keys'] as Tab[]).map((t) => (
+          {(['appearance', 'ai', 'cloud', 'plugins', 'keys'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -226,7 +227,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                 transition: 'color 150ms',
               }}
             >
-              {{ appearance: '外观', ai: 'AI 提供商', cloud: '云端同步', keys: '快捷键' }[t]}
+              {{ appearance: '外观', ai: 'AI 提供商', cloud: '云端同步', plugins: '插件', keys: '快捷键' }[t]}
             </button>
           ))}
         </div>
@@ -337,6 +338,8 @@ export function Settings({ open, onClose }: SettingsProps) {
               inputStyle={inputStyle}
             />
           )}
+
+          {tab === 'plugins' && <PluginsTab />}
 
           {tab === 'keys' && <KeyBindingsTab />}
         </div>
@@ -1190,6 +1193,76 @@ function KeyBindingsTab() {
         ))}
       </div>
       <p style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>点击快捷键按钮后按下新组合键即可修改。全局快捷键会立即生效。</p>
+    </div>
+  )
+}
+
+function PluginsTab() {
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const [plugins, setPlugins] = useState<LocalPlugin[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const loadPlugins = async () => {
+    if (!vaultPath) return
+    setLoading(true)
+    try {
+      const result = await window.api.invoke('plugins:list', { vaultPath })
+      setPlugins(result)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadPlugins()
+  }, [vaultPath])
+
+  const revealPluginDir = async () => {
+    if (!vaultPath) return
+    await window.api.invoke('plugins:list', { vaultPath })
+    await window.api.invoke('file:reveal', { path: `${vaultPath}/.nexusky/plugins` })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>本地插件命令</span>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>.nexusky/plugins/*.json</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={loadPlugins} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}>{loading ? '刷新中...' : '刷新'}</button>
+          <button onClick={revealPluginDir} style={{ fontSize: 11, color: 'var(--accent-text)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: 'pointer', padding: '4px 8px', borderRadius: 4 }}>打开目录</button>
+        </div>
+      </div>
+
+      {plugins.length === 0 ? (
+        <div style={{ padding: 18, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.7 }}>
+          暂未发现插件。参考 docs/PLUGIN_COMMANDS.md 创建 JSON 文件后，插件命令会出现在命令面板的“插件”分组中。
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {plugins.map((plugin) => (
+            <div key={plugin.id} style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{plugin.name}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{plugin.version || plugin.id}</span>
+              </div>
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {plugin.commands.map((command) => (
+                  <div key={command.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px', borderRadius: 6, background: 'var(--bg-elevated)' }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{command.title}</span>
+                      {command.description && <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{command.description}</span>}
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--accent-text)' }}>{command.mode || 'chat'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
