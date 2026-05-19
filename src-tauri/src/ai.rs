@@ -1,5 +1,6 @@
 use serde_json::{json, Value};
 use std::fs;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter};
 
 fn config_path() -> Result<std::path::PathBuf, String> {
@@ -194,6 +195,61 @@ fn normalize_intent(value: &str, allowed: &[String]) -> String {
     }
 }
 
+fn extract_json_value(text: &str) -> Option<Value> {
+    let trimmed = text.trim();
+    if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
+        return Some(value);
+    }
+    let without_fence = trimmed
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+    if let Ok(value) = serde_json::from_str::<Value>(without_fence) {
+        return Some(value);
+    }
+    let start = without_fence.find(['[', '{'])?;
+    let end = without_fence.rfind([']', '}'])?;
+    serde_json::from_str::<Value>(&without_fence[start..=end]).ok()
+}
+
+fn safe_note_title(title: &str) -> String {
+    title
+        .chars()
+        .filter(|c| !matches!(c, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn note_name(path: &str) -> String {
+    Path::new(path)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("Note")
+        .to_string()
+}
+
+fn read_note_summaries(file_paths: &[Value], limit: usize, chars: usize) -> (String, Vec<String>) {
+    let mut content = String::new();
+    let mut names = Vec::new();
+    for path_value in file_paths.iter().take(limit) {
+        let Some(path) = path_value.as_str() else {
+            continue;
+        };
+        let Ok(raw) = fs::read_to_string(path) else {
+            continue;
+        };
+        let name = note_name(path);
+        names.push(name.clone());
+        content.push_str(&format!(
+            "## {name}\n{}\n\n---\n\n",
+            raw.chars().take(chars).collect::<String>()
+        ));
+    }
+    (content, names)
+}
+
 pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Value>, String> {
     match channel {
         "ai:chat" | "ai:chat-agent" => {
@@ -386,12 +442,154 @@ Output the modified complete Markdown text directly. The first character of your
                 }
             }
         }
-        "ai:generate-graph" => Ok(Some(
-            json!({ "success": false, "error": "Tauri AI graph generation is not migrated yet" }),
-        )),
-        "ai:generate-notes" => Ok(Some(
-            json!({ "success": false, "files": [], "error": "Tauri AI note generation is not migrated yet" }),
-        )),
+        "ai:generate-graph" => {
+            let file_paths = params
+                .get("filePaths")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let (files_content, file_names) = read_note_summaries(&file_paths, 30, 1000);
+            if files_content.is_empty() {
+                return Ok(Some(
+                    json!({ "success": false, "error": "无法读取文件内容" }),
+                ));
+            }
+            let system = r#"Analyze knowledge relationships between notes and output a Mermaid graph. Output graph TD syntax directly — the first line must be "graph TD".
+
+<format>
+- Node IDs use letters (A, B, C...), labels use square brackets wrapping the note title
+- Edges use -->|relationship| annotation, relationship labels are 2-4 words
+- Each node has at most 3 edges — keep only the most meaningful relationships
+</format>
+
+<quality>
+- Only create edges between genuinely related content — do not force connections for graph connectivity
+- Relationship labels must be specific
+- When note count is large (>10), prioritize cross-topic bridging relationships
+</quality>"#;
+            match run_chat(vec![
+                json!({ "role": "system", "content": system }),
+                json!({ "role": "user", "content": format!("Below are {} notes. Analyze their relationships and generate a knowledge graph:\n\n{files_content}", file_names.len()) }),
+            ]) {
+                Ok(content) => {
+                    let trimmed = content.trim().to_string();
+                    let _ = app.emit("ai:graph-progress", json!({ "content": trimmed }));
+                    let _ = app.emit("ai:graph-done", json!({}));
+                    Ok(Some(json!({ "success": true, "content": trimmed })))
+                }
+                Err(error) => Ok(Some(json!({ "success": false, "error": error }))),
+            }
+        }
+        "ai:generate-notes" => {
+            let vault_path = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let target_dir = params
+                .get("targetDir")
+                .and_then(Value::as_str)
+                .unwrap_or(vault_path);
+            let instruction = params
+                .get("instruction")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let _ = app.emit(
+                "ai:generate-notes-progress",
+                json!({ "stage": "planning", "message": "正在规划笔记结构..." }),
+            );
+            let plan_text = match run_chat(vec![
+                json!({ "role": "system", "content": "你是一个笔记规划助手。用户会给你一个主题，请规划需要创建的笔记列表。输出格式为 JSON 数组，每项包含 title（文件标题）和 brief（一句话描述内容方向）。title 是纯笔记标题，绝对不要包含目录名、路径前缀或分类前缀。只输出 JSON，不要其他文字。" }),
+                json!({ "role": "user", "content": instruction }),
+            ]) {
+                Ok(text) => text,
+                Err(error) => {
+                    return Ok(Some(
+                        json!({ "success": false, "error": error, "files": [] }),
+                    ))
+                }
+            };
+            let Some(parsed_plan) = extract_json_value(&plan_text) else {
+                return Ok(Some(
+                    json!({ "success": false, "error": "规划解析失败，请重试", "files": [] }),
+                ));
+            };
+            let plan_items = parsed_plan
+                .as_array()
+                .cloned()
+                .or_else(|| parsed_plan.get("notes").and_then(Value::as_array).cloned())
+                .unwrap_or_default();
+            if plan_items.is_empty() {
+                return Ok(Some(
+                    json!({ "success": false, "error": "规划解析失败，请重试", "files": [] }),
+                ));
+            }
+
+            fs::create_dir_all(target_dir).map_err(|e| e.to_string())?;
+            let dir_name = if target_dir == vault_path {
+                "根目录".to_string()
+            } else {
+                Path::new(target_dir)
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("")
+                    .to_string()
+            };
+            let _ = app.emit(
+                "ai:generate-notes-progress",
+                json!({ "stage": "planned", "message": format!("将在「{dir_name}」下生成 {} 篇笔记", plan_items.len()), "plan": plan_items }),
+            );
+
+            let titles = plan_items
+                .iter()
+                .filter_map(|item| item.get("title").and_then(Value::as_str))
+                .map(safe_note_title)
+                .filter(|title| !title.is_empty())
+                .collect::<Vec<_>>();
+            let mut created_files = Vec::new();
+            for (index, item) in plan_items.iter().enumerate() {
+                let title = titles
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| format!("Note {}", index + 1));
+                let brief = item.get("brief").and_then(Value::as_str).unwrap_or("");
+                let _ = app.emit(
+                    "ai:generate-notes-progress",
+                    json!({ "stage": "generating", "message": format!("正在生成 ({}/{}): {title}", index + 1, plan_items.len()), "current": index + 1, "total": plan_items.len() }),
+                );
+                let other_titles = titles
+                    .iter()
+                    .filter(|other| *other != &title)
+                    .map(|other| format!("- {other}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let note_content = match run_chat(vec![
+                    json!({ "role": "system", "content": "你是一个知识库笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。第一行必须是 # 标题，标题必须和给定标题完全一致。不要使用 [[]] 双链语法。只输出 Markdown 内容，不要其他解释。" }),
+                    json!({ "role": "user", "content": format!("标题: {title}\n描述: {brief}\n\n同批次的其他笔记主题（可在内容中自然提及相关概念）:\n{other_titles}") }),
+                ]) {
+                    Ok(content) => content.trim().to_string(),
+                    Err(_) => continue,
+                };
+                if note_content.is_empty() {
+                    continue;
+                }
+                let file_path = PathBuf::from(target_dir).join(format!("{title}.md"));
+                if fs::write(&file_path, note_content).is_ok() {
+                    let file_path_str = file_path.to_string_lossy().to_string();
+                    let _ = crate::db::handle(
+                        "db:index-file",
+                        json!({ "vaultPath": vault_path, "filePath": file_path_str }),
+                    );
+                    created_files.push(Value::String(file_path_str));
+                }
+            }
+
+            let _ = app.emit("vault:files-changed", json!({}));
+            let _ = app.emit(
+                "ai:generate-notes-progress",
+                json!({ "stage": "done", "message": format!("完成！已生成 {} 个文件", created_files.len()) }),
+            );
+            Ok(Some(json!({ "success": true, "files": created_files })))
+        }
         "kanban:ai-analyze" => Ok(Some(
             json!({ "summary": "Tauri kanban AI analysis is not migrated yet" }),
         )),
@@ -423,5 +621,17 @@ mod tests {
         let allowed = vec!["chat".into(), "edit".into()];
         assert_eq!(normalize_intent("Edit.", &allowed), "edit");
         assert_eq!(normalize_intent("delete", &allowed), "chat");
+    }
+
+    #[test]
+    fn extracts_json_from_fenced_ai_output() {
+        let value = extract_json_value("```json\n[{\"title\":\"A\",\"brief\":\"B\"}]\n```")
+            .expect("json should parse");
+        assert_eq!(value[0]["title"], Value::String("A".into()));
+    }
+
+    #[test]
+    fn cleans_note_titles_for_file_names() {
+        assert_eq!(safe_note_title("a/b:c*?"), "abc");
     }
 }
