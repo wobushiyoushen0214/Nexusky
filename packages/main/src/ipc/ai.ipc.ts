@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -61,6 +61,12 @@ function normalizeMinCharacters(value: unknown): number {
   const number = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(number)) return 8000
   return Math.max(1000, Math.floor(number))
+}
+
+function normalizeSimilarityThreshold(value: unknown): number {
+  const number = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(number)) return 0.75
+  return Math.min(1, Math.max(0, number))
 }
 
 function normalizeLinkHubMode(mode: string): 'backlinks' | 'outgoing' | 'total' {
@@ -968,6 +974,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'find_similar_notes',
+        description: '查找语义相近的跨文件夹笔记对，适合发现潜在双链、合并候选或相关主题。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按来源/目标标题或路径过滤，可选' },
+            threshold: { type: 'number', description: '相似度阈值，0-1，默认 0.75' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note',
         description: '读取指定笔记的完整内容。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
@@ -1376,6 +1397,46 @@ graph TD
             chunk: r.chunk.slice(0, 100),
             score: r.score
           }))
+        }
+      }
+      case 'find_similar_notes': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const threshold = normalizeSimilarityThreshold(args.threshold)
+        const notesById = new Map(getAllNotes(vaultPath).map((note) => [note.id, note]))
+        const pairs = findSimilarNotes(vaultPath, Math.max(3, limit), threshold)
+          .map((pair) => {
+            const source = notesById.get(pair.sourceId)
+            const target = notesById.get(pair.targetId)
+            if (!source || !target) return null
+            return {
+              sourceTitle: source.title || pair.sourceTitle,
+              sourcePath: source.filePath,
+              targetTitle: target.title || pair.targetTitle,
+              targetPath: target.filePath,
+              score: pair.score
+            }
+          })
+          .filter((pair): pair is { sourceTitle: string; sourcePath: string; targetTitle: string; targetPath: string; score: number } => pair !== null)
+          .filter((pair) => !query || [pair.sourceTitle, pair.sourcePath, pair.targetTitle, pair.targetPath].some((value) => value.toLowerCase().includes(query)))
+          .sort((a, b) => b.score - a.score || a.sourcePath.localeCompare(b.sourcePath) || a.targetPath.localeCompare(b.targetPath))
+          .slice(0, limit)
+        return {
+          content: formatSimilarNotesToolResult(pairs),
+          sources: pairs.flatMap((pair) => [
+            {
+              title: pair.sourceTitle,
+              filePath: pair.sourcePath,
+              chunk: `Similar to ${pair.targetTitle}: ${pair.score.toFixed(3)}`,
+              score: pair.score
+            },
+            {
+              title: pair.targetTitle,
+              filePath: pair.targetPath,
+              chunk: `Similar to ${pair.sourceTitle}: ${pair.score.toFixed(3)}`,
+              score: pair.score
+            }
+          ])
         }
       }
       case 'read_note': {

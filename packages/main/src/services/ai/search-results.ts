@@ -137,6 +137,14 @@ export interface AiLinkHubResult {
   total: number
 }
 
+export interface AiSimilarNotePairResult {
+  sourceTitle: string
+  sourcePath: string
+  targetTitle: string
+  targetPath: string
+  score: number
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -424,6 +432,16 @@ export function formatLinkHubsToolResult(notes: AiLinkHubResult[]): string {
     `Backlinks: ${note.backlinks}`,
     `Outgoing: ${note.outgoing}`,
     `Total: ${note.total}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatSimilarNotesToolResult(pairs: AiSimilarNotePairResult[]): string {
+  if (pairs.length === 0) return 'No similar notes found.'
+  return pairs.map((pair, index) => [
+    `${index + 1}. **${pair.sourceTitle}** -> **${pair.targetTitle}**`,
+    `Source: ${pair.sourcePath}`,
+    `Target: ${pair.targetPath}`,
+    `Score: ${pair.score.toFixed(3)}`
   ].join('\n')).join('\n\n')
 }
 
