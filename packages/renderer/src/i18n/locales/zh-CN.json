@@ -208,7 +208,7 @@
     "guideLinks": "3. 卡片之间的箭头来自笔记里的 [[wikilink]] 关系。",
     "guideZoom": "4. Ctrl/Cmd + 鼠标滚轮或触控板捏合可围绕指针位置缩放画布。",
     "guidePan": "5. 按住画布空白区域拖动可平移视图。",
-    "guideCreate": "6. 新建卡片会出现在当前视图中心。",
+    "guideCreate": "6. 新建卡片会优先靠近当前视图中心，并自动避开已有卡片。",
     "searchPlaceholder": "搜索笔记卡片...",
     "empty": "没有匹配的笔记卡片",
     "noTags": "无标签"
