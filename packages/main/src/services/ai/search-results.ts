@@ -62,6 +62,13 @@ export interface AiRecentNoteResult {
   updatedAt: number
 }
 
+export interface AiUnresolvedLinkResult {
+  sourceTitle: string
+  sourcePath: string
+  targetTitle: string
+  context: string
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -174,6 +181,16 @@ export function formatRecentNotesToolResult(notes: AiRecentNoteResult[]): string
     `${index + 1}. **${note.title}**`,
     `Path: ${note.filePath}`,
     `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatUnresolvedLinksToolResult(links: AiUnresolvedLinkResult[]): string {
+  if (links.length === 0) return 'No unresolved links found.'
+  return links.map((link, index) => [
+    `${index + 1}. [[${link.targetTitle}]]`,
+    `Source: ${link.sourceTitle}`,
+    `Path: ${link.sourcePath}`,
+    `Context: ${link.context || '(none)'}`
   ].join('\n')).join('\n\n')
 }
 

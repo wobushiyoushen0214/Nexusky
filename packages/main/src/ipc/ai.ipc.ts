@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1030,6 +1030,20 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_unresolved_links',
+        description: '列出知识库中尚未解析到现有笔记的 wikilink 断链，可按来源、目标或上下文过滤。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按来源标题、路径、目标或上下文过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -1226,6 +1240,32 @@ graph TD
             title: note.title,
             filePath: note.filePath,
             chunk: `Updated: ${new Date(note.updatedAt).toISOString()}`,
+            score: 1
+          }))
+        }
+      }
+      case 'list_unresolved_links': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const links = getAllNotes(vaultPath).flatMap((note) => (
+          getOutgoingLinks(vaultPath, note.id)
+            .filter((link) => !link.resolved)
+            .map((link) => ({
+              sourceTitle: note.title,
+              sourcePath: note.filePath,
+              targetTitle: link.targetTitle,
+              context: link.context
+            }))
+        )).filter((link) => {
+          if (!query) return true
+          return [link.sourceTitle, link.sourcePath, link.targetTitle, link.context].some((value) => value.toLowerCase().includes(query))
+        }).slice(0, limit)
+        return {
+          content: formatUnresolvedLinksToolResult(links),
+          sources: links.map((link) => ({
+            title: link.sourceTitle,
+            filePath: link.sourcePath,
+            chunk: `[[${link.targetTitle}]] ${link.context}`.slice(0, 100),
             score: 1
           }))
         }

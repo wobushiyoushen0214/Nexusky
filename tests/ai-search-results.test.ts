@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -191,5 +191,20 @@ describe('formatRecentNotesToolResult', () => {
 
   it('marks empty recent notes explicitly', () => {
     expect(formatRecentNotesToolResult([])).toBe('No recent notes found.')
+  })
+})
+
+describe('formatUnresolvedLinksToolResult', () => {
+  it('formats unresolved links with source paths and context', () => {
+    const output = formatUnresolvedLinksToolResult([
+      { sourceTitle: 'Source', sourcePath: 'Source.md', targetTitle: 'Missing', context: 'See [[Missing]].' },
+      { sourceTitle: 'Other', sourcePath: 'Folder/Other.md', targetTitle: 'Draft', context: '' }
+    ])
+
+    expect(output).toBe('1. [[Missing]]\nSource: Source\nPath: Source.md\nContext: See [[Missing]].\n\n2. [[Draft]]\nSource: Other\nPath: Folder/Other.md\nContext: (none)')
+  })
+
+  it('marks empty unresolved link results explicitly', () => {
+    expect(formatUnresolvedLinksToolResult([])).toBe('No unresolved links found.')
   })
 })
