@@ -15,7 +15,12 @@
     "main": "./out/main/index.js",
     "scripts": {
         "dev": "node scripts/dev.mjs",
+        "dev:renderer": "vite --config packages/renderer/vite.config.ts --host 127.0.0.1",
         "build": "electron-vite build",
+        "build:renderer": "vite build --config packages/renderer/vite.config.ts",
+        "tauri": "tauri",
+        "tauri:dev": "tauri dev",
+        "tauri:build": "tauri build",
         "rebuild": "electron-builder install-app-deps",
         "postinstall": "electron-builder install-app-deps",
         "preview": "electron-vite preview",
@@ -30,6 +35,7 @@
     "dependencies": {
         "@anthropic-ai/sdk": "^0.95.1",
         "@supabase/supabase-js": "^2.105.4",
+        "@tauri-apps/api": "^2.0.0",
         "@tiptap/core": "^2.27.2",
         "@tiptap/extension-code-block-lowlight": "^3.23.1",
         "@tiptap/extension-highlight": "^2.27.2",
@@ -68,6 +74,7 @@
         "zustand": "^5.0.0"
     },
     "devDependencies": {
+        "@tauri-apps/cli": "^2.0.0",
         "@tailwindcss/vite": "^4.0.0",
         "@types/better-sqlite3": "^7.6.13",
         "@types/d3-drag": "^3.0.7",
