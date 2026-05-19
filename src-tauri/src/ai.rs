@@ -1,3 +1,4 @@
+use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -250,6 +251,77 @@ fn read_note_summaries(file_paths: &[Value], limit: usize, chars: usize) -> (Str
     (content, names)
 }
 
+fn open_index(vault_path: &str) -> Result<Connection, String> {
+    Connection::open(Path::new(vault_path).join(".nexusky").join("index.db"))
+        .map_err(|e| e.to_string())
+}
+
+fn infer_link_relations(vault_path: &str, note_summaries: &str) -> Result<usize, String> {
+    let rel_result = run_chat(vec![
+        json!({ "role": "system", "content": "你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。输出 JSON 数组，每项包含 source、target、reason。source 和 target 必须与给定标题完全一致。只输出真正有内容关联的关系，不要自引用，只输出 JSON。" }),
+        json!({ "role": "user", "content": format!("请分析以下笔记之间的语义关系：\n\n{note_summaries}") }),
+    ])?;
+    let Some(value) = extract_json_value(&rel_result) else {
+        return Err("解析失败".into());
+    };
+    let relations = value.as_array().ok_or_else(|| "解析失败".to_string())?;
+    let conn = open_index(vault_path)?;
+    let mut added = 0;
+    for relation in relations {
+        let source = relation.get("source").and_then(Value::as_str).unwrap_or("");
+        let target = relation.get("target").and_then(Value::as_str).unwrap_or("");
+        if source.is_empty() || target.is_empty() || source == target {
+            continue;
+        }
+        let source_id = conn
+            .query_row(
+                "SELECT id FROM notes WHERE title = ?1",
+                params![source],
+                |row| row.get::<_, String>(0),
+            )
+            .ok();
+        let Some(source_id) = source_id else {
+            continue;
+        };
+        let exists = conn
+            .query_row(
+                "SELECT 1 FROM links WHERE source_note_id = ?1 AND target_title = ?2",
+                params![source_id, target],
+                |row| row.get::<_, i64>(0),
+            )
+            .ok()
+            .is_some();
+        if exists {
+            continue;
+        }
+        let target_id = conn
+            .query_row(
+                "SELECT id FROM notes WHERE title = ?1",
+                params![target],
+                |row| row.get::<_, String>(0),
+            )
+            .ok();
+        conn.execute(
+            "INSERT INTO links (source_note_id, target_note_id, target_title, context, link_type) VALUES (?1, ?2, ?3, ?4, 'inferred')",
+            params![
+                source_id,
+                target_id,
+                target,
+                relation.get("reason").and_then(Value::as_str).unwrap_or("")
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        added += 1;
+    }
+    Ok(added)
+}
+
+fn memory_path(vault_path: &str, note_id: &str) -> Result<PathBuf, String> {
+    let dir = Path::new(vault_path).join(".nexusky").join("memories");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join(format!("{note_id}.json")))
+}
+
 pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Value>, String> {
     match channel {
         "ai:chat" | "ai:chat-agent" => {
@@ -360,12 +432,188 @@ pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Va
                 result.map(|text| parse_tags(&text)).unwrap_or_default(),
             )))
         }
-        "ai:infer-links" | "ai:infer-global-links" => Ok(Some(
-            json!({ "success": false, "error": "Tauri AI link inference is not migrated yet" }),
-        )),
-        "ai:generate-memories" => Ok(Some(
-            json!({ "success": false, "generated": 0, "skipped": 0, "failed": 0, "total": 0, "error": "Tauri AI memory generation is not migrated yet" }),
-        )),
+        "ai:infer-links" => {
+            let vault_path = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let file_paths = params
+                .get("filePaths")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            for file_path in &file_paths {
+                if let Some(path) = file_path.as_str() {
+                    let _ = crate::db::handle(
+                        "db:index-file",
+                        json!({ "vaultPath": vault_path, "filePath": path }),
+                    );
+                }
+            }
+            let (summaries, _) = read_note_summaries(&file_paths, 50, 600);
+            if summaries.is_empty() {
+                return Ok(Some(
+                    json!({ "success": false, "error": "无法读取文件内容" }),
+                ));
+            }
+            match infer_link_relations(vault_path, &summaries) {
+                Ok(added) => Ok(Some(json!({ "success": true, "added": added }))),
+                Err(error) => Ok(Some(json!({ "success": false, "error": error }))),
+            }
+        }
+        "ai:infer-global-links" => {
+            let vault_path = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let _ = crate::db::handle("db:index-vault", json!({ "vaultPath": vault_path }));
+            let conn = match open_index(vault_path) {
+                Ok(conn) => conn,
+                Err(error) => return Ok(Some(json!({ "success": false, "error": error }))),
+            };
+            let mut stmt = match conn
+                .prepare("SELECT file_path FROM notes ORDER BY updated_at DESC LIMIT 50")
+            {
+                Ok(stmt) => stmt,
+                Err(error) => {
+                    return Ok(Some(
+                        json!({ "success": false, "error": error.to_string() }),
+                    ))
+                }
+            };
+            let paths = stmt
+                .query_map([], |row| row.get::<_, String>(0))
+                .map(|rows| {
+                    rows.filter_map(Result::ok)
+                        .map(|rel| {
+                            Value::String(
+                                Path::new(vault_path)
+                                    .join(rel)
+                                    .to_string_lossy()
+                                    .to_string(),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            let (summaries, _) = read_note_summaries(&paths, 50, 600);
+            if summaries.is_empty() {
+                return Ok(Some(
+                    json!({ "success": false, "error": "无法读取文件内容" }),
+                ));
+            }
+            match infer_link_relations(vault_path, &summaries) {
+                Ok(added) => Ok(Some(json!({ "success": true, "added": added }))),
+                Err(error) => Ok(Some(json!({ "success": false, "error": error }))),
+            }
+        }
+        "ai:generate-memories" => {
+            let vault_path = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let _ = crate::db::handle("db:index-vault", json!({ "vaultPath": vault_path }));
+            let conn = match open_index(vault_path) {
+                Ok(conn) => conn,
+                Err(error) => {
+                    return Ok(Some(
+                        json!({ "success": false, "generated": 0, "skipped": 0, "failed": 0, "total": 0, "error": error }),
+                    ))
+                }
+            };
+            let mut stmt = conn
+                .prepare("SELECT id, title, file_path, content_hash FROM notes ORDER BY updated_at DESC LIMIT 200")
+                .map_err(|e| e.to_string())?;
+            let notes = stmt
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                    ))
+                })
+                .map_err(|e| e.to_string())?
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>();
+            let total = notes.len();
+            let mut generated = 0;
+            let mut skipped = 0;
+            let mut failed = 0;
+            let _ = app.emit(
+                "ai:memory-progress",
+                json!({ "current": 0, "total": total, "generated": generated, "skipped": skipped, "failed": failed, "state": "running" }),
+            );
+            for (index, (id, title, file_path, content_hash)) in notes.iter().enumerate() {
+                let path = memory_path(vault_path, id)?;
+                let existing = fs::read_to_string(&path)
+                    .ok()
+                    .and_then(|raw| serde_json::from_str::<Value>(&raw).ok());
+                if existing
+                    .as_ref()
+                    .and_then(|value| value.get("contentHash"))
+                    .and_then(Value::as_str)
+                    == Some(content_hash.as_str())
+                {
+                    skipped += 1;
+                } else {
+                    let full_path = Path::new(vault_path).join(file_path);
+                    match fs::read_to_string(&full_path) {
+                        Ok(content) => {
+                            let response = run_chat(vec![
+                                json!({ "role": "system", "content": "Analyze note content and extract structured memory. Output pure JSON only: {\"concepts\": [...], \"topics\": [...], \"summary\": \"...\"}. concepts 3-8, topics 2-4, summary 50-150 chars in the same language as the note." }),
+                                json!({ "role": "user", "content": format!("Note title: {title}\nNote path: {file_path}\n\nNote content:\n{}", content.chars().take(3000).collect::<String>()) }),
+                            ]);
+                            match response.ok().and_then(|text| extract_json_value(&text)) {
+                                Some(memory) => {
+                                    let folder = Path::new(file_path)
+                                        .parent()
+                                        .and_then(|path| path.to_str())
+                                        .filter(|path| !path.is_empty())
+                                        .unwrap_or("_root");
+                                    let now = chrono::Utc::now().timestamp_millis();
+                                    let output = json!({
+                                      "noteId": id,
+                                      "title": title,
+                                      "folder": folder,
+                                      "contentHash": content_hash,
+                                      "concepts": memory.get("concepts").cloned().unwrap_or_else(|| json!([])),
+                                      "topics": memory.get("topics").cloned().unwrap_or_else(|| json!([])),
+                                      "summary": memory.get("summary").and_then(Value::as_str).unwrap_or(""),
+                                      "createdAt": existing.as_ref().and_then(|value| value.get("createdAt")).and_then(Value::as_i64).unwrap_or(now),
+                                      "updatedAt": now
+                                    });
+                                    if fs::write(
+                                        &path,
+                                        serde_json::to_string_pretty(&output)
+                                            .map_err(|e| e.to_string())?,
+                                    )
+                                    .is_ok()
+                                    {
+                                        generated += 1;
+                                    } else {
+                                        failed += 1;
+                                    }
+                                }
+                                None => failed += 1,
+                            }
+                        }
+                        Err(_) => failed += 1,
+                    }
+                }
+                let _ = app.emit(
+                    "ai:memory-progress",
+                    json!({ "current": index + 1, "total": total, "generated": generated, "skipped": skipped, "failed": failed, "title": title, "state": "running" }),
+                );
+            }
+            let _ = app.emit(
+                "ai:memory-progress",
+                json!({ "current": total, "total": total, "generated": generated, "skipped": skipped, "failed": failed, "state": "done" }),
+            );
+            Ok(Some(
+                json!({ "success": true, "generated": generated, "skipped": skipped, "failed": failed, "total": total, "totalNotes": total, "limited": false }),
+            ))
+        }
         "ai:edit" => {
             let instruction = params
                 .get("instruction")
