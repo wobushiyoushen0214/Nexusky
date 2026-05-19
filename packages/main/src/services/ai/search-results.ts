@@ -134,6 +134,13 @@ export interface AiEmptyNoteResult {
   updatedAt: number
 }
 
+export interface AiLargeNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+  characters: number
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -344,6 +351,16 @@ export function formatEmptyNotesToolResult(notes: AiEmptyNoteResult[]): string {
   return notes.map((note, index) => [
     `${index + 1}. **${note.title}**`,
     `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatLargeNotesToolResult(notes: AiLargeNoteResult[]): string {
+  if (notes.length === 0) return 'No large notes found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Characters: ${note.characters}`,
     `Updated: ${formatTimestamp(note.updatedAt)}`
   ].join('\n')).join('\n\n')
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -351,5 +351,19 @@ describe('formatEmptyNotesToolResult', () => {
 
   it('marks empty empty-note results explicitly', () => {
     expect(formatEmptyNotesToolResult([])).toBe('No empty notes found.')
+  })
+})
+
+describe('formatLargeNotesToolResult', () => {
+  it('formats large notes with paths, character counts, and timestamps', () => {
+    const output = formatLargeNotesToolResult([
+      { title: 'Research', filePath: 'Notes/Research.md', characters: 12000, updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('1. **Research**\nPath: Notes/Research.md\nCharacters: 12000\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty large-note results explicitly', () => {
+    expect(formatLargeNotesToolResult([])).toBe('No large notes found.')
   })
 })

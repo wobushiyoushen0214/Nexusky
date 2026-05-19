@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -49,6 +49,12 @@ function hasPropertyTags(value: unknown): boolean {
 function getPropertyTextValues(value: unknown): string[] {
   const values = Array.isArray(value) ? value : [value]
   return values.map((item) => formatPropertyValue(item).trim()).filter((item) => item.length > 0)
+}
+
+function normalizeMinCharacters(value: unknown): number {
+  const number = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(number)) return 8000
+  return Math.max(1000, Math.floor(number))
 }
 
 function isEmptyMarkdownNote(content: string): boolean {
@@ -1184,6 +1190,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_large_notes',
+        description: '列出字符数较多的长笔记，便于建议拆分、提炼或建立索引。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按标题或路径过滤，可选' },
+            minCharacters: { type: 'number', description: '最小字符数，默认 8000，最低 1000' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_duplicate_note_titles',
         description: '列出标题重复的笔记及其路径，帮助避免 read_note 歧义。',
         parameters: {
@@ -1607,6 +1628,33 @@ graph TD
             title: note.title,
             filePath: note.filePath,
             chunk: 'Empty note',
+            score: 1
+          }))
+        }
+      }
+      case 'list_large_notes': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const minCharacters = normalizeMinCharacters(args.minCharacters)
+        const notes = getAllNotes(vaultPath)
+          .filter((note) => !query || [note.title, note.filePath].some((value) => value.toLowerCase().includes(query)))
+          .map((note) => {
+            try {
+              const content = readFileSync(join(vaultPath, note.filePath), 'utf-8')
+              return { title: note.title, filePath: note.filePath, updatedAt: note.updatedAt, characters: content.length }
+            } catch {
+              return null
+            }
+          })
+          .filter((note): note is { title: string; filePath: string; updatedAt: number; characters: number } => note !== null && note.characters >= minCharacters)
+          .sort((a, b) => b.characters - a.characters || b.updatedAt - a.updatedAt)
+          .slice(0, limit)
+        return {
+          content: formatLargeNotesToolResult(notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Large note: ${note.characters} characters`,
             score: 1
           }))
         }
