@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -19,5 +19,27 @@ describe('formatSearchNotesToolResult', () => {
     ])
 
     expect(output).toHaveLength('1. **Long**\nPath: Long.md\n'.length + 200)
+  })
+})
+
+describe('formatReadNoteToolResult', () => {
+  it('includes title and path before note content', () => {
+    const output = formatReadNoteToolResult({
+      title: 'Topic',
+      filePath: 'A/Topic.md',
+      content: '# Topic\n\nBody.'
+    })
+
+    expect(output).toBe('Title: Topic\nPath: A/Topic.md\n\n# Topic\n\nBody.')
+  })
+
+  it('marks empty notes explicitly', () => {
+    const output = formatReadNoteToolResult({
+      title: 'Empty',
+      filePath: 'Empty.md',
+      content: '   '
+    })
+
+    expect(output).toBe('Title: Empty\nPath: Empty.md\n\n(empty note)')
   })
 })

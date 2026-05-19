@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatSearchNotesToolResult } from '../services/ai/search-results'
+import { formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -969,7 +969,7 @@ graph TD
         try {
           const content = readFileSync(note.absolutePath, 'utf-8')
           return {
-            content,
+            content: formatReadNoteToolResult({ title: note.title, filePath: note.filePath, content }),
             sources: [{
               title: note.title,
               filePath: note.filePath,
