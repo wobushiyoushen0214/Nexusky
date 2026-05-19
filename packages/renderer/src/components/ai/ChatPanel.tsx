@@ -674,6 +674,20 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     return nextMessages
   }
 
+  const getAvailableNotePath = async (baseDir: string, title: string): Promise<string> => {
+    const safeTitle = title.trim().replace(/[\\/:*?"<>|]/g, '') || '新笔记'
+    for (let i = 0; i < 100; i++) {
+      const suffix = i === 0 ? '' : ` ${i + 1}`
+      const path = `${baseDir}/${safeTitle}${suffix}.md`
+      try {
+        await window.api.invoke('file:stat', { path })
+      } catch {
+        return path
+      }
+    }
+    return `${baseDir}/${safeTitle} ${Date.now()}.md`
+  }
+
   const handleSend = async () => {
     if (!input.trim()) return
 
@@ -950,10 +964,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           if (!filePath && vaultPath) {
             const titleMatch = result.content.match(/^#\s+(.+)$/m)
             const title = titleMatch ? titleMatch[1].trim().replace(/[\\/:*?"<>|]/g, '') : '新笔记'
-            const newPath = `${vaultPath}/${title}.md`
+            const newPath = await getAvailableNotePath(vaultPath, title)
             await window.api.invoke('file:create', { path: newPath, content: result.content, vaultPath })
             useEditorStore.getState().openFile(newPath)
-            const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${title}」并打开。` }
+            const createdTitle = newPath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || title
+            const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${createdTitle}」并打开。` }
             setMessages((msgs) => [...msgs, msg])
             appendToDb(msg)
           } else {
@@ -992,9 +1007,25 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
   const handleApplyEdit = async () => {
     if (!editResult) return
-    await window.api.invoke('file:write', { path: editResult.filePath, content: editResult.content, vaultPath: vaultPath || undefined })
     const store = useEditorStore.getState()
     const tabIndex = store.tabs.findIndex((t) => t.path === editResult.filePath)
+    const openTab = tabIndex >= 0 ? store.tabs[tabIndex] : null
+    if (openTab?.isDirty && openTab.content !== editResult.original) {
+      appendAssistantMessage('目标笔记已有未保存修改。为避免覆盖，请先保存或重新生成修改方案。')
+      return
+    }
+    try {
+      const latestContent = await window.api.invoke('file:read', { path: editResult.filePath })
+      if (latestContent !== editResult.original) {
+        appendAssistantMessage('目标笔记已在生成后发生变化。为避免覆盖，请重新生成修改方案。')
+        return
+      }
+    } catch (e: unknown) {
+      appendAssistantMessage(`应用修改前无法确认文件状态: ${friendlyError(getErrorMessage(e))}`)
+      return
+    }
+
+    await window.api.invoke('file:write', { path: editResult.filePath, content: editResult.content, vaultPath: vaultPath || undefined })
     if (tabIndex >= 0) {
       const tabs = [...store.tabs]
       tabs[tabIndex] = { ...tabs[tabIndex], content: editResult.content, isDirty: false }
