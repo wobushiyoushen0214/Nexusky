@@ -81,4 +81,20 @@ describe('semanticSearch', () => {
     })
     expect(results[0].chunk).toContain('lexical fallback')
   })
+
+  it('matches fallback search terms even when they are not adjacent', async () => {
+    const { indexNote } = await import('../packages/main/src/services/indexer')
+    const { semanticSearch } = await import('../packages/main/src/services/embedding')
+
+    const filePath = join(vaultPath, 'Agent Search.md')
+    writeFileSync(filePath, '# Agent Search\n\nFallback search should still work for agent note tools.')
+    indexNote(vaultPath, filePath)
+
+    const results = await semanticSearch(vaultPath, 'agent fallback', 5)
+
+    expect(results[0]).toMatchObject({
+      title: 'Agent Search',
+      filePath: 'Agent Search.md'
+    })
+  })
 })

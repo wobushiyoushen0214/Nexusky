@@ -314,30 +314,47 @@ function keywordFallbackSearch(vaultPath: string, query: string, topK: number): 
   if (!normalized) return []
 
   const db = getDatabase(vaultPath)
-  const pattern = `%${normalized}%`
+  const terms = Array.from(new Set(tokenize(normalized))).slice(0, 8)
+  const searchTerms = terms.length > 0 ? terms : [normalized]
+  const where = searchTerms.map(() => '(lower(n.title) LIKE ? OR lower(f.content) LIKE ?)').join(' OR ')
+  const params = searchTerms.flatMap((term) => [`%${term}%`, `%${term}%`])
   const rows = db.prepare(`
     SELECT n.id as noteId, n.title, n.file_path as filePath, f.content
     FROM notes n
     JOIN notes_fts_map m ON m.note_id = n.id
     JOIN notes_fts f ON f.rowid = m.rowid
-    WHERE lower(n.title) LIKE ? OR lower(f.content) LIKE ?
+    WHERE ${where}
     ORDER BY n.updated_at DESC
     LIMIT ?
-  `).all(pattern, pattern, Math.max(topK * 3, topK)) as { noteId: string; title: string; filePath: string; content: string }[]
+  `).all(...params, Math.max(topK * 20, 50)) as { noteId: string; title: string; filePath: string; content: string }[]
 
   return rows.map((row) => {
-    const line = row.content
+    const titleLower = row.title.toLowerCase()
+    const contentLower = row.content.toLowerCase()
+    const haystack = `${titleLower}\n${contentLower}`
+    const exactMatch = haystack.includes(normalized)
+    const matchedTerms = searchTerms.filter((term) => haystack.includes(term))
+    if (!exactMatch && matchedTerms.length < searchTerms.length) return null
+
+    const lines = row.content
       .split('\n')
       .map((item) => item.trim())
-      .find((item) => item.toLowerCase().includes(normalized)) || row.content.trim().slice(0, 400)
+    const line = lines.find((item) => item.toLowerCase().includes(normalized))
+      || lines.find((item) => searchTerms.some((term) => item.toLowerCase().includes(term)))
+      || row.content.trim().slice(0, 400)
+    const titleMatches = searchTerms.filter((term) => titleLower.includes(term)).length
+
     return {
       noteId: row.noteId,
       title: row.title,
       filePath: row.filePath,
       chunk: line.slice(0, 600),
-      score: row.title.toLowerCase().includes(normalized) ? 0.65 : 0.45
+      score: (exactMatch ? 0.45 : 0.25) + titleMatches * 0.12 + matchedTerms.length * 0.04
     }
-  }).slice(0, topK)
+  })
+    .filter((row): row is { noteId: string; title: string; filePath: string; chunk: string; score: number } => row !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK)
 }
 
 // --- Chat completion reranking ---
