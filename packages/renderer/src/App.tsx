@@ -205,7 +205,8 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const getKey = useKeyBindingStore.getState().getKey
 
-      if (matchesShortcut(e, getKey('quick-switch'))) {
+      const quickSwitchKey = getKey('quick-switch')
+      if (matchesShortcut(e, quickSwitchKey) || (quickSwitchKey === 'Ctrl+O' && matchesShortcut(e, 'Ctrl+P'))) {
         e.preventDefault()
         setQuickSwitcherOpen(true)
       }
