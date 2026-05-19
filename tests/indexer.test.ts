@@ -192,4 +192,50 @@ describe('indexer', () => {
 
     closeDatabase()
   })
+
+  it('should index Obsidian Dataview inline fields as properties', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks, getPropertyRows } = await import('../packages/main/src/services/indexer')
+
+    const targetPath = join(vaultPath, 'Project.md')
+    const sourcePath = join(vaultPath, 'Source.md')
+    writeFileSync(targetPath, [
+      '# Project',
+      '',
+      'title:: Inline Project',
+      'alias:: Inline Alias',
+      'status:: active',
+      'priority:: 2',
+      'published:: true',
+      'tags:: #research, active',
+      'cssclass:: wide-page'
+    ].join('\n'))
+    writeFileSync(sourcePath, '# Source\n\nSee [[Inline Alias]] for context.')
+
+    indexNote(vaultPath, targetPath)
+    indexNote(vaultPath, sourcePath)
+
+    const project = getAllNotes(vaultPath).find((note) => note.filePath === 'Project.md')
+    const source = getAllNotes(vaultPath).find((note) => note.filePath === 'Source.md')
+    expect(project).toBeTruthy()
+    expect(source).toBeTruthy()
+    expect(project!.title).toBe('Inline Project')
+
+    expect(getOutgoingLinks(vaultPath, source!.id)[0]).toMatchObject({ targetPath: 'Project.md', resolved: true })
+
+    const row = getPropertyRows(vaultPath).find((item) => item.filePath === 'Project.md')
+    expect(row).toMatchObject({
+      properties: {
+        title: 'Inline Project',
+        aliases: ['Inline Alias'],
+        tags: ['active', 'research'],
+        status: 'active',
+        priority: 2,
+        published: true,
+        cssclasses: ['wide-page']
+      }
+    })
+
+    closeDatabase()
+  })
 })

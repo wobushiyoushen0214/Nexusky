@@ -7,6 +7,7 @@ import matter from 'gray-matter'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
+const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*]\s+(?:\[[ xX]\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
 
 export interface NoteIndex {
   id: string
@@ -47,8 +48,10 @@ export function indexNote(vaultPath: string, filePath: string): void {
   if (existing?.content_hash === hash) return
 
   const { data: frontmatter, content } = matter(rawContent)
+  const inlineProperties = extractDataviewInlineFields(content)
   const stat = statSync(filePath)
-  const title = (frontmatter.title as string) || extractTitle(content, filePath)
+  const inlineTitle = normalizePropertyScalar(inlineProperties.title)
+  const title = (frontmatter.title as string) || (typeof inlineTitle === 'string' ? inlineTitle : undefined) || extractTitle(content, filePath)
   const id = createHash('md5').update(relPath).digest('hex')
 
   const upsert = db.prepare(`
@@ -70,10 +73,11 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const insertAlias = db.prepare('INSERT OR IGNORE INTO note_aliases (note_id, alias) VALUES (?, ?)')
 
   const links = extractLinks(content)
-  const aliases = extractAliases(frontmatter)
-  const fmTags = Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : []
+  const aliases = Array.from(new Set([...extractAliases(frontmatter), ...extractInlineAliases(inlineProperties)]))
+  const fmTags = normalizeTagNames(frontmatter.tags)
   const inlineTags = extractTags(content)
-  const tags = [...new Set([...fmTags, ...inlineTags])]
+  const dataviewTags = normalizeTagNames(inlineProperties.tags)
+  const tags = [...new Set([...fmTags, ...inlineTags, ...dataviewTags])]
   const tasks = extractTasks(content)
 
   const upsertFtsMap = db.prepare('INSERT OR IGNORE INTO notes_fts_map (note_id) VALUES (?)')
@@ -161,19 +165,23 @@ export function getPropertyRows(vaultPath: string): PropertyTableRow[] {
   return notes.map((note) => {
     const absolutePath = join(vaultPath, note.filePath)
     let frontmatter: Record<string, unknown> = {}
+    let inlineProperties: Record<string, PropertyValue> = {}
     if (existsSync(absolutePath)) {
       try {
-        frontmatter = matter(readFileSync(absolutePath, 'utf-8')).data
+        const parsed = matter(readFileSync(absolutePath, 'utf-8'))
+        frontmatter = parsed.data
+        inlineProperties = extractDataviewInlineFields(parsed.content)
       } catch {
         frontmatter = {}
+        inlineProperties = {}
       }
     }
 
-    const properties = normalizeProperties(frontmatter)
-    properties.title = normalizePropertyValue(frontmatter.title) ?? note.title
-    properties.aliases = aliasesByNote.get(note.id) || normalizeListProperty(frontmatter.aliases ?? frontmatter.alias)
-    properties.tags = tagsByNote.get(note.id) || normalizeListProperty(frontmatter.tags)
-    properties.cssclasses = normalizeListProperty(frontmatter.cssclasses ?? frontmatter.cssclass)
+    const properties = { ...inlineProperties, ...normalizeProperties(frontmatter) }
+    properties.title = normalizePropertyValue(frontmatter.title) ?? inlineProperties.title ?? note.title
+    properties.aliases = aliasesByNote.get(note.id) || normalizeListProperty(frontmatter.aliases ?? frontmatter.alias ?? inlineProperties.aliases ?? inlineProperties.alias)
+    properties.tags = tagsByNote.get(note.id) || normalizeTagNames(frontmatter.tags ?? inlineProperties.tags)
+    properties.cssclasses = normalizeListProperty(frontmatter.cssclasses ?? frontmatter.cssclass ?? inlineProperties.cssclasses ?? inlineProperties.cssclass)
 
     return {
       ...note,
@@ -378,6 +386,76 @@ function extractAliases(frontmatter: Record<string, unknown>): string[] {
   return Array.from(new Set(aliases))
 }
 
+function extractInlineAliases(properties: Record<string, PropertyValue>): string[] {
+  return normalizeListProperty(properties.aliases ?? properties.alias)
+}
+
+function extractDataviewInlineFields(content: string): Record<string, PropertyValue> {
+  const result: Record<string, PropertyValue> = {}
+  let inFence = false
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+
+    const match = line.match(DATAVIEW_FIELD_REGEX)
+    if (!match) continue
+
+    const key = match[1].trim()
+    if (!key || key.includes('[') || key.includes(']')) continue
+
+    const value = normalizeInlineFieldValue(match[2])
+    if (value === undefined) continue
+    mergeInlineProperty(result, key, value)
+  }
+
+  return result
+}
+
+function normalizeInlineFieldValue(raw: string): PropertyValue | undefined {
+  const value = raw.trim()
+  if (!value) return undefined
+
+  const arrayMatch = value.match(/^\[(.*)\]$/)
+  const listSource = arrayMatch ? arrayMatch[1] : value
+  if (listSource.includes(',')) {
+    const items = listSource
+      .split(',')
+      .map((item) => normalizeInlineScalar(item))
+      .filter((item): item is string | number | boolean => item !== undefined)
+    return items.length > 0 ? items : undefined
+  }
+
+  return normalizeInlineScalar(value)
+}
+
+function normalizeInlineScalar(raw: string): string | number | boolean | undefined {
+  const value = raw.trim()
+  if (!value) return undefined
+  if (/^(true|false)$/i.test(value)) return value.toLowerCase() === 'true'
+
+  const numeric = Number(value)
+  if (Number.isFinite(numeric) && /^[-+]?\d+(?:\.\d+)?$/.test(value)) return numeric
+
+  return value
+}
+
+function mergeInlineProperty(target: Record<string, PropertyValue>, key: string, value: PropertyValue): void {
+  if (!(key in target)) {
+    target[key] = value
+    return
+  }
+
+  const existing = target[key]
+  const existingValues = Array.isArray(existing) ? existing : existing == null ? [] : [existing]
+  const nextValues = Array.isArray(value) ? value : value == null ? [] : [value]
+  target[key] = [...existingValues, ...nextValues]
+}
+
 function normalizeProperties(frontmatter: Record<string, unknown>): Record<string, PropertyValue> {
   const result: Record<string, PropertyValue> = {}
   for (const [key, value] of Object.entries(frontmatter)) {
@@ -412,6 +490,12 @@ function normalizeListProperty(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean)
   if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean)
   return []
+}
+
+function normalizeTagNames(value: unknown): string[] {
+  return normalizeListProperty(value)
+    .map((item) => item.replace(/^#/, '').trim())
+    .filter(Boolean)
 }
 
 function getNoteLookupAliases(db: Database.Database, noteId: string, title: string, filePath?: string): string[] {
