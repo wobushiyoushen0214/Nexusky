@@ -35,6 +35,12 @@ interface PendingScroll {
   top: number
 }
 
+interface CanvasViewportState {
+  x: number
+  y: number
+  zoom: number
+}
+
 const CARD_WIDTH = 210
 const CARD_HEIGHT = 112
 const BASE_CANVAS_WIDTH = 1200
@@ -43,6 +49,10 @@ const CANVAS_PADDING = 760
 
 function getCanvasStorageKey(vaultPath: string): string {
   return `nexusky-canvas-layout:${encodeURIComponent(vaultPath)}`
+}
+
+function getCanvasViewportStorageKey(vaultPath: string): string {
+  return `nexusky-canvas-viewport:${encodeURIComponent(vaultPath)}`
 }
 
 function defaultPosition(index: number): CanvasPosition {
@@ -105,6 +115,8 @@ export function CanvasView() {
   const initialScrollKeyRef = useRef<string | null>(null)
   const zoomRef = useRef(zoom)
   const pendingScrollRef = useRef<PendingScroll | null>(null)
+  const saveViewportTimerRef = useRef<number | null>(null)
+  const restoredViewportKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     positionsRef.current = positions
@@ -216,6 +228,21 @@ export function CanvasView() {
     const key = `${vaultPath || 'no-vault'}:${rows.length}`
     if (initialScrollKeyRef.current === key) return
     initialScrollKeyRef.current = key
+    if (vaultPath && restoredViewportKeyRef.current !== key) {
+      const saved = safeGetJSON<Partial<CanvasViewportState>>(getCanvasViewportStorageKey(vaultPath), {})
+      if (typeof saved.x === 'number' && typeof saved.y === 'number') {
+        const nextZoom = Math.max(0.5, Math.min(1.8, typeof saved.zoom === 'number' ? saved.zoom : zoomRef.current))
+        const metrics = metricsRef.current
+        zoomRef.current = nextZoom
+        pendingScrollRef.current = {
+          left: (saved.x - metrics.minX) * nextZoom,
+          top: (saved.y - metrics.minY) * nextZoom
+        }
+        restoredViewportKeyRef.current = key
+        setZoom(nextZoom)
+        return
+      }
+    }
     requestAnimationFrame(() => {
       const metrics = metricsRef.current
       viewport.scrollLeft = Math.max(0, -metrics.minX * zoom - 44)
@@ -224,6 +251,34 @@ export function CanvasView() {
   }, [filteredRows.length, rows.length, vaultPath, zoom])
 
   const visibleIds = useMemo(() => new Set(filteredRows.map((row) => row.id)), [filteredRows])
+
+  const persistViewport = () => {
+    if (!vaultPath) return
+    const viewport = canvasRef.current
+    if (!viewport) return
+    const metrics = metricsRef.current
+    safeSetJSON(getCanvasViewportStorageKey(vaultPath), {
+      x: viewport.scrollLeft / zoomRef.current + metrics.minX,
+      y: viewport.scrollTop / zoomRef.current + metrics.minY,
+      zoom: zoomRef.current
+    })
+  }
+
+  const scheduleViewportSave = () => {
+    if (!vaultPath) return
+    if (saveViewportTimerRef.current) window.clearTimeout(saveViewportTimerRef.current)
+    saveViewportTimerRef.current = window.setTimeout(() => {
+      saveViewportTimerRef.current = null
+      persistViewport()
+    }, 120)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveViewportTimerRef.current) window.clearTimeout(saveViewportTimerRef.current)
+      persistViewport()
+    }
+  }, [vaultPath])
 
   const canvasEdges = useMemo(() => {
     if (!graph) return []
@@ -285,6 +340,7 @@ export function CanvasView() {
       top: canvasY * clamped - focalY
     }
     setZoom(clamped)
+    scheduleViewportSave()
   }
 
   const handleCanvasWheel = (event: WheelEvent<HTMLDivElement>) => {
@@ -406,6 +462,7 @@ export function CanvasView() {
 
       <div
         ref={canvasRef}
+        onScroll={scheduleViewportSave}
         onWheel={handleCanvasWheel}
         onPointerDown={handleCanvasPointerDown}
         style={{
