@@ -63,6 +63,19 @@ export function updateFrontmatterProperty(markdown: string, key: string, value: 
   return `---\n${trimmedRaw}\n---\n${body.replace(/^\n+/, '')}`
 }
 
+export function updateMarkdownProperty(markdown: string, key: string, value: FrontmatterValue): string {
+  const safeKey = key.trim()
+  if (!safeKey || !/^[A-Za-z0-9_-]+$/.test(safeKey)) return markdown
+
+  const block = extractFrontmatter(markdown)
+  if (block && findPropertyRange(block.raw.split('\n'), safeKey)) {
+    return updateFrontmatterProperty(markdown, safeKey, value)
+  }
+
+  const inlineUpdated = updateDataviewInlineProperty(markdown, safeKey, value)
+  return inlineUpdated ?? updateFrontmatterProperty(markdown, safeKey, value)
+}
+
 function extractFrontmatter(markdown: string): { raw: string; end: number } | null {
   if (!markdown.startsWith('---\n') && markdown !== '---') return null
   const endMarker = markdown.indexOf('\n---', 4)
@@ -72,6 +85,31 @@ function extractFrontmatter(markdown: string): { raw: string; end: number } | nu
     raw: markdown.slice(4, endMarker),
     end: markerEnd >= 0 ? markerEnd + 1 : markdown.length
   }
+}
+
+function updateDataviewInlineProperty(markdown: string, key: string, value: FrontmatterValue): string | null {
+  const lines = markdown.split('\n')
+  const fieldPattern = new RegExp(`^(\\s*(?:[-*]\\s+(?:\\[[ xX]\\]\\s+)?)?)${escapeRegExp(key)}::\\s*(.*?)\\s*$`)
+  let inFence = false
+
+  for (let index = 0; index < lines.length; index++) {
+    const trimmed = lines[index].trim()
+    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+
+    const match = lines[index].match(fieldPattern)
+    if (!match) continue
+
+    const serialized = serializeInlineValue(value)
+    if (serialized === null) lines.splice(index, 1)
+    else lines[index] = `${match[1]}${key}:: ${serialized}`
+    return lines.join('\n')
+  }
+
+  return null
 }
 
 function readScalar(raw: string, key: string): string {
@@ -142,6 +180,17 @@ function serializeScalar(value: FrontmatterScalar): string {
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : JSON.stringify(String(value))
   if (typeof value === 'boolean') return value ? 'true' : 'false'
   return JSON.stringify(value)
+}
+
+function serializeInlineValue(value: FrontmatterValue): string | null {
+  if (Array.isArray(value)) {
+    const items = normalizeList(value.map(String))
+    return items.length > 0 ? items.join(', ') : null
+  }
+  if (value === null || String(value).trim() === '') return null
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : String(value)
+  return value.trim()
 }
 
 function unquote(value: string): string {

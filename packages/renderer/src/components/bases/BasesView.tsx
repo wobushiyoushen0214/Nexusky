@@ -4,7 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
-import { updateFrontmatterProperty } from '../../utils/frontmatter'
+import { updateMarkdownProperty } from '../../utils/frontmatter'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
@@ -141,7 +141,7 @@ export function BasesView() {
       const path = `${vaultPath}/${row.filePath}`
       const content = await window.api.invoke('file:read', { path })
       const nextValue = parseEditedPropertyValue(editing.value, row.properties[editing.key], editing.list)
-      const nextContent = updateFrontmatterProperty(content, editing.key, nextValue)
+      const nextContent = updateMarkdownProperty(content, editing.key, nextValue)
       await window.api.invoke('file:write', { path, content: nextContent, vaultPath })
       await window.api.invoke('db:index-file', { vaultPath, filePath: path })
       setEditing(null)

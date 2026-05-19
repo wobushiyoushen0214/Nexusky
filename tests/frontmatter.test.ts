@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseNoteProperties, updateFrontmatterProperty, updateNoteProperties } from '../packages/renderer/src/utils/frontmatter'
+import { parseNoteProperties, updateFrontmatterProperty, updateMarkdownProperty, updateNoteProperties } from '../packages/renderer/src/utils/frontmatter'
 
 describe('frontmatter properties', () => {
   it('parses Obsidian-style properties', () => {
@@ -95,5 +95,41 @@ published: false
     expect(updated).toContain('priority: 3')
     expect(updated).not.toContain('published: "true"')
     expect(updated).not.toContain('priority: "3"')
+  })
+
+  it('updates existing Dataview inline properties in place', () => {
+    const next = updateMarkdownProperty(`# Body
+
+status:: draft
+priority:: 2
+aliases:: Old Alias
+`, 'status', 'active')
+    const updated = updateMarkdownProperty(next, 'aliases', ['One', 'Two'])
+
+    expect(updated.startsWith('---\n')).toBe(false)
+    expect(updated).toContain('status:: active')
+    expect(updated).toContain('priority:: 2')
+    expect(updated).toContain('aliases:: One, Two')
+  })
+
+  it('keeps frontmatter precedence when both frontmatter and Dataview inline fields exist', () => {
+    const next = updateMarkdownProperty(`---
+status: draft
+---
+# Body
+
+status:: inline
+`, 'status', 'active')
+
+    expect(next).toContain('status: "active"')
+    expect(next).toContain('status:: inline')
+  })
+
+  it('creates frontmatter when no existing property location exists', () => {
+    const next = updateMarkdownProperty('# Body\n', 'status', 'active')
+
+    expect(next.startsWith('---\n')).toBe(true)
+    expect(next).toContain('status: "active"')
+    expect(next).toContain('# Body')
   })
 })
