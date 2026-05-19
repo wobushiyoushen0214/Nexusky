@@ -26,6 +26,7 @@ describe('indexer', () => {
     expect(tableNames).toContain('notes')
     expect(tableNames).toContain('links')
     expect(tableNames).toContain('tags')
+    expect(tableNames).toContain('note_aliases')
     expect(tableNames).toContain('chunks')
     expect(tableNames).toContain('tasks')
     expect(tableNames).toContain('conversations')
@@ -114,6 +115,38 @@ describe('indexer', () => {
     expect(links).toHaveLength(2)
     expect(links.find((link) => link.targetTitle === 'Target')).toMatchObject({ targetPath: 'Target.md', resolved: true })
     expect(links.find((link) => link.targetTitle === 'Missing Note')).toMatchObject({ resolved: false })
+
+    closeDatabase()
+  })
+
+  it('should resolve wikilinks through frontmatter aliases', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getBacklinks, getOutgoingLinks, getGraphData } = await import('../packages/main/src/services/indexer')
+
+    const targetPath = join(vaultPath, 'Canonical.md')
+    const sourcePath = join(vaultPath, 'Source.md')
+
+    writeFileSync(targetPath, '---\naliases:\n  - Alias Name\n  - Short Alias\n---\n# Canonical\n\nTarget note.')
+    writeFileSync(sourcePath, '# Source\n\nSee [[Alias Name]] for details.')
+
+    indexNote(vaultPath, targetPath)
+    indexNote(vaultPath, sourcePath)
+
+    const canonical = getAllNotes(vaultPath).find((note) => note.title === 'Canonical')
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Source')
+    expect(canonical).toBeTruthy()
+    expect(source).toBeTruthy()
+
+    const outgoing = getOutgoingLinks(vaultPath, source!.id)
+    expect(outgoing).toHaveLength(1)
+    expect(outgoing[0]).toMatchObject({ targetTitle: 'Alias Name', targetPath: 'Canonical.md', resolved: true })
+
+    const backlinks = getBacklinks(vaultPath, canonical!.id)
+    expect(backlinks).toHaveLength(1)
+    expect(backlinks[0].sourceTitle).toBe('Source')
+
+    const graph = getGraphData(vaultPath)
+    expect(graph.edges).toContainEqual({ source: source!.id, target: canonical!.id })
 
     closeDatabase()
   })

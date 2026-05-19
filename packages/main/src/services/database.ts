@@ -5,7 +5,7 @@ import { app } from 'electron'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 6
+const SCHEMA_VERSION = 7
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -90,10 +90,18 @@ function initSchema(db: Database.Database): void {
       FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS note_aliases (
+      note_id TEXT NOT NULL,
+      alias TEXT NOT NULL,
+      PRIMARY KEY (note_id, alias),
+      FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_links_source ON links(source_note_id);
     CREATE INDEX IF NOT EXISTS idx_links_target ON links(target_note_id);
     CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(file_path);
     CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_note_aliases_alias ON note_aliases(alias);
 
     CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
       title,
@@ -293,6 +301,18 @@ const migrations: Migration[] = [
     if (!linkColumns.some((c) => c.name === 'link_type')) {
       db.exec("ALTER TABLE links ADD COLUMN link_type TEXT NOT NULL DEFAULT 'explicit'")
     }
+  },
+  // Migration 7: Obsidian-style aliases from frontmatter
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS note_aliases (
+        note_id TEXT NOT NULL,
+        alias TEXT NOT NULL,
+        PRIMARY KEY (note_id, alias),
+        FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_note_aliases_alias ON note_aliases(alias);
+    `)
   }
 ]
 

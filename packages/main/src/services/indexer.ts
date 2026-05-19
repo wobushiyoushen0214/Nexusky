@@ -65,8 +65,11 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const findOrCreateTag = db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)')
   const getTagId = db.prepare('SELECT id FROM tags WHERE name = ?')
   const insertNoteTag = db.prepare('INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?)')
+  const deleteAliases = db.prepare('DELETE FROM note_aliases WHERE note_id = ?')
+  const insertAlias = db.prepare('INSERT OR IGNORE INTO note_aliases (note_id, alias) VALUES (?, ?)')
 
   const links = extractLinks(content)
+  const aliases = extractAliases(frontmatter)
   const fmTags = Array.isArray(frontmatter.tags) ? frontmatter.tags.map(String) : []
   const inlineTags = extractTags(content)
   const tags = [...new Set([...fmTags, ...inlineTags])]
@@ -86,6 +89,10 @@ export function indexNote(vaultPath: string, filePath: string): void {
       insertLink.run(id, link.targetTitle, link.context)
     }
     deleteTags.run(id)
+    deleteAliases.run(id)
+    for (const alias of aliases) {
+      insertAlias.run(id, alias)
+    }
     for (const tag of tags) {
       findOrCreateTag.run(tag)
       const row = getTagId.get(tag) as { id: number } | undefined
@@ -105,7 +112,7 @@ export function indexNote(vaultPath: string, filePath: string): void {
   })
 
   transaction()
-  resolveLinks(db, id, title)
+  resolveLinks(db, id, title, aliases)
 }
 
 export function removeNoteIndex(vaultPath: string, filePath: string): void {
@@ -150,12 +157,22 @@ export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: 
   const note = db.prepare('SELECT title FROM notes WHERE id = ?').get(noteId) as { title: string } | undefined
   if (!note) return []
 
+  const aliases = getNoteLookupAliases(db, noteId, note.title)
+  if (aliases.length === 0) {
+    return db.prepare(`
+      SELECT n.title as sourceTitle, n.file_path as sourcePath, l.context
+      FROM links l
+      JOIN notes n ON n.id = l.source_note_id
+      WHERE l.target_note_id = ? AND l.source_note_id != ?
+    `).all(noteId, noteId) as { sourceTitle: string; sourcePath: string; context: string }[]
+  }
   return db.prepare(`
     SELECT n.title as sourceTitle, n.file_path as sourcePath, l.context
     FROM links l
     JOIN notes n ON n.id = l.source_note_id
-    WHERE l.target_title = ? AND l.source_note_id != ?
-  `).all(note.title, noteId) as { sourceTitle: string; sourcePath: string; context: string }[]
+    WHERE (l.target_note_id = ? OR l.target_title IN (${aliases.map(() => '?').join(',')}))
+      AND l.source_note_id != ?
+  `).all(noteId, ...aliases, noteId) as { sourceTitle: string; sourcePath: string; context: string }[]
 }
 
 export function getUnlinkedMentions(vaultPath: string, noteId: string): UnlinkedMentionIndex[] {
@@ -163,8 +180,7 @@ export function getUnlinkedMentions(vaultPath: string, noteId: string): Unlinked
   const note = db.prepare('SELECT title, file_path FROM notes WHERE id = ?').get(noteId) as { title: string; file_path: string } | undefined
   if (!note) return []
 
-  const fileTitle = basename(note.file_path, '.md')
-  const aliases = Array.from(new Set([note.title, fileTitle].map((title) => title.trim()).filter((title) => title.length >= 2)))
+  const aliases = getNoteLookupAliases(db, noteId, note.title, note.file_path)
   if (aliases.length === 0) return []
 
   const rows = db.prepare(`
@@ -202,6 +218,7 @@ export function getUnlinkedMentions(vaultPath: string, noteId: string): Unlinked
 export function getGraphData(vaultPath: string): { nodes: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }[]; edges: { source: string; target: string }[] } {
   const db = getDatabase(vaultPath)
   const notes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
+  const aliases = db.prepare('SELECT note_id, alias FROM note_aliases').all() as { note_id: string; alias: string }[]
 
   const noteIds = new Set(notes.map((n) => n.id))
 
@@ -219,6 +236,13 @@ export function getGraphData(vaultPath: string): { nodes: { id: string; title: s
       ambiguousTitles.add(fileName)
     } else if (!titleToId.has(fileName)) {
       titleToId.set(fileName, n.id)
+    }
+  }
+  for (const alias of aliases) {
+    if (titleToId.has(alias.alias) && titleToId.get(alias.alias) !== alias.note_id) {
+      ambiguousTitles.add(alias.alias)
+    } else if (!titleToId.has(alias.alias)) {
+      titleToId.set(alias.alias, alias.note_id)
     }
   }
   for (const t of ambiguousTitles) titleToId.delete(t)
@@ -296,6 +320,23 @@ function extractLinks(content: string): { targetTitle: string; context: string }
   return links
 }
 
+function extractAliases(frontmatter: Record<string, unknown>): string[] {
+  const raw = frontmatter.aliases ?? frontmatter.alias
+  const values = Array.isArray(raw) ? raw : typeof raw === 'string' ? [raw] : []
+  const aliases = values
+    .flatMap((value) => String(value).split(','))
+    .map((alias) => alias.trim())
+    .filter((alias) => alias.length > 0)
+  return Array.from(new Set(aliases))
+}
+
+function getNoteLookupAliases(db: Database.Database, noteId: string, title: string, filePath?: string): string[] {
+  const notePath = filePath || (db.prepare('SELECT file_path FROM notes WHERE id = ?').get(noteId) as { file_path: string } | undefined)?.file_path || ''
+  const fileTitle = notePath ? basename(notePath, '.md') : ''
+  const rows = db.prepare('SELECT alias FROM note_aliases WHERE note_id = ?').all(noteId) as { alias: string }[]
+  return Array.from(new Set([title, fileTitle, ...rows.map((row) => row.alias)].map((value) => value.trim()).filter((value) => value.length >= 2)))
+}
+
 function findPlainMention(content: string, aliases: string[]): { alias: string; index: number } | null {
   const lowerContent = content.toLowerCase()
   const sortedAliases = [...aliases].sort((a, b) => b.length - a.length)
@@ -333,26 +374,24 @@ export function resolveAllLinks(vaultPath: string): void {
       SELECT id FROM notes WHERE title = links.target_title
       UNION
       SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
+      UNION
+      SELECT note_id FROM note_aliases WHERE alias = links.target_title
       LIMIT 1
     )
     WHERE target_note_id IS NULL
   `).run()
 }
 
-function resolveLinks(db: Database.Database, noteId: string, noteTitle: string): void {
+function resolveLinks(db: Database.Database, noteId: string, noteTitle: string, noteAliases: string[] = []): void {
   const note = db.prepare('SELECT file_path FROM notes WHERE id = ?').get(noteId) as { file_path: string } | undefined
   const fileName = note ? note.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '') : ''
+  const aliases = Array.from(new Set([noteTitle, fileName, ...noteAliases].filter(Boolean)))
 
-  db.prepare(`
-    UPDATE links SET target_note_id = ?
-    WHERE target_title = ? AND target_note_id IS NULL
-  `).run(noteId, noteTitle)
-
-  if (fileName && fileName !== noteTitle) {
+  for (const alias of aliases) {
     db.prepare(`
       UPDATE links SET target_note_id = ?
       WHERE target_title = ? AND target_note_id IS NULL
-    `).run(noteId, fileName)
+    `).run(noteId, alias)
   }
 
   db.prepare(`
@@ -360,6 +399,8 @@ function resolveLinks(db: Database.Database, noteId: string, noteTitle: string):
       SELECT id FROM notes WHERE title = links.target_title
       UNION
       SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
+      UNION
+      SELECT note_id FROM note_aliases WHERE alias = links.target_title
       LIMIT 1
     )
     WHERE source_note_id = ? AND target_note_id IS NULL
