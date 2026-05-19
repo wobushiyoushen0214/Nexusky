@@ -13,8 +13,9 @@ export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
   { id: 'chat', labelKey: 'activityBar.chat', shortcut: 'Ctrl+L', defaultVisible: true, defaultOrder: 2 },
   { id: 'graph', labelKey: 'activityBar.graph', shortcut: 'Ctrl+G', defaultVisible: true, defaultOrder: 3 },
   { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: true, defaultOrder: 4 },
-  { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: true, defaultOrder: 5 },
-  { id: 'calendar', labelKey: 'activityBar.calendar', defaultVisible: false, defaultOrder: 6 },
-  { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: false, defaultOrder: 7 },
-  { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 8 },
+  { id: 'properties', labelKey: 'activityBar.properties', defaultVisible: true, defaultOrder: 5 },
+  { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: true, defaultOrder: 6 },
+  { id: 'calendar', labelKey: 'activityBar.calendar', defaultVisible: false, defaultOrder: 7 },
+  { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: false, defaultOrder: 8 },
+  { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 9 },
 ]

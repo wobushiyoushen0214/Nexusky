@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import i18n from '../i18n'
 import { safeGet, safeSet } from '../utils/storage'
 
-type Panel = 'none' | 'chat' | 'outline' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
+type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 
 export type Theme = typeof THEME_IDS[number]

@@ -31,6 +31,7 @@
     "chat": "AI 对话",
     "graph": "知识图谱",
     "outline": "文档大纲",
+    "properties": "属性",
     "tags": "标签",
     "calendar": "日历",
     "kanban": "看板",
@@ -44,6 +45,7 @@
     "calendar": "日历",
     "kanban": "看板",
     "history": "版本历史",
+    "properties": "属性",
     "outline": "大纲"
   },
   "common": {

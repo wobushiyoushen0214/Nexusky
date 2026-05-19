@@ -150,6 +150,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       await window.api.invoke('export:share', { content, title })
     }},
     { id: 'outline', category: '界面', label: '打开文档大纲', shortcut: 'Ctrl+E', keywords: ['outline'], action: () => setRightPanel('outline') },
+    { id: 'properties', category: '界面', label: '打开笔记属性', description: '编辑 title、aliases、tags、cssclasses', keywords: ['properties', 'frontmatter', 'obsidian'], action: () => setRightPanel('properties') },
     { id: 'settings', category: '界面', label: '打开设置', shortcut: 'Ctrl+,', keywords: ['settings'], action: () => setSettingsOpen(true) },
     { id: 'sidebar', category: '界面', label: '切换侧边栏', shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
     { id: 'focus', category: '界面', label: '切换聚焦模式', shortcut: 'F11', keywords: ['focus'], action: () => toggleFocusMode() },

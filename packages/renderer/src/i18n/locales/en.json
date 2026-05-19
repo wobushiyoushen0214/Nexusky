@@ -31,6 +31,7 @@
     "chat": "AI Chat",
     "graph": "Knowledge Graph",
     "outline": "Outline",
+    "properties": "Properties",
     "tags": "Tags",
     "calendar": "Calendar",
     "kanban": "Kanban",
@@ -44,6 +45,7 @@
     "calendar": "Calendar",
     "kanban": "Kanban",
     "history": "History",
+    "properties": "Properties",
     "outline": "Outline"
   },
   "common": {
