@@ -150,4 +150,46 @@ describe('indexer', () => {
 
     closeDatabase()
   })
+
+  it('should build property table rows from frontmatter and index metadata', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getPropertyRows } = await import('../packages/main/src/services/indexer')
+
+    const notePath = join(vaultPath, 'Project.md')
+    writeFileSync(notePath, [
+      '---',
+      'title: Project Display',
+      'aliases:',
+      '  - Project Alias',
+      'tags:',
+      '  - research',
+      'status: active',
+      'priority: 2',
+      'cssclasses:',
+      '  - wide-page',
+      '---',
+      '# Project',
+      '',
+      'Body.'
+    ].join('\n'))
+
+    indexNote(vaultPath, notePath)
+
+    const rows = getPropertyRows(vaultPath)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      title: 'Project Display',
+      filePath: 'Project.md',
+      properties: {
+        title: 'Project Display',
+        aliases: ['Project Alias'],
+        tags: ['research'],
+        status: 'active',
+        priority: 2,
+        cssclasses: ['wide-page']
+      }
+    })
+
+    closeDatabase()
+  })
 })

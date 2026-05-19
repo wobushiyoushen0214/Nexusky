@@ -22,7 +22,9 @@ function load(): string[] {
   const config = safeGetJSON<{ visibleIds?: string[] }>(STORAGE_KEY, {})
   if (!Array.isArray(config.visibleIds)) return getDefaults()
   const validIds = new Set(ACTIVITY_BAR_REGISTRY.map((i) => i.id))
-  return config.visibleIds.filter((id) => validIds.has(id))
+  const visibleIds = config.visibleIds.filter((id) => validIds.has(id))
+  const missingDefaultIds = getDefaults().filter((id) => !visibleIds.includes(id))
+  return [...visibleIds, ...missingDefaultIds]
 }
 
 function save(visibleIds: string[]) {

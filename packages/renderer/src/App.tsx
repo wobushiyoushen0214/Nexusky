@@ -19,6 +19,7 @@ import { getErrorMessage } from './utils/errors'
 import { safeGet } from './utils/storage'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
+const BasesView = lazy(() => import('./components/bases/BasesView').then((m) => ({ default: m.BasesView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
 const Settings = lazy(() => import('./components/settings/Settings').then((m) => ({ default: m.Settings })))
 const SearchPanel = lazy(() => import('./components/SearchPanel').then((m) => ({ default: m.SearchPanel })))
@@ -306,7 +307,11 @@ export default function App() {
             </>
           )}
           <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: sidebarCollapsed ? 0 : 4, marginRight: rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
-            {mainView === 'editor' ? <Editor /> : (
+            {mainView === 'editor' ? <Editor /> : mainView === 'bases' ? (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Suspense fallback={null}><BasesView /></Suspense>
+              </div>
+            ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><GraphView /></Suspense>
               </div>

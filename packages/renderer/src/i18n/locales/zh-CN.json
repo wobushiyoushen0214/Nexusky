@@ -30,6 +30,7 @@
     "search": "搜索",
     "chat": "AI 对话",
     "graph": "知识图谱",
+    "bases": "属性数据库",
     "outline": "文档大纲",
     "properties": "属性",
     "tags": "标签",
@@ -68,6 +69,24 @@
     "reset": "重置",
     "saved": "属性已保存",
     "saveFailed": "属性保存失败"
+  },
+  "bases": {
+    "title": "属性数据库",
+    "summary": "共 {{count}} 篇笔记，当前显示 {{shown}} 篇",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "searchPlaceholder": "搜索标题、路径、标签、别名或任意属性...",
+    "allTags": "全部标签",
+    "sortUpdated": "按更新时间",
+    "sortTitle": "按标题",
+    "sortPath": "按路径",
+    "empty": "没有匹配的笔记属性",
+    "note": "笔记",
+    "tags": "标签",
+    "aliases": "别名",
+    "cssclasses": "CSS 类",
+    "updated": "更新",
+    "path": "路径"
   },
   "common": {
     "indexing": "正在索引笔记关系...",

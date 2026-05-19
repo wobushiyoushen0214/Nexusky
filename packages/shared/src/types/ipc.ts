@@ -13,6 +13,17 @@ export interface NoteSearchResult {
   aliasMatch?: string
 }
 
+export type PropertyValue = string | number | boolean | (string | number | boolean)[] | null
+
+export interface PropertyTableRow {
+  id: string
+  title: string
+  filePath: string
+  createdAt: number
+  updatedAt: number
+  properties: Record<string, PropertyValue>
+}
+
 export interface BacklinkResult {
   sourceTitle: string
   sourcePath: string
@@ -175,6 +186,7 @@ export interface IPCChannelMap {
   'db:remove-file': { params: { vaultPath: string; filePath: string }; result: void }
   'db:remove-folder': { params: { vaultPath: string; folderPath: string }; result: void }
   'db:get-all-notes': { params: { vaultPath: string }; result: NoteSearchResult[] }
+  'db:get-property-rows': { params: { vaultPath: string }; result: PropertyTableRow[] }
   'db:get-recent-notes': { params: { vaultPath: string; limit?: number }; result: NoteSearchResult[] }
   'db:get-outgoing-links': { params: { vaultPath: string; noteId: string }; result: OutgoingLinkResult[] }
   'db:get-backlinks': { params: { vaultPath: string; noteId: string }; result: BacklinkResult[] }

@@ -1,9 +1,10 @@
 import { createHash } from 'crypto'
-import { readFileSync, statSync } from 'fs'
-import { basename, relative } from 'path'
+import { existsSync, readFileSync, statSync } from 'fs'
+import { basename, join, relative } from 'path'
 import type Database from 'better-sqlite3'
 import { getDatabase } from './database'
 import matter from 'gray-matter'
+import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 
@@ -132,6 +133,53 @@ export function removeNoteIndex(vaultPath: string, filePath: string): void {
 export function getAllNotes(vaultPath: string): NoteIndex[] {
   const db = getDatabase(vaultPath)
   return db.prepare('SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt, content_hash as contentHash FROM notes ORDER BY updated_at DESC').all() as NoteIndex[]
+}
+
+export function getPropertyRows(vaultPath: string): PropertyTableRow[] {
+  const db = getDatabase(vaultPath)
+  const notes = db.prepare(`
+    SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt
+    FROM notes
+    ORDER BY updated_at DESC
+  `).all() as { id: string; title: string; filePath: string; createdAt: number; updatedAt: number }[]
+
+  const aliasesByNote = new Map<string, string[]>()
+  for (const row of db.prepare('SELECT note_id as noteId, alias FROM note_aliases ORDER BY alias ASC').all() as { noteId: string; alias: string }[]) {
+    aliasesByNote.set(row.noteId, [...(aliasesByNote.get(row.noteId) || []), row.alias])
+  }
+
+  const tagsByNote = new Map<string, string[]>()
+  for (const row of db.prepare(`
+    SELECT nt.note_id as noteId, t.name
+    FROM note_tags nt
+    JOIN tags t ON t.id = nt.tag_id
+    ORDER BY t.name ASC
+  `).all() as { noteId: string; name: string }[]) {
+    tagsByNote.set(row.noteId, [...(tagsByNote.get(row.noteId) || []), row.name])
+  }
+
+  return notes.map((note) => {
+    const absolutePath = join(vaultPath, note.filePath)
+    let frontmatter: Record<string, unknown> = {}
+    if (existsSync(absolutePath)) {
+      try {
+        frontmatter = matter(readFileSync(absolutePath, 'utf-8')).data
+      } catch {
+        frontmatter = {}
+      }
+    }
+
+    const properties = normalizeProperties(frontmatter)
+    properties.title = normalizePropertyValue(frontmatter.title) ?? note.title
+    properties.aliases = aliasesByNote.get(note.id) || normalizeListProperty(frontmatter.aliases ?? frontmatter.alias)
+    properties.tags = tagsByNote.get(note.id) || normalizeListProperty(frontmatter.tags)
+    properties.cssclasses = normalizeListProperty(frontmatter.cssclasses ?? frontmatter.cssclass)
+
+    return {
+      ...note,
+      properties
+    }
+  })
 }
 
 export function getOutgoingLinks(vaultPath: string, noteId: string): OutgoingLinkIndex[] {
@@ -328,6 +376,42 @@ function extractAliases(frontmatter: Record<string, unknown>): string[] {
     .map((alias) => alias.trim())
     .filter((alias) => alias.length > 0)
   return Array.from(new Set(aliases))
+}
+
+function normalizeProperties(frontmatter: Record<string, unknown>): Record<string, PropertyValue> {
+  const result: Record<string, PropertyValue> = {}
+  for (const [key, value] of Object.entries(frontmatter)) {
+    const normalized = normalizePropertyValue(value)
+    if (normalized !== undefined) result[key] = normalized
+  }
+  return result
+}
+
+function normalizePropertyValue(value: unknown): PropertyValue | undefined {
+  if (value == null) return null
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizePropertyScalar(item))
+      .filter((item): item is string | number | boolean => item !== undefined)
+  }
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function normalizePropertyScalar(value: unknown): string | number | boolean | undefined {
+  if (value == null) return undefined
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function normalizeListProperty(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean)
+  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean)
+  return []
 }
 
 function getNoteLookupAliases(db: Database.Database, noteId: string, title: string, filePath?: string): string[] {

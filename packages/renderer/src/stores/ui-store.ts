@@ -6,7 +6,7 @@ type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph'
+type MainView = 'editor' | 'graph' | 'bases'
 type Language = 'zh-CN' | 'en'
 
 interface UIState {

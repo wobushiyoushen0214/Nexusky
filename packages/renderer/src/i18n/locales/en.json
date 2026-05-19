@@ -30,6 +30,7 @@
     "search": "Search",
     "chat": "AI Chat",
     "graph": "Knowledge Graph",
+    "bases": "Property Database",
     "outline": "Outline",
     "properties": "Properties",
     "tags": "Tags",
@@ -68,6 +69,24 @@
     "reset": "Reset",
     "saved": "Properties saved",
     "saveFailed": "Failed to save properties"
+  },
+  "bases": {
+    "title": "Property Database",
+    "summary": "{{count}} notes, showing {{shown}}",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "searchPlaceholder": "Search titles, paths, tags, aliases, or any property...",
+    "allTags": "All tags",
+    "sortUpdated": "Sort by updated",
+    "sortTitle": "Sort by title",
+    "sortPath": "Sort by path",
+    "empty": "No matching note properties",
+    "note": "Note",
+    "tags": "Tags",
+    "aliases": "Aliases",
+    "cssclasses": "CSS Classes",
+    "updated": "Updated",
+    "path": "Path"
   },
   "common": {
     "indexing": "Indexing note relations...",
