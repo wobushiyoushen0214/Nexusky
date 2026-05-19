@@ -31,9 +31,30 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
   const [preview, setPreview] = useState<PreviewState | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
+  const writingActiveRef = useRef(false)
 
   useEffect(() => {
-    return () => { if (cleanupRef.current) cleanupRef.current() }
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current()
+        cleanupRef.current = null
+      }
+      if (writingActiveRef.current) {
+        window.api.invoke('ai:stop', undefined).catch(() => {})
+        writingActiveRef.current = false
+      }
+    }
+  }, [])
+
+  const cleanupStream = useCallback((abortBackend: boolean) => {
+    if (cleanupRef.current) {
+      cleanupRef.current()
+      cleanupRef.current = null
+    }
+    if (abortBackend && writingActiveRef.current) {
+      window.api.invoke('ai:stop', undefined).catch(() => {})
+    }
+    writingActiveRef.current = false
   }, [])
 
   useEffect(() => {
@@ -86,6 +107,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
       result: '',
       streaming: true
     })
+    writingActiveRef.current = true
 
     let result = ''
     let done = false
@@ -98,14 +120,12 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
         done = true
         setPreview((p) => p ? { ...p, result: result.trim(), streaming: false } : null)
         if (!result) toast('AI 未返回内容，请检查配置', 'error')
-        cleanup()
-        cleanupRef.current = null
+        cleanupStream(false)
       } else if (event.type === 'error') {
         done = true
         toast(`${action.label}失败: ${event.content}`, 'error')
         setPreview(null)
-        cleanup()
-        cleanupRef.current = null
+        cleanupStream(false)
       }
     })
     cleanupRef.current = cleanup
@@ -120,8 +140,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
       if (!done) {
         toast(`${action.label}失败: ${getErrorMessage(e, '未知错误')}`, 'error')
         setPreview(null)
-        cleanup()
-        cleanupRef.current = null
+        cleanupStream(false)
         done = true
       }
     }
@@ -129,11 +148,10 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
     setTimeout(() => {
       if (!done) {
         setPreview((p) => p ? { ...p, streaming: false } : null)
-        cleanup()
-        cleanupRef.current = null
+        cleanupStream(false)
       }
     }, 500)
-  }, [editor, selectedText, preview])
+  }, [editor, selectedText, preview, cleanupStream])
 
   const handleReplace = () => {
     if (!editor || !preview) return
@@ -158,7 +176,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
   }
 
   const handleCancel = () => {
-    if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current = null }
+    cleanupStream(Boolean(preview?.streaming))
     setPreview(null)
   }
 
