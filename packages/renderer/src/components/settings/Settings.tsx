@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { THEME_IDS, useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
@@ -60,6 +61,7 @@ interface SettingsProps {
 }
 
 type Tab = 'appearance' | 'ai' | 'cloud' | 'plugins' | 'keys'
+const ACCENT_PRESETS = ['#7c6ef5', '#4facfe', '#4ec9a0', '#f0a050', '#e8577a', '#ffd60a', '#88c0d0', '#268bd2']
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -75,6 +77,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function Settings({ open, onClose }: SettingsProps) {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('appearance')
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
@@ -197,7 +200,7 @@ export function Settings({ open, onClose }: SettingsProps) {
       >
         {/* Header */}
         <div style={{ height: 48, padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>设置</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.title')}</span>
           <button
             onClick={onClose}
             style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
@@ -210,24 +213,24 @@ export function Settings({ open, onClose }: SettingsProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', padding: '0 20px' }}>
-          {(['appearance', 'ai', 'cloud', 'plugins', 'keys'] as Tab[]).map((t) => (
+          {(['appearance', 'ai', 'cloud', 'plugins', 'keys'] as Tab[]).map((tabId) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabId}
+              onClick={() => setTab(tabId)}
               style={{
                 padding: '10px 16px',
                 fontSize: 13,
                 fontWeight: 500,
-                color: tab === t ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                color: tab === tabId ? 'var(--text-primary)' : 'var(--text-tertiary)',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+                borderBottom: tab === tabId ? '2px solid var(--accent)' : '2px solid transparent',
                 cursor: 'pointer',
                 marginBottom: -1,
                 transition: 'color 150ms',
               }}
             >
-              {{ appearance: '外观', ai: 'AI 提供商', cloud: '云端同步', plugins: '插件', keys: '快捷键' }[t]}
+              {t(`settings.tabs.${tabId}`)}
             </button>
           ))}
         </div>
@@ -850,27 +853,28 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
 }
 
 function ThemeTab() {
+  const { t } = useTranslation()
   const { theme, setTheme } = useUIStore()
 
-  const themeMeta: Record<Theme, { label: string; detail: string; swatches: [string, string, string] }> = {
-    dark: { label: '深色', detail: '默认低眩光', swatches: ['#1e1e1e', '#2d2d2d', '#7c6ef5'] },
-    light: { label: '浅色', detail: '明亮阅读', swatches: ['#ffffff', '#f7f7f7', '#6c5ce7'] },
-    ocean: { label: '深海蓝', detail: '冷静专注', swatches: ['#1a2332', '#243242', '#4facfe'] },
-    amber: { label: '暖夜橙', detail: '夜间暖调', swatches: ['#1c1a17', '#2c2820', '#f0a050'] },
-    forest: { label: '森林绿', detail: '柔和护眼', swatches: ['#1a2420', '#24332d', '#4ec9a0'] },
-    rose: { label: '玫瑰粉', detail: '浅色柔和', swatches: ['#fffbfa', '#faf5f4', '#e8577a'] },
-    minimal: { label: '极简灰', detail: '去色干扰', swatches: ['#1a1a1a', '#2a2a2a', '#b0b0b0'] },
-    obsidian: { label: 'Obsidian', detail: '紫调知识库', swatches: ['#19151f', '#2b2335', '#9f7aea'] },
-    nord: { label: 'Nord', detail: '冷灰蓝', swatches: ['#2e3440', '#3b4252', '#88c0d0'] },
-    solarized: { label: 'Solarized', detail: '长读友好', swatches: ['#fdf6e3', '#eee8d5', '#268bd2'] },
-    contrast: { label: '高对比', detail: '强可读性', swatches: ['#050505', '#1a1a1a', '#ffd60a'] },
+  const themeMeta: Record<Theme, { swatches: [string, string, string] }> = {
+    dark: { swatches: ['#1e1e1e', '#2d2d2d', '#7c6ef5'] },
+    light: { swatches: ['#ffffff', '#f7f7f7', '#6c5ce7'] },
+    ocean: { swatches: ['#1a2332', '#243242', '#4facfe'] },
+    amber: { swatches: ['#1c1a17', '#2c2820', '#f0a050'] },
+    forest: { swatches: ['#1a2420', '#24332d', '#4ec9a0'] },
+    rose: { swatches: ['#fffbfa', '#faf5f4', '#e8577a'] },
+    minimal: { swatches: ['#1a1a1a', '#2a2a2a', '#b0b0b0'] },
+    obsidian: { swatches: ['#19151f', '#2b2335', '#9f7aea'] },
+    nord: { swatches: ['#2e3440', '#3b4252', '#88c0d0'] },
+    solarized: { swatches: ['#fdf6e3', '#eee8d5', '#268bd2'] },
+    contrast: { swatches: ['#050505', '#1a1a1a', '#ffd60a'] },
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>选择主题</span>
-        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>新增主题会同步应用到侧边栏、编辑器、弹窗和 AI 面板。</span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('settings.theme.choose')}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t('settings.theme.description')}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(132px, 1fr))', gap: 12 }}>
         {THEME_IDS.map((id) => {
@@ -901,8 +905,8 @@ function ThemeTab() {
               ))}
             </div>
             <span>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: theme === id ? 'var(--accent-text)' : 'var(--text-primary)' }}>{meta.label}</span>
-              <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{meta.detail}</span>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: theme === id ? 'var(--accent-text)' : 'var(--text-primary)' }}>{t(`settings.theme.items.${id}.label`)}</span>
+              <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{t(`settings.theme.items.${id}.detail`)}</span>
             </span>
           </button>
           )
@@ -913,12 +917,13 @@ function ThemeTab() {
 }
 
 function AppearanceTab() {
+  const { t } = useTranslation()
   const [appVersion, setAppVersion] = useState('')
   const [updateInfo, setUpdateInfo] = useState<{ version: string } | null>(null)
   const [updateStage, setUpdateStage] = useState<'idle' | 'checking' | 'downloading' | 'ready'>('idle')
   const [downloadPercent, setDownloadPercent] = useState(0)
   const [showThemePicker, setShowThemePicker] = useState(false)
-  const { theme, language, setLanguage } = useUIStore()
+  const { theme, accentColor, setAccentColor, resetAccentColor, language, setLanguage } = useUIStore()
 
   useEffect(() => {
     window.api.invoke('app:get-version', undefined).then(setAppVersion)
@@ -947,7 +952,7 @@ function AppearanceTab() {
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>选择主题</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{t('settings.theme.choose')}</span>
         </div>
         <ThemeTab />
       </div>
@@ -957,21 +962,58 @@ function AppearanceTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>主题</span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>{t('settings.theme.title')}</span>
         <button
           onClick={() => setShowThemePicker(true)}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 140, padding: '8px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)' }}
         >
-          <span style={{ fontSize: 12 }}>{{ dark: '深色', light: '浅色', ocean: '深海蓝', amber: '暖夜橙', forest: '森林绿', rose: '玫瑰粉', minimal: '极简灰', obsidian: 'Obsidian', nord: 'Nord', solarized: 'Solarized', contrast: '高对比' }[theme]}</span>
+          <span style={{ fontSize: 12 }}>{t(`settings.theme.items.${theme}.label`)}</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)' }}>
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
       </div>
 
+      <div>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>{t('settings.accent.title')}</span>
+        <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10 }}>{t('settings.accent.description')}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {ACCENT_PRESETS.map((color) => (
+            <button
+              key={color}
+              onClick={() => setAccentColor(color)}
+              title={color}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                border: accentColor === color ? '2px solid var(--text-primary)' : '1px solid var(--border-default)',
+                background: color,
+                cursor: 'pointer',
+                boxShadow: accentColor === color ? '0 0 0 3px var(--accent-muted)' : 'none'
+              }}
+            />
+          ))}
+          <input
+            type="color"
+            value={accentColor || '#7c6ef5'}
+            onChange={(e) => setAccentColor(e.target.value)}
+            aria-label={t('settings.accent.custom')}
+            style={{ width: 34, height: 28, border: '1px solid var(--border-default)', borderRadius: 7, background: 'var(--bg-elevated)', padding: 2, cursor: 'pointer' }}
+          />
+          <button
+            onClick={resetAccentColor}
+            disabled={!accentColor}
+            style={{ height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border-default)', background: 'transparent', color: accentColor ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: accentColor ? 'pointer' : 'default' }}
+          >
+            {t('settings.accent.reset')}
+          </button>
+        </div>
+      </div>
+
       {/* Language */}
       <div>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>语言 / Language</span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>{t('settings.language.title')}</span>
         <div style={{ display: 'flex', gap: 8 }}>
           {([['zh-CN', '简体中文'], ['en', 'English']] as const).map(([lang, label]) => (
             <button

@@ -4,6 +4,7 @@ import { safeGet, safeRemove, safeSet } from '../utils/storage'
 
 type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
+const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
 
 export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph' | 'bases' | 'canvas'
@@ -31,6 +32,7 @@ interface UIState {
   searchOpen: boolean
   commandPaletteOpen: boolean
   theme: Theme
+  accentColor: string | null
   language: Language
   setRightPanel: (panel: Panel) => void
   toggleRightPanel: (panel: Panel) => void
@@ -47,6 +49,8 @@ interface UIState {
   setSettingsOpen: (open: boolean) => void
   setSearchOpen: (open: boolean) => void
   setTheme: (theme: Theme) => void
+  setAccentColor: (color: string) => void
+  resetAccentColor: () => void
   toggleTheme: () => void
   setLanguage: (lang: Language) => void
   resetWorkspaceLayout: () => void
@@ -61,8 +65,64 @@ function getInitialTheme(): Theme {
 function applyTheme(theme: Theme) {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', theme)
+    applyAccentColor(safeGet(ACCENT_STORAGE_KEY))
   }
   safeSet('nexusky-theme', theme)
+}
+
+function normalizeHexColor(value: string | null): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  const short = trimmed.match(/^#?([0-9a-fA-F]{3})$/)
+  if (short) return `#${short[1].split('').map((ch) => ch + ch).join('').toLowerCase()}`
+  const full = trimmed.match(/^#?([0-9a-fA-F]{6})$/)
+  return full ? `#${full[1].toLowerCase()}` : null
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const value = hex.replace('#', '')
+  return [
+    Number.parseInt(value.slice(0, 2), 16),
+    Number.parseInt(value.slice(2, 4), 16),
+    Number.parseInt(value.slice(4, 6), 16)
+  ]
+}
+
+function mixColor(hex: string, target: string, amount: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  const [tr, tg, tb] = hexToRgb(target)
+  const mix = (from: number, to: number) => Math.round(from + (to - from) * amount)
+  return `#${[mix(r, tr), mix(g, tg), mix(b, tb)].map((part) => part.toString(16).padStart(2, '0')).join('')}`
+}
+
+function rgba(hex: string, alpha: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function luminance(hex: string): number {
+  const [r, g, b] = hexToRgb(hex).map((part) => {
+    const channel = part / 255
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+function applyAccentColor(value: string | null) {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  const color = normalizeHexColor(value)
+  const vars = ['--accent', '--accent-hover', '--accent-muted', '--accent-text', '--accent-glow']
+  if (!color) {
+    vars.forEach((name) => root.style.removeProperty(name))
+    return
+  }
+  const bright = luminance(color) > 0.45
+  root.style.setProperty('--accent', color)
+  root.style.setProperty('--accent-hover', mixColor(color, bright ? '#000000' : '#ffffff', 0.16))
+  root.style.setProperty('--accent-muted', rgba(color, 0.14))
+  root.style.setProperty('--accent-text', mixColor(color, bright ? '#000000' : '#ffffff', 0.28))
+  root.style.setProperty('--accent-glow', rgba(color, 0.08))
 }
 
 function getInitialSidebarWidth(): number {
@@ -98,8 +158,10 @@ function persistWorkspace(partial: Partial<Pick<UIState, 'mainView' | 'rightPane
 }
 
 const initialTheme = getInitialTheme()
+const initialAccentColor = normalizeHexColor(safeGet(ACCENT_STORAGE_KEY))
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', initialTheme)
+  applyAccentColor(initialAccentColor)
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -115,6 +177,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   searchOpen: false,
   commandPaletteOpen: false,
   theme: initialTheme,
+  accentColor: initialAccentColor,
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
 
   setRightPanel: (panel) => {
@@ -165,6 +228,18 @@ export const useUIStore = create<UIState>((set, get) => ({
   setSearchOpen: (open) => set({ searchOpen: open }),
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setTheme: (theme) => { applyTheme(theme); set({ theme }) },
+  setAccentColor: (color) => {
+    const normalized = normalizeHexColor(color)
+    if (!normalized) return
+    safeSet(ACCENT_STORAGE_KEY, normalized)
+    applyAccentColor(normalized)
+    set({ accentColor: normalized })
+  },
+  resetAccentColor: () => {
+    safeRemove(ACCENT_STORAGE_KEY)
+    applyAccentColor(null)
+    set({ accentColor: null })
+  },
   toggleTheme: () => {
     const idx = THEME_IDS.indexOf(get().theme)
     const next = THEME_IDS[(idx + 1) % THEME_IDS.length]

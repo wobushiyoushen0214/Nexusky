@@ -114,6 +114,37 @@
   },
   "settings": {
     "title": "设置",
+    "tabs": {
+      "appearance": "外观",
+      "ai": "AI 提供商",
+      "cloud": "云端同步",
+      "plugins": "插件",
+      "keys": "快捷键"
+    },
+    "theme": {
+      "title": "主题",
+      "choose": "选择主题",
+      "description": "主题会同步应用到侧边栏、编辑器、弹窗和 AI 面板。",
+      "items": {
+        "dark": { "label": "深色", "detail": "默认低眩光" },
+        "light": { "label": "浅色", "detail": "明亮阅读" },
+        "ocean": { "label": "深海蓝", "detail": "冷静专注" },
+        "amber": { "label": "暖夜橙", "detail": "夜间暖调" },
+        "forest": { "label": "森林绿", "detail": "柔和护眼" },
+        "rose": { "label": "玫瑰粉", "detail": "浅色柔和" },
+        "minimal": { "label": "极简灰", "detail": "去色干扰" },
+        "obsidian": { "label": "Obsidian", "detail": "紫调知识库" },
+        "nord": { "label": "Nord", "detail": "冷灰蓝" },
+        "solarized": { "label": "Solarized", "detail": "长读友好" },
+        "contrast": { "label": "高对比", "detail": "强可读性" }
+      }
+    },
+    "accent": {
+      "title": "强调色",
+      "description": "覆盖当前主题的链接、按钮、选中态和焦点色。",
+      "custom": "自定义强调色",
+      "reset": "恢复主题默认"
+    },
     "language": {
       "title": "语言",
       "zhCN": "简体中文",

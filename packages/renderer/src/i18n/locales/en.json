@@ -114,6 +114,37 @@
   },
   "settings": {
     "title": "Settings",
+    "tabs": {
+      "appearance": "Appearance",
+      "ai": "AI Providers",
+      "cloud": "Cloud Sync",
+      "plugins": "Plugins",
+      "keys": "Hotkeys"
+    },
+    "theme": {
+      "title": "Theme",
+      "choose": "Choose theme",
+      "description": "Themes apply across the sidebar, editor, dialogs, and AI panels.",
+      "items": {
+        "dark": { "label": "Dark", "detail": "Default low glare" },
+        "light": { "label": "Light", "detail": "Bright reading" },
+        "ocean": { "label": "Ocean", "detail": "Calm focus" },
+        "amber": { "label": "Amber", "detail": "Warm night" },
+        "forest": { "label": "Forest", "detail": "Soft on eyes" },
+        "rose": { "label": "Rose", "detail": "Soft light" },
+        "minimal": { "label": "Minimal", "detail": "Reduced color" },
+        "obsidian": { "label": "Obsidian", "detail": "Purple knowledge base" },
+        "nord": { "label": "Nord", "detail": "Cool gray blue" },
+        "solarized": { "label": "Solarized", "detail": "Long-form reading" },
+        "contrast": { "label": "High Contrast", "detail": "Strong readability" }
+      }
+    },
+    "accent": {
+      "title": "Accent color",
+      "description": "Overrides links, buttons, selection states, and focus color in the current theme.",
+      "custom": "Custom accent color",
+      "reset": "Use theme default"
+    },
     "language": {
       "title": "Language",
       "zhCN": "简体中文",
