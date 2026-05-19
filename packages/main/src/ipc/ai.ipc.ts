@@ -5,7 +5,7 @@ import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
-import { findNoteForAiTool } from '../services/ai/note-lookup'
+import { findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
 import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -918,7 +918,7 @@ graph TD
       type: 'function',
       function: {
         name: 'read_note',
-        description: '读取指定笔记的完整内容',
+        description: '读取指定笔记的完整内容。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
           type: 'object',
           properties: {
@@ -957,7 +957,15 @@ graph TD
         const title = getStringArg(args, 'title')
         if (!title.trim()) return { content: 'read_note 缺少 title 参数。请先搜索笔记，或提供要读取的笔记标题。' }
         const note = findNoteForAiTool(vaultPath, title)
-        if (!note) return { content: `未找到标题为「${title}」的笔记。` }
+        if (!note) {
+          const candidates = findNoteCandidatesForAiTool(vaultPath, title)
+          if (candidates.length > 1) {
+            return {
+              content: `找到多个可能的笔记，请用 read_note 的 title 参数传入精确路径重试：\n${candidates.map((item) => `- ${item.filePath} (${item.title})`).join('\n')}`
+            }
+          }
+          return { content: `未找到标题为「${title}」的笔记。` }
+        }
         try {
           const content = readFileSync(note.absolutePath, 'utf-8')
           return {

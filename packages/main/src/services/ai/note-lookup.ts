@@ -32,6 +32,17 @@ function singleResult(vaultPath: string, rows: { title: string; file_path: strin
   return rows.length === 1 ? toResult(vaultPath, rows[0]) : null
 }
 
+function dedupeResults(results: AiNoteLookupResult[]): AiNoteLookupResult[] {
+  const seen = new Set<string>()
+  const unique: AiNoteLookupResult[] = []
+  for (const result of results) {
+    if (seen.has(result.filePath)) continue
+    seen.add(result.filePath)
+    unique.push(result)
+  }
+  return unique
+}
+
 export function findNoteForAiTool(vaultPath: string, query: string): AiNoteLookupResult | null {
   const normalized = normalizeQuery(query)
   if (!normalized) return null
@@ -75,7 +86,42 @@ export function findNoteForAiTool(vaultPath: string, query: string): AiNoteLooku
   return scanVaultForNote(vaultPath, normalized)
 }
 
+export function findNoteCandidatesForAiTool(vaultPath: string, query: string, limit = 5): AiNoteLookupResult[] {
+  const normalized = normalizeQuery(query)
+  if (!normalized) return []
+
+  const db = getDatabase(vaultPath)
+  const matches: AiNoteLookupResult[] = []
+  const titleRows = db.prepare('SELECT title, file_path FROM notes WHERE title = ? OR lower(title) = lower(?) LIMIT 20').all(normalized, normalized) as { title: string; file_path: string }[]
+  matches.push(...titleRows.map((row) => toResult(vaultPath, row)))
+
+  const aliasRows = db.prepare(`
+    SELECT n.title, n.file_path
+    FROM note_aliases a
+    JOIN notes n ON n.id = a.note_id
+    WHERE a.alias = ? OR lower(a.alias) = lower(?)
+    LIMIT 20
+  `).all(normalized, normalized) as { title: string; file_path: string }[]
+  matches.push(...aliasRows.map((row) => toResult(vaultPath, row)))
+
+  const pathQuery = normalized.toLowerCase()
+  const notes = db.prepare('SELECT title, file_path FROM notes').all() as { title: string; file_path: string }[]
+  const pathRows = notes.filter((note) => (
+    notePathTarget(note.file_path).toLowerCase() === pathQuery ||
+    basename(note.file_path, '.md').toLowerCase() === pathQuery
+  ))
+  matches.push(...pathRows.map((row) => toResult(vaultPath, row)))
+  matches.push(...scanVaultForNotes(vaultPath, normalized))
+
+  return dedupeResults(matches).slice(0, limit)
+}
+
 function scanVaultForNote(vaultPath: string, query: string): AiNoteLookupResult | null {
+  const matches = scanVaultForNotes(vaultPath, query)
+  return matches.length === 1 ? matches[0] : null
+}
+
+function scanVaultForNotes(vaultPath: string, query: string): AiNoteLookupResult[] {
   const matches: AiNoteLookupResult[] = []
   const target = query.toLowerCase()
 
@@ -99,5 +145,5 @@ function scanVaultForNote(vaultPath: string, query: string): AiNoteLookupResult 
   }
 
   if (existsSync(vaultPath)) scanDir(vaultPath)
-  return matches.length === 1 ? matches[0] : null
+  return matches
 }

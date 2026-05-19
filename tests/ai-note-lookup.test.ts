@@ -44,7 +44,7 @@ describe('findNoteForAiTool', () => {
 
   it('does not guess between duplicate filenames without a path', async () => {
     const { indexNote } = await import('../packages/main/src/services/indexer')
-    const { findNoteForAiTool } = await import('../packages/main/src/services/ai/note-lookup')
+    const { findNoteCandidatesForAiTool, findNoteForAiTool } = await import('../packages/main/src/services/ai/note-lookup')
 
     mkdirSync(join(vaultPath, 'A'), { recursive: true })
     mkdirSync(join(vaultPath, 'B'), { recursive: true })
@@ -56,6 +56,7 @@ describe('findNoteForAiTool', () => {
     indexNote(vaultPath, second)
 
     expect(findNoteForAiTool(vaultPath, 'Topic')).toBeNull()
+    expect(findNoteCandidatesForAiTool(vaultPath, 'Topic').map((note) => note.filePath).sort()).toEqual(['A/Topic.md', 'B/Topic.md'])
     expect(findNoteForAiTool(vaultPath, 'B/Topic')?.filePath).toBe('B/Topic.md')
   })
 })
