@@ -34,6 +34,16 @@ export interface AiTaskResult {
   filePath: string
 }
 
+export interface AiTagResult {
+  name: string
+  count: number
+}
+
+export interface AiTaggedNoteResult {
+  title: string
+  filePath: string
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -99,6 +109,20 @@ export function formatListTasksToolResult(tasks: AiTaskResult[]): string {
     `Note: ${task.noteTitle}`,
     `Path: ${task.filePath}`
   ].join('\n')).join('\n\n')
+}
+
+export function formatListTagsToolResult(tags: AiTagResult[]): string {
+  if (tags.length === 0) return 'No tags found.'
+  return tags.map((tag, index) => `${index + 1}. #${tag.name} (${tag.count})`).join('\n')
+}
+
+export function formatNotesByTagToolResult(tag: string, notes: AiTaggedNoteResult[]): string {
+  if (notes.length === 0) return `No notes found for #${tag}.`
+  const body = notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`
+  ].join('\n')).join('\n\n')
+  return `Tag: #${tag}\n\n${body}`
 }
 
 function formatLinkContext(context: string): string {

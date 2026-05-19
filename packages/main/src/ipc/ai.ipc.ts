@@ -6,11 +6,11 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatListTasksToolResult, formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
+import { formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByTagToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
-import { getAllTasks, getBacklinks, getOutgoingLinks, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
+import { getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
@@ -957,6 +957,35 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_tags',
+        description: '列出知识库中的标签及使用次数，可按标签名过滤。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按标签名过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'list_notes_by_tag',
+        description: '列出指定标签下的笔记。tag 可带或不带 # 前缀。',
+        parameters: {
+          type: 'object',
+          properties: {
+            tag: { type: 'string', description: '标签名，例如 project/research 或 #project/research' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          },
+          required: ['tag']
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -1067,6 +1096,29 @@ graph TD
             title: task.noteTitle,
             filePath: task.filePath,
             chunk: `${task.done ? '[x]' : '[ ]'} ${task.text}`.slice(0, 100),
+            score: 1
+          }))
+        }
+      }
+      case 'list_tags': {
+        const query = getStringArg(args, 'query').trim().toLowerCase().replace(/^#/, '')
+        const limit = normalizeToolLimit(args.limit)
+        const tags = getAllTags(vaultPath)
+          .filter((tag) => !query || tag.name.toLowerCase().includes(query))
+          .slice(0, limit)
+        return { content: formatListTagsToolResult(tags) }
+      }
+      case 'list_notes_by_tag': {
+        const tag = getStringArg(args, 'tag').trim().replace(/^#/, '')
+        if (!tag) return { content: 'list_notes_by_tag 缺少 tag 参数。请提供要查询的标签名。' }
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getNotesByTag(vaultPath, tag).slice(0, limit)
+        return {
+          content: formatNotesByTagToolResult(tag, notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `#${tag}`,
             score: 1
           }))
         }

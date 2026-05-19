@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListTasksToolResult, formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByTagToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -115,5 +115,35 @@ describe('formatListTasksToolResult', () => {
 
   it('marks empty task results explicitly', () => {
     expect(formatListTasksToolResult([])).toBe('No tasks found.')
+  })
+})
+
+describe('formatListTagsToolResult', () => {
+  it('formats tags with counts', () => {
+    const output = formatListTagsToolResult([
+      { name: 'project/research', count: 3 },
+      { name: 'area', count: 1 }
+    ])
+
+    expect(output).toBe('1. #project/research (3)\n2. #area (1)')
+  })
+
+  it('marks empty tag results explicitly', () => {
+    expect(formatListTagsToolResult([])).toBe('No tags found.')
+  })
+})
+
+describe('formatNotesByTagToolResult', () => {
+  it('formats tagged notes with paths', () => {
+    const output = formatNotesByTagToolResult('project/research', [
+      { title: 'Project A', filePath: 'Projects/A.md' },
+      { title: 'Project B', filePath: 'Projects/B.md' }
+    ])
+
+    expect(output).toBe('Tag: #project/research\n\n1. **Project A**\nPath: Projects/A.md\n\n2. **Project B**\nPath: Projects/B.md')
+  })
+
+  it('marks empty tagged note results explicitly', () => {
+    expect(formatNotesByTagToolResult('missing', [])).toBe('No notes found for #missing.')
   })
 })
