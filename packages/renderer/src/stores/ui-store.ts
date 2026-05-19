@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import i18n from '../i18n'
-import { safeGet, safeSet } from '../utils/storage'
+import { safeGet, safeRemove, safeSet } from '../utils/storage'
 
 type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
@@ -8,6 +8,15 @@ export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', '
 export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph' | 'bases'
 type Language = 'zh-CN' | 'en'
+
+const WORKSPACE_KEYS = {
+  mainView: 'nexusky-workspace-main-view',
+  rightPanel: 'nexusky-workspace-right-panel',
+  sidebarCollapsed: 'nexusky-workspace-sidebar-collapsed',
+}
+
+const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases']
 
 interface UIState {
   rightPanel: Panel
@@ -40,6 +49,7 @@ interface UIState {
   setTheme: (theme: Theme) => void
   toggleTheme: () => void
   setLanguage: (lang: Language) => void
+  resetWorkspaceLayout: () => void
 }
 
 function getInitialTheme(): Theme {
@@ -67,15 +77,35 @@ function getInitialRightPanelWidth(): number {
   return 360
 }
 
+function getInitialMainView(): MainView {
+  const saved = safeGet(WORKSPACE_KEYS.mainView)
+  return saved && MAIN_VIEW_IDS.includes(saved as MainView) ? saved as MainView : 'editor'
+}
+
+function getInitialRightPanel(): Panel {
+  const saved = safeGet(WORKSPACE_KEYS.rightPanel)
+  return saved && PANEL_IDS.includes(saved as Panel) ? saved as Panel : 'none'
+}
+
+function getInitialSidebarCollapsed(): boolean {
+  return safeGet(WORKSPACE_KEYS.sidebarCollapsed) === 'true'
+}
+
+function persistWorkspace(partial: Partial<Pick<UIState, 'mainView' | 'rightPanel' | 'sidebarCollapsed'>>) {
+  if (partial.mainView) safeSet(WORKSPACE_KEYS.mainView, partial.mainView)
+  if (partial.rightPanel) safeSet(WORKSPACE_KEYS.rightPanel, partial.rightPanel)
+  if (partial.sidebarCollapsed !== undefined) safeSet(WORKSPACE_KEYS.sidebarCollapsed, String(partial.sidebarCollapsed))
+}
+
 const initialTheme = getInitialTheme()
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', initialTheme)
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  rightPanel: 'none',
-  mainView: 'editor' as MainView,
-  sidebarCollapsed: false,
+  rightPanel: getInitialRightPanel(),
+  mainView: getInitialMainView(),
+  sidebarCollapsed: getInitialSidebarCollapsed(),
   sidebarWidth: getInitialSidebarWidth(),
   rightPanelWidth: getInitialRightPanelWidth(),
   focusMode: false,
@@ -87,17 +117,39 @@ export const useUIStore = create<UIState>((set, get) => ({
   theme: initialTheme,
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
 
-  setRightPanel: (panel) => set({ rightPanel: panel }),
-  toggleRightPanel: (panel) => set({ rightPanel: get().rightPanel === panel ? 'none' : panel }),
-  setMainView: (view) => set({ mainView: view }),
-  toggleSidebar: () => set({ sidebarCollapsed: !get().sidebarCollapsed }),
+  setRightPanel: (panel) => {
+    persistWorkspace({ rightPanel: panel })
+    set({ rightPanel: panel })
+  },
+  toggleRightPanel: (panel) => {
+    const next = get().rightPanel === panel ? 'none' : panel
+    persistWorkspace({ rightPanel: next })
+    set({ rightPanel: next })
+  },
+  setMainView: (view) => {
+    persistWorkspace({ mainView: view })
+    set({ mainView: view })
+  },
+  toggleSidebar: () => {
+    const next = !get().sidebarCollapsed
+    persistWorkspace({ sidebarCollapsed: next })
+    set({ sidebarCollapsed: next })
+  },
   toggleFocusMode: () => {
     const entering = !get().focusMode
     set({ focusMode: entering, sidebarCollapsed: entering ? true : false, rightPanel: entering ? 'none' : get().rightPanel })
   },
   togglePreviewMode: () => set({ previewMode: !get().previewMode }),
-  setSidebarWidth: (width) => set({ sidebarWidth: Math.max(180, Math.min(400, width)) }),
-  setRightPanelWidth: (width) => set({ rightPanelWidth: Math.max(260, Math.min(600, width)) }),
+  setSidebarWidth: (width) => {
+    const next = Math.max(180, Math.min(400, width))
+    safeSet('nexusky-sidebar-width', String(next))
+    set({ sidebarWidth: next })
+  },
+  setRightPanelWidth: (width) => {
+    const next = Math.max(260, Math.min(600, width))
+    safeSet('nexusky-right-panel-width', String(next))
+    set({ rightPanelWidth: next })
+  },
   resizeSidebar: (delta: number) => {
     const width = Math.max(180, Math.min(400, get().sidebarWidth + delta))
     safeSet('nexusky-sidebar-width', String(width))
@@ -123,5 +175,20 @@ export const useUIStore = create<UIState>((set, get) => ({
     i18n.changeLanguage(lang)
     safeSet('nexusky-language', lang)
     set({ language: lang })
+  },
+  resetWorkspaceLayout: () => {
+    safeRemove(WORKSPACE_KEYS.mainView)
+    safeRemove(WORKSPACE_KEYS.rightPanel)
+    safeRemove(WORKSPACE_KEYS.sidebarCollapsed)
+    safeRemove('nexusky-sidebar-width')
+    safeRemove('nexusky-right-panel-width')
+    set({
+      mainView: 'editor',
+      rightPanel: 'none',
+      sidebarCollapsed: false,
+      sidebarWidth: 240,
+      rightPanelWidth: 360,
+      focusMode: false
+    })
   },
 }))

@@ -31,7 +31,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView } = useUIStore()
+  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout } = useUIStore()
   const { saveFile, currentFilePath, content } = useEditorStore()
   const { vaultPath } = useVaultStore()
 
@@ -154,9 +154,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'properties', category: '界面', label: '打开笔记属性', description: '编辑 title、aliases、tags、cssclasses', keywords: ['properties', 'frontmatter', 'obsidian'], action: () => setRightPanel('properties') },
     { id: 'settings', category: '界面', label: '打开设置', shortcut: 'Ctrl+,', keywords: ['settings'], action: () => setSettingsOpen(true) },
     { id: 'sidebar', category: '界面', label: '切换侧边栏', shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
+    { id: 'reset-workspace', category: '界面', label: '重置工作区布局', description: '恢复编辑器、侧栏和右侧面板默认布局', keywords: ['workspace', 'layout', 'reset'], action: () => resetWorkspaceLayout() },
     { id: 'focus', category: '界面', label: '切换聚焦模式', shortcut: 'F11', keywords: ['focus'], action: () => toggleFocusMode() },
     { id: 'theme', category: '界面', label: '切换主题', keywords: ['theme'], action: () => toggleTheme() },
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, queueAiDraft, getCurrentNoteTitle])
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle])
 
   const filtered = query.trim()
     ? commands.filter((c) => {
