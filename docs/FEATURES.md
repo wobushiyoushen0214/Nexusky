@@ -10,7 +10,7 @@
 |------|------|
 | TipTap 富文本编辑器 | 基于 ProseMirror，支持 Markdown 语法 |
 | Markdown 序列化 | 编辑器内容与 .md 文件双向转换 |
-| Properties 面板 | 右侧面板可视化编辑 frontmatter title / aliases / tags / cssclasses |
+| Properties 面板 | 编辑器状态栏打开右侧面板，可视化编辑当前笔记 frontmatter title / aliases / tags / cssclasses |
 | 属性数据库 | Bases-like 主视图按 frontmatter 属性浏览、搜索、标签筛选和排序笔记，支持双击单元格直接编辑属性，并内置使用说明 |
 | 多标签页 | 同时打开多个文件，拖拽排序，右键菜单 |
 | 分屏编辑 | 标签页右键"在右侧打开"，并排查看两个笔记 |

@@ -50,6 +50,10 @@
     "properties": "属性",
     "outline": "大纲"
   },
+  "editor": {
+    "properties": "属性",
+    "openProperties": "打开当前笔记属性"
+  },
   "propertiesPanel": {
     "empty": "打开一篇笔记后编辑属性。",
     "currentNote": "当前笔记",

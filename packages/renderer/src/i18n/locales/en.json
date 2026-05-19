@@ -50,6 +50,10 @@
     "properties": "Properties",
     "outline": "Outline"
   },
+  "editor": {
+    "properties": "Properties",
+    "openProperties": "Open current note properties"
+  },
   "propertiesPanel": {
     "empty": "Open a note to edit its properties.",
     "currentNote": "Current note",

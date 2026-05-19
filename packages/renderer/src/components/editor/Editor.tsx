@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { EditorState as ProseMirrorEditorState } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
@@ -78,6 +79,7 @@ class LRUCache<K, V> {
 }
 
 export function Editor() {
+  const { t } = useTranslation()
   const content = useEditorStore((s) => s.content)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const setContent = useEditorStore((s) => s.setContent)
@@ -94,6 +96,8 @@ export function Editor() {
   const closeSplit = useEditorStore((s) => s.closeSplit)
   const focusMode = useUIStore((s) => s.focusMode)
   const previewMode = useUIStore((s) => s.previewMode)
+  const rightPanel = useUIStore((s) => s.rightPanel)
+  const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
   const dragTabRef = useRef<number | null>(null)
   const [findReplaceOpen, setFindReplaceOpen] = useState(false)
@@ -718,6 +722,22 @@ export function Editor() {
           <span>~{stats.readTime} 分钟阅读</span>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button
+            onClick={() => toggleRightPanel('properties')}
+            title={t('editor.openProperties')}
+            style={{
+              height: 18,
+              padding: '0 7px',
+              borderRadius: 5,
+              border: rightPanel === 'properties' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              background: rightPanel === 'properties' ? 'var(--accent-muted)' : 'transparent',
+              color: rightPanel === 'properties' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              fontSize: 10,
+              cursor: 'pointer'
+            }}
+          >
+            {t('editor.properties')}
+          </button>
           {isDirty ? <span style={{ color: 'var(--accent)' }}>未保存</span> : <span>已保存</span>}
           <span>Markdown</span>
           <SyncIndicator />
