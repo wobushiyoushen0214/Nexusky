@@ -157,6 +157,36 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should resolve Obsidian path wikilinks to nested notes', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks, getGraphData } = await import('../packages/main/src/services/indexer')
+
+    mkdirSync(join(vaultPath, 'Folder'), { recursive: true })
+    const targetPath = join(vaultPath, 'Folder', 'Target.md')
+    const sourcePath = join(vaultPath, 'Source.md')
+
+    writeFileSync(sourcePath, '# Source\n\nSee [[Folder/Target]] and [[Folder/Target.md#Details|details]].')
+    writeFileSync(targetPath, '# Target\n\n## Details\n\nNested note.')
+
+    indexNote(vaultPath, sourcePath)
+    indexNote(vaultPath, targetPath)
+
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Source')
+    const target = getAllNotes(vaultPath).find((note) => note.filePath === 'Folder/Target.md')
+    expect(source).toBeTruthy()
+    expect(target).toBeTruthy()
+
+    const links = getOutgoingLinks(vaultPath, source!.id)
+    expect(links).toHaveLength(2)
+    expect(links.every((link) => link.targetTitle === 'Folder/Target')).toBe(true)
+    expect(links.every((link) => link.targetPath === 'Folder/Target.md' && link.resolved)).toBe(true)
+
+    const graph = getGraphData(vaultPath)
+    expect(graph.edges).toContainEqual({ source: source!.id, target: target!.id })
+
+    closeDatabase()
+  })
+
   it('should resolve wikilinks through frontmatter aliases', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes, getBacklinks, getOutgoingLinks, getGraphData } = await import('../packages/main/src/services/indexer')

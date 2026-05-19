@@ -8,6 +8,7 @@ import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*]\s+(?:\[[ xX]\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
+const NOTE_PATH_TARGET_SQL = "CASE WHEN lower(file_path) LIKE '%.md' THEN substr(file_path, 1, length(file_path) - 3) ELSE file_path END"
 
 export interface NoteIndex {
   id: string
@@ -288,10 +289,16 @@ export function getGraphData(vaultPath: string): { nodes: { id: string; title: s
       titleToId.set(n.title, n.id)
     }
     const fileName = n.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '')
+    const pathTitle = normalizeNotePathTarget(n.file_path)
     if (titleToId.has(fileName) && titleToId.get(fileName) !== n.id) {
       ambiguousTitles.add(fileName)
     } else if (!titleToId.has(fileName)) {
       titleToId.set(fileName, n.id)
+    }
+    if (titleToId.has(pathTitle) && titleToId.get(pathTitle) !== n.id) {
+      ambiguousTitles.add(pathTitle)
+    } else if (!titleToId.has(pathTitle)) {
+      titleToId.set(pathTitle, n.id)
     }
   }
   for (const alias of aliases) {
@@ -379,7 +386,11 @@ function extractLinks(content: string): { targetTitle: string; context: string }
 }
 
 function normalizeWikiLinkTarget(target: string): string {
-  return target.split('#')[0].trim()
+  return normalizeNotePathTarget(target.split('#')[0].trim().replace(/\\/g, '/'))
+}
+
+function normalizeNotePathTarget(target: string): string {
+  return target.replace(/\.md$/i, '')
 }
 
 function extractAliases(frontmatter: Record<string, unknown>): string[] {
@@ -507,8 +518,9 @@ function normalizeTagNames(value: unknown): string[] {
 function getNoteLookupAliases(db: Database.Database, noteId: string, title: string, filePath?: string): string[] {
   const notePath = filePath || (db.prepare('SELECT file_path FROM notes WHERE id = ?').get(noteId) as { file_path: string } | undefined)?.file_path || ''
   const fileTitle = notePath ? basename(notePath, '.md') : ''
+  const pathTitle = notePath ? normalizeNotePathTarget(notePath) : ''
   const rows = db.prepare('SELECT alias FROM note_aliases WHERE note_id = ?').all(noteId) as { alias: string }[]
-  return Array.from(new Set([title, fileTitle, ...rows.map((row) => row.alias)].map((value) => value.trim()).filter((value) => value.length >= 2)))
+  return Array.from(new Set([title, fileTitle, pathTitle, ...rows.map((row) => row.alias)].map((value) => value.trim()).filter((value) => value.length >= 2)))
 }
 
 function findPlainMention(content: string, aliases: string[]): { alias: string; index: number } | null {
@@ -549,6 +561,8 @@ export function resolveAllLinks(vaultPath: string): void {
       UNION
       SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
       UNION
+      SELECT id FROM notes WHERE ${NOTE_PATH_TARGET_SQL} = links.target_title
+      UNION
       SELECT note_id FROM note_aliases WHERE alias = links.target_title
       LIMIT 1
     )
@@ -559,7 +573,8 @@ export function resolveAllLinks(vaultPath: string): void {
 function resolveLinks(db: Database.Database, noteId: string, noteTitle: string, noteAliases: string[] = []): void {
   const note = db.prepare('SELECT file_path FROM notes WHERE id = ?').get(noteId) as { file_path: string } | undefined
   const fileName = note ? note.file_path.replace(/^.*[\\/]/, '').replace(/\.md$/, '') : ''
-  const aliases = Array.from(new Set([noteTitle, fileName, ...noteAliases].filter(Boolean)))
+  const pathTitle = note ? normalizeNotePathTarget(note.file_path) : ''
+  const aliases = Array.from(new Set([noteTitle, fileName, pathTitle, ...noteAliases].filter(Boolean)))
 
   for (const alias of aliases) {
     db.prepare(`
@@ -573,6 +588,8 @@ function resolveLinks(db: Database.Database, noteId: string, noteTitle: string, 
       SELECT id FROM notes WHERE title = links.target_title
       UNION
       SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
+      UNION
+      SELECT id FROM notes WHERE ${NOTE_PATH_TARGET_SQL} = links.target_title
       UNION
       SELECT note_id FROM note_aliases WHERE alias = links.target_title
       LIMIT 1
