@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
+import { isCancellationError } from '../utils/errors'
 
 interface GraphGeneratorProps {
   open: boolean
@@ -15,6 +16,9 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
   const [result, setResult] = useState('')
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const progressRef = useRef('')
+  const generatingRef = useRef(false)
+
+  useEffect(() => { generatingRef.current = generating }, [generating])
 
   useEffect(() => {
     if (!open) { setProgress(''); setResult(''); setGenerating(false); return }
@@ -37,10 +41,20 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
     const res = await window.api.invoke('ai:generate-graph', { filePaths, vaultPath })
     if (res.success && res.content) {
       setResult(res.content)
+    } else if (isCancellationError(res.error)) {
+      setProgress('')
     } else {
       toast(res.error || '生成失败', 'error')
     }
     setGenerating(false)
+  }
+
+  const handleClose = () => {
+    if (generatingRef.current) {
+      window.api.invoke('ai:stop', undefined).catch(() => {})
+      setGenerating(false)
+    }
+    onClose()
   }
 
   const handleSave = async () => {
@@ -69,7 +83,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
   return (
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className="animate-scale-in"
@@ -79,7 +93,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
         {/* Header */}
         <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>AI 知识图谱生成</span>
-          <button onClick={onClose} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+          <button onClick={handleClose} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
@@ -139,7 +153,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
             </>
           )}
           {generating && (
-            <button onClick={onClose} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>
+            <button onClick={handleClose} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>
               取消
             </button>
           )}

@@ -480,23 +480,29 @@ graph TD
 
     const provider = aiManager.getProvider(config)
     let result = ''
+    const windowId = window.id
+    const controller = startAiTask(windowId)
 
     try {
       for await (const chunk of provider.chatStream([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Below are ${fileNames.length} notes. Analyze their relationships and generate a knowledge graph:\n\n${filesContent}` }
-      ])) {
-        if (window.isDestroyed()) break
+      ], controller.signal)) {
+        if (window.isDestroyed() || controller.signal.aborted) break
         if (chunk.type === 'text') {
           result += chunk.content
           window.webContents.send('ai:graph-progress', { content: chunk.content })
         }
         if (chunk.type === 'error') return { success: false, error: chunk.content || 'AI 返回错误' }
       }
+      if (controller.signal.aborted) return { success: false, error: '已取消' }
       window.webContents.send('ai:graph-done', {})
       return { success: true, content: result.trim() }
     } catch (err: unknown) {
+      if (controller.signal.aborted) return { success: false, error: '已取消' }
       return { success: false, error: getErrorMessage(err) }
+    } finally {
+      finishAiTask(windowId, controller)
     }
   })
 
