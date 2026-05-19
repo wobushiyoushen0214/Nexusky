@@ -6,11 +6,11 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByTagToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
-import { getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
+import { getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getPropertyRows, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
@@ -986,6 +986,36 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_properties',
+        description: '列出知识库中的结构化属性键、出现次数和样例值。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按属性键过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'list_notes_by_property',
+        description: '按结构化属性键和值列出笔记。可查询 frontmatter 和 Dataview inline fields。',
+        parameters: {
+          type: 'object',
+          properties: {
+            key: { type: 'string', description: '属性键，例如 status、priority、aliases' },
+            value: { type: 'string', description: '按属性值包含匹配过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          },
+          required: ['key']
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -1119,6 +1149,53 @@ graph TD
             title: note.title,
             filePath: note.filePath,
             chunk: `#${tag}`,
+            score: 1
+          }))
+        }
+      }
+      case 'list_properties': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const summaries = new Map<string, { key: string; count: number; sampleValues: string[] }>()
+        for (const row of getPropertyRows(vaultPath)) {
+          for (const [key, value] of Object.entries(row.properties)) {
+            if (query && !key.toLowerCase().includes(query)) continue
+            const current = summaries.get(key) || { key, count: 0, sampleValues: [] }
+            current.count += 1
+            const text = formatPropertyValue(value)
+            if (text && !current.sampleValues.includes(text) && current.sampleValues.length < 3) {
+              current.sampleValues.push(text)
+            }
+            summaries.set(key, current)
+          }
+        }
+        const properties = Array.from(summaries.values())
+          .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+          .slice(0, limit)
+        return { content: formatListPropertiesToolResult(properties) }
+      }
+      case 'list_notes_by_property': {
+        const key = getStringArg(args, 'key').trim()
+        if (!key) return { content: 'list_notes_by_property 缺少 key 参数。请提供要查询的属性键。' }
+        const value = getStringArg(args, 'value').trim()
+        const valueQuery = value.toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getPropertyRows(vaultPath)
+          .map((row) => {
+            const matchedKey = Object.keys(row.properties).find((propertyKey) => propertyKey.toLowerCase() === key.toLowerCase())
+            if (!matchedKey) return null
+            const text = formatPropertyValue(row.properties[matchedKey])
+            if (valueQuery && !text.toLowerCase().includes(valueQuery)) return null
+            return { title: row.title, filePath: row.filePath, value: text }
+          })
+          .filter((row): row is { title: string; filePath: string; value: string } => row !== null)
+          .slice(0, limit)
+        return {
+          content: formatNotesByPropertyToolResult(key, notes, value || undefined),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `${key}: ${note.value}`.slice(0, 100),
             score: 1
           }))
         }

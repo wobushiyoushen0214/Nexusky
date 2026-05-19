@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByTagToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -145,5 +145,36 @@ describe('formatNotesByTagToolResult', () => {
 
   it('marks empty tagged note results explicitly', () => {
     expect(formatNotesByTagToolResult('missing', [])).toBe('No notes found for #missing.')
+  })
+})
+
+describe('property tool formatting', () => {
+  it('formats property summaries with sample values', () => {
+    const output = formatListPropertiesToolResult([
+      { key: 'status', count: 4, sampleValues: ['active', 'paused'] },
+      { key: 'priority', count: 2, sampleValues: ['2'] }
+    ])
+
+    expect(output).toBe('1. status (4) - examples: active, paused\n2. priority (2) - examples: 2')
+  })
+
+  it('formats notes by property with paths and values', () => {
+    const output = formatNotesByPropertyToolResult('status', [
+      { title: 'Project A', filePath: 'A.md', value: 'active' },
+      { title: 'Project B', filePath: 'B.md', value: 'active, blocked' }
+    ], 'active')
+
+    expect(output).toBe('Property: status ~= "active"\n\n1. **Project A**\nPath: A.md\nValue: active\n\n2. **Project B**\nPath: B.md\nValue: active, blocked')
+  })
+
+  it('formats empty property results explicitly', () => {
+    expect(formatListPropertiesToolResult([])).toBe('No properties found.')
+    expect(formatNotesByPropertyToolResult('status', [])).toBe('No notes found with property status.')
+    expect(formatNotesByPropertyToolResult('status', [], 'active')).toBe('No notes found for status matching "active".')
+  })
+
+  it('stringifies property values for tool output', () => {
+    expect(formatPropertyValue(['active', 2, true])).toBe('active, 2, true')
+    expect(formatPropertyValue(null)).toBe('')
   })
 })

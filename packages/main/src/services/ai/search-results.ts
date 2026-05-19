@@ -44,6 +44,18 @@ export interface AiTaggedNoteResult {
   filePath: string
 }
 
+export interface AiPropertySummary {
+  key: string
+  count: number
+  sampleValues: string[]
+}
+
+export interface AiPropertyNoteResult {
+  title: string
+  filePath: string
+  value: string
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -123,6 +135,31 @@ export function formatNotesByTagToolResult(tag: string, notes: AiTaggedNoteResul
     `Path: ${note.filePath}`
   ].join('\n')).join('\n\n')
   return `Tag: #${tag}\n\n${body}`
+}
+
+export function formatListPropertiesToolResult(properties: AiPropertySummary[]): string {
+  if (properties.length === 0) return 'No properties found.'
+  return properties.map((property, index) => {
+    const samples = property.sampleValues.length > 0 ? ` - examples: ${property.sampleValues.join(', ')}` : ''
+    return `${index + 1}. ${property.key} (${property.count})${samples}`
+  }).join('\n')
+}
+
+export function formatNotesByPropertyToolResult(key: string, notes: AiPropertyNoteResult[], value?: string): string {
+  if (notes.length === 0) return value ? `No notes found for ${key} matching "${value}".` : `No notes found with property ${key}.`
+  const header = value ? `Property: ${key} ~= "${value}"` : `Property: ${key}`
+  const body = notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Value: ${note.value}`
+  ].join('\n')).join('\n\n')
+  return `${header}\n\n${body}`
+}
+
+export function formatPropertyValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map(formatPropertyValue).join(', ')
+  if (value === null || value === undefined) return ''
+  return String(value)
 }
 
 function formatLinkContext(context: string): string {
