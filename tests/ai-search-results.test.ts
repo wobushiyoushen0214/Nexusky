@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -309,6 +309,20 @@ describe('formatUnreferencedNotesToolResult', () => {
 
   it('marks empty unreferenced note results explicitly', () => {
     expect(formatUnreferencedNotesToolResult([])).toBe('No unreferenced notes found.')
+  })
+})
+
+describe('formatDeadEndNotesToolResult', () => {
+  it('formats dead-end notes with paths and timestamps', () => {
+    const output = formatDeadEndNotesToolResult([
+      { title: 'Conclusion', filePath: 'Notes/Conclusion.md', updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('1. **Conclusion**\nPath: Notes/Conclusion.md\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty dead-end note results explicitly', () => {
+    expect(formatDeadEndNotesToolResult([])).toBe('No dead-end notes found.')
   })
 })
 

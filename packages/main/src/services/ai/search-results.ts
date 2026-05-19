@@ -113,6 +113,12 @@ export interface AiUnreferencedNoteResult {
   updatedAt: number
 }
 
+export interface AiDeadEndNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+}
+
 export interface AiLinkHubResult {
   title: string
   filePath: string
@@ -358,6 +364,15 @@ export function formatOrphanNotesToolResult(notes: AiOrphanNoteResult[]): string
 
 export function formatUnreferencedNotesToolResult(notes: AiUnreferencedNoteResult[]): string {
   if (notes.length === 0) return 'No unreferenced notes found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatDeadEndNotesToolResult(notes: AiDeadEndNoteResult[]): string {
+  if (notes.length === 0) return 'No dead-end notes found.'
   return notes.map((note, index) => [
     `${index + 1}. **${note.title}**`,
     `Path: ${note.filePath}`,
