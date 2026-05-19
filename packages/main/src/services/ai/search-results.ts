@@ -69,6 +69,12 @@ export interface AiUnresolvedLinkResult {
   context: string
 }
 
+export interface AiOrphanNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -191,6 +197,15 @@ export function formatUnresolvedLinksToolResult(links: AiUnresolvedLinkResult[])
     `Source: ${link.sourceTitle}`,
     `Path: ${link.sourcePath}`,
     `Context: ${link.context || '(none)'}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatOrphanNotesToolResult(notes: AiOrphanNoteResult[]): string {
+  if (notes.length === 0) return 'No orphan notes found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
   ].join('\n')).join('\n\n')
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -206,5 +206,19 @@ describe('formatUnresolvedLinksToolResult', () => {
 
   it('marks empty unresolved link results explicitly', () => {
     expect(formatUnresolvedLinksToolResult([])).toBe('No unresolved links found.')
+  })
+})
+
+describe('formatOrphanNotesToolResult', () => {
+  it('formats orphan notes with paths and timestamps', () => {
+    const output = formatOrphanNotesToolResult([
+      { title: 'Loose', filePath: 'Loose.md', updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('1. **Loose**\nPath: Loose.md\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty orphan note results explicitly', () => {
+    expect(formatOrphanNotesToolResult([])).toBe('No orphan notes found.')
   })
 })
