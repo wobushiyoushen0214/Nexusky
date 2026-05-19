@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
 import { safeSet } from '../utils/storage'
 import type { LocalPlugin } from '@shared/types/ipc'
 
+type CommandCategory = 'file' | 'search' | 'ai' | 'plugin' | 'graph' | 'sync' | 'export' | 'interface'
+
 interface Command {
   id: string
   label: string
-  category: '文件' | '检索' | 'AI' | '插件' | '知识图谱' | '同步' | '导出' | '界面'
+  category: CommandCategory
   description?: string
   shortcut?: string
   keywords?: string[]
@@ -29,6 +32,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
@@ -50,131 +54,131 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   }, [content, currentFilePath])
 
   const commands: Command[] = useMemo(() => [
-    { id: 'save', category: '文件', label: '保存当前笔记', shortcut: 'Ctrl+S', keywords: ['save'], action: () => saveFile() },
-    { id: 'new-note', category: '文件', label: '新建笔记', shortcut: 'Ctrl+N', keywords: ['new', 'note'], action: () => window.dispatchEvent(new CustomEvent('create-new-note')) },
-    { id: 'copy-wikilink', category: '文件', label: '复制当前笔记 Wikilink', description: '复制为 [[笔记标题]]，可直接粘贴到其他笔记', keywords: ['wikilink', 'copy', 'obsidian'], action: async () => {
+    { id: 'save', category: 'file', label: t('commandPalette.commands.save.label'), shortcut: 'Ctrl+S', keywords: ['save'], action: () => saveFile() },
+    { id: 'new-note', category: 'file', label: t('commandPalette.commands.newNote.label'), shortcut: 'Ctrl+N', keywords: ['new', 'note'], action: () => window.dispatchEvent(new CustomEvent('create-new-note')) },
+    { id: 'copy-wikilink', category: 'file', label: t('commandPalette.commands.copyWikilink.label'), description: t('commandPalette.commands.copyWikilink.description'), keywords: ['wikilink', 'copy', 'obsidian'], action: async () => {
       const title = getCurrentNoteTitle()
       const { toast } = await import('../stores/toast-store')
       if (!title) {
-        toast('请先打开一篇笔记', 'info')
+        toast(t('commandPalette.toasts.openNoteFirst'), 'info')
         return
       }
       await navigator.clipboard.writeText(`[[${title}]]`)
-      toast('已复制 Wikilink', 'success')
+      toast(t('commandPalette.toasts.wikilinkCopied'), 'success')
     }},
-    { id: 'daily', category: '文件', label: '打开今日笔记', keywords: ['daily', 'journal'], action: async () => {
+    { id: 'daily', category: 'file', label: t('commandPalette.commands.daily.label'), keywords: ['daily', 'journal'], action: async () => {
       if (!vaultPath) return
       const path = await window.api.invoke('template:daily-note', { vaultPath })
       if (path) useEditorStore.getState().openFile(path)
     }},
-    { id: 'trash', category: '文件', label: '打开回收站', keywords: ['trash'], action: () => window.dispatchEvent(new CustomEvent('open-trash')) },
-    { id: 'import-obsidian', category: '文件', label: '导入 Obsidian Vault', description: '导入 Markdown、附件和内部链接结构', keywords: ['obsidian', 'vault', 'import'], action: async () => {
+    { id: 'trash', category: 'file', label: t('commandPalette.commands.trash.label'), keywords: ['trash'], action: () => window.dispatchEvent(new CustomEvent('open-trash')) },
+    { id: 'import-obsidian', category: 'file', label: t('commandPalette.commands.importObsidian.label'), description: t('commandPalette.commands.importObsidian.description'), keywords: ['obsidian', 'vault', 'import'], action: async () => {
       if (!vaultPath) return
       const sourcePath = await window.api.invoke('vault:select', undefined)
       if (sourcePath) {
         const result = await window.api.invoke('file:import-obsidian', { sourcePath, vaultPath })
         const { toast } = await import('../stores/toast-store')
-        toast(`导入完成: ${result.imported} 个文件, ${result.converted} 个已转换`, 'success')
+        toast(t('commandPalette.toasts.importDone', { imported: result.imported, converted: result.converted }), 'success')
         useVaultStore.getState().refreshFiles()
       }
     }},
-    { id: 'search', category: '检索', label: '全文搜索', shortcut: 'Ctrl+Shift+F', keywords: ['find', 'search'], action: () => setSearchOpen(true) },
-    { id: 'chat', category: 'AI', label: '打开 AI 工作台', shortcut: 'Ctrl+L', description: '对话、Agent、编辑和批量生成入口', keywords: ['chat', 'agent'], action: () => setRightPanel('chat') },
-    { id: 'ai-rag', category: 'AI', label: '基于知识库提问', description: '打开 Agent 模式，自动搜索和引用笔记', keywords: ['rag', 'ask', 'agent'], action: () => queueAiDraft({ mode: 'chat', agentMode: true, prompt: '请基于当前知识库回答：' }) },
-    { id: 'ai-edit-current', category: 'AI', label: 'AI 修改当前笔记', description: '生成修改方案，确认后再写入文件', keywords: ['edit', 'rewrite'], action: () => queueAiDraft({ mode: 'edit', prompt: '请优化当前笔记的结构、标题层级和表达清晰度，保留原有事实。' }) },
-    { id: 'ai-rewrite-selection', category: 'AI', label: 'AI 改写选中文本', description: '把当前选区作为编辑目标上下文', keywords: ['selection', 'rewrite'], action: () => queueAiDraft({ mode: 'edit', attachSelection: true, prompt: '请改写选中文本，使表达更清晰、更适合知识库长期保存。' }) },
-    { id: 'ai-new-note', category: 'AI', label: 'AI 生成新笔记', description: '不绑定当前文件，直接创建新的 Markdown 笔记', keywords: ['generate', 'create'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: '请创建一篇结构完整的新笔记，主题是：' }) },
-    { id: 'ai-batch-notes', category: 'AI', label: 'AI 批量生成关联笔记', description: '适合搭建主题知识库骨架', keywords: ['batch', 'map', 'obsidian'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: '请围绕一个主题生成 5 篇相互关联的 Markdown 笔记，每篇都有清晰标题、摘要、要点和 [[双向链接]]。主题是：' }) },
-    { id: 'summarize', category: 'AI', label: 'AI 摘要写入当前笔记', description: '把摘要插入到当前笔记开头', keywords: ['summary'], action: async () => {
+    { id: 'search', category: 'search', label: t('commandPalette.commands.search.label'), shortcut: 'Ctrl+Shift+F', keywords: ['find', 'search'], action: () => setSearchOpen(true) },
+    { id: 'chat', category: 'ai', label: t('commandPalette.commands.chat.label'), shortcut: 'Ctrl+L', description: t('commandPalette.commands.chat.description'), keywords: ['chat', 'agent'], action: () => setRightPanel('chat') },
+    { id: 'ai-rag', category: 'ai', label: t('commandPalette.commands.aiRag.label'), description: t('commandPalette.commands.aiRag.description'), keywords: ['rag', 'ask', 'agent'], action: () => queueAiDraft({ mode: 'chat', agentMode: true, prompt: t('commandPalette.prompts.rag') }) },
+    { id: 'ai-edit-current', category: 'ai', label: t('commandPalette.commands.aiEditCurrent.label'), description: t('commandPalette.commands.aiEditCurrent.description'), keywords: ['edit', 'rewrite'], action: () => queueAiDraft({ mode: 'edit', prompt: t('commandPalette.prompts.editCurrent') }) },
+    { id: 'ai-rewrite-selection', category: 'ai', label: t('commandPalette.commands.aiRewriteSelection.label'), description: t('commandPalette.commands.aiRewriteSelection.description'), keywords: ['selection', 'rewrite'], action: () => queueAiDraft({ mode: 'edit', attachSelection: true, prompt: t('commandPalette.prompts.rewriteSelection') }) },
+    { id: 'ai-new-note', category: 'ai', label: t('commandPalette.commands.aiNewNote.label'), description: t('commandPalette.commands.aiNewNote.description'), keywords: ['generate', 'create'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: t('commandPalette.prompts.newNote') }) },
+    { id: 'ai-batch-notes', category: 'ai', label: t('commandPalette.commands.aiBatchNotes.label'), description: t('commandPalette.commands.aiBatchNotes.description'), keywords: ['batch', 'map', 'obsidian'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: t('commandPalette.prompts.batchNotes') }) },
+    { id: 'summarize', category: 'ai', label: t('commandPalette.commands.summarize.label'), description: t('commandPalette.commands.summarize.description'), keywords: ['summary'], action: async () => {
       if (!content || !currentFilePath) return
       const { toast } = await import('../stores/toast-store')
-      toast('正在生成摘要...', 'info')
+      toast(t('commandPalette.toasts.summarizing'), 'info')
       const summary = await window.api.invoke('ai:summarize', { content })
       if (summary) {
         const newContent = `> ${summary}\n\n${content}`
         useEditorStore.getState().setContent(newContent)
-        toast('摘要已插入当前笔记', 'success')
+        toast(t('commandPalette.toasts.summaryInserted'), 'success')
       }
     }},
-    { id: 'graph-full', category: '知识图谱', label: '打开全屏知识图谱', shortcut: 'Ctrl+G', keywords: ['graph'], action: () => {
+    { id: 'graph-full', category: 'graph', label: t('commandPalette.commands.graphFull.label'), shortcut: 'Ctrl+G', keywords: ['graph'], action: () => {
       setMainView('graph')
     }},
-    { id: 'bases', category: '检索', label: '打开属性数据库', description: '按 frontmatter 属性浏览、筛选和排序笔记', keywords: ['bases', 'database', 'properties', 'obsidian'], action: () => setMainView('bases') },
-    { id: 'canvas', category: '知识图谱', label: '打开自由画布', description: '在可拖拽画布中整理笔记卡片', keywords: ['canvas', 'board', 'obsidian'], action: () => setMainView('canvas') },
-    { id: 'graph-current', category: '知识图谱', label: '为当前笔记生成 AI 图谱', description: '基于当前笔记推断概念关系', keywords: ['graph', 'mermaid'], action: () => {
+    { id: 'bases', category: 'search', label: t('commandPalette.commands.bases.label'), description: t('commandPalette.commands.bases.description'), keywords: ['bases', 'database', 'properties', 'obsidian'], action: () => setMainView('bases') },
+    { id: 'canvas', category: 'graph', label: t('commandPalette.commands.canvas.label'), description: t('commandPalette.commands.canvas.description'), keywords: ['canvas', 'board', 'obsidian'], action: () => setMainView('canvas') },
+    { id: 'graph-current', category: 'graph', label: t('commandPalette.commands.graphCurrent.label'), description: t('commandPalette.commands.graphCurrent.description'), keywords: ['graph', 'mermaid'], action: () => {
       if (currentFilePath) window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: currentFilePath, isDirectory: false } }))
     }},
-    { id: 'infer-links', category: '知识图谱', label: '推断全库语义链接', description: '补齐隐含关联并刷新知识图谱', keywords: ['links', 'semantic'], action: async () => {
+    { id: 'infer-links', category: 'graph', label: t('commandPalette.commands.inferLinks.label'), description: t('commandPalette.commands.inferLinks.description'), keywords: ['links', 'semantic'], action: async () => {
       if (!vaultPath) return
       const { toast } = await import('../stores/toast-store')
-      toast('正在推断全库语义链接...', 'info')
+      toast(t('commandPalette.toasts.inferringLinks'), 'info')
       const result = await window.api.invoke('ai:infer-global-links', { vaultPath })
       if (result.success) {
-        toast(`已新增 ${result.added || 0} 条语义链接`, 'success')
+        toast(t('commandPalette.toasts.linksAdded', { count: result.added || 0 }), 'success')
         window.dispatchEvent(new CustomEvent('graph-data-updated'))
         setMainView('graph')
       } else {
-        toast(result.error || '语义链接推断失败', 'error')
+        toast(result.error || t('commandPalette.toasts.inferLinksFailed'), 'error')
       }
     }},
-    { id: 'memory-index', category: '知识图谱', label: '生成 AI 记忆索引', description: '为长期知识关联生成笔记级记忆', keywords: ['memory', 'index'], action: async () => {
+    { id: 'memory-index', category: 'graph', label: t('commandPalette.commands.memoryIndex.label'), description: t('commandPalette.commands.memoryIndex.description'), keywords: ['memory', 'index'], action: async () => {
       if (!vaultPath) return
       const { toast } = await import('../stores/toast-store')
-      toast('正在生成 AI 记忆索引...', 'info')
+      toast(t('commandPalette.toasts.generatingMemories'), 'info')
       const result = await window.api.invoke('ai:generate-memories', { vaultPath })
-      if (result.success) toast(`完成: 新增 ${result.generated}，跳过 ${result.skipped}，失败 ${result.failed}`, 'success')
-      else toast(result.error || 'AI 记忆索引生成失败', 'error')
+      if (result.success) toast(t('commandPalette.toasts.memoriesDone', { generated: result.generated, skipped: result.skipped, failed: result.failed }), 'success')
+      else toast(result.error || t('commandPalette.toasts.memoriesFailed'), 'error')
     }},
-    { id: 'sync', category: '同步', label: '云端同步', shortcut: 'Ctrl+Shift+S', keywords: ['sync'], action: async () => {
+    { id: 'sync', category: 'sync', label: t('commandPalette.commands.sync.label'), shortcut: 'Ctrl+Shift+S', keywords: ['sync'], action: async () => {
       if (!vaultPath) return
       await window.api.invoke('cloud:sync', { vaultPath })
     }},
-    { id: 'pull', category: '同步', label: '从云端拉取', keywords: ['pull'], action: async () => {
+    { id: 'pull', category: 'sync', label: t('commandPalette.commands.pull.label'), keywords: ['pull'], action: async () => {
       if (!vaultPath) return
       await window.api.invoke('cloud:pull-all', { vaultPath })
     }},
-    { id: 'export-pdf', category: '导出', label: '导出 PDF', keywords: ['pdf'], action: async () => {
+    { id: 'export-pdf', category: 'export', label: t('commandPalette.commands.exportPdf.label'), keywords: ['pdf'], action: async () => {
       if (!content || !currentFilePath) return
       const { toast } = await import('../stores/toast-store')
-      toast('正在导出 PDF...', 'info')
+      toast(t('commandPalette.toasts.exportingPdf'), 'info')
       const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:pdf', { content, title })
-      toast('PDF 导出完成', 'success')
+      toast(t('commandPalette.toasts.pdfDone'), 'success')
     }},
-    { id: 'export-html', category: '导出', label: '导出 HTML', keywords: ['html'], action: async () => {
+    { id: 'export-html', category: 'export', label: t('commandPalette.commands.exportHtml.label'), keywords: ['html'], action: async () => {
       if (!content || !currentFilePath) return
       const { toast } = await import('../stores/toast-store')
       const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:html', { content, title })
-      toast('HTML 导出完成', 'success')
+      toast(t('commandPalette.toasts.htmlDone'), 'success')
     }},
-    { id: 'publish-vault', category: '导出', label: '发布知识库静态站点', description: '将整个 vault 导出为可部署的 HTML 站点', keywords: ['publish', 'site', 'html', 'obsidian'], action: async () => {
+    { id: 'publish-vault', category: 'export', label: t('commandPalette.commands.publishVault.label'), description: t('commandPalette.commands.publishVault.description'), keywords: ['publish', 'site', 'html', 'obsidian'], action: async () => {
       if (!vaultPath) return
       const { toast } = await import('../stores/toast-store')
       const result = await window.api.invoke('export:publish-vault', { vaultPath })
-      if (result.ok) toast(`已发布 ${result.files} 篇笔记`, 'success')
+      if (result.ok) toast(t('commandPalette.toasts.publishDone', { count: result.files }), 'success')
     }},
-    { id: 'share', category: '导出', label: '分享笔记（复制 HTML）', keywords: ['share'], action: async () => {
+    { id: 'share', category: 'export', label: t('commandPalette.commands.share.label'), keywords: ['share'], action: async () => {
       if (!content || !currentFilePath) return
       const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:share', { content, title })
     }},
-    { id: 'outline', category: '界面', label: '打开文档大纲', shortcut: 'Ctrl+E', keywords: ['outline'], action: () => setRightPanel('outline') },
-    { id: 'properties', category: '界面', label: '打开笔记属性', description: '编辑 title、aliases、tags、cssclasses', keywords: ['properties', 'frontmatter', 'obsidian'], action: () => setRightPanel('properties') },
-    { id: 'settings', category: '界面', label: '打开设置', shortcut: 'Ctrl+,', keywords: ['settings'], action: () => setSettingsOpen(true) },
-    { id: 'sidebar', category: '界面', label: '切换侧边栏', shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
-    { id: 'reset-workspace', category: '界面', label: '重置工作区布局', description: '恢复编辑器、侧栏和右侧面板默认布局', keywords: ['workspace', 'layout', 'reset'], action: () => resetWorkspaceLayout() },
-    { id: 'focus', category: '界面', label: '切换聚焦模式', shortcut: 'F11', keywords: ['focus'], action: () => toggleFocusMode() },
-    { id: 'theme', category: '界面', label: '切换主题', keywords: ['theme'], action: () => toggleTheme() },
+    { id: 'outline', category: 'interface', label: t('commandPalette.commands.outline.label'), shortcut: 'Ctrl+E', keywords: ['outline'], action: () => setRightPanel('outline') },
+    { id: 'properties', category: 'interface', label: t('commandPalette.commands.properties.label'), description: t('commandPalette.commands.properties.description'), keywords: ['properties', 'frontmatter', 'obsidian'], action: () => setRightPanel('properties') },
+    { id: 'settings', category: 'interface', label: t('commandPalette.commands.settings.label'), shortcut: 'Ctrl+,', keywords: ['settings'], action: () => setSettingsOpen(true) },
+    { id: 'sidebar', category: 'interface', label: t('commandPalette.commands.sidebar.label'), shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
+    { id: 'reset-workspace', category: 'interface', label: t('commandPalette.commands.resetWorkspace.label'), description: t('commandPalette.commands.resetWorkspace.description'), keywords: ['workspace', 'layout', 'reset'], action: () => resetWorkspaceLayout() },
+    { id: 'focus', category: 'interface', label: t('commandPalette.commands.focus.label'), shortcut: 'F11', keywords: ['focus'], action: () => toggleFocusMode() },
+    { id: 'theme', category: 'interface', label: t('commandPalette.commands.theme.label'), keywords: ['theme'], action: () => toggleTheme() },
     ...plugins.flatMap((plugin) => plugin.commands.map((command) => ({
       id: `plugin:${plugin.id}:${command.id}`,
-      category: '插件' as const,
+      category: 'plugin' as const,
       label: `${plugin.name}: ${command.title}`,
       description: command.description || plugin.version,
       keywords: ['plugin', plugin.id, command.id],
       action: () => queueAiDraft({ mode: command.mode || 'chat', prompt: command.prompt })
     }))),
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle, plugins])
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle, plugins, t])
 
   const filtered = query.trim()
     ? commands.filter((c) => {
@@ -189,7 +193,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return acc
   }, {})
 
-  const categoryOrder: Command['category'][] = ['AI', '插件', '知识图谱', '检索', '文件', '同步', '导出', '界面']
+  const categoryOrder: CommandCategory[] = ['ai', 'plugin', 'graph', 'search', 'file', 'sync', 'export', 'interface']
 
   useEffect(() => {
     if (open) {
@@ -250,18 +254,18 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0) }}
             onKeyDown={handleKeyDown}
-            placeholder="输入命令..."
+            placeholder={t('commandPalette.placeholder')}
             style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: 'var(--text-primary)' }}
           />
         </div>
         <div ref={listRef} style={{ maxHeight: 420, overflowY: 'auto', padding: 6 }}>
           {filtered.length === 0 && (
-            <div style={{ padding: '20px 12px', color: 'var(--text-tertiary)', fontSize: 13 }}>没有匹配的命令</div>
+            <div style={{ padding: '20px 12px', color: 'var(--text-tertiary)', fontSize: 13 }}>{t('commandPalette.empty')}</div>
           )}
           {categoryOrder.filter((category) => grouped[category]?.length).map((category) => (
             <div key={category} style={{ padding: '4px 0' }}>
               <div style={{ padding: '5px 10px 4px', fontSize: 10, letterSpacing: 0, color: 'var(--text-tertiary)', fontWeight: 600 }}>
-                {category}
+                {t(`commandPalette.categories.${category}`)}
               </div>
               {grouped[category].map((cmd) => {
                 const i = filtered.findIndex((item) => item.id === cmd.id)
