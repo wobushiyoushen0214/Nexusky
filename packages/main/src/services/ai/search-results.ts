@@ -114,6 +114,12 @@ export interface AiUntaggedNoteResult {
   updatedAt: number
 }
 
+export interface AiEmptyNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -295,6 +301,15 @@ export function formatDuplicateNoteTitlesToolResult(groups: AiDuplicateNoteTitle
 
 export function formatUntaggedNotesToolResult(notes: AiUntaggedNoteResult[]): string {
   if (notes.length === 0) return 'No untagged notes found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatEmptyNotesToolResult(notes: AiEmptyNoteResult[]): string {
+  if (notes.length === 0) return 'No empty notes found.'
   return notes.map((note, index) => [
     `${index + 1}. **${note.title}**`,
     `Path: ${note.filePath}`,

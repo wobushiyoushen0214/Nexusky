@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateNoteTitlesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -303,5 +303,19 @@ describe('formatUntaggedNotesToolResult', () => {
 
   it('marks empty untagged note results explicitly', () => {
     expect(formatUntaggedNotesToolResult([])).toBe('No untagged notes found.')
+  })
+})
+
+describe('formatEmptyNotesToolResult', () => {
+  it('formats empty notes with paths and timestamps', () => {
+    const output = formatEmptyNotesToolResult([
+      { title: 'Stub', filePath: 'Stub.md', updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('1. **Stub**\nPath: Stub.md\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty empty-note results explicitly', () => {
+    expect(formatEmptyNotesToolResult([])).toBe('No empty notes found.')
   })
 })
