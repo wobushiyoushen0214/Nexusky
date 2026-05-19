@@ -17,14 +17,27 @@ function normalizeQuery(input: string): string {
 }
 
 export function extractNoteReferenceHeading(input: string): string | null {
+  const heading = extractNoteReferenceFragment(input)
+  if (!heading || heading.startsWith('^')) return null
+  return heading
+}
+
+export function extractNoteReferenceBlockId(input: string): string | null {
+  const fragment = extractNoteReferenceFragment(input)
+  if (!fragment?.startsWith('^')) return null
+  const blockId = fragment.slice(1).trim()
+  return blockId || null
+}
+
+function extractNoteReferenceFragment(input: string): string | null {
   let value = input.trim()
   const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
   if (wikiMatch) value = wikiMatch[1]
   const target = value.split('|')[0]
   const hashIndex = target.indexOf('#')
   if (hashIndex < 0) return null
-  const heading = target.slice(hashIndex + 1).trim()
-  return heading || null
+  const fragment = target.slice(hashIndex + 1).trim()
+  return fragment || null
 }
 
 function normalizeHeadingText(value: string): string {
@@ -61,6 +74,34 @@ export function extractMarkdownHeadingSection(content: string, heading: string):
   }
 
   return lines.slice(start, end).join('\n').trim()
+}
+
+export function extractMarkdownBlockReference(content: string, blockId: string): string | null {
+  const normalized = blockId.replace(/^\^/, '').trim()
+  if (!normalized) return null
+
+  const lines = content.split('\n')
+  const marker = new RegExp(`(?:^|\\s)\\^${escapeRegExp(normalized)}\\s*$`)
+  const markerIndex = lines.findIndex((line) => marker.test(line.trim()))
+  if (markerIndex < 0) return null
+
+  let start = markerIndex
+  while (start > 0 && lines[start - 1].trim() && !/^#{1,6}\s+/.test(lines[start - 1])) {
+    start--
+  }
+
+  let end = markerIndex + 1
+  while (end < lines.length && lines[end].trim() && !/^#{1,6}\s+/.test(lines[end])) {
+    end++
+  }
+
+  const block = lines.slice(start, end).join('\n').trim()
+  const withoutMarker = block.replace(new RegExp(`\\s*\\^${escapeRegExp(normalized)}\\s*$`), '').trim()
+  return withoutMarker || block
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function notePathTarget(filePath: string): string {

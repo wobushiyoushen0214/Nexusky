@@ -5,7 +5,7 @@ import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
-import { extractMarkdownHeadingSection, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
+import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
 import { formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
@@ -968,11 +968,13 @@ graph TD
         }
         try {
           const content = readFileSync(note.absolutePath, 'utf-8')
-          const heading = extractNoteReferenceHeading(title)
+          const blockId = extractNoteReferenceBlockId(title)
+          const block = blockId ? extractMarkdownBlockReference(content, blockId) : null
+          const heading = block ? null : extractNoteReferenceHeading(title)
           const section = heading ? extractMarkdownHeadingSection(content, heading) : null
-          const selectedContent = section || content
+          const selectedContent = block || section || content
           return {
-            content: formatReadNoteToolResult({ title: note.title, filePath: note.filePath, content: selectedContent, section: section ? heading || undefined : undefined }),
+            content: formatReadNoteToolResult({ title: note.title, filePath: note.filePath, content: selectedContent, section: section ? heading || undefined : undefined, blockId: block ? blockId || undefined : undefined }),
             sources: [{
               title: note.title,
               filePath: note.filePath,

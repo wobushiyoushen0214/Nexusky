@@ -63,10 +63,12 @@ describe('findNoteForAiTool', () => {
 
 describe('note reference headings', () => {
   it('extracts headings from wikilinks and path references', async () => {
-    const { extractNoteReferenceHeading } = await import('../packages/main/src/services/ai/note-lookup')
+    const { extractNoteReferenceBlockId, extractNoteReferenceHeading } = await import('../packages/main/src/services/ai/note-lookup')
 
     expect(extractNoteReferenceHeading('[[Folder/Target#Details|label]]')).toBe('Details')
     expect(extractNoteReferenceHeading('Folder/Target.md#Details')).toBe('Details')
+    expect(extractNoteReferenceHeading('[[Folder/Target#^block-1]]')).toBeNull()
+    expect(extractNoteReferenceBlockId('[[Folder/Target#^block-1]]')).toBe('block-1')
     expect(extractNoteReferenceHeading('Folder/Target.md')).toBeNull()
   })
 
@@ -93,6 +95,25 @@ describe('note reference headings', () => {
       '',
       '### Child',
       'Child context.'
+    ].join('\n'))
+  })
+
+  it('extracts an Obsidian block reference without the block marker', async () => {
+    const { extractMarkdownBlockReference } = await import('../packages/main/src/services/ai/note-lookup')
+    const markdown = [
+      '# Title',
+      '',
+      'First paragraph.',
+      '',
+      '- keep this list item',
+      '  - and this child ^todo-1',
+      '',
+      'Next paragraph.'
+    ].join('\n')
+
+    expect(extractMarkdownBlockReference(markdown, 'todo-1')).toBe([
+      '- keep this list item',
+      '  - and this child'
     ].join('\n'))
   })
 })

@@ -53,4 +53,15 @@ describe('formatReadNoteToolResult', () => {
 
     expect(output).toBe('Title: Topic\nPath: Topic.md\nSection: Details\n\n## Details\nBody.')
   })
+
+  it('includes block metadata when reading a note block', () => {
+    const output = formatReadNoteToolResult({
+      title: 'Topic',
+      filePath: 'Topic.md',
+      blockId: 'todo-1',
+      content: '- Task body'
+    })
+
+    expect(output).toBe('Title: Topic\nPath: Topic.md\nBlock: ^todo-1\n\n- Task body')
+  })
 })
