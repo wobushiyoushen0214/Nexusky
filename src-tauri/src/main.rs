@@ -1,3 +1,3 @@
 fn main() {
-  nexusky_lib::run()
+    nexusky_lib::run()
 }

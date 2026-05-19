@@ -29,6 +29,9 @@ pnpm-debug.log*
 # Electron
 release/
 
+# Tauri
+src-tauri/target/
+
 # Misc
 *.tsbuildinfo
 
