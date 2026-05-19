@@ -133,6 +133,12 @@ ${markdownToHtml(params.content)}
         body
       }
     }))
+    const searchIndex = notes.map((note) => ({
+      title: note.title,
+      href: note.href,
+      path: note.relPath,
+      text: toPlainText(note.body).slice(0, 4000)
+    }))
 
     const lookup = new Map<string, string>()
     for (const note of notes) {
@@ -150,10 +156,10 @@ ${markdownToHtml(params.content)}
       const dest = join(outputPath, note.href)
       await mkdir(dirname(dest), { recursive: true })
       const pageLookup = new Map(Array.from(lookup.entries()).map(([key, href]) => [key, relativeHref(note.href, href)]))
-      await writeFile(dest, renderPublishPage(note.title, markdownToHtml(note.body, pageLookup), notes, note.href), 'utf-8')
+      await writeFile(dest, renderPublishPage(note.title, markdownToHtml(note.body, pageLookup), notes, note.href, searchIndex), 'utf-8')
     }
 
-    await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes), 'utf-8')
+    await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes, searchIndex), 'utf-8')
     shell.showItemInFolder(join(outputPath, 'index.html'))
     return { ok: true, outputPath, files: notes.length }
   })
@@ -210,7 +216,18 @@ function extractMarkdownTitle(content: string, relPath: string): string {
   return content.match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(relPath, '.md')
 }
 
-function renderPublishPage(title: string, bodyHtml: string, notes: { title: string; href: string }[], currentHref: string): string {
+function toPlainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, '$2 $1')
+    .replace(/[#>*_`~\-[\]()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function renderPublishPage(title: string, bodyHtml: string, notes: { title: string; href: string }[], currentHref: string, searchIndex: { title: string; href: string; path: string; text: string }[]): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -222,9 +239,11 @@ ${publishStyles()}
 <body>
 <aside>
   <a class="brand" href="${relativeHref(currentHref, 'index.html')}">Nexusky</a>
+  ${renderPublishSearch(searchIndex, currentHref)}
   ${notes.map((note) => `<a href="${relativeHref(currentHref, note.href)}">${note.title}</a>`).join('\n  ')}
 </aside>
 <main>${bodyHtml}</main>
+${publishSearchScript(searchIndex, currentHref)}
 </body>
 </html>`
 }
@@ -235,7 +254,7 @@ function relativeHref(fromHref: string, toHref: string): string {
   return rel || posix.basename(toHref)
 }
 
-function renderPublishIndex(notes: { title: string; href: string; relPath: string }[]): string {
+function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], searchIndex: { title: string; href: string; path: string; text: string }[]): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -245,7 +264,10 @@ function renderPublishIndex(notes: { title: string; href: string; relPath: strin
 ${publishStyles()}
 </head>
 <body>
-<aside><a class="brand" href="index.html">Nexusky</a></aside>
+<aside>
+  <a class="brand" href="index.html">Nexusky</a>
+  ${renderPublishSearch(searchIndex, 'index.html')}
+</aside>
 <main>
   <h1>知识库索引</h1>
   <p class="muted">${notes.length} 篇已发布笔记</p>
@@ -253,8 +275,50 @@ ${publishStyles()}
     ${notes.map((note) => `<a class="index-card" href="${note.href}"><strong>${note.title}</strong><span>${note.relPath}</span></a>`).join('\n    ')}
   </div>
 </main>
+${publishSearchScript(searchIndex, 'index.html')}
 </body>
 </html>`
+}
+
+function renderPublishSearch(_searchIndex: { title: string; href: string; path: string; text: string }[], _currentHref: string): string {
+  return `<div class="site-search">
+  <input id="site-search-input" type="search" placeholder="搜索知识库..." autocomplete="off">
+  <div id="site-search-results" class="site-search-results"></div>
+</div>`
+}
+
+function publishSearchScript(searchIndex: { title: string; href: string; path: string; text: string }[], currentHref: string): string {
+  return `<script>
+window.__NEXUSKY_SEARCH__ = ${JSON.stringify(searchIndex).replace(/</g, '\\u003c')};
+(function () {
+  const input = document.getElementById('site-search-input');
+  const results = document.getElementById('site-search-results');
+  if (!input || !results) return;
+  const fromDir = ${JSON.stringify(posix.dirname(currentHref))};
+  function rel(href) {
+    if (fromDir === '.') return href;
+    const from = fromDir.split('/').filter(Boolean);
+    const to = href.split('/').filter(Boolean);
+    while (from.length && to.length && from[0] === to[0]) { from.shift(); to.shift(); }
+    return '../'.repeat(from.length) + to.join('/');
+  }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+  input.addEventListener('input', function () {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { results.innerHTML = ''; return; }
+    const matches = window.__NEXUSKY_SEARCH__.filter(function (item) {
+      return (item.title + ' ' + item.path + ' ' + item.text).toLowerCase().includes(q);
+    }).slice(0, 8);
+    results.innerHTML = matches.length ? matches.map(function (item) {
+      return '<a href="' + rel(item.href) + '"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.path) + '</span></a>';
+    }).join('') : '<p>无匹配结果</p>';
+  });
+})();
+</script>`
 }
 
 function publishStyles(): string {
@@ -264,6 +328,14 @@ aside { position: sticky; top: 0; height: 100vh; overflow: auto; box-sizing: bor
 aside a { display: block; padding: 7px 9px; border-radius: 6px; color: #b9c3d6; text-decoration: none; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 aside a:hover { background: rgba(255,255,255,0.08); color: #fff; }
 aside .brand { margin-bottom: 14px; color: #fff; font-weight: 700; font-size: 16px; }
+.site-search { margin: 0 0 14px; }
+.site-search input { box-sizing: border-box; width: 100%; height: 32px; padding: 0 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 7px; background: rgba(255,255,255,0.06); color: #fff; outline: none; }
+.site-search input::placeholder { color: #7f8ba3; }
+.site-search-results { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.site-search-results a { padding: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); }
+.site-search-results a strong { display: block; color: #fff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-search-results a span { display: block; margin-top: 2px; color: #8f9bb0; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-search-results p { margin: 0; padding: 8px; color: #8f9bb0; font-size: 12px; }
 main { box-sizing: border-box; max-width: 840px; width: 100%; padding: 48px 34px 80px; line-height: 1.75; }
 h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 1.25rem; }
 h2 { margin-top: 2rem; font-size: 1.45rem; }
