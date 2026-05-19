@@ -184,6 +184,7 @@ export interface IPCChannelMap {
   'export:html': { params: { content: string; title: string }; result: boolean }
   'export:pdf': { params: { content: string; title: string }; result: boolean }
   'export:share': { params: { content: string; title: string }; result: string }
+  'export:publish-vault': { params: { vaultPath: string }; result: { ok: boolean; outputPath?: string; files: number } }
   'vault:select': { params: undefined; result: string | null }
   'vault:create': { params: { name: string }; result: string | null }
   'vault:get': { params: undefined; result: string | null }

@@ -1,5 +1,6 @@
-import { ipcMain, dialog, BrowserWindow, clipboard } from 'electron'
-import { writeFile } from 'fs/promises'
+import { ipcMain, dialog, BrowserWindow, clipboard, shell } from 'electron'
+import { copyFile, mkdir, readdir, readFile, writeFile } from 'fs/promises'
+import { basename, dirname, extname, join, relative, posix } from 'path'
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -107,9 +108,58 @@ ${markdownToHtml(params.content)}
     clipboard.writeText(html)
     return html
   })
+
+  ipcMain.handle('export:publish-vault', async (event, params: { vaultPath: string }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { ok: false, files: 0 }
+
+    const result = await dialog.showOpenDialog(window, {
+      title: '发布知识库',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (result.canceled || !result.filePaths[0]) return { ok: false, files: 0 }
+
+    const outputPath = result.filePaths[0]
+    const files = await collectPublishFiles(params.vaultPath)
+    const markdownFiles = files.filter((file) => file.endsWith('.md'))
+    const assetFiles = files.filter((file) => !file.endsWith('.md'))
+    const notes = await Promise.all(markdownFiles.map(async (relPath) => {
+      const content = await readFile(join(params.vaultPath, relPath), 'utf-8')
+      const body = stripFrontmatter(content)
+      return {
+        relPath,
+        href: relPath.replace(/\.md$/, '.html'),
+        title: extractMarkdownTitle(body, relPath),
+        body
+      }
+    }))
+
+    const lookup = new Map<string, string>()
+    for (const note of notes) {
+      lookup.set(note.title, note.href)
+      lookup.set(basename(note.relPath, '.md'), note.href)
+    }
+
+    for (const asset of assetFiles) {
+      const dest = join(outputPath, asset)
+      await mkdir(dirname(dest), { recursive: true })
+      await copyFile(join(params.vaultPath, asset), dest)
+    }
+
+    for (const note of notes) {
+      const dest = join(outputPath, note.href)
+      await mkdir(dirname(dest), { recursive: true })
+      const pageLookup = new Map(Array.from(lookup.entries()).map(([key, href]) => [key, relativeHref(note.href, href)]))
+      await writeFile(dest, renderPublishPage(note.title, markdownToHtml(note.body, pageLookup), notes, note.href), 'utf-8')
+    }
+
+    await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes), 'utf-8')
+    shell.showItemInFolder(join(outputPath, 'index.html'))
+    return { ok: true, outputPath, files: notes.length }
+  })
 }
 
-function markdownToHtml(md: string): string {
+function markdownToHtml(md: string, wikilinkLookup = new Map<string, string>()): string {
   let html = md
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -121,7 +171,10 @@ function markdownToHtml(md: string): string {
     .replace(/^- (.+)$/gm, '<li>$1</li>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/\[\[([^\]]+)\]\]/g, '<a href="#">$1</a>')
+    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target, label) => {
+      const href = wikilinkLookup.get(String(target).trim()) || '#'
+      return `<a href="${href}">${label || target}</a>`
+    })
     .replace(/^---$/gm, '<hr>')
 
   html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
@@ -132,4 +185,102 @@ function markdownToHtml(md: string): string {
   }).join('\n')
 
   return html
+}
+
+async function collectPublishFiles(root: string, dir = root): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true })
+  const result: string[] = []
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue
+    const fullPath = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      result.push(...await collectPublishFiles(root, fullPath))
+    } else {
+      result.push(relative(root, fullPath).replace(/\\/g, '/'))
+    }
+  }
+  return result
+}
+
+function stripFrontmatter(content: string): string {
+  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
+}
+
+function extractMarkdownTitle(content: string, relPath: string): string {
+  return content.match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(relPath, '.md')
+}
+
+function renderPublishPage(title: string, bodyHtml: string, notes: { title: string; href: string }[], currentHref: string): string {
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title} — Nexusky Publish</title>
+${publishStyles()}
+</head>
+<body>
+<aside>
+  <a class="brand" href="${relativeHref(currentHref, 'index.html')}">Nexusky</a>
+  ${notes.map((note) => `<a href="${relativeHref(currentHref, note.href)}">${note.title}</a>`).join('\n  ')}
+</aside>
+<main>${bodyHtml}</main>
+</body>
+</html>`
+}
+
+function relativeHref(fromHref: string, toHref: string): string {
+  const fromDir = posix.dirname(fromHref)
+  const rel = fromDir === '.' ? toHref : posix.relative(fromDir, toHref)
+  return rel || posix.basename(toHref)
+}
+
+function renderPublishIndex(notes: { title: string; href: string; relPath: string }[]): string {
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexusky Publish</title>
+${publishStyles()}
+</head>
+<body>
+<aside><a class="brand" href="index.html">Nexusky</a></aside>
+<main>
+  <h1>知识库索引</h1>
+  <p class="muted">${notes.length} 篇已发布笔记</p>
+  <div class="index-list">
+    ${notes.map((note) => `<a class="index-card" href="${note.href}"><strong>${note.title}</strong><span>${note.relPath}</span></a>`).join('\n    ')}
+  </div>
+</main>
+</body>
+</html>`
+}
+
+function publishStyles(): string {
+  return `<style>
+body { margin: 0; display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #18212f; background: #f7f8fb; }
+aside { position: sticky; top: 0; height: 100vh; overflow: auto; box-sizing: border-box; padding: 22px 16px; background: #101622; color: #d7deea; }
+aside a { display: block; padding: 7px 9px; border-radius: 6px; color: #b9c3d6; text-decoration: none; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+aside a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+aside .brand { margin-bottom: 14px; color: #fff; font-weight: 700; font-size: 16px; }
+main { box-sizing: border-box; max-width: 840px; width: 100%; padding: 48px 34px 80px; line-height: 1.75; }
+h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 1.25rem; }
+h2 { margin-top: 2rem; font-size: 1.45rem; }
+h3 { margin-top: 1.5rem; font-size: 1.15rem; }
+a { color: #4f46e5; }
+code { background: #e9ecf3; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+pre { background: #111827; color: #e5e7eb; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 3px solid #6366f1; margin: 1rem 0; padding-left: 1rem; color: #526070; }
+img { max-width: 100%; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+th, td { border: 1px solid #d9dee8; padding: 8px 10px; text-align: left; }
+th { background: #edf0f6; }
+.muted { color: #687386; }
+.index-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 22px; }
+.index-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid #dce1eb; border-radius: 8px; background: #fff; text-decoration: none; color: #18212f; }
+.index-card span { color: #687386; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) { body { display: block; } aside { position: static; height: auto; max-height: 240px; } main { padding: 28px 20px 56px; } }
+</style>`
 }

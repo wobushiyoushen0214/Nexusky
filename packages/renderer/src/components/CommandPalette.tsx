@@ -146,6 +146,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       await window.api.invoke('export:html', { content, title })
       toast('HTML 导出完成', 'success')
     }},
+    { id: 'publish-vault', category: '导出', label: '发布知识库静态站点', description: '将整个 vault 导出为可部署的 HTML 站点', keywords: ['publish', 'site', 'html', 'obsidian'], action: async () => {
+      if (!vaultPath) return
+      const { toast } = await import('../stores/toast-store')
+      const result = await window.api.invoke('export:publish-vault', { vaultPath })
+      if (result.ok) toast(`已发布 ${result.files} 篇笔记`, 'success')
+    }},
     { id: 'share', category: '导出', label: '分享笔记（复制 HTML）', keywords: ['share'], action: async () => {
       if (!content || !currentFilePath) return
       const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
