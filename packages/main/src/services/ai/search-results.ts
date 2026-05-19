@@ -47,6 +47,16 @@ export interface AiNoteBlockSummary {
   }[]
 }
 
+export interface AiNoteTextMatchSummary {
+  title: string
+  filePath: string
+  query: string
+  matches: {
+    line: number
+    context: string
+  }[]
+}
+
 export interface AiTaskResult {
   text: string
   done: boolean
@@ -275,6 +285,21 @@ export function formatNoteBlocksToolResult(summary: AiNoteBlockSummary): string 
     '',
     'Blocks:',
     blocks
+  ].join('\n')
+}
+
+export function formatFindTextInNoteToolResult(summary: AiNoteTextMatchSummary): string {
+  if (summary.matches.length === 0) return `No matches found for "${summary.query}" in ${summary.title} (${summary.filePath}).`
+  const matches = summary.matches.map((match, index) => (
+    `${index + 1}. Line ${match.line}${formatLinkContext(match.context)}`
+  )).join('\n')
+  return [
+    `Title: ${summary.title}`,
+    `Path: ${summary.filePath}`,
+    `Query: ${summary.query}`,
+    '',
+    'Matches:',
+    matches
   ].join('\n')
 }
 

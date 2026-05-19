@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -998,6 +998,22 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'find_text_in_note',
+        description: '在指定笔记内查找文本并返回命中行号。适合定位后再用 read_note_lines 精确读取局部内容。',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '笔记标题、alias、路径或 wikilink' },
+            query: { type: 'string', description: '要在笔记内查找的文本' },
+            limit: { type: 'number', description: '返回命中数量，1-10，默认 5' }
+          },
+          required: ['title', 'query']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'get_vault_overview',
         description: '获取当前知识库的摘要，包括笔记、标签、任务、属性、链接、断链和孤岛笔记数量。',
         parameters: { type: 'object', properties: {} }
@@ -1425,6 +1441,42 @@ graph TD
               chunk: selectedContent.slice(0, 100),
               score: 1
             }]
+          }
+        } catch {
+          return { content: `无法读取笔记「${title}」。` }
+        }
+      }
+      case 'find_text_in_note': {
+        const title = getStringArg(args, 'title')
+        const query = getStringArg(args, 'query').trim()
+        if (!title.trim()) return { content: 'find_text_in_note 缺少 title 参数。请先搜索笔记，或提供要查找的笔记标题。' }
+        if (!query) return { content: 'find_text_in_note 缺少 query 参数。请提供要在笔记中查找的文本。' }
+        const note = findNoteForAiTool(vaultPath, title)
+        if (!note) {
+          const candidates = findNoteCandidatesForAiTool(vaultPath, title)
+          if (candidates.length > 1) {
+            return {
+              content: `找到多个可能的笔记，请用 find_text_in_note 的 title 参数传入精确路径重试：\n${candidates.map((item) => `- ${item.filePath} (${item.title})`).join('\n')}`
+            }
+          }
+          return { content: `未找到标题为「${title}」的笔记。` }
+        }
+        try {
+          const content = readFileSync(note.absolutePath, 'utf-8')
+          const needle = query.toLowerCase()
+          const limit = normalizeToolLimit(args.limit)
+          const matches = content.split('\n')
+            .map((line, index) => ({ line: index + 1, context: line.trim() }))
+            .filter((match) => match.context.toLowerCase().includes(needle))
+            .slice(0, limit)
+          return {
+            content: formatFindTextInNoteToolResult({ title: note.title, filePath: note.filePath, query, matches }),
+            sources: matches.map((match) => ({
+              title: note.title,
+              filePath: note.filePath,
+              chunk: `Line ${match.line}: ${match.context}`.slice(0, 100),
+              score: 1
+            }))
           }
         } catch {
           return { content: `无法读取笔记「${title}」。` }

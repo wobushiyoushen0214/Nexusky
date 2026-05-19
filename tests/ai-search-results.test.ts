@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -126,6 +126,33 @@ describe('formatNoteLinksToolResult', () => {
     })
 
     expect(output).toBe('Title: Solo\nPath: Solo.md\n\nOutgoing:\n(none)\n\nBacklinks:\n(none)\n\nUnlinked Mentions:\n(none)')
+  })
+})
+
+describe('formatFindTextInNoteToolResult', () => {
+  it('formats text matches with line numbers and contexts', () => {
+    const output = formatFindTextInNoteToolResult({
+      title: 'Topic',
+      filePath: 'Topic.md',
+      query: 'needle',
+      matches: [
+        { line: 7, context: 'A line with needle inside.' },
+        { line: 12, context: 'Another Needle line.' }
+      ]
+    })
+
+    expect(output).toBe('Title: Topic\nPath: Topic.md\nQuery: needle\n\nMatches:\n1. Line 7 - A line with needle inside.\n2. Line 12 - Another Needle line.')
+  })
+
+  it('marks empty text matches explicitly', () => {
+    const output = formatFindTextInNoteToolResult({
+      title: 'Topic',
+      filePath: 'Topic.md',
+      query: 'missing',
+      matches: []
+    })
+
+    expect(output).toBe('No matches found for "missing" in Topic (Topic.md).')
   })
 })
 
