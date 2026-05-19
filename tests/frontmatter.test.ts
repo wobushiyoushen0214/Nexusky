@@ -23,6 +23,18 @@ cssclasses:
     })
   })
 
+  it('normalizes hash-prefixed Obsidian frontmatter tags', () => {
+    const props = parseNoteProperties(`---
+tags:
+  - "#project"
+  - active
+---
+# Body
+`)
+
+    expect(props.tags).toEqual(['project', 'active'])
+  })
+
   it('updates known properties while preserving unknown properties', () => {
     const next = updateNoteProperties(`---
 status: draft

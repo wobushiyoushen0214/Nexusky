@@ -1,44 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
-import { useVaultStore } from '../../stores/vault-store'
+import { parseNoteProperties, updateFrontmatterProperty } from '../../utils/frontmatter'
 
-function parseFrontmatterTags(content: string): string[] {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
-  if (!match) return []
-  const yaml = match[1]
-  const tagsLine = yaml.match(/^tags:\s*\[([^\]]*)\]/m)
-  if (tagsLine) {
-    return tagsLine[1].split(',').map((t) => t.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
-  }
-  const tagsBlock = yaml.match(/^tags:\s*\n((?:\s+-\s+.+\n?)*)/m)
-  if (tagsBlock) {
-    return tagsBlock[1].match(/^\s+-\s+(.+)/gm)?.map((l) => l.replace(/^\s+-\s+/, '').trim().replace(/^['"]|['"]$/g, '')) || []
-  }
-  const tagsSingle = yaml.match(/^tags:\s+(.+)$/m)
-  if (tagsSingle) {
-    return tagsSingle[1].split(',').map((t) => t.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
-  }
-  return []
+function normalizeTag(value: string): string {
+  return value.trim().replace(/^#/, '')
 }
 
-function setFrontmatterTags(content: string, tags: string[]): string {
-  const tagsStr = tags.length > 0 ? `tags: [${tags.join(', ')}]` : ''
-  const fmMatch = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/)
-  if (fmMatch) {
-    let yaml = fmMatch[2]
-    // Remove existing tags line(s)
-    yaml = yaml.replace(/^tags:.*(?:\n(?:\s+-\s+.*)*)?$/m, '').replace(/^\n+/gm, (m) => m.length > 1 ? '\n' : m)
-    yaml = yaml.replace(/\n{2,}/g, '\n').trim()
-    if (tagsStr) {
-      yaml = yaml ? `${yaml}\n${tagsStr}` : tagsStr
-    }
-    if (!yaml) {
-      return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
-    }
-    return content.replace(/^---\r?\n[\s\S]*?\r?\n---/, `---\n${yaml}\n---`)
-  }
-  if (!tagsStr) return content
-  return `---\n${tagsStr}\n---\n${content}`
+function normalizeTags(values: string[]): string[] {
+  return Array.from(new Set(values.map(normalizeTag).filter(Boolean)))
 }
 
 export function TagBar() {
@@ -52,7 +21,7 @@ export function TagBar() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setTags(parseFrontmatterTags(content))
+    setTags(parseNoteProperties(content).tags)
   }, [content, currentFilePath])
 
   useEffect(() => {
@@ -62,15 +31,16 @@ export function TagBar() {
   }, [inputVisible])
 
   const updateTags = (newTags: string[]) => {
-    const newContent = setFrontmatterTags(content, newTags)
+    const normalizedTags = normalizeTags(newTags)
+    const newContent = updateFrontmatterProperty(content, 'tags', normalizedTags)
     setContent(newContent)
     setDirty(true)
-    setTags(newTags)
+    setTags(normalizedTags)
     window.dispatchEvent(new CustomEvent('editor-reload-content', { detail: { content: newContent } }))
   }
 
   const addTag = () => {
-    const tag = inputValue.trim()
+    const tag = normalizeTag(inputValue)
     if (tag && !tags.includes(tag)) {
       updateTags([...tags, tag])
     }
