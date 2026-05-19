@@ -7,6 +7,7 @@ import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
 import { formatSearchNotesToolResult } from '../services/ai/search-results'
+import { parseToolArguments } from '../services/ai/tool-arguments'
 import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -28,10 +29,6 @@ function getErrorMessage(error: unknown): string {
 function getStringArg(args: Record<string, unknown>, key: string): string {
   const value = args[key]
   return typeof value === 'string' ? value : ''
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
 export function registerAiIPC(): void {
@@ -990,18 +987,6 @@ graph TD
       }
       default:
         return { content: `未知工具: ${name}` }
-    }
-  }
-
-  function parseToolArguments(raw: string): { args: Record<string, unknown>; error?: string } {
-    try {
-      const parsed = JSON.parse(raw)
-      if (!isRecord(parsed)) {
-        return { args: {}, error: '工具参数必须是 JSON 对象。' }
-      }
-      return { args: parsed }
-    } catch {
-      return { args: {}, error: `工具参数不是有效 JSON: ${raw.slice(0, 200)}` }
     }
   }
 
