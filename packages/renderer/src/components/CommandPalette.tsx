@@ -71,6 +71,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       const path = await window.api.invoke('template:daily-note', { vaultPath })
       if (path) useEditorStore.getState().openFile(path)
     }},
+    { id: 'template-marketplace-pack', category: 'file', label: t('commandPalette.commands.templateMarketplacePack.label'), description: t('commandPalette.commands.templateMarketplacePack.description'), keywords: ['template', 'marketplace', 'community'], action: async () => {
+      const result = await window.api.invoke('template:install-marketplace-pack', undefined)
+      const { toast } = await import('../stores/toast-store')
+      toast(t('commandPalette.toasts.templatesInstalled', { count: result.installed }), result.installed > 0 ? 'success' : 'info')
+    }},
     { id: 'trash', category: 'file', label: t('commandPalette.commands.trash.label'), keywords: ['trash'], action: () => window.dispatchEvent(new CustomEvent('open-trash')) },
     { id: 'import-obsidian', category: 'file', label: t('commandPalette.commands.importObsidian.label'), description: t('commandPalette.commands.importObsidian.description'), keywords: ['obsidian', 'vault', 'import'], action: async () => {
       if (!vaultPath) return

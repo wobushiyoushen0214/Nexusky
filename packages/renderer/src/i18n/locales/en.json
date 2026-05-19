@@ -93,6 +93,7 @@
       "newNote": { "label": "New note" },
       "copyWikilink": { "label": "Copy current note wikilink", "description": "Copy as [[note title]] for pasting into another note" },
       "daily": { "label": "Open daily note" },
+      "templateMarketplacePack": { "label": "Install featured template pack", "description": "Install Zettelkasten, literature, ADR, weekly review, and course templates from the built-in marketplace" },
       "trash": { "label": "Open trash" },
       "importObsidian": { "label": "Import Obsidian Vault", "description": "Import Markdown, attachments, and internal link structure" },
       "search": { "label": "Full-text search" },
@@ -133,6 +134,7 @@
     "toasts": {
       "openNoteFirst": "Open a note first",
       "wikilinkCopied": "Wikilink copied",
+      "templatesInstalled": "Installed {{count}} templates",
       "importDone": "Import complete: {{imported}} files, {{converted}} converted",
       "summarizing": "Generating summary...",
       "summaryInserted": "Summary inserted into current note",

@@ -63,6 +63,20 @@ export interface ThemePackage {
   colors: Record<string, string>
 }
 
+export interface NoteTemplate {
+  id: string
+  name: string
+  content: string
+  description?: string
+  category?: string
+}
+
+export interface TemplateMarketplaceItem extends NoteTemplate {
+  author: string
+  tags: string[]
+  installed: boolean
+}
+
 export interface BacklinkResult {
   sourceTitle: string
   sourcePath: string
@@ -289,8 +303,11 @@ export interface IPCChannelMap {
   'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string }; result: { success: boolean; files: string[]; error?: string } }
   'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number } }
   'template:daily-note': { params: { vaultPath: string }; result: string }
-  'template:get-templates': { params: undefined; result: { id: string; name: string; content: string }[] }
-  'template:save-templates': { params: { templates: { id: string; name: string; content: string }[] }; result: void }
+  'template:get-templates': { params: undefined; result: NoteTemplate[] }
+  'template:save-templates': { params: { templates: NoteTemplate[] }; result: void }
+  'template:get-marketplace': { params: undefined; result: TemplateMarketplaceItem[] }
+  'template:install-marketplace': { params: { templateId: string }; result: { installed: number; templates: NoteTemplate[] } }
+  'template:install-marketplace-pack': { params: undefined; result: { installed: number; templates: NoteTemplate[] } }
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
   'plugins:list': { params: { vaultPath: string }; result: LocalPlugin[] }
   'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }
