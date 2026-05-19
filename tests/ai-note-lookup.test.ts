@@ -35,7 +35,9 @@ describe('findNoteForAiTool', () => {
     indexNote(vaultPath, filePath)
 
     expect(findNoteForAiTool(vaultPath, 'Target')?.filePath).toBe('Folder/Target.md')
+    expect(findNoteForAiTool(vaultPath, 'target')?.filePath).toBe('Folder/Target.md')
     expect(findNoteForAiTool(vaultPath, 'Alias Name')?.filePath).toBe('Folder/Target.md')
+    expect(findNoteForAiTool(vaultPath, 'alias name')?.filePath).toBe('Folder/Target.md')
     expect(findNoteForAiTool(vaultPath, 'Folder/Target.md')?.filePath).toBe('Folder/Target.md')
     expect(findNoteForAiTool(vaultPath, '[[Folder/Target#Heading|label]]')?.filePath).toBe('Folder/Target.md')
   })

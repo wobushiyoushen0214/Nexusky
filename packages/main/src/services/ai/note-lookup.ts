@@ -41,6 +41,9 @@ export function findNoteForAiTool(vaultPath: string, query: string): AiNoteLooku
   const byTitle = db.prepare('SELECT title, file_path FROM notes WHERE title = ? LIMIT 2').all(normalized) as { title: string; file_path: string }[]
   if (byTitle.length === 1) return toResult(vaultPath, byTitle[0])
 
+  const byTitleCaseInsensitive = db.prepare('SELECT title, file_path FROM notes WHERE lower(title) = lower(?) LIMIT 2').all(normalized) as { title: string; file_path: string }[]
+  if (byTitleCaseInsensitive.length === 1) return toResult(vaultPath, byTitleCaseInsensitive[0])
+
   const byAlias = db.prepare(`
     SELECT n.title, n.file_path
     FROM note_aliases a
@@ -49,6 +52,15 @@ export function findNoteForAiTool(vaultPath: string, query: string): AiNoteLooku
     LIMIT 2
   `).all(normalized) as { title: string; file_path: string }[]
   if (byAlias.length === 1) return toResult(vaultPath, byAlias[0])
+
+  const byAliasCaseInsensitive = db.prepare(`
+    SELECT n.title, n.file_path
+    FROM note_aliases a
+    JOIN notes n ON n.id = a.note_id
+    WHERE lower(a.alias) = lower(?)
+    LIMIT 2
+  `).all(normalized) as { title: string; file_path: string }[]
+  if (byAliasCaseInsensitive.length === 1) return toResult(vaultPath, byAliasCaseInsensitive[0])
 
   const pathQuery = normalized.toLowerCase()
   const notes = db.prepare('SELECT title, file_path FROM notes').all() as { title: string; file_path: string }[]
