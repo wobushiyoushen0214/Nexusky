@@ -308,6 +308,8 @@ export interface IPCChannelMap {
   'template:get-marketplace': { params: undefined; result: TemplateMarketplaceItem[] }
   'template:install-marketplace': { params: { templateId: string }; result: { installed: number; templates: NoteTemplate[] } }
   'template:install-marketplace-pack': { params: undefined; result: { installed: number; templates: NoteTemplate[] } }
+  'template:list-community': { params: { vaultPath: string }; result: TemplateMarketplaceItem[] }
+  'template:install-community-pack': { params: { vaultPath: string }; result: { installed: number; templates: NoteTemplate[] } }
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
   'plugins:list': { params: { vaultPath: string }; result: LocalPlugin[] }
   'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }

@@ -1,9 +1,10 @@
 import { ipcMain } from 'electron'
 import { existsSync } from 'fs'
-import { writeFile, mkdir } from 'fs/promises'
+import { writeFile, mkdir, readFile, readdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { store } from '../services/store'
 import { indexNote } from '../services/indexer'
+import type { NoteTemplate, TemplateMarketplaceItem } from '@shared/types/ipc'
 
 export function registerTemplateIPC(): void {
   ipcMain.handle('template:daily-note', async (_event, params: { vaultPath: string }) => {
@@ -47,6 +48,15 @@ export function registerTemplateIPC(): void {
     return installMarketplaceTemplates(marketplaceTemplates.map((template) => template.id))
   })
 
+  ipcMain.handle('template:list-community', async (_event, params: { vaultPath: string }) => {
+    return listCommunityTemplates(params.vaultPath)
+  })
+
+  ipcMain.handle('template:install-community-pack', async (_event, params: { vaultPath: string }) => {
+    const communityTemplates = await listCommunityTemplates(params.vaultPath)
+    return installTemplates(communityTemplates)
+  })
+
   ipcMain.handle('template:save-templates', (_event, params: { templates: Template[] }) => {
     store.set('templates', params.templates)
   })
@@ -66,13 +76,7 @@ export function registerTemplateIPC(): void {
   })
 }
 
-interface Template {
-  id: string
-  name: string
-  content: string
-  description?: string
-  category?: string
-}
+type Template = NoteTemplate
 
 interface MarketplaceTemplate extends Template {
   author: string
@@ -84,15 +88,17 @@ function getTemplates(): Template[] {
 }
 
 function installMarketplaceTemplates(templateIds: string[]): { installed: number; templates: Template[] } {
+  return installTemplates(marketplaceTemplates.filter((template) => templateIds.includes(template.id)))
+}
+
+function installTemplates(installableTemplates: NoteTemplate[]): { installed: number; templates: Template[] } {
   const templates = getTemplates()
   const existingIds = new Set(templates.map((template) => template.id))
   const next = [...templates]
   let installed = 0
 
-  for (const templateId of templateIds) {
-    if (existingIds.has(templateId)) continue
-    const template = marketplaceTemplates.find((item) => item.id === templateId)
-    if (!template) continue
+  for (const template of installableTemplates) {
+    if (existingIds.has(template.id)) continue
     next.push({
       id: template.id,
       name: template.name,
@@ -100,12 +106,59 @@ function installMarketplaceTemplates(templateIds: string[]): { installed: number
       category: template.category,
       content: template.content
     })
-    existingIds.add(templateId)
+    existingIds.add(template.id)
     installed++
   }
 
   if (installed > 0) store.set('templates', next)
   return { installed, templates: next }
+}
+
+function normalizeTemplate(raw: unknown, fallbackId: string): NoteTemplate | null {
+  if (!raw || typeof raw !== 'object') return null
+  const template = raw as Partial<NoteTemplate>
+  const id = typeof template.id === 'string' && template.id.trim() ? template.id.trim() : fallbackId
+  const name = typeof template.name === 'string' && template.name.trim() ? template.name.trim() : id
+  if (!/^[A-Za-z0-9_-]+$/.test(id) || typeof template.content !== 'string' || !template.content.trim()) return null
+  return {
+    id,
+    name,
+    content: template.content,
+    description: typeof template.description === 'string' ? template.description : undefined,
+    category: typeof template.category === 'string' ? template.category : undefined
+  }
+}
+
+async function listCommunityTemplates(vaultPath: string): Promise<TemplateMarketplaceItem[]> {
+  const templatesDir = join(vaultPath, '.nexusky', 'templates')
+  await mkdir(templatesDir, { recursive: true })
+  const entries = await readdir(templatesDir)
+  const installedIds = new Set(getTemplates().map((template) => template.id))
+  const templates: TemplateMarketplaceItem[] = []
+
+  for (const entry of entries) {
+    if (!entry.endsWith('.json')) continue
+    const filePath = join(templatesDir, entry)
+    try {
+      const raw = JSON.parse(await readFile(filePath, 'utf-8')) as unknown
+      const items = raw && typeof raw === 'object' && Array.isArray((raw as { templates?: unknown[] }).templates)
+        ? (raw as { templates: unknown[] }).templates
+        : [raw]
+      items.forEach((item, index) => {
+        const normalized = normalizeTemplate(item, `${entry.replace(/\.json$/i, '')}-${index + 1}`)
+        if (!normalized) return
+        const source = item && typeof item === 'object' ? item as { author?: unknown; tags?: unknown } : {}
+        templates.push({
+          ...normalized,
+          author: typeof source.author === 'string' ? source.author : entry.replace(/\.json$/i, ''),
+          tags: Array.isArray(source.tags) ? source.tags.map(String).filter(Boolean) : [],
+          installed: installedIds.has(normalized.id)
+        })
+      })
+    } catch {}
+  }
+
+  return templates.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 const defaultTemplates: Template[] = [

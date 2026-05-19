@@ -76,6 +76,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       const { toast } = await import('../stores/toast-store')
       toast(t('commandPalette.toasts.templatesInstalled', { count: result.installed }), result.installed > 0 ? 'success' : 'info')
     }},
+    { id: 'template-community-pack', category: 'file', label: t('commandPalette.commands.templateCommunityPack.label'), description: t('commandPalette.commands.templateCommunityPack.description'), keywords: ['template', 'community', 'json'], action: async () => {
+      if (!vaultPath) return
+      const result = await window.api.invoke('template:install-community-pack', { vaultPath })
+      const { toast } = await import('../stores/toast-store')
+      toast(t('commandPalette.toasts.communityTemplatesInstalled', { count: result.installed }), result.installed > 0 ? 'success' : 'info')
+    }},
+    { id: 'template-community-folder', category: 'file', label: t('commandPalette.commands.templateCommunityFolder.label'), description: t('commandPalette.commands.templateCommunityFolder.description'), keywords: ['template', 'community', 'folder'], action: async () => {
+      if (!vaultPath) return
+      await window.api.invoke('template:list-community', { vaultPath })
+      await window.api.invoke('file:reveal', { path: `${vaultPath}/.nexusky/templates` })
+    }},
     { id: 'trash', category: 'file', label: t('commandPalette.commands.trash.label'), keywords: ['trash'], action: () => window.dispatchEvent(new CustomEvent('open-trash')) },
     { id: 'import-obsidian', category: 'file', label: t('commandPalette.commands.importObsidian.label'), description: t('commandPalette.commands.importObsidian.description'), keywords: ['obsidian', 'vault', 'import'], action: async () => {
       if (!vaultPath) return
