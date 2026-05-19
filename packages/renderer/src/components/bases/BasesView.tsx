@@ -34,6 +34,7 @@ export function BasesView() {
   const [selectedTag, setSelectedTag] = useState('')
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState<EditState>(null)
+  const [showGuide, setShowGuide] = useState(false)
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -131,13 +132,21 @@ export function BasesView() {
             {t('bases.summary', { count: rows.length, shown: filteredRows.length })}
           </div>
         </div>
-        <button
-          onClick={loadRows}
-          disabled={loading}
-          style={{ height: 30, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: loading ? 'default' : 'pointer', flexShrink: 0 }}
-        >
-          {loading ? t('bases.loading') : t('bases.refresh')}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={() => setShowGuide((value) => !value)}
+            style={headerButtonStyle}
+          >
+            {t('bases.guide')}
+          </button>
+          <button
+            onClick={loadRows}
+            disabled={loading}
+            style={{ ...headerButtonStyle, cursor: loading ? 'default' : 'pointer' }}
+          >
+            {loading ? t('bases.loading') : t('bases.refresh')}
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: '10px 18px', display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 160px 160px', gap: 8, borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
@@ -158,10 +167,20 @@ export function BasesView() {
         </select>
       </div>
 
+      {showGuide && (
+        <div style={{ margin: '12px 18px 0', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.7, flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('bases.guideTitle')}</div>
+          <div>{t('bases.guideFrontmatter')}</div>
+          <div>{t('bases.guideSearch')}</div>
+          <div>{t('bases.guideEdit')}</div>
+        </div>
+      )}
+
       <div style={{ flex: 1, overflow: 'auto' }}>
         {filteredRows.length === 0 ? (
-          <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center' }}>
-            {loading ? t('bases.loading') : t('bases.empty')}
+          <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
+            <div>{loading ? t('bases.loading') : t('bases.empty')}</div>
+            {!loading && <div style={{ marginTop: 6, fontSize: 12 }}>{t('bases.emptyHint')}</div>}
           </div>
         ) : (
           <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -184,13 +203,14 @@ export function BasesView() {
                       {row.title}
                     </button>
                   </BodyCell>
-                  <ChipCell value={row.properties.tags} onEdit={() => startEdit(row, 'tags', true)} editing={editing?.rowId === row.id && editing.key === 'tags'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
-                  <ChipCell value={row.properties.aliases} onEdit={() => startEdit(row, 'aliases', true)} editing={editing?.rowId === row.id && editing.key === 'aliases'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
-                  <ChipCell value={row.properties.cssclasses} subtle onEdit={() => startEdit(row, 'cssclasses', true)} editing={editing?.rowId === row.id && editing.key === 'cssclasses'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
+                  <ChipCell value={row.properties.tags} editHint={t('bases.editHint')} onEdit={() => startEdit(row, 'tags', true)} editing={editing?.rowId === row.id && editing.key === 'tags'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
+                  <ChipCell value={row.properties.aliases} editHint={t('bases.editHint')} onEdit={() => startEdit(row, 'aliases', true)} editing={editing?.rowId === row.id && editing.key === 'aliases'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
+                  <ChipCell value={row.properties.cssclasses} editHint={t('bases.editHint')} subtle onEdit={() => startEdit(row, 'cssclasses', true)} editing={editing?.rowId === row.id && editing.key === 'cssclasses'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
                   {propertyKeys.map((key) => (
                     <EditableBodyCell
                       key={key}
                       value={valueToText(row.properties[key])}
+                      editHint={t('bases.editHint')}
                       editing={editing?.rowId === row.id && editing.key === key}
                       editValue={editing?.value || ''}
                       onEdit={() => startEdit(row, key, Array.isArray(row.properties[key]))}
@@ -229,6 +249,7 @@ function BodyCell({ children, muted = false }: { children: React.ReactNode; mute
 
 function EditableBodyCell({
   value,
+  editHint,
   editing,
   editValue,
   onEdit,
@@ -237,6 +258,7 @@ function EditableBodyCell({
   onCancel
 }: {
   value: string
+  editHint: string
   editing: boolean
   editValue: string
   onEdit: () => void
@@ -263,7 +285,7 @@ function EditableBodyCell({
   }
 
   return (
-    <td onDoubleClick={onEdit} title="Double click to edit" style={{ padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'text' }}>
+    <td onDoubleClick={onEdit} title={editHint} style={{ padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'text' }}>
       {value || '—'}
     </td>
   )
@@ -271,6 +293,7 @@ function EditableBodyCell({
 
 function ChipCell({
   value,
+  editHint,
   subtle = false,
   onEdit,
   editing,
@@ -280,6 +303,7 @@ function ChipCell({
   onCancel
 }: {
   value: PropertyValue | undefined
+  editHint: string
   subtle?: boolean
   onEdit: () => void
   editing: boolean
@@ -307,7 +331,7 @@ function ChipCell({
     )
   }
   return (
-    <td onDoubleClick={onEdit} title="Double click to edit" style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', cursor: 'text' }}>
+    <td onDoubleClick={onEdit} title={editHint} style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', cursor: 'text' }}>
       <div style={{ display: 'flex', gap: 4, overflow: 'hidden' }}>
         {items.length === 0 ? (
           <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
@@ -332,6 +356,18 @@ const controlStyle: React.CSSProperties = {
   color: 'var(--text-primary)',
   fontSize: 12,
   outline: 'none'
+}
+
+const headerButtonStyle: React.CSSProperties = {
+  height: 30,
+  padding: '0 10px',
+  borderRadius: 6,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  cursor: 'pointer',
+  flexShrink: 0
 }
 
 const cellInputStyle: React.CSSProperties = {

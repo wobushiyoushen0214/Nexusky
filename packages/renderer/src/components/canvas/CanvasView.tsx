@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
+import { toast } from '../../stores/toast-store'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import type { GraphData, PropertyTableRow } from '@shared/types/ipc'
 
@@ -38,6 +39,7 @@ export function CanvasView() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [dragging, setDragging] = useState<DragState | null>(null)
+  const [showGuide, setShowGuide] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef<Record<string, CanvasPosition>>({})
 
@@ -129,6 +131,33 @@ export function CanvasView() {
     if (vaultPath) safeSetJSON(getCanvasStorageKey(vaultPath), next)
   }
 
+  const createCanvasNote = async () => {
+    if (!vaultPath) return
+    const now = new Date()
+    const stamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+      String(now.getHours()).padStart(2, '0'),
+      String(now.getMinutes()).padStart(2, '0')
+    ].join('')
+    let title = `Canvas Note ${stamp}`
+    let path = `${vaultPath}/${title}.md`
+    for (let index = 2; index < 20; index++) {
+      try {
+        await window.api.invoke('file:stat', { path })
+        title = `Canvas Note ${stamp}-${index}`
+        path = `${vaultPath}/${title}.md`
+      } catch {
+        break
+      }
+    }
+    await window.api.invoke('file:create', { path, vaultPath, content: `# ${title}\n\n` })
+    await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+    await loadRows()
+    toast(t('canvas.created'), 'success')
+  }
+
   const openRow = async (row: PropertyTableRow) => {
     if (!vaultPath) return
     setMainView('editor')
@@ -144,14 +173,28 @@ export function CanvasView() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('canvas.searchPlaceholder')} style={controlStyle} />
+          <button onClick={() => setShowGuide((value) => !value)} style={buttonStyle}>{t('canvas.guide')}</button>
+          <button onClick={createCanvasNote} disabled={!vaultPath} style={buttonStyle}>{t('canvas.createNote')}</button>
           <button onClick={resetLayout} style={buttonStyle}>{t('canvas.reset')}</button>
           <button onClick={loadRows} disabled={loading} style={buttonStyle}>{loading ? t('canvas.loading') : t('canvas.refresh')}</button>
         </div>
       </div>
 
+      {showGuide && (
+        <div style={{ margin: '12px 18px 0', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.7, flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('canvas.guideTitle')}</div>
+          <div>{t('canvas.guideDrag')}</div>
+          <div>{t('canvas.guideOpen')}</div>
+          <div>{t('canvas.guideLinks')}</div>
+        </div>
+      )}
+
       <div ref={canvasRef} style={{ flex: 1, overflow: 'auto', position: 'relative', background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
         {filteredRows.length === 0 ? (
-          <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center' }}>{loading ? t('canvas.loading') : t('canvas.empty')}</div>
+          <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
+            <div>{loading ? t('canvas.loading') : t('canvas.empty')}</div>
+            {!loading && <button onClick={createCanvasNote} style={{ ...buttonStyle, marginTop: 10 }}>{t('canvas.createFirst')}</button>}
+          </div>
         ) : (
           <div style={{ position: 'relative', width: 1200, height: Math.max(760, Math.ceil(rows.length / 4) * 180 + 120) }}>
             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
