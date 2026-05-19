@@ -6,6 +6,14 @@ export interface FileEntry {
   mtime?: number
 }
 
+export interface TrashEntry {
+  fileName: string
+  originalName: string
+  originalPath?: string
+  path: string
+  deletedAt?: number
+}
+
 export interface NoteSearchResult {
   id: string
   title: string
@@ -170,7 +178,7 @@ export interface IPCChannelMap {
   'file:restore-history': { params: { snapshotPath: string; targetPath: string }; result: void }
   'file:encrypt': { params: { path: string; password: string }; result: boolean }
   'file:decrypt': { params: { path: string; password: string }; result: { success: boolean; content?: string; error?: string } }
-  'file:list-trash': { params: { vaultPath: string }; result: { fileName: string; originalName: string; path: string }[] }
+  'file:list-trash': { params: { vaultPath: string }; result: TrashEntry[] }
   'file:restore-trash': { params: { trashPath: string; vaultPath: string }; result: void }
   'file:empty-trash': { params: { vaultPath: string }; result: void }
   'export:html': { params: { content: string; title: string }; result: boolean }

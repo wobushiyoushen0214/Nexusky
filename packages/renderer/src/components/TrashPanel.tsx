@@ -2,12 +2,7 @@ import { useState, useEffect } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { ConfirmModal } from './ConfirmModal'
-
-interface TrashItem {
-  fileName: string
-  originalName: string
-  path: string
-}
+import type { TrashEntry } from '@shared/types/ipc'
 
 interface TrashPanelProps {
   open: boolean
@@ -15,7 +10,7 @@ interface TrashPanelProps {
 }
 
 export function TrashPanel({ open, onClose }: TrashPanelProps) {
-  const [items, setItems] = useState<TrashItem[]>([])
+  const [items, setItems] = useState<TrashEntry[]>([])
   const [emptyConfirmOpen, setEmptyConfirmOpen] = useState(false)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
@@ -26,7 +21,7 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
     }
   }, [open, vaultPath])
 
-  const handleRestore = async (item: TrashItem) => {
+  const handleRestore = async (item: TrashEntry) => {
     if (!vaultPath) return
     await window.api.invoke('file:restore-trash', { trashPath: item.path, vaultPath })
     setItems((prev) => prev.filter((i) => i.path !== item.path))
@@ -71,7 +66,12 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
             ) : (
               items.map((item) => (
                 <div key={item.path} style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalName}</span>
+                  <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalName}</span>
+                    {item.originalPath && (
+                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalPath}</span>
+                    )}
+                  </span>
                   <button onClick={() => handleRestore(item)} style={{ fontSize: 10, color: '#4ade80', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}>恢复</button>
                 </div>
               ))

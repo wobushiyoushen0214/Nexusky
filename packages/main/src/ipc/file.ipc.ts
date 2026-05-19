@@ -5,7 +5,7 @@ import { join, dirname, extname, relative, basename, resolve, normalize } from '
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
 import { getDatabase } from '../services/database'
 import { indexNote } from '../services/indexer'
-import type { FileEntry } from '@shared/types/ipc'
+import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
 function isPathSafe(filePath: string, vaultPath?: string): boolean {
   if (!vaultPath) return true
@@ -43,6 +43,32 @@ async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> 
       }
     }
   } catch {}
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function parseTrashOriginalName(fileName: string): string {
+  const parts = fileName.split('_')
+  return parts.length >= 3 ? parts.slice(2).join('_') : fileName
+}
+
+async function getUniqueRestorePath(destPath: string): Promise<string> {
+  if (!(await pathExists(destPath))) return destPath
+  const dir = dirname(destPath)
+  const ext = extname(destPath)
+  const base = basename(destPath, ext)
+  for (let i = 1; i < 1000; i++) {
+    const candidate = join(dir, `${base} restored ${i}${ext}`)
+    if (!(await pathExists(candidate))) return candidate
+  }
+  return join(dir, `${base} restored ${Date.now()}${ext}`)
 }
 
 let writeNotifyTimer: ReturnType<typeof setTimeout> | null = null
@@ -110,6 +136,8 @@ export function registerFileIPC(): void {
       const rand = Math.random().toString(36).slice(2, 6)
       const trashPath = join(trashDir, `${timestamp}_${rand}_${fileName}`)
       await rename(params.path, trashPath)
+      const originalPath = relative(params.vaultPath, params.path).replace(/\\/g, '/')
+      await writeFile(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
     } else {
       await rm(params.path, { recursive: true })
     }
@@ -199,15 +227,25 @@ export function registerFileIPC(): void {
     const trashDir = join(params.vaultPath, '.trash')
     try {
       const entries = await readdir(trashDir)
-      return entries
+      const trashEntries: TrashEntry[] = []
+      for (const e of entries
         .filter((e) => e.endsWith('.md'))
         .sort()
-        .reverse()
-        .map((e) => {
-          const underscoreIdx = e.indexOf('_')
-          const originalName = underscoreIdx > 0 ? e.slice(underscoreIdx + 1) : e
-          return { fileName: e, originalName, path: join(trashDir, e) }
+        .reverse()) {
+        const trashPath = join(trashDir, e)
+        let metadata: { originalPath?: string; deletedAt?: number } = {}
+        try {
+          metadata = JSON.parse(await readFile(`${trashPath}.json`, 'utf-8')) as { originalPath?: string; deletedAt?: number }
+        } catch {}
+        trashEntries.push({
+          fileName: e,
+          originalName: metadata.originalPath?.split('/').pop() || parseTrashOriginalName(e),
+          originalPath: metadata.originalPath,
+          path: trashPath,
+          deletedAt: metadata.deletedAt
         })
+      }
+      return trashEntries
     } catch {
       return []
     }
@@ -215,11 +253,17 @@ export function registerFileIPC(): void {
 
   ipcMain.handle('file:restore-trash', async (_event, params: { trashPath: string; vaultPath: string }) => {
     const fileName = params.trashPath.split(/[\\/]/).pop() || ''
-    const underscoreIdx = fileName.indexOf('_')
-    const originalName = underscoreIdx > 0 ? fileName.slice(underscoreIdx + 1) : fileName
-    const destPath = join(params.vaultPath, originalName)
-    await mkdir(dirname(destPath), { recursive: true })
-    await rename(params.trashPath, destPath)
+    let originalPath = parseTrashOriginalName(fileName)
+    try {
+      const metadata = JSON.parse(await readFile(`${params.trashPath}.json`, 'utf-8')) as { originalPath?: string }
+      if (metadata.originalPath) originalPath = metadata.originalPath
+    } catch {}
+    const destPath = join(params.vaultPath, originalPath)
+    if (!isPathSafe(destPath, params.vaultPath)) throw new Error('恢复路径不在当前笔记空间内')
+    const uniqueDestPath = await getUniqueRestorePath(destPath)
+    await mkdir(dirname(uniqueDestPath), { recursive: true })
+    await rename(params.trashPath, uniqueDestPath)
+    await rm(`${params.trashPath}.json`, { force: true })
   })
 
   ipcMain.handle('file:empty-trash', async (_event, params: { vaultPath: string }) => {
