@@ -15,6 +15,7 @@ const DEFAULT_BINDINGS: KeyBinding[] = [
   { id: 'search', label: '全文搜索', defaultKey: 'Ctrl+Shift+F', customKey: null },
   { id: 'graph', label: '知识图谱', defaultKey: 'Ctrl+G', customKey: null },
   { id: 'bases', label: '属性数据库', defaultKey: 'Ctrl+Shift+D', customKey: null },
+  { id: 'canvas', label: '自由画布', defaultKey: 'Ctrl+Shift+C', customKey: null },
   { id: 'chat', label: 'AI 对话', defaultKey: 'Ctrl+L', customKey: null },
   { id: 'outline', label: '大纲', defaultKey: 'Ctrl+E', customKey: null },
   { id: 'settings', label: '设置', defaultKey: 'Ctrl+,', customKey: null },

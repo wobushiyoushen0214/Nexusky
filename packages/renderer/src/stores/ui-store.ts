@@ -6,7 +6,7 @@ type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'bases'
+type MainView = 'editor' | 'graph' | 'bases' | 'canvas'
 type Language = 'zh-CN' | 'en'
 
 const WORKSPACE_KEYS = {
@@ -16,7 +16,7 @@ const WORKSPACE_KEYS = {
 }
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas']
 
 interface UIState {
   rightPanel: Panel

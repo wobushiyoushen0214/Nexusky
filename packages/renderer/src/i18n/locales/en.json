@@ -31,6 +31,7 @@
     "chat": "AI Chat",
     "graph": "Knowledge Graph",
     "bases": "Property Database",
+    "canvas": "Canvas",
     "outline": "Outline",
     "properties": "Properties",
     "tags": "Tags",
@@ -87,6 +88,16 @@
     "cssclasses": "CSS Classes",
     "updated": "Updated",
     "path": "Path"
+  },
+  "canvas": {
+    "title": "Canvas",
+    "summary": "{{count}} note cards, showing {{shown}}",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "reset": "Reset",
+    "searchPlaceholder": "Search note cards...",
+    "empty": "No matching note cards",
+    "noTags": "No tags"
   },
   "common": {
     "indexing": "Indexing note relations...",

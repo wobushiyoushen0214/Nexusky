@@ -21,6 +21,7 @@ import { safeGet } from './utils/storage'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
 const BasesView = lazy(() => import('./components/bases/BasesView').then((m) => ({ default: m.BasesView })))
+const CanvasView = lazy(() => import('./components/canvas/CanvasView').then((m) => ({ default: m.CanvasView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
 const Settings = lazy(() => import('./components/settings/Settings').then((m) => ({ default: m.Settings })))
 const SearchPanel = lazy(() => import('./components/SearchPanel').then((m) => ({ default: m.SearchPanel })))
@@ -203,6 +204,11 @@ export default function App() {
         setMainView('bases')
         if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
       }
+      if (matchesShortcut(e, getKey('canvas'))) {
+        e.preventDefault()
+        setMainView('canvas')
+        if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
+      }
       if (matchesShortcut(e, getKey('chat'))) {
         e.preventDefault()
         toggleRightPanel('chat')
@@ -337,6 +343,10 @@ export default function App() {
             {mainView === 'editor' ? <Editor /> : mainView === 'bases' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><BasesView /></Suspense>
+              </div>
+            ) : mainView === 'canvas' ? (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Suspense fallback={null}><CanvasView /></Suspense>
               </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>

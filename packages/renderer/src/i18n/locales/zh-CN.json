@@ -31,6 +31,7 @@
     "chat": "AI 对话",
     "graph": "知识图谱",
     "bases": "属性数据库",
+    "canvas": "自由画布",
     "outline": "文档大纲",
     "properties": "属性",
     "tags": "标签",
@@ -87,6 +88,16 @@
     "cssclasses": "CSS 类",
     "updated": "更新",
     "path": "路径"
+  },
+  "canvas": {
+    "title": "自由画布",
+    "summary": "共 {{count}} 张笔记卡片，当前显示 {{shown}} 张",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "reset": "重排",
+    "searchPlaceholder": "搜索笔记卡片...",
+    "empty": "没有匹配的笔记卡片",
+    "noTags": "无标签"
   },
   "common": {
     "indexing": "正在索引笔记关系...",

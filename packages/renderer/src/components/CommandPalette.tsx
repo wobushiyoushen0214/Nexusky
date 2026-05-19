@@ -98,6 +98,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       setMainView('graph')
     }},
     { id: 'bases', category: '检索', label: '打开属性数据库', description: '按 frontmatter 属性浏览、筛选和排序笔记', keywords: ['bases', 'database', 'properties', 'obsidian'], action: () => setMainView('bases') },
+    { id: 'canvas', category: '知识图谱', label: '打开自由画布', description: '在可拖拽画布中整理笔记卡片', keywords: ['canvas', 'board', 'obsidian'], action: () => setMainView('canvas') },
     { id: 'graph-current', category: '知识图谱', label: '为当前笔记生成 AI 图谱', description: '基于当前笔记推断概念关系', keywords: ['graph', 'mermaid'], action: () => {
       if (currentFilePath) window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: currentFilePath, isDirectory: false } }))
     }},
