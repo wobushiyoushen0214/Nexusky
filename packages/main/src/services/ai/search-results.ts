@@ -82,6 +82,12 @@ export interface AiPropertyValueSummary {
   samplePaths: string[]
 }
 
+export interface AiMissingPropertyNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+}
+
 export interface AiRecentNoteResult {
   title: string
   filePath: string
@@ -296,6 +302,16 @@ export function formatPropertyValuesToolResult(key: string, values: AiPropertyVa
     `Examples: ${item.samplePaths.join(', ')}`
   ].join('\n')).join('\n\n')
   return `Property Values: ${key}\n\n${body}`
+}
+
+export function formatMissingPropertyNotesToolResult(key: string, notes: AiMissingPropertyNoteResult[]): string {
+  if (notes.length === 0) return `No notes missing property ${key}.`
+  const body = notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+  return `Missing Property: ${key}\n\n${body}`
 }
 
 export function formatPropertyValue(value: unknown): string {

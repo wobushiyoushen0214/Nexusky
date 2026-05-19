@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -49,6 +49,12 @@ function hasPropertyTags(value: unknown): boolean {
 function getPropertyTextValues(value: unknown): string[] {
   const values = Array.isArray(value) ? value : [value]
   return values.map((item) => formatPropertyValue(item).trim()).filter((item) => item.length > 0)
+}
+
+function hasNonEmptyProperty(properties: Record<string, unknown>, key: string): boolean {
+  const matchedKey = Object.keys(properties).find((propertyKey) => propertyKey.toLowerCase() === key.toLowerCase())
+  if (!matchedKey) return false
+  return getPropertyTextValues(properties[matchedKey]).length > 0
 }
 
 function normalizeMinCharacters(value: unknown): number {
@@ -1134,6 +1140,22 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_notes_missing_property',
+        description: '列出缺少指定结构化属性或属性值为空的笔记，适合补齐 status、source、priority 等元数据。',
+        parameters: {
+          type: 'object',
+          properties: {
+            key: { type: 'string', description: '属性键，例如 status、source、priority' },
+            query: { type: 'string', description: '按标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          },
+          required: ['key']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_recent_notes',
         description: '列出最近更新的笔记，可按标题或路径过滤。',
         parameters: {
@@ -1594,6 +1616,26 @@ graph TD
           .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
           .slice(0, limit)
         return { content: formatPropertyValuesToolResult(key, summaries) }
+      }
+      case 'list_notes_missing_property': {
+        const key = getStringArg(args, 'key').trim()
+        if (!key) return { content: 'list_notes_missing_property 缺少 key 参数。请提供要检查的属性键。' }
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getPropertyRows(vaultPath)
+          .filter((row) => !hasNonEmptyProperty(row.properties, key))
+          .filter((row) => !query || [row.title, row.filePath].some((value) => value.toLowerCase().includes(query)))
+          .map((row) => ({ title: row.title, filePath: row.filePath, updatedAt: row.updatedAt }))
+          .slice(0, limit)
+        return {
+          content: formatMissingPropertyNotesToolResult(key, notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Missing property: ${key}`,
+            score: 1
+          }))
+        }
       }
       case 'list_recent_notes': {
         const query = getStringArg(args, 'query').trim().toLowerCase()

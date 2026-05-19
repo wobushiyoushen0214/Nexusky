@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -239,6 +239,18 @@ describe('property tool formatting', () => {
 
   it('marks empty property value results explicitly', () => {
     expect(formatPropertyValuesToolResult('status', [])).toBe('No values found for property status.')
+  })
+
+  it('formats notes missing a property with paths and timestamps', () => {
+    const output = formatMissingPropertyNotesToolResult('status', [
+      { title: 'Inbox', filePath: 'Inbox.md', updatedAt: 1700000000000 }
+    ])
+
+    expect(output).toBe('Missing Property: status\n\n1. **Inbox**\nPath: Inbox.md\nUpdated: 2023-11-14T22:13:20.000Z')
+  })
+
+  it('marks empty missing-property results explicitly', () => {
+    expect(formatMissingPropertyNotesToolResult('status', [])).toBe('No notes missing property status.')
   })
 })
 
