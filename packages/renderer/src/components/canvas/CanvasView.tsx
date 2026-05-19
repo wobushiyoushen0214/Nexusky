@@ -473,6 +473,7 @@ export function CanvasView() {
         focusY: position.y + CARD_HEIGHT / 2
       }
     }
+    if (query.trim()) setQuery('')
     await loadRows({ filePath: path.slice(vaultPath.length + 1), position })
     toast(t('canvas.created'), 'success')
   }
