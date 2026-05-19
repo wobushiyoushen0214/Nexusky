@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions, ToolCallEvent, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
+import { parseToolArguments } from './tool-arguments'
 
 type AnthropicImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
 
@@ -33,11 +34,7 @@ function contentToString(content: ChatMessage['content']): string {
 }
 
 function parseToolInput(argumentsJson: string): unknown {
-  try {
-    return JSON.parse(argumentsJson)
-  } catch {
-    return {}
-  }
+  return parseToolArguments(argumentsJson).args
 }
 
 function toAnthropicMessages(messages: ChatMessage[]): Anthropic.MessageParam[] {
