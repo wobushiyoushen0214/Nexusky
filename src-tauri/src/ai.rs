@@ -322,6 +322,184 @@ fn memory_path(vault_path: &str, note_id: &str) -> Result<PathBuf, String> {
     Ok(dir.join(format!("{note_id}.json")))
 }
 
+fn next_kanban_id(prefix: &str, index: usize) -> String {
+    format!("{prefix}-{}-{index}", chrono::Utc::now().timestamp_micros())
+}
+
+fn normalize_kanban_plan(value: Value) -> Value {
+    let source = value.as_object().cloned().unwrap_or_default();
+    let tasks = source
+        .get("tasks")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|task| {
+            let title = task.get("title").and_then(Value::as_str)?.trim();
+            if title.is_empty() {
+                return None;
+            }
+            let priority = task
+                .get("priority")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+                .clamp(0, 3);
+            Some(json!({
+              "title": title,
+              "description": task.get("description").and_then(Value::as_str).unwrap_or("").trim(),
+              "priority": priority,
+              "dueDate": task.get("dueDate").and_then(Value::as_str)
+            }))
+        })
+        .take(12)
+        .collect::<Vec<_>>();
+    let relations = source
+        .get("relations")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|relation| {
+            let source_index = relation.get("sourceIndex").and_then(Value::as_i64)?;
+            let target_index = relation.get("targetIndex").and_then(Value::as_i64)?;
+            let relation_type = relation
+                .get("relationType")
+                .and_then(Value::as_str)
+                .filter(|kind| ["blocks", "depends_on", "related"].contains(kind))
+                .unwrap_or("related");
+            Some(json!({
+              "sourceIndex": source_index,
+              "targetIndex": target_index,
+              "relationType": relation_type
+            }))
+        })
+        .collect::<Vec<_>>();
+    json!({ "tasks": tasks, "relations": relations })
+}
+
+fn first_kanban_column(conn: &Connection) -> Result<String, String> {
+    if let Ok(id) = conn.query_row(
+        "SELECT id FROM kanban_columns ORDER BY sort_order ASC LIMIT 1",
+        [],
+        |row| row.get::<_, String>(0),
+    ) {
+        return Ok(id);
+    }
+    conn.execute(
+        "INSERT OR IGNORE INTO kanban_columns (id, name, sort_order) VALUES ('todo', '待办', 0)",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok("todo".into())
+}
+
+fn create_kanban_from_plan(
+    vault_path: &str,
+    column_id: &str,
+    plan: &Value,
+    source_note_id: Option<&str>,
+    source_file_path: Option<&str>,
+) -> Result<(Vec<Value>, Vec<Value>), String> {
+    let conn = open_index(vault_path)?;
+    let max_order = conn
+        .query_row(
+            "SELECT MAX(sort_order) FROM kanban_tasks WHERE column_id = ?1",
+            params![column_id],
+            |row| row.get::<_, Option<i64>>(0),
+        )
+        .map_err(|e| e.to_string())?
+        .unwrap_or(-1);
+    let mut next_order = max_order + 1;
+    let mut created = Vec::new();
+    for (index, task) in plan
+        .get("tasks")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .enumerate()
+    {
+        let id = next_kanban_id("task", index);
+        let now = chrono::Utc::now().timestamp();
+        let title = task.get("title").and_then(Value::as_str).unwrap_or("");
+        let description = task
+            .get("description")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let priority = task.get("priority").and_then(Value::as_i64).unwrap_or(0);
+        let due_date = task.get("dueDate").and_then(Value::as_str);
+        conn.execute(
+            "INSERT INTO kanban_tasks (id, column_id, title, description, sort_order, priority, due_date, source_note_id, source_file_path, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            params![id, column_id, title, description, next_order, priority, due_date, source_note_id, source_file_path, now, now],
+        )
+        .map_err(|e| e.to_string())?;
+        created.push(json!({
+          "id": id,
+          "columnId": column_id,
+          "title": title,
+          "description": description,
+          "sortOrder": next_order,
+          "priority": priority,
+          "dueDate": due_date,
+          "sourceNoteId": source_note_id,
+          "sourceFilePath": source_file_path,
+          "createdAt": now,
+          "updatedAt": now
+        }));
+        next_order += 1;
+    }
+
+    let mut relations = Vec::new();
+    for (index, relation) in plan
+        .get("relations")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .enumerate()
+    {
+        let source_index = relation
+            .get("sourceIndex")
+            .and_then(Value::as_i64)
+            .unwrap_or(-1) as usize;
+        let target_index = relation
+            .get("targetIndex")
+            .and_then(Value::as_i64)
+            .unwrap_or(-1) as usize;
+        let Some(source_id) = created
+            .get(source_index)
+            .and_then(|task| task.get("id"))
+            .and_then(Value::as_str)
+        else {
+            continue;
+        };
+        let Some(target_id) = created
+            .get(target_index)
+            .and_then(|task| task.get("id"))
+            .and_then(Value::as_str)
+        else {
+            continue;
+        };
+        if source_id == target_id {
+            continue;
+        }
+        let relation_type = relation
+            .get("relationType")
+            .and_then(Value::as_str)
+            .unwrap_or("related");
+        let id = next_kanban_id("rel", index);
+        conn.execute(
+            "INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?1, ?2, ?3, ?4)",
+            params![id, source_id, target_id, relation_type],
+        )
+        .map_err(|e| e.to_string())?;
+        relations.push(json!({
+          "id": id,
+          "sourceTaskId": source_id,
+          "targetTaskId": target_id,
+          "relationType": relation_type
+        }));
+    }
+
+    Ok((created, relations))
+}
+
 pub fn handle(app: &AppHandle, channel: &str, params: Value) -> Result<Option<Value>, String> {
     match channel {
         "ai:chat" | "ai:chat-agent" => {
@@ -838,12 +1016,160 @@ Output the modified complete Markdown text directly. The first character of your
             );
             Ok(Some(json!({ "success": true, "files": created_files })))
         }
-        "kanban:ai-analyze" => Ok(Some(
-            json!({ "summary": "Tauri kanban AI analysis is not migrated yet" }),
-        )),
-        "kanban:ai-breakdown-task" | "kanban:ai-from-note" => Ok(Some(
-            json!({ "tasks": [], "relations": [], "summary": "Tauri kanban AI is not migrated yet" }),
-        )),
+        "kanban:ai-analyze" => {
+            let vault_path = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let board = json!({
+              "columns": crate::db::handle("kanban:get-columns", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([])),
+              "tasks": crate::db::handle("kanban:get-tasks", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([])),
+              "relations": crate::db::handle("kanban:get-relations", json!({ "vaultPath": vault_path })).ok().flatten().unwrap_or_else(|| json!([]))
+            });
+            let summary = run_chat(vec![
+                json!({ "role": "system", "content": "你是项目管理助手。请根据看板状态给出简洁的项目进度总结、风险、建议的处理顺序。输出中文，使用短段落和项目符号。" }),
+                json!({ "role": "user", "content": serde_json::to_string_pretty(&board).unwrap_or_default() }),
+            ])?;
+            Ok(Some(json!({ "summary": summary })))
+        }
+        "kanban:ai-breakdown-task" => {
+            let vault_path = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let _ = crate::db::handle("kanban:get-columns", json!({ "vaultPath": vault_path }));
+            let conn = open_index(vault_path)?;
+            let target_column_id = params
+                .get("columnId")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .unwrap_or(first_kanban_column(&conn)?);
+            let plan = if let Some(plan) = params.get("plan") {
+                normalize_kanban_plan(plan.clone())
+            } else {
+                let raw = run_chat(vec![
+                    json!({ "role": "system", "content": "你是任务拆解助手。把输入的大任务拆成 3-8 个可执行子任务，并建立依赖关系。只输出 JSON，不要 Markdown。格式：{\"tasks\":[{\"title\":\"任务名\",\"description\":\"说明\",\"priority\":0,\"dueDate\":null}],\"relations\":[{\"sourceIndex\":0,\"targetIndex\":1,\"relationType\":\"blocks|depends_on|related\"}]}" }),
+                    json!({ "role": "user", "content": format!("大任务：{}\n说明：{}", params.get("title").and_then(Value::as_str).unwrap_or(""), params.get("description").and_then(Value::as_str).unwrap_or("")) }),
+                ])?;
+                normalize_kanban_plan(
+                    extract_json_value(&raw)
+                        .unwrap_or_else(|| json!({ "tasks": [], "relations": [] })),
+                )
+            };
+            if params
+                .get("preview")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+            {
+                return Ok(Some(json!({
+                  "plan": plan,
+                  "tasks": plan.get("tasks").cloned().unwrap_or_else(|| json!([])),
+                  "relations": plan.get("relations").cloned().unwrap_or_else(|| json!([])),
+                  "summary": format!("将生成 {} 个子任务", plan.get("tasks").and_then(Value::as_array).map(Vec::len).unwrap_or(0))
+                })));
+            }
+            let (created, mut relations) =
+                create_kanban_from_plan(vault_path, &target_column_id, &plan, None, None)?;
+            if let Some(parent_task_id) = params.get("taskId").and_then(Value::as_str) {
+                let conn = open_index(vault_path)?;
+                for (index, task) in created.iter().enumerate() {
+                    let Some(target_id) = task.get("id").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    let id = next_kanban_id("rel-parent", index);
+                    conn.execute(
+                        "INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?1, ?2, ?3, 'related')",
+                        params![id, parent_task_id, target_id],
+                    )
+                    .map_err(|e| e.to_string())?;
+                    relations.push(json!({
+                      "id": id,
+                      "sourceTaskId": parent_task_id,
+                      "targetTaskId": target_id,
+                      "relationType": "related"
+                    }));
+                }
+            }
+            Ok(Some(json!({
+              "tasks": created,
+              "relations": relations,
+              "summary": format!("已生成 {} 个子任务", created.len())
+            })))
+        }
+        "kanban:ai-from-note" => {
+            let vault_path = params
+                .get("vaultPath")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let file_path = params.get("filePath").and_then(Value::as_str).unwrap_or("");
+            let _ = crate::db::handle(
+                "db:index-file",
+                json!({ "vaultPath": vault_path, "filePath": file_path }),
+            );
+            let conn = open_index(vault_path)?;
+            let target_column_id = params
+                .get("columnId")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .unwrap_or(first_kanban_column(&conn)?);
+            let rel_path = Path::new(file_path)
+                .strip_prefix(vault_path)
+                .ok()
+                .map(|path| path.to_string_lossy().replace('\\', "/"))
+                .unwrap_or_else(|| file_path.replace('\\', "/"))
+                .trim_start_matches('/')
+                .to_string();
+            let note = conn
+                .query_row(
+                    "SELECT id, title FROM notes WHERE file_path = ?1",
+                    params![rel_path],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                )
+                .ok();
+            let content = params
+                .get("content")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .or_else(|| fs::read_to_string(file_path).ok())
+                .unwrap_or_default();
+            let plan = if let Some(plan) = params.get("plan") {
+                normalize_kanban_plan(plan.clone())
+            } else {
+                let raw = run_chat(vec![
+                    json!({ "role": "system", "content": "你是任务提取助手。请从笔记中提取真正需要执行的待办事项，忽略普通描述和已完成事项。只输出 JSON，不要 Markdown。格式：{\"tasks\":[{\"title\":\"任务名\",\"description\":\"上下文\",\"priority\":0,\"dueDate\":null}],\"relations\":[{\"sourceIndex\":0,\"targetIndex\":1,\"relationType\":\"blocks|depends_on|related\"}]}" }),
+                    json!({ "role": "user", "content": format!("笔记：{}\n\n{}", note.as_ref().map(|(_, title)| title.as_str()).unwrap_or(&rel_path), content.chars().take(8000).collect::<String>()) }),
+                ])?;
+                normalize_kanban_plan(
+                    extract_json_value(&raw)
+                        .unwrap_or_else(|| json!({ "tasks": [], "relations": [] })),
+                )
+            };
+            if params
+                .get("preview")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+            {
+                return Ok(Some(json!({
+                  "plan": plan,
+                  "tasks": plan.get("tasks").cloned().unwrap_or_else(|| json!([])),
+                  "relations": plan.get("relations").cloned().unwrap_or_else(|| json!([])),
+                  "summary": format!("将从笔记提取 {} 个任务", plan.get("tasks").and_then(Value::as_array).map(Vec::len).unwrap_or(0))
+                })));
+            }
+            let note_id = note.as_ref().map(|(id, _)| id.as_str());
+            let (created, relations) = create_kanban_from_plan(
+                vault_path,
+                &target_column_id,
+                &plan,
+                note_id,
+                Some(&rel_path),
+            )?;
+            Ok(Some(json!({
+              "tasks": created,
+              "relations": relations,
+              "summary": format!("已从笔记提取 {} 个任务", created.len())
+            })))
+        }
         _ => Ok(None),
     }
 }
