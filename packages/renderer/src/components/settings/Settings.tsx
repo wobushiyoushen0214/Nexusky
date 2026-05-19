@@ -1189,7 +1189,7 @@ function KeyBindingsTab() {
           </div>
         ))}
       </div>
-      <p style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>点击快捷键按钮后按下新组合键即可修改。修改后需重启应用生效。</p>
+      <p style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>点击快捷键按钮后按下新组合键即可修改。全局快捷键会立即生效。</p>
     </div>
   )
 }

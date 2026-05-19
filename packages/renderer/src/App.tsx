@@ -4,6 +4,7 @@ import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
 import { useSyncStore } from './stores/sync-store'
+import { useKeyBindingStore } from './stores/keybinding-store'
 import { toast } from './stores/toast-store'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { ActivityBar } from './components/sidebar/ActivityBar'
@@ -34,6 +35,27 @@ const CommandPalette = lazy(() => import('./components/CommandPalette').then((m)
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
+
+function normalizeShortcutKey(key: string): string {
+  if (key === ' ') return 'Space'
+  if (key === 'Escape') return 'Esc'
+  return key.length === 1 ? key.toUpperCase() : key
+}
+
+function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
+  if (!shortcut) return false
+  const parts = shortcut.split('+').map((part) => part.trim()).filter(Boolean)
+  const key = parts.find((part) => !['Ctrl', 'Shift', 'Alt'].includes(part))
+  const wantsCtrl = parts.includes('Ctrl')
+  const wantsShift = parts.includes('Shift')
+  const wantsAlt = parts.includes('Alt')
+  return (
+    normalizeShortcutKey(e.key) === key &&
+    (e.ctrlKey || e.metaKey) === wantsCtrl &&
+    e.shiftKey === wantsShift &&
+    e.altKey === wantsAlt
+  )
+}
 
 function flatMdPaths(entries: FileEntry[]): string[] {
   const result: string[] = []
@@ -159,13 +181,13 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey
+      const getKey = useKeyBindingStore.getState().getKey
 
-      if (mod && (e.key === 'o' || e.key === 'p') && !e.shiftKey) {
+      if (matchesShortcut(e, getKey('quick-switch'))) {
         e.preventDefault()
         setQuickSwitcherOpen(true)
       }
-      if (mod && (e.key === 'g' || e.key === 'G')) {
+      if (matchesShortcut(e, getKey('graph'))) {
         e.preventDefault()
         const state = useUIStore.getState()
         if (state.mainView === 'graph') {
@@ -176,40 +198,45 @@ export default function App() {
           if (!state.sidebarCollapsed) toggleSidebar()
         }
       }
-      if (mod && e.key === 'l') {
+      if (matchesShortcut(e, getKey('bases'))) {
+        e.preventDefault()
+        setMainView('bases')
+        if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
+      }
+      if (matchesShortcut(e, getKey('chat'))) {
         e.preventDefault()
         toggleRightPanel('chat')
       }
-      if (mod && e.key === 'e' && !e.shiftKey) {
+      if (matchesShortcut(e, getKey('outline'))) {
         e.preventDefault()
         toggleRightPanel('outline')
       }
-      if (mod && (e.key === ',' || e.code === 'Comma')) {
+      if (matchesShortcut(e, getKey('settings'))) {
         e.preventDefault()
         setSettingsOpen(true)
       }
-      if (mod && e.shiftKey && e.key === 'F') {
+      if (matchesShortcut(e, getKey('search'))) {
         e.preventDefault()
         setSearchOpen(true)
       }
-      if (mod && e.shiftKey && e.key === 'B') {
+      if (matchesShortcut(e, getKey('sidebar'))) {
         e.preventDefault()
         toggleSidebar()
       }
-      if (mod && e.shiftKey && e.key === 'P') {
+      if (matchesShortcut(e, getKey('command-palette'))) {
         e.preventDefault()
         setCommandPaletteOpen(true)
       }
-      if (mod && e.key === 'n' && !e.shiftKey) {
+      if (matchesShortcut(e, getKey('new-note'))) {
         e.preventDefault()
         window.dispatchEvent(new CustomEvent('create-new-note'))
       }
-      if (mod && e.shiftKey && e.key === 'S') {
+      if (matchesShortcut(e, getKey('sync'))) {
         e.preventDefault()
         const vault = useVaultStore.getState().vaultPath
         if (vault) window.api.invoke('cloud:sync', { vaultPath: vault })
       }
-      if (e.key === 'F11' || (mod && e.shiftKey && e.key === 'Enter')) {
+      if (matchesShortcut(e, getKey('focus'))) {
         e.preventDefault()
         toggleFocusMode()
       }
