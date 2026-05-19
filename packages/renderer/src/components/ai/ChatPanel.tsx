@@ -571,6 +571,52 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     executeBatchGenerate(pendingBatch.instruction, targetDir)
   }
 
+  const collectAttachmentContext = async (): Promise<string> => {
+    let contextPrefix = ''
+    if (attachedNotes.length > 0 && vaultPath) {
+      for (const note of attachedNotes) {
+        try {
+          const fullPath = note.filePath.startsWith('/') || note.filePath.includes(':')
+            ? note.filePath
+            : `${vaultPath}/${note.filePath}`
+          const content = await window.api.invoke('file:read', { path: fullPath })
+          contextPrefix += `[笔记: ${note.title}]\n${content}\n\n`
+        } catch {}
+      }
+      setAttachedNotes([])
+    }
+    if (attachedSelections.length > 0) {
+      for (const sel of attachedSelections) {
+        contextPrefix += `[选中片段: ${sel.source}]\n${sel.text}\n\n`
+      }
+      setAttachedSelections([])
+    }
+    return contextPrefix
+  }
+
+  const applyChatAttachments = (chatMessages: IPCChatMessage[], userContent: string, contextPrefix: string): IPCChatMessage[] => {
+    const nextMessages = [...chatMessages]
+    if (contextPrefix) {
+      nextMessages[nextMessages.length - 1] = {
+        role: 'user',
+        content: `以下是参考笔记内容：\n\n${contextPrefix}\n用户问题：${userContent}`
+      }
+    }
+    if (attachedImages.length > 0) {
+      const currentContent = nextMessages[nextMessages.length - 1].content
+      const imageContent: ChatContentPart[] = [
+        { type: 'text', text: typeof currentContent === 'string' ? currentContent : '' },
+        ...attachedImages.map((img) => ({ type: 'image_url' as const, image_url: { url: img } }))
+      ]
+      nextMessages[nextMessages.length - 1] = {
+        role: 'user',
+        content: imageContent
+      }
+      setAttachedImages([])
+    }
+    return nextMessages
+  }
+
   const handleSend = async () => {
     if (!input.trim()) return
 
@@ -609,6 +655,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')
+
+    const contextPrefix = editMode ? '' : await collectAttachmentContext()
 
     if (vaultPath && !editMode) {
       const allMessages = [...messages, userMsg]
@@ -707,10 +755,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
       try {
         setToolStatus(agentMode ? 'Agent 正在处理...' : '正在生成回答...')
+        const attachedChatMessages = applyChatAttachments(chatMessages, userMsg.content, contextPrefix)
         if (agentMode) {
-          await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
+          await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath })
         } else {
-          await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
+          await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath })
         }
       } catch (e: unknown) {
         setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
@@ -870,46 +919,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       return
     }
 
-    let contextPrefix = ''
-    if (attachedNotes.length > 0 && vaultPath) {
-      for (const note of attachedNotes) {
-        try {
-          const fullPath = note.filePath.startsWith('/') || note.filePath.includes(':')
-            ? note.filePath
-            : `${vaultPath}/${note.filePath}`
-          const content = await window.api.invoke('file:read', { path: fullPath })
-          contextPrefix += `[笔记: ${note.title}]\n${content}\n\n`
-        } catch {}
-      }
-      setAttachedNotes([])
-    }
-    if (attachedSelections.length > 0) {
-      for (const sel of attachedSelections) {
-        contextPrefix += `[选中片段: ${sel.source}]\n${sel.text}\n\n`
-      }
-      setAttachedSelections([])
-    }
-
     const allMessages = [...messages, userMsg]
-    const chatMessages = await buildChatMessages(allMessages)
-    if (contextPrefix) {
-      chatMessages[chatMessages.length - 1] = {
-        role: 'user',
-        content: `以下是参考笔记内容：\n\n${contextPrefix}\n用户问题：${userMsg.content}`
-      }
-    }
-    if (attachedImages.length > 0) {
-      const currentContent = chatMessages[chatMessages.length - 1].content
-      const imageContent: ChatContentPart[] = [
-        { type: 'text', text: typeof currentContent === 'string' ? currentContent : '' },
-        ...attachedImages.map((img) => ({ type: 'image_url' as const, image_url: { url: img } }))
-      ]
-      chatMessages[chatMessages.length - 1] = {
-        role: 'user',
-        content: imageContent
-      }
-      setAttachedImages([])
-    }
+    const chatMessages = applyChatAttachments(await buildChatMessages(allMessages), userMsg.content, contextPrefix)
     try {
       if (agentMode && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
