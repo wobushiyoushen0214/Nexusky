@@ -133,6 +133,23 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should index markdown tasks with source note metadata', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllTasks } = await import('../packages/main/src/services/indexer')
+
+    const filePath = join(vaultPath, 'Tasks.md')
+    writeFileSync(filePath, '# Tasks\n\n- [ ] Open item\n- [x] Done item')
+
+    indexNote(vaultPath, filePath)
+
+    expect(getAllTasks(vaultPath)).toEqual([
+      { text: 'Open item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
+      { text: 'Done item', done: true, noteTitle: 'Tasks', filePath: 'Tasks.md' },
+    ])
+
+    closeDatabase()
+  })
+
   it('should resolve Obsidian heading wikilinks to the note target', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')

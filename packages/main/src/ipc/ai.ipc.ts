@@ -6,11 +6,11 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
+import { formatListTasksToolResult, formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
-import { getBacklinks, getOutgoingLinks, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
+import { getAllTasks, getBacklinks, getOutgoingLinks, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
@@ -942,6 +942,21 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_tasks',
+        description: '查询知识库中从 Markdown 任务列表索引出来的任务，默认返回未完成任务。',
+        parameters: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', description: 'open、done 或 all，默认 open' },
+            query: { type: 'string', description: '按任务文本、笔记标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -1029,6 +1044,31 @@ graph TD
             chunk: `Outgoing: ${outgoing.length}; Backlinks: ${backlinks.length}; Unlinked mentions: ${unlinkedMentions.length}`,
             score: 1
           }]
+        }
+      }
+      case 'list_tasks': {
+        const status = getStringArg(args, 'status').trim().toLowerCase()
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const tasks = getAllTasks(vaultPath)
+          .filter((task) => {
+            if (status === 'done') return task.done
+            if (status === 'all') return true
+            return !task.done
+          })
+          .filter((task) => {
+            if (!query) return true
+            return [task.text, task.noteTitle, task.filePath].some((value) => value.toLowerCase().includes(query))
+          })
+          .slice(0, limit)
+        return {
+          content: formatListTasksToolResult(tasks),
+          sources: tasks.map((task) => ({
+            title: task.noteTitle,
+            filePath: task.filePath,
+            chunk: `${task.done ? '[x]' : '[ ]'} ${task.text}`.slice(0, 100),
+            score: 1
+          }))
         }
       }
       case 'create_note': {

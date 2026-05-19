@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListTasksToolResult, formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -100,5 +100,20 @@ describe('formatNoteLinksToolResult', () => {
     })
 
     expect(output).toBe('Title: Solo\nPath: Solo.md\n\nOutgoing:\n(none)\n\nBacklinks:\n(none)\n\nUnlinked Mentions:\n(none)')
+  })
+})
+
+describe('formatListTasksToolResult', () => {
+  it('formats tasks with completion state and source path', () => {
+    const output = formatListTasksToolResult([
+      { text: 'Review draft', done: false, noteTitle: 'Project', filePath: 'Project.md' },
+      { text: 'Ship release', done: true, noteTitle: 'Release', filePath: 'Work/Release.md' }
+    ])
+
+    expect(output).toBe('1. [ ] Review draft\nNote: Project\nPath: Project.md\n\n2. [x] Ship release\nNote: Release\nPath: Work/Release.md')
+  })
+
+  it('marks empty task results explicitly', () => {
+    expect(formatListTasksToolResult([])).toBe('No tasks found.')
   })
 })

@@ -27,6 +27,13 @@ export interface AiNoteLinksSummary {
   }[]
 }
 
+export interface AiTaskResult {
+  text: string
+  done: boolean
+  noteTitle: string
+  filePath: string
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -83,6 +90,15 @@ export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
     'Unlinked Mentions:',
     unlinkedMentions
   ].join('\n')
+}
+
+export function formatListTasksToolResult(tasks: AiTaskResult[]): string {
+  if (tasks.length === 0) return 'No tasks found.'
+  return tasks.map((task, index) => [
+    `${index + 1}. ${task.done ? '[x]' : '[ ]'} ${task.text}`,
+    `Note: ${task.noteTitle}`,
+    `Path: ${task.filePath}`
+  ].join('\n')).join('\n\n')
 }
 
 function formatLinkContext(context: string): string {
