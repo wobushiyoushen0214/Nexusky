@@ -35,6 +35,17 @@ tags:
     expect(props.tags).toEqual(['project', 'active'])
   })
 
+  it('parses CRLF frontmatter from Windows vaults', () => {
+    const markdown = '---\r\ntitle: "Windows Note"\r\ntags:\r\n  - "#win"\r\n---\r\n# Body\r\n'
+    const props = parseNoteProperties(markdown)
+    const next = updateFrontmatterProperty(markdown, 'status', 'active')
+
+    expect(props.title).toBe('Windows Note')
+    expect(props.tags).toEqual(['win'])
+    expect(next).toContain('status: "active"')
+    expect(next).toContain('# Body\r\n')
+  })
+
   it('updates known properties while preserving unknown properties', () => {
     const next = updateNoteProperties(`---
 status: draft

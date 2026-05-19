@@ -77,14 +77,8 @@ export function updateMarkdownProperty(markdown: string, key: string, value: Fro
 }
 
 function extractFrontmatter(markdown: string): { raw: string; end: number } | null {
-  if (!markdown.startsWith('---\n') && markdown !== '---') return null
-  const endMarker = markdown.indexOf('\n---', 4)
-  if (endMarker < 0) return null
-  const markerEnd = markdown.indexOf('\n', endMarker + 4)
-  return {
-    raw: markdown.slice(4, endMarker),
-    end: markerEnd >= 0 ? markerEnd + 1 : markdown.length
-  }
+  const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)
+  return match ? { raw: match[1], end: match[0].length } : null
 }
 
 function updateDataviewInlineProperty(markdown: string, key: string, value: FrontmatterValue): string | null {
