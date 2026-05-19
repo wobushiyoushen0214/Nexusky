@@ -14,6 +14,13 @@ import type { ChatContentPart, ChatSource, IPCChatMessage } from '@shared/types/
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
 
+const MAX_ATTACHED_NOTES = 20
+const MAX_ATTACHED_SELECTIONS = 8
+const MAX_ATTACHED_IMAGES = 4
+const MAX_IMAGE_DATA_URL_LENGTH = 6_000_000
+const MAX_ATTACHMENT_CONTEXT_CHARS = 60_000
+const SELECTION_CHAR_LIMIT = 2000
+
 function flattenMdFiles(entries: FileEntry[]): { name: string; path: string }[] {
   const result: { name: string; path: string }[] = []
   for (const entry of entries) {
@@ -164,6 +171,17 @@ export function ChatPanel() {
     appendToDb(msg)
     return msg
   }, [appendToDb])
+
+  const addAttachedNote = useCallback((note: { title: string; filePath: string }) => {
+    setAttachedNotes((prev) => {
+      if (prev.some((n) => n.filePath === note.filePath)) return prev
+      if (prev.length >= MAX_ATTACHED_NOTES) {
+        toast(`最多一次引用 ${MAX_ATTACHED_NOTES} 篇笔记`, 'info')
+        return prev
+      }
+      return [...prev, note]
+    })
+  }, [])
 
   const handleNewSession = async () => {
     if (!vaultPath) return
@@ -392,7 +410,7 @@ export function ChatPanel() {
     if (editMode) {
       setEditTarget(note.filePath)
     } else {
-      setAttachedNotes((prev) => prev.some((n) => n.filePath === note.filePath) ? prev : [...prev, note])
+      addAttachedNote(note)
     }
     const atIndex = input.lastIndexOf('@')
     setInput(atIndex >= 0 ? input.slice(0, atIndex) : input)
@@ -407,7 +425,13 @@ export function ChatPanel() {
       return
     }
     const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '选中文本'
-    setAttachedSelections((prev) => [...prev, { text: sel.slice(0, 2000), source }])
+    setAttachedSelections((prev) => {
+      if (prev.length >= MAX_ATTACHED_SELECTIONS) {
+        toast(`最多一次引用 ${MAX_ATTACHED_SELECTIONS} 段选中文本`, 'info')
+        return prev
+      }
+      return [...prev, { text: sel.slice(0, SELECTION_CHAR_LIMIT), source }]
+    })
     inputRef.current?.focus()
   }
 
@@ -583,6 +607,26 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
   const collectAttachmentContext = async (): Promise<string> => {
     let contextPrefix = ''
+    let remaining = MAX_ATTACHMENT_CONTEXT_CHARS
+    let truncated = false
+    const appendContext = (label: string, text: string) => {
+      if (remaining <= 0) {
+        truncated = true
+        return
+      }
+      const prefix = `${label}\n`
+      const suffix = '\n\n'
+      const available = remaining - prefix.length - suffix.length
+      if (available <= 0) {
+        truncated = true
+        return
+      }
+      const body = text.length > available ? `${text.slice(0, available)}\n...[内容已截断]` : text
+      if (text.length > available) truncated = true
+      contextPrefix += `${prefix}${body}${suffix}`
+      remaining -= prefix.length + body.length + suffix.length
+    }
+
     if (attachedNotes.length > 0 && vaultPath) {
       for (const note of attachedNotes) {
         try {
@@ -590,16 +634,19 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             ? note.filePath
             : `${vaultPath}/${note.filePath}`
           const content = await window.api.invoke('file:read', { path: fullPath })
-          contextPrefix += `[笔记: ${note.title}]\n${content}\n\n`
+          appendContext(`[笔记: ${note.title}]`, content)
         } catch {}
       }
       setAttachedNotes([])
     }
     if (attachedSelections.length > 0) {
       for (const sel of attachedSelections) {
-        contextPrefix += `[选中片段: ${sel.source}]\n${sel.text}\n\n`
+        appendContext(`[选中片段: ${sel.source}]`, sel.text)
       }
       setAttachedSelections([])
+    }
+    if (truncated) {
+      toast('引用内容过长，已自动截断后发送', 'info')
     }
     return contextPrefix
   }
@@ -975,9 +1022,25 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         e.preventDefault()
         const file = item.getAsFile()
         if (!file) continue
+        if (attachedImages.length >= MAX_ATTACHED_IMAGES) {
+          toast(`最多一次粘贴 ${MAX_ATTACHED_IMAGES} 张图片`, 'info')
+          continue
+        }
         const reader = new FileReader()
         reader.onload = () => {
-          if (reader.result) setAttachedImages((prev) => [...prev, reader.result as string])
+          if (!reader.result) return
+          const dataUrl = reader.result as string
+          if (dataUrl.length > MAX_IMAGE_DATA_URL_LENGTH) {
+            toast('图片过大，未添加到 AI 上下文', 'error')
+            return
+          }
+          setAttachedImages((prev) => {
+            if (prev.length >= MAX_ATTACHED_IMAGES) {
+              toast(`最多一次粘贴 ${MAX_ATTACHED_IMAGES} 张图片`, 'info')
+              return prev
+            }
+            return [...prev, dataUrl]
+          })
         }
         reader.readAsDataURL(file)
       }
@@ -1057,7 +1120,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       if (text) {
         if (text.endsWith('.md')) {
           const title = text.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '笔记'
-          setAttachedNotes((prev) => prev.some((n) => n.filePath === text) ? prev : [...prev, { title, filePath: text }])
+          addAttachedNote({ title, filePath: text })
           return
         }
         // Folder path — list .md files inside
@@ -1065,16 +1128,32 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           try {
             const files = await window.api.invoke('file:list', { dirPath: text })
             const mdFiles = flattenMdFiles(files)
-            for (const f of mdFiles) {
-              setAttachedNotes((prev) => prev.some((n) => n.filePath === f.path) ? prev : [...prev, { title: f.name.replace(/\.md$/, ''), filePath: f.path }])
-            }
+            setAttachedNotes((prev) => {
+              const next = [...prev]
+              for (const f of mdFiles) {
+                if (next.length >= MAX_ATTACHED_NOTES) break
+                if (!next.some((n) => n.filePath === f.path)) {
+                  next.push({ title: f.name.replace(/\.md$/, ''), filePath: f.path })
+                }
+              }
+              if (mdFiles.length > 0 && next.length < prev.length + mdFiles.length) {
+                toast(`最多一次引用 ${MAX_ATTACHED_NOTES} 篇笔记，已添加前 ${Math.max(0, next.length - prev.length)} 篇`, 'info')
+              }
+              return next
+            })
             if (mdFiles.length > 0) return
           } catch {}
         }
         // Plain text
         if (!nexuskyPath && text.length >= 3) {
           const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '拖入文本'
-          setAttachedSelections((prev) => [...prev, { text: text.slice(0, 2000), source }])
+          setAttachedSelections((prev) => {
+            if (prev.length >= MAX_ATTACHED_SELECTIONS) {
+              toast(`最多一次引用 ${MAX_ATTACHED_SELECTIONS} 段文本`, 'info')
+              return prev
+            }
+            return [...prev, { text: text.slice(0, SELECTION_CHAR_LIMIT), source }]
+          })
           return
         }
       }
@@ -1087,7 +1166,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           if (file.name.endsWith('.md') && droppedFile.path) {
             const filePath = droppedFile.path
             const title = file.name.replace(/\.md$/, '')
-            setAttachedNotes((prev) => prev.some((n) => n.filePath === filePath) ? prev : [...prev, { title, filePath }])
+            addAttachedNote({ title, filePath })
           }
         }
       }
@@ -1101,7 +1180,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       el.removeEventListener('dragleave', handleDragLeave)
       el.removeEventListener('drop', handleDrop, true)
     }
-  }, [vaultPath, currentFilePath])
+  }, [vaultPath, currentFilePath, addAttachedNote])
 
   return (
     <div
