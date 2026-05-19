@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { chunkText, cosineSimilarity } from '../packages/main/src/services/embedding'
 
 describe('chunkText', () => {
@@ -45,5 +48,37 @@ describe('cosineSimilarity', () => {
     const a = new Float32Array([1, 0])
     const b = new Float32Array([-1, 0])
     expect(cosineSimilarity(a, b)).toBeCloseTo(-1.0)
+  })
+})
+
+describe('semanticSearch', () => {
+  let vaultPath: string
+
+  beforeEach(() => {
+    vaultPath = mkdtempSync(join(tmpdir(), 'nexusky-semantic-search-'))
+    mkdirSync(join(vaultPath, '.nexusky'), { recursive: true })
+  })
+
+  afterEach(async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    closeDatabase()
+    rmSync(vaultPath, { recursive: true, force: true })
+  })
+
+  it('falls back to indexed note text before embeddings are generated', async () => {
+    const { indexNote } = await import('../packages/main/src/services/indexer')
+    const { semanticSearch } = await import('../packages/main/src/services/embedding')
+
+    const filePath = join(vaultPath, 'Project.md')
+    writeFileSync(filePath, '# Project\n\nThis note mentions lexical fallback search for agent tools.')
+    indexNote(vaultPath, filePath)
+
+    const results = await semanticSearch(vaultPath, 'lexical fallback', 5)
+
+    expect(results[0]).toMatchObject({
+      title: 'Project',
+      filePath: 'Project.md'
+    })
+    expect(results[0].chunk).toContain('lexical fallback')
   })
 })

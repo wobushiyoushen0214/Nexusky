@@ -309,6 +309,37 @@ function tfidfSearch(vaultPath: string, query: string, topK: number): { noteId: 
   return scored.slice(0, topK)
 }
 
+function keywordFallbackSearch(vaultPath: string, query: string, topK: number): { noteId: string; title: string; filePath: string; chunk: string; score: number }[] {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return []
+
+  const db = getDatabase(vaultPath)
+  const pattern = `%${normalized}%`
+  const rows = db.prepare(`
+    SELECT n.id as noteId, n.title, n.file_path as filePath, f.content
+    FROM notes n
+    JOIN notes_fts_map m ON m.note_id = n.id
+    JOIN notes_fts f ON f.rowid = m.rowid
+    WHERE lower(n.title) LIKE ? OR lower(f.content) LIKE ?
+    ORDER BY n.updated_at DESC
+    LIMIT ?
+  `).all(pattern, pattern, Math.max(topK * 3, topK)) as { noteId: string; title: string; filePath: string; content: string }[]
+
+  return rows.map((row) => {
+    const line = row.content
+      .split('\n')
+      .map((item) => item.trim())
+      .find((item) => item.toLowerCase().includes(normalized)) || row.content.trim().slice(0, 400)
+    return {
+      noteId: row.noteId,
+      title: row.title,
+      filePath: row.filePath,
+      chunk: line.slice(0, 600),
+      score: row.title.toLowerCase().includes(normalized) ? 0.65 : 0.45
+    }
+  }).slice(0, topK)
+}
+
 // --- Chat completion reranking ---
 
 async function rerankWithChat(query: string, candidates: { noteId: string; title: string; filePath: string; chunk: string; score: number }[]): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
@@ -357,7 +388,7 @@ ${snippets}`
 
 export async function semanticSearch(vaultPath: string, query: string, topK = 10): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
   const candidates = tfidfSearch(vaultPath, query, topK * 3)
-  if (candidates.length === 0) return []
+  if (candidates.length === 0) return keywordFallbackSearch(vaultPath, query, topK)
 
   const deduped: typeof candidates = []
   const seen = new Set<string>()
