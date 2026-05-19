@@ -158,6 +158,13 @@ export function ChatPanel() {
     }
   }, [vaultPath, currentSessionId])
 
+  const appendAssistantMessage = useCallback((content: string, sources?: ChatSource[]) => {
+    const msg: Message = { id: Date.now().toString(), role: 'assistant', content, sources }
+    setMessages((msgs) => [...msgs, msg])
+    appendToDb(msg)
+    return msg
+  }, [appendToDb])
+
   const handleNewSession = async () => {
     if (!vaultPath) return
     const id = crypto.randomUUID()
@@ -308,12 +315,12 @@ export function ChatPanel() {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: unknown) {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
+      appendAssistantMessage(friendlyError(getErrorMessage(e)))
       streamContentRef.current = ''
       setStreamContent('')
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, appendAssistantMessage])
 
   const handleContinue = useCallback(async (msg: Message) => {
     if (isStreaming) return
@@ -347,12 +354,12 @@ export function ChatPanel() {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: unknown) {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
+      appendAssistantMessage(friendlyError(getErrorMessage(e)))
       streamContentRef.current = ''
       setStreamContent('')
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, appendAssistantMessage])
 
   useEffect(() => {
     if (!showMention || !vaultPath) return
@@ -525,7 +532,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setStreamContent('正在索引笔记关系...')
       } else if (data.stage === 'index-error') {
         setStreamContent('')
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `⚠️ ${data.message}（文件已生成，但知识图谱索引失败，可手动重建索引）` }])
+        appendAssistantMessage(`⚠️ ${data.message}（文件已生成，但知识图谱索引失败，可手动重建索引）`)
       } else if (data.stage === 'done') {
         planItems = planItems.map((item) => ({ ...item, done: true }))
         updatePlanMsg()
@@ -549,10 +556,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       appendToDb(msg)
     } else if (result.files.length > 0) {
       useVaultStore.getState().refreshFiles()
-      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已停止，生成了 ${result.files.length} 个文件。` }
-      setMessages((msgs) => [...msgs, msg])
+      appendAssistantMessage(`已停止，生成了 ${result.files.length} 个文件。`)
     } else {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `生成失败: ${result.error || '未知错误'}` }])
+      appendAssistantMessage(`生成失败: ${result.error || '未知错误'}`)
     }
     setStreamContent('')
     setToolStatus(null)
@@ -766,7 +772,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath })
         }
       } catch (e: unknown) {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
+        appendAssistantMessage(friendlyError(getErrorMessage(e)))
         streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
@@ -816,7 +822,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               setToolStatus('正在生成回答...')
               await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
             } catch (e: unknown) {
-              setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
+              appendAssistantMessage(friendlyError(getErrorMessage(e)))
               streamContentRef.current = ''
               setStreamContent('')
               setIsStreaming(false)
@@ -864,8 +870,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               setToolStatus(null)
               if (editTimerRef.current) clearInterval(editTimerRef.current)
               editTimerRef.current = null
-              const askMsg: Message = { id: Date.now().toString(), role: 'assistant', content: '请选择笔记存放目录：' }
-              setMessages((msgs) => [...msgs, askMsg])
+              appendAssistantMessage('请选择笔记存放目录：')
             }
             return
           }
@@ -907,13 +912,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           } else {
             setEditResult({ content: result.content, original: fileContent, filePath: filePath })
             setEditPreviewMode('diff')
-            setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: '已生成修改方案，请查看下方预览并确认应用。' }])
+            appendAssistantMessage('已生成修改方案，请查看下方预览并确认应用。')
           }
         } else {
-          setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `编辑失败: ${result.error}` }])
+          appendAssistantMessage(`编辑失败: ${result.error}`)
         }
       } catch (e: unknown) {
-        setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
+        appendAssistantMessage(friendlyError(getErrorMessage(e)))
       }
       if (editTimerRef.current) clearInterval(editTimerRef.current)
       editTimerRef.current = null
@@ -932,7 +937,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: unknown) {
-      setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }])
+      appendAssistantMessage(friendlyError(getErrorMessage(e)))
       setStreamContent('')
       setIsStreaming(false)
     }
@@ -960,7 +965,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const appliedFile = editResult.filePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
     setEditResult(null)
     setEditPreviewExpanded(false)
-    setMessages((msgs) => [...msgs, { id: Date.now().toString(), role: 'assistant', content: `已应用修改到「${appliedFile}」。` }])
+    appendAssistantMessage(`已应用修改到「${appliedFile}」。`)
   }
 
   const handleImagePaste = (e: React.ClipboardEvent) => {
