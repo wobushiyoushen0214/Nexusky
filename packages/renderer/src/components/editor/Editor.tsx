@@ -98,6 +98,7 @@ export function Editor() {
   const previewMode = useUIStore((s) => s.previewMode)
   const rightPanel = useUIStore((s) => s.rightPanel)
   const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
+  const language = useUIStore((s) => s.language)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
   const dragTabRef = useRef<number | null>(null)
   const [findReplaceOpen, setFindReplaceOpen] = useState(false)
@@ -143,7 +144,11 @@ export function Editor() {
     content: '',
     editorProps: {
       attributes: {
-        class: 'editor-content focus:outline-none min-h-full'
+        class: 'editor-content focus:outline-none min-h-full',
+        spellcheck: 'true',
+        autocorrect: 'on',
+        autocapitalize: 'sentences',
+        lang: language
       }
     },
     onUpdate: ({ editor }) => {
@@ -165,6 +170,11 @@ export function Editor() {
   })
 
   const editorAreaRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!editor) return
+    editor.view.dom.setAttribute('lang', language)
+  }, [editor, language])
 
   // Scroll to cursor after selection changes
   useEffect(() => {
