@@ -1,0 +1,14 @@
+export interface AiSearchResult {
+  title: string
+  filePath: string
+  chunk: string
+  score?: number
+}
+
+export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
+  return results.map((result, index) => [
+    `${index + 1}. **${result.title}**`,
+    `Path: ${result.filePath}`,
+    result.chunk.slice(0, 200)
+  ].join('\n')).join('\n\n')
+}

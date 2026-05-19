@@ -6,6 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
+import { formatSearchNotesToolResult } from '../services/ai/search-results'
 import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -944,7 +945,7 @@ graph TD
         const results = await semanticSearch(vaultPath, query, 5)
         if (results.length === 0) return { content: '未找到相关笔记。' }
         return {
-          content: results.map((r, i) => `${i + 1}. **${r.title}**\n${r.chunk.slice(0, 200)}`).join('\n\n'),
+          content: formatSearchNotesToolResult(results),
           sources: results.map((r) => ({
             title: r.title,
             filePath: r.filePath,
