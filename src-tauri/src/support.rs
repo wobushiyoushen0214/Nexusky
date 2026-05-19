@@ -4,6 +4,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use walkdir::WalkDir;
 
 fn config_path() -> Result<std::path::PathBuf, String> {
     let base = dirs::config_dir().ok_or_else(|| "无法定位用户配置目录".to_string())?;
@@ -467,6 +468,236 @@ fn export_pdf(title: &str, content: &str, path: &Path) -> Result<(), String> {
     fs::write(path, simple_pdf(title, content)).map_err(|e| e.to_string())
 }
 
+fn active_sync_provider() -> String {
+    get_config("syncProvider", Value::String("supabase".into()))
+        .as_str()
+        .unwrap_or("supabase")
+        .to_string()
+}
+
+fn configured_icloud_path() -> Option<PathBuf> {
+    if let Some(custom) = get_config("icloudPath", Value::Null).as_str() {
+        let path = PathBuf::from(custom);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    let home = dirs::home_dir()?;
+    [
+        home.join("Library")
+            .join("Mobile Documents")
+            .join("iCloud~com~nexusky~notes")
+            .join("Documents"),
+        home.join("Library")
+            .join("Mobile Documents")
+            .join("com~apple~CloudDocs")
+            .join("Nexusky"),
+    ]
+    .into_iter()
+    .find(|path| path.exists())
+}
+
+fn collect_sync_files(base: &Path) -> Vec<PathBuf> {
+    WalkDir::new(base)
+        .into_iter()
+        .filter_entry(|entry| !entry.file_name().to_string_lossy().starts_with('.'))
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry.file_type().is_file()
+                && entry.path().extension().and_then(|ext| ext.to_str()) == Some("md")
+        })
+        .map(|entry| entry.path().to_path_buf())
+        .collect()
+}
+
+fn rel_sync_path(base: &Path, path: &Path) -> Result<String, String> {
+    path.strip_prefix(base)
+        .map_err(|e| e.to_string())
+        .map(|rel| {
+            rel.to_string_lossy()
+                .replace('\\', "/")
+                .trim_start_matches('/')
+                .to_string()
+        })
+}
+
+fn file_hash(path: &Path) -> Result<String, String> {
+    let bytes = fs::read(path).map_err(|e| e.to_string())?;
+    Ok(format!("{:x}", md5::compute(bytes)))
+}
+
+fn icloud_push_file(vault_path: &Path, file_path: &Path) -> Result<bool, String> {
+    let Some(base) = configured_icloud_path() else {
+        return Ok(false);
+    };
+    let rel = rel_sync_path(vault_path, file_path)?;
+    let dest = base.join(rel);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(file_path, dest).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+fn icloud_pull_file(vault_path: &Path, rel_path: &str) -> Result<bool, String> {
+    let Some(base) = configured_icloud_path() else {
+        return Ok(false);
+    };
+    let source = base.join(rel_path);
+    if !source.exists() {
+        return Ok(false);
+    }
+    let dest = vault_path.join(rel_path);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(source, dest).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+fn icloud_sync(vault_path: &Path, pull_only: bool) -> Result<Value, String> {
+    let Some(base) = configured_icloud_path() else {
+        return Ok(
+            json!({ "total": 0, "pushed": 0, "pulled": 0, "conflicts": [], "errors": ["iCloud Drive 不可用"] }),
+        );
+    };
+    let mut pushed = 0;
+    let mut pulled = 0;
+    let mut errors = Vec::<String>::new();
+    let local_files = collect_sync_files(vault_path);
+    let remote_files = collect_sync_files(&base);
+    let mut remote_map = std::collections::HashMap::new();
+    for remote in remote_files {
+        let rel = rel_sync_path(&base, &remote)?;
+        remote_map.insert(rel, remote);
+    }
+
+    for local in &local_files {
+        let rel = rel_sync_path(vault_path, local)?;
+        if let Some(remote) = remote_map.remove(&rel) {
+            let local_hash = file_hash(local)?;
+            let remote_hash = file_hash(&remote)?;
+            if local_hash != remote_hash {
+                let local_mtime = fs::metadata(local).and_then(|m| m.modified()).ok();
+                let remote_mtime = fs::metadata(&remote).and_then(|m| m.modified()).ok();
+                if remote_mtime > local_mtime {
+                    if icloud_pull_file(vault_path, &rel)? {
+                        pulled += 1;
+                    } else {
+                        errors.push(format!("pull failed: {rel}"));
+                    }
+                } else if !pull_only {
+                    if icloud_push_file(vault_path, local)? {
+                        pushed += 1;
+                    } else {
+                        errors.push(format!("push failed: {rel}"));
+                    }
+                }
+            }
+        } else if !pull_only {
+            if icloud_push_file(vault_path, local)? {
+                pushed += 1;
+            } else {
+                errors.push(format!("push failed: {rel}"));
+            }
+        }
+    }
+
+    for (rel, remote) in remote_map {
+        let local = vault_path.join(&rel);
+        if !local.exists() && icloud_pull_file(vault_path, &rel)? {
+            pulled += 1;
+        } else if !local.exists() {
+            errors.push(format!("pull failed: {}", remote.to_string_lossy()));
+        }
+    }
+
+    Ok(
+        json!({ "total": local_files.len() + pulled, "pushed": pushed, "pulled": pulled, "conflicts": [], "errors": errors }),
+    )
+}
+
+fn supabase_config() -> Option<(String, String)> {
+    let config = get_config("cloudConfig", json!({}));
+    let url = config
+        .get("supabaseUrl")?
+        .as_str()?
+        .trim()
+        .trim_end_matches('/');
+    let key = config
+        .get("serviceRoleKey")
+        .and_then(Value::as_str)
+        .filter(|key| !key.trim().is_empty())
+        .or_else(|| config.get("supabaseKey").and_then(Value::as_str))?
+        .trim();
+    if url.is_empty() || key.is_empty() {
+        None
+    } else {
+        Some((url.to_string(), key.to_string()))
+    }
+}
+
+fn supabase_test_connection() -> Value {
+    let Some((url, key)) = supabase_config() else {
+        return json!({ "ok": false, "error": "未配置 Supabase" });
+    };
+    let client = reqwest::blocking::Client::new();
+    match client
+        .get(format!("{url}/rest/v1/note_sync?select=id&limit=1"))
+        .header("apikey", &key)
+        .bearer_auth(&key)
+        .send()
+    {
+        Ok(response) if response.status().is_success() => json!({ "ok": true }),
+        Ok(response) => {
+            json!({ "ok": false, "error": format!("Supabase 返回 HTTP {}", response.status()) })
+        }
+        Err(error) => json!({ "ok": false, "error": error.to_string() }),
+    }
+}
+
+fn active_cloud_test_connection(provider: &str) -> Value {
+    match provider {
+        "icloud" => configured_icloud_path()
+            .map(|_| json!({ "ok": true }))
+            .unwrap_or_else(|| json!({ "ok": false, "error": "未找到 iCloud Drive 路径。请确保已登录 iCloud 并启用 iCloud Drive。" })),
+        "supabase" => supabase_test_connection(),
+        "onedrive" => get_config("onedriveConfig", Value::Null)
+            .as_object()
+            .map(|_| json!({ "ok": true }))
+            .unwrap_or_else(|| json!({ "ok": false, "error": "未配置 OneDrive" })),
+        _ => json!({ "ok": false, "error": "未知同步后端" }),
+    }
+}
+
+fn cloud_push_file(vault_path: &str, file_path: &str) -> Result<bool, String> {
+    match active_sync_provider().as_str() {
+        "icloud" => icloud_push_file(Path::new(vault_path), Path::new(file_path)),
+        "supabase" => Ok(false),
+        _ => Ok(false),
+    }
+}
+
+fn cloud_pull_file(vault_path: &str, rel_path: &str) -> Result<bool, String> {
+    match active_sync_provider().as_str() {
+        "icloud" => icloud_pull_file(Path::new(vault_path), rel_path),
+        "supabase" => Ok(false),
+        _ => Ok(false),
+    }
+}
+
+fn cloud_sync(vault_path: &str, pull_only: bool) -> Result<Value, String> {
+    match active_sync_provider().as_str() {
+        "icloud" => icloud_sync(Path::new(vault_path), pull_only),
+        "supabase" => Ok(
+            json!({ "total": 0, "pushed": 0, "pulled": 0, "conflicts": [], "errors": ["Supabase 同步需要在 Electron 版本或后续 Tauri 云端适配中使用"] }),
+        ),
+        _ => Ok(
+            json!({ "total": 0, "pushed": 0, "pulled": 0, "conflicts": [], "errors": ["未配置同步后端"] }),
+        ),
+    }
+}
+
 pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
     match channel {
         "app:get-version" => Ok(Some(Value::String(env!("CARGO_PKG_VERSION").to_string()))),
@@ -573,18 +804,57 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             )?;
             Ok(Some(Value::Null))
         }
+        "cloud:init" => Ok(Some(active_cloud_test_connection(&active_sync_provider()))),
+        "cloud:sign-in" | "cloud:sign-up" => Ok(Some(json!({
+          "success": supabase_config().is_some(),
+          "error": if supabase_config().is_some() { Value::Null } else { Value::String("未配置 Supabase".into()) }
+        }))),
         "cloud:get-user" => Ok(Some(Value::Null)),
         "cloud:sign-out" | "cloud:set-online" => Ok(Some(Value::Null)),
-        "cloud:init" | "cloud:sign-in" | "cloud:sign-up" | "cloud:onedrive-auth" => Ok(Some(
-            json!({ "success": false, "error": "Tauri cloud auth is not migrated yet" }),
-        )),
-        "cloud:sync" | "cloud:pull-all" => Ok(Some(
-            json!({ "total": 0, "pushed": 0, "pulled": 0, "conflicts": [], "errors": ["Tauri cloud sync is not migrated yet"] }),
-        )),
-        "cloud:push-file" | "cloud:pull-file" | "cloud:push-index" | "cloud:pull-index" => {
-            Ok(Some(Value::Bool(false)))
+        "cloud:onedrive-auth" => Ok(Some(json!({
+          "success": false,
+          "error": "OneDrive OAuth 需要系统浏览器回调，Tauri 版本暂未启用该登录入口"
+        }))),
+        "cloud:sync" => Ok(Some(cloud_sync(as_str(&params, "vaultPath")?, false)?)),
+        "cloud:pull-all" => Ok(Some(cloud_sync(as_str(&params, "vaultPath")?, true)?)),
+        "cloud:push-file" => Ok(Some(Value::Bool(cloud_push_file(
+            as_str(&params, "vaultPath")?,
+            as_str(&params, "filePath")?,
+        )?))),
+        "cloud:pull-file" => Ok(Some(Value::Bool(cloud_pull_file(
+            as_str(&params, "vaultPath")?,
+            as_str(&params, "relPath")?,
+        )?))),
+        "cloud:push-index" => {
+            let vault = as_str(&params, "vaultPath")?;
+            Ok(Some(Value::Bool(cloud_push_file(
+                vault,
+                &Path::new(vault)
+                    .join(".nexusky")
+                    .join("index.db")
+                    .to_string_lossy(),
+            )?)))
         }
-        "cloud:sync-index" => Ok(Some(json!({ "pushed": false, "pulled": false }))),
+        "cloud:pull-index" => Ok(Some(Value::Bool(cloud_pull_file(
+            as_str(&params, "vaultPath")?,
+            ".nexusky/index.db",
+        )?))),
+        "cloud:sync-index" => {
+            let vault = as_str(&params, "vaultPath")?;
+            let pulled = cloud_pull_file(vault, ".nexusky/index.db")?;
+            let pushed = if !pulled {
+                cloud_push_file(
+                    vault,
+                    &Path::new(vault)
+                        .join(".nexusky")
+                        .join("index.db")
+                        .to_string_lossy(),
+                )?
+            } else {
+                false
+            };
+            Ok(Some(json!({ "pushed": pushed, "pulled": pulled })))
+        }
         "cloud:get-sync-provider" => Ok(Some(get_config(
             "syncProvider",
             Value::String("supabase".into()),
@@ -601,9 +871,12 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
           { "type": "icloud", "name": "iCloud Drive", "configured": get_config("icloudPath", Value::Null).is_string() },
           { "type": "onedrive", "name": "OneDrive", "configured": get_config("onedriveConfig", Value::Null).is_object() }
         ]))),
-        "cloud:test-connection" => Ok(Some(
-            json!({ "ok": false, "error": "Tauri cloud provider is not migrated yet" }),
-        )),
+        "cloud:test-connection" => Ok(Some(active_cloud_test_connection(
+            params
+                .get("provider")
+                .and_then(Value::as_str)
+                .unwrap_or(&active_sync_provider()),
+        ))),
         "cloud:get-onedrive-config" => Ok(Some(get_config("onedriveConfig", Value::Null))),
         "cloud:save-onedrive-config" => {
             set_config("onedriveConfig", params)?;
@@ -624,6 +897,24 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 params.get("paths").cloned().unwrap_or_else(|| json!([])),
             )?;
             Ok(Some(Value::Null))
+        }
+        "cloud:get-queue-size" => Ok(Some(Value::Number(0.into()))),
+        "cloud:resolve-conflict" => {
+            let vault = as_str(&params, "vaultPath")?;
+            let rel = as_str(&params, "path")?;
+            if params
+                .get("resolution")
+                .and_then(Value::as_str)
+                .unwrap_or("local")
+                == "remote"
+            {
+                Ok(Some(Value::Bool(cloud_pull_file(vault, rel)?)))
+            } else {
+                Ok(Some(Value::Bool(cloud_push_file(
+                    vault,
+                    &Path::new(vault).join(rel).to_string_lossy(),
+                )?)))
+            }
         }
         "updater:check" => Ok(Some(json!({ "available": false }))),
         "updater:download" | "updater:install" => Ok(Some(Value::Null)),
