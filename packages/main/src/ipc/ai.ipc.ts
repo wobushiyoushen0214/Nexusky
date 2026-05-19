@@ -8,6 +8,7 @@ import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
 import { formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
+import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -906,7 +907,8 @@ graph TD
         parameters: {
           type: 'object',
           properties: {
-            query: { type: 'string', description: '搜索关键词' }
+            query: { type: 'string', description: '搜索关键词' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
           },
           required: ['query']
         }
@@ -939,7 +941,7 @@ graph TD
       case 'search_notes': {
         const query = getStringArg(args, 'query')
         if (!query.trim()) return { content: 'search_notes 缺少 query 参数。请根据用户问题提供明确的搜索关键词。' }
-        const results = await semanticSearch(vaultPath, query, 5)
+        const results = await semanticSearch(vaultPath, query, normalizeToolLimit(args.limit))
         if (results.length === 0) return { content: '未找到相关笔记。' }
         return {
           content: formatSearchNotesToolResult(results),
