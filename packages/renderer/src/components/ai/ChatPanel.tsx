@@ -14,6 +14,14 @@ import type { ChatContentPart, ChatSource, IPCChatMessage } from '@shared/types/
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
 
+interface AICommandDraft {
+  prompt: string
+  mode?: 'chat' | 'edit'
+  agentMode?: boolean
+  attachSelection?: boolean
+  unboundEdit?: boolean
+}
+
 const MAX_ATTACHED_NOTES = 20
 const MAX_ATTACHED_SELECTIONS = 8
 const MAX_ATTACHED_IMAGES = 4
@@ -434,6 +442,49 @@ export function ChatPanel() {
     })
     inputRef.current?.focus()
   }
+
+  const applyCommandDraft = useCallback((draft: AICommandDraft) => {
+    if (draft.mode === 'edit') {
+      updateEditMode(true)
+      setEditTarget(null)
+      setEditUnbound(Boolean(draft.unboundEdit))
+    } else if (draft.mode === 'chat') {
+      updateEditMode(false)
+      setEditUnbound(false)
+      setEditTarget(null)
+    }
+    if (typeof draft.agentMode === 'boolean') updateAgentMode(draft.agentMode)
+    if (draft.attachSelection) {
+      const sel = window.getSelection()?.toString()
+      if (sel && sel.length >= 3) {
+        const source = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '选中文本'
+        setAttachedSelections((prev) => {
+          if (prev.length >= MAX_ATTACHED_SELECTIONS) return prev
+          return [...prev, { text: sel.slice(0, SELECTION_CHAR_LIMIT), source }]
+        })
+      } else {
+        toast('请先在编辑器中选中一段文本', 'info')
+      }
+    }
+    setInput(draft.prompt)
+    setTimeout(() => inputRef.current?.focus(), 30)
+  }, [currentFilePath])
+
+  useEffect(() => {
+    const pending = safeGet('nexusky-pending-ai-draft')
+    if (pending) {
+      safeRemove('nexusky-pending-ai-draft')
+      try {
+        applyCommandDraft(JSON.parse(pending) as AICommandDraft)
+      } catch {}
+    }
+    const handler = (e: Event) => {
+      safeRemove('nexusky-pending-ai-draft')
+      applyCommandDraft((e as CustomEvent<AICommandDraft>).detail)
+    }
+    window.addEventListener('ai-command-draft', handler)
+    return () => window.removeEventListener('ai-command-draft', handler)
+  }, [applyCommandDraft])
 
   const TOKEN_THRESHOLD = 12
   const RECENT_KEEP = 6
@@ -955,16 +1006,21 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         }
 
         editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
+        const selectionContext = attachedSelections.length > 0
+          ? `\n\n选中文本上下文：\n${attachedSelections.map((sel) => `[${sel.source}]\n${sel.text}`).join('\n\n')}`
+          : ''
+        const editInstruction = `${userMsg.content}${selectionContext}`
         const result = await window.api.invoke('ai:edit', {
           instruction: !filePath
-            ? `创建一篇新笔记。要求：${userMsg.content}`
-            : userMsg.content,
+            ? `创建一篇新笔记。要求：${editInstruction}`
+            : editInstruction,
           fileContent,
           filePath: filePath || '(新文件)',
           images: attachedImages.length > 0 ? attachedImages : undefined,
           history: editHistory.length > 0 ? editHistory : undefined
         })
         setAttachedImages([])
+        setAttachedSelections([])
         if (result.success && result.content) {
           setEditHistory((prev) => [...prev, userMsg.content])
           if (!filePath && vaultPath) {
