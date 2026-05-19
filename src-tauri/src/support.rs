@@ -1,7 +1,8 @@
 use serde_json::{json, Value};
+use std::env;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn config_path() -> Result<std::path::PathBuf, String> {
@@ -42,6 +43,169 @@ fn as_str<'a>(params: &'a Value, key: &str) -> Result<&'a str, String> {
         .get(key)
         .and_then(Value::as_str)
         .ok_or_else(|| format!("missing {key}"))
+}
+
+fn is_usable_openai_key(key: &str) -> bool {
+    regex::Regex::new(r"^sk-[A-Za-z0-9_-]+")
+        .map(|regex| regex.is_match(key.trim()))
+        .unwrap_or(false)
+}
+
+fn read_json_file(path: &Path) -> Option<Value> {
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+}
+
+fn detect_local_ai_config() -> Value {
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from(""));
+    let mut result = json!({ "skipped": [] });
+
+    let claude_paths = {
+        #[cfg(target_os = "windows")]
+        {
+            let mut paths = vec![home.join(".claude").join("settings.json")];
+            if let Ok(appdata) = env::var("APPDATA") {
+                paths.push(PathBuf::from(appdata).join("claude").join("settings.json"));
+            }
+            paths
+        }
+        #[cfg(target_os = "linux")]
+        {
+            vec![
+                home.join(".claude").join("settings.json"),
+                home.join(".config").join("claude").join("settings.json"),
+            ]
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            vec![home.join(".claude").join("settings.json")]
+        }
+    };
+
+    for path in claude_paths {
+        let Some(data) = read_json_file(&path) else {
+            continue;
+        };
+        let env = data.get("env").unwrap_or(&Value::Null);
+        if let Some(token) = env.get("ANTHROPIC_AUTH_TOKEN").and_then(Value::as_str) {
+            result["claude"] = json!({
+                "apiKey": token,
+                "baseUrl": env.get("ANTHROPIC_BASE_URL").and_then(Value::as_str).unwrap_or(""),
+                "source": "Claude Code"
+            });
+            break;
+        }
+    }
+
+    if let Ok(api_key) = env::var("OPENAI_API_KEY") {
+        if is_usable_openai_key(&api_key) {
+            result["openai"] =
+                json!({ "apiKey": api_key.trim(), "source": "环境变量 OPENAI_API_KEY" });
+        }
+    }
+
+    let codex_paths = {
+        #[cfg(target_os = "windows")]
+        {
+            let mut paths = vec![home.join(".codex").join("auth.json")];
+            if let Ok(appdata) = env::var("APPDATA") {
+                paths.push(PathBuf::from(appdata).join("codex").join("auth.json"));
+            }
+            paths
+        }
+        #[cfg(target_os = "linux")]
+        {
+            vec![
+                home.join(".codex").join("auth.json"),
+                home.join(".config").join("codex").join("auth.json"),
+            ]
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            vec![home.join(".codex").join("auth.json")]
+        }
+    };
+
+    for path in codex_paths {
+        let Some(data) = read_json_file(&path) else {
+            continue;
+        };
+        if result.get("openai").is_none() {
+            if let Some(api_key) = data.get("OPENAI_API_KEY").and_then(Value::as_str) {
+                if is_usable_openai_key(api_key) {
+                    result["openai"] =
+                        json!({ "apiKey": api_key.trim(), "source": "Codex API Key" });
+                    break;
+                }
+            }
+        }
+        if data.get("auth_mode").and_then(Value::as_str) == Some("chatgpt")
+            && data.get("tokens").is_some()
+        {
+            result["codex"] = json!({ "command": "codex", "source": "Codex ChatGPT 登录" });
+        } else if data.get("OPENAI_API_KEY").and_then(Value::as_str).is_some()
+            && result.get("openai").is_none()
+        {
+            result["skipped"]
+                .as_array_mut()
+                .expect("skipped should be array")
+                .push(Value::String(
+                    "Codex 中的 OpenAI Key 格式不符合 API Key 要求，已跳过".into(),
+                ));
+        }
+    }
+
+    if result.get("claude").is_none() {
+        if let Ok(api_key) = env::var("ANTHROPIC_API_KEY") {
+            result["claude"] = json!({
+                "apiKey": api_key,
+                "baseUrl": env::var("ANTHROPIC_BASE_URL").unwrap_or_default(),
+                "source": "环境变量 ANTHROPIC_API_KEY"
+            });
+        }
+    }
+
+    if result
+        .get("skipped")
+        .and_then(Value::as_array)
+        .map(Vec::is_empty)
+        .unwrap_or(true)
+    {
+        result
+            .as_object_mut()
+            .expect("result should be object")
+            .remove("skipped");
+    }
+    result
+}
+
+fn list_ollama_models(base_url: Option<&str>) -> Value {
+    let raw = base_url
+        .filter(|url| !url.trim().is_empty())
+        .unwrap_or("http://localhost:11434")
+        .trim()
+        .trim_end_matches('/');
+    let url = raw.strip_suffix("/v1").unwrap_or(raw);
+    let Ok(response) = reqwest::blocking::get(format!("{url}/api/tags")) else {
+        return json!([]);
+    };
+    if !response.status().is_success() {
+        return json!([]);
+    }
+    let Ok(data) = response.json::<Value>() else {
+        return json!([]);
+    };
+    Value::Array(
+        data.get("models")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|model| model.get("name").and_then(Value::as_str))
+            .filter(|name| !name.is_empty())
+            .map(|name| Value::String(name.to_string()))
+            .collect(),
+    )
 }
 
 fn default_templates() -> Value {
@@ -394,10 +558,10 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             Ok(Some(Value::Null))
         }
         "ai:validate" => Ok(Some(json!({ "ok": true }))),
-        "ai:detect-local-config" => Ok(Some(
-            json!({ "skipped": ["Tauri local config detection is not migrated yet"] }),
-        )),
-        "ai:list-ollama-models" => Ok(Some(json!([]))),
+        "ai:detect-local-config" => Ok(Some(detect_local_ai_config())),
+        "ai:list-ollama-models" => Ok(Some(list_ollama_models(
+            params.get("baseUrl").and_then(Value::as_str),
+        ))),
         "cloud:get-config" => Ok(Some(get_config(
             "cloudConfig",
             json!({ "supabaseUrl": "", "supabaseKey": "", "serviceRoleKey": "", "enabled": false }),
@@ -510,5 +674,12 @@ mod tests {
         let pdf = simple_pdf("Title", "hello");
         assert!(pdf.starts_with(b"%PDF-1.4"));
         assert!(pdf.ends_with(b"%%EOF\n"));
+    }
+
+    #[test]
+    fn validates_openai_api_key_shape() {
+        assert!(is_usable_openai_key("sk-test_123"));
+        assert!(!is_usable_openai_key("sess-not-an-api-key"));
+        assert!(!is_usable_openai_key(""));
     }
 }
