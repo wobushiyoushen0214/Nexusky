@@ -7,12 +7,14 @@ import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { getErrorMessage } from '../../utils/errors'
 import { safeGet, safeSet } from '../../utils/storage'
-import type { AIProviderConfig, LocalPlugin } from '@shared/types/ipc'
+import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCssSnippets, setEnabledSnippetNames } from '../../utils/css-snippets'
+import type { AIProviderConfig, CssSnippet, LocalPlugin } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
 type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean }
 type CloudUser = { email: string } | null
+type SnippetView = CssSnippet & { enabled: boolean }
 
 const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
@@ -1011,6 +1013,8 @@ function AppearanceTab() {
         </div>
       </div>
 
+      <CssSnippetsSection />
+
       {/* Language */}
       <div>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>{t('settings.language.title')}</span>
@@ -1101,6 +1105,87 @@ function AppearanceTab() {
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+function CssSnippetsSection() {
+  const { t } = useTranslation()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const [snippets, setSnippets] = useState<SnippetView[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const loadSnippets = async () => {
+    if (!vaultPath) return
+    setLoading(true)
+    try {
+      const enabled = new Set(getEnabledSnippetNames(vaultPath))
+      const result = await loadCssSnippets(vaultPath)
+      setSnippets(result.map((snippet) => ({ ...snippet, enabled: enabled.has(snippet.name) })))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSnippets()
+  }, [vaultPath])
+
+  const toggleSnippet = (name: string) => {
+    if (!vaultPath) return
+    setSnippets((current) => {
+      const next = current.map((snippet) => snippet.name === name ? { ...snippet, enabled: !snippet.enabled } : snippet)
+      setEnabledSnippetNames(vaultPath, next.filter((snippet) => snippet.enabled).map((snippet) => snippet.name))
+      applyCssSnippets(vaultPath).catch(() => {})
+      window.dispatchEvent(new CustomEvent(CSS_SNIPPETS_UPDATED))
+      return next
+    })
+  }
+
+  const revealSnippetsDir = async () => {
+    if (!vaultPath) return
+    await loadCssSnippets(vaultPath)
+    await window.api.invoke('file:reveal', { path: `${vaultPath}/.nexusky/snippets` })
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <div>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>{t('settings.snippets.title')}</span>
+          <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('settings.snippets.description')}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={loadSnippets} disabled={!vaultPath || loading} style={{ height: 28, padding: '0 9px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: vaultPath && !loading ? 'pointer' : 'default' }}>
+            {loading ? t('settings.snippets.refreshing') : t('settings.snippets.refresh')}
+          </button>
+          <button onClick={revealSnippetsDir} disabled={!vaultPath} style={{ height: 28, padding: '0 9px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--accent-text)', cursor: vaultPath ? 'pointer' : 'default' }}>
+            {t('settings.snippets.openFolder')}
+          </button>
+        </div>
+      </div>
+
+      {!vaultPath ? (
+        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12 }}>
+          {t('settings.snippets.noVault')}
+        </div>
+      ) : snippets.length === 0 ? (
+        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.6 }}>
+          {t('settings.snippets.empty')}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {snippets.map((snippet) => (
+            <label key={snippet.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: snippet.enabled ? 'var(--accent-muted)' : 'var(--bg-base)', cursor: 'pointer' }}>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: snippet.enabled ? 'var(--accent-text)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{snippet.name}</span>
+                <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>.nexusky/snippets/{snippet.name}.css</span>
+              </span>
+              <input type="checkbox" checked={snippet.enabled} onChange={() => toggleSnippet(snippet.name)} style={{ width: 14, height: 14, accentColor: 'var(--accent)', flexShrink: 0 }} />
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

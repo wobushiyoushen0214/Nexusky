@@ -145,6 +145,15 @@
       "custom": "Custom accent color",
       "reset": "Use theme default"
     },
+    "snippets": {
+      "title": "CSS snippets",
+      "description": "Loads .nexusky/snippets/*.css from the current vault and lets each snippet be toggled independently.",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "openFolder": "Open folder",
+      "noVault": "Open a vault to use CSS snippets.",
+      "empty": "No CSS snippets yet. Add .css files to .nexusky/snippets, then refresh."
+    },
     "language": {
       "title": "Language",
       "zhCN": "简体中文",

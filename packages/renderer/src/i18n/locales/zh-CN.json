@@ -145,6 +145,15 @@
       "custom": "自定义强调色",
       "reset": "恢复主题默认"
     },
+    "snippets": {
+      "title": "CSS 片段",
+      "description": "读取当前 vault 的 .nexusky/snippets/*.css，可独立启用或关闭。",
+      "refresh": "刷新",
+      "refreshing": "刷新中...",
+      "openFolder": "打开目录",
+      "noVault": "打开 vault 后可使用 CSS 片段。",
+      "empty": "暂无 CSS 片段。把 .css 文件放入 .nexusky/snippets 后刷新即可启用。"
+    },
     "language": {
       "title": "语言",
       "zhCN": "简体中文",

@@ -47,6 +47,12 @@ export interface LocalPlugin {
   commands: PluginCommand[]
 }
 
+export interface CssSnippet {
+  name: string
+  path: string
+  content: string
+}
+
 export interface BacklinkResult {
   sourceTitle: string
   sourcePath: string
@@ -277,6 +283,7 @@ export interface IPCChannelMap {
   'template:save-templates': { params: { templates: { id: string; name: string; content: string }[] }; result: void }
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
   'plugins:list': { params: { vaultPath: string }; result: LocalPlugin[] }
+  'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }
   'cloud:get-config': { params: undefined; result: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }
   'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }; result: void }
   'cloud:init': { params: undefined; result: { success: boolean; error?: string } }

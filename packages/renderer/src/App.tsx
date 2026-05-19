@@ -17,6 +17,7 @@ import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
 import { GraphGenerator } from './components/GraphGenerator'
 import { getErrorMessage } from './utils/errors'
+import { applyCssSnippets, CSS_SNIPPETS_UPDATED } from './utils/css-snippets'
 import { safeGet } from './utils/storage'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
@@ -150,6 +151,13 @@ export default function App() {
   useEffect(() => {
     loadVault()
   }, [])
+
+  useEffect(() => {
+    applyCssSnippets(vaultPath).catch(() => {})
+    const handler = () => applyCssSnippets(vaultPath).catch(() => {})
+    window.addEventListener(CSS_SNIPPETS_UPDATED, handler)
+    return () => window.removeEventListener(CSS_SNIPPETS_UPDATED, handler)
+  }, [vaultPath])
 
   // Save all dirty tabs before window closes
   useEffect(() => {

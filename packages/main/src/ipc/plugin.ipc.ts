@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { mkdir, readdir, readFile } from 'fs/promises'
 import { join } from 'path'
-import type { LocalPlugin, PluginCommand } from '@shared/types/ipc'
+import type { CssSnippet, LocalPlugin, PluginCommand } from '@shared/types/ipc'
 
 function isCommand(value: unknown): value is PluginCommand {
   if (!value || typeof value !== 'object') return false
@@ -37,5 +37,24 @@ export function registerPluginIPC(): void {
       } catch {}
     }
     return plugins
+  })
+
+  ipcMain.handle('snippets:list', async (_event, params: { vaultPath: string }) => {
+    const snippetsDir = join(params.vaultPath, '.nexusky', 'snippets')
+    await mkdir(snippetsDir, { recursive: true })
+    const entries = await readdir(snippetsDir)
+    const snippets: CssSnippet[] = []
+    for (const entry of entries) {
+      if (!entry.endsWith('.css')) continue
+      const path = join(snippetsDir, entry)
+      try {
+        snippets.push({
+          name: entry.replace(/\.css$/i, ''),
+          path,
+          content: await readFile(path, 'utf-8')
+        })
+      } catch {}
+    }
+    return snippets.sort((a, b) => a.name.localeCompare(b.name))
   })
 }
