@@ -43,3 +43,25 @@ export function normalizeProviderError(error: unknown): ProviderErrorInfo {
 export function getProviderRetryDelay(attempt: number): number {
   return 500 * Math.pow(3, attempt)
 }
+
+export function waitForProviderRetry(delayMs: number, signal?: AbortSignal): Promise<boolean> {
+  if (signal?.aborted) return Promise.resolve(false)
+
+  return new Promise((resolve) => {
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const cleanup = () => {
+      if (timeout) clearTimeout(timeout)
+      signal?.removeEventListener('abort', handleAbort)
+    }
+    const handleAbort = () => {
+      cleanup()
+      resolve(false)
+    }
+
+    timeout = setTimeout(() => {
+      cleanup()
+      resolve(true)
+    }, delayMs)
+    signal?.addEventListener('abort', handleAbort, { once: true })
+  })
+}

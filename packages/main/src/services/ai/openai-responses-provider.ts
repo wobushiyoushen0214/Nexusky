@@ -8,7 +8,7 @@ import type {
   ResponseInputContent,
 } from 'openai/resources/responses/responses'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition } from './base-provider'
-import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
+import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 
 function contentToString(content: ChatMessage['content']): string {
   return typeof content === 'string' ? content : JSON.stringify(content)
@@ -76,7 +76,10 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
       if (attempt > 0) {
         yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_PROVIDER_RETRIES})...` }
         const delay = getProviderRetryDelay(attempt - 1)
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        if (!await waitForProviderRetry(delay, signal)) {
+          yield { type: 'done', content: '' }
+          return
+        }
       }
 
       try {
@@ -132,7 +135,10 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
       if (attempt > 0) {
         yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_PROVIDER_RETRIES})...` }
         const delay = getProviderRetryDelay(attempt - 1)
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        if (!await waitForProviderRetry(delay, signal)) {
+          yield { type: 'done', content: '' }
+          return
+        }
       }
 
       try {

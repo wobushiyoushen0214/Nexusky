@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getProviderRetryDelay, normalizeProviderError } from '../packages/main/src/services/ai/provider-errors'
+import { getProviderRetryDelay, normalizeProviderError, waitForProviderRetry } from '../packages/main/src/services/ai/provider-errors'
 
 describe('normalizeProviderError', () => {
   it('marks AbortError as non-retryable cancellation', () => {
@@ -25,5 +25,13 @@ describe('normalizeProviderError', () => {
     expect(getProviderRetryDelay(0)).toBe(500)
     expect(getProviderRetryDelay(1)).toBe(1500)
     expect(getProviderRetryDelay(2)).toBe(4500)
+  })
+
+  it('lets provider retry waits stop immediately when aborted', async () => {
+    const controller = new AbortController()
+    const wait = waitForProviderRetry(1000, controller.signal)
+    controller.abort()
+
+    await expect(wait).resolves.toBe(false)
   })
 })

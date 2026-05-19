@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ChatOptions } from './base-provider'
 import { net } from 'electron'
-import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError } from './provider-errors'
+import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
 interface OllamaTagsResponse {
@@ -42,7 +42,10 @@ export class OllamaProvider extends BaseAIProvider {
       if (attempt > 0) {
         yield { type: 'retry', content: `正在重试 (${attempt}/${MAX_PROVIDER_RETRIES})...` }
         const delay = getProviderRetryDelay(attempt - 1)
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        if (!await waitForProviderRetry(delay, signal)) {
+          yield { type: 'done', content: '' }
+          return
+        }
       }
 
       try {
