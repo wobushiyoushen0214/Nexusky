@@ -1,8 +1,13 @@
+use aes_gcm::aead::Aead;
+use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use base64::Engine;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::UNIX_EPOCH;
+
+const ENCRYPTED_MARKER: &str = "---encrypted---\n";
 
 fn as_str<'a>(params: &'a Value, key: &str) -> Result<&'a str, String> {
     params
@@ -34,6 +39,40 @@ fn mtime_ms(path: &Path) -> f64 {
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as f64)
         .unwrap_or(0.0)
+}
+
+fn derive_note_key(password: &str, salt: &[u8]) -> Result<[u8; 32], String> {
+    let params = scrypt::Params::new(14, 8, 1, 32).map_err(|e| e.to_string())?;
+    let mut key = [0_u8; 32];
+    scrypt::scrypt(password.as_bytes(), salt, &params, &mut key).map_err(|e| e.to_string())?;
+    Ok(key)
+}
+
+fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let status = Command::new("open")
+        .arg("-R")
+        .arg(path)
+        .status()
+        .map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "windows")]
+    let status = Command::new("explorer")
+        .arg(format!("/select,{}", path.to_string_lossy()))
+        .status()
+        .map_err(|e| e.to_string())?;
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let status = Command::new("xdg-open")
+        .arg(path.parent().unwrap_or_else(|| Path::new(".")))
+        .status()
+        .map_err(|e| e.to_string())?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err("无法在文件管理器中显示该文件".into())
+    }
 }
 
 pub fn list_directory(dir_path: &Path, recursive: bool) -> Result<Value, String> {
@@ -182,6 +221,10 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             .map_err(|e| e.to_string())?;
             Ok(Some(Value::Null))
         }
+        "file:reveal" => {
+            reveal_in_file_manager(Path::new(as_str(&params, "path")?))?;
+            Ok(Some(Value::Null))
+        }
         "file:delete" => {
             let path = Path::new(as_str(&params, "path")?);
             let vault_path = params.get("vaultPath").and_then(Value::as_str);
@@ -262,6 +305,67 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
                 fs::read_to_string(as_str(&params, "snapshotPath")?).map_err(|e| e.to_string())?;
             fs::write(as_str(&params, "targetPath")?, content).map_err(|e| e.to_string())?;
             Ok(Some(Value::Null))
+        }
+        "file:encrypt" => {
+            let path = Path::new(as_str(&params, "path")?);
+            let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+            let mut salt = [0_u8; 16];
+            let mut iv = [0_u8; 12];
+            getrandom::getrandom(&mut salt).map_err(|e| e.to_string())?;
+            getrandom::getrandom(&mut iv).map_err(|e| e.to_string())?;
+
+            let key = derive_note_key(as_str(&params, "password")?, &salt)?;
+            let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+            let encrypted_with_tag = cipher
+                .encrypt(Nonce::from_slice(&iv), content.as_bytes())
+                .map_err(|e| e.to_string())?;
+            let tag_start = encrypted_with_tag
+                .len()
+                .checked_sub(16)
+                .ok_or_else(|| "加密失败".to_string())?;
+            let (encrypted, tag) = encrypted_with_tag.split_at(tag_start);
+
+            let mut payload = Vec::with_capacity(44 + encrypted.len());
+            payload.extend_from_slice(&salt);
+            payload.extend_from_slice(&iv);
+            payload.extend_from_slice(tag);
+            payload.extend_from_slice(encrypted);
+            let encoded = base64::engine::general_purpose::STANDARD.encode(payload);
+            fs::write(path, format!("{ENCRYPTED_MARKER}{encoded}")).map_err(|e| e.to_string())?;
+            Ok(Some(Value::Bool(true)))
+        }
+        "file:decrypt" => {
+            let raw = fs::read_to_string(as_str(&params, "path")?).map_err(|e| e.to_string())?;
+            if !raw.starts_with(ENCRYPTED_MARKER) {
+                return Ok(Some(json!({ "success": false, "error": "文件未加密" })));
+            }
+
+            let result = (|| -> Result<String, String> {
+                let payload = base64::engine::general_purpose::STANDARD
+                    .decode(&raw[ENCRYPTED_MARKER.len()..])
+                    .map_err(|e| e.to_string())?;
+                if payload.len() < 44 {
+                    return Err("加密内容损坏".into());
+                }
+                let salt = &payload[0..16];
+                let iv = &payload[16..28];
+                let tag = &payload[28..44];
+                let encrypted = &payload[44..];
+                let key = derive_note_key(as_str(&params, "password")?, salt)?;
+                let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
+                let mut encrypted_with_tag = Vec::with_capacity(encrypted.len() + tag.len());
+                encrypted_with_tag.extend_from_slice(encrypted);
+                encrypted_with_tag.extend_from_slice(tag);
+                let decrypted = cipher
+                    .decrypt(Nonce::from_slice(iv), encrypted_with_tag.as_ref())
+                    .map_err(|e| e.to_string())?;
+                String::from_utf8(decrypted).map_err(|e| e.to_string())
+            })();
+
+            match result {
+                Ok(content) => Ok(Some(json!({ "success": true, "content": content }))),
+                Err(_) => Ok(Some(json!({ "success": false, "error": "密码错误" }))),
+            }
         }
         "file:list-trash" => {
             let trash_dir = Path::new(as_str(&params, "vaultPath")?).join(".trash");
@@ -387,5 +491,58 @@ fn capitalize(value: &str) -> String {
     match chars.next() {
         Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
         None => String::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_note_path(name: &str) -> PathBuf {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("nexusky-{name}-{timestamp}.md"))
+    }
+
+    #[test]
+    fn encrypt_and_decrypt_note_payloads() {
+        let path = temp_note_path("encrypted-note");
+        fs::write(&path, "hello encrypted note").expect("write temp note");
+
+        let encrypted = handle(
+            "file:encrypt",
+            json!({ "path": path.to_string_lossy(), "password": "secret" }),
+        )
+        .expect("encrypt should not error")
+        .expect("encrypt should return value");
+        assert_eq!(encrypted, Value::Bool(true));
+
+        let raw = fs::read_to_string(&path).expect("read encrypted note");
+        assert!(raw.starts_with(ENCRYPTED_MARKER));
+
+        let wrong_password = handle(
+            "file:decrypt",
+            json!({ "path": path.to_string_lossy(), "password": "wrong" }),
+        )
+        .expect("wrong password should return structured result")
+        .expect("decrypt should return value");
+        assert_eq!(wrong_password["success"], Value::Bool(false));
+
+        let decrypted = handle(
+            "file:decrypt",
+            json!({ "path": path.to_string_lossy(), "password": "secret" }),
+        )
+        .expect("decrypt should not error")
+        .expect("decrypt should return value");
+        assert_eq!(decrypted["success"], Value::Bool(true));
+        assert_eq!(
+            decrypted["content"],
+            Value::String("hello encrypted note".into())
+        );
+
+        let _ = fs::remove_file(path);
     }
 }
