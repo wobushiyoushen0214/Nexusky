@@ -95,6 +95,8 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
   })
 
   ipcMain.handle('ai:validate', async (_event, params: { config: AIProviderConfig }) => {
+    const configError = aiManager.validateConfig(params.config)
+    if (configError) return { ok: false, error: configError }
     const provider = aiManager.getProvider(params.config)
     return provider.validate()
   })

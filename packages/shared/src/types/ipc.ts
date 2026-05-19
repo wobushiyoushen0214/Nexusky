@@ -124,6 +124,11 @@ export interface AIProviderConfig {
   enabled: boolean
 }
 
+export interface AIProviderValidationResult {
+  ok: boolean
+  error?: string
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:stat': { params: { path: string }; result: { size: number; mtime: number } }
@@ -194,7 +199,7 @@ export interface IPCChannelMap {
   'ai:save-providers': { params: { providers: AIProviderConfig[] }; result: void }
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:get-active-provider': { params: undefined; result: string | null }
-  'ai:validate': { params: { config: AIProviderConfig }; result: boolean }
+  'ai:validate': { params: { config: AIProviderConfig }; result: AIProviderValidationResult }
   'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string }; result: void }
   'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string }; result: void }
   'ai:detect-intent': { params: { messages: IPCChatMessage[]; intents?: string[]; intentContext?: string }; result: { intent?: string } }

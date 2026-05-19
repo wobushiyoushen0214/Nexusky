@@ -7,7 +7,7 @@ import type {
   ResponseInput,
   ResponseInputContent,
 } from 'openai/resources/responses/responses'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 
 function contentToString(content: ChatMessage['content']): string {
@@ -207,12 +207,12 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
     yield { type: 'error', content: lastErrorMessage }
   }
 
-  async validate(): Promise<boolean> {
+  async validate(): Promise<AIProviderValidationResult> {
     try {
       await this.client.models.list()
-      return true
-    } catch {
-      return false
+      return { ok: true }
+    } catch (error: unknown) {
+      return { ok: false, error: normalizeProviderError(error).message }
     }
   }
 }

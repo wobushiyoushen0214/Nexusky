@@ -158,8 +158,8 @@ export function Settings({ open, onClose }: SettingsProps) {
     if (!editing) return
     setTestingProvider(true)
     try {
-      const ok = await window.api.invoke('ai:validate', { config: editing })
-      toast(ok ? 'AI 连接测试通过' : 'AI 连接测试失败，请检查配置', ok ? 'success' : 'error')
+      const result = await window.api.invoke('ai:validate', { config: editing })
+      toast(result.ok ? 'AI 连接测试通过' : `AI 连接测试失败: ${result.error || '请检查配置'}`, result.ok ? 'success' : 'error')
     } catch (e: unknown) {
       toast(`AI 连接测试失败: ${getErrorMessage(e, '未知错误')}`, 'error')
     } finally {

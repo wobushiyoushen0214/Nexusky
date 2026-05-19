@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions, ToolCallEvent, ToolDefinition } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions, ToolCallEvent, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 
 type AnthropicImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
@@ -250,16 +250,16 @@ export class ClaudeProvider extends BaseAIProvider {
     yield { type: 'error', content: lastErrorMessage }
   }
 
-  async validate(): Promise<boolean> {
+  async validate(): Promise<AIProviderValidationResult> {
     try {
       await this.client.messages.create({
         model: this.config.model,
         max_tokens: 1,
         messages: [{ role: 'user', content: 'hi' }]
       })
-      return true
-    } catch {
-      return false
+      return { ok: true }
+    } catch (error: unknown) {
+      return { ok: false, error: normalizeProviderError(error).message }
     }
   }
 }

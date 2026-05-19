@@ -1,4 +1,4 @@
-import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition } from './base-provider'
+import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { OpenAIProvider } from './openai-provider'
 import { OpenAIResponsesProvider } from './openai-responses-provider'
 import { ClaudeProvider } from './claude-provider'
@@ -72,6 +72,12 @@ class AIManager {
     if (needsApiKey && !config.apiKey) {
       return 'API Key 为空（可能是跨设备同步后解密失败），请重新配置 API Key'
     }
+    if (!config.model.trim()) {
+      return '模型名称为空，请填写要使用的模型'
+    }
+    if (config.type === 'custom' && !config.baseUrl.trim()) {
+      return '自定义提供商需要填写 API Base URL'
+    }
     return null
   }
 
@@ -107,4 +113,4 @@ class AIManager {
 }
 
 export const aiManager = new AIManager()
-export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition }
+export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult }

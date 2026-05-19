@@ -8,6 +8,11 @@ export interface AIProviderConfig {
   enabled: boolean
 }
 
+export interface AIProviderValidationResult {
+  ok: boolean
+  error?: string
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system' | 'tool'
   content: string | ChatContentPart[]
@@ -53,7 +58,7 @@ export abstract class BaseAIProvider {
   }
 
   abstract chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent>
-  abstract validate(): Promise<boolean>
+  abstract validate(): Promise<AIProviderValidationResult>
 
   async *chatStreamWithTools(
     messages: ChatMessage[],

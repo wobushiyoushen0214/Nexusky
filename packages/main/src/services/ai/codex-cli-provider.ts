@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'fs'
 import { mkdtemp, readFile, rm } from 'fs/promises'
 import { homedir, tmpdir, platform } from 'os'
 import { delimiter, join } from 'path'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, ChatOptions } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, ChatOptions, AIProviderValidationResult } from './base-provider'
 
 function contentToText(content: string | ChatContentPart[]): string {
   if (typeof content === 'string') return content
@@ -149,12 +149,16 @@ export class CodexCliProvider extends BaseAIProvider {
     }
   }
 
-  async validate(): Promise<boolean> {
+  async validate(): Promise<AIProviderValidationResult> {
     try {
       const result = await runProcess(this.command, ['--version'])
-      return result.code === 0
-    } catch {
-      return false
+      if (result.code !== 0) {
+        return { ok: false, error: result.stderr || result.stdout || `Codex CLI 退出码 ${result.code}` }
+      }
+      return { ok: true }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error || 'Codex CLI 不可用')
+      return { ok: false, error: message }
     }
   }
 }

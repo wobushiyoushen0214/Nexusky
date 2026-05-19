@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ChatOptions } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ChatOptions, AIProviderValidationResult } from './base-provider'
 import { net } from 'electron'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
@@ -82,13 +82,14 @@ export class OllamaProvider extends BaseAIProvider {
     yield { type: 'error', content: lastErrorMessage }
   }
 
-  async validate(): Promise<boolean> {
+  async validate(): Promise<AIProviderValidationResult> {
     try {
       const baseUrl = this.config.baseUrl || 'http://localhost:11434'
       const response = await net.fetch(`${baseUrl}/api/tags`)
-      return response.ok
-    } catch {
-      return false
+      if (!response.ok) return { ok: false, error: `Ollama 返回 HTTP ${response.status}` }
+      return { ok: true }
+    } catch (error: unknown) {
+      return { ok: false, error: normalizeProviderError(error).message || '无法连接到 Ollama，请确认服务正在运行' }
     }
   }
 }
