@@ -40,6 +40,7 @@ export function CanvasView() {
   const [loading, setLoading] = useState(false)
   const [dragging, setDragging] = useState<DragState | null>(null)
   const [showGuide, setShowGuide] = useState(false)
+  const [zoom, setZoom] = useState(1)
   const canvasRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef<Record<string, CanvasPosition>>({})
 
@@ -75,8 +76,10 @@ export function CanvasView() {
     const handlePointerMove = (event: PointerEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect()
       if (!rect) return
-      const x = Math.max(0, event.clientX - rect.left + canvasRef.current!.scrollLeft - dragging.offsetX)
-      const y = Math.max(0, event.clientY - rect.top + canvasRef.current!.scrollTop - dragging.offsetY)
+      const scrollLeft = canvasRef.current!.scrollLeft
+      const scrollTop = canvasRef.current!.scrollTop
+      const x = Math.max(0, (event.clientX - rect.left + scrollLeft) / zoom - dragging.offsetX)
+      const y = Math.max(0, (event.clientY - rect.top + scrollTop) / zoom - dragging.offsetY)
       setPositions((current) => ({ ...current, [dragging.id]: { x, y } }))
     }
     const handlePointerUp = () => {
@@ -89,7 +92,7 @@ export function CanvasView() {
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [dragging, vaultPath])
+  }, [dragging, vaultPath, zoom])
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -130,6 +133,10 @@ export function CanvasView() {
     setPositions(next)
     if (vaultPath) safeSetJSON(getCanvasStorageKey(vaultPath), next)
   }
+
+  const canvasWidth = 1200
+  const canvasHeight = Math.max(760, Math.ceil(rows.length / 4) * 180 + 120)
+  const setClampedZoom = (value: number) => setZoom(Math.max(0.5, Math.min(1.8, value)))
 
   const createCanvasNote = async () => {
     if (!vaultPath) return
@@ -175,6 +182,11 @@ export function CanvasView() {
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('canvas.searchPlaceholder')} style={controlStyle} />
           <button onClick={() => setShowGuide((value) => !value)} style={buttonStyle}>{t('canvas.guide')}</button>
           <button onClick={createCanvasNote} disabled={!vaultPath} style={buttonStyle}>{t('canvas.createNote')}</button>
+          <div style={{ display: 'flex', alignItems: 'center', height: 30, borderRadius: 6, border: '1px solid var(--border-subtle)', overflow: 'hidden', background: 'var(--bg-elevated)', flexShrink: 0 }}>
+            <button onClick={() => setClampedZoom(zoom - 0.1)} title={t('canvas.zoomOut')} style={zoomButtonStyle}>-</button>
+            <button onClick={() => setZoom(1)} title={t('canvas.zoomReset')} style={{ ...zoomButtonStyle, minWidth: 52 }}>{Math.round(zoom * 100)}%</button>
+            <button onClick={() => setClampedZoom(zoom + 0.1)} title={t('canvas.zoomIn')} style={{ ...zoomButtonStyle, borderRight: 'none' }}>+</button>
+          </div>
           <button onClick={resetLayout} style={buttonStyle}>{t('canvas.reset')}</button>
           <button onClick={loadRows} disabled={loading} style={buttonStyle}>{loading ? t('canvas.loading') : t('canvas.refresh')}</button>
         </div>
@@ -196,7 +208,8 @@ export function CanvasView() {
             {!loading && <button onClick={createCanvasNote} style={{ ...buttonStyle, marginTop: 10 }}>{t('canvas.createFirst')}</button>}
           </div>
         ) : (
-          <div style={{ position: 'relative', width: 1200, height: Math.max(760, Math.ceil(rows.length / 4) * 180 + 120) }}>
+          <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
               <defs>
                 <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
@@ -215,7 +228,7 @@ export function CanvasView() {
                   key={row.id}
                   onPointerDown={(event) => {
                     const rect = event.currentTarget.getBoundingClientRect()
-                    setDragging({ id: row.id, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top })
+                    setDragging({ id: row.id, offsetX: (event.clientX - rect.left) / zoom, offsetY: (event.clientY - rect.top) / zoom })
                     event.currentTarget.setPointerCapture(event.pointerId)
                   }}
                   onDoubleClick={() => openRow(row)}
@@ -245,6 +258,7 @@ export function CanvasView() {
                 </div>
               )
             })}
+            </div>
           </div>
         )}
       </div>
@@ -274,4 +288,16 @@ const buttonStyle: React.CSSProperties = {
   fontSize: 12,
   cursor: 'pointer',
   flexShrink: 0
+}
+
+const zoomButtonStyle: React.CSSProperties = {
+  height: 28,
+  minWidth: 30,
+  padding: '0 8px',
+  border: 'none',
+  borderRight: '1px solid var(--border-subtle)',
+  background: 'transparent',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  cursor: 'pointer'
 }
