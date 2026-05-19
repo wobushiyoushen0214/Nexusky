@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1010,6 +1010,20 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_note_memories',
+        description: '列出已生成的笔记记忆摘要、概念和主题，适合先快速了解知识库内容再决定读取哪些笔记。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按标题、路径、概念、主题或摘要过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note',
         description: '读取指定笔记的完整内容。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
@@ -1504,6 +1518,48 @@ graph TD
               score: pair.score
             }
           ])
+        }
+      }
+      case 'list_note_memories': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notesById = new Map(getAllNotes(vaultPath).map((note) => [note.id, note]))
+        const memories = readAllMemories(vaultPath)
+          .map((memory) => {
+            const note = notesById.get(memory.noteId)
+            if (!note) return null
+            return {
+              title: note.title || memory.title,
+              filePath: note.filePath,
+              folder: memory.folder,
+              concepts: memory.concepts,
+              topics: memory.topics,
+              summary: memory.summary,
+              updatedAt: memory.updatedAt
+            }
+          })
+          .filter((memory): memory is { title: string; filePath: string; folder: string; concepts: string[]; topics: string[]; summary: string; updatedAt: number } => memory !== null)
+          .filter((memory) => {
+            if (!query) return true
+            return [
+              memory.title,
+              memory.filePath,
+              memory.folder,
+              memory.summary,
+              ...memory.concepts,
+              ...memory.topics
+            ].some((value) => value.toLowerCase().includes(query))
+          })
+          .sort((a, b) => b.updatedAt - a.updatedAt || a.filePath.localeCompare(b.filePath))
+          .slice(0, limit)
+        return {
+          content: formatNoteMemoriesToolResult(memories),
+          sources: memories.map((memory) => ({
+            title: memory.title,
+            filePath: memory.filePath,
+            chunk: memory.summary.slice(0, 100),
+            score: 1
+          }))
         }
       }
       case 'read_note': {

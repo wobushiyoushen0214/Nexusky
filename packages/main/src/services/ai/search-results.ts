@@ -154,6 +154,16 @@ export interface AiMemoryRelatedNotePairResult {
   reason: string
 }
 
+export interface AiNoteMemoryResult {
+  title: string
+  filePath: string
+  folder: string
+  concepts: string[]
+  topics: string[]
+  summary: string
+  updatedAt: number
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -462,6 +472,19 @@ export function formatMemoryRelatedNotesToolResult(pairs: AiMemoryRelatedNotePai
     `Target: ${pair.targetPath}`,
     `Reason: ${pair.reason || '(none)'}`,
     `Score: ${pair.score.toFixed(3)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatNoteMemoriesToolResult(memories: AiNoteMemoryResult[]): string {
+  if (memories.length === 0) return 'No note memories found.'
+  return memories.map((memory, index) => [
+    `${index + 1}. **${memory.title}**`,
+    `Path: ${memory.filePath}`,
+    `Folder: ${memory.folder}`,
+    `Concepts: ${memory.concepts.length > 0 ? memory.concepts.join(', ') : '(none)'}`,
+    `Topics: ${memory.topics.length > 0 ? memory.topics.join(', ') : '(none)'}`,
+    `Summary: ${memory.summary || '(none)'}`,
+    `Updated: ${formatTimestamp(memory.updatedAt)}`
   ].join('\n')).join('\n\n')
 }
 
