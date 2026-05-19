@@ -8,6 +8,12 @@ export interface AiNoteLookupResult {
   absolutePath: string
 }
 
+export interface MarkdownHeading {
+  level: number
+  text: string
+  line: number
+}
+
 function normalizeQuery(input: string): string {
   let value = input.trim()
   const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
@@ -42,6 +48,16 @@ function extractNoteReferenceFragment(input: string): string | null {
 
 function normalizeHeadingText(value: string): string {
   return value.replace(/\s+#+$/, '').trim().toLowerCase()
+}
+
+export function extractMarkdownHeadings(content: string): MarkdownHeading[] {
+  return content.split('\n').flatMap((line, index) => {
+    const match = line.match(/^(#{1,6})\s+(.+?)\s*$/)
+    if (!match) return []
+    const text = match[2].replace(/\s+#+$/, '').trim()
+    if (!text) return []
+    return [{ level: match[1].length, text, line: index + 1 }]
+  })
 }
 
 export function extractMarkdownHeadingSection(content: string, heading: string): string | null {

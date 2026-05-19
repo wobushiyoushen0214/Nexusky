@@ -27,6 +27,16 @@ export interface AiNoteLinksSummary {
   }[]
 }
 
+export interface AiNoteHeadingSummary {
+  title: string
+  filePath: string
+  headings: {
+    level: number
+    text: string
+    line: number
+  }[]
+}
+
 export interface AiTaskResult {
   text: string
   done: boolean
@@ -196,6 +206,20 @@ export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
     '',
     'Unlinked Mentions:',
     unlinkedMentions
+  ].join('\n')
+}
+
+export function formatNoteHeadingsToolResult(summary: AiNoteHeadingSummary): string {
+  if (summary.headings.length === 0) return `No headings found for ${summary.title} (${summary.filePath}).`
+  const headings = summary.headings.map((heading, index) => (
+    `${index + 1}. ${'#'.repeat(heading.level)} ${heading.text} (line ${heading.line})`
+  )).join('\n')
+  return [
+    `Title: ${summary.title}`,
+    `Path: ${summary.filePath}`,
+    '',
+    'Headings:',
+    headings
   ].join('\n')
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatLargeNotesToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -100,6 +100,31 @@ describe('formatNoteLinksToolResult', () => {
     })
 
     expect(output).toBe('Title: Solo\nPath: Solo.md\n\nOutgoing:\n(none)\n\nBacklinks:\n(none)\n\nUnlinked Mentions:\n(none)')
+  })
+})
+
+describe('formatNoteHeadingsToolResult', () => {
+  it('formats note headings with levels and line numbers', () => {
+    const output = formatNoteHeadingsToolResult({
+      title: 'Topic',
+      filePath: 'Notes/Topic.md',
+      headings: [
+        { level: 1, text: 'Topic', line: 1 },
+        { level: 2, text: 'Details', line: 5 }
+      ]
+    })
+
+    expect(output).toBe('Title: Topic\nPath: Notes/Topic.md\n\nHeadings:\n1. # Topic (line 1)\n2. ## Details (line 5)')
+  })
+
+  it('marks notes without headings explicitly', () => {
+    const output = formatNoteHeadingsToolResult({
+      title: 'Plain',
+      filePath: 'Plain.md',
+      headings: []
+    })
+
+    expect(output).toBe('No headings found for Plain (Plain.md).')
   })
 })
 

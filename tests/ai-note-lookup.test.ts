@@ -116,4 +116,24 @@ describe('note reference headings', () => {
       '  - and this child'
     ].join('\n'))
   })
+
+  it('lists markdown headings with levels and line numbers', async () => {
+    const { extractMarkdownHeadings } = await import('../packages/main/src/services/ai/note-lookup')
+    const markdown = [
+      '# Topic',
+      '',
+      'Body',
+      '',
+      '## Details ##',
+      'Text',
+      '',
+      '### Next'
+    ].join('\n')
+
+    expect(extractMarkdownHeadings(markdown)).toEqual([
+      { level: 1, text: 'Topic', line: 1 },
+      { level: 2, text: 'Details', line: 5 },
+      { level: 3, text: 'Next', line: 8 }
+    ])
+  })
 })
