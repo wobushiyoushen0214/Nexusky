@@ -144,8 +144,15 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
                   transition: 'background 80ms',
                 }}
               >
-                <span style={{ fontSize: 14, color: i === selectedIndex ? 'var(--accent-text)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {result.title}
+                <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <span style={{ fontSize: 14, color: i === selectedIndex ? 'var(--accent-text)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {result.title}
+                  </span>
+                  {result.aliasMatch ? (
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      别名: {result.aliasMatch}
+                    </span>
+                  ) : null}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'rtl', textAlign: 'right' }}>
                   {result.filePath.replace(/[^\\/]+$/, '').replace(/[\\/]$/, '') || '/'}

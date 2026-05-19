@@ -10,6 +10,7 @@ export interface NoteSearchResult {
   id: string
   title: string
   filePath: string
+  aliasMatch?: string
 }
 
 export interface BacklinkResult {

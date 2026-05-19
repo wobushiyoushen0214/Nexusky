@@ -33,6 +33,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
+import type { NoteSearchResult } from '@shared/types/ipc'
 
 function stripFrontmatter(content: string): string {
   return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
@@ -49,6 +50,10 @@ type EmbeddedNote = { title: string; content: string }
 
 function isEmbeddedNote(note: EmbeddedNote | null): note is EmbeddedNote {
   return note !== null
+}
+
+function findExactNoteMatch(results: NoteSearchResult[], title: string): NoteSearchResult | undefined {
+  return results.find((result) => result.title === title || result.aliasMatch === title)
 }
 
 class LRUCache<K, V> {
@@ -342,7 +347,7 @@ export function Editor() {
       const vaultPath = (await window.api.invoke('vault:get', undefined))
       if (!vaultPath) return
       const results = await window.api.invoke('db:search-notes', { vaultPath, query: title })
-      const exact = results.find((r) => r.title === title)
+      const exact = findExactNoteMatch(results, title)
       if (exact) {
         useEditorStore.getState().openFile(`${vaultPath}/${exact.filePath}`)
         return
@@ -528,7 +533,7 @@ export function Editor() {
         try {
           const results = await window.api.invoke('db:search-notes', { vaultPath: vault, query: title })
           if (cancelled) return
-          const exact = results.find((r) => r.title === title)
+          const exact = findExactNoteMatch(results, title)
           if (exact) {
             const text = await window.api.invoke('file:read', { path: `${vault}/${exact.filePath}` })
             if (cancelled) return
@@ -819,7 +824,7 @@ function TransclusionBlocks({ content }: { content: string }) {
       Promise.all(titles.map(async (title) => {
         try {
           const results = await window.api.invoke('db:search-notes', { vaultPath, query: title })
-          const exact = results.find((r) => r.title === title)
+          const exact = findExactNoteMatch(results, title)
           if (exact) {
             const text = await window.api.invoke('file:read', { path: `${vaultPath}/${exact.filePath}` })
             return { title, content: text }
