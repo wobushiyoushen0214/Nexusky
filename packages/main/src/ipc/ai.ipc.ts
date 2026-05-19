@@ -6,11 +6,11 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
+import { formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
-import { indexNote, resolveAllLinks } from '../services/indexer'
+import { getBacklinks, getOutgoingLinks, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
 import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../services/memory'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
@@ -928,6 +928,20 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'list_note_links',
+        description: '列出指定笔记的出链和反链。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '笔记标题、alias、路径或 wikilink' }
+          },
+          required: ['title']
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
@@ -984,6 +998,36 @@ graph TD
           }
         } catch {
           return { content: `无法读取笔记「${title}」。` }
+        }
+      }
+      case 'list_note_links': {
+        const title = getStringArg(args, 'title')
+        if (!title.trim()) return { content: 'list_note_links 缺少 title 参数。请先搜索笔记，或提供要查看关系的笔记标题。' }
+        const note = findNoteForAiTool(vaultPath, title)
+        if (!note) {
+          const candidates = findNoteCandidatesForAiTool(vaultPath, title)
+          if (candidates.length > 1) {
+            return {
+              content: `找到多个可能的笔记，请用 list_note_links 的 title 参数传入精确路径重试：\n${candidates.map((item) => `- ${item.filePath} (${item.title})`).join('\n')}`
+            }
+          }
+          return { content: `未找到标题为「${title}」的笔记。` }
+        }
+
+        const db = getDatabase(vaultPath)
+        const row = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(note.filePath) as { id: string } | undefined
+        if (!row) return { content: `未找到笔记索引「${note.filePath}」。请先刷新索引。` }
+
+        const outgoing = getOutgoingLinks(vaultPath, row.id)
+        const backlinks = getBacklinks(vaultPath, row.id)
+        return {
+          content: formatNoteLinksToolResult({ title: note.title, filePath: note.filePath, outgoing, backlinks }),
+          sources: [{
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Outgoing: ${outgoing.length}; Backlinks: ${backlinks.length}`,
+            score: 1
+          }]
         }
       }
       case 'create_note': {

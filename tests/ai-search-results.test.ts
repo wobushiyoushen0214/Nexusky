@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatNoteLinksToolResult, formatReadNoteToolResult, formatSearchNotesToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -63,5 +63,38 @@ describe('formatReadNoteToolResult', () => {
     })
 
     expect(output).toBe('Title: Topic\nPath: Topic.md\nBlock: ^todo-1\n\n- Task body')
+  })
+})
+
+describe('formatNoteLinksToolResult', () => {
+  it('formats outgoing links and backlinks with paths', () => {
+    const output = formatNoteLinksToolResult({
+      title: 'Topic',
+      filePath: 'Topic.md',
+      outgoing: [
+        { targetTitle: 'Next', targetPath: 'Folder/Next.md', context: 'See [[Next]] for details.', resolved: true },
+        { targetTitle: 'Missing', context: 'See [[Missing]].', resolved: false }
+      ],
+      backlinks: [
+        { sourceTitle: 'Source', sourcePath: 'Source.md', context: 'References [[Topic]].' }
+      ]
+    })
+
+    expect(output).toContain('Title: Topic')
+    expect(output).toContain('Path: Topic.md')
+    expect(output).toContain('1. Next (Folder/Next.md) - See [[Next]] for details.')
+    expect(output).toContain('2. Missing (unresolved) - See [[Missing]].')
+    expect(output).toContain('1. Source (Source.md) - References [[Topic]].')
+  })
+
+  it('marks empty link sections explicitly', () => {
+    const output = formatNoteLinksToolResult({
+      title: 'Solo',
+      filePath: 'Solo.md',
+      outgoing: [],
+      backlinks: []
+    })
+
+    expect(output).toBe('Title: Solo\nPath: Solo.md\n\nOutgoing:\n(none)\n\nBacklinks:\n(none)')
   })
 })
