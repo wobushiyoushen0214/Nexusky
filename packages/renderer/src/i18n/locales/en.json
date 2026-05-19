@@ -119,6 +119,7 @@
       "outline": { "label": "Open document outline" },
       "properties": { "label": "Open note properties", "description": "Edit title, aliases, tags, and cssclasses" },
       "settings": { "label": "Open settings" },
+      "newWindow": { "label": "Open new window", "description": "Create an independent Nexusky window for viewing different areas in parallel" },
       "sidebar": { "label": "Toggle sidebar" },
       "resetWorkspace": { "label": "Reset workspace layout", "description": "Restore the editor, sidebar, and right panel default layout" },
       "focus": { "label": "Toggle focus mode" },

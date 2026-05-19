@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
+import type { IpcMainEvent } from 'electron'
 import { join } from 'path'
 import { registerFileIPC } from './ipc/file.ipc'
 import { registerVaultIPC } from './ipc/vault.ipc'
@@ -21,6 +22,7 @@ process.on('unhandledRejection', (reason) => {
 })
 
 let mainWindow: BrowserWindow | null = null
+const windows = new Set<BrowserWindow>()
 
 interface WindowBounds {
   x: number
@@ -34,27 +36,30 @@ function getSavedBounds(): Partial<WindowBounds> {
   return (store.get('windowBounds') as WindowBounds) || {}
 }
 
-let boundsTimer: ReturnType<typeof setTimeout> | null = null
-function saveWindowBounds(): void {
-  if (boundsTimer) clearTimeout(boundsTimer)
-  boundsTimer = setTimeout(() => {
-    if (!mainWindow) return
-    const isMaximized = mainWindow.isMaximized()
+const boundsTimers = new Map<number, ReturnType<typeof setTimeout>>()
+function saveWindowBounds(window: BrowserWindow): void {
+  const existingTimer = boundsTimers.get(window.id)
+  if (existingTimer) clearTimeout(existingTimer)
+  const timer = setTimeout(() => {
+    if (window.isDestroyed()) return
+    const isMaximized = window.isMaximized()
     if (!isMaximized) {
-      const bounds = mainWindow.getBounds()
+      const bounds = window.getBounds()
       store.set('windowBounds', { ...bounds, isMaximized: false })
     } else {
       const existing = getSavedBounds()
       store.set('windowBounds', { ...existing, isMaximized: true })
     }
+    boundsTimers.delete(window.id)
   }, 500)
+  boundsTimers.set(window.id, timer)
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const isMac = process.platform === 'darwin'
   const saved = getSavedBounds()
 
-  mainWindow = new BrowserWindow({
+  const window = new BrowserWindow({
     width: saved.width || 1400,
     height: saved.height || 900,
     x: saved.x,
@@ -77,29 +82,48 @@ function createWindow(): void {
   })
 
   if (saved.isMaximized) {
-    mainWindow.maximize()
+    window.maximize()
   }
 
   if (process.env.ELECTRON_RENDERER_URL) {
-    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
+    window.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    window.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  mainWindow.on('resize', saveWindowBounds)
-  mainWindow.on('move', saveWindowBounds)
-  mainWindow.on('maximize', saveWindowBounds)
-  mainWindow.on('unmaximize', saveWindowBounds)
+  windows.add(window)
+  mainWindow = window
 
-  mainWindow.on('close', (e) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('app:before-close')
+  window.on('focus', () => {
+    mainWindow = window
+  })
+
+  window.on('resize', () => saveWindowBounds(window))
+  window.on('move', () => saveWindowBounds(window))
+  window.on('maximize', () => saveWindowBounds(window))
+  window.on('unmaximize', () => saveWindowBounds(window))
+
+  window.on('close', () => {
+    if (!window.isDestroyed()) {
+      window.webContents.send('app:before-close')
     }
   })
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
+  window.on('closed', () => {
+    windows.delete(window)
+    const timer = boundsTimers.get(window.id)
+    if (timer) clearTimeout(timer)
+    boundsTimers.delete(window.id)
+    if (mainWindow === window) {
+      mainWindow = BrowserWindow.getFocusedWindow() || windows.values().next().value || null
+    }
   })
+
+  return window
+}
+
+function getEventWindow(event: IpcMainEvent): BrowserWindow | null {
+  return BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow() || mainWindow
 }
 
 app.whenReady().then(() => {
@@ -113,15 +137,17 @@ app.whenReady().then(() => {
   registerPluginIPC()
   setupAutoUpdater()
 
-  ipcMain.on('window:minimize', () => mainWindow?.minimize())
-  ipcMain.on('window:maximize', () => {
-    if (mainWindow?.isMaximized()) {
-      mainWindow.unmaximize()
+  ipcMain.on('window:minimize', (event) => getEventWindow(event)?.minimize())
+  ipcMain.on('window:maximize', (event) => {
+    const window = getEventWindow(event)
+    if (window?.isMaximized()) {
+      window.unmaximize()
     } else {
-      mainWindow?.maximize()
+      window?.maximize()
     }
   })
-  ipcMain.on('window:close', () => mainWindow?.close())
+  ipcMain.on('window:close', (event) => getEventWindow(event)?.close())
+  ipcMain.on('window:new', () => createWindow())
 
   ipcMain.on('theme:change', (_event, _theme: string) => {
     // Reserved for future use
@@ -130,13 +156,11 @@ app.whenReady().then(() => {
   createWindow()
 
   globalShortcut.register('CommandOrControl+Shift+N', () => {
-    if (!mainWindow) {
-      createWindow()
-    }
-    if (mainWindow!.isMinimized()) mainWindow!.restore()
-    mainWindow!.show()
-    mainWindow!.focus()
-    mainWindow!.webContents.send('quick-capture')
+    const window = mainWindow || createWindow()
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
+    window.webContents.send('quick-capture')
   })
 
   app.on('activate', () => {

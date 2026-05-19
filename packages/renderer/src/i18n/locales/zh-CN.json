@@ -119,6 +119,7 @@
       "outline": { "label": "打开文档大纲" },
       "properties": { "label": "打开笔记属性", "description": "编辑 title、aliases、tags、cssclasses" },
       "settings": { "label": "打开设置" },
+      "newWindow": { "label": "打开新窗口", "description": "新建一个独立 Nexusky 窗口，可并行查看不同视图" },
       "sidebar": { "label": "切换侧边栏" },
       "resetWorkspace": { "label": "重置工作区布局", "description": "恢复编辑器、侧栏和右侧面板默认布局" },
       "focus": { "label": "切换聚焦模式" },
