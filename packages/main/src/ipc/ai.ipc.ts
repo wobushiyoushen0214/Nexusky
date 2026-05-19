@@ -3,6 +3,7 @@ import { aiManager, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEven
 import { store } from '../services/store'
 import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
+import { extractJsonFromText } from '../services/ai/json'
 import { logger } from '../services/logger'
 import { indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -522,9 +523,10 @@ graph TD
 
     let plan: { title: string; brief: string }[]
     try {
-      const jsonStr = planResult.replace(/```json?\s*|\s*```/g, '').trim()
-      const parsed = JSON.parse(jsonStr)
-      plan = Array.isArray(parsed) ? parsed : (parsed.notes || parsed)
+      const parsed = extractJsonFromText<{ notes?: unknown } | unknown[]>(planResult)
+      const parsedPlan = Array.isArray(parsed) ? parsed : parsed.notes
+      if (!Array.isArray(parsedPlan)) throw new Error('empty')
+      plan = parsedPlan as { title: string; brief: string }[]
       if (!Array.isArray(plan) || plan.length === 0) throw new Error('empty')
     } catch {
       finishAiTask(windowId, controller)
@@ -635,8 +637,7 @@ graph TD
           }
 
           if (relResult.trim()) {
-            const jsonStr = relResult.replace(/```json?\s*|\s*```/g, '').trim()
-            const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
+            const relations = extractJsonFromText<{ source: string; target: string; reason: string }[]>(relResult, 'array')
             if (Array.isArray(relations)) {
               const db = getDatabase(params.vaultPath)
               const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
@@ -722,8 +723,7 @@ graph TD
 
       if (!relResult.trim()) return { success: false, error: 'AI 未返回结果' }
 
-      const jsonStr = relResult.replace(/```json?\s*|\s*```/g, '').trim()
-      const relations = JSON.parse(jsonStr) as { source: string; target: string; reason: string }[]
+      const relations = extractJsonFromText<{ source: string; target: string; reason: string }[]>(relResult, 'array')
       if (!Array.isArray(relations)) return { success: false, error: '解析失败' }
 
       const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')

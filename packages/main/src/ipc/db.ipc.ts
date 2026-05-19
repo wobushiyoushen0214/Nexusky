@@ -7,6 +7,7 @@ import { getDatabase, closeDatabase } from '../services/database'
 import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '../services/embedding'
 import { pushIndex } from '../services/cloud/manager'
 import { aiManager } from '../services/ai'
+import { extractJsonFromText } from '../services/ai/json'
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import type Database from 'better-sqlite3'
 import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
@@ -678,12 +679,7 @@ async function runKanbanAi(system: string, user: string, signal?: AbortSignal): 
 }
 
 function parseKanbanAiJson(raw: string): KanbanAiPlan {
-  const cleaned = raw.replace(/```json|```/g, '').trim()
-  const start = cleaned.indexOf('{')
-  const end = cleaned.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('AI 未返回有效的任务 JSON')
-
-  const parsed = JSON.parse(cleaned.slice(start, end + 1)) as unknown
+  const parsed = extractJsonFromText(raw, 'object')
   return normalizeKanbanAiPlan(parsed)
 }
 

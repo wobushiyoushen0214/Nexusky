@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { aiManager } from './ai'
+import { extractJsonFromText } from './ai/json'
 
 export interface NoteMemory {
   noteId: string
@@ -102,8 +103,7 @@ summary (50-150 chars): What this note covers, what problem it solves, and its c
   if (!result.trim()) return null
 
   try {
-    const jsonStr = result.replace(/```json?\s*|\s*```/g, '').trim()
-    const parsed = JSON.parse(jsonStr) as { concepts: string[]; topics: string[]; summary: string }
+    const parsed = extractJsonFromText<{ concepts: string[]; topics: string[]; summary: string }>(result, 'object')
 
     const memory: NoteMemory = {
       noteId,
