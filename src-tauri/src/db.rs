@@ -351,6 +351,20 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
       remove_note_index(&conn, vault, Path::new(as_str(&params, "filePath")?))?;
       Ok(Some(Value::Null))
     }
+    "db:remove-folder" => {
+      let vault = as_str(&params, "vaultPath")?;
+      let conn = connection(vault)?;
+      let folder = Path::new(as_str(&params, "folderPath")?);
+      let rel_folder = format!("{}/", rel_path(vault, folder)?);
+      let mut stmt = conn.prepare("SELECT file_path FROM notes WHERE file_path LIKE ?1").map_err(|e| e.to_string())?;
+      let rows = stmt.query_map(params![format!("{rel_folder}%")], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
+      let paths: Vec<String> = rows.filter_map(Result::ok).collect();
+      drop(stmt);
+      for path in paths {
+        remove_note_index(&conn, vault, &Path::new(vault).join(path))?;
+      }
+      Ok(Some(Value::Null))
+    }
     "db:get-all-notes" => {
       let conn = connection(as_str(&params, "vaultPath")?)?;
       let mut stmt = conn.prepare("SELECT id, title, file_path, created_at, updated_at, content_hash FROM notes ORDER BY updated_at DESC").map_err(|e| e.to_string())?;
@@ -423,6 +437,171 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
       let rows = stmt.query_map([], |r| Ok(json!({ "id": r.get::<_, i64>(0)?, "text": r.get::<_, String>(1)?, "done": r.get::<_, i64>(2)? == 1, "title": r.get::<_, String>(3)?, "filePath": r.get::<_, String>(4)? }))).map_err(|e| e.to_string())?;
       Ok(Some(Value::Array(rows.filter_map(Result::ok).collect())))
     }
+    "kanban:get-columns" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let mut stmt = conn.prepare("SELECT id, name, sort_order FROM kanban_columns ORDER BY sort_order ASC").map_err(|e| e.to_string())?;
+      let rows = stmt.query_map([], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "name": r.get::<_, String>(1)?, "sortOrder": r.get::<_, i64>(2)? }))).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Array(rows.filter_map(Result::ok).collect())))
+    }
+    "kanban:create-column" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let max_order: i64 = conn.query_row("SELECT COALESCE(MAX(sort_order), -1) FROM kanban_columns", [], |r| r.get(0)).unwrap_or(-1);
+      conn.execute("INSERT INTO kanban_columns (id, name, sort_order) VALUES (?1, ?2, ?3)", params![as_str(&params, "id")?, as_str(&params, "name")?, max_order + 1]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "kanban:rename-column" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("UPDATE kanban_columns SET name = ?1 WHERE id = ?2", params![as_str(&params, "name")?, as_str(&params, "id")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "kanban:delete-column" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("DELETE FROM kanban_columns WHERE id = ?1", params![as_str(&params, "id")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "kanban:reorder-columns" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      if let Some(ids) = params.get("columnIds").and_then(Value::as_array) {
+        for (i, id) in ids.iter().filter_map(Value::as_str).enumerate() {
+          conn.execute("UPDATE kanban_columns SET sort_order = ?1 WHERE id = ?2", params![i as i64, id]).map_err(|e| e.to_string())?;
+        }
+      }
+      Ok(Some(Value::Null))
+    }
+    "kanban:get-tasks" => get_kanban_tasks(as_str(&params, "vaultPath")?).map(Some),
+    "kanban:create-task" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let column_id = as_str(&params, "columnId")?;
+      let max_order: i64 = conn.query_row("SELECT COALESCE(MAX(sort_order), -1) FROM kanban_tasks WHERE column_id = ?1", params![column_id], |r| r.get(0)).unwrap_or(-1);
+      conn.execute(
+        "INSERT INTO kanban_tasks (id, column_id, title, description, sort_order, priority, due_date, source_note_id, source_file_path, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, unixepoch(), unixepoch())",
+        params![
+          as_str(&params, "id")?,
+          column_id,
+          as_str(&params, "title")?,
+          params.get("description").and_then(Value::as_str).unwrap_or(""),
+          max_order + 1,
+          params.get("priority").and_then(Value::as_i64).unwrap_or(0),
+          params.get("dueDate").and_then(Value::as_str),
+          params.get("sourceNoteId").and_then(Value::as_str),
+          params.get("sourceFilePath").and_then(Value::as_str)
+        ]
+      ).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "kanban:update-task" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let id = as_str(&params, "id")?;
+      if let Some(v) = params.get("title").and_then(Value::as_str) { conn.execute("UPDATE kanban_tasks SET title = ?1, updated_at = unixepoch() WHERE id = ?2", params![v, id]).map_err(|e| e.to_string())?; }
+      if let Some(v) = params.get("description").and_then(Value::as_str) { conn.execute("UPDATE kanban_tasks SET description = ?1, updated_at = unixepoch() WHERE id = ?2", params![v, id]).map_err(|e| e.to_string())?; }
+      if let Some(v) = params.get("columnId").and_then(Value::as_str) { conn.execute("UPDATE kanban_tasks SET column_id = ?1, updated_at = unixepoch() WHERE id = ?2", params![v, id]).map_err(|e| e.to_string())?; }
+      if let Some(v) = params.get("sortOrder").and_then(Value::as_i64) { conn.execute("UPDATE kanban_tasks SET sort_order = ?1, updated_at = unixepoch() WHERE id = ?2", params![v, id]).map_err(|e| e.to_string())?; }
+      if let Some(v) = params.get("priority").and_then(Value::as_i64) { conn.execute("UPDATE kanban_tasks SET priority = ?1, updated_at = unixepoch() WHERE id = ?2", params![v, id]).map_err(|e| e.to_string())?; }
+      if params.get("dueDate").is_some() { conn.execute("UPDATE kanban_tasks SET due_date = ?1, updated_at = unixepoch() WHERE id = ?2", params![params.get("dueDate").and_then(Value::as_str), id]).map_err(|e| e.to_string())?; }
+      Ok(Some(Value::Null))
+    }
+    "kanban:delete-task" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("DELETE FROM kanban_tasks WHERE id = ?1", params![as_str(&params, "id")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "kanban:move-task" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("UPDATE kanban_tasks SET column_id = ?1, sort_order = ?2, updated_at = unixepoch() WHERE id = ?3", params![as_str(&params, "columnId")?, params.get("sortOrder").and_then(Value::as_i64).unwrap_or(0), as_str(&params, "taskId")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "kanban:reorder-tasks" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      if let Some(moves) = params.get("moves").and_then(Value::as_array) {
+        for m in moves {
+          let Some(id) = m.get("id").and_then(Value::as_str) else { continue };
+          let Some(column_id) = m.get("columnId").and_then(Value::as_str) else { continue };
+          let sort_order = m.get("sortOrder").and_then(Value::as_i64).unwrap_or(0);
+          conn.execute("UPDATE kanban_tasks SET column_id = ?1, sort_order = ?2, updated_at = unixepoch() WHERE id = ?3", params![column_id, sort_order, id]).map_err(|e| e.to_string())?;
+        }
+      }
+      Ok(Some(Value::Null))
+    }
+    "kanban:get-relations" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let sql = if params.get("taskId").and_then(Value::as_str).is_some() {
+        "SELECT id, source_task_id, target_task_id, relation_type FROM kanban_task_relations WHERE source_task_id = ?1 OR target_task_id = ?1"
+      } else {
+        "SELECT id, source_task_id, target_task_id, relation_type FROM kanban_task_relations"
+      };
+      let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+      let rows = if let Some(task_id) = params.get("taskId").and_then(Value::as_str) {
+        stmt.query_map(params![task_id], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "sourceTaskId": r.get::<_, String>(1)?, "targetTaskId": r.get::<_, String>(2)?, "relationType": r.get::<_, String>(3)? }))).map_err(|e| e.to_string())?.filter_map(Result::ok).collect()
+      } else {
+        stmt.query_map([], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "sourceTaskId": r.get::<_, String>(1)?, "targetTaskId": r.get::<_, String>(2)?, "relationType": r.get::<_, String>(3)? }))).map_err(|e| e.to_string())?.filter_map(Result::ok).collect()
+      };
+      Ok(Some(Value::Array(rows)))
+    }
+    "kanban:create-relation" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("INSERT INTO kanban_task_relations (id, source_task_id, target_task_id, relation_type) VALUES (?1, ?2, ?3, ?4)", params![as_str(&params, "id")?, as_str(&params, "sourceTaskId")?, as_str(&params, "targetTaskId")?, as_str(&params, "relationType")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "kanban:delete-relation" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("DELETE FROM kanban_task_relations WHERE id = ?1", params![as_str(&params, "id")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "db:chat-history-load" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let session_id = params.get("sessionId").and_then(Value::as_str);
+      let mut stmt = if session_id.is_some() {
+        conn.prepare("SELECT id, role, content, sources FROM conversations WHERE session_id = ?1 ORDER BY created_at ASC, id ASC").map_err(|e| e.to_string())?
+      } else {
+        conn.prepare("SELECT id, role, content, sources FROM conversations WHERE session_id IS NULL ORDER BY created_at ASC, id ASC").map_err(|e| e.to_string())?
+      };
+      let rows = if let Some(session_id) = session_id {
+        stmt.query_map(params![session_id], chat_row).map_err(|e| e.to_string())?.filter_map(Result::ok).collect()
+      } else {
+        stmt.query_map([], chat_row).map_err(|e| e.to_string())?.filter_map(Result::ok).collect()
+      };
+      Ok(Some(Value::Array(rows)))
+    }
+    "db:chat-history-append" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let sources = params.get("sources").map(|v| v.to_string());
+      conn.execute("INSERT INTO conversations (role, content, sources, session_id) VALUES (?1, ?2, ?3, ?4)", params![as_str(&params, "role")?, as_str(&params, "content")?, sources, params.get("sessionId").and_then(Value::as_str)]).map_err(|e| e.to_string())?;
+      if let Some(session_id) = params.get("sessionId").and_then(Value::as_str) {
+        conn.execute("UPDATE chat_sessions SET updated_at = unixepoch() WHERE id = ?1", params![session_id]).map_err(|e| e.to_string())?;
+      }
+      Ok(Some(Value::Null))
+    }
+    "db:chat-history-clear" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      if let Some(session_id) = params.get("sessionId").and_then(Value::as_str) {
+        conn.execute("DELETE FROM conversations WHERE session_id = ?1", params![session_id]).map_err(|e| e.to_string())?;
+      } else {
+        conn.execute("DELETE FROM conversations WHERE session_id IS NULL", []).map_err(|e| e.to_string())?;
+      }
+      Ok(Some(Value::Null))
+    }
+    "db:chat-sessions-list" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      let mut stmt = conn.prepare("SELECT id, title, created_at, updated_at FROM chat_sessions ORDER BY updated_at DESC").map_err(|e| e.to_string())?;
+      let rows = stmt.query_map([], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "title": r.get::<_, String>(1)?, "createdAt": r.get::<_, i64>(2)?, "updatedAt": r.get::<_, i64>(3)? }))).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Array(rows.filter_map(Result::ok).collect())))
+    }
+    "db:chat-session-create" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("INSERT INTO chat_sessions (id, title, created_at, updated_at) VALUES (?1, ?2, unixepoch(), unixepoch())", params![as_str(&params, "id")?, as_str(&params, "title")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "db:chat-session-delete" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("DELETE FROM conversations WHERE session_id = ?1", params![as_str(&params, "sessionId")?]).map_err(|e| e.to_string())?;
+      conn.execute("DELETE FROM chat_sessions WHERE id = ?1", params![as_str(&params, "sessionId")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
+    "db:chat-session-rename" => {
+      let conn = connection(as_str(&params, "vaultPath")?)?;
+      conn.execute("UPDATE chat_sessions SET title = ?1, updated_at = unixepoch() WHERE id = ?2", params![as_str(&params, "title")?, as_str(&params, "sessionId")?]).map_err(|e| e.to_string())?;
+      Ok(Some(Value::Null))
+    }
     "db:semantic-search" => Ok(Some(json!([]))),
     "db:embedding-status" => Ok(Some(json!({ "state": "idle", "current": 0, "total": 0, "embedded": 0, "updatedAt": chrono::Utc::now().timestamp_millis() }))),
     "db:embed-note" | "db:embed-vault" => Ok(Some(json!({ "embedded": 0 }))),
@@ -447,6 +626,48 @@ fn regex_search(vault: &str, query: &str) -> Result<Value, String> {
     }
   }
   Ok(Value::Array(results))
+}
+
+fn get_kanban_tasks(vault: &str) -> Result<Value, String> {
+  let conn = connection(vault)?;
+  let mut stmt = conn.prepare(
+    r#"
+    SELECT kt.id, kt.column_id, kt.title, kt.description, kt.sort_order, kt.priority, kt.due_date,
+           kt.source_note_id, kt.source_file_path, n.title, kt.created_at, kt.updated_at
+    FROM kanban_tasks kt
+    LEFT JOIN notes n ON n.id = kt.source_note_id
+    ORDER BY kt.column_id, kt.sort_order ASC
+    "#
+  ).map_err(|e| e.to_string())?;
+  let rows = stmt.query_map([], |r| Ok(json!({
+    "id": r.get::<_, String>(0)?,
+    "columnId": r.get::<_, String>(1)?,
+    "title": r.get::<_, String>(2)?,
+    "description": r.get::<_, String>(3)?,
+    "sortOrder": r.get::<_, i64>(4)?,
+    "priority": r.get::<_, i64>(5)?,
+    "dueDate": r.get::<_, Option<String>>(6)?,
+    "sourceNoteId": r.get::<_, Option<String>>(7)?,
+    "sourceFilePath": r.get::<_, Option<String>>(8)?,
+    "sourceTitle": r.get::<_, Option<String>>(9)?,
+    "createdAt": r.get::<_, i64>(10)?,
+    "updatedAt": r.get::<_, i64>(11)?
+  }))).map_err(|e| e.to_string())?;
+  Ok(Value::Array(rows.filter_map(Result::ok).collect()))
+}
+
+fn chat_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
+  let sources_raw: Option<String> = r.get(3)?;
+  let sources = sources_raw
+    .as_deref()
+    .and_then(|raw| serde_json::from_str::<Value>(raw).ok())
+    .unwrap_or(Value::Null);
+  Ok(json!({
+    "id": r.get::<_, i64>(0)?.to_string(),
+    "role": r.get::<_, String>(1)?,
+    "content": r.get::<_, String>(2)?,
+    "sources": sources
+  }))
 }
 
 fn get_graph(vault: &str) -> Result<Value, String> {
