@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import type { ChatMessage, ToolDefinition } from '../packages/main/src/services/ai/base-provider'
+import type { AIProviderValidationResult, ChatMessage, ToolDefinition } from '../packages/main/src/services/ai/base-provider'
 
 describe('AI provider shared types', () => {
   it('keeps tool definitions typed for provider adapters', () => {
@@ -35,5 +35,13 @@ describe('AI provider shared types', () => {
 
     expectTypeOf(message).toMatchTypeOf<ChatMessage>()
     expect(Array.isArray(message.content)).toBe(true)
+  })
+
+  it('keeps provider validation results structured for UI error messages', () => {
+    const result: AIProviderValidationResult = { ok: false, error: 'invalid key' }
+
+    expectTypeOf(result).toMatchTypeOf<AIProviderValidationResult>()
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('invalid key')
   })
 })
