@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod files;
+mod support;
 mod vault;
 
 use serde_json::Value;

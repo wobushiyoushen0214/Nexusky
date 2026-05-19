@@ -236,6 +236,58 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
       }
       Ok(Some(Value::Null))
     }
+    "file:import-obsidian" => {
+      let mut imported = 0;
+      let mut converted = 0;
+      import_obsidian_dir(Path::new(as_str(&params, "sourcePath")?), Path::new(as_str(&params, "vaultPath")?), &mut imported, &mut converted)?;
+      Ok(Some(json!({ "imported": imported, "converted": converted })))
+    }
     _ => Ok(None)
+  }
+}
+
+fn import_obsidian_dir(src: &Path, dest: &Path, imported: &mut i64, converted: &mut i64) -> Result<(), String> {
+  fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+  for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+    let entry = entry.map_err(|e| e.to_string())?;
+    let name = entry.file_name().to_string_lossy().to_string();
+    if name.starts_with('.') {
+      continue;
+    }
+    let src_path = entry.path();
+    let dest_path = dest.join(&name);
+    if src_path.is_dir() {
+      import_obsidian_dir(&src_path, &dest_path, imported, converted)?;
+    } else if src_path.extension().and_then(|e| e.to_str()) == Some("md") {
+      let raw = fs::read_to_string(&src_path).map_err(|e| e.to_string())?;
+      let mut did_convert = false;
+      let content = raw.lines().map(|line| {
+        if let Some(rest) = line.strip_prefix("> [!") {
+          if let Some((kind, title)) = rest.split_once(']') {
+            did_convert = true;
+            let title = title.trim();
+            return format!("> **{}{}**", capitalize(kind), if title.is_empty() { String::new() } else { format!(": {title}") });
+          }
+        }
+        line.to_string()
+      }).collect::<Vec<_>>().join("\n");
+      fs::write(dest_path, content).map_err(|e| e.to_string())?;
+      *imported += 1;
+      if did_convert {
+        *converted += 1;
+      }
+    } else {
+      fs::copy(src_path, dest_path).map_err(|e| e.to_string())?;
+      *imported += 1;
+    }
+  }
+  Ok(())
+}
+
+fn capitalize(value: &str) -> String {
+  let mut chars = value.chars();
+  match chars.next() {
+    Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    None => String::new()
   }
 }
