@@ -18,6 +18,7 @@ import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
 import { GraphGenerator } from './components/GraphGenerator'
 import { getErrorMessage } from './utils/errors'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED } from './utils/css-snippets'
+import { applyThemePackage, THEME_PACKAGES_UPDATED } from './utils/theme-packages'
 import { safeGet } from './utils/storage'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
@@ -153,10 +154,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    applyCssSnippets(vaultPath).catch(() => {})
-    const handler = () => applyCssSnippets(vaultPath).catch(() => {})
+    const applyVaultAppearance = () => {
+      applyThemePackage(vaultPath).then(() => applyCssSnippets(vaultPath)).catch(() => {})
+    }
+    applyVaultAppearance()
+    const handler = () => applyVaultAppearance()
     window.addEventListener(CSS_SNIPPETS_UPDATED, handler)
-    return () => window.removeEventListener(CSS_SNIPPETS_UPDATED, handler)
+    window.addEventListener(THEME_PACKAGES_UPDATED, handler)
+    return () => {
+      window.removeEventListener(CSS_SNIPPETS_UPDATED, handler)
+      window.removeEventListener(THEME_PACKAGES_UPDATED, handler)
+    }
   }, [vaultPath])
 
   // Save all dirty tabs before window closes

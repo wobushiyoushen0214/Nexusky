@@ -8,13 +8,15 @@ import { ConfirmModal } from '../ConfirmModal'
 import { getErrorMessage } from '../../utils/errors'
 import { safeGet, safeSet } from '../../utils/storage'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCssSnippets, setEnabledSnippetNames } from '../../utils/css-snippets'
-import type { AIProviderConfig, CssSnippet, LocalPlugin } from '@shared/types/ipc'
+import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
+import type { AIProviderConfig, CssSnippet, LocalPlugin, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
 type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean }
 type CloudUser = { email: string } | null
 type SnippetView = CssSnippet & { enabled: boolean }
+type ThemePackageView = ThemePackage & { active: boolean }
 
 const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
@@ -976,6 +978,8 @@ function AppearanceTab() {
         </button>
       </div>
 
+      <ThemePackagesSection />
+
       <div>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>{t('settings.accent.title')}</span>
         <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10 }}>{t('settings.accent.description')}</span>
@@ -1105,6 +1109,104 @@ function AppearanceTab() {
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+function ThemePackagesSection() {
+  const { t } = useTranslation()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const [themes, setThemes] = useState<ThemePackageView[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const loadThemes = async () => {
+    if (!vaultPath) return
+    setLoading(true)
+    try {
+      const activeId = getActiveThemePackageId(vaultPath)
+      const result = await loadThemePackages(vaultPath)
+      setThemes(result.map((theme) => ({ ...theme, active: theme.id === activeId })))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadThemes()
+  }, [vaultPath])
+
+  const activateTheme = (id: string | null) => {
+    if (!vaultPath) return
+    setActiveThemePackageId(vaultPath, id)
+    setThemes((current) => current.map((theme) => ({ ...theme, active: theme.id === id })))
+    applyThemePackage(vaultPath).catch(() => {})
+    window.dispatchEvent(new CustomEvent(THEME_PACKAGES_UPDATED))
+  }
+
+  const revealThemesDir = async () => {
+    if (!vaultPath) return
+    await loadThemePackages(vaultPath)
+    await window.api.invoke('file:reveal', { path: `${vaultPath}/.nexusky/themes` })
+  }
+
+  const hasActiveTheme = themes.some((theme) => theme.active)
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <div>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>{t('settings.themePackages.title')}</span>
+          <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('settings.themePackages.description')}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={loadThemes} disabled={!vaultPath || loading} style={{ height: 28, padding: '0 9px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', cursor: vaultPath && !loading ? 'pointer' : 'default' }}>
+            {loading ? t('settings.themePackages.refreshing') : t('settings.themePackages.refresh')}
+          </button>
+          <button onClick={revealThemesDir} disabled={!vaultPath} style={{ height: 28, padding: '0 9px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--accent-text)', cursor: vaultPath ? 'pointer' : 'default' }}>
+            {t('settings.themePackages.openFolder')}
+          </button>
+        </div>
+      </div>
+
+      {!vaultPath ? (
+        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12 }}>
+          {t('settings.themePackages.noVault')}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: !hasActiveTheme ? 'var(--accent-muted)' : 'var(--bg-base)', cursor: 'pointer' }}>
+            <span>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: !hasActiveTheme ? 'var(--accent-text)' : 'var(--text-primary)' }}>{t('settings.themePackages.builtin')}</span>
+              <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{t('settings.themePackages.builtinHint')}</span>
+            </span>
+            <input type="radio" checked={!hasActiveTheme} onChange={() => activateTheme(null)} style={{ width: 14, height: 14, accentColor: 'var(--accent)', flexShrink: 0 }} />
+          </label>
+
+          {themes.length === 0 ? (
+            <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.6 }}>
+              {t('settings.themePackages.empty')}
+            </div>
+          ) : themes.map((theme) => {
+            const swatches = ['--bg-base', '--bg-surface', '--accent'].map((key) => theme.colors[key]).filter(Boolean)
+            return (
+              <label key={theme.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: theme.active ? 'var(--accent-muted)' : 'var(--bg-base)', cursor: 'pointer' }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: theme.active ? 'var(--accent-text)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{theme.name}</span>
+                    {swatches.map((color, index) => (
+                      <span key={`${theme.id}-${index}`} style={{ width: 12, height: 12, borderRadius: 3, background: color, border: '1px solid var(--border-subtle)', flexShrink: 0 }} />
+                    ))}
+                  </span>
+                  <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {theme.description || `.nexusky/themes/${theme.id}.json`}
+                  </span>
+                </span>
+                <input type="radio" checked={theme.active} onChange={() => activateTheme(theme.id)} style={{ width: 14, height: 14, accentColor: 'var(--accent)', flexShrink: 0 }} />
+              </label>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

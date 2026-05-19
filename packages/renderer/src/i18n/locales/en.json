@@ -174,6 +174,17 @@
       "custom": "Custom accent color",
       "reset": "Use theme default"
     },
+    "themePackages": {
+      "title": "Theme packages",
+      "description": "Loads .nexusky/themes/*.json from the current vault and applies global color variables.",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "openFolder": "Open folder",
+      "builtin": "Use built-in theme",
+      "builtinHint": "Only apply the selected theme and accent color above.",
+      "noVault": "Open a vault to use theme packages.",
+      "empty": "No theme packages yet. Add .json files to .nexusky/themes, then refresh."
+    },
     "snippets": {
       "title": "CSS snippets",
       "description": "Loads .nexusky/snippets/*.css from the current vault and lets each snippet be toggled independently.",

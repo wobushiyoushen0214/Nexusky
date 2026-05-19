@@ -53,6 +53,16 @@ export interface CssSnippet {
   content: string
 }
 
+export interface ThemePackage {
+  id: string
+  name: string
+  path: string
+  version?: string
+  author?: string
+  description?: string
+  colors: Record<string, string>
+}
+
 export interface BacklinkResult {
   sourceTitle: string
   sourcePath: string
@@ -284,6 +294,7 @@ export interface IPCChannelMap {
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
   'plugins:list': { params: { vaultPath: string }; result: LocalPlugin[] }
   'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }
+  'themes:list': { params: { vaultPath: string }; result: ThemePackage[] }
   'cloud:get-config': { params: undefined; result: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }
   'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }; result: void }
   'cloud:init': { params: undefined; result: { success: boolean; error?: string } }

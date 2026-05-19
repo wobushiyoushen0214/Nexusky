@@ -174,6 +174,17 @@
       "custom": "自定义强调色",
       "reset": "恢复主题默认"
     },
+    "themePackages": {
+      "title": "主题包",
+      "description": "读取当前 vault 的 .nexusky/themes/*.json，可覆盖全局颜色变量。",
+      "refresh": "刷新",
+      "refreshing": "刷新中...",
+      "openFolder": "打开目录",
+      "builtin": "使用内置主题",
+      "builtinHint": "只应用上方主题和强调色。",
+      "noVault": "打开 vault 后可使用主题包。",
+      "empty": "暂无主题包。把 .json 文件放入 .nexusky/themes 后刷新即可启用。"
+    },
     "snippets": {
       "title": "CSS 片段",
       "description": "读取当前 vault 的 .nexusky/snippets/*.css，可独立启用或关闭。",
