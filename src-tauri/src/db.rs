@@ -402,6 +402,61 @@ fn resolve_links(conn: &Connection, note_id: &str, title: &str) -> Result<(), St
     Ok(())
 }
 
+fn split_chunks(content: &str) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    for line in content.lines() {
+        if current.len() + line.len() > 900 && !current.trim().is_empty() {
+            chunks.push(current.trim().to_string());
+            current.clear();
+        }
+        current.push_str(line);
+        current.push('\n');
+    }
+    if !current.trim().is_empty() {
+        chunks.push(current.trim().to_string());
+    }
+    chunks
+}
+
+fn index_note_chunks(
+    conn: &Connection,
+    note_id: &str,
+    content: &str,
+    model: &str,
+) -> Result<usize, String> {
+    conn.execute("DELETE FROM chunks WHERE note_id = ?1", params![note_id])
+        .map_err(|e| e.to_string())?;
+    let chunks = split_chunks(content);
+    for (index, chunk) in chunks.iter().enumerate() {
+        let id = format!("{:x}", md5::compute(format!("{note_id}:{index}")));
+        conn.execute(
+            "INSERT INTO chunks (id, note_id, chunk_index, content, heading_context, token_count, embedding_model) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![id, note_id, index as i64, chunk, "", (chunk.len() / 4).max(1) as i64, model],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(chunks.len())
+}
+
+fn terms(text: &str) -> HashSet<String> {
+    Regex::new(r"[\p{L}\p{N}_-]+")
+        .unwrap()
+        .find_iter(&text.to_lowercase())
+        .map(|m| m.as_str().to_string())
+        .filter(|term| term.chars().count() > 1)
+        .collect()
+}
+
+fn lexical_score(query: &HashSet<String>, text: &str) -> f64 {
+    if query.is_empty() {
+        return 0.0;
+    }
+    let haystack = terms(text);
+    let matches = query.iter().filter(|term| haystack.contains(*term)).count();
+    matches as f64 / query.len() as f64
+}
+
 fn remove_note_index(conn: &Connection, vault_path: &str, file_path: &Path) -> Result<(), String> {
     let rel = rel_path(vault_path, file_path)?;
     let note_id: Option<String> = conn
@@ -850,11 +905,98 @@ pub fn handle(channel: &str, params: Value) -> Result<Option<Value>, String> {
             .map_err(|e| e.to_string())?;
             Ok(Some(Value::Null))
         }
-        "db:semantic-search" => Ok(Some(json!([]))),
-        "db:embedding-status" => Ok(Some(
-            json!({ "state": "idle", "current": 0, "total": 0, "embedded": 0, "updatedAt": chrono::Utc::now().timestamp_millis() }),
-        )),
-        "db:embed-note" | "db:embed-vault" => Ok(Some(json!({ "embedded": 0 }))),
+        "db:semantic-search" => {
+            let vault = as_str(&params, "vaultPath")?;
+            let query = as_str(&params, "query")?;
+            let query_terms = terms(query);
+            let conn = connection(vault)?;
+            let mut stmt = conn
+                .prepare(
+                    r#"
+                    SELECT n.id, n.title, n.file_path, c.content
+                    FROM chunks c
+                    JOIN notes n ON n.id = c.note_id
+                    "#,
+                )
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, String>(3)?,
+                    ))
+                })
+                .map_err(|e| e.to_string())?;
+            let mut results = rows
+                .filter_map(Result::ok)
+                .filter_map(|(note_id, title, file_path, chunk)| {
+                    let score = lexical_score(&query_terms, &format!("{title}\n{chunk}"));
+                    (score > 0.0).then(|| {
+                        json!({ "noteId": note_id, "title": title, "filePath": file_path, "chunk": chunk, "score": score })
+                    })
+                })
+                .collect::<Vec<_>>();
+            results.sort_by(|a, b| {
+                b.get("score")
+                    .and_then(Value::as_f64)
+                    .partial_cmp(&a.get("score").and_then(Value::as_f64))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            results.truncate(10);
+            Ok(Some(Value::Array(results)))
+        }
+        "db:embedding-status" => {
+            let conn = connection(as_str(&params, "vaultPath")?)?;
+            let total: i64 = conn
+                .query_row("SELECT COUNT(*) FROM notes", [], |r| r.get(0))
+                .unwrap_or(0);
+            let embedded: i64 = conn
+                .query_row("SELECT COUNT(DISTINCT note_id) FROM chunks", [], |r| {
+                    r.get(0)
+                })
+                .unwrap_or(0);
+            let state = if total > 0 && embedded >= total {
+                "done"
+            } else {
+                "idle"
+            };
+            Ok(Some(
+                json!({ "state": state, "current": embedded, "total": total, "embedded": embedded, "updatedAt": chrono::Utc::now().timestamp_millis() }),
+            ))
+        }
+        "db:embed-note" => {
+            let conn = connection(as_str(&params, "vaultPath")?)?;
+            let note_id = as_str(&params, "noteId")?;
+            let content = as_str(&params, "content")?;
+            index_note_chunks(&conn, note_id, content, "tauri-lexical")?;
+            Ok(Some(Value::Null))
+        }
+        "db:embed-vault" => {
+            let vault = as_str(&params, "vaultPath")?;
+            let mut conn = connection(vault)?;
+            for file in collect_markdown_files(vault) {
+                index_note(&mut conn, vault, &file)?;
+            }
+            let mut stmt = conn
+                .prepare("SELECT id, file_path FROM notes")
+                .map_err(|e| e.to_string())?;
+            let notes = stmt
+                .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+                .map_err(|e| e.to_string())?
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>();
+            let mut embedded = 0;
+            for (note_id, file_path) in notes {
+                let content =
+                    fs::read_to_string(Path::new(vault).join(&file_path)).unwrap_or_default();
+                if index_note_chunks(&conn, &note_id, &content, "tauri-lexical")? > 0 {
+                    embedded += 1;
+                }
+            }
+            Ok(Some(json!({ "embedded": embedded })))
+        }
         _ => Ok(None),
     }
 }
