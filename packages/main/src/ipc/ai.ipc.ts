@@ -527,6 +527,7 @@ graph TD
       plan = Array.isArray(parsed) ? parsed : (parsed.notes || parsed)
       if (!Array.isArray(plan) || plan.length === 0) throw new Error('empty')
     } catch {
+      finishAiTask(windowId, controller)
       return { success: false, error: '规划解析失败，请重试', files: [] }
     }
 
@@ -664,10 +665,10 @@ graph TD
       }
     }
 
-    finishAiTask(windowId, controller)
     const aborted = controller.signal.aborted
+    finishAiTask(windowId, controller)
     window.webContents.send('ai:generate-notes-progress', { stage: 'done', message: aborted ? `已停止，已生成 ${createdFiles.length} 个文件` : `完成！已生成 ${createdFiles.length} 个文件` })
-    return { success: true, files: createdFiles }
+    return { success: !aborted, error: aborted ? '已取消' : undefined, files: createdFiles }
   })
 
   ipcMain.handle('ai:infer-links', async (event, params: { vaultPath: string; filePaths: string[] }) => {
