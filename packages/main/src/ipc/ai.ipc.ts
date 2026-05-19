@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult } from '../services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -931,6 +931,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'get_vault_overview',
+        description: '获取当前知识库的摘要，包括笔记、标签、任务、属性、链接、断链和孤岛笔记数量。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_note_links',
         description: '列出指定笔记的出链和反链。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
@@ -1114,6 +1122,37 @@ graph TD
           }
         } catch {
           return { content: `无法读取笔记「${title}」。` }
+        }
+      }
+      case 'get_vault_overview': {
+        const notes = getAllNotes(vaultPath)
+        const tasks = getAllTasks(vaultPath)
+        const propertyKeys = new Set<string>()
+        for (const row of getPropertyRows(vaultPath)) {
+          Object.keys(row.properties).forEach((key) => propertyKeys.add(key))
+        }
+        let resolvedLinks = 0
+        let unresolvedLinks = 0
+        let orphanNotes = 0
+        for (const note of notes) {
+          const outgoing = getOutgoingLinks(vaultPath, note.id)
+          const hasResolvedOutgoing = outgoing.some((link) => link.resolved)
+          const hasBacklinks = getBacklinks(vaultPath, note.id).length > 0
+          resolvedLinks += outgoing.filter((link) => link.resolved).length
+          unresolvedLinks += outgoing.filter((link) => !link.resolved).length
+          if (!hasResolvedOutgoing && !hasBacklinks) orphanNotes += 1
+        }
+        return {
+          content: formatVaultOverviewToolResult({
+            notes: notes.length,
+            tags: getAllTags(vaultPath).length,
+            properties: propertyKeys.size,
+            tasksOpen: tasks.filter((task) => !task.done).length,
+            tasksDone: tasks.filter((task) => task.done).length,
+            resolvedLinks,
+            unresolvedLinks,
+            orphanNotes
+          })
         }
       }
       case 'list_note_links': {

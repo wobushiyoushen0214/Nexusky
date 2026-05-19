@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatNoteLinksToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -220,5 +220,22 @@ describe('formatOrphanNotesToolResult', () => {
 
   it('marks empty orphan note results explicitly', () => {
     expect(formatOrphanNotesToolResult([])).toBe('No orphan notes found.')
+  })
+})
+
+describe('formatVaultOverviewToolResult', () => {
+  it('formats vault health counters', () => {
+    const output = formatVaultOverviewToolResult({
+      notes: 12,
+      tags: 4,
+      properties: 6,
+      tasksOpen: 3,
+      tasksDone: 2,
+      resolvedLinks: 20,
+      unresolvedLinks: 1,
+      orphanNotes: 5
+    })
+
+    expect(output).toBe('Vault Overview\nNotes: 12\nTags: 4\nProperties: 6\nTasks: 3 open, 2 done\nResolved Links: 20\nUnresolved Links: 1\nOrphan Notes: 5')
   })
 })

@@ -75,6 +75,17 @@ export interface AiOrphanNoteResult {
   updatedAt: number
 }
 
+export interface AiVaultOverview {
+  notes: number
+  tags: number
+  properties: number
+  tasksOpen: number
+  tasksDone: number
+  resolvedLinks: number
+  unresolvedLinks: number
+  orphanNotes: number
+}
+
 export function formatSearchNotesToolResult(results: AiSearchResult[]): string {
   return results.map((result, index) => [
     `${index + 1}. **${result.title}**`,
@@ -207,6 +218,19 @@ export function formatOrphanNotesToolResult(notes: AiOrphanNoteResult[]): string
     `Path: ${note.filePath}`,
     `Updated: ${formatTimestamp(note.updatedAt)}`
   ].join('\n')).join('\n\n')
+}
+
+export function formatVaultOverviewToolResult(overview: AiVaultOverview): string {
+  return [
+    'Vault Overview',
+    `Notes: ${overview.notes}`,
+    `Tags: ${overview.tags}`,
+    `Properties: ${overview.properties}`,
+    `Tasks: ${overview.tasksOpen} open, ${overview.tasksDone} done`,
+    `Resolved Links: ${overview.resolvedLinks}`,
+    `Unresolved Links: ${overview.unresolvedLinks}`,
+    `Orphan Notes: ${overview.orphanNotes}`
+  ].join('\n')
 }
 
 function formatLinkContext(context: string): string {
