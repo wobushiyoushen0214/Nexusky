@@ -81,4 +81,19 @@ tags:
     expect(next).toContain('aliases:\n  - "One"\n  - "Two"')
     expect(next).toContain('# Body')
   })
+
+  it('preserves primitive frontmatter value types when updating arbitrary properties', () => {
+    const next = updateFrontmatterProperty(`---
+priority: 2
+published: false
+---
+# Body
+`, 'published', true)
+    const updated = updateFrontmatterProperty(next, 'priority', 3)
+
+    expect(updated).toContain('published: true')
+    expect(updated).toContain('priority: 3')
+    expect(updated).not.toContain('published: "true"')
+    expect(updated).not.toContain('priority: "3"')
+  })
 })

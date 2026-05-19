@@ -5,6 +5,9 @@ export interface NoteProperties {
   cssclasses: string[]
 }
 
+type FrontmatterScalar = string | number | boolean
+type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | null
+
 const EMPTY_PROPERTIES: NoteProperties = {
   title: '',
   aliases: [],
@@ -46,14 +49,14 @@ export function updateNoteProperties(markdown: string, next: NoteProperties): st
   return `---\n${trimmedRaw}\n---\n${body.replace(/^\n+/, '')}`
 }
 
-export function updateFrontmatterProperty(markdown: string, key: string, value: string | string[]): string {
+export function updateFrontmatterProperty(markdown: string, key: string, value: FrontmatterValue): string {
   const safeKey = key.trim()
   if (!safeKey || !/^[A-Za-z0-9_-]+$/.test(safeKey)) return markdown
 
   const block = extractFrontmatter(markdown)
   const body = block ? markdown.slice(block.end) : markdown
   let raw = block?.raw || ''
-  raw = writeProperty(raw, safeKey, Array.isArray(value) ? normalizeList(value) : value.trim())
+  raw = writeProperty(raw, safeKey, Array.isArray(value) ? normalizeList(value.map(String)) : value)
 
   const trimmedRaw = raw.trim()
   if (!trimmedRaw) return body.replace(/^\n+/, '')
@@ -101,10 +104,10 @@ function readList(raw: string, key: string): string[] {
   return values
 }
 
-function writeProperty(raw: string, key: string, value: string | string[]): string {
+function writeProperty(raw: string, key: string, value: FrontmatterValue): string {
   const nextBlock = Array.isArray(value)
-    ? value.length > 0 ? [`${key}:`, ...value.map((item) => `  - ${quote(item)}`)] : []
-    : value ? [`${key}: ${quote(value)}`] : []
+    ? value.length > 0 ? [`${key}:`, ...value.map((item) => `  - ${serializeScalar(item)}`)] : []
+    : value !== null && String(value).trim() !== '' ? [`${key}: ${serializeScalar(value)}`] : []
 
   const lines = raw.split('\n').filter((line, index, arr) => !(line === '' && index === arr.length - 1))
   const range = findPropertyRange(lines, key)
@@ -135,7 +138,9 @@ function normalizeList(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
 }
 
-function quote(value: string): string {
+function serializeScalar(value: FrontmatterScalar): string {
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : JSON.stringify(String(value))
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
   return JSON.stringify(value)
 }
 

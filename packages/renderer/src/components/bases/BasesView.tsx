@@ -28,6 +28,21 @@ function formatDate(value: number): string {
   return new Date(value).toLocaleDateString()
 }
 
+function parseEditedPropertyValue(value: string, current: PropertyValue | undefined, list: boolean): PropertyValue {
+  if (list) return value.split(/\n|,/).map((item) => item.trim()).filter(Boolean)
+  const trimmed = value.trim()
+  if (typeof current === 'number') {
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : trimmed
+  }
+  if (typeof current === 'boolean') {
+    if (/^(true|1|yes|on)$/i.test(trimmed)) return true
+    if (/^(false|0|no|off)$/i.test(trimmed)) return false
+    return trimmed
+  }
+  return trimmed
+}
+
 export function BasesView() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
@@ -125,9 +140,7 @@ export function BasesView() {
     try {
       const path = `${vaultPath}/${row.filePath}`
       const content = await window.api.invoke('file:read', { path })
-      const nextValue = editing.list
-        ? editing.value.split(/\n|,/).map((item) => item.trim()).filter(Boolean)
-        : editing.value.trim()
+      const nextValue = parseEditedPropertyValue(editing.value, row.properties[editing.key], editing.list)
       const nextContent = updateFrontmatterProperty(content, editing.key, nextValue)
       await window.api.invoke('file:write', { path, content: nextContent, vaultPath })
       await window.api.invoke('db:index-file', { vaultPath, filePath: path })
