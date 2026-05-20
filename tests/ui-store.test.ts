@@ -155,6 +155,31 @@ describe('ui store workspace widths', () => {
     })
   })
 
+  it('stores right panel widths per panel without overwriting the legacy fallback', async () => {
+    localStorage.setItem('nexusky-right-panel-width', '410')
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setRightPanel('chat')
+    expect(useUIStore.getState().rightPanelWidth).toBe(410)
+    store.setRightPanelWidth(420)
+
+    store.setRightPanel('outline')
+    expect(useUIStore.getState().rightPanelWidth).toBe(410)
+    store.setRightPanelWidth(300)
+
+    store.setRightPanel('chat')
+    expect(useUIStore.getState().rightPanelWidth).toBe(420)
+
+    store.setRightPanel('outline')
+    expect(useUIStore.getState().rightPanelWidth).toBe(300)
+    expect(localStorage.getItem('nexusky-right-panel-width')).toBe('410')
+    expect(JSON.parse(localStorage.getItem('nexusky-right-panel-widths') || '{}')).toEqual({
+      chat: 420,
+      outline: 300,
+    })
+  })
+
   it('resets saved widths without losing the active sidebar scope', async () => {
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
     const store = useUIStore.getState()

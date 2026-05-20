@@ -180,7 +180,6 @@ function getInitialRightPanelWidth(panel: Panel = 'none'): number {
 
 function saveRightPanelWidth(panel: Panel, width: number): number {
   const next = clampRightPanelWidth(width)
-  safeSet('nexusky-right-panel-width', String(next))
   if (panel !== 'none') {
     safeSetJSON(RIGHT_PANEL_WIDTHS_KEY, { ...getSavedRightPanelWidths(), [panel]: next })
   }
