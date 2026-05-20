@@ -1,14 +1,34 @@
-import { memo } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
+import { toast } from '../../stores/toast-store'
 
 interface ToolbarProps {
   editor: Editor
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error || new Error('读取录音失败'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+function pickAudioMimeType(): string | undefined {
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type))
+}
+
 export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProps) {
   const { previewMode, togglePreviewMode } = useUIStore()
+  const [recording, setRecording] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const chunksRef = useRef<Blob[]>([])
   const btnStyle = (active: boolean): React.CSSProperties => ({
     width: 28,
     height: 28,
@@ -21,6 +41,83 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
     background: active ? 'var(--accent-muted)' : 'transparent',
     color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
   })
+
+  const stopVoiceInput = useCallback(() => {
+    const recorder = recorderRef.current
+    if (recorder && recorder.state !== 'inactive') recorder.stop()
+  }, [])
+
+  const startVoiceInput = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      toast('当前环境不支持麦克风录音', 'error')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = pickAudioMimeType()
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      chunksRef.current = []
+      streamRef.current = stream
+      recorderRef.current = recorder
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data)
+      }
+      recorder.onstop = async () => {
+        const chunks = chunksRef.current
+        const type = recorder.mimeType || mimeType || 'audio/webm'
+        stream.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+        recorderRef.current = null
+        setRecording(false)
+
+        if (chunks.length === 0) {
+          toast('没有录到声音，请重新尝试', 'info')
+          return
+        }
+
+        setTranscribing(true)
+        try {
+          const audioData = await blobToDataUrl(new Blob(chunks, { type }))
+          const result = await window.api.invoke('ai:transcribe', { audioData, mimeType: type })
+          if (!result.success || !result.text) {
+            toast(result.error || '语音转写失败', 'error')
+            return
+          }
+          editor.chain().focus().insertContent(result.text).run()
+          toast('语音已转写并插入', 'success')
+        } catch (error) {
+          const message = error instanceof Error ? error.message : '语音转写失败'
+          toast(message, 'error')
+        } finally {
+          setTranscribing(false)
+        }
+      }
+      recorder.start()
+      setRecording(true)
+      toast('正在录音，再次点击麦克风结束并转写', 'info')
+    } catch (error) {
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+      recorderRef.current = null
+      setRecording(false)
+      const message = error instanceof Error ? error.message : '无法访问麦克风'
+      toast(message, 'error')
+    }
+  }, [editor])
+
+  const toggleVoiceInput = useCallback(() => {
+    if (transcribing) return
+    if (recording) stopVoiceInput()
+    else startVoiceInput()
+  }, [recording, startVoiceInput, stopVoiceInput, transcribing])
+
+  useEffect(() => {
+    return () => {
+      const recorder = recorderRef.current
+      if (recorder && recorder.state !== 'inactive') recorder.stop()
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+    }
+  }, [])
 
   const sepStyle: React.CSSProperties = {
     width: 1,
@@ -199,6 +296,31 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
       </button>
 
       <div style={{ flex: 1 }} />
+
+      {/* Voice input */}
+      <button
+        style={{
+          ...btnStyle(recording),
+          opacity: transcribing ? 0.55 : 1,
+          cursor: transcribing ? 'wait' : 'pointer',
+          color: recording ? 'var(--danger)' : btnStyle(false).color,
+          background: recording ? 'var(--danger-muted)' : btnStyle(false).background,
+        }}
+        onClick={toggleVoiceInput}
+        disabled={transcribing}
+        title={recording ? '停止录音并转写' : transcribing ? '正在转写语音' : '语音输入'}
+      >
+        {transcribing ? (
+          <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid currentColor', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="22" />
+            <line x1="8" y1="22" x2="16" y2="22" />
+          </svg>
+        )}
+      </button>
 
       {/* Preview toggle */}
       <button

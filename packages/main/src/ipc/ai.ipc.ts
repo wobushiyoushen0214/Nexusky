@@ -19,6 +19,7 @@ import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-cont
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join, basename } from 'path'
 import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
+import { transcribeAudio, type TranscribeAudioParams } from '../services/ai/transcription'
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -264,6 +265,14 @@ ${context}
       controller.abort()
       completeAbortControllers.delete(taskKey)
     }
+  })
+
+  ipcMain.handle('ai:transcribe', async (_event, params: TranscribeAudioParams) => {
+    const config = aiManager.getActiveConfig()
+    if (!config) return { success: false, error: '未配置 AI 提供商' }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { success: false, error: configError }
+    return transcribeAudio(config, params)
   })
 
   ipcMain.handle('ai:complete', async (event, params: { text: string; system?: string; temperature?: number; taskKey?: string; styleSource?: string }) => {

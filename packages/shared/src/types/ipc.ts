@@ -315,6 +315,7 @@ export interface IPCChannelMap {
   'ai:stop': { params: undefined; result: void }
   'ai:complete': { params: { text: string; system?: string; temperature?: number; taskKey?: string; styleSource?: string }; result: string }
   'ai:complete-abort': { params: { taskKey?: string } | undefined; result: void }
+  'ai:transcribe': { params: { audioData: string; mimeType?: string; fileName?: string; model?: string; language?: string }; result: { success: boolean; text?: string; error?: string } }
   'ai:get-system-prompt': { params: undefined; result: string }
   'ai:set-system-prompt': { params: { prompt: string }; result: void }
   'ai:infer-links': { params: { vaultPath: string; filePaths: string[] }; result: { success: boolean; added?: number; error?: string } }
