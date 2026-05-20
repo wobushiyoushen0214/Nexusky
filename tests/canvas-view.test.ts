@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findAvailablePosition, getCanvasInitialScrollKey } from '../packages/renderer/src/components/canvas/CanvasView'
+import { findAvailablePosition, getCanvasInitialScrollKey, getViewportCenteredCardOrigin } from '../packages/renderer/src/components/canvas/CanvasView'
 
 describe('canvas card placement', () => {
   it('keys initial scroll by vault only', () => {
@@ -27,5 +27,20 @@ describe('canvas card placement', () => {
 
     expect(second).not.toEqual(origin)
     expect(second).not.toEqual(first)
+  })
+
+  it('places a new card around the current visible viewport center', () => {
+    const origin = getViewportCenteredCardOrigin(
+      { scrollLeft: 600, scrollTop: 300, clientWidth: 800, clientHeight: 500 },
+      { minX: -760, minY: -760 },
+      1.25,
+      0
+    )
+
+    expect(origin).toEqual({ x: -65, y: -376 })
+  })
+
+  it('falls back to the default grid when the viewport is unavailable', () => {
+    expect(getViewportCenteredCardOrigin(null, { minX: -760, minY: -760 }, 1, 5)).toEqual({ x: 290, y: 210 })
   })
 })

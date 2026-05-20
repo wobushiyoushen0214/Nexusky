@@ -43,6 +43,20 @@ interface CanvasViewportState {
   zoom: number
 }
 
+interface CanvasMetrics {
+  minX: number
+  minY: number
+  width: number
+  height: number
+}
+
+interface CanvasViewportBox {
+  scrollLeft: number
+  scrollTop: number
+  clientWidth: number
+  clientHeight: number
+}
+
 const CARD_WIDTH = 210
 const CARD_HEIGHT = 112
 const BASE_CANVAS_WIDTH = 1200
@@ -109,7 +123,16 @@ export function findAvailablePosition(origin: CanvasPosition, occupied: CanvasPo
   }
 }
 
-function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>) {
+export function getViewportCenteredCardOrigin(viewport: CanvasViewportBox | null, metrics: Pick<CanvasMetrics, 'minX' | 'minY'>, zoom: number, fallbackIndex: number): CanvasPosition {
+  if (!viewport) return defaultPosition(fallbackIndex)
+  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+  return {
+    x: (viewport.scrollLeft + viewport.clientWidth / 2) / scale + metrics.minX - CARD_WIDTH / 2,
+    y: (viewport.scrollTop + viewport.clientHeight / 2) / scale + metrics.minY - CARD_HEIGHT / 2
+  }
+}
+
+function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>): CanvasMetrics {
   if (rows.length === 0) {
     return {
       minX: -CANVAS_PADDING,
@@ -465,10 +488,7 @@ export function CanvasView() {
     await window.api.invoke('db:index-file', { vaultPath, filePath: path })
     const viewport = canvasRef.current
     const metrics = metricsRef.current
-    const origin = viewport ? {
-      x: (viewport.scrollLeft + viewport.clientWidth / 2) / zoomRef.current + metrics.minX - CARD_WIDTH / 2,
-      y: (viewport.scrollTop + viewport.clientHeight / 2) / zoomRef.current + metrics.minY - CARD_HEIGHT / 2
-    } : defaultPosition(rows.length)
+    const origin = getViewportCenteredCardOrigin(viewport, metrics, zoomRef.current, rows.length)
     const existingPositions = rows.map((row, index) => positionsRef.current[row.id] || defaultPosition(index))
     const position = findAvailablePosition(origin, existingPositions)
     if (viewport) {
@@ -476,6 +496,7 @@ export function CanvasView() {
         focusX: position.x + CARD_WIDTH / 2,
         focusY: position.y + CARD_HEIGHT / 2
       }
+      initialScrollKeyRef.current = getCanvasInitialScrollKey(vaultPath)
     }
     if (query.trim()) setQuery('')
     await loadRows({ filePath: path.slice(vaultPath.length + 1), position })
