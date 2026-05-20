@@ -1161,6 +1161,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'read_current_note_lines',
+        description: '读取当前编辑器正在打开笔记的行号范围。适合先用 list_current_note_headings 定位章节，再读取局部内容；单次最多 200 行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            startLine: { type: 'number', description: '起始行号，从 1 开始' },
+            endLine: { type: 'number', description: '结束行号，可选；默认读取起始行后的 80 行，最多 200 行' }
+          },
+          required: ['startLine']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'find_text_in_note',
         description: '在指定笔记内查找文本并返回命中行号。适合定位后再用 read_note_lines 精确读取局部内容。',
         parameters: {
@@ -1171,6 +1186,21 @@ graph TD
             limit: { type: 'number', description: '返回命中数量，1-10，默认 5' }
           },
           required: ['title', 'query']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'find_text_in_current_note',
+        description: '在当前编辑器正在打开的笔记内查找文本并返回命中行号。适合定位后再用 read_current_note_lines 精确读取局部内容。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '要在当前笔记内查找的文本' },
+            limit: { type: 'number', description: '返回命中数量，1-10，默认 5' }
+          },
+          required: ['query']
         }
       }
     },
@@ -2039,6 +2069,10 @@ graph TD
           return { content: `无法读取笔记「${title}」。` }
         }
       }
+      case 'read_current_note_lines': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 read_note_lines 指定标题/路径。' }
+        return executeToolCall('read_note_lines', { ...args, title: currentFilePath }, vaultPath, currentFilePath)
+      }
       case 'find_text_in_note': {
         const title = getStringArg(args, 'title')
         const query = getStringArg(args, 'query').trim()
@@ -2074,6 +2108,10 @@ graph TD
         } catch {
           return { content: `无法读取笔记「${title}」。` }
         }
+      }
+      case 'find_text_in_current_note': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 find_text_in_note 指定标题/路径。' }
+        return executeToolCall('find_text_in_note', { ...args, title: currentFilePath }, vaultPath, currentFilePath)
       }
       case 'get_vault_overview': {
         const notes = getAllNotes(vaultPath)

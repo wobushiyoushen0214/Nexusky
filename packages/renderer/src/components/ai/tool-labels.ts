@@ -21,8 +21,12 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return '读取当前笔记'
     case 'read_note_lines':
       return appendDetail('读取笔记行号', getTextArg(args, 'title'))
+    case 'read_current_note_lines':
+      return '读取当前笔记行号'
     case 'find_text_in_note':
       return appendDetail('在笔记内查找', getTextArg(args, 'query') || getTextArg(args, 'title'))
+    case 'find_text_in_current_note':
+      return appendDetail('在当前笔记内查找', getTextArg(args, 'query'))
     case 'list_note_links':
       return appendDetail('读取笔记链接', getTextArg(args, 'title'))
     case 'list_current_note_links':
