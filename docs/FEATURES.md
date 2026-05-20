@@ -841,7 +841,7 @@ scripts/          → 开发脚本
 - [ ] 多光标编辑
 - [ ] Vim 模式
 - [x] 拼写检查（Electron 内置）
-- [ ] 表格公式计算
+- [x] 表格公式计算（Markdown 表格支持单元格引用、四则运算、SUM/AVG/MIN/MAX）
 - [x] 脚注支持（AI Markdown 与 HTML/PDF/发布站点导出）
 - [x] Obsidian Callout 渲染（AI Markdown 与 HTML/PDF/发布站点导出）
 

@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
+import { calculateMarkdownTableFormulas } from '@shared/markdown/table-formulas'
 
 interface ToolbarProps {
   editor: Editor
@@ -20,6 +21,11 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 function pickAudioMimeType(): string | undefined {
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
   return candidates.find((type) => MediaRecorder.isTypeSupported(type))
+}
+
+function frontmatterPrefix(content: string): string {
+  const match = content.match(/^(---\r?\n[\s\S]*?\r?\n---\r?\n?)/)
+  return match?.[1] || ''
 }
 
 export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProps) {
@@ -118,6 +124,20 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
       streamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [])
+
+  const calculateTableFormulas = useCallback(() => {
+    const markdown = editor.storage.markdown.getMarkdown()
+    const result = calculateMarkdownTableFormulas(markdown)
+    if (!result.changed) {
+      toast('未找到可计算的表格公式', 'info')
+      return
+    }
+    const currentContent = useEditorStore.getState().content
+    const nextContent = `${frontmatterPrefix(currentContent)}${result.markdown}`
+    useEditorStore.getState().setContent(nextContent)
+    editor.commands.setContent(result.markdown)
+    toast(`已计算 ${result.formulas} 个表格公式`, 'success')
+  }, [editor])
 
   const sepStyle: React.CSSProperties = {
     width: 1,
@@ -269,6 +289,15 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
         </svg>
+      </button>
+
+      {/* Table formulas */}
+      <button
+        style={btnStyle(false)}
+        onClick={calculateTableFormulas}
+        title="计算表格公式"
+      >
+        <span style={{ fontSize: 12, fontStyle: 'italic', fontWeight: 700 }}>fx</span>
       </button>
 
       {/* Highlight */}
