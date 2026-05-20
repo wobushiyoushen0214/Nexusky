@@ -24,6 +24,7 @@ import { SyncProviderType } from '../services/cloud/provider'
 import { OneDriveConfig, startOneDriveAuth } from '../services/cloud/onedrive-provider'
 import { ICloudSyncProvider } from '../services/cloud/icloud-provider'
 import { WebDavConfig, normalizeWebDavConfig } from '../services/cloud/webdav-provider'
+import { S3Config, normalizeS3Config } from '../services/cloud/s3-provider'
 
 export function registerCloudIPC(): void {
   ipcMain.handle('cloud:get-config', () => {
@@ -114,6 +115,14 @@ export function registerCloudIPC(): void {
 
   ipcMain.handle('cloud:save-webdav-config', (_event, params: WebDavConfig) => {
     store.set('webdavConfig', normalizeWebDavConfig(params))
+  })
+
+  ipcMain.handle('cloud:get-s3-config', () => {
+    return normalizeS3Config(store.get('s3Config') as Partial<S3Config> | undefined)
+  })
+
+  ipcMain.handle('cloud:save-s3-config', (_event, params: S3Config) => {
+    store.set('s3Config', normalizeS3Config(params))
   })
 
   ipcMain.handle('cloud:get-icloud-path', () => {

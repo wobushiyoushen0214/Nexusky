@@ -1,4 +1,4 @@
-export type SyncProviderType = 'supabase' | 'icloud' | 'onedrive' | 'webdav'
+export type SyncProviderType = 'supabase' | 'icloud' | 'onedrive' | 'webdav' | 's3'
 
 export interface SyncFileInfo {
   path: string

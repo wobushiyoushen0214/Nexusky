@@ -552,6 +552,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
   const [syncMsg, setSyncMsg] = useState('')
   const [onedriveConfig, setOnedriveConfig] = useState({ clientId: '', folder: '/Nexusky' })
   const [webdavConfig, setWebdavConfig] = useState({ url: '', username: '', password: '', folder: '/Nexusky' })
+  const [s3Config, setS3Config] = useState({ endpoint: '', region: 'us-east-1', bucket: '', accessKeyId: '', secretAccessKey: '', prefix: 'Nexusky' })
   const [icloudPath, setIcloudPath] = useState<string | null>(null)
 
   useEffect(() => {
@@ -561,6 +562,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       if (c) setOnedriveConfig({ clientId: c.clientId, folder: c.folder })
     })
     window.api.invoke('cloud:get-webdav-config', undefined).then((c) => setWebdavConfig({ url: c.url, username: c.username || '', password: c.password || '', folder: c.folder }))
+    window.api.invoke('cloud:get-s3-config', undefined).then((c) => setS3Config({ endpoint: c.endpoint, region: c.region, bucket: c.bucket, accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey, prefix: c.prefix || '' }))
     window.api.invoke('cloud:get-icloud-path', undefined).then(setIcloudPath)
   }, [])
 
@@ -638,6 +640,10 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           <button onClick={() => switchProvider('webdav')} style={providerBtnStyle(activeProvider === 'webdav')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 4h16v16H4z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
             WebDAV
+          </button>
+          <button onClick={() => switchProvider('s3')} style={providerBtnStyle(activeProvider === 's3')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg>
+            S3
           </button>
         </div>
       </div>
@@ -793,6 +799,105 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
                 await window.api.invoke('cloud:save-webdav-config', webdavConfig)
                 const result = await window.api.invoke('cloud:test-connection', { provider: 'webdav' })
                 toast(result.ok ? 'WebDAV 连接成功' : `连接失败: ${result.error}`, result.ok ? 'success' : 'error')
+              }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
+            >
+              测试连接
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeProvider === 's3' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Endpoint</label>
+              <input
+                value={s3Config.endpoint}
+                onChange={(e) => setS3Config({ ...s3Config, endpoint: e.target.value })}
+                style={inputStyle}
+                placeholder="https://s3.amazonaws.com 或 MinIO/R2 endpoint"
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Region</label>
+              <input
+                value={s3Config.region}
+                onChange={(e) => setS3Config({ ...s3Config, region: e.target.value })}
+                style={inputStyle}
+                placeholder="us-east-1"
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Bucket</label>
+              <input
+                value={s3Config.bucket}
+                onChange={(e) => setS3Config({ ...s3Config, bucket: e.target.value })}
+                style={inputStyle}
+                placeholder="nexusky-notes"
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Prefix</label>
+              <input
+                value={s3Config.prefix}
+                onChange={(e) => setS3Config({ ...s3Config, prefix: e.target.value })}
+                style={inputStyle}
+                placeholder="Nexusky"
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Access Key ID</label>
+              <input
+                value={s3Config.accessKeyId}
+                onChange={(e) => setS3Config({ ...s3Config, accessKeyId: e.target.value })}
+                style={inputStyle}
+                placeholder="AKIA..."
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Secret Access Key</label>
+              <input
+                type="password"
+                value={s3Config.secretAccessKey}
+                onChange={(e) => setS3Config({ ...s3Config, secretAccessKey: e.target.value })}
+                style={inputStyle}
+                placeholder="••••••••"
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={async () => {
+                await window.api.invoke('cloud:save-s3-config', s3Config)
+                toast('S3 配置已保存', 'success')
+              }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+            >
+              保存配置
+            </button>
+            <button
+              onClick={async () => {
+                await window.api.invoke('cloud:save-s3-config', s3Config)
+                const result = await window.api.invoke('cloud:test-connection', { provider: 's3' })
+                toast(result.ok ? 'S3 连接成功' : `连接失败: ${result.error}`, result.ok ? 'success' : 'error')
               }}
               style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
             >

@@ -3,6 +3,7 @@ import { SupabaseSyncProvider } from './supabase-provider'
 import { ICloudSyncProvider } from './icloud-provider'
 import { OneDriveSyncProvider } from './onedrive-provider'
 import { WebDavSyncProvider } from './webdav-provider'
+import { S3SyncProvider } from './s3-provider'
 import { store } from '../store'
 import { join } from 'path'
 import { existsSync, statSync } from 'fs'
@@ -44,7 +45,8 @@ const providers = new Map<SyncProviderType, SyncProvider>([
   ['supabase', new SupabaseSyncProvider()],
   ['icloud', new ICloudSyncProvider()],
   ['onedrive', new OneDriveSyncProvider()],
-  ['webdav', new WebDavSyncProvider()]
+  ['webdav', new WebDavSyncProvider()],
+  ['s3', new S3SyncProvider()]
 ])
 
 export function getActiveProviderType(): SyncProviderType {
