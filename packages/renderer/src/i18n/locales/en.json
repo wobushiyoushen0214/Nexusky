@@ -258,6 +258,7 @@
     "sortTitle": "Title A-Z",
     "sortSource": "Source",
     "unread": "unread",
+    "openNextUnread": "Open next unread",
     "markRead": "Mark read",
     "markUnread": "Mark unread",
     "markVisibleRead": "Mark visible read",

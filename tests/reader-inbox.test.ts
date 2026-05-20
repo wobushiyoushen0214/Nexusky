@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getReaderDigestLink, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -107,6 +107,17 @@ describe('reader inbox helpers', () => {
     ]
 
     expect(getArchivableReaderRows(rows).map((item) => item.filePath)).toEqual(['Imports/Pocket/Later.md'])
+  })
+
+  it('finds the first visible unread reader row for queue navigation', () => {
+    const rows = [
+      row('Imports/Pocket/Read.md', { source: 'pocket', status: 'read' }, 10),
+      row('Imports/Readwise/Next.md', { source: 'readwise', status: 'unread' }, 20),
+      row('Imports/Notion/Later.md', { source: 'notion', status: 'todo' }, 30)
+    ]
+
+    expect(getNextUnreadReaderRow(rows)?.filePath).toBe('Imports/Readwise/Next.md')
+    expect(getNextUnreadReaderRow([rows[0]])).toBeNull()
   })
 
   it('only exposes http source URLs for external opening', () => {

@@ -258,6 +258,7 @@
     "sortTitle": "标题 A-Z",
     "sortSource": "按来源",
     "unread": "unread",
+    "openNextUnread": "打开下一条待读",
     "markRead": "标记已读",
     "markUnread": "标记待读",
     "markVisibleRead": "当前结果标记已读",

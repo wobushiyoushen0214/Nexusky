@@ -116,6 +116,10 @@ export function countUnreadReaderRows(rows: PropertyTableRow[]): number {
   return rows.filter((row) => getReaderSource(row) && isUnreadReaderRow(row)).length
 }
 
+export function getNextUnreadReaderRow(rows: PropertyTableRow[]): PropertyTableRow | null {
+  return rows.find((row) => getReaderSource(row) && isUnreadReaderRow(row)) || null
+}
+
 export function getArchivableReaderRows(rows: PropertyTableRow[]): PropertyTableRow[] {
   return rows.filter((row) => getReaderSource(row) && !isArchivedReaderRow(row))
 }
@@ -319,6 +323,7 @@ export function ReaderInboxView() {
   }, [readerRows])
   const unreadCount = countUnreadReaderRows(readerRows)
   const archivableVisibleRows = useMemo(() => getArchivableReaderRows(filtered), [filtered])
+  const nextUnreadRow = useMemo(() => getNextUnreadReaderRow(filtered), [filtered])
 
   const openRow = async (row: PropertyTableRow) => {
     if (!vaultPath) return
@@ -509,6 +514,13 @@ export function ReaderInboxView() {
             <option value="title">{t('reader.sortTitle')}</option>
             <option value="source">{t('reader.sortSource')}</option>
           </select>
+          <button
+            onClick={() => { if (nextUnreadRow) void openRow(nextUnreadRow) }}
+            disabled={!nextUnreadRow}
+            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: nextUnreadRow ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: nextUnreadRow ? 'var(--accent-text)' : 'var(--text-tertiary)', fontSize: 12, cursor: nextUnreadRow ? 'pointer' : 'default', opacity: nextUnreadRow ? 1 : 0.55 }}
+          >
+            {t('reader.openNextUnread')}
+          </button>
           <button
             onClick={() => void markVisibleRead()}
             disabled={!filtered.some(isUnreadReaderRow)}
