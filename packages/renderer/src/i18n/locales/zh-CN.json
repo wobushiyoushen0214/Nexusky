@@ -241,6 +241,11 @@
   "timeline": {
     "title": "时间线",
     "summary": "共 {{count}} 篇笔记，今日更新 {{today}} 篇，近 7 天更新 {{week}} 篇",
+    "updatedTrack": "最近变动",
+    "createdTrack": "创建脉络",
+    "totalMetric": "全部",
+    "todayMetric": "今日",
+    "weekMetric": "7 天",
     "refresh": "刷新",
     "loading": "加载中...",
     "searchPlaceholder": "搜索标题、路径、标签或别名...",

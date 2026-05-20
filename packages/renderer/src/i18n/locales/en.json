@@ -241,6 +241,11 @@
   "timeline": {
     "title": "Timeline",
     "summary": "{{count}} notes, {{today}} updated today, {{week}} updated in the last 7 days",
+    "updatedTrack": "Recent changes",
+    "createdTrack": "Creation trail",
+    "totalMetric": "Total",
+    "todayMetric": "Today",
+    "weekMetric": "7 days",
     "refresh": "Refresh",
     "loading": "Loading...",
     "searchPlaceholder": "Search titles, paths, tags, or aliases...",

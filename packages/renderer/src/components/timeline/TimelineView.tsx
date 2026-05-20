@@ -16,6 +16,14 @@ function formatDay(value: number): string {
   })
 }
 
+function formatDayNumber(value: number): string {
+  return new Date(value).toLocaleDateString(undefined, { day: '2-digit' })
+}
+
+function formatMonth(value: number): string {
+  return new Date(value).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+}
+
 function formatTime(value: number): string {
   return new Date(value).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 }
@@ -99,28 +107,27 @@ export function TimelineView() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
-      <div style={{ flexShrink: 0, padding: '22px 28px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 20, lineHeight: 1.2, fontWeight: 700 }}>{t('timeline.title')}</h1>
-            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
+      <div style={{ flexShrink: 0, padding: '24px 30px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 24, alignItems: 'end' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 720, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{mode === 'updatedAt' ? t('timeline.updatedTrack') : t('timeline.createdTrack')}</div>
+            <h1 style={{ margin: '7px 0 0', fontSize: 24, lineHeight: 1.15, fontWeight: 760 }}>{t('timeline.title')}</h1>
+            <div style={{ marginTop: 7, fontSize: 12, color: 'var(--text-tertiary)' }}>
               {t('timeline.summary', { count: rows.length, today: todayCount, week: weekCount })}
             </div>
           </div>
-          <button
-            onClick={() => loadRows()}
-            disabled={loading}
-            style={{ height: 30, padding: '0 11px', border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: loading ? 'default' : 'pointer' }}
-          >
-            {loading ? t('timeline.loading') : t('timeline.refresh')}
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: 18, alignItems: 'end' }}>
+            <TimelineMetric label={t('timeline.totalMetric')} value={rows.length} />
+            <TimelineMetric label={t('timeline.todayMetric')} value={todayCount} />
+            <TimelineMetric label={t('timeline.weekMetric')} value={weekCount} />
+          </div>
         </div>
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: 1080, margin: '18px auto 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('timeline.searchPlaceholder')}
-            style={{ width: 300, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
+            style={{ width: 340, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
           />
           <div style={{ display: 'flex', padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
             {(['updatedAt', 'createdAt'] as TimelineMode[]).map((item) => (
@@ -133,35 +140,51 @@ export function TimelineView() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => loadRows()}
+            disabled={loading}
+            style={{ height: 32, padding: '0 11px', border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: loading ? 'default' : 'pointer' }}
+          >
+            {loading ? t('timeline.loading') : t('timeline.refresh')}
+          </button>
         </div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px 36px' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '24px 30px 42px' }}>
         {groups.length === 0 ? (
           <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
             {t('timeline.empty')}
           </div>
         ) : (
-          <div style={{ maxWidth: 920, margin: '0 auto' }}>
+          <div style={{ maxWidth: 980, margin: '0 auto' }}>
             {groups.map(([day, items]) => {
               const stamp = items[0]?.[mode] || 0
               return (
-                <section key={day} style={{ display: 'grid', gridTemplateColumns: '150px minmax(0, 1fr)', gap: 18, marginBottom: 22 }}>
-                  <div style={{ position: 'sticky', top: 0, height: 24, paddingTop: 3, fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600 }}>
-                    {stamp ? formatDay(stamp) : t('timeline.unknownDate')}
+                <section key={day} style={{ display: 'grid', gridTemplateColumns: '118px minmax(0, 1fr)', gap: 22, marginBottom: 30 }}>
+                  <div style={{ position: 'sticky', top: 0, height: 62, paddingTop: 2 }}>
+                    {stamp ? (
+                      <>
+                        <div style={{ fontSize: 30, lineHeight: 1, fontWeight: 760, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{formatDayNumber(stamp)}</div>
+                        <div style={{ marginTop: 5, fontSize: 11, color: 'var(--text-tertiary)' }}>{formatMonth(stamp)}</div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 650 }}>{t('timeline.unknownDate')}</div>
+                    )}
                   </div>
-                  <div style={{ borderLeft: '1px solid var(--border-subtle)', paddingLeft: 18 }}>
-                    {items.map((row) => {
+                  <div style={{ position: 'relative', paddingLeft: 20 }}>
+                    <div style={{ position: 'absolute', left: 5, top: 6, bottom: -20, width: 1, background: 'var(--border-subtle)' }} />
+                    {items.map((row, index) => {
                       const tags = getTextValues(row.properties.tags).slice(0, 3)
                       return (
                         <button
                           key={row.id}
                           onClick={() => openRow(row)}
-                          style={{ width: '100%', minHeight: 54, marginBottom: 8, display: 'grid', gridTemplateColumns: '54px minmax(0, 1fr) auto', alignItems: 'center', gap: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', padding: '9px 12px' }}
+                          style={{ position: 'relative', width: '100%', minHeight: 58, marginBottom: index === items.length - 1 ? 0 : 10, display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr) auto', alignItems: 'center', gap: 14, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', padding: '8px 10px' }}
                         >
+                          <span style={{ position: 'absolute', left: -20, top: 25, width: 11, height: 11, borderRadius: 999, background: index === 0 ? 'var(--accent)' : 'var(--bg-elevated)', border: '1px solid var(--border-default)' }} />
                           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{row[mode] ? formatTime(row[mode]) : '--:--'}</span>
                           <span style={{ minWidth: 0 }}>
-                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 }}>{row.title}</span>
+                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 680 }}>{row.title}</span>
                             <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)' }}>{getFolder(row.filePath) || t('timeline.root')}</span>
                           </span>
                           <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', minWidth: 0 }}>
@@ -179,6 +202,15 @@ export function TimelineView() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function TimelineMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ color: 'var(--text-primary)', fontSize: 18, lineHeight: 1.05, fontWeight: 740, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ marginTop: 4, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
     </div>
   )
 }
