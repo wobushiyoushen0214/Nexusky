@@ -257,6 +257,14 @@
     "markUnread": "Mark unread",
     "markVisibleRead": "Mark visible read",
     "openSource": "Open source",
+    "importing": "Importing...",
+    "imported": "Imported {{count}} items",
+    "importFailed": "Import failed",
+    "import": {
+      "notion": "Import Notion",
+      "readwise": "Import Readwise",
+      "pocket": "Import Pocket"
+    },
     "markedRead": "Marked as read",
     "markedReadCount": "Marked {{count}} as read",
     "markedUnread": "Marked as unread",

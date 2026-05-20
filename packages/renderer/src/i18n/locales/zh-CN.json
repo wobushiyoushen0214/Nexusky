@@ -257,6 +257,14 @@
     "markUnread": "标记待读",
     "markVisibleRead": "当前结果标记已读",
     "openSource": "打开原文",
+    "importing": "导入中...",
+    "imported": "已导入 {{count}} 条",
+    "importFailed": "导入失败",
+    "import": {
+      "notion": "导入 Notion",
+      "readwise": "导入 Readwise",
+      "pocket": "导入 Pocket"
+    },
     "markedRead": "已标记为已读",
     "markedReadCount": "已标记 {{count}} 条为已读",
     "markedUnread": "已标记为待读",

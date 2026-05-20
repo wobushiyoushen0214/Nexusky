@@ -90,6 +90,7 @@ export function ReaderInboxView() {
   const [source, setSource] = useState<ReaderSource>('all')
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [importing, setImporting] = useState<ReaderSource | null>(null)
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -129,6 +130,23 @@ export function ReaderInboxView() {
     if (!vaultPath) return
     await openFile(`${vaultPath}/${row.filePath}`)
     setMainView('editor')
+  }
+
+  const importSource = async (target: Exclude<ReaderSource, 'all'>) => {
+    if (!vaultPath) return
+    setImporting(target)
+    try {
+      const channel = target === 'notion' ? 'file:import-notion' : target === 'readwise' ? 'file:import-readwise' : 'file:import-pocket'
+      const result = await window.api.invoke(channel, { vaultPath })
+      if (!result.canceled) {
+        toast(t('reader.imported', { count: result.imported }), result.imported > 0 ? 'success' : 'info')
+        await loadRows()
+      }
+    } catch {
+      toast(t('reader.importFailed'), 'error')
+    } finally {
+      setImporting(null)
+    }
   }
 
   const writeStatuses = async (targetRows: PropertyTableRow[], status: 'read' | 'unread') => {
@@ -220,6 +238,18 @@ export function ReaderInboxView() {
           >
             {t('reader.markVisibleRead')}
           </button>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(['notion', 'readwise', 'pocket'] as const).map((item) => (
+              <button
+                key={item}
+                onClick={() => void importSource(item)}
+                disabled={Boolean(importing)}
+                style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: importing ? 'default' : 'pointer', opacity: importing && importing !== item ? 0.55 : 1 }}
+              >
+                {importing === item ? t('reader.importing') : t(`reader.import.${item}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
