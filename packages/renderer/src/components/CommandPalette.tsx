@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
+import { toast } from '../stores/toast-store'
 import { safeSet } from '../utils/storage'
 import type { LocalPlugin } from '@shared/types/ipc'
 
@@ -52,6 +53,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     const fallback = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
     return (heading || fallback).replace(/[\[\]]/g, '').trim()
   }, [content, currentFilePath])
+
+  const requireCurrentNote = useCallback(() => {
+    if (currentFilePath) return true
+    toast(t('commandPalette.toasts.openNoteFirst'), 'info')
+    return false
+  }, [currentFilePath, t])
 
   const commands: Command[] = useMemo(() => [
     { id: 'save', category: 'file', label: t('commandPalette.commands.save.label'), shortcut: 'Ctrl+S', keywords: ['save'], action: () => saveFile() },
@@ -106,7 +113,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'ai-new-note', category: 'ai', label: t('commandPalette.commands.aiNewNote.label'), description: t('commandPalette.commands.aiNewNote.description'), keywords: ['generate', 'create'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: t('commandPalette.prompts.newNote') }) },
     { id: 'ai-batch-notes', category: 'ai', label: t('commandPalette.commands.aiBatchNotes.label'), description: t('commandPalette.commands.aiBatchNotes.description'), keywords: ['batch', 'map', 'obsidian'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: t('commandPalette.prompts.batchNotes') }) },
     { id: 'summarize', category: 'ai', label: t('commandPalette.commands.summarize.label'), description: t('commandPalette.commands.summarize.description'), keywords: ['summary'], action: async () => {
-      if (!content || !currentFilePath) return
+      if (!requireCurrentNote() || !content) return
       const { toast } = await import('../stores/toast-store')
       toast(t('commandPalette.toasts.summarizing'), 'info')
       const summary = await window.api.invoke('ai:summarize', { content })
@@ -122,7 +129,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'bases', category: 'search', label: t('commandPalette.commands.bases.label'), description: t('commandPalette.commands.bases.description'), keywords: ['bases', 'database', 'properties', 'obsidian'], action: () => setMainView('bases') },
     { id: 'canvas', category: 'graph', label: t('commandPalette.commands.canvas.label'), description: t('commandPalette.commands.canvas.description'), keywords: ['canvas', 'board', 'obsidian'], action: () => setMainView('canvas') },
     { id: 'graph-current', category: 'graph', label: t('commandPalette.commands.graphCurrent.label'), description: t('commandPalette.commands.graphCurrent.description'), keywords: ['graph', 'mermaid'], action: () => {
-      if (currentFilePath) window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: currentFilePath, isDirectory: false } }))
+      const filePath = currentFilePath
+      if (!requireCurrentNote() || !filePath) return
+      window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: filePath, isDirectory: false } }))
     }},
     { id: 'infer-links', category: 'graph', label: t('commandPalette.commands.inferLinks.label'), description: t('commandPalette.commands.inferLinks.description'), keywords: ['links', 'semantic'], action: async () => {
       if (!vaultPath) return
@@ -154,17 +163,19 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       await window.api.invoke('cloud:pull-all', { vaultPath })
     }},
     { id: 'export-pdf', category: 'export', label: t('commandPalette.commands.exportPdf.label'), keywords: ['pdf'], action: async () => {
-      if (!content || !currentFilePath) return
+      const filePath = currentFilePath
+      if (!requireCurrentNote() || !filePath || !content) return
       const { toast } = await import('../stores/toast-store')
       toast(t('commandPalette.toasts.exportingPdf'), 'info')
-      const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
+      const title = filePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:pdf', { content, title })
       toast(t('commandPalette.toasts.pdfDone'), 'success')
     }},
     { id: 'export-html', category: 'export', label: t('commandPalette.commands.exportHtml.label'), keywords: ['html'], action: async () => {
-      if (!content || !currentFilePath) return
+      const filePath = currentFilePath
+      if (!requireCurrentNote() || !filePath || !content) return
       const { toast } = await import('../stores/toast-store')
-      const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
+      const title = filePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:html', { content, title })
       toast(t('commandPalette.toasts.htmlDone'), 'success')
     }},
@@ -175,12 +186,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       if (result.ok) toast(t('commandPalette.toasts.publishDone', { count: result.files }), 'success')
     }},
     { id: 'share', category: 'export', label: t('commandPalette.commands.share.label'), keywords: ['share'], action: async () => {
-      if (!content || !currentFilePath) return
-      const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
+      const filePath = currentFilePath
+      if (!requireCurrentNote() || !filePath || !content) return
+      const title = filePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
       await window.api.invoke('export:share', { content, title })
     }},
-    { id: 'outline', category: 'interface', label: t('commandPalette.commands.outline.label'), shortcut: 'Ctrl+E', keywords: ['outline'], action: () => { if (currentFilePath) setRightPanel('outline') } },
-    { id: 'properties', category: 'interface', label: t('commandPalette.commands.properties.label'), description: t('commandPalette.commands.properties.description'), keywords: ['properties', 'frontmatter', 'obsidian'], action: () => { if (currentFilePath) setRightPanel('properties') } },
+    { id: 'outline', category: 'interface', label: t('commandPalette.commands.outline.label'), shortcut: 'Ctrl+E', keywords: ['outline'], action: () => { if (requireCurrentNote()) setRightPanel('outline') } },
+    { id: 'properties', category: 'interface', label: t('commandPalette.commands.properties.label'), description: t('commandPalette.commands.properties.description'), keywords: ['properties', 'frontmatter', 'obsidian'], action: () => { if (requireCurrentNote()) setRightPanel('properties') } },
     { id: 'settings', category: 'interface', label: t('commandPalette.commands.settings.label'), shortcut: 'Ctrl+,', keywords: ['settings'], action: () => setSettingsOpen(true) },
     { id: 'new-window', category: 'interface', label: t('commandPalette.commands.newWindow.label'), description: t('commandPalette.commands.newWindow.description'), keywords: ['window', 'multi'], action: () => window.api.windowControls.newWindow() },
     { id: 'sidebar', category: 'interface', label: t('commandPalette.commands.sidebar.label'), shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
@@ -195,7 +207,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       keywords: ['plugin', plugin.id, command.id],
       action: () => queueAiDraft({ mode: command.mode || 'chat', prompt: command.prompt })
     }))),
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle, plugins, t])
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle, requireCurrentNote, plugins, t])
 
   const filtered = query.trim()
     ? commands.filter((c) => {
