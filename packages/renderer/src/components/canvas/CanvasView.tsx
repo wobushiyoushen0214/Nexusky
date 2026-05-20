@@ -5,6 +5,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
+import './KnowledgeSpace.css'
 import type { GraphData, PropertyTableRow } from '@shared/types/ipc'
 
 interface CanvasPosition {
@@ -616,14 +617,18 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           ) : (
             <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
               <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 2 }}>
                 <defs>
                   <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
-                    <path d="M0,0 L8,4 L0,8 Z" fill="var(--border-default)" />
+                    <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
                   </marker>
                 </defs>
                 {canvasEdges.map((edge) => (
-                  <line key={edge.key} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="var(--border-default)" strokeWidth="1.4" strokeOpacity="0.75" markerEnd="url(#canvas-arrow)" />
+                  <g key={edge.key}>
+                    <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="var(--editor-bg)" strokeWidth="5" strokeOpacity="0.82" />
+                    <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="color-mix(in srgb, var(--text-tertiary) 58%, transparent)" strokeWidth="1.25" strokeLinecap="round" markerEnd="url(#canvas-arrow)" />
+                    <line className="knowledge-flow-line" x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="color-mix(in srgb, var(--text-secondary) 75%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 16" />
+                  </g>
                 ))}
               </svg>
               {filteredRows.map((row, index) => {
@@ -650,14 +655,14 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                       top: pos.y - canvasMetrics.minY,
                       width: CARD_WIDTH,
                       minHeight: 112,
-                      padding: '11px 12px 10px',
-                      borderRadius: 8,
-                      border: dragging?.id === row.id ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-                      borderTop: `2px solid ${tags[0] ? 'var(--accent)' : 'var(--border-default)'}`,
-                      background: 'linear-gradient(180deg, var(--bg-surface), var(--editor-bg))',
-                      boxShadow: dragging?.id === row.id ? '0 14px 34px rgba(0,0,0,0.3)' : '0 10px 26px rgba(0,0,0,0.14)',
+                      padding: '12px 13px 11px',
+                      borderRadius: 7,
+                      border: dragging?.id === row.id ? '1px solid var(--border-default)' : '1px solid var(--border-subtle)',
+                      background: 'color-mix(in srgb, var(--bg-surface) 86%, var(--editor-bg))',
+                      boxShadow: dragging?.id === row.id ? '0 14px 34px rgba(0,0,0,0.32)' : '0 8px 20px rgba(0,0,0,0.12)',
                       cursor: canvasMode === 'space' ? dragging?.id === row.id ? 'grabbing' : 'grab' : 'pointer',
-                      userSelect: 'none'
+                      userSelect: 'none',
+                      zIndex: 1
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
@@ -668,7 +673,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
                     <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {tags.slice(0, 3).map((tag) => (
-                        <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
+                        <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{tag}</span>
                       ))}
                       {status && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{status}</span>}
                       {source && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{source}</span>}
