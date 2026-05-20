@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from 'fs'
-import { basename, join, relative } from 'path'
+import { basename, isAbsolute, join, relative } from 'path'
 import { getDatabase } from '../database'
 
 export interface AiNoteLookupResult {
@@ -26,6 +26,13 @@ function normalizeQuery(input: string): string {
   if (wikiMatch) value = wikiMatch[1]
   value = value.split('|')[0].split('#')[0].trim().replace(/\\/g, '/')
   return value.replace(/\.md$/i, '')
+}
+
+function normalizePathQuery(vaultPath: string, query: string): string {
+  const normalized = query.replace(/\\/g, '/')
+  if (!isAbsolute(normalized)) return normalized
+  const relativePath = relative(vaultPath, normalized).replace(/\\/g, '/')
+  return relativePath.startsWith('..') || isAbsolute(relativePath) ? normalized : relativePath
 }
 
 export function extractNoteReferenceHeading(input: string): string | null {
@@ -163,7 +170,7 @@ function dedupeResults(results: AiNoteLookupResult[]): AiNoteLookupResult[] {
 }
 
 export function findNoteForAiTool(vaultPath: string, query: string): AiNoteLookupResult | null {
-  const normalized = normalizeQuery(query)
+  const normalized = normalizePathQuery(vaultPath, normalizeQuery(query))
   if (!normalized) return null
 
   const db = getDatabase(vaultPath)
@@ -206,7 +213,7 @@ export function findNoteForAiTool(vaultPath: string, query: string): AiNoteLooku
 }
 
 export function findNoteCandidatesForAiTool(vaultPath: string, query: string, limit = 5): AiNoteLookupResult[] {
-  const normalized = normalizeQuery(query)
+  const normalized = normalizePathQuery(vaultPath, normalizeQuery(query))
   if (!normalized) return []
 
   const db = getDatabase(vaultPath)
