@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import type { ChatSource } from '@shared/types/ipc'
 
@@ -12,7 +13,7 @@ const PURIFY_CONFIG = {
 }
 
 export function renderMarkdown(md: string): string {
-  const html = marked.parse(renderMarkdownFootnotes(md), { async: false }) as string
+  const html = marked.parse(renderMarkdownCallouts(renderMarkdownFootnotes(md)), { async: false }) as string
   return DOMPurify.sanitize(html, PURIFY_CONFIG)
 }
 

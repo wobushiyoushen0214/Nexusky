@@ -720,6 +720,37 @@ div[class*="ProseMirror"] {
   color: var(--text-secondary);
 }
 
+.editor-content .callout {
+  margin: 1.5rem 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.editor-content .callout-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.editor-content .callout-body {
+  margin-top: 6px;
+}
+
+.editor-content .callout-warning,
+.editor-content .callout-caution,
+.editor-content .callout-danger {
+  border-color: oklch(0.74 0.12 74 / 0.65);
+  background: oklch(0.74 0.12 74 / 0.12);
+}
+
+.editor-content .callout-tip,
+.editor-content .callout-success {
+  border-color: oklch(0.68 0.11 150 / 0.62);
+  background: oklch(0.68 0.11 150 / 0.12);
+}
+
 .editor-content code {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);

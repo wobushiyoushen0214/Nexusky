@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, clipboard, shell } from 'electron'
 import { copyFile, mkdir, readdir, readFile, writeFile } from 'fs/promises'
 import { basename, dirname, extname, join, relative, posix } from 'path'
+import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 
 export function registerExportIPC(): void {
@@ -31,6 +32,11 @@ export function registerExportIPC(): void {
     pre { background: #f4f4f5; padding: 16px; border-radius: 8px; overflow-x: auto; }
     pre code { background: none; padding: 0; }
     blockquote { border-left: 3px solid #6366f1; padding-left: 1rem; color: #666; margin: 1rem 0; }
+    .callout { margin: 1.25rem 0; padding: 12px 14px; border: 1px solid #d9dee8; border-radius: 8px; background: #f5f7fb; }
+    .callout-title { font-weight: 700; color: #273246; }
+    .callout-body { margin-top: 6px; color: #526070; }
+    .callout-warning, .callout-caution, .callout-danger { border-color: #f0c36d; background: #fff8e8; }
+    .callout-tip, .callout-success { border-color: #9fcfb2; background: #eefaf2; }
     a { color: #6366f1; }
     img { max-width: 100%; border-radius: 8px; }
     table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
@@ -70,6 +76,11 @@ ${markdownToHtml(params.content)}
       code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 0.85em; }
       pre { background: #f5f5f5; padding: 12px; border-radius: 6px; }
       blockquote { border-left: 3px solid #6366f1; padding-left: 12px; color: #555; }
+      .callout { margin: 1.25rem 0; padding: 12px 14px; border: 1px solid #d9dee8; border-radius: 8px; background: #f5f7fb; }
+      .callout-title { font-weight: 700; color: #273246; }
+      .callout-body { margin-top: 6px; color: #526070; }
+      .callout-warning, .callout-caution, .callout-danger { border-color: #f0c36d; background: #fff8e8; }
+      .callout-tip, .callout-success { border-color: #9fcfb2; background: #eefaf2; }
       .footnotes { margin-top: 2.5rem; font-size: 0.9em; color: #555; }
       .footnote-ref { font-size: 0.78em; margin-left: 2px; }
       .footnote-backref { margin-left: 8px; font-size: 0.85em; }
@@ -98,6 +109,11 @@ code { background: #f0f0f5; padding: 2px 6px; border-radius: 4px; font-size: 0.8
 pre { background: #1e1e2e; color: #cdd6f4; padding: 18px; border-radius: 10px; overflow-x: auto; }
 pre code { background: none; color: inherit; }
 blockquote { border-left: 3px solid #7c6ef0; padding-left: 1rem; color: #555; margin: 1rem 0; }
+.callout { margin: 1.25rem 0; padding: 12px 14px; border: 1px solid #d9dee8; border-radius: 8px; background: #f5f7fb; }
+.callout-title { font-weight: 700; color: #273246; }
+.callout-body { margin-top: 6px; color: #526070; }
+.callout-warning, .callout-caution, .callout-danger { border-color: #f0c36d; background: #fff8e8; }
+.callout-tip, .callout-success { border-color: #9fcfb2; background: #eefaf2; }
 a { color: #7c6ef0; text-decoration: none; }
 a:hover { text-decoration: underline; }
 img { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
@@ -177,7 +193,7 @@ ${markdownToHtml(params.content)}
 }
 
 function markdownToHtml(md: string, wikilinkLookup = new Map<string, string>()): string {
-  let html = renderMarkdownFootnotes(md)
+  let html = renderMarkdownCallouts(renderMarkdownFootnotes(md))
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -196,7 +212,7 @@ function markdownToHtml(md: string, wikilinkLookup = new Map<string, string>()):
 
   html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
   html = html.split('\n').map((line) => {
-    if (/^<\/?(h\d|ul|ol|li|blockquote|hr|img|section)\b/.test(line)) return line
+    if (/^<\/?(h\d|ul|ol|li|blockquote|hr|img|section|aside|div)\b/.test(line)) return line
     if (line.trim() === '') return ''
     return `<p>${line}</p>`
   }).join('\n')
@@ -356,6 +372,11 @@ code { background: #e9ecf3; padding: 2px 6px; border-radius: 4px; font-size: 0.9
 pre { background: #111827; color: #e5e7eb; padding: 16px; border-radius: 8px; overflow-x: auto; }
 pre code { background: none; padding: 0; }
 blockquote { border-left: 3px solid #6366f1; margin: 1rem 0; padding-left: 1rem; color: #526070; }
+.callout { margin: 1.25rem 0; padding: 12px 14px; border: 1px solid #d9dee8; border-radius: 8px; background: #f5f7fb; }
+.callout-title { font-weight: 700; color: #273246; }
+.callout-body { margin-top: 6px; color: #526070; }
+.callout-warning, .callout-caution, .callout-danger { border-color: #f0c36d; background: #fff8e8; }
+.callout-tip, .callout-success { border-color: #9fcfb2; background: #eefaf2; }
 img { max-width: 100%; border-radius: 8px; }
 table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
 th, td { border: 1px solid #d9dee8; padding: 8px 10px; text-align: left; }
