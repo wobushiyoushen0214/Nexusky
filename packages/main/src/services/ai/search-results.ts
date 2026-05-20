@@ -209,6 +209,14 @@ export interface AiMemoryFolderSummary {
   missing: number
 }
 
+export interface AiMemoryTermPairSummary {
+  first: string
+  second: string
+  type: 'concept' | 'topic' | 'mixed'
+  count: number
+  samplePaths: string[]
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -604,6 +612,14 @@ export function formatMemoryFoldersToolResult(folders: AiMemoryFolderSummary[]):
       `Missing: ${folder.missing}`
     ].join('\n')
   }).join('\n\n')
+}
+
+export function formatMemoryTermPairsToolResult(pairs: AiMemoryTermPairSummary[]): string {
+  if (pairs.length === 0) return 'No memory term pairs found.'
+  return pairs.map((pair, index) => [
+    `${index + 1}. ${pair.first} + ${pair.second} (${pair.type}, ${pair.count})`,
+    `Examples: ${pair.samplePaths.length > 0 ? pair.samplePaths.join(', ') : '(none)'}`
+  ].join('\n')).join('\n\n')
 }
 
 export function formatVaultOverviewToolResult(overview: AiVaultOverview): string {

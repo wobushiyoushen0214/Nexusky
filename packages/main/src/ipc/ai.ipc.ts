@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1061,6 +1061,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_memory_term_pairs',
+        description: '汇总笔记记忆中经常共同出现的概念/主题对，帮助发现主题簇和潜在知识结构。',
+        parameters: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', description: 'concept、topic、mixed 或 all，默认 all' },
+            query: { type: 'string', description: '按任一概念或主题名过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_notes_by_memory_term',
         description: '按指定记忆概念或主题列出匹配笔记，适合从高频知识点跳转到具体内容。',
         parameters: {
@@ -1739,6 +1754,55 @@ graph TD
             filePath,
             chunk: `${term.type}: ${term.term}`,
             score: term.count
+          })))
+        }
+      }
+      case 'list_memory_term_pairs': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const type = getStringArg(args, 'type').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notesById = new Map(getAllNotes(vaultPath).map((note) => [note.id, note]))
+        const pairs = new Map<string, { first: string; second: string; type: 'concept' | 'topic' | 'mixed'; count: number; samplePaths: string[] }>()
+        const addPair = (first: string, second: string, pairType: 'concept' | 'topic' | 'mixed', filePath: string) => {
+          const ordered = [first, second].sort((a, b) => a.localeCompare(b))
+          const key = `${pairType}:${ordered[0].toLowerCase()}\u0000${ordered[1].toLowerCase()}`
+          const pair = pairs.get(key) || { first: ordered[0], second: ordered[1], type: pairType, count: 0, samplePaths: [] }
+          pair.count += 1
+          if (pair.samplePaths.length < 3 && !pair.samplePaths.includes(filePath)) {
+            pair.samplePaths.push(filePath)
+          }
+          pairs.set(key, pair)
+        }
+        const addPairs = (terms: string[], pairType: 'concept' | 'topic', filePath: string) => {
+          const unique = Array.from(new Set(terms.map((term) => term.trim()).filter(Boolean)))
+          for (let i = 0; i < unique.length; i++) {
+            for (let j = i + 1; j < unique.length; j++) addPair(unique[i], unique[j], pairType, filePath)
+          }
+        }
+        for (const memory of readAllMemories(vaultPath)) {
+          const note = notesById.get(memory.noteId)
+          if (!note) continue
+          const concepts = Array.from(new Set(memory.concepts.map((term) => term.trim()).filter(Boolean)))
+          const topics = Array.from(new Set(memory.topics.map((term) => term.trim()).filter(Boolean)))
+          if (type !== 'topic' && type !== 'mixed') addPairs(concepts, 'concept', note.filePath)
+          if (type !== 'concept' && type !== 'mixed') addPairs(topics, 'topic', note.filePath)
+          if (type !== 'concept' && type !== 'topic') {
+            for (const concept of concepts) {
+              for (const topic of topics) addPair(concept, topic, 'mixed', note.filePath)
+            }
+          }
+        }
+        const rows = Array.from(pairs.values())
+          .filter((pair) => !query || [pair.first, pair.second].some((term) => term.toLowerCase().includes(query)))
+          .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type) || a.first.localeCompare(b.first) || a.second.localeCompare(b.second))
+          .slice(0, limit)
+        return {
+          content: formatMemoryTermPairsToolResult(rows),
+          sources: rows.flatMap((pair) => pair.samplePaths.map((filePath) => ({
+            title: `${pair.first} + ${pair.second}`,
+            filePath,
+            chunk: `${pair.type}: ${pair.first} + ${pair.second}`,
+            score: pair.count
           })))
         }
       }
