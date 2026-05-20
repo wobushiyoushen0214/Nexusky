@@ -23,9 +23,7 @@ import { safeGet } from './utils/storage'
 import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
-const BasesView = lazy(() => import('./components/bases/BasesView').then((m) => ({ default: m.BasesView })))
 const CanvasView = lazy(() => import('./components/canvas/CanvasView').then((m) => ({ default: m.CanvasView })))
-const TimelineView = lazy(() => import('./components/timeline/TimelineView').then((m) => ({ default: m.TimelineView })))
 const ReaderInboxView = lazy(() => import('./components/reader/ReaderInboxView').then((m) => ({ default: m.ReaderInboxView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
 const Settings = lazy(() => import('./components/settings/Settings').then((m) => ({ default: m.Settings })))
@@ -418,15 +416,15 @@ export default function App() {
           <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: sidebarCollapsed ? 0 : 4, marginRight: rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
             {mainView === 'editor' ? <Editor /> : mainView === 'bases' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><BasesView /></Suspense>
+                <Suspense fallback={null}><CanvasView initialMode="properties" /></Suspense>
               </div>
             ) : mainView === 'canvas' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><CanvasView /></Suspense>
+                <Suspense fallback={null}><CanvasView initialMode="space" /></Suspense>
               </div>
             ) : mainView === 'timeline' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><TimelineView /></Suspense>
+                <Suspense fallback={null}><CanvasView initialMode="time" /></Suspense>
               </div>
             ) : mainView === 'reader' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>

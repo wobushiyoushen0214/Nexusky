@@ -57,6 +57,8 @@ interface CanvasViewportBox {
   clientHeight: number
 }
 
+type CanvasMode = 'space' | 'properties' | 'time'
+
 const CARD_WIDTH = 210
 const CARD_HEIGHT = 112
 const BASE_CANVAS_WIDTH = 1200
@@ -132,6 +134,55 @@ export function getViewportCenteredCardOrigin(viewport: CanvasViewportBox | null
   }
 }
 
+function valueToText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(String).join(', ')
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return ''
+}
+
+function getTextValues(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean)
+  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean)
+  return []
+}
+
+function getPrimaryTag(row: PropertyTableRow): string {
+  return getTextValues(row.properties.tags)[0] || 'untagged'
+}
+
+function buildTimePositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
+  const dayRows = new Map<string, PropertyTableRow[]>()
+  const sorted = [...rows].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+  for (const row of sorted) {
+    const key = row.updatedAt ? new Date(row.updatedAt).toISOString().slice(0, 10) : 'unknown'
+    dayRows.set(key, [...(dayRows.get(key) || []), row])
+  }
+  const positions: Record<string, CanvasPosition> = {}
+  Array.from(dayRows.entries()).forEach(([, items], column) => {
+    items.forEach((row, index) => {
+      positions[row.id] = { x: 40 + column * 270, y: 72 + index * 150 }
+    })
+  })
+  return positions
+}
+
+function buildPropertyPositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
+  const tagRows = new Map<string, PropertyTableRow[]>()
+  for (const row of rows) {
+    const key = getPrimaryTag(row)
+    tagRows.set(key, [...(tagRows.get(key) || []), row])
+  }
+  const positions: Record<string, CanvasPosition> = {}
+  Array.from(tagRows.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .forEach(([, items], column) => {
+      items.forEach((row, index) => {
+        positions[row.id] = { x: 40 + column * 270, y: 72 + index * 150 }
+      })
+    })
+  return positions
+}
+
 function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>): CanvasMetrics {
   if (rows.length === 0) {
     return {
@@ -165,7 +216,7 @@ function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, Ca
   }
 }
 
-export function CanvasView() {
+export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode }) {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
@@ -180,6 +231,7 @@ export function CanvasView() {
   const [showGuide, setShowGuide] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [controlsVisible, setControlsVisible] = useState(false)
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>(initialMode)
   const canvasRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef<Record<string, CanvasPosition>>({})
   const metricsRef = useRef(getCanvasMetrics([], {}))
@@ -198,7 +250,28 @@ export function CanvasView() {
     zoomRef.current = zoom
   }, [zoom])
 
-  const canvasMetrics = useMemo(() => getCanvasMetrics(rows, positions), [rows, positions])
+  useEffect(() => {
+    setCanvasMode(initialMode)
+  }, [initialMode])
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((row) => [
+      row.title,
+      row.filePath,
+      Object.values(row.properties).flat().join(' ')
+    ].join(' ').toLowerCase().includes(q))
+  }, [rows, query])
+
+  const modePositions = useMemo(() => {
+    if (canvasMode === 'time') return buildTimePositions(filteredRows)
+    if (canvasMode === 'properties') return buildPropertyPositions(filteredRows)
+    return positions
+  }, [canvasMode, filteredRows, positions])
+
+  const layoutRows = canvasMode === 'space' ? rows : filteredRows
+  const canvasMetrics = useMemo(() => getCanvasMetrics(layoutRows, modePositions), [layoutRows, modePositions])
 
   useLayoutEffect(() => {
     const previous = previousMetricsRef.current
@@ -289,16 +362,6 @@ export function CanvasView() {
     }
   }, [panning])
 
-  const filteredRows = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((row) => [
-      row.title,
-      row.filePath,
-      Object.values(row.properties).flat().join(' ')
-    ].join(' ').toLowerCase().includes(q))
-  }, [rows, query])
-
   useEffect(() => {
     const viewport = canvasRef.current
     if (!viewport || filteredRows.length === 0) return
@@ -362,8 +425,8 @@ export function CanvasView() {
     return graph.edges
       .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
       .map((edge) => {
-        const source = positions[edge.source]
-        const target = positions[edge.target]
+        const source = modePositions[edge.source]
+        const target = modePositions[edge.target]
         if (!source || !target) return null
         return {
           key: `${edge.source}->${edge.target}`,
@@ -374,7 +437,7 @@ export function CanvasView() {
         }
       })
       .filter((edge): edge is { key: string; x1: number; y1: number; x2: number; y2: number } => edge !== null)
-  }, [canvasMetrics.minX, canvasMetrics.minY, graph, positions, visibleIds])
+  }, [canvasMetrics.minX, canvasMetrics.minY, graph, modePositions, visibleIds])
 
   const resetLayout = () => {
     const next: Record<string, CanvasPosition> = {}
@@ -450,7 +513,7 @@ export function CanvasView() {
     if (!viewport || filteredRows.length === 0) return
     const bounds = filteredRows.reduce(
       (acc, row, index) => {
-        const pos = positions[row.id] || defaultPosition(index)
+        const pos = modePositions[row.id] || defaultPosition(index)
         return {
           minX: Math.min(acc.minX, pos.x),
           minY: Math.min(acc.minY, pos.y),
@@ -564,13 +627,17 @@ export function CanvasView() {
                 ))}
               </svg>
               {filteredRows.map((row, index) => {
-                const pos = positions[row.id] || defaultPosition(index)
+                const pos = modePositions[row.id] || defaultPosition(index)
                 const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []
+                const status = valueToText(row.properties.status)
+                const source = valueToText(row.properties.source)
+                const groupLabel = canvasMode === 'properties' ? getPrimaryTag(row) : canvasMode === 'time' && row.updatedAt ? new Date(row.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
                 return (
                   <div
                     key={row.id}
                     data-canvas-card
                     onPointerDown={(event) => {
+                      if (canvasMode !== 'space') return
                       const rect = event.currentTarget.getBoundingClientRect()
                       setDragging({ id: row.id, offsetX: (event.clientX - rect.left) / zoom, offsetY: (event.clientY - rect.top) / zoom })
                       event.currentTarget.setPointerCapture(event.pointerId)
@@ -587,16 +654,19 @@ export function CanvasView() {
                       border: dragging?.id === row.id ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                       background: 'var(--bg-surface)',
                       boxShadow: dragging?.id === row.id ? '0 12px 30px rgba(0,0,0,0.28)' : '0 8px 22px rgba(0,0,0,0.16)',
-                      cursor: dragging?.id === row.id ? 'grabbing' : 'grab',
+                      cursor: canvasMode === 'space' ? dragging?.id === row.id ? 'grabbing' : 'grab' : 'pointer',
                       userSelect: 'none'
                     }}
                   >
+                    {groupLabel && <div style={{ marginBottom: 7, fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{groupLabel}</div>}
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.title}</div>
                     <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
                     <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {tags.slice(0, 3).map((tag) => (
                         <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
                       ))}
+                      {status && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{status}</span>}
+                      {source && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{source}</span>}
                       {tags.length === 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('canvas.noTags')}</span>}
                     </div>
                   </div>
@@ -623,6 +693,27 @@ export function CanvasView() {
           }}
         >
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('canvas.searchPlaceholder')} style={controlStyle} />
+          <div style={floatingGroupStyle}>
+            {(['space', 'properties', 'time'] as CanvasMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setCanvasMode(mode)}
+                style={{
+                  height: 30,
+                  padding: '0 10px',
+                  border: 'none',
+                  borderRight: mode === 'time' ? 'none' : '1px solid var(--border-subtle)',
+                  background: canvasMode === mode ? 'var(--accent-muted)' : 'transparent',
+                  color: canvasMode === mode ? 'var(--accent-text)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                {mode === 'space' ? t('canvas.modeSpace') : mode === 'properties' ? t('canvas.modeProperties') : t('canvas.modeTime')}
+              </button>
+            ))}
+          </div>
           <div style={floatingGroupStyle}>
             <CanvasIconButton title={t('canvas.guide')} active={showGuide} onClick={() => setShowGuide((value) => !value)}>
               <InfoIcon />
