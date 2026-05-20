@@ -40,25 +40,28 @@ const features = [
   },
 ];
 
+const currentVersion = "0.3.7";
+const githubRepo = "wobushiyoushen0214/Nexusky";
+
 const downloads = [
   {
     platform: "Windows",
-    file: "Nexusky-Setup-0.3.5.exe",
+    file: `Nexusky-Setup-${currentVersion}.exe`,
     desc: "Windows 10+ (x64)",
   },
   {
     platform: "macOS (Apple Silicon)",
-    file: "Nexusky-0.3.5-arm64.dmg",
+    file: `Nexusky-${currentVersion}-arm64.dmg`,
     desc: "macOS 12+ (M1/M2/M3)",
   },
   {
     platform: "macOS (Intel)",
-    file: "Nexusky-0.3.5-x64.dmg",
+    file: `Nexusky-${currentVersion}-x64.dmg`,
     desc: "macOS 12+ (Intel)",
   },
   {
     platform: "Linux",
-    file: "Nexusky-0.3.5.AppImage",
+    file: `Nexusky-${currentVersion}.AppImage`,
     desc: "AppImage 便携版",
   },
 ];
@@ -82,7 +85,7 @@ export default function Home() {
             下载
           </a>
           <a
-            href="https://github.com/user/nexusky"
+            href={`https://github.com/${githubRepo}`}
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text-muted)] transition-colors"
@@ -118,7 +121,7 @@ export default function Home() {
           {downloads.map((d) => (
             <a
               key={d.platform}
-              href={`https://github.com/user/nexusky/releases/latest/download/${d.file}`}
+              href={`https://github.com/${githubRepo}/releases/latest/download/${d.file}`}
               className="flex items-center justify-between p-5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] hover:border-[var(--accent)] transition-colors group"
             >
               <div>
@@ -134,9 +137,9 @@ export default function Home() {
           ))}
         </div>
         <p className="text-center text-sm text-[var(--text-muted)] mt-6">
-          当前版本 v0.3.5 ·{" "}
+          当前版本 v{currentVersion} ·{" "}
           <a
-            href="https://github.com/user/nexusky/releases"
+            href={`https://github.com/${githubRepo}/releases`}
             className="underline hover:text-[var(--text)]"
           >
             查看所有版本

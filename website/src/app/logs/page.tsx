@@ -69,7 +69,7 @@ export default function LogsPage() {
   }, [page, level, search, router]);
 
   useEffect(() => {
-    fetchLogs();
+    void Promise.resolve().then(fetchLogs);
   }, [fetchLogs]);
 
   const totalPages = Math.ceil(total / limit);
