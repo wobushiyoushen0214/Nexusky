@@ -220,7 +220,7 @@ export function getOutgoingLinks(vaultPath: string, noteId: string): OutgoingLin
   }))
 }
 
-export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: string; sourcePath: string; context: string }[] {
+export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: string; sourcePath: string; line: number; context: string }[] {
   const db = getDatabase(vaultPath)
   const note = db.prepare('SELECT title FROM notes WHERE id = ?').get(noteId) as { title: string } | undefined
   if (!note) return []
@@ -228,19 +228,19 @@ export function getBacklinks(vaultPath: string, noteId: string): { sourceTitle: 
   const aliases = getNoteLookupAliases(db, noteId, note.title)
   if (aliases.length === 0) {
     return db.prepare(`
-      SELECT n.title as sourceTitle, n.file_path as sourcePath, l.context
+      SELECT n.title as sourceTitle, n.file_path as sourcePath, l.context, l.line
       FROM links l
       JOIN notes n ON n.id = l.source_note_id
       WHERE l.target_note_id = ? AND l.source_note_id != ?
-    `).all(noteId, noteId) as { sourceTitle: string; sourcePath: string; context: string }[]
+    `).all(noteId, noteId) as { sourceTitle: string; sourcePath: string; context: string; line: number }[]
   }
   return db.prepare(`
-    SELECT n.title as sourceTitle, n.file_path as sourcePath, l.context
+    SELECT n.title as sourceTitle, n.file_path as sourcePath, l.context, l.line
     FROM links l
     JOIN notes n ON n.id = l.source_note_id
     WHERE (l.target_note_id = ? OR l.target_title IN (${aliases.map(() => '?').join(',')}))
       AND l.source_note_id != ?
-  `).all(noteId, ...aliases, noteId) as { sourceTitle: string; sourcePath: string; context: string }[]
+  `).all(noteId, ...aliases, noteId) as { sourceTitle: string; sourcePath: string; context: string; line: number }[]
 }
 
 export function getUnlinkedMentions(vaultPath: string, noteId: string): UnlinkedMentionIndex[] {

@@ -102,7 +102,7 @@ describe('formatNoteLinksToolResult', () => {
         { targetTitle: 'Missing', line: 5, context: 'See [[Missing]].', resolved: false }
       ],
       backlinks: [
-        { sourceTitle: 'Source', sourcePath: 'Source.md', context: 'References [[Topic]].' }
+        { sourceTitle: 'Source', sourcePath: 'Source.md', line: 6, context: 'References [[Topic]].' }
       ],
       unlinkedMentions: [
         { sourceTitle: 'Loose', sourcePath: 'Loose.md', line: 7, context: 'Topic appears without a link.', mention: 'Topic' }
@@ -113,7 +113,7 @@ describe('formatNoteLinksToolResult', () => {
     expect(output).toContain('Path: Topic.md')
     expect(output).toContain('1. Next (Folder/Next.md:4) - See [[Next]] for details.')
     expect(output).toContain('2. Missing (unresolved:5) - See [[Missing]].')
-    expect(output).toContain('1. Source (Source.md) - References [[Topic]].')
+    expect(output).toContain('1. Source (Source.md:6) - References [[Topic]].')
     expect(output).toContain('1. Loose (Loose.md:7) - "Topic" - Topic appears without a link.')
   })
 

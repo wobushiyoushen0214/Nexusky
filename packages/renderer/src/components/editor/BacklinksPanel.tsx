@@ -180,7 +180,11 @@ function LinkSection({
         <button
           key={`${title}-${item.sourcePath}-${i}`}
           onClick={() => {
-            if (vaultPath) openFile(`${vaultPath}/${item.sourcePath}`)
+            if (!vaultPath) return
+            openFile(`${vaultPath}/${item.sourcePath}`)
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('editor-goto-line', { detail: { line: item.line } }))
+            }, 200)
           }}
           style={{
             textAlign: 'left', padding: '8px 12px', borderRadius: 6,
@@ -192,6 +196,9 @@ function LinkSection({
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sourceTitle}</span>
             {'mention' in item && (
               <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line} · 提到 {item.mention}</span>
+            )}
+            {!('mention' in item) && (
+              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
             )}
           </span>
           {item.context && (

@@ -247,6 +247,7 @@ describe('indexer', () => {
     const backlinks = getBacklinks(vaultPath, canonical!.id)
     expect(backlinks).toHaveLength(1)
     expect(backlinks[0].sourceTitle).toBe('Source')
+    expect(backlinks[0].line).toBe(3)
 
     const graph = getGraphData(vaultPath)
     expect(graph.edges).toContainEqual({ source: source!.id, target: canonical!.id })

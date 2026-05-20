@@ -80,6 +80,7 @@ export interface TemplateMarketplaceItem extends NoteTemplate {
 export interface BacklinkResult {
   sourceTitle: string
   sourcePath: string
+  line: number
   context: string
 }
 

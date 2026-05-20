@@ -18,6 +18,7 @@ export interface AiNoteLinksSummary {
   backlinks: {
     sourceTitle: string
     sourcePath: string
+    line: number
     context: string
   }[]
   unlinkedMentions?: {
@@ -346,7 +347,7 @@ export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
 
   const backlinks = summary.backlinks.length > 0
     ? summary.backlinks.map((link, index) => (
-      `${index + 1}. ${link.sourceTitle} (${link.sourcePath})${formatLinkContext(link.context)}`
+      `${index + 1}. ${link.sourceTitle} (${link.sourcePath}:${link.line})${formatLinkContext(link.context)}`
     )).join('\n')
     : '(none)'
   const unlinkedMentions = summary.unlinkedMentions && summary.unlinkedMentions.length > 0
