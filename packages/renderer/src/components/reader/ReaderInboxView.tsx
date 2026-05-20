@@ -124,6 +124,10 @@ export function getArchivableReaderRows(rows: PropertyTableRow[]): PropertyTable
   return rows.filter((row) => getReaderSource(row) && !isArchivedReaderRow(row))
 }
 
+export function getUnarchivableReaderRows(rows: PropertyTableRow[]): PropertyTableRow[] {
+  return rows.filter((row) => getReaderSource(row) && isArchivedReaderRow(row))
+}
+
 export function appendReaderNote(content: string, note: string, now = new Date()): string {
   const clean = note.trim()
   if (!clean) return content
@@ -323,6 +327,7 @@ export function ReaderInboxView() {
   }, [readerRows])
   const unreadCount = countUnreadReaderRows(readerRows)
   const archivableVisibleRows = useMemo(() => getArchivableReaderRows(filtered), [filtered])
+  const unarchivableVisibleRows = useMemo(() => getUnarchivableReaderRows(filtered), [filtered])
   const nextUnreadRow = useMemo(() => getNextUnreadReaderRow(filtered), [filtered])
 
   const openRow = async (row: PropertyTableRow) => {
@@ -367,7 +372,7 @@ export function ReaderInboxView() {
         ? t('reader.markedReadCount', { count: changedIds.length })
         : status === 'archived'
           ? t('reader.archivedCount', { count: changedIds.length })
-          : t('reader.markedUnread')
+          : t('reader.markedUnreadCount', { count: changedIds.length })
       toast(message, 'success')
     } catch {
       toast(t('reader.statusFailed'), 'error')
@@ -387,6 +392,11 @@ export function ReaderInboxView() {
   const archiveVisible = async () => {
     if (archivableVisibleRows.length === 0) return
     await writeStatuses(archivableVisibleRows, 'archived')
+  }
+
+  const unarchiveVisible = async () => {
+    if (unarchivableVisibleRows.length === 0) return
+    await writeStatuses(unarchivableVisibleRows, 'unread')
   }
 
   const createDigest = async () => {
@@ -534,6 +544,13 @@ export function ReaderInboxView() {
             style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: archivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: archivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: archivableVisibleRows.length > 0 ? 1 : 0.55 }}
           >
             {t('reader.archiveVisible')}
+          </button>
+          <button
+            onClick={() => void unarchiveVisible()}
+            disabled={unarchivableVisibleRows.length === 0}
+            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: unarchivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: unarchivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: unarchivableVisibleRows.length > 0 ? 1 : 0.55 }}
+          >
+            {t('reader.unarchiveVisible')}
           </button>
           <button
             onClick={() => void createDigest()}

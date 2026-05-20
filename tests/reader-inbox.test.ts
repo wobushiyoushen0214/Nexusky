@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, getUnarchivableReaderRows, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -99,14 +99,19 @@ describe('reader inbox helpers', () => {
     })
   })
 
-  it('finds only non-archived reader rows for bulk archiving', () => {
+  it('finds visible reader rows for bulk archiving or unarchiving', () => {
     const rows = [
       row('Imports/Pocket/Later.md', { status: 'unread' }, 10),
       row('Imports/Readwise/Archived.md', { source: 'readwise', status: 'archived' }, 20),
+      row('Imports/Notion/Archived.md', { source: 'notion', status: 'archived' }, 25),
       row('Notes/Regular.md', {}, 30)
     ]
 
     expect(getArchivableReaderRows(rows).map((item) => item.filePath)).toEqual(['Imports/Pocket/Later.md'])
+    expect(getUnarchivableReaderRows(rows).map((item) => item.filePath)).toEqual([
+      'Imports/Readwise/Archived.md',
+      'Imports/Notion/Archived.md'
+    ])
   })
 
   it('finds the first visible unread reader row for queue navigation', () => {
