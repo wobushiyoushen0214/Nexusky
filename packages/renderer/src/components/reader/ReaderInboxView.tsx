@@ -61,6 +61,24 @@ export function countUnreadReaderRows(rows: PropertyTableRow[]): number {
   return rows.filter((row) => getReaderSource(row) && isUnreadReaderRow(row)).length
 }
 
+export function appendReaderNote(content: string, note: string, now = new Date()): string {
+  const clean = note.trim()
+  if (!clean) return content
+  const stamp = now.toISOString().slice(0, 10)
+  const body = clean.split(/\r?\n/).map((line, index) => index === 0 ? line.trim() : `  ${line.trim()}`).join('\n')
+  const entry = `- ${stamp}: ${body}`
+  const section = /^## Notes\s*$/m.exec(content)
+  if (!section) return `${content.trimEnd()}\n\n## Notes\n\n${entry}\n`
+
+  const sectionEnd = section.index + section[0].length
+  const afterSection = content.slice(sectionEnd)
+  const nextHeading = /\n##\s+/.exec(afterSection)
+  const insertAt = nextHeading ? sectionEnd + nextHeading.index : content.length
+  const before = content.slice(0, insertAt).trimEnd()
+  const after = content.slice(insertAt).replace(/^\n+/, '')
+  return `${before}\n\n${entry}${after ? `\n\n${after}` : '\n'}`
+}
+
 function sourceLabel(source: ReaderSource | null): string {
   if (source === 'notion') return 'Notion'
   if (source === 'readwise') return 'Readwise'
@@ -91,6 +109,9 @@ export function ReaderInboxView() {
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState<ReaderSource | null>(null)
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
+  const [savingNoteId, setSavingNoteId] = useState<string | null>(null)
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -190,6 +211,36 @@ export function ReaderInboxView() {
     }
   }
 
+  const saveReaderNote = async (row: PropertyTableRow) => {
+    if (!vaultPath) return
+    const note = (noteDrafts[row.id] || '').trim()
+    if (!note) {
+      setActiveNoteId(null)
+      return
+    }
+    const path = `${vaultPath}/${row.filePath}`
+    setSavingNoteId(row.id)
+    try {
+      const content = await window.api.invoke('file:read', { path })
+      const updated = appendReaderNote(content, note)
+      await window.api.invoke('file:write', { path, content: updated, vaultPath })
+      await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+      const updatedAt = Date.now()
+      setRows((current) => current.map((item) => item.id === row.id ? { ...item, updatedAt } : item))
+      setNoteDrafts((current) => {
+        const next = { ...current }
+        delete next[row.id]
+        return next
+      })
+      setActiveNoteId(null)
+      toast(t('reader.noteSaved'), 'success')
+    } catch {
+      toast(t('reader.noteFailed'), 'error')
+    } finally {
+      setSavingNoteId(null)
+    }
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
       <div style={{ flexShrink: 0, padding: '22px 28px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -267,6 +318,7 @@ export function ReaderInboxView() {
               const url = getReaderSourceUrl(row)
               const author = propertyText(row.properties.author)
               const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
+              const noteActive = activeNoteId === row.id
               return (
                 <div
                   key={row.id}
@@ -293,7 +345,42 @@ export function ReaderInboxView() {
                       <span key={tag} style={{ maxWidth: 86, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', fontSize: 10 }}>{tag}</span>
                     ))}
                   </span>
+                  {noteActive && (
+                    <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <textarea
+                        autoFocus
+                        value={noteDrafts[row.id] || ''}
+                        onChange={(e) => setNoteDrafts((current) => ({ ...current, [row.id]: e.target.value }))}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        placeholder={t('reader.notePlaceholder')}
+                        rows={3}
+                        style={{ width: '100%', resize: 'vertical', minHeight: 62, padding: '8px 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 12, lineHeight: 1.4, outline: 'none' }}
+                      />
+                      <span style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setActiveNoteId(null) }}
+                          disabled={savingNoteId === row.id}
+                          style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 11, cursor: savingNoteId === row.id ? 'default' : 'pointer' }}
+                        >
+                          {t('reader.cancelNote')}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); void saveReaderNote(row) }}
+                          disabled={savingNoteId === row.id}
+                          style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 11, cursor: savingNoteId === row.id ? 'default' : 'pointer' }}
+                        >
+                          {savingNoteId === row.id ? t('reader.savingNote') : t('reader.saveNote')}
+                        </button>
+                      </span>
+                    </div>
+                  )}
                   <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setActiveNoteId(noteActive ? null : row.id) }}
+                      style={{ height: 26, marginRight: 6, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: noteActive ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: noteActive ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      {t('reader.addNote')}
+                    </button>
                     {url && (
                       <button
                         onClick={(e) => { e.stopPropagation(); void openSource(row) }}

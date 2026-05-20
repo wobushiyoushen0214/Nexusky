@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countUnreadReaderRows, filterReaderRows, getReaderSource, getReaderSourceUrl, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, filterReaderRows, getReaderSource, getReaderSourceUrl, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -46,5 +46,17 @@ describe('reader inbox helpers', () => {
     expect(getReaderSourceUrl(row('Imports/Pocket/B.md', { url: 'http://example.com/b' }))).toBe('http://example.com/b')
     expect(getReaderSourceUrl(row('Imports/Pocket/C.md', { url: 'file:///tmp/a' }))).toBe('')
     expect(getReaderSourceUrl(row('Imports/Pocket/D.md', { url: 'javascript:alert(1)' }))).toBe('')
+  })
+
+  it('appends quick notes to a new Notes section', () => {
+    const updated = appendReaderNote('# Article\n\nBody', 'Connect this to [[Project]]', new Date('2026-05-20T08:00:00Z'))
+
+    expect(updated).toBe('# Article\n\nBody\n\n## Notes\n\n- 2026-05-20: Connect this to [[Project]]\n')
+  })
+
+  it('keeps existing note sections before following headings', () => {
+    const updated = appendReaderNote('# Article\n\n## Notes\n\n- 2026-05-19: Existing\n\n## Source\n\nLink', 'Second line\nwith detail', new Date('2026-05-20T08:00:00Z'))
+
+    expect(updated).toContain('- 2026-05-19: Existing\n\n- 2026-05-20: Second line\n  with detail\n\n## Source')
   })
 })
