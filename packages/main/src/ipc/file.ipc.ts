@@ -329,7 +329,7 @@ export function registerFileIPC(): void {
     if (!sourcePath) {
       const result = await dialog.showOpenDialog({
         properties: ['openDirectory'],
-        title: '选择 Notion Markdown & CSV 导出文件夹'
+        title: '选择 Notion Markdown / CSV / HTML 导出文件夹'
       })
       if (result.canceled || result.filePaths.length === 0) {
         return { imported: 0, converted: 0, indexed: 0, assets: 0, skipped: 0, canceled: true }

@@ -77,4 +77,40 @@ describe('notion importer', () => {
     expect(row?.properties).toMatchObject({ title: 'Tasks', source: 'notion', type: 'database' })
     expect(row?.properties.tags).toEqual(expect.arrayContaining(['notion', 'database']))
   })
+
+  it('converts Notion HTML pages to indexed Markdown notes', async () => {
+    const { convertNotionHtmlToMarkdown, importNotionExport } = await import('../packages/main/src/services/notion-importer')
+    const { getAllNotes, getPropertyRows } = await import('../packages/main/src/services/indexer')
+
+    const html = [
+      '<html><head><title>Fallback</title></head><body>',
+      '<h1>HTML Page 1234567890abcdef1234567890abcdef</h1>',
+      '<p>See <a href="Child%20HTML%20aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.html">Child page</a> and <a href="https://example.com">web</a>.</p>',
+      '<ul><li>First item</li><li>Second &amp; item</li></ul>',
+      '<img src="assets/logo.png" alt="Logo">',
+      '</body></html>'
+    ].join('\n')
+    const converted = convertNotionHtmlToMarkdown(html, 'Fallback')
+    expect(converted.title).toBe('HTML Page')
+    expect(converted.content).toContain('source: notion')
+    expect(converted.content).toContain('[[Child HTML|Child page]]')
+    expect(converted.content).toContain('[web](https://example.com)')
+    expect(converted.content).toContain('- Second & item')
+    expect(converted.content).toContain('![Logo](assets/logo.png)')
+
+    writeFileSync(join(sourcePath, 'HTML Page 1234567890abcdef1234567890abcdef.html'), html)
+    writeFileSync(join(sourcePath, 'Child HTML aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.html'), '<h1>Child HTML</h1><p>Body</p>')
+
+    const result = await importNotionExport(sourcePath, vaultPath)
+
+    expect(result).toMatchObject({ imported: 2, indexed: 2, assets: 0, skipped: 0 })
+    expect(result.converted).toBeGreaterThanOrEqual(2)
+    expect(existsSync(join(vaultPath, 'Imports', 'Notion', 'HTML Page.md'))).toBe(true)
+    expect(getAllNotes(vaultPath).map((note) => note.filePath).sort()).toEqual([
+      'Imports/Notion/Child HTML.md',
+      'Imports/Notion/HTML Page.md'
+    ])
+    const row = getPropertyRows(vaultPath).find((item) => item.filePath === 'Imports/Notion/HTML Page.md')
+    expect(row?.properties).toMatchObject({ title: 'HTML Page', source: 'notion', type: 'page' })
+  })
 })

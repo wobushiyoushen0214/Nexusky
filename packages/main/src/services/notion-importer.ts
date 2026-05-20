@@ -43,6 +43,17 @@ function yamlString(value: string): string {
   return JSON.stringify(value)
 }
 
+function decodeHtmlEntity(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+}
+
 async function uniqueFilePath(dir: string, title: string, extension: string): Promise<string> {
   await mkdir(dir, { recursive: true })
   const safeTitle = sanitizeSegment(title)
@@ -86,6 +97,69 @@ export function convertNotionMarkdownLinks(content: string): { content: string; 
     return `[[${title}|${cleanLabel}]]`
   })
   return { content: updated, converted }
+}
+
+function stripTags(value: string): string {
+  return decodeHtmlEntity(value.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim())
+}
+
+function htmlAttr(tag: string, attr: string): string {
+  const match = tag.match(new RegExp(`${attr}\\s*=\\s*("([^"]*)"|'([^']*)')`, 'i'))
+  return decodeHtmlEntity(match?.[2] || match?.[3] || '')
+}
+
+function convertHtmlLinks(content: string): { content: string; converted: number } {
+  let converted = 0
+  const linked = content.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (match, attrs: string, labelHtml: string) => {
+    const href = htmlAttr(attrs, 'href')
+    const label = stripTags(labelHtml) || href
+    if (!href) return label
+    const target = safeDecode(href).replace(/[?#].*$/, '')
+    const ext = extname(target).toLowerCase()
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(target) && (ext === '.html' || ext === '.htm' || ext === '.md')) {
+      const title = notionTitleFromPath(target)
+      converted++
+      return label === title ? `[[${title}]]` : `[[${title}|${label}]]`
+    }
+    return `[${label}](${href})`
+  })
+  return { content: linked, converted }
+}
+
+export function convertNotionHtmlToMarkdown(content: string, fallbackTitle: string): { title: string; content: string; converted: number } {
+  const title = sanitizeSegment(stripTags(content.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || content.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || fallbackTitle))
+  let body = content
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/<!doctype[^>]*>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => {
+      const src = htmlAttr(attrs, 'src')
+      const alt = htmlAttr(attrs, 'alt')
+      return src ? `![${alt}](${src})` : ''
+    })
+
+  const linkResult = convertHtmlLinks(body)
+  body = linkResult.content
+    .replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_match, level: string, inner: string) => `\n${'#'.repeat(Number(level))} ${stripTags(inner)}\n`)
+    .replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_match, inner: string) => `\n- ${stripTags(inner)}`)
+    .replace(/<(p|div|section|article|blockquote)\b[^>]*>/gi, '\n')
+    .replace(/<\/(p|div|section|article|blockquote)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?(ul|ol|html|head|body|main|span|strong|em|b|i)[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .split('\n')
+    .map((line) => decodeHtmlEntity(line).trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  const markdown = [
+    frontmatterFor(title || fallbackTitle, 'page'),
+    body || `# ${title || fallbackTitle}`,
+    ''
+  ].join('\n')
+  return { title: title || fallbackTitle, content: markdown, converted: 1 + linkResult.converted }
 }
 
 function parseCsv(content: string): string[][] {
@@ -208,6 +282,14 @@ export async function importNotionExport(sourcePath: string, vaultPath: string):
       indexNote(vaultPath, destPath)
       result.imported++
       result.converted++
+      result.indexed++
+    } else if (ext === '.html' || ext === '.htm') {
+      const converted = convertNotionHtmlToMarkdown(await readFile(sourceFile, 'utf-8'), title)
+      const destPath = await uniqueFilePath(destDir, converted.title, '.md')
+      await writeFile(destPath, converted.content, 'utf-8')
+      indexNote(vaultPath, destPath)
+      result.imported++
+      result.converted += converted.converted
       result.indexed++
     } else {
       const destPath = await uniqueFilePath(destDir, basename(sourceFile, ext), ext)

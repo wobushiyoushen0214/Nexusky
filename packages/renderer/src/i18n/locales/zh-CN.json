@@ -103,7 +103,7 @@
       "importObsidian": { "label": "导入 Obsidian Vault", "description": "导入 Markdown、附件和内部链接结构" },
       "importReadwise": { "label": "导入 Readwise 高亮", "description": "选择 Readwise CSV 导出文件，按文章生成带来源和标签的笔记" },
       "importPocket": { "label": "导入 Pocket 稍后读", "description": "选择 Pocket HTML 导出文件，为每条收藏生成可做笔记的阅读条目" },
-      "importNotion": { "label": "导入 Notion 导出", "description": "选择 Notion Markdown & CSV 导出文件夹，转换页面链接和数据库表" },
+      "importNotion": { "label": "导入 Notion 导出", "description": "选择 Notion Markdown、CSV 或 HTML 导出文件夹，转换页面链接和数据库表" },
       "search": { "label": "全文搜索" },
       "chat": { "label": "打开 AI 工作台", "description": "对话、Agent、编辑和批量生成入口" },
       "aiRag": { "label": "基于知识库提问", "description": "打开 Agent 模式，自动搜索和引用笔记" },
