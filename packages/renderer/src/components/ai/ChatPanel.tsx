@@ -6,6 +6,7 @@ import { ConfirmModal } from '../ConfirmModal'
 import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
+import { formatAiToolStatus } from './tool-labels'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -253,8 +254,7 @@ export function ChatPanel() {
       } else if (event.type === 'tool_call') {
         try {
           const data = JSON.parse(event.content)
-          const toolNames: Record<string, string> = { search_notes: '搜索笔记', read_note: '读取笔记', create_note: '请求创建笔记', edit_note: '请求修改笔记' }
-          setToolStatus(toolNames[data.name] || data.name)
+          setToolStatus(formatAiToolStatus(data.name, data.args))
         } catch {
           setToolStatus('调用工具...')
         }
