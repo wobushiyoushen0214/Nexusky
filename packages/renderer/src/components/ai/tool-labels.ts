@@ -37,6 +37,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return '读取当前笔记目录'
     case 'list_note_blocks':
       return appendDetail('读取块引用', getTextArg(args, 'title'))
+    case 'list_current_note_blocks':
+      return '读取当前笔记块引用'
     case 'find_similar_notes':
       return appendDetail('查找相似笔记', getTextArg(args, 'query'))
     case 'find_memory_related_notes':
@@ -45,6 +47,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return appendDetail('浏览笔记记忆', getTextArg(args, 'query'))
     case 'read_note_memory':
       return appendDetail('读取笔记记忆', getTextArg(args, 'title'))
+    case 'read_current_note_memory':
+      return '读取当前笔记记忆'
     case 'get_memory_overview':
       return '汇总记忆覆盖'
     case 'list_memory_folders':

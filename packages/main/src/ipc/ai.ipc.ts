@@ -1123,6 +1123,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'read_current_note_memory',
+        description: '读取当前编辑器正在打开笔记的记忆摘要、概念、主题和是否过期。适合先了解当前笔记的高层语义。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note',
         description: '读取指定笔记的完整内容。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
@@ -1268,6 +1276,14 @@ graph TD
           },
           required: ['title']
         }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'list_current_note_blocks',
+        description: '列出当前编辑器正在打开笔记中的 Obsidian block id。适合先发现块引用，再用 read_current_note 或 read_note 读取 Note#^block。',
+        parameters: { type: 'object', properties: {} }
       }
     },
     {
@@ -1997,6 +2013,10 @@ graph TD
           }]
         }
       }
+      case 'read_current_note_memory': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 read_note_memory 指定标题/路径。' }
+        return executeToolCall('read_note_memory', { title: currentFilePath }, vaultPath, currentFilePath)
+      }
       case 'read_note': {
         const title = getStringArg(args, 'title')
         if (!title.trim()) return { content: 'read_note 缺少 title 参数。请先搜索笔记，或提供要读取的笔记标题。' }
@@ -2238,6 +2258,10 @@ graph TD
         } catch {
           return { content: `无法读取笔记「${title}」。` }
         }
+      }
+      case 'list_current_note_blocks': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 list_note_blocks 指定标题/路径。' }
+        return executeToolCall('list_note_blocks', { title: currentFilePath }, vaultPath, currentFilePath)
       }
       case 'list_tasks': {
         const status = getStringArg(args, 'status').trim().toLowerCase()

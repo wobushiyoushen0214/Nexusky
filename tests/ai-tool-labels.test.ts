@@ -10,6 +10,8 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('find_text_in_current_note', { query: 'decision' })).toBe('在当前笔记内查找: decision')
     expect(formatAiToolStatus('list_current_note_links')).toBe('读取当前笔记链接')
     expect(formatAiToolStatus('list_current_note_headings')).toBe('读取当前笔记目录')
+    expect(formatAiToolStatus('list_current_note_blocks')).toBe('读取当前笔记块引用')
+    expect(formatAiToolStatus('read_current_note_memory')).toBe('读取当前笔记记忆')
   })
 
   it('labels memory and structure tools in user-facing language', () => {
