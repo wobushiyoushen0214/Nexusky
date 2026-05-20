@@ -249,78 +249,137 @@ export function BasesView() {
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px 18px 34px' }}>
         {filteredRows.length === 0 ? (
-          <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
+          <div style={{ minHeight: 260, display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
             <div>{loading ? t('bases.loading') : t('bases.empty')}</div>
             {!loading && <div style={{ marginTop: 6, fontSize: 12 }}>{t('bases.emptyHint')}</div>}
           </div>
         ) : (
-          <table style={{ width: '100%', minWidth: 880 + propertyKeys.length * 140, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <thead>
-              <tr>
-                <HeaderCell width={220}>{t('bases.note')}</HeaderCell>
-                <HeaderCell width={180}>{t('bases.tags')}</HeaderCell>
-                <HeaderCell width={180}>{t('bases.aliases')}</HeaderCell>
-                <HeaderCell width={120}>{t('bases.cssclasses')}</HeaderCell>
-                {propertyKeys.map((key) => <HeaderCell key={key} width={140}>{key}</HeaderCell>)}
-                <HeaderCell width={120}>{t('bases.updated')}</HeaderCell>
-                <HeaderCell width={260}>{t('bases.path')}</HeaderCell>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row) => (
-                <tr key={row.id}>
-                  <BodyCell>
-                    <button onClick={() => openRow(row)} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--accent-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', textAlign: 'left' }}>
-                      {row.title}
+          <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(210px, 260px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
+            <aside style={{ position: 'sticky', top: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={insightPanelStyle}>
+                <div style={sectionEyebrowStyle}>{t('bases.propertyMap')}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+                  <Metric label={t('bases.notesMetric')} value={String(rows.length)} />
+                  <Metric label={t('bases.shownMetric')} value={String(filteredRows.length)} />
+                  <Metric label={t('bases.tagsMetric')} value={String(allTags.length)} />
+                  <Metric label={t('bases.fieldsMetric')} value={String(allPropertyKeys.length)} />
+                </div>
+              </div>
+              <div style={insightPanelStyle}>
+                <div style={sectionEyebrowStyle}>{t('bases.tagLens')}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                  <button onClick={() => setSelectedTag('')} style={{ ...lensButtonStyle, background: selectedTag ? 'transparent' : 'var(--accent-muted)', color: selectedTag ? 'var(--text-secondary)' : 'var(--accent-text)' }}>
+                    {t('bases.allTags')}
+                  </button>
+                  {allTags.slice(0, 14).map((tag) => (
+                    <button key={tag} onClick={() => setSelectedTag(tag)} style={{ ...lensButtonStyle, background: selectedTag === tag ? 'var(--accent-muted)' : 'transparent', color: selectedTag === tag ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+                      {tag}
                     </button>
-                  </BodyCell>
-                  <ChipCell value={row.properties.tags} editHint={t('bases.editHint')} onEdit={() => startEdit(row, 'tags', true)} editing={editing?.rowId === row.id && editing.key === 'tags'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
-                  <ChipCell value={row.properties.aliases} editHint={t('bases.editHint')} onEdit={() => startEdit(row, 'aliases', true)} editing={editing?.rowId === row.id && editing.key === 'aliases'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
-                  <ChipCell value={row.properties.cssclasses} editHint={t('bases.editHint')} subtle onEdit={() => startEdit(row, 'cssclasses', true)} editing={editing?.rowId === row.id && editing.key === 'cssclasses'} editValue={editing?.value || ''} onChange={(value) => setEditing(editing ? { ...editing, value } : editing)} onSave={saveEdit} onCancel={cancelEdit} />
-                  {propertyKeys.map((key) => (
-                    <EditableBodyCell
-                      key={key}
-                      value={valueToText(row.properties[key])}
-                      editHint={t('bases.editHint')}
-                      editing={editing?.rowId === row.id && editing.key === key}
-                      editValue={editing?.value || ''}
-                      onEdit={() => startEdit(row, key, Array.isArray(row.properties[key]))}
-                      onChange={(value) => setEditing(editing ? { ...editing, value } : editing)}
-                      onSave={saveEdit}
-                      onCancel={cancelEdit}
-                    />
                   ))}
-                  <BodyCell>{formatDate(row.updatedAt) || '—'}</BodyCell>
-                  <BodyCell muted>{row.filePath}</BodyCell>
-                </tr>
+                </div>
+              </div>
+            </aside>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {filteredRows.map((row) => (
+                <PropertyNoteCard
+                  key={row.id}
+                  row={row}
+                  propertyKeys={propertyKeys}
+                  editHint={t('bases.editHint')}
+                  editing={editing}
+                  onOpen={() => void openRow(row)}
+                  onEdit={(key, list) => startEdit(row, key, list)}
+                  onChange={(value) => setEditing(editing ? { ...editing, value } : editing)}
+                  onSave={saveEdit}
+                  onCancel={cancelEdit}
+                />
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-function HeaderCell({ children, width }: { children: React.ReactNode; width: number }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <th style={{ width, padding: '9px 10px', position: 'sticky', top: 0, zIndex: 1, background: 'var(--editor-bg)', borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)', fontSize: 11, fontWeight: 700, textAlign: 'left' }}>
-      {children}
-    </th>
+    <div>
+      <div style={{ color: 'var(--text-primary)', fontSize: 18, lineHeight: 1.1, fontWeight: 720, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ marginTop: 3, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+    </div>
   )
 }
 
-function BodyCell({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
+function PropertyNoteCard({
+  row,
+  propertyKeys,
+  editHint,
+  editing,
+  onOpen,
+  onEdit,
+  onChange,
+  onSave,
+  onCancel
+}: {
+  row: PropertyTableRow
+  propertyKeys: string[]
+  editHint: string
+  editing: EditState
+  onOpen: () => void
+  onEdit: (key: string, list: boolean) => void
+  onChange: (value: string) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  const visibleProperties = propertyKeys
+    .map((key) => [key, valueToText(row.properties[key])] as const)
+    .filter(([, value]) => value)
+    .slice(0, 6)
+
   return (
-    <td style={{ padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: muted ? 'var(--text-tertiary)' : 'var(--text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-      {children}
-    </td>
+    <article style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(240px, 0.75fr)', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div style={{ minWidth: 0 }}>
+        <button onClick={onOpen} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontSize: 15, lineHeight: 1.35, fontWeight: 720, cursor: 'pointer', textAlign: 'left', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.title}
+        </button>
+        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, color: 'var(--text-tertiary)', fontSize: 11 }}>
+          <span style={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{formatDate(row.updatedAt) || '—'}</span>
+          <span style={{ width: 3, height: 3, borderRadius: 999, background: 'var(--border-default)', flexShrink: 0 }} />
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</span>
+        </div>
+        <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+          <PropertyPills label="tags" value={row.properties.tags} editHint={editHint} editing={editing?.rowId === row.id && editing.key === 'tags'} editValue={editing?.value || ''} onEdit={() => onEdit('tags', true)} onChange={onChange} onSave={onSave} onCancel={onCancel} />
+          <PropertyPills label="aliases" value={row.properties.aliases} editHint={editHint} editing={editing?.rowId === row.id && editing.key === 'aliases'} editValue={editing?.value || ''} onEdit={() => onEdit('aliases', true)} onChange={onChange} onSave={onSave} onCancel={onCancel} />
+          <PropertyPills label="css" value={row.properties.cssclasses} editHint={editHint} subtle editing={editing?.rowId === row.id && editing.key === 'cssclasses'} editValue={editing?.value || ''} onEdit={() => onEdit('cssclasses', true)} onChange={onChange} onSave={onSave} onCancel={onCancel} />
+        </div>
+      </div>
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {visibleProperties.length === 0 ? (
+          <div style={{ color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.5 }}>{editHint}</div>
+        ) : visibleProperties.map(([key, value]) => (
+          <EditablePropertyLine
+            key={key}
+            label={key}
+            value={value}
+            editHint={editHint}
+            editing={editing?.rowId === row.id && editing.key === key}
+            editValue={editing?.value || ''}
+            onEdit={() => onEdit(key, Array.isArray(row.properties[key]))}
+            onChange={onChange}
+            onSave={onSave}
+            onCancel={onCancel}
+          />
+        ))}
+      </div>
+    </article>
   )
 }
 
-function EditableBodyCell({
+function EditablePropertyLine({
+  label,
   value,
   editHint,
   editing,
@@ -330,6 +389,7 @@ function EditableBodyCell({
   onSave,
   onCancel
 }: {
+  label: string
   value: string
   editHint: string
   editing: boolean
@@ -341,7 +401,7 @@ function EditableBodyCell({
 }) {
   if (editing) {
     return (
-      <td style={{ padding: 4, borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+      <div>
         <input
           autoFocus
           value={editValue}
@@ -353,18 +413,20 @@ function EditableBodyCell({
           }}
           style={{ ...cellInputStyle, width: '100%' }}
         />
-      </td>
+      </div>
     )
   }
 
   return (
-    <td onDoubleClick={onEdit} title={editHint} style={{ padding: '9px 10px', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'text' }}>
-      {value || '—'}
-    </td>
+    <button onDoubleClick={onEdit} title={editHint} style={{ width: '100%', minWidth: 0, display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', gap: 10, alignItems: 'baseline', padding: '4px 0', border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'text', textAlign: 'left' }}>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{value || '—'}</span>
+    </button>
   )
 }
 
-function ChipCell({
+function PropertyPills({
+  label,
   value,
   editHint,
   subtle = false,
@@ -375,6 +437,7 @@ function ChipCell({
   onSave,
   onCancel
 }: {
+  label: string
   value: PropertyValue | undefined
   editHint: string
   subtle?: boolean
@@ -388,7 +451,7 @@ function ChipCell({
   const items = Array.isArray(value) ? value.map(String).filter(Boolean) : value ? [String(value)] : []
   if (editing) {
     return (
-      <td style={{ padding: 4, borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+      <div>
         <input
           autoFocus
           value={editValue}
@@ -400,12 +463,13 @@ function ChipCell({
           }}
           style={{ ...cellInputStyle, width: '100%' }}
         />
-      </td>
+      </div>
     )
   }
   return (
-    <td onDoubleClick={onEdit} title={editHint} style={{ padding: '7px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', cursor: 'text' }}>
-      <div style={{ display: 'flex', gap: 4, overflow: 'hidden' }}>
+    <button onDoubleClick={onEdit} title={`${label} · ${editHint}`} style={{ minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'text', textAlign: 'left' }}>
+      <div style={{ marginBottom: 5, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ display: 'flex', gap: 4, overflow: 'hidden', minHeight: 19 }}>
         {items.length === 0 ? (
           <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
         ) : items.slice(0, 3).map((item) => (
@@ -415,7 +479,7 @@ function ChipCell({
         ))}
         {items.length > 3 && <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>+{items.length - 3}</span>}
       </div>
-    </td>
+    </button>
   )
 }
 
@@ -451,6 +515,35 @@ const miniButtonStyle: React.CSSProperties = {
   background: 'var(--bg-elevated)',
   color: 'var(--text-secondary)',
   fontSize: 11,
+  cursor: 'pointer'
+}
+
+const insightPanelStyle: React.CSSProperties = {
+  padding: '14px 14px 15px',
+  borderRadius: 8,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-surface)'
+}
+
+const sectionEyebrowStyle: React.CSSProperties = {
+  color: 'var(--text-tertiary)',
+  fontSize: 10,
+  fontWeight: 720,
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em'
+}
+
+const lensButtonStyle: React.CSSProperties = {
+  minWidth: 0,
+  maxWidth: '100%',
+  height: 24,
+  padding: '0 8px',
+  borderRadius: 999,
+  border: '1px solid var(--border-subtle)',
+  fontSize: 11,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
   cursor: 'pointer'
 }
 
