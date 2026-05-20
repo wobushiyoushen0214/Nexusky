@@ -1137,6 +1137,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'read_current_note',
+        description: '读取当前编辑器正在打开的笔记完整内容。适合用户提到“当前笔记”“这篇笔记”“这里”时直接使用。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note_lines',
         description: '读取指定笔记的行号范围。适合先通过搜索、目录或块引用定位，再读取局部内容；单次最多 200 行。',
         parameters: {
@@ -1539,7 +1547,8 @@ graph TD
   async function executeToolCall(
     name: string,
     args: Record<string, unknown>,
-    vaultPath: string
+    vaultPath: string,
+    currentFilePath?: string | null
   ): Promise<{ content: string; sources?: { title: string; filePath: string; chunk: string; score: number }[] }> {
     if (!vaultPath) return { content: '未打开知识库，无法使用笔记工具。' }
 
@@ -1974,6 +1983,10 @@ graph TD
         } catch {
           return { content: `无法读取笔记「${title}」。` }
         }
+      }
+      case 'read_current_note': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 read_note 指定标题/路径。' }
+        return executeToolCall('read_note', { title: currentFilePath }, vaultPath, currentFilePath)
       }
       case 'read_note_lines': {
         const title = getStringArg(args, 'title')
@@ -2678,7 +2691,7 @@ graph TD
     }
   }
 
-  ipcMain.handle('ai:chat-agent', async (event, params: { messages: ChatMessage[]; vaultPath?: string; systemPrompt?: string }) => {
+  ipcMain.handle('ai:chat-agent', async (event, params: { messages: ChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return
 
@@ -2744,7 +2757,7 @@ graph TD
                 result = { content: parsedArgs.error }
               } else {
                 try {
-                  result = await executeToolCall(call.name, parsedArgs.args, vaultPath)
+                  result = await executeToolCall(call.name, parsedArgs.args, vaultPath, params.currentFilePath)
                 } catch (err: unknown) {
                   result = { content: `工具 ${call.name} 执行失败: ${getErrorMessage(err)}` }
                 }

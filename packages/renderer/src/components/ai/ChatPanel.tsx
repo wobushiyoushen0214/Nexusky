@@ -336,7 +336,7 @@ export function ChatPanel() {
     const chatMessages = await buildChatMessages(remaining)
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
@@ -346,7 +346,7 @@ export function ChatPanel() {
       setStreamContent('')
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, appendAssistantMessage])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, appendAssistantMessage])
 
   const handleContinue = useCallback(async (msg: Message) => {
     if (isStreaming) return
@@ -375,7 +375,7 @@ export function ChatPanel() {
     chatMessages.push({ role: 'assistant', content: msg.content })
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
@@ -385,7 +385,7 @@ export function ChatPanel() {
       setStreamContent('')
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, appendAssistantMessage])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, appendAssistantMessage])
 
   useEffect(() => {
     if (!showMention || !vaultPath) return
@@ -900,7 +900,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setToolStatus(agentMode ? 'Agent 正在处理...' : '正在生成回答...')
         const attachedChatMessages = applyChatAttachments(chatMessages, userMsg.content, contextPrefix)
         if (agentMode) {
-          await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath })
+          await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath, currentFilePath })
         } else {
           await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath })
         }
@@ -1071,7 +1071,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const chatMessages = applyChatAttachments(await buildChatMessages(allMessages), userMsg.content, contextPrefix)
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath })
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }

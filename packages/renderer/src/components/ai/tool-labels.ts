@@ -17,6 +17,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return appendDetail('搜索笔记', getTextArg(args, 'query'))
     case 'read_note':
       return appendDetail('读取笔记', getTextArg(args, 'title'))
+    case 'read_current_note':
+      return '读取当前笔记'
     case 'read_note_lines':
       return appendDetail('读取笔记行号', getTextArg(args, 'title'))
     case 'find_text_in_note':
