@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, filterReaderRows, getArchivableReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -101,7 +101,9 @@ describe('reader inbox helpers', () => {
     const digest = createReaderDigestMarkdown([
       row('Imports/Pocket/Later.md', { source: 'pocket', author: 'Ada', status: 'unread', url: 'https://example.com' }, 10),
       row('Notes/Regular.md', {}, 20)
-    ], new Date('2026-05-20T08:00:00Z'))
+    ], new Date('2026-05-20T08:00:00Z'), {
+      'Imports/Pocket/Later.md': ['A compact takeaway from the saved article.']
+    })
 
     expect(digest).toContain('source: reader-inbox')
     expect(digest).toContain('items: 1')
@@ -109,6 +111,16 @@ describe('reader inbox helpers', () => {
     expect(digest).toContain('- [[Later]] - Pocket · Ada · unread')
     expect(digest).toContain('  - Path: Imports/Pocket/Later.md')
     expect(digest).toContain('  - Source: https://example.com')
+    expect(digest).toContain('  - Excerpt: A compact takeaway from the saved article.')
     expect(digest).not.toContain('Regular')
+  })
+
+  it('extracts reader digest excerpts from highlights, notes, and body fallback', () => {
+    expect(extractReaderDigestExcerpts('---\nsource: readwise\n---\n# Book\n\n## Highlight 1\n\n> First highlighted idea.\n> Second highlighted idea.')).toEqual([
+      'First highlighted idea.',
+      'Second highlighted idea.'
+    ])
+    expect(extractReaderDigestExcerpts('# Pocket\n\n## Notes\n\n- Follow up with [[Project]]\n- Source: https://example.com')).toEqual(['Follow up with [[Project]]'])
+    expect(extractReaderDigestExcerpts('# Notion Page\n\nAuthor: Ada\n\nThis paragraph should become the fallback excerpt.')).toEqual(['This paragraph should become the fallback excerpt.'])
   })
 })

@@ -93,7 +93,51 @@ export function appendReaderNote(content: string, note: string, now = new Date()
   return `${before}\n\n${entry}${after ? `\n\n${after}` : '\n'}`
 }
 
-export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new Date()): string {
+function compactDigestLine(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().slice(0, 260)
+}
+
+export function extractReaderDigestExcerpts(content: string, maxItems = 3): string[] {
+  const withoutFrontmatter = content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
+  const lines = withoutFrontmatter.split(/\r?\n/)
+  const excerpts: string[] = []
+  const seen = new Set<string>()
+
+  const add = (value: string) => {
+    const compact = compactDigestLine(value)
+    if (!compact || compact.length < 8) return
+    const key = compact.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    excerpts.push(compact)
+  }
+
+  for (const line of lines) {
+    const quote = line.match(/^>\s*(.+)$/)
+    if (quote) add(quote[1])
+    if (excerpts.length >= maxItems) return excerpts
+  }
+
+  let inNotes = false
+  for (const line of lines) {
+    if (/^##\s+/i.test(line)) inNotes = /^##\s+Notes\s*$/i.test(line)
+    if (!inNotes) continue
+    const item = line.match(/^[-*]\s+(.+)$/)
+    if (item && !/^(source|path|highlighted|added):/i.test(item[1])) add(item[1])
+    if (excerpts.length >= maxItems) return excerpts
+  }
+
+  for (const line of lines) {
+    if (/^#|^>|^[-*]\s|^\s*$/.test(line)) continue
+    if (/^(author|source|added):/i.test(line)) continue
+    add(line)
+    if (excerpts.length >= maxItems) return excerpts
+  }
+
+  return excerpts
+}
+
+export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new Date(), excerptsByPath: Record<string, string[]> = {}): string {
   const date = now.toISOString().slice(0, 10)
   const readerRows = rows.filter((row) => getReaderSource(row))
   const lines = [
@@ -122,6 +166,8 @@ export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new D
     lines.push(`- [[${row.title}]]${meta ? ` - ${meta}` : ''}`)
     lines.push(`  - Path: ${row.filePath}`)
     if (url) lines.push(`  - Source: ${url}`)
+    const excerpts = excerptsByPath[row.filePath] || []
+    for (const excerpt of excerpts) lines.push(`  - Excerpt: ${excerpt}`)
     lines.push('  - Notes: ')
   }
 
@@ -284,7 +330,16 @@ export function ReaderInboxView() {
     const date = now.toISOString().slice(0, 10)
     setCreatingDigest(true)
     try {
-      const content = createReaderDigestMarkdown(filtered, now)
+      const readerRows = filtered.filter((row) => getReaderSource(row))
+      const excerptEntries = await Promise.all(readerRows.map(async (row) => {
+        try {
+          const content = await window.api.invoke('file:read', { path: `${vaultPath}/${row.filePath}` })
+          return [row.filePath, extractReaderDigestExcerpts(content)] as const
+        } catch {
+          return [row.filePath, []] as const
+        }
+      }))
+      const content = createReaderDigestMarkdown(filtered, now, Object.fromEntries(excerptEntries))
       const path = await getAvailableReaderDigestPath(vaultPath, date)
       await window.api.invoke('file:create', { path, content, vaultPath })
       await window.api.invoke('db:index-file', { vaultPath, filePath: path })
