@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1024,6 +1024,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_memory_terms',
+        description: '汇总已生成笔记记忆中的概念和主题，帮助发现知识库里的高频知识点。',
+        parameters: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', description: 'concept、topic 或 all，默认 all' },
+            query: { type: 'string', description: '按概念或主题名过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_notes_missing_memory',
         description: '列出缺少笔记记忆或记忆已过期的笔记，适合诊断 memory 关系结果不完整的原因。',
         parameters: {
@@ -1589,6 +1604,43 @@ graph TD
             chunk: memory.summary.slice(0, 100),
             score: 1
           }))
+        }
+      }
+      case 'list_memory_terms': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const type = getStringArg(args, 'type').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notesById = new Map(getAllNotes(vaultPath).map((note) => [note.id, note]))
+        const groups = new Map<string, { term: string; type: 'concept' | 'topic'; count: number; samplePaths: string[] }>()
+        const addTerms = (terms: string[], termType: 'concept' | 'topic', filePath: string) => {
+          for (const rawTerm of new Set(terms.map((term) => term.trim()).filter(Boolean))) {
+            const key = `${termType}:${rawTerm.toLowerCase()}`
+            const group = groups.get(key) || { term: rawTerm, type: termType, count: 0, samplePaths: [] }
+            group.count += 1
+            if (group.samplePaths.length < 3 && !group.samplePaths.includes(filePath)) {
+              group.samplePaths.push(filePath)
+            }
+            groups.set(key, group)
+          }
+        }
+        for (const memory of readAllMemories(vaultPath)) {
+          const note = notesById.get(memory.noteId)
+          if (!note) continue
+          if (type !== 'topic') addTerms(memory.concepts, 'concept', note.filePath)
+          if (type !== 'concept') addTerms(memory.topics, 'topic', note.filePath)
+        }
+        const terms = Array.from(groups.values())
+          .filter((term) => !query || term.term.toLowerCase().includes(query))
+          .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type) || a.term.localeCompare(b.term))
+          .slice(0, limit)
+        return {
+          content: formatMemoryTermsToolResult(terms),
+          sources: terms.flatMap((term) => term.samplePaths.map((filePath) => ({
+            title: term.term,
+            filePath,
+            chunk: `${term.type}: ${term.term}`,
+            score: term.count
+          })))
         }
       }
       case 'list_notes_missing_memory': {

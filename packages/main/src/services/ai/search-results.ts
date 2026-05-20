@@ -175,6 +175,13 @@ export interface AiMissingMemoryNoteResult {
   reason: 'missing' | 'stale'
 }
 
+export interface AiMemoryTermSummary {
+  term: string
+  type: 'concept' | 'topic'
+  count: number
+  samplePaths: string[]
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -519,6 +526,14 @@ export function formatMissingMemoryNotesToolResult(notes: AiMissingMemoryNoteRes
     `Path: ${note.filePath}`,
     `Reason: ${note.reason}`,
     `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatMemoryTermsToolResult(terms: AiMemoryTermSummary[]): string {
+  if (terms.length === 0) return 'No memory terms found.'
+  return terms.map((term, index) => [
+    `${index + 1}. ${term.term} (${term.type}, ${term.count})`,
+    `Examples: ${term.samplePaths.length > 0 ? term.samplePaths.join(', ') : '(none)'}`
   ].join('\n')).join('\n\n')
 }
 

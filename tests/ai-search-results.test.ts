@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -472,6 +472,21 @@ describe('formatMissingMemoryNotesToolResult', () => {
 
   it('marks complete memory coverage explicitly', () => {
     expect(formatMissingMemoryNotesToolResult([])).toBe('No missing or stale note memories found.')
+  })
+})
+
+describe('formatMemoryTermsToolResult', () => {
+  it('formats memory concept and topic summaries with examples', () => {
+    const output = formatMemoryTermsToolResult([
+      { term: 'React Hooks', type: 'concept', count: 3, samplePaths: ['A.md', 'B.md'] },
+      { term: 'Frontend Frameworks', type: 'topic', count: 2, samplePaths: ['C.md'] }
+    ])
+
+    expect(output).toBe('1. React Hooks (concept, 3)\nExamples: A.md, B.md\n\n2. Frontend Frameworks (topic, 2)\nExamples: C.md')
+  })
+
+  it('marks empty memory terms explicitly', () => {
+    expect(formatMemoryTermsToolResult([])).toBe('No memory terms found.')
   })
 })
 
