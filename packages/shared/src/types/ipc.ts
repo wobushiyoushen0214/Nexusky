@@ -354,6 +354,7 @@ export interface IPCChannelMap {
   'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number } }
   'file:import-readwise': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
   'file:import-pocket': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
+  'file:import-notion': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number; assets: number; skipped: number; canceled?: boolean } }
   'template:daily-note': { params: { vaultPath: string }; result: string }
   'template:get-templates': { params: undefined; result: NoteTemplate[] }
   'template:save-templates': { params: { templates: NoteTemplate[] }; result: void }

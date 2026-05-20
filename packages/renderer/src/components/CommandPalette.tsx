@@ -127,6 +127,14 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       toast(t('commandPalette.toasts.pocketImported', { imported: result.imported }), result.imported > 0 ? 'success' : 'info')
       useVaultStore.getState().refreshFiles()
     }},
+    { id: 'import-notion', category: 'file', label: t('commandPalette.commands.importNotion.label'), description: t('commandPalette.commands.importNotion.description'), keywords: ['notion', 'markdown', 'csv', 'import'], action: async () => {
+      if (!vaultPath) return
+      const result = await window.api.invoke('file:import-notion', { vaultPath })
+      if (result.canceled) return
+      const { toast } = await import('../stores/toast-store')
+      toast(t('commandPalette.toasts.notionImported', { imported: result.imported, assets: result.assets }), result.imported > 0 ? 'success' : 'info')
+      useVaultStore.getState().refreshFiles()
+    }},
     { id: 'search', category: 'search', label: t('commandPalette.commands.search.label'), shortcut: 'Ctrl+Shift+F', keywords: ['find', 'search'], action: () => setSearchOpen(true) },
     { id: 'chat', category: 'ai', label: t('commandPalette.commands.chat.label'), shortcut: 'Ctrl+L', description: t('commandPalette.commands.chat.description'), keywords: ['chat', 'agent'], action: () => setRightPanel('chat') },
     { id: 'ai-rag', category: 'ai', label: t('commandPalette.commands.aiRag.label'), description: t('commandPalette.commands.aiRag.description'), keywords: ['rag', 'ask', 'agent'], action: () => queueAiDraft({ mode: 'chat', agentMode: true, prompt: t('commandPalette.prompts.rag') }) },

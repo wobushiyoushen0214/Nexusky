@@ -174,6 +174,7 @@
 | 每日笔记 | 自动创建 daily/YYYY-MM-DD.md |
 | 模板系统 | 空白、会议记录、读书笔记、项目文档，命令面板可从内置精选模板市场安装 Zettelkasten、文献、ADR、周复盘和课程模板，也可安装 `.nexusky/templates/*.json` 社区共享模板包 |
 | Obsidian 导入 | 命令面板导入，自动转换 callout 语法，并在导入时索引 frontmatter、Dataview 内联字段、别名和链接 |
+| Notion 导出导入 | 命令面板选择 Notion Markdown & CSV 导出文件夹，页面转 Markdown、数据库 CSV 转表格笔记，并把本地页面链接转为 wikilink |
 | Readwise 高亮导入 | 命令面板选择 Readwise CSV 导出文件，按文章生成带来源、作者和标签的 Markdown 笔记 |
 | Pocket 稍后读导入 | 命令面板选择 Pocket HTML 导出文件，将收藏链接转为带状态、来源和标签的阅读笔记 |
 | Frontmatter 兼容 | 属性编辑统一通过 frontmatter 工具写回，兼容 CRLF 换行和标签栏/标签面板同步更新 |
@@ -760,7 +761,7 @@
 - [x] 插件市场（内置精选插件包，一键安装到 `.nexusky/plugins`）
 - [x] 自定义主题包
 - [x] 自定义快捷键映射
-- [ ] 第三方服务集成（Notion、Readwise、Pocket）
+- [x] 第三方服务集成（Notion、Readwise、Pocket）
 
 ### 性能优化
 - [x] 文件监听（chokidar）自动刷新文件树
@@ -853,6 +854,7 @@ scripts/          → 开发脚本
 - [ ] Web 版本（共享渲染层代码）
 - [x] 浏览器扩展（本地 Web Clipper 服务 + Chromium 扩展网页剪藏到 vault）
 - [x] CLI 工具（`pnpm cli new/search` 命令行快速创建和搜索 vault 笔记）
+- [x] Notion 导出导入（Markdown & CSV 文件夹转为可索引笔记）
 - [x] Readwise 高亮导入（CSV 导出转为来源化 Markdown 笔记）
 - [x] Pocket 稍后读导入（HTML 导出转为阅读条目笔记）
 - [ ] iOS/Android 移动端
@@ -861,4 +863,4 @@ scripts/          → 开发脚本
 - [x] 插件 API 设计（声明式注册命令、面板、编辑器扩展能力）
 - [x] 自定义主题包
 - [x] 自定义快捷键映射
-- [ ] 第三方服务集成（Notion、Readwise、Pocket）
+- [x] 第三方服务集成（Notion、Readwise、Pocket）

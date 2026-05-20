@@ -6,6 +6,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypt
 import { getDatabase } from '../services/database'
 import { indexNote } from '../services/indexer'
 import { importObsidianVault } from '../services/obsidian-importer'
+import { importNotionExport } from '../services/notion-importer'
 import { importPocketBookmarks, importReadwiseCsv } from '../services/reader-importer'
 import { isPathInsideVault } from './file-path'
 import { notifyVaultFilesChanged } from './events'
@@ -319,6 +320,23 @@ export function registerFileIPC(): void {
       sourcePath = result.filePaths[0]
     }
     const result = await importPocketBookmarks(sourcePath, params.vaultPath)
+    notifyVaultFilesChanged()
+    return result
+  })
+
+  ipcMain.handle('file:import-notion', async (_event, params: { sourcePath?: string; vaultPath: string }) => {
+    let sourcePath = params.sourcePath
+    if (!sourcePath) {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+        title: '选择 Notion Markdown & CSV 导出文件夹'
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        return { imported: 0, converted: 0, indexed: 0, assets: 0, skipped: 0, canceled: true }
+      }
+      sourcePath = result.filePaths[0]
+    }
+    const result = await importNotionExport(sourcePath, params.vaultPath)
     notifyVaultFilesChanged()
     return result
   })
