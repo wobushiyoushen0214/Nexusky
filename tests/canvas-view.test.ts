@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasInitialScrollKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties']): PropertyTableRow {
@@ -79,6 +79,17 @@ describe('canvas card placement', () => {
       ['react-props', 'pocket-react']
     ])
     expect(buildCanvasAssociationSuggestions(rows, []).map((edge) => [edge.source, edge.target])).toContainEqual(['react-hooks', 'react-props'])
+  })
+
+  it('writes accepted association links into a connections section', () => {
+    const target = row('Target Note', { tags: ['react'] })
+    target.title = 'Target Note'
+    target.filePath = 'Topics/Target Note.md'
+
+    expect(getCanvasAssociationWikilink(target)).toBe('[[Topics/Target Note|Target Note]]')
+    expect(appendCanvasAssociationLink('# Source\n\nBody', target)).toBe('# Source\n\nBody\n\n## Connections\n\n- [[Topics/Target Note|Target Note]]\n')
+    expect(appendCanvasAssociationLink('# Source\n\n## Connections\n\n- [[Existing]]\n\n## Later\n\nText', target)).toContain('- [[Existing]]\n- [[Topics/Target Note|Target Note]]\n\n## Later')
+    expect(appendCanvasAssociationLink('# Source\n\nAlready [[Topics/Target Note|Target Note]]', target)).toBe('# Source\n\nAlready [[Topics/Target Note|Target Note]]')
   })
 
   it('routes links around blocking cards with elbow paths', () => {

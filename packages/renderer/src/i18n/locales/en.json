@@ -226,6 +226,18 @@
     "createFirst": "Create first card",
     "defaultCardTitle": "Untitled card",
     "created": "Knowledge node created",
+    "associationTitle": "Association hint",
+    "associationAccept": "Write link",
+    "associationAccepting": "Writing...",
+    "associationDismiss": "Dismiss",
+    "associationAccepted": "Association written to note",
+    "associationAlreadyLinked": "This link already exists in the note",
+    "associationFailed": "Failed to write association",
+    "associationReason": {
+      "tag": "These cards share tags, so the relationship is strong enough to capture as a topic link.",
+      "source": "These cards came from the same source and may belong to the same reading or import context.",
+      "title": "Their titles share terms, which may point to the same concept or question."
+    },
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "zoomReset": "Reset zoom",

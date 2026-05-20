@@ -62,6 +62,7 @@ type CanvasMode = 'space' | 'properties' | 'time'
 type RoutePoint = { x: number; y: number }
 type CanvasEdgeRoute = { key: string; points: RoutePoint[] }
 type CanvasAssociationReason = 'tag' | 'source' | 'title'
+type CanvasSuggestedEdgeRoute = CanvasAssociationSuggestion & CanvasEdgeRoute
 
 interface CanvasAssociationSuggestion {
   source: string
@@ -189,6 +190,43 @@ function getArchiveGroup(row: PropertyTableRow): string {
 
 function associationKey(source: string, target: string): string {
   return source < target ? `${source}::${target}` : `${target}::${source}`
+}
+
+function cleanWikilinkPart(value: string): string {
+  return value.replace(/[\[\]\r\n|]/g, '').trim()
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+export function getCanvasAssociationWikilink(row: PropertyTableRow): string {
+  const target = cleanWikilinkPart(row.filePath.replace(/\\/g, '/').replace(/\.md$/i, ''))
+  const alias = cleanWikilinkPart(row.title)
+  if (!target) return alias ? `[[${alias}]]` : '[[Untitled]]'
+  return alias && alias !== target ? `[[${target}|${alias}]]` : `[[${target}]]`
+}
+
+export function appendCanvasAssociationLink(content: string, target: PropertyTableRow): string {
+  const link = getCanvasAssociationWikilink(target)
+  const targetPath = cleanWikilinkPart(target.filePath.replace(/\\/g, '/').replace(/\.md$/i, ''))
+  const alias = cleanWikilinkPart(target.title)
+  const duplicatePatterns = [targetPath, alias]
+    .filter(Boolean)
+    .map((value) => new RegExp(`\\[\\[${escapeRegExp(value)}(?:#[^\\]|]+)?(?:\\|[^\\]]+)?\\]\\]`, 'i'))
+  if (duplicatePatterns.some((pattern) => pattern.test(content))) return content
+
+  const entry = `- ${link}`
+  const section = /^## Connections\s*$/m.exec(content)
+  if (!section) return `${content.trimEnd()}\n\n## Connections\n\n${entry}\n`
+
+  const sectionEnd = section.index + section[0].length
+  const afterSection = content.slice(sectionEnd)
+  const nextHeading = /\n##\s+/.exec(afterSection)
+  const insertAt = nextHeading ? sectionEnd + nextHeading.index : content.length
+  const before = content.slice(0, insertAt).trimEnd()
+  const after = content.slice(insertAt).replace(/^\n+/, '')
+  return `${before}\n${entry}${after ? `\n\n${after}` : '\n'}`
 }
 
 function tokenizeAssociationText(value: string): Set<string> {
@@ -511,6 +549,8 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   const [zoom, setZoom] = useState(1)
   const [controlsVisible, setControlsVisible] = useState(false)
   const [canvasMode, setCanvasMode] = useState<CanvasMode>(initialMode)
+  const [activeSuggestionKey, setActiveSuggestionKey] = useState<string | null>(null)
+  const [acceptingSuggestionKey, setAcceptingSuggestionKey] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef<Record<string, CanvasPosition>>({})
   const metricsRef = useRef(getCanvasMetrics([], {}))
@@ -738,7 +778,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
       .filter((edge): edge is CanvasEdgeRoute => edge !== null)
   }, [canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph, modePositions, visibleIds])
 
-  const canvasSuggestedEdges = useMemo<CanvasEdgeRoute[]>(() => {
+  const canvasSuggestedEdges = useMemo<CanvasSuggestedEdgeRoute[]>(() => {
     const suggestions = buildCanvasAssociationSuggestions(filteredRows, graph?.edges || [])
     if (suggestions.length === 0) return []
     const blockers = filteredRows.map((row, index) => ({
@@ -752,14 +792,28 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         if (!source || !target) return null
         return {
           key: `${edge.source}~${edge.target}:${edge.reason}`,
+          source: edge.source,
+          target: edge.target,
+          reason: edge.reason,
+          score: edge.score,
           points: routeBetweenCards(source, target, blockers.filter((blocker) => blocker.id !== edge.source && blocker.id !== edge.target).map((blocker) => blocker.rect)).map((point) => ({
             x: point.x - canvasMetrics.minX,
             y: point.y - canvasMetrics.minY
           }))
         }
       })
-      .filter((edge): edge is CanvasEdgeRoute => edge !== null)
+      .filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
   }, [canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph?.edges, modePositions])
+
+  const activeSuggestion = useMemo(() => {
+    if (!activeSuggestionKey) return null
+    const edge = canvasSuggestedEdges.find((item) => item.key === activeSuggestionKey)
+    if (!edge) return null
+    const source = rows.find((row) => row.id === edge.source)
+    const target = rows.find((row) => row.id === edge.target)
+    if (!source || !target) return null
+    return { edge, source, target }
+  }, [activeSuggestionKey, canvasSuggestedEdges, rows])
 
   const resetLayout = () => {
     const next = buildArchivePositions(rows)
@@ -776,7 +830,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
 
   const canvasWidth = canvasMetrics.width
   const canvasHeight = canvasMetrics.height
-  const controlsActive = controlsVisible || showGuide || query.trim().length > 0
+  const controlsActive = controlsVisible || showGuide || Boolean(activeSuggestion) || query.trim().length > 0
 
   const zoomAtViewportPoint = (nextZoom: number, clientX?: number, clientY?: number) => {
     const viewport = canvasRef.current
@@ -893,6 +947,28 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     await openFile(`${vaultPath}/${row.filePath}`)
   }
 
+  const acceptAssociationSuggestion = async () => {
+    if (!vaultPath || !activeSuggestion) return
+    const { edge, source, target } = activeSuggestion
+    setAcceptingSuggestionKey(edge.key)
+    try {
+      const path = `${vaultPath}/${source.filePath}`
+      const content = await window.api.invoke('file:read', { path })
+      const updated = appendCanvasAssociationLink(content, target)
+      if (updated !== content) {
+        await window.api.invoke('file:write', { path, content: updated, vaultPath })
+        await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+      }
+      setActiveSuggestionKey(null)
+      await loadRows()
+      toast(t(updated === content ? 'canvas.associationAlreadyLinked' : 'canvas.associationAccepted'), 'success')
+    } catch {
+      toast(t('canvas.associationFailed'), 'error')
+    } finally {
+      setAcceptingSuggestionKey(null)
+    }
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--editor-bg)' }}>
       <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
@@ -935,7 +1011,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           ) : (
             <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
               <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 0 }}>
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: 0 }}>
                 <defs>
                   <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
                     <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
@@ -952,6 +1028,11 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     strokeLinejoin="round"
                     strokeLinecap="round"
                     strokeDasharray="2 10"
+                    style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setActiveSuggestionKey(edge.key)
+                    }}
                   />
                 ))}
                 {canvasEdges.map((edge) => (
@@ -1097,6 +1178,35 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
             <div>{t('canvas.guideCreate')}</div>
           </div>
         )}
+
+        {activeSuggestion && (
+          <div style={{ position: 'absolute', right: 16, bottom: 18, zIndex: 6, width: 380, maxWidth: 'calc(100% - 32px)', padding: '14px 15px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', boxShadow: '0 18px 46px rgba(0,0,0,0.32)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('canvas.associationTitle')}</div>
+                <div style={{ marginTop: 7, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontSize: 13, fontWeight: 690 }}>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeSuggestion.source.title}</span>
+                  <span style={{ color: 'var(--text-tertiary)' }}>→</span>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeSuggestion.target.title}</span>
+                </div>
+              </div>
+              <button onClick={() => setActiveSuggestionKey(null)} aria-label={t('canvas.associationDismiss')} title={t('canvas.associationDismiss')} style={{ ...canvasIconButtonStyle, borderLeft: '1px solid var(--border-subtle)' }}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div style={{ marginTop: 10, color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.55 }}>
+              {t(`canvas.associationReason.${activeSuggestion.edge.reason}`)}
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setActiveSuggestionKey(null)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key ? 0.55 : 1 }}>
+                {t('canvas.associationDismiss')}
+              </button>
+              <button onClick={() => void acceptAssociationSuggestion()} disabled={acceptingSuggestionKey === activeSuggestion.edge.key} style={{ ...buttonStyle, borderColor: 'var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', cursor: acceptingSuggestionKey === activeSuggestion.edge.key ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key ? 0.7 : 1 }}>
+                {acceptingSuggestionKey === activeSuggestion.edge.key ? t('canvas.associationAccepting') : t('canvas.associationAccept')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1205,6 +1315,15 @@ function InfoIcon() {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5" />
       <path d="M12 8h.01" />
+    </svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12" />
+      <path d="M18 6L6 18" />
     </svg>
   )
 }

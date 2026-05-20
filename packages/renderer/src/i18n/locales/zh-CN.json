@@ -226,6 +226,18 @@
     "createFirst": "新建第一张卡片",
     "defaultCardTitle": "未命名卡片",
     "created": "知识节点已创建",
+    "associationTitle": "关联线索",
+    "associationAccept": "写入链接",
+    "associationAccepting": "写入中...",
+    "associationDismiss": "忽略",
+    "associationAccepted": "关联已写入笔记",
+    "associationAlreadyLinked": "笔记中已有这个链接",
+    "associationFailed": "关联写入失败",
+    "associationReason": {
+      "tag": "这两张卡片拥有共同标签，适合固化为一个明确的主题关联。",
+      "source": "这两张卡片来自同一来源，可能属于同一批阅读或导入上下文。",
+      "title": "标题中出现了相同关键词，可能指向同一个概念或问题。"
+    },
     "zoomIn": "放大画布",
     "zoomOut": "缩小画布",
     "zoomReset": "重置缩放",
