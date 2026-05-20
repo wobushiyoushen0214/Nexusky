@@ -9,6 +9,7 @@ import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractM
 import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
+import { withMergedSystemContext } from '../services/ai/system-context'
 import { logger } from '../services/logger'
 import { getAllNotes, getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getPropertyRows, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -208,7 +209,7 @@ ${context}
               ? `${params.systemPrompt}\n\n以下是相关笔记内容：\n---\n${context}\n---`
               : systemContent
           }
-          messages = [systemMsg, ...messages.filter((m) => m.role !== 'system')]
+          messages = withMergedSystemContext(String(systemMsg.content), messages)
 
           window.webContents.send('ai:sources', results.map((r) => ({
             title: r.title,
@@ -217,11 +218,11 @@ ${context}
             score: r.score
           })))
         } else if (params.systemPrompt) {
-          messages = [{ role: 'system', content: params.systemPrompt }, ...messages.filter((m) => m.role !== 'system')]
+          messages = withMergedSystemContext(params.systemPrompt, messages)
         }
       }
     } else if (params.systemPrompt) {
-      messages = [{ role: 'system', content: params.systemPrompt }, ...messages.filter((m) => m.role !== 'system')]
+      messages = withMergedSystemContext(params.systemPrompt, messages)
     }
 
     try {
@@ -2669,7 +2670,7 @@ graph TD
 如果用户想创建或修改笔记，请让用户切换到编辑模式，那里会先展示预览并等待确认。`
 
       const systemContent = customPrompt || defaultSystemPrompt
-      messages = [{ role: 'system', content: systemContent }, ...messages.filter((m) => m.role !== 'system')]
+      messages = withMergedSystemContext(systemContent, messages)
 
       // Context compaction
       messages = await compactMessages(messages)
