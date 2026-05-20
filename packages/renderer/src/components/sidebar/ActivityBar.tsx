@@ -12,9 +12,7 @@ const iconMap: Record<string, React.ReactNode> = {
   search: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
   chat: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
   graph: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><circle cx="18" cy="6" r="3" /><line x1="8.5" y1="7.5" x2="15.5" y2="16.5" /><line x1="15.5" y1="7.5" x2="8.5" y2="16.5" /></svg>,
-  bases: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16v14H4z" /><path d="M4 10h16" /><path d="M4 15h16" /><path d="M10 5v14" /><path d="M16 5v14" /></svg>,
   canvas: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="6" height="5" rx="1" /><rect x="14" y="6" width="6" height="5" rx="1" /><rect x="7" y="15" width="7" height="5" rx="1" /><path d="M10 9l3 2" /><path d="M14 11l-3 4" /></svg>,
-  timeline: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18" /><circle cx="12" cy="6" r="2" /><path d="M14 6h6" /><circle cx="12" cy="12" r="2" /><path d="M4 12h6" /><circle cx="12" cy="18" r="2" /><path d="M14 18h6" /></svg>,
   reader: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16v14H4z" /><path d="M8 9h8" /><path d="M8 13h5" /><path d="M6 19l2-3h8l2 3" /></svg>,
   outline: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>,
   properties: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z" /><path d="M8 8h8" /><path d="M8 12h5" /><path d="M8 16h8" /></svg>,
@@ -71,16 +69,8 @@ export function ActivityBar() {
         if (!state.sidebarCollapsed) toggleSidebar()
       }
     },
-    bases: () => {
-      setMainView('bases')
-      if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
-    },
     canvas: () => {
       setMainView('canvas')
-      if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
-    },
-    timeline: () => {
-      setMainView('timeline')
       if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
     },
     reader: () => {
@@ -108,9 +98,7 @@ export function ActivityBar() {
 
   const getActiveId = () => {
     if (useUIStore.getState().mainView === 'graph') return 'graph'
-    if (useUIStore.getState().mainView === 'bases') return 'bases'
-    if (useUIStore.getState().mainView === 'canvas') return 'canvas'
-    if (useUIStore.getState().mainView === 'timeline') return 'timeline'
+    if (['bases', 'canvas', 'timeline'].includes(useUIStore.getState().mainView)) return 'canvas'
     if (useUIStore.getState().mainView === 'reader') return 'reader'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'

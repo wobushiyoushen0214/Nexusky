@@ -631,6 +631,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                 const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []
                 const status = valueToText(row.properties.status)
                 const source = valueToText(row.properties.source)
+                const propertyCount = Object.keys(row.properties).filter((key) => valueToText(row.properties[key])).length
                 const groupLabel = canvasMode === 'properties' ? getPrimaryTag(row) : canvasMode === 'time' && row.updatedAt ? new Date(row.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
                 return (
                   <div
@@ -649,17 +650,21 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                       top: pos.y - canvasMetrics.minY,
                       width: CARD_WIDTH,
                       minHeight: 112,
-                      padding: '12px 12px 10px',
+                      padding: '11px 12px 10px',
                       borderRadius: 8,
                       border: dragging?.id === row.id ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-                      background: 'var(--bg-surface)',
-                      boxShadow: dragging?.id === row.id ? '0 12px 30px rgba(0,0,0,0.28)' : '0 8px 22px rgba(0,0,0,0.16)',
+                      borderTop: `2px solid ${tags[0] ? 'var(--accent)' : 'var(--border-default)'}`,
+                      background: 'linear-gradient(180deg, var(--bg-surface), var(--editor-bg))',
+                      boxShadow: dragging?.id === row.id ? '0 14px 34px rgba(0,0,0,0.3)' : '0 10px 26px rgba(0,0,0,0.14)',
                       cursor: canvasMode === 'space' ? dragging?.id === row.id ? 'grabbing' : 'grab' : 'pointer',
                       userSelect: 'none'
                     }}
                   >
-                    {groupLabel && <div style={{ marginBottom: 7, fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{groupLabel}</div>}
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.title}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                      <div style={{ minWidth: 0, fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groupLabel || t('canvas.modeSpace')}</div>
+                      <div style={{ flexShrink: 0, fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{propertyCount}</div>
+                    </div>
+                    <div style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: 34, fontSize: 13, lineHeight: 1.3, fontWeight: 720, color: 'var(--text-primary)', overflow: 'hidden' }}>{row.title}</div>
                     <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
                     <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {tags.slice(0, 3).map((tag) => (
