@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatCurrentNotePropertiesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -1153,6 +1153,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'read_current_note_properties',
+        description: '读取当前编辑器正在打开笔记的结构化属性/frontmatter/inline fields，包括 title、aliases、tags、cssclasses 等。适合回答当前笔记的状态、标签、别名或元数据。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note_lines',
         description: '读取指定笔记的行号范围。适合先通过搜索、目录或块引用定位，再读取局部内容；单次最多 200 行。',
         parameters: {
@@ -2068,6 +2076,26 @@ graph TD
       case 'read_current_note': {
         if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 read_note 指定标题/路径。' }
         return executeToolCall('read_note', { title: currentFilePath }, vaultPath, currentFilePath)
+      }
+      case 'read_current_note_properties': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 list_properties 查询全库属性。' }
+        const note = findNoteForAiTool(vaultPath, currentFilePath)
+        if (!note) return { content: `未找到当前笔记「${currentFilePath}」的索引记录。请先刷新索引。` }
+        const row = getPropertyRows(vaultPath).find((item) => item.filePath === note.filePath)
+        if (!row) return { content: `未找到当前笔记「${note.filePath}」的属性索引。请先刷新索引。` }
+        const properties = Object.entries(row.properties)
+          .map(([key, value]) => ({ key, value: formatPropertyValue(value).trim() }))
+          .filter((property) => property.value.length > 0)
+          .sort((a, b) => a.key.localeCompare(b.key))
+        return {
+          content: formatCurrentNotePropertiesToolResult({ title: row.title, filePath: row.filePath, properties }),
+          sources: [{
+            title: row.title,
+            filePath: row.filePath,
+            chunk: properties.slice(0, 5).map((property) => `${property.key}: ${property.value}`).join('\n').slice(0, 100),
+            score: 1
+          }]
+        }
       }
       case 'read_note_lines': {
         const title = getStringArg(args, 'title')

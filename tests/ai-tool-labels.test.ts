@@ -6,6 +6,7 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('search_notes', { query: 'project roadmap' })).toBe('搜索笔记: project roadmap')
     expect(formatAiToolStatus('read_note', { title: 'Plans/Launch.md' })).toBe('读取笔记: Plans/Launch.md')
     expect(formatAiToolStatus('read_current_note')).toBe('读取当前笔记')
+    expect(formatAiToolStatus('read_current_note_properties')).toBe('读取当前笔记属性')
     expect(formatAiToolStatus('read_current_note_lines')).toBe('读取当前笔记行号')
     expect(formatAiToolStatus('find_text_in_current_note', { query: 'decision' })).toBe('在当前笔记内查找: decision')
     expect(formatAiToolStatus('list_current_note_links')).toBe('读取当前笔记链接')

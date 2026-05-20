@@ -98,6 +98,12 @@ export interface AiMissingPropertyNoteResult {
   updatedAt: number
 }
 
+export interface AiCurrentNotePropertyResult {
+  title: string
+  filePath: string
+  properties: { key: string; value: string }[]
+}
+
 export interface AiRecentNoteResult {
   title: string
   filePath: string
@@ -442,6 +448,17 @@ export function formatMissingPropertyNotesToolResult(key: string, notes: AiMissi
     `Updated: ${formatTimestamp(note.updatedAt)}`
   ].join('\n')).join('\n\n')
   return `Missing Property: ${key}\n\n${body}`
+}
+
+export function formatCurrentNotePropertiesToolResult(note: AiCurrentNotePropertyResult): string {
+  if (note.properties.length === 0) return `No properties found for ${note.title} (${note.filePath}).`
+  const body = note.properties.map((property, index) => `${index + 1}. ${property.key}: ${property.value}`).join('\n')
+  return [
+    `Current Note Properties: ${note.title}`,
+    `Path: ${note.filePath}`,
+    '',
+    body
+  ].join('\n')
 }
 
 export function formatPropertyValue(value: unknown): string {
