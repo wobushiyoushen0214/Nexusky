@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, filterReaderRows, getArchivableReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, filterReaderRows, getArchivableReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -95,5 +95,20 @@ describe('reader inbox helpers', () => {
     const updated = appendReaderNote('# Article\n\n## Notes\n\n- 2026-05-19: Existing\n\n## Source\n\nLink', 'Second line\nwith detail', new Date('2026-05-20T08:00:00Z'))
 
     expect(updated).toContain('- 2026-05-19: Existing\n\n- 2026-05-20: Second line\n  with detail\n\n## Source')
+  })
+
+  it('creates a markdown digest from visible reader rows', () => {
+    const digest = createReaderDigestMarkdown([
+      row('Imports/Pocket/Later.md', { source: 'pocket', author: 'Ada', status: 'unread', url: 'https://example.com' }, 10),
+      row('Notes/Regular.md', {}, 20)
+    ], new Date('2026-05-20T08:00:00Z'))
+
+    expect(digest).toContain('source: reader-inbox')
+    expect(digest).toContain('items: 1')
+    expect(digest).toContain('# Reading Digest 2026-05-20')
+    expect(digest).toContain('- [[Later]] - Pocket · Ada · unread')
+    expect(digest).toContain('  - Path: Imports/Pocket/Later.md')
+    expect(digest).toContain('  - Source: https://example.com')
+    expect(digest).not.toContain('Regular')
   })
 })

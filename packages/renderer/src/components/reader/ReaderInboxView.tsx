@@ -93,6 +93,42 @@ export function appendReaderNote(content: string, note: string, now = new Date()
   return `${before}\n\n${entry}${after ? `\n\n${after}` : '\n'}`
 }
 
+export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new Date()): string {
+  const date = now.toISOString().slice(0, 10)
+  const readerRows = rows.filter((row) => getReaderSource(row))
+  const lines = [
+    '---',
+    'source: reader-inbox',
+    `created: ${date}`,
+    `items: ${readerRows.length}`,
+    '---',
+    '',
+    `# Reading Digest ${date}`,
+    '',
+    '## Focus',
+    '',
+    '- ',
+    '',
+    '## Reading Queue',
+    ''
+  ]
+
+  for (const row of readerRows) {
+    const source = sourceLabel(getReaderSource(row))
+    const author = propertyText(row.properties.author)
+    const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? 'unread' : '')
+    const url = getReaderSourceUrl(row)
+    const meta = [source, author, status].filter(Boolean).join(' · ')
+    lines.push(`- [[${row.title}]]${meta ? ` - ${meta}` : ''}`)
+    lines.push(`  - Path: ${row.filePath}`)
+    if (url) lines.push(`  - Source: ${url}`)
+    lines.push('  - Notes: ')
+  }
+
+  lines.push('', '## Connections', '', '- ')
+  return `${lines.join('\n')}\n`
+}
+
 function sourceLabel(source: ReaderSource | null): string {
   if (source === 'notion') return 'Notion'
   if (source === 'readwise') return 'Readwise'
@@ -112,6 +148,19 @@ function formatDate(value: number): string {
   return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+async function getAvailableReaderDigestPath(vaultPath: string, date: string): Promise<string> {
+  const base = `${vaultPath}/Reader Digests/Reading Digest ${date}`
+  for (let i = 0; i < 1000; i++) {
+    const path = `${base}${i === 0 ? '' : ` ${i + 1}`}.md`
+    try {
+      await window.api.invoke('file:stat', { path })
+    } catch {
+      return path
+    }
+  }
+  return `${base} ${Date.now()}.md`
+}
+
 export function ReaderInboxView() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
@@ -128,6 +177,7 @@ export function ReaderInboxView() {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null)
+  const [creatingDigest, setCreatingDigest] = useState(false)
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -226,6 +276,27 @@ export function ReaderInboxView() {
   const archiveVisible = async () => {
     if (archivableVisibleRows.length === 0) return
     await writeStatuses(archivableVisibleRows, 'archived')
+  }
+
+  const createDigest = async () => {
+    if (!vaultPath || filtered.length === 0) return
+    const now = new Date()
+    const date = now.toISOString().slice(0, 10)
+    setCreatingDigest(true)
+    try {
+      const content = createReaderDigestMarkdown(filtered, now)
+      const path = await getAvailableReaderDigestPath(vaultPath, date)
+      await window.api.invoke('file:create', { path, content, vaultPath })
+      await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+      await useVaultStore.getState().refreshFiles([path])
+      await openFile(path)
+      setMainView('editor')
+      toast(t('reader.digestCreated'), 'success')
+    } catch {
+      toast(t('reader.digestFailed'), 'error')
+    } finally {
+      setCreatingDigest(false)
+    }
   }
 
   const openSource = async (row: PropertyTableRow) => {
@@ -335,6 +406,13 @@ export function ReaderInboxView() {
             style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: archivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: archivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: archivableVisibleRows.length > 0 ? 1 : 0.55 }}
           >
             {t('reader.archiveVisible')}
+          </button>
+          <button
+            onClick={() => void createDigest()}
+            disabled={filtered.length === 0 || creatingDigest}
+            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: filtered.length > 0 && !creatingDigest ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: filtered.length > 0 && !creatingDigest ? 'pointer' : 'default', opacity: filtered.length > 0 && !creatingDigest ? 1 : 0.55 }}
+          >
+            {creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')}
           </button>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(['notion', 'readwise', 'pocket'] as const).map((item) => (
