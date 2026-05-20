@@ -89,21 +89,26 @@ describe('indexer', () => {
     const plainMentionPath = join(vaultPath, 'Planning.md')
     const linkedMentionPath = join(vaultPath, 'Linked.md')
     const aliasTargetPath = join(vaultPath, 'Roadmap.md')
+    const shortAliasPath = join(vaultPath, 'Plan.md')
 
     writeFileSync(targetPath, '# Project\n\nCanonical project note.')
     writeFileSync(plainMentionPath, '# Planning\n\nProject needs a clearer roadmap.')
     writeFileSync(linkedMentionPath, '# Linked\n\nSee [[Project]] for details.')
     writeFileSync(aliasTargetPath, '---\naliases:\n  - Plan\n---\n# Roadmap\n\nRoadmap note.')
+    writeFileSync(shortAliasPath, '# Plan\n\nShort title should not match inside Planning.')
 
     indexNote(vaultPath, targetPath)
     indexNote(vaultPath, plainMentionPath)
     indexNote(vaultPath, linkedMentionPath)
     indexNote(vaultPath, aliasTargetPath)
+    indexNote(vaultPath, shortAliasPath)
 
     const project = getAllNotes(vaultPath).find((note) => note.title === 'Project')
     const planning = getAllNotes(vaultPath).find((note) => note.title === 'Planning')
+    const plan = getAllNotes(vaultPath).find((note) => note.title === 'Plan')
     expect(project).toBeTruthy()
     expect(planning).toBeTruthy()
+    expect(plan).toBeTruthy()
 
     const mentions = getUnlinkedMentions(vaultPath, project!.id)
     expect(mentions).toHaveLength(1)
@@ -114,6 +119,7 @@ describe('indexer', () => {
     const outgoingMentions = getOutgoingUnlinkedMentions(vaultPath, planning!.id)
     expect(outgoingMentions.map((mention) => mention.targetTitle).sort()).toEqual(['Project', 'Roadmap'])
     expect(outgoingMentions.find((mention) => mention.targetTitle === 'Roadmap')?.mention).toBe('Roadmap')
+    expect(getUnlinkedMentions(vaultPath, plan!.id)).toHaveLength(0)
     expect(getOutgoingUnlinkedMentions(vaultPath, getAllNotes(vaultPath).find((note) => note.title === 'Linked')!.id)).toHaveLength(0)
 
     closeDatabase()

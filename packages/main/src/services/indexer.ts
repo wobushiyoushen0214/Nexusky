@@ -582,11 +582,20 @@ function findPlainMention(content: string, aliases: string[]): { alias: string; 
       const before = content.slice(Math.max(0, index - 2), index)
       const after = content.slice(index + alias.length, index + alias.length + 2)
       const insideWikiLink = before === '[[' && (after.startsWith(']') || after.startsWith('|'))
-      if (!insideWikiLink) return { alias, index }
+      if (!insideWikiLink && hasPlainMentionBoundary(content, alias, index)) return { alias, index }
       index = lowerContent.indexOf(lowerAlias, index + alias.length)
     }
   }
   return null
+}
+
+function hasPlainMentionBoundary(content: string, alias: string, index: number): boolean {
+  const isWordChar = (value: string) => /^[A-Za-z0-9_]$/.test(value)
+  const before = index > 0 ? content[index - 1] : ''
+  const after = index + alias.length < content.length ? content[index + alias.length] : ''
+  if (isWordChar(alias[0]) && isWordChar(before)) return false
+  if (isWordChar(alias[alias.length - 1]) && isWordChar(after)) return false
+  return true
 }
 
 function createMentionContext(content: string, index: number): string {
