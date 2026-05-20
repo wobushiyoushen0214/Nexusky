@@ -98,8 +98,8 @@ describe('formatNoteLinksToolResult', () => {
       title: 'Topic',
       filePath: 'Topic.md',
       outgoing: [
-        { targetTitle: 'Next', targetPath: 'Folder/Next.md', context: 'See [[Next]] for details.', resolved: true },
-        { targetTitle: 'Missing', context: 'See [[Missing]].', resolved: false }
+        { targetTitle: 'Next', targetPath: 'Folder/Next.md', line: 4, context: 'See [[Next]] for details.', resolved: true },
+        { targetTitle: 'Missing', line: 5, context: 'See [[Missing]].', resolved: false }
       ],
       backlinks: [
         { sourceTitle: 'Source', sourcePath: 'Source.md', context: 'References [[Topic]].' }
@@ -111,8 +111,8 @@ describe('formatNoteLinksToolResult', () => {
 
     expect(output).toContain('Title: Topic')
     expect(output).toContain('Path: Topic.md')
-    expect(output).toContain('1. Next (Folder/Next.md) - See [[Next]] for details.')
-    expect(output).toContain('2. Missing (unresolved) - See [[Missing]].')
+    expect(output).toContain('1. Next (Folder/Next.md:4) - See [[Next]] for details.')
+    expect(output).toContain('2. Missing (unresolved:5) - See [[Missing]].')
     expect(output).toContain('1. Source (Source.md) - References [[Topic]].')
     expect(output).toContain('1. Loose (Loose.md:7) - "Topic" - Topic appears without a link.')
   })

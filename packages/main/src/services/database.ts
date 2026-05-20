@@ -5,7 +5,7 @@ import { app } from 'electron'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 7
+const SCHEMA_VERSION = 8
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -73,6 +73,7 @@ function initSchema(db: Database.Database): void {
       target_note_id TEXT,
       target_title TEXT NOT NULL,
       context TEXT,
+      line INTEGER NOT NULL DEFAULT 1,
       link_type TEXT NOT NULL DEFAULT 'explicit',
       FOREIGN KEY (source_note_id) REFERENCES notes(id) ON DELETE CASCADE
     );
@@ -313,6 +314,13 @@ const migrations: Migration[] = [
       );
       CREATE INDEX IF NOT EXISTS idx_note_aliases_alias ON note_aliases(alias);
     `)
+  },
+  // Migration 8: line numbers for explicit wikilinks
+  (db) => {
+    const linkColumns = db.prepare('PRAGMA table_info(links)').all() as { name: string }[]
+    if (!linkColumns.some((c) => c.name === 'line')) {
+      db.exec('ALTER TABLE links ADD COLUMN line INTEGER NOT NULL DEFAULT 1')
+    }
   }
 ]
 

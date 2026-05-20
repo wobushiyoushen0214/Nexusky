@@ -11,6 +11,7 @@ export interface AiNoteLinksSummary {
   outgoing: {
     targetTitle: string
     targetPath?: string
+    line: number
     context: string
     resolved: boolean
   }[]
@@ -338,7 +339,7 @@ export function formatReadNoteLinesToolResult(note: { title: string; filePath: s
 export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
   const outgoing = summary.outgoing.length > 0
     ? summary.outgoing.map((link, index) => {
-      const target = link.targetPath ? `${link.targetTitle} (${link.targetPath})` : `${link.targetTitle} (unresolved)`
+      const target = link.targetPath ? `${link.targetTitle} (${link.targetPath}:${link.line})` : `${link.targetTitle} (unresolved:${link.line})`
       return `${index + 1}. ${target}${formatLinkContext(link.context)}`
     }).join('\n')
     : '(none)'

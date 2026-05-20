@@ -135,7 +135,7 @@ describe('indexer', () => {
     const sourcePath = join(vaultPath, 'Source.md')
 
     writeFileSync(targetPath, '# Target\n\nLinked note.')
-    writeFileSync(sourcePath, '# Source\n\nSee [[Target]] and [[Missing Note]] for context.')
+    writeFileSync(sourcePath, '# Source\n\nSee [[Target]].\n\nSee [[Missing Note]] for context.')
 
     indexNote(vaultPath, targetPath)
     indexNote(vaultPath, sourcePath)
@@ -145,8 +145,8 @@ describe('indexer', () => {
 
     const links = getOutgoingLinks(vaultPath, source!.id)
     expect(links).toHaveLength(2)
-    expect(links.find((link) => link.targetTitle === 'Target')).toMatchObject({ targetPath: 'Target.md', resolved: true })
-    expect(links.find((link) => link.targetTitle === 'Missing Note')).toMatchObject({ resolved: false })
+    expect(links.find((link) => link.targetTitle === 'Target')).toMatchObject({ targetPath: 'Target.md', line: 3, resolved: true })
+    expect(links.find((link) => link.targetTitle === 'Missing Note')).toMatchObject({ line: 5, resolved: false })
 
     closeDatabase()
   })

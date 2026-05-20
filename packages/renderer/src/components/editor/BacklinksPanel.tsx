@@ -136,7 +136,7 @@ function OutgoingSection({
         >
           <span style={{ fontSize: 12, fontWeight: 500, color: item.targetPath ? 'var(--accent-text)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.targetTitle}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{item.resolved ? '已解析' : '点击创建'}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line} · {item.resolved ? '已解析' : '点击创建'}</span>
           </span>
           {item.context && (
             <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

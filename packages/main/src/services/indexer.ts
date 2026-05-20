@@ -28,6 +28,7 @@ export interface LinkIndex {
 export interface OutgoingLinkIndex {
   targetTitle: string
   targetPath?: string
+  line: number
   context: string
   resolved: boolean
 }
@@ -74,7 +75,7 @@ export function indexNote(vaultPath: string, filePath: string): void {
   `)
 
   const deleteLinks = db.prepare('DELETE FROM links WHERE source_note_id = ?')
-  const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context) VALUES (?, ?, ?)')
+  const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, line) VALUES (?, ?, ?, ?)')
   const deleteTags = db.prepare('DELETE FROM note_tags WHERE note_id = ?')
   const findOrCreateTag = db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)')
   const getTagId = db.prepare('SELECT id FROM tags WHERE name = ?')
@@ -101,7 +102,7 @@ export function indexNote(vaultPath: string, filePath: string): void {
     upsert.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash)
     deleteLinks.run(id)
     for (const link of links) {
-      insertLink.run(id, link.targetTitle, link.context)
+      insertLink.run(id, link.targetTitle, link.context, link.line)
     }
     deleteTags.run(id)
     deleteAliases.run(id)
@@ -203,16 +204,17 @@ export function getPropertyRows(vaultPath: string): PropertyTableRow[] {
 export function getOutgoingLinks(vaultPath: string, noteId: string): OutgoingLinkIndex[] {
   const db = getDatabase(vaultPath)
   const rows = db.prepare(`
-    SELECT l.target_title as targetTitle, n.file_path as targetPath, l.context,
+    SELECT l.target_title as targetTitle, n.file_path as targetPath, l.context, l.line,
            CASE WHEN n.id IS NULL THEN 0 ELSE 1 END as resolved
     FROM links l
     LEFT JOIN notes n ON n.id = l.target_note_id
     WHERE l.source_note_id = ?
     ORDER BY resolved DESC, l.target_title ASC
-  `).all(noteId) as { targetTitle: string; targetPath: string | null; context: string | null; resolved: number }[]
+  `).all(noteId) as { targetTitle: string; targetPath: string | null; context: string | null; line: number; resolved: number }[]
   return rows.map((row) => ({
     targetTitle: row.targetTitle,
     targetPath: row.targetPath || undefined,
+    line: row.line || 1,
     context: row.context || '',
     resolved: row.resolved === 1
   }))
@@ -418,11 +420,11 @@ function extractTitle(content: string, filePath: string): string {
   return basename(filePath, '.md')
 }
 
-function extractLinks(content: string): { targetTitle: string; context: string }[] {
-  const links: { targetTitle: string; context: string }[] = []
+function extractLinks(content: string): { targetTitle: string; context: string; line: number }[] {
+  const links: { targetTitle: string; context: string; line: number }[] = []
   const lines = content.split('\n')
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     let match: RegExpExecArray | null
     WIKILINK_REGEX.lastIndex = 0
     while ((match = WIKILINK_REGEX.exec(line)) !== null) {
@@ -430,7 +432,8 @@ function extractLinks(content: string): { targetTitle: string; context: string }
       if (!targetTitle) continue
       links.push({
         targetTitle,
-        context: line.trim().slice(0, 200)
+        context: line.trim().slice(0, 200),
+        line: index + 1
       })
     }
   }

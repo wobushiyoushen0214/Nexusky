@@ -86,6 +86,7 @@ export interface BacklinkResult {
 export interface OutgoingLinkResult {
   targetTitle: string
   targetPath?: string
+  line: number
   context: string
   resolved: boolean
 }
