@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
+import { toast } from '../../stores/toast-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
+import { updateMarkdownProperty } from '../../utils/frontmatter'
 import type { PropertyTableRow } from '@shared/types/ipc'
 
 type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
@@ -120,6 +122,21 @@ export function ReaderInboxView() {
     setMainView('editor')
   }
 
+  const updateStatus = async (row: PropertyTableRow, status: 'read' | 'unread') => {
+    if (!vaultPath) return
+    const path = `${vaultPath}/${row.filePath}`
+    try {
+      const content = await window.api.invoke('file:read', { path })
+      const updated = updateMarkdownProperty(content, 'status', status)
+      await window.api.invoke('file:write', { path, content: updated, vaultPath })
+      await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+      setRows((current) => current.map((item) => item.id === row.id ? { ...item, properties: { ...item.properties, status }, updatedAt: Date.now() } : item))
+      toast(status === 'read' ? t('reader.markedRead') : t('reader.markedUnread'), 'success')
+    } catch {
+      toast(t('reader.statusFailed'), 'error')
+    }
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
       <div style={{ flexShrink: 0, padding: '22px 28px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -179,10 +196,13 @@ export function ReaderInboxView() {
               const author = propertyText(row.properties.author)
               const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
               return (
-                <button
+                <div
                   key={row.id}
                   onClick={() => openRow(row)}
-                  style={{ minHeight: 148, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 10, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)', color: 'var(--text-primary)', textAlign: 'left', padding: 14, cursor: 'pointer' }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void openRow(row) }}
+                  role="button"
+                  tabIndex={0}
+                  style={{ minHeight: 148, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 10, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)', color: 'var(--text-primary)', textAlign: 'left', padding: 14, cursor: 'pointer', outline: 'none' }}
                 >
                   <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -201,7 +221,15 @@ export function ReaderInboxView() {
                       <span key={tag} style={{ maxWidth: 86, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', fontSize: 10 }}>{tag}</span>
                     ))}
                   </span>
-                </button>
+                  <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); void updateStatus(row, isUnreadReaderRow(row) ? 'read' : 'unread') }}
+                      style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      {isUnreadReaderRow(row) ? t('reader.markRead') : t('reader.markUnread')}
+                    </button>
+                  </span>
+                </div>
               )
             })}
           </div>

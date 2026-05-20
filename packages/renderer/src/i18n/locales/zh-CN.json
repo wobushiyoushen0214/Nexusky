@@ -253,6 +253,11 @@
     "allSources": "全部",
     "unreadOnly": "只看待读",
     "unread": "unread",
+    "markRead": "标记已读",
+    "markUnread": "标记待读",
+    "markedRead": "已标记为已读",
+    "markedUnread": "已标记为待读",
+    "statusFailed": "阅读状态更新失败",
     "emptyImports": "还没有导入 Notion、Readwise 或 Pocket 内容",
     "emptyFilter": "没有匹配的阅读条目"
   },
