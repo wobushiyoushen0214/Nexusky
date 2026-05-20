@@ -1213,6 +1213,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_current_note_headings',
+        description: '列出当前编辑器正在打开笔记的 Markdown 标题目录。适合用户询问当前笔记结构，或在读取全文前先定位章节。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_note_blocks',
         description: '列出指定笔记中的 Obsidian block id。适合先发现块引用，再用 read_note 读取 Note#^block。',
         parameters: {
@@ -2148,6 +2156,10 @@ graph TD
         } catch {
           return { content: `无法读取笔记「${title}」。` }
         }
+      }
+      case 'list_current_note_headings': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 list_note_headings 指定标题/路径。' }
+        return executeToolCall('list_note_headings', { title: currentFilePath }, vaultPath, currentFilePath)
       }
       case 'list_note_blocks': {
         const title = getStringArg(args, 'title')

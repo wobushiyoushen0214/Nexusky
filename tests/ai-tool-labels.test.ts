@@ -6,6 +6,7 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('search_notes', { query: 'project roadmap' })).toBe('搜索笔记: project roadmap')
     expect(formatAiToolStatus('read_note', { title: 'Plans/Launch.md' })).toBe('读取笔记: Plans/Launch.md')
     expect(formatAiToolStatus('read_current_note')).toBe('读取当前笔记')
+    expect(formatAiToolStatus('list_current_note_headings')).toBe('读取当前笔记目录')
   })
 
   it('labels memory and structure tools in user-facing language', () => {

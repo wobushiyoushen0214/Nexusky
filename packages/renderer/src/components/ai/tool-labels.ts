@@ -27,6 +27,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return appendDetail('读取笔记链接', getTextArg(args, 'title'))
     case 'list_note_headings':
       return appendDetail('读取笔记目录', getTextArg(args, 'title'))
+    case 'list_current_note_headings':
+      return '读取当前笔记目录'
     case 'list_note_blocks':
       return appendDetail('读取块引用', getTextArg(args, 'title'))
     case 'find_similar_notes':
