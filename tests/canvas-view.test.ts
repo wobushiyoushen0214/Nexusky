@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties']): PropertyTableRow {
@@ -90,6 +90,16 @@ describe('canvas card placement', () => {
     expect(appendCanvasAssociationLink('# Source\n\nBody', target)).toBe('# Source\n\nBody\n\n## Connections\n\n- [[Topics/Target Note|Target Note]]\n')
     expect(appendCanvasAssociationLink('# Source\n\n## Connections\n\n- [[Existing]]\n\n## Later\n\nText', target)).toContain('- [[Existing]]\n- [[Topics/Target Note|Target Note]]\n\n## Later')
     expect(appendCanvasAssociationLink('# Source\n\nAlready [[Topics/Target Note|Target Note]]', target)).toBe('# Source\n\nAlready [[Topics/Target Note|Target Note]]')
+  })
+
+  it('cycles through association review keys', () => {
+    const keys = ['a', 'b', 'c']
+
+    expect(getNextCanvasAssociationKey(keys, null, 1)).toBe('a')
+    expect(getNextCanvasAssociationKey(keys, null, -1)).toBe('c')
+    expect(getNextCanvasAssociationKey(keys, 'a', 1)).toBe('b')
+    expect(getNextCanvasAssociationKey(keys, 'a', -1)).toBe('c')
+    expect(getNextCanvasAssociationKey([], 'a', 1)).toBeNull()
   })
 
   it('routes links around blocking cards with elbow paths', () => {

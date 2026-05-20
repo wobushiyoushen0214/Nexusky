@@ -229,6 +229,16 @@ export function appendCanvasAssociationLink(content: string, target: PropertyTab
   return `${before}\n${entry}${after ? `\n\n${after}` : '\n'}`
 }
 
+export function getNextCanvasAssociationKey(keys: string[], activeKey: string | null, direction = 1): string | null {
+  if (keys.length === 0) return null
+  const current = activeKey ? keys.indexOf(activeKey) : -1
+  const step = direction >= 0 ? 1 : -1
+  const next = current === -1
+    ? step > 0 ? 0 : keys.length - 1
+    : (current + step + keys.length) % keys.length
+  return keys[next]
+}
+
 function tokenizeAssociationText(value: string): Set<string> {
   return new Set(value
     .toLowerCase()
@@ -814,6 +824,8 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     if (!source || !target) return null
     return { edge, source, target }
   }, [activeSuggestionKey, canvasSuggestedEdges, rows])
+  const activeSuggestionIndex = activeSuggestionKey ? canvasSuggestedEdges.findIndex((edge) => edge.key === activeSuggestionKey) : -1
+  const suggestionKeys = useMemo(() => canvasSuggestedEdges.map((edge) => edge.key), [canvasSuggestedEdges])
 
   const resetLayout = () => {
     const next = buildArchivePositions(rows)
@@ -945,6 +957,10 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     if (!vaultPath) return
     setMainView('editor')
     await openFile(`${vaultPath}/${row.filePath}`)
+  }
+
+  const selectAssociationSuggestion = (direction = 1) => {
+    setActiveSuggestionKey(getNextCanvasAssociationKey(suggestionKeys, activeSuggestionKey, direction))
   }
 
   const acceptAssociationSuggestion = async () => {
@@ -1144,6 +1160,16 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
               <NewCardIcon />
             </CanvasIconButton>
           </div>
+          {canvasSuggestedEdges.length > 0 && (
+            <button
+              type="button"
+              onClick={() => selectAssociationSuggestion(1)}
+              title={t('canvas.associationReview')}
+              style={{ ...buttonStyle, height: 32, background: activeSuggestion ? 'var(--bg-elevated)' : 'var(--bg-surface)', boxShadow: '0 10px 28px rgba(0,0,0,0.18)' }}
+            >
+              {t('canvas.associationReview')} · {canvasSuggestedEdges.length}
+            </button>
+          )}
           <div style={floatingGroupStyle}>
             <CanvasIconButton title={t('canvas.zoomOut')} onClick={() => zoomAtViewportPoint(zoom - 0.1)}>
               <MinusIcon />
@@ -1183,7 +1209,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           <div style={{ position: 'absolute', right: 16, bottom: 18, zIndex: 6, width: 380, maxWidth: 'calc(100% - 32px)', padding: '14px 15px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', boxShadow: '0 18px 46px rgba(0,0,0,0.32)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('canvas.associationTitle')}</div>
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('canvas.associationTitle')} · {t('canvas.associationCounter', { current: activeSuggestionIndex + 1, total: canvasSuggestedEdges.length })}</div>
                 <div style={{ marginTop: 7, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontSize: 13, fontWeight: 690 }}>
                   <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeSuggestion.source.title}</span>
                   <span style={{ color: 'var(--text-tertiary)' }}>→</span>
@@ -1198,6 +1224,12 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
               {t(`canvas.associationReason.${activeSuggestion.edge.reason}`)}
             </div>
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => selectAssociationSuggestion(-1)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 0.55 : 1 }}>
+                {t('canvas.associationPrevious')}
+              </button>
+              <button onClick={() => selectAssociationSuggestion(1)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 0.55 : 1 }}>
+                {t('canvas.associationNext')}
+              </button>
               <button onClick={() => setActiveSuggestionKey(null)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key ? 0.55 : 1 }}>
                 {t('canvas.associationDismiss')}
               </button>
