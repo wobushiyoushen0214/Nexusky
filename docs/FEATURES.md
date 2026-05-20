@@ -848,7 +848,7 @@ scripts/          → 开发脚本
 ### 协作与平台
 - [ ] 实时协作编辑（CRDT + WebSocket）
 - [ ] Web 版本（共享渲染层代码）
-- [ ] 浏览器扩展（网页剪藏到 vault）
+- [x] 浏览器扩展（本地 Web Clipper 服务 + Chromium 扩展网页剪藏到 vault）
 - [x] CLI 工具（`pnpm cli new/search` 命令行快速创建和搜索 vault 笔记）
 - [ ] iOS/Android 移动端
 

@@ -12,6 +12,7 @@ import { registerPluginIPC } from './ipc/plugin.ipc'
 import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
 import { logger } from './services/logger'
+import { startWebClipperServer, stopWebClipperServer } from './services/web-clipper'
 
 process.on('uncaughtException', (error) => {
   logger.error('uncaughtException', error)
@@ -136,6 +137,7 @@ app.whenReady().then(() => {
   registerExportIPC()
   registerPluginIPC()
   setupAutoUpdater()
+  startWebClipperServer()
 
   ipcMain.on('window:minimize', (event) => getEventWindow(event)?.minimize())
   ipcMain.on('window:maximize', (event) => {
@@ -178,6 +180,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  stopWebClipperServer()
   globalShortcut.unregisterAll()
   store.flush()
 })

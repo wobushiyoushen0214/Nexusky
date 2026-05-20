@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Nexusky Web Clipper",
+  "version": "0.1.0",
+  "description": "Save the current page or selection into the active Nexusky vault.",
+  "permissions": ["activeTab", "contextMenus", "scripting"],
+  "host_permissions": ["http://127.0.0.1:17321/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Save to Nexusky"
+  }
+}
