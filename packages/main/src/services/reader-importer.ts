@@ -1,4 +1,5 @@
-import { access, mkdir, readFile, writeFile } from 'fs/promises'
+import { access, mkdir, readFile, readdir, writeFile } from 'fs/promises'
+import type { Dirent } from 'fs'
 import { basename, join } from 'path'
 import { indexNote } from './indexer'
 
@@ -166,6 +167,51 @@ function yamlString(value: string): string {
   return JSON.stringify(value)
 }
 
+function unquote(value: string): string {
+  const trimmed = value.trim()
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      return trimmed.slice(1, -1)
+    }
+  }
+  return trimmed
+}
+
+function readFrontmatterScalar(content: string, key: string): string {
+  const match = content.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
+  return match ? unquote(match[1]) : ''
+}
+
+function readerKey(source: 'readwise' | 'pocket', title: string, url?: string): string {
+  return `${source}\u0000${(url || '').trim().toLowerCase()}\u0000${title.trim().toLowerCase()}`
+}
+
+async function existingReaderKeys(dir: string, source: 'readwise' | 'pocket'): Promise<Set<string>> {
+  const keys = new Set<string>()
+  let entries: Dirent<string>[]
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return keys
+  }
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      const nested = await existingReaderKeys(fullPath, source)
+      nested.forEach((key) => keys.add(key))
+    } else if (entry.name.endsWith('.md')) {
+      const content = await readFile(fullPath, 'utf-8')
+      if (readFrontmatterScalar(content, 'source') !== source) continue
+      const title = readFrontmatterScalar(content, 'title') || entry.name.replace(/\.md$/, '')
+      const url = readFrontmatterScalar(content, 'url')
+      keys.add(readerKey(source, title, url))
+    }
+  }
+  return keys
+}
+
 async function uniquePath(dir: string, title: string): Promise<string> {
   const safe = sanitizeFileName(title)
   for (let i = 0; i < 1000; i++) {
@@ -234,12 +280,19 @@ export async function importReadwiseCsv(sourcePath: string, vaultPath: string): 
 
   const importDir = join(vaultPath, 'Imports', 'Readwise')
   await mkdir(importDir, { recursive: true })
+  const existing = await existingReaderKeys(importDir, 'readwise')
 
   for (const groupedRows of groups.values()) {
     const title = groupedRows[0].title || basename(sourcePath, '.csv')
+    const key = readerKey('readwise', title, groupedRows[0].url)
+    if (existing.has(key)) {
+      result.skipped++
+      continue
+    }
     const destPath = await uniquePath(importDir, title)
     await writeFile(destPath, renderHighlightNote(title, groupedRows), 'utf-8')
     indexNote(vaultPath, destPath)
+    existing.add(key)
     result.imported++
     result.indexed++
   }
@@ -285,6 +338,7 @@ export async function importPocketBookmarks(sourcePath: string, vaultPath: strin
 
   const importDir = join(vaultPath, 'Imports', 'Pocket')
   await mkdir(importDir, { recursive: true })
+  const existing = await existingReaderKeys(importDir, 'pocket')
   const seen = new Set<string>()
 
   for (const item of items) {
@@ -293,9 +347,15 @@ export async function importPocketBookmarks(sourcePath: string, vaultPath: strin
       continue
     }
     seen.add(item.url)
+    const key = readerKey('pocket', item.title, item.url)
+    if (existing.has(key)) {
+      result.skipped++
+      continue
+    }
     const destPath = await uniquePath(importDir, item.title)
     await writeFile(destPath, renderPocketNote(item), 'utf-8')
     indexNote(vaultPath, destPath)
+    existing.add(key)
     result.imported++
     result.indexed++
   }

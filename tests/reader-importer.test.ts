@@ -73,6 +73,9 @@ describe('reader importer', () => {
       url: 'https://example.com/deep'
     })
     expect(row?.properties.tags).toEqual(expect.arrayContaining(['readwise', 'focus', 'productivity']))
+
+    const duplicate = await importReadwiseCsv(sourcePath, vaultPath)
+    expect(duplicate).toMatchObject({ imported: 0, indexed: 0, skipped: 2 })
   })
 
   it('imports Pocket bookmark exports as reading notes and skips duplicates', async () => {
@@ -118,5 +121,8 @@ describe('reader importer', () => {
       status: 'unread'
     })
     expect(row?.properties.tags).toEqual(expect.arrayContaining(['pocket', 'read-later', 'focus', 'long-form']))
+
+    const duplicate = await importPocketBookmarks(pocketPath, vaultPath)
+    expect(duplicate).toMatchObject({ imported: 0, indexed: 0, skipped: 3 })
   })
 })
