@@ -313,7 +313,7 @@ export interface IPCChannelMap {
   'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }; result: void }
   'ai:detect-intent': { params: { messages: IPCChatMessage[]; intents?: string[]; intentContext?: string }; result: { intent?: string } }
   'ai:stop': { params: undefined; result: void }
-  'ai:complete': { params: { text: string; system?: string; temperature?: number; taskKey?: string }; result: string }
+  'ai:complete': { params: { text: string; system?: string; temperature?: number; taskKey?: string; styleSource?: string }; result: string }
   'ai:complete-abort': { params: { taskKey?: string } | undefined; result: void }
   'ai:get-system-prompt': { params: undefined; result: string }
   'ai:set-system-prompt': { params: { prompt: string }; result: void }

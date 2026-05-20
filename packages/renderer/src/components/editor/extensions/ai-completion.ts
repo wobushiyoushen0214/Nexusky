@@ -18,11 +18,11 @@ function isInlineCompletionEnabled(): boolean {
   return safeGet(INLINE_COMPLETION_KEY) === '1'
 }
 
-async function fetchCompletion(textBefore: string, signal: AbortSignal): Promise<string> {
+async function fetchCompletion(textBefore: string, styleSource: string, signal: AbortSignal): Promise<string> {
   const abortHandler = () => { window.api.invoke('ai:complete-abort', { taskKey: 'inline-completion' }) }
   signal.addEventListener('abort', abortHandler, { once: true })
   try {
-    const result = await window.api.invoke('ai:complete', { text: textBefore, taskKey: 'inline-completion' })
+    const result = await window.api.invoke('ai:complete', { text: textBefore, styleSource, taskKey: 'inline-completion' })
     if (signal.aborted) return ''
     return result || ''
   } catch {
@@ -124,6 +124,8 @@ export const AICompletion = Extension.create({
 
                 const textBefore = state.doc.textBetween(Math.max(0, from - 500), from)
                 if (textBefore.length < 10) return
+                const fullText = state.doc.textBetween(0, state.doc.content.size, '\n')
+                const styleSource = fullText.slice(Math.max(0, fullText.length - 6000))
 
                 if (textBefore === lastRequestText && lastResult) {
                   view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: lastResult, pos: from, ghost: getOrCreateGhost() } }))
@@ -135,7 +137,7 @@ export const AICompletion = Extension.create({
                 const signal = abortController.signal
 
                 requestInFlight = true
-                const result = await fetchCompletion(textBefore, signal)
+                const result = await fetchCompletion(textBefore, styleSource, signal)
                 requestInFlight = false
                 if (!result || signal.aborted) return
                 if (view.state.selection.from !== from) return

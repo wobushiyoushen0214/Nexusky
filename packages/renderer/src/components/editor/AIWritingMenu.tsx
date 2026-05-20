@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import type { IPCChatMessage } from '@shared/types/ipc'
+import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
 
 interface AIWritingMenuProps {
   editor: Editor | null
@@ -131,8 +132,10 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
     cleanupRef.current = cleanup
 
     try {
+      const fullText = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n')
+      const stylePrompt = formatWritingStylePrompt(analyzeWritingStyle(fullText))
       const messages: IPCChatMessage[] = [
-        { role: 'system', content: '你是一个写作助手。只输出处理后的结果，不要解释。保持原文的语言。' },
+        { role: 'system', content: ['你是一个写作助手。只输出处理后的结果，不要解释。保持原文的语言。', stylePrompt].filter(Boolean).join('\n\n') },
         { role: 'user', content: `${action.prompt}\n\n${selectedText}` }
       ]
       await window.api.invoke('ai:chat', { messages })

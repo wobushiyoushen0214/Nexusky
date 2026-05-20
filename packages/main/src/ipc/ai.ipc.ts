@@ -18,6 +18,7 @@ import { generateMemory, readMemory, readAllMemories, findRelatedByMemory, delet
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join, basename } from 'path'
+import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -265,7 +266,7 @@ ${context}
     }
   })
 
-  ipcMain.handle('ai:complete', async (event, params: { text: string; system?: string; temperature?: number; taskKey?: string }) => {
+  ipcMain.handle('ai:complete', async (event, params: { text: string; system?: string; temperature?: number; taskKey?: string; styleSource?: string }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
     if (aiManager.validateConfig(config)) return ''
@@ -282,8 +283,10 @@ ${context}
       const provider = aiManager.getProvider(config)
       let result = ''
       const options = params.temperature !== undefined ? { temperature: params.temperature } : undefined
+      const stylePrompt = params.styleSource ? formatWritingStylePrompt(analyzeWritingStyle(params.styleSource)) : ''
+      const system = [params.system || '续写1-2句，只输出续写内容。', stylePrompt].filter(Boolean).join('\n\n')
       for await (const chunk of provider.chatStream([
-        { role: 'system', content: params.system || '续写1-2句，只输出续写内容。' },
+        { role: 'system', content: system },
         { role: 'user', content: params.text }
       ], signal, options)) {
         if (signal.aborted) return ''
@@ -454,6 +457,7 @@ Rules:
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在' }
 
+    const stylePrompt = formatWritingStylePrompt(analyzeWritingStyle(params.fileContent))
     const systemPrompt = `You are a Markdown note editor. You receive the original note content and a modification instruction, then output the modified complete file.
 
 <output_format>
@@ -468,7 +472,7 @@ Output the modified complete Markdown text directly. The first character of your
 - Match the original list marker style: if the original uses -, keep -; if it uses *, keep *
 - NEVER wrap output in \`\`\`markdown or any code fence
 - NEVER prepend or append explanations, confirmations, or extra blank lines
-</constraints>`
+</constraints>${stylePrompt ? `\n\n<writing_style>\n${stylePrompt}\n</writing_style>` : ''}`
 
     let fileContent = params.fileContent
     const TOKEN_LIMIT = 12000
