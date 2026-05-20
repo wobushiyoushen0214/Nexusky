@@ -151,6 +151,28 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should resolve existing unresolved links when the target note is indexed later', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
+
+    const sourcePath = join(vaultPath, 'Source.md')
+    const targetPath = join(vaultPath, 'Later Target.md')
+
+    writeFileSync(sourcePath, '# Source\n\nSee [[Later Target]] when it exists.')
+    indexNote(vaultPath, sourcePath)
+
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Source')
+    expect(source).toBeTruthy()
+    expect(getOutgoingLinks(vaultPath, source!.id)[0]).toMatchObject({ targetTitle: 'Later Target', resolved: false, line: 3 })
+
+    writeFileSync(targetPath, '# Later Target\n\nCreated after the source link.')
+    indexNote(vaultPath, targetPath)
+
+    expect(getOutgoingLinks(vaultPath, source!.id)[0]).toMatchObject({ targetTitle: 'Later Target', targetPath: 'Later Target.md', resolved: true, line: 3 })
+
+    closeDatabase()
+  })
+
   it('should index markdown tasks with source note metadata', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllTasks } = await import('../packages/main/src/services/indexer')
