@@ -849,7 +849,7 @@ scripts/          → 开发脚本
 - [ ] 实时协作编辑（CRDT + WebSocket）
 - [ ] Web 版本（共享渲染层代码）
 - [ ] 浏览器扩展（网页剪藏到 vault）
-- [ ] CLI 工具（命令行快速创建/搜索笔记）
+- [x] CLI 工具（`pnpm cli new/search` 命令行快速创建和搜索 vault 笔记）
 - [ ] iOS/Android 移动端
 
 ### 插件系统
