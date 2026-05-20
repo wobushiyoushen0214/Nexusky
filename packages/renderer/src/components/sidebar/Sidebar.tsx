@@ -272,7 +272,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           title="折叠全部"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 12h16" /><path d="M12 4v4" /><path d="M12 16v4" /><path d="M8 8l4-4 4 4" /><path d="M8 16l4 4 4-4" />
+            <path d="M4 12h16" /><path d="M12 2v6" /><path d="M12 16v6" /><path d="M8 6l4 4 4-4" /><path d="M8 18l4-4 4 4" />
           </svg>
         </button>
         <button
@@ -281,7 +281,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           title="展开全部"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 12h16" /><path d="M12 2v6" /><path d="M12 16v6" /><path d="M8 6l4 4 4-4" /><path d="M8 18l4-4 4 4" />
+            <path d="M4 12h16" /><path d="M12 4v4" /><path d="M12 16v4" /><path d="M8 8l4-4 4 4" /><path d="M8 16l4 4 4-4" />
           </svg>
         </button>
       </div>
@@ -317,7 +317,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       {/* File tree */}
       <div
         tabIndex={0}
-        style={{ flex: 1, overflowY: 'hidden', padding: '0 8px 12px', outline: 'none' }}
+        style={{ flex: 1, overflowY: 'hidden', padding: '0 4px 12px 8px', outline: 'none' }}
         onContextMenu={(e) => {
           if ((e.target as HTMLElement).closest('button')) return
           e.preventDefault()

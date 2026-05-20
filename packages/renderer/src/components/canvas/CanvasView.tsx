@@ -179,6 +179,7 @@ export function CanvasView() {
   const [panning, setPanning] = useState<PanState | null>(null)
   const [showGuide, setShowGuide] = useState(false)
   const [zoom, setZoom] = useState(1)
+  const [controlsVisible, setControlsVisible] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef<Record<string, CanvasPosition>>({})
   const metricsRef = useRef(getCanvasMetrics([], {}))
@@ -393,6 +394,7 @@ export function CanvasView() {
 
   const canvasWidth = canvasMetrics.width
   const canvasHeight = canvasMetrics.height
+  const controlsActive = controlsVisible || showGuide || query.trim().length > 0
 
   const zoomAtViewportPoint = (nextZoom: number, clientX?: number, clientY?: number) => {
     const viewport = canvasRef.current
@@ -516,105 +518,150 @@ export function CanvasView() {
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{t('canvas.title')}</div>
           <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-tertiary)' }}>{t('canvas.summary', { count: rows.length, shown: filteredRows.length })}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('canvas.searchPlaceholder')} style={controlStyle} />
-          <button onClick={() => setShowGuide((value) => !value)} style={buttonStyle}>{t('canvas.guide')}</button>
-          <button onClick={createCanvasNote} disabled={!vaultPath} style={buttonStyle}>{t('canvas.createNote')}</button>
-          <div style={{ display: 'flex', alignItems: 'center', height: 30, borderRadius: 6, border: '1px solid var(--border-subtle)', overflow: 'hidden', background: 'var(--bg-elevated)', flexShrink: 0 }}>
-            <button onClick={() => zoomAtViewportPoint(zoom - 0.1)} title={t('canvas.zoomOut')} style={zoomButtonStyle}>-</button>
-            <button onClick={() => zoomAtViewportPoint(1)} title={t('canvas.zoomReset')} style={{ ...zoomButtonStyle, minWidth: 52 }}>{Math.round(zoom * 100)}%</button>
-            <button onClick={() => zoomAtViewportPoint(zoom + 0.1)} title={t('canvas.zoomIn')} style={{ ...zoomButtonStyle, borderRight: 'none' }}>+</button>
-          </div>
-          <button onClick={fitToView} style={buttonStyle}>{t('canvas.fitView')}</button>
-          <button onClick={resetLayout} style={buttonStyle}>{t('canvas.reset')}</button>
-          <button onClick={() => loadRows()} disabled={loading} style={buttonStyle}>{loading ? t('canvas.loading') : t('canvas.refresh')}</button>
-        </div>
       </div>
 
-      {showGuide && (
-        <div style={{ margin: '12px 18px 0', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.7, flexShrink: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('canvas.guideTitle')}</div>
-          <div>{t('canvas.guideDrag')}</div>
-          <div>{t('canvas.guideOpen')}</div>
-          <div>{t('canvas.guideLinks')}</div>
-          <div>{t('canvas.guideZoom')}</div>
-          <div>{t('canvas.guidePan')}</div>
-          <div>{t('canvas.guideCreate')}</div>
-        </div>
-      )}
-
       <div
-        ref={canvasRef}
-        onScroll={scheduleViewportSave}
-        onWheel={handleCanvasWheel}
-        onPointerDown={handleCanvasPointerDown}
+        onMouseEnter={() => setControlsVisible(true)}
+        onMouseLeave={() => setControlsVisible(false)}
+        onFocusCapture={() => setControlsVisible(true)}
         style={{
           flex: 1,
-          overflow: 'auto',
           position: 'relative',
-          background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)',
-          backgroundSize: '24px 24px',
-          cursor: panning ? 'grabbing' : 'grab'
+          minHeight: 0,
+          overflow: 'hidden'
         }}
       >
-        {filteredRows.length === 0 ? (
-          <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
-            <div>{loading ? t('canvas.loading') : t('canvas.empty')}</div>
-            {!loading && <button onClick={createCanvasNote} style={{ ...buttonStyle, marginTop: 10 }}>{t('canvas.createFirst')}</button>}
-          </div>
-        ) : (
-          <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
-              <defs>
-                <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
-                  <path d="M0,0 L8,4 L0,8 Z" fill="var(--border-default)" />
-                </marker>
-              </defs>
-              {canvasEdges.map((edge) => (
-                <line key={edge.key} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="var(--border-default)" strokeWidth="1.4" strokeOpacity="0.75" markerEnd="url(#canvas-arrow)" />
-              ))}
-            </svg>
-            {filteredRows.map((row, index) => {
-              const pos = positions[row.id] || defaultPosition(index)
-              const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []
-              return (
-                <div
-                  key={row.id}
-                  data-canvas-card
-                  onPointerDown={(event) => {
-                    const rect = event.currentTarget.getBoundingClientRect()
-                    setDragging({ id: row.id, offsetX: (event.clientX - rect.left) / zoom, offsetY: (event.clientY - rect.top) / zoom })
-                    event.currentTarget.setPointerCapture(event.pointerId)
-                  }}
-                  onDoubleClick={() => openRow(row)}
-                  style={{
-                    position: 'absolute',
-                    left: pos.x - canvasMetrics.minX,
-                    top: pos.y - canvasMetrics.minY,
-                    width: CARD_WIDTH,
-                    minHeight: 112,
-                    padding: '12px 12px 10px',
-                    borderRadius: 8,
-                    border: dragging?.id === row.id ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    boxShadow: dragging?.id === row.id ? '0 12px 30px rgba(0,0,0,0.28)' : '0 8px 22px rgba(0,0,0,0.16)',
-                    cursor: dragging?.id === row.id ? 'grabbing' : 'grab',
-                    userSelect: 'none'
-                  }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.title}</div>
-                  <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
-                  <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {tags.slice(0, 3).map((tag) => (
-                      <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
-                    ))}
-                    {tags.length === 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('canvas.noTags')}</span>}
-                  </div>
-                </div>
-              )
-            })}
+        <div
+          ref={canvasRef}
+          onScroll={scheduleViewportSave}
+          onWheel={handleCanvasWheel}
+          onPointerDown={handleCanvasPointerDown}
+          style={{
+            height: '100%',
+            overflow: 'auto',
+            position: 'relative',
+            background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)',
+            backgroundSize: '24px 24px',
+            cursor: panning ? 'grabbing' : 'grab'
+          }}
+        >
+          {filteredRows.length === 0 ? (
+            <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
+              <div>{loading ? t('canvas.loading') : t('canvas.empty')}</div>
+              {!loading && <button onClick={createCanvasNote} style={{ ...buttonStyle, marginTop: 10 }}>{t('canvas.createFirst')}</button>}
             </div>
+          ) : (
+            <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
+                <defs>
+                  <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L8,4 L0,8 Z" fill="var(--border-default)" />
+                  </marker>
+                </defs>
+                {canvasEdges.map((edge) => (
+                  <line key={edge.key} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="var(--border-default)" strokeWidth="1.4" strokeOpacity="0.75" markerEnd="url(#canvas-arrow)" />
+                ))}
+              </svg>
+              {filteredRows.map((row, index) => {
+                const pos = positions[row.id] || defaultPosition(index)
+                const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []
+                return (
+                  <div
+                    key={row.id}
+                    data-canvas-card
+                    onPointerDown={(event) => {
+                      const rect = event.currentTarget.getBoundingClientRect()
+                      setDragging({ id: row.id, offsetX: (event.clientX - rect.left) / zoom, offsetY: (event.clientY - rect.top) / zoom })
+                      event.currentTarget.setPointerCapture(event.pointerId)
+                    }}
+                    onDoubleClick={() => openRow(row)}
+                    style={{
+                      position: 'absolute',
+                      left: pos.x - canvasMetrics.minX,
+                      top: pos.y - canvasMetrics.minY,
+                      width: CARD_WIDTH,
+                      minHeight: 112,
+                      padding: '12px 12px 10px',
+                      borderRadius: 8,
+                      border: dragging?.id === row.id ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                      background: 'var(--bg-surface)',
+                      boxShadow: dragging?.id === row.id ? '0 12px 30px rgba(0,0,0,0.28)' : '0 8px 22px rgba(0,0,0,0.16)',
+                      cursor: dragging?.id === row.id ? 'grabbing' : 'grab',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.title}</div>
+                    <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
+                    <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {tags.slice(0, 3).map((tag) => (
+                        <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
+                      ))}
+                      {tags.length === 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('canvas.noTags')}</span>}
+                    </div>
+                  </div>
+                )
+              })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div
+          data-canvas-controls
+          style={{
+            position: 'absolute',
+            top: 14,
+            right: 16,
+            zIndex: 5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            opacity: controlsActive ? 1 : 0.48,
+            transform: controlsActive ? 'translateY(0)' : 'translateY(-2px)',
+            transition: 'opacity 160ms ease-out, transform 160ms ease-out'
+          }}
+        >
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('canvas.searchPlaceholder')} style={controlStyle} />
+          <div style={floatingGroupStyle}>
+            <CanvasIconButton title={t('canvas.guide')} active={showGuide} onClick={() => setShowGuide((value) => !value)}>
+              <InfoIcon />
+            </CanvasIconButton>
+            <CanvasIconButton title={t('canvas.createNote')} disabled={!vaultPath} onClick={createCanvasNote}>
+              <NewCardIcon />
+            </CanvasIconButton>
+          </div>
+          <div style={floatingGroupStyle}>
+            <CanvasIconButton title={t('canvas.zoomOut')} onClick={() => zoomAtViewportPoint(zoom - 0.1)}>
+              <MinusIcon />
+            </CanvasIconButton>
+            <button onClick={() => zoomAtViewportPoint(1)} title={t('canvas.zoomReset')} style={zoomPercentStyle}>{Math.round(zoom * 100)}%</button>
+            <CanvasIconButton title={t('canvas.zoomIn')} onClick={() => zoomAtViewportPoint(zoom + 0.1)}>
+              <PlusIcon />
+            </CanvasIconButton>
+          </div>
+          <div style={floatingGroupStyle}>
+            <CanvasIconButton title={t('canvas.fitView')} onClick={fitToView}>
+              <FitIcon />
+            </CanvasIconButton>
+            <CanvasIconButton title={t('canvas.reset')} onClick={resetLayout}>
+              <ResetIcon />
+            </CanvasIconButton>
+            <CanvasIconButton title={loading ? t('canvas.loading') : t('canvas.refresh')} disabled={loading} onClick={() => loadRows()}>
+              <RefreshIcon />
+            </CanvasIconButton>
+          </div>
+        </div>
+
+        {showGuide && (
+          <div style={{ position: 'absolute', top: 62, right: 16, zIndex: 4, width: 360, maxWidth: 'calc(100% - 32px)', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.7, boxShadow: '0 16px 42px rgba(0,0,0,0.28)' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('canvas.guideTitle')}</div>
+            <div>{t('canvas.guideDrag')}</div>
+            <div>{t('canvas.guideOpen')}</div>
+            <div>{t('canvas.guideLinks')}</div>
+            <div>{t('canvas.guideZoom')}</div>
+            <div>{t('canvas.guidePan')}</div>
+            <div>{t('canvas.guideCreate')}</div>
           </div>
         )}
       </div>
@@ -623,15 +670,17 @@ export function CanvasView() {
 }
 
 const controlStyle: React.CSSProperties = {
-  width: 240,
-  height: 30,
-  padding: '0 9px',
+  width: 256,
+  maxWidth: '28vw',
+  height: 32,
+  padding: '0 10px',
   borderRadius: 6,
   border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-surface)',
+  background: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   fontSize: 12,
-  outline: 'none'
+  outline: 'none',
+  boxShadow: '0 10px 28px rgba(0,0,0,0.18)'
 }
 
 const buttonStyle: React.CSSProperties = {
@@ -646,14 +695,143 @@ const buttonStyle: React.CSSProperties = {
   flexShrink: 0
 }
 
-const zoomButtonStyle: React.CSSProperties = {
-  height: 28,
-  minWidth: 30,
+const floatingGroupStyle: React.CSSProperties = {
+  height: 32,
+  display: 'flex',
+  alignItems: 'center',
+  borderRadius: 7,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  overflow: 'hidden',
+  boxShadow: '0 10px 28px rgba(0,0,0,0.18)',
+  flexShrink: 0
+}
+
+const canvasIconButtonStyle: React.CSSProperties = {
+  width: 32,
+  height: 30,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer',
+  flexShrink: 0
+}
+
+const zoomPercentStyle: React.CSSProperties = {
+  height: 30,
+  minWidth: 52,
   padding: '0 8px',
   border: 'none',
+  borderLeft: '1px solid var(--border-subtle)',
   borderRight: '1px solid var(--border-subtle)',
   background: 'transparent',
   color: 'var(--text-secondary)',
   fontSize: 12,
   cursor: 'pointer'
+}
+
+function CanvasIconButton({
+  title,
+  active = false,
+  disabled = false,
+  onClick,
+  children
+}: {
+  title: string
+  active?: boolean
+  disabled?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={title}
+      title={title}
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        ...canvasIconButtonStyle,
+        color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
+        background: active ? 'var(--accent-muted)' : 'transparent',
+        opacity: disabled ? 0.45 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer'
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function InfoIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8h.01" />
+    </svg>
+  )
+}
+
+function NewCardIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M12 9v6" />
+      <path d="M9 12h6" />
+    </svg>
+  )
+}
+
+function MinusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 12h12" />
+    </svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 6v12" />
+      <path d="M6 12h12" />
+    </svg>
+  )
+}
+
+function FitIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3H4a1 1 0 0 0-1 1v4" />
+      <path d="M16 3h4a1 1 0 0 1 1 1v4" />
+      <path d="M8 21H4a1 1 0 0 1-1-1v-4" />
+      <path d="M16 21h4a1 1 0 0 0 1-1v-4" />
+    </svg>
+  )
+}
+
+function ResetIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <rect x="14" y="14" width="6" height="6" rx="1" />
+    </svg>
+  )
+}
+
+function RefreshIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 11a8 8 0 0 0-14.9-4" />
+      <path d="M5 3v4h4" />
+      <path d="M4 13a8 8 0 0 0 14.9 4" />
+      <path d="M19 21v-4h-4" />
+    </svg>
+  )
 }

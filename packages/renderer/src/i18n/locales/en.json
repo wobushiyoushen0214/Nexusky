@@ -107,6 +107,8 @@
       "aiNewNote": { "label": "AI generate new note", "description": "Create a new Markdown note without binding to the current file" },
       "aiBatchNotes": { "label": "AI batch generate linked notes", "description": "Build a topic knowledge base skeleton" },
       "summarize": { "label": "AI summary into current note", "description": "Insert a summary at the beginning of the current note" },
+      "aiFlashcards": { "label": "AI generate review flashcards", "description": "Append Anki-style Q/A and cloze cards from the current note" },
+      "reviewFlashcards": { "label": "Review due flashcards", "description": "Study due cards with Again / Hard / Good / Easy ratings" },
       "graphFull": { "label": "Open full-screen knowledge graph" },
       "bases": { "label": "Open property database", "description": "Browse, filter, and sort notes by properties" },
       "canvas": { "label": "Open canvas", "description": "Organize note cards on a draggable canvas" },
@@ -143,6 +145,9 @@
       "importDone": "Import complete: {{imported}} files, {{converted}} converted",
       "summarizing": "Generating summary...",
       "summaryInserted": "Summary inserted into current note",
+      "generatingFlashcards": "Generating review flashcards...",
+      "flashcardsInserted": "Inserted {{count}} flashcards",
+      "flashcardsFailed": "Failed to generate flashcards",
       "inferringLinks": "Inferring vault-wide semantic links...",
       "linksAdded": "Added {{count}} semantic links",
       "inferLinksFailed": "Failed to infer semantic links",
@@ -215,6 +220,8 @@
     "noTags": "No tags"
   },
   "common": {
+    "close": "Close",
+    "retry": "Retry",
     "indexing": "Indexing note relations...",
     "noMdFiles": "No .md files in this folder",
     "aiAnalyzing": "AI analyzing semantic relations...",
@@ -224,6 +231,30 @@
     "syncDone": "Sync complete: ↑{{pushed}} ↓{{pulled}}",
     "syncError": "Sync error: {{error}}",
     "syncFailed": "Sync failed: {{error}}"
+  },
+  "flashcards": {
+    "review": {
+      "title": "Flashcard review",
+      "loading": "Loading due cards...",
+      "progress": "{{reviewed}} reviewed / {{total}} this session, {{due}} due today",
+      "loadFailed": "Failed to load the flashcard queue",
+      "reviewFailed": "Failed to write flashcard review",
+      "emptyTitle": "No flashcards due today",
+      "emptyHint": "Keep writing, or generate new review cards from the current note.",
+      "basic": "Basic",
+      "cloze": "Cloze",
+      "openSource": "Open source",
+      "prompt": "Prompt",
+      "answer": "Answer",
+      "showAnswer": "Show answer",
+      "saving": "Saving",
+      "ratings": {
+        "again": "{{key}} Again",
+        "hard": "{{key}} Hard",
+        "good": "{{key}} Good",
+        "easy": "{{key}} Easy"
+      }
+    }
   },
   "settings": {
     "title": "Settings",

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { toast } from '../../stores/toast-store'
+import { linkPlainMentionAtLine, linkPlainMentionsAtLines } from '../../utils/wikilink'
 import type { BacklinkResult, OutgoingLinkResult, UnlinkedMentionResult } from '@shared/types/ipc'
 
 export function BacklinksPanel() {
@@ -12,28 +14,82 @@ export function BacklinksPanel() {
   const [backlinks, setBacklinks] = useState<BacklinkResult[]>([])
   const [unlinkedMentions, setUnlinkedMentions] = useState<UnlinkedMentionResult[]>([])
   const [collapsed, setCollapsed] = useState(false)
+  const [linkingAll, setLinkingAll] = useState(false)
 
-  useEffect(() => {
+  const loadLinks = useCallback(async () => {
     if (!vaultPath || !currentFilePath) {
       setOutgoingLinks([])
       setBacklinks([])
       setUnlinkedMentions([])
       return
     }
-    Promise.all([
-      window.api.invoke('db:get-outgoing-links', { vaultPath, filePath: currentFilePath }),
-      window.api.invoke('db:get-backlinks', { vaultPath, filePath: currentFilePath }),
-      window.api.invoke('db:get-unlinked-mentions', { vaultPath, filePath: currentFilePath })
-    ]).then(([nextOutgoingLinks, nextBacklinks, nextUnlinkedMentions]) => {
+    try {
+      const [nextOutgoingLinks, nextBacklinks, nextUnlinkedMentions] = await Promise.all([
+        window.api.invoke('db:get-outgoing-links', { vaultPath, filePath: currentFilePath }),
+        window.api.invoke('db:get-backlinks', { vaultPath, filePath: currentFilePath }),
+        window.api.invoke('db:get-unlinked-mentions', { vaultPath, filePath: currentFilePath })
+      ])
       setOutgoingLinks(nextOutgoingLinks)
       setBacklinks(nextBacklinks)
       setUnlinkedMentions(nextUnlinkedMentions)
-    }).catch(() => {
+    } catch {
       setOutgoingLinks([])
       setBacklinks([])
       setUnlinkedMentions([])
-    })
+    }
   }, [vaultPath, currentFilePath])
+
+  useEffect(() => {
+    void loadLinks()
+  }, [loadLinks])
+
+  const handleLinkMention = useCallback(async (item: UnlinkedMentionResult) => {
+    if (!vaultPath) return
+    try {
+      const path = `${vaultPath}/${item.sourcePath}`
+      const content = await window.api.invoke('file:read', { path })
+      const next = linkPlainMentionAtLine(content, item.line, item.mention)
+      if (!next.changed) {
+        toast(`未找到可转换的提及「${item.mention}」`, 'info')
+        return
+      }
+      await window.api.invoke('file:write', { path, content: next.content, vaultPath })
+      await loadLinks()
+      toast(`已转为链接: [[${item.mention}]]`, 'success')
+    } catch {
+      toast('转换链接失败', 'error')
+    }
+  }, [loadLinks, vaultPath])
+
+  const handleLinkAllMentions = useCallback(async () => {
+    if (!vaultPath || unlinkedMentions.length === 0 || linkingAll) return
+    setLinkingAll(true)
+    try {
+      const grouped = new Map<string, UnlinkedMentionResult[]>()
+      for (const item of unlinkedMentions) {
+        const group = grouped.get(item.sourcePath) || []
+        group.push(item)
+        grouped.set(item.sourcePath, group)
+      }
+
+      let changedCount = 0
+      for (const [sourcePath, items] of grouped) {
+        const path = `${vaultPath}/${sourcePath}`
+        const content = await window.api.invoke('file:read', { path })
+        const next = linkPlainMentionsAtLines(content, items.map((item) => ({ line: item.line, mention: item.mention })))
+        if (next.changedCount === 0) continue
+        await window.api.invoke('file:write', { path, content: next.content, vaultPath })
+        changedCount += next.changedCount
+      }
+
+      await loadLinks()
+      toast(changedCount > 0 ? `已转换 ${changedCount} 条未链接提及` : '没有可转换的未链接提及', changedCount > 0 ? 'success' : 'info')
+    } catch {
+      toast('批量转换链接失败', 'error')
+    } finally {
+      setLinkingAll(false)
+    }
+  }, [linkingAll, loadLinks, unlinkedMentions, vaultPath])
 
   const total = outgoingLinks.length + backlinks.length + unlinkedMentions.length
 
@@ -84,6 +140,9 @@ export function BacklinksPanel() {
               items={unlinkedMentions}
               vaultPath={vaultPath}
               openFile={openFile}
+              onLinkMention={handleLinkMention}
+              onLinkAllMentions={handleLinkAllMentions}
+              linkingAll={linkingAll}
             />
           )}
         </div>
@@ -189,48 +248,91 @@ function LinkSection({
   title,
   items,
   vaultPath,
-  openFile
+  openFile,
+  onLinkMention,
+  onLinkAllMentions,
+  linkingAll
 }: {
   title: string
   items: Array<BacklinkResult | UnlinkedMentionResult>
   vaultPath: string | null
   openFile: (path: string) => Promise<void>
+  onLinkMention?: (item: UnlinkedMentionResult) => void
+  onLinkAllMentions?: () => void
+  linkingAll?: boolean
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, padding: '2px 2px 0' }}>{title}</div>
-      {items.map((item, i) => (
-        <button
-          key={`${title}-${item.sourcePath}-${i}`}
-          onClick={() => {
-            if (!vaultPath) return
-            openFile(`${vaultPath}/${item.sourcePath}`)
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('editor-goto-line', { detail: { line: item.line } }))
-            }, 200)
-          }}
-          style={{
-            textAlign: 'left', padding: '8px 12px', borderRadius: 6,
-            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-            cursor: 'pointer', display: 'block', width: '100%'
-          }}
-        >
-          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sourceTitle}</span>
-            {'mention' in item && (
-              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line} · 提到 {item.mention}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '2px 2px 0' }}>
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600 }}>{title}</span>
+        {onLinkAllMentions && (
+          <button
+            type="button"
+            disabled={linkingAll}
+            onClick={onLinkAllMentions}
+            style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 10, cursor: linkingAll ? 'not-allowed' : 'pointer', opacity: linkingAll ? 0.5 : 1 }}
+          >
+            {linkingAll ? '转换中...' : '全部转为链接'}
+          </button>
+        )}
+      </div>
+      {items.map((item, i) => {
+        const jumpToItem = () => {
+          if (!vaultPath) return
+          openFile(`${vaultPath}/${item.sourcePath}`)
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('editor-goto-line', { detail: { line: item.line } }))
+          }, 200)
+        }
+
+        return (
+          <div
+            key={`${title}-${item.sourcePath}-${i}`}
+            style={{
+              textAlign: 'left', padding: '8px 12px', borderRadius: 6,
+              background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+              display: 'block', width: '100%'
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                jumpToItem()
+              }}
+              style={{
+                textAlign: 'left', padding: 0, border: 'none',
+                background: 'transparent', cursor: 'pointer', display: 'block', width: '100%'
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sourceTitle}</span>
+                {'mention' in item && (
+                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line} · 提到 {item.mention}</span>
+                )}
+                {!('mention' in item) && (
+                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
+                )}
+              </span>
+              {item.context && (
+                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, marginBottom: 0, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {item.context}
+                </p>
+              )}
+            </button>
+            {'mention' in item && onLinkMention && (
+              <button
+                type="button"
+                onClick={() => {
+                  onLinkMention(item)
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', marginTop: 6, padding: 0, border: 'none', background: 'transparent', fontSize: 10, color: 'var(--text-tertiary)', cursor: 'pointer' }}
+              >
+                转为链接
+              </button>
             )}
-            {!('mention' in item) && (
-              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
-            )}
-          </span>
-          {item.context && (
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {item.context}
-            </p>
-          )}
-        </button>
-      ))}
+          </div>
+        )
+      })}
     </div>
   )
 }

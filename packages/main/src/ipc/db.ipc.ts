@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { readdirSync, readFileSync } from 'fs'
-import { join, extname } from 'path'
+import { readdirSync, readFileSync, writeFileSync } from 'fs'
+import { join, extname, resolve, relative } from 'path'
 import { randomUUID } from 'crypto'
 import { indexNote, removeNoteIndex, getAllNotes, getPropertyRows, getOutgoingLinks, getBacklinks, getUnlinkedMentions, getGraphData, getAllTags, getNotesByTag, getAllTasks } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
@@ -8,9 +8,10 @@ import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '.
 import { pushIndex } from '../services/cloud/manager'
 import { aiManager } from '../services/ai'
 import { extractJsonFromText } from '../services/ai/json'
+import { collectDueFlashcardsFromNotes, getLocalDateFromStamp, getLocalDateStamp, parseFlashcardsFromMarkdown, reviewFlashcardInMarkdown } from '../services/ai/flashcards'
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -93,6 +94,7 @@ interface KanbanRelationRow {
 }
 
 const RELATION_TYPES = new Set<KanbanRelationType>(['blocks', 'depends_on', 'related'])
+const FLASHCARD_RATINGS = new Set<FlashcardReviewRating>(['again', 'hard', 'good', 'easy'])
 const embeddingJobs = new Map<string, EmbeddingJobStatus>()
 
 export function registerDbIPC(): void {
@@ -293,6 +295,47 @@ export function registerDbIPC(): void {
 
   ipcMain.handle('db:get-notes-by-tag', async (_event, params: { vaultPath: string; tag: string }) => {
     return getNotesByTag(params.vaultPath, params.tag)
+  })
+
+  ipcMain.handle('flashcards:list-due', async (_event, params: { vaultPath: string; today?: string; limit?: number }) => {
+    const notes = getAllNotes(params.vaultPath).flatMap((note) => {
+      try {
+        const fullPath = join(params.vaultPath, note.filePath)
+        return [{ title: note.title, filePath: note.filePath, content: readFileSync(fullPath, 'utf-8') }]
+      } catch {
+        return []
+      }
+    })
+    return collectDueFlashcardsFromNotes(notes, params.today || getLocalDateStamp(), params.limit)
+  })
+
+  ipcMain.handle('flashcards:review', async (event, params: { vaultPath: string; filePath: string; startLine: number; rating: FlashcardReviewRating; reviewedAt?: string }) => {
+    if (!FLASHCARD_RATINGS.has(params.rating)) return { ok: false, error: '无效的复习评分' }
+
+    const fullPath = resolve(params.vaultPath, params.filePath)
+    const relPath = relative(params.vaultPath, fullPath)
+    if (relPath.startsWith('..') || relPath === '' || resolve(params.vaultPath) === fullPath) {
+      return { ok: false, error: '路径不在当前笔记空间内' }
+    }
+    const normalizedRelPath = relPath.replace(/\\/g, '/')
+
+    try {
+      const current = readFileSync(fullPath, 'utf-8')
+      const reviewedAt = params.reviewedAt ? getLocalDateFromStamp(params.reviewedAt) : new Date()
+      const next = reviewFlashcardInMarkdown(current, params.startLine, params.rating, reviewedAt)
+      writeFileSync(fullPath, next, 'utf-8')
+      indexNote(params.vaultPath, fullPath)
+      invalidateEmbeddingCache()
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (win && !win.isDestroyed()) win.webContents.send('vault:files-changed')
+
+      const reviewedCard = parseFlashcardsFromMarkdown(next).find((card) => card.startLine === params.startLine)
+      const row = getAllNotes(params.vaultPath).find((note) => note.filePath === normalizedRelPath)
+      const card: FlashcardQueueItem | undefined = reviewedCard ? { ...reviewedCard, title: row?.title || normalizedRelPath.replace(/\.md$/, ''), filePath: normalizedRelPath } : undefined
+      return { ok: true, card }
+    } catch (error) {
+      return { ok: false, error: getErrorMessage(error, '闪卡复习写回失败') }
+    }
   })
 
   ipcMain.handle('db:get-tasks', async (_event, params: { vaultPath: string }) => {

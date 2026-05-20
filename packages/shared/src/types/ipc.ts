@@ -196,6 +196,27 @@ export interface AINotesProgress {
   total?: number
 }
 
+export interface GeneratedFlashcard {
+  type: 'basic' | 'cloze'
+  front: string
+  back: string
+  tags: string[]
+}
+
+export type FlashcardReviewRating = 'again' | 'hard' | 'good' | 'easy'
+
+export interface FlashcardQueueItem extends GeneratedFlashcard {
+  title: string
+  filePath: string
+  startLine: number
+  endLine: number
+  sourceTitle?: string
+  status: string
+  interval: number
+  ease: number
+  due: string
+}
+
 export interface AIProviderConfig {
   id: string
   name: string
@@ -254,6 +275,8 @@ export interface IPCChannelMap {
   'db:fulltext-search': { params: { vaultPath: string; query: string; regex?: boolean }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }
   'db:get-tags': { params: { vaultPath: string }; result: { name: string; count: number }[] }
   'db:get-notes-by-tag': { params: { vaultPath: string; tag: string }; result: NoteSearchResult[] }
+  'flashcards:list-due': { params: { vaultPath: string; today?: string; limit?: number }; result: { cards: FlashcardQueueItem[]; total: number } }
+  'flashcards:review': { params: { vaultPath: string; filePath: string; startLine: number; rating: FlashcardReviewRating; reviewedAt?: string }; result: { ok: boolean; card?: FlashcardQueueItem; error?: string } }
   'kanban:get-columns': { params: { vaultPath: string }; result: KanbanColumn[] }
   'kanban:create-column': { params: { vaultPath: string; id: string; name: string }; result: void }
   'kanban:rename-column': { params: { vaultPath: string; id: string; name: string }; result: void }
@@ -300,6 +323,7 @@ export interface IPCChannelMap {
   'ai:list-ollama-models': { params: { baseUrl?: string }; result: string[] }
   'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }
   'ai:summarize': { params: { content: string }; result: string }
+  'ai:generate-flashcards': { params: { content: string; title?: string; maxCards?: number }; result: { success: boolean; cards: GeneratedFlashcard[]; markdown?: string; error?: string } }
   'ai:detect-local-config': { params: undefined; result: { claude?: { apiKey: string; baseUrl: string; source?: string }; openai?: { apiKey: string; source?: string }; codex?: { command: string; source?: string }; skipped?: string[] } }
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }

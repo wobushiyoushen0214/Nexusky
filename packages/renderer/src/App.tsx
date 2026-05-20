@@ -35,6 +35,7 @@ const KanbanPanel = lazy(() => import('./components/KanbanPanel').then((m) => ({
 const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => ({ default: m.HistoryPanel })))
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
+const FlashcardReviewPanel = lazy(() => import('./components/FlashcardReviewPanel').then((m) => ({ default: m.FlashcardReviewPanel })))
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
@@ -77,6 +78,7 @@ export default function App() {
   const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore()
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const [trashOpen, setTrashOpen] = useState(false)
+  const [flashcardReviewOpen, setFlashcardReviewOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
   const [chatEverOpened, setChatEverOpened] = useState(false)
@@ -154,6 +156,12 @@ export default function App() {
     const handler = () => setTrashOpen(true)
     window.addEventListener('open-trash', handler)
     return () => window.removeEventListener('open-trash', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = () => setFlashcardReviewOpen(true)
+    window.addEventListener('open-flashcard-review', handler)
+    return () => window.removeEventListener('open-flashcard-review', handler)
   }, [])
 
   useEffect(() => {
@@ -430,6 +438,7 @@ export default function App() {
         {searchOpen && <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />}
         {commandPaletteOpen && <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />}
         {trashOpen && <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />}
+        {flashcardReviewOpen && <FlashcardReviewPanel open={flashcardReviewOpen} onClose={() => setFlashcardReviewOpen(false)} />}
       </Suspense>
       <ToastContainer />
       <GraphGenerator open={graphGenPaths.length > 0} filePaths={graphGenPaths} onClose={() => setGraphGenPaths([])} />

@@ -107,6 +107,8 @@
       "aiNewNote": { "label": "AI 生成新笔记", "description": "不绑定当前文件，直接创建新的 Markdown 笔记" },
       "aiBatchNotes": { "label": "AI 批量生成关联笔记", "description": "适合搭建主题知识库骨架" },
       "summarize": { "label": "AI 摘要写入当前笔记", "description": "把摘要插入到当前笔记开头" },
+      "aiFlashcards": { "label": "AI 生成复习闪卡", "description": "从当前笔记追加 Anki 风格问答与填空卡" },
+      "reviewFlashcards": { "label": "复习到期闪卡", "description": "按 Again / Hard / Good / Easy 复习今日到期卡片" },
       "graphFull": { "label": "打开全屏知识图谱" },
       "bases": { "label": "打开属性数据库", "description": "按属性浏览、筛选和排序笔记" },
       "canvas": { "label": "打开自由画布", "description": "在可拖拽画布中整理笔记卡片" },
@@ -143,6 +145,9 @@
       "importDone": "导入完成: {{imported}} 个文件, {{converted}} 个已转换",
       "summarizing": "正在生成摘要...",
       "summaryInserted": "摘要已插入当前笔记",
+      "generatingFlashcards": "正在生成复习闪卡...",
+      "flashcardsInserted": "已插入 {{count}} 张闪卡",
+      "flashcardsFailed": "闪卡生成失败",
       "inferringLinks": "正在推断全库语义链接...",
       "linksAdded": "已新增 {{count}} 条语义链接",
       "inferLinksFailed": "语义链接推断失败",
@@ -215,6 +220,8 @@
     "noTags": "无标签"
   },
   "common": {
+    "close": "关闭",
+    "retry": "重试",
     "indexing": "正在索引笔记关系...",
     "noMdFiles": "该文件夹下没有 .md 文件",
     "aiAnalyzing": "正在 AI 分析语义关系...",
@@ -224,6 +231,30 @@
     "syncDone": "同步完成: ↑{{pushed}} ↓{{pulled}}",
     "syncError": "同步出错: {{error}}",
     "syncFailed": "同步失败: {{error}}"
+  },
+  "flashcards": {
+    "review": {
+      "title": "闪卡复习",
+      "loading": "正在加载到期卡片...",
+      "progress": "已复习 {{reviewed}} / 本轮 {{total}}，今日到期 {{due}}",
+      "loadFailed": "闪卡队列加载失败",
+      "reviewFailed": "闪卡复习写回失败",
+      "emptyTitle": "今天没有到期闪卡",
+      "emptyHint": "可以继续写作，或从当前笔记生成新的复习卡片。",
+      "basic": "问答",
+      "cloze": "填空",
+      "openSource": "打开来源",
+      "prompt": "题目",
+      "answer": "答案",
+      "showAnswer": "显示答案",
+      "saving": "保存中",
+      "ratings": {
+        "again": "{{key}} Again",
+        "hard": "{{key}} Hard",
+        "good": "{{key}} Good",
+        "easy": "{{key}} Easy"
+      }
+    }
   },
   "settings": {
     "title": "设置",

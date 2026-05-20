@@ -223,6 +223,7 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
 
   return (
     <div
+      className="file-tree-scroll"
       ref={containerRef}
       tabIndex={0}
       onScroll={handleScroll}
@@ -233,7 +234,14 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
           setMultiContextMenu({ x: e.clientX, y: e.clientY })
         }
       }}
-      style={{ height: '100%', overflowY: 'auto', position: 'relative', outline: 'none' }}
+      style={{
+        height: '100%',
+        overflowY: 'auto',
+        position: 'relative',
+        outline: 'none',
+        paddingRight: 2,
+        scrollbarGutter: 'stable',
+      }}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         <div style={{ position: 'absolute', top: startIndex * ITEM_HEIGHT, left: 0, right: 0 }}>

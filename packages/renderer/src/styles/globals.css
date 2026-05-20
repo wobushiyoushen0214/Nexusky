@@ -539,6 +539,32 @@ button:focus-visible {
   background: transparent;
 }
 
+.file-tree-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+.file-tree-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.file-tree-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 2px 0 8px;
+}
+
+.file-tree-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.file-tree-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+  background-clip: padding-box;
+}
+
 /* Selection */
 ::selection {
   background: var(--accent-muted);

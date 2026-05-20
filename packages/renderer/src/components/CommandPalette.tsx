@@ -124,6 +124,23 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         toast(t('commandPalette.toasts.summaryInserted'), 'success')
       }
     }},
+    { id: 'ai-flashcards', category: 'ai', label: t('commandPalette.commands.aiFlashcards.label'), description: t('commandPalette.commands.aiFlashcards.description'), keywords: ['flashcard', 'anki', 'review', 'study'], action: async () => {
+      if (!requireCurrentNote() || !content) return
+      const title = getCurrentNoteTitle()
+      const { toast } = await import('../stores/toast-store')
+      toast(t('commandPalette.toasts.generatingFlashcards'), 'info')
+      const result = await window.api.invoke('ai:generate-flashcards', { content, title, maxCards: 12 })
+      if (result.success && result.markdown) {
+        useEditorStore.getState().setContent(`${content.trimEnd()}\n\n${result.markdown}\n`)
+        toast(t('commandPalette.toasts.flashcardsInserted', { count: result.cards.length }), 'success')
+      } else {
+        toast(result.error || t('commandPalette.toasts.flashcardsFailed'), 'error')
+      }
+    }},
+    { id: 'review-flashcards', category: 'ai', label: t('commandPalette.commands.reviewFlashcards.label'), description: t('commandPalette.commands.reviewFlashcards.description'), keywords: ['flashcard', 'anki', 'review', 'srs', 'study'], action: () => {
+      if (!vaultPath) return
+      window.dispatchEvent(new CustomEvent('open-flashcard-review'))
+    }},
     { id: 'graph-full', category: 'graph', label: t('commandPalette.commands.graphFull.label'), shortcut: 'Ctrl+G', keywords: ['graph'], action: () => {
       setMainView('graph')
     }},

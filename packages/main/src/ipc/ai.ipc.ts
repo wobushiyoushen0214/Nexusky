@@ -10,6 +10,7 @@ import { formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolRe
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
+import { formatFlashcardsMarkdown, normalizeGeneratedFlashcards } from '../services/ai/flashcards'
 import { logger } from '../services/logger'
 import { getAllNotes, getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getOutgoingUnlinkedMentions, getPropertyRows, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
 import { getDatabase } from '../services/database'
@@ -382,6 +383,44 @@ ${context}
       return result.trim()
     } catch {
       return ''
+    }
+  })
+
+  ipcMain.handle('ai:generate-flashcards', async (_event, params: { content: string; title?: string; maxCards?: number }) => {
+    const config = aiManager.getActiveConfig()
+    if (!config) return { success: false, cards: [], error: '未配置 AI 提供商' }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { success: false, cards: [], error: configError }
+
+    try {
+      const provider = aiManager.getProvider(config)
+      let result = ''
+      for await (const chunk of provider.chatStream([
+        {
+          role: 'system',
+          content: `You generate Anki-style flashcards from Markdown notes.
+
+Return only JSON with this shape:
+{"cards":[{"type":"basic","front":"question","back":"answer","tags":["topic"]},{"type":"cloze","cloze":"A statement with {{c1::the hidden answer}}.","back":"why the answer matters","tags":["topic"]}]}
+
+Rules:
+- Generate 6-12 cards unless the note is very short.
+- Mix basic Q/A and cloze cards when useful.
+- Test durable concepts, definitions, distinctions, workflows, and gotchas.
+- Avoid trivia, duplicate cards, and cards that require missing context.
+- Keep each front/cloze under 80 words and each back under 120 words.`
+        },
+        { role: 'user', content: params.content.slice(0, 8000) }
+      ], undefined, { temperature: 0.2 })) {
+        if (chunk.type === 'text') result += chunk.content
+        if (chunk.type === 'error') return { success: false, cards: [], error: chunk.content || 'AI 生成闪卡失败' }
+      }
+
+      const cards = normalizeGeneratedFlashcards(result, params.maxCards)
+      if (cards.length === 0) return { success: false, cards: [], error: 'AI 未生成可用闪卡' }
+      return { success: true, cards, markdown: formatFlashcardsMarkdown(cards, params.title) }
+    } catch (error) {
+      return { success: false, cards: [], error: getErrorMessage(error) }
     }
   })
 
