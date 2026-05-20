@@ -8,6 +8,7 @@ import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
 import { formatAiToolStatus } from './tool-labels'
 import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
+import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -224,6 +225,15 @@ export function ChatPanel() {
       setMessages([])
     }
   }
+
+  const renameCurrentSessionFromPrompt = useCallback((prompt: string, messageCount: number) => {
+    if (!vaultPath || !currentSessionId) return
+    const currentSession = sessions.find((session) => session.id === currentSessionId)
+    if (!shouldAutoRenameChatSession(currentSession?.title, messageCount)) return
+    const title = buildChatSessionTitleFromPrompt(prompt)
+    setSessions((prev) => prev.map((session) => session.id === currentSessionId ? { ...session, title, updatedAt: Date.now() / 1000 } : session))
+    window.api.invoke('db:chat-session-rename', { vaultPath, sessionId: currentSessionId, title }).catch(() => {})
+  }, [currentSessionId, sessions, vaultPath])
 
   useEffect(() => {
     const handler = (event: { type: string; content: string }) => {
@@ -819,6 +829,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim(), attachments: attachments.length > 0 ? attachments : undefined }
     setMessages((prev) => [...prev, userMsg])
     appendToDb(userMsg)
+    renameCurrentSessionFromPrompt(userMsg.content, messages.length)
     setInput('')
     safeRemove(draftStorageKey)
     setIsStreaming(true)
