@@ -67,6 +67,7 @@ export function BacklinksPanel() {
             <OutgoingSection
               items={outgoingLinks}
               vaultPath={vaultPath}
+              currentFilePath={currentFilePath}
               refreshFiles={refreshFiles}
               openFile={openFile}
             />
@@ -96,11 +97,13 @@ export function BacklinksPanel() {
 function OutgoingSection({
   items,
   vaultPath,
+  currentFilePath,
   refreshFiles,
   openFile
 }: {
   items: OutgoingLinkResult[]
   vaultPath: string | null
+  currentFilePath: string | null
   refreshFiles: () => Promise<void>
   openFile: (path: string) => Promise<void>
 }) {
@@ -120,30 +123,51 @@ function OutgoingSection({
     toast(`已创建笔记「${title}」`, 'success')
   }
 
+  const jumpToSourceLine = async (item: OutgoingLinkResult) => {
+    if (currentFilePath) await openFile(currentFilePath)
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('editor-goto-line', { detail: { line: item.line } }))
+    }, 200)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, padding: '2px 2px 0' }}>出链</div>
       {items.map((item, i) => (
-        <button
+        <div
           key={`outgoing-${item.targetTitle}-${i}`}
-          onClick={() => { handleOpenOrCreate(item) }}
+          role="button"
+          tabIndex={0}
+          onClick={() => { jumpToSourceLine(item) }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return
+            event.preventDefault()
+            void jumpToSourceLine(item)
+          }}
           style={{
             textAlign: 'left', padding: '8px 12px', borderRadius: 6,
             background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-            cursor: 'pointer', display: 'block', width: '100%',
+            cursor: 'pointer', display: 'block', width: '100%', position: 'relative',
             opacity: item.targetPath ? 1 : 0.72
           }}
         >
           <span style={{ fontSize: 12, fontWeight: 500, color: item.targetPath ? 'var(--accent-text)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.targetTitle}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line} · {item.resolved ? '已解析' : '点击创建'}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
           </span>
           {item.context && (
             <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {item.context}
             </p>
           )}
-        </button>
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); void handleOpenOrCreate(item) }}
+            style={{ display: 'inline-flex', alignItems: 'center', marginTop: 6, padding: 0, border: 'none', background: 'transparent', fontSize: 10, color: 'var(--text-tertiary)', cursor: 'pointer' }}
+          >
+            {item.resolved ? '打开目标' : '创建目标'}
+          </button>
+        </div>
       ))}
     </div>
   )
