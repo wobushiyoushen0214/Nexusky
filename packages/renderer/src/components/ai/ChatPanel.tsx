@@ -143,6 +143,7 @@ export function ChatPanel() {
   const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const restoringDraftRef = useRef(false)
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
@@ -239,6 +240,41 @@ export function ChatPanel() {
     }
     return true
   }, [addAttachedDocument])
+
+  const attachImageFile = useCallback((file: File): boolean => {
+    if (!file.type.startsWith('image/')) return false
+    if (attachedImages.length >= MAX_ATTACHED_IMAGES) {
+      toast(`最多一次粘贴 ${MAX_ATTACHED_IMAGES} 张图片`, 'info')
+      return true
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (!reader.result) return
+      const dataUrl = reader.result as string
+      if (dataUrl.length > MAX_IMAGE_DATA_URL_LENGTH) {
+        toast('图片过大，未添加到 AI 上下文', 'error')
+        return
+      }
+      setAttachedImages((prev) => {
+        if (prev.length >= MAX_ATTACHED_IMAGES) {
+          toast(`最多一次粘贴 ${MAX_ATTACHED_IMAGES} 张图片`, 'info')
+          return prev
+        }
+        return [...prev, dataUrl]
+      })
+    }
+    reader.readAsDataURL(file)
+    return true
+  }, [attachedImages.length])
+
+  const attachFileForAi = useCallback(async (file: FileWithPath): Promise<boolean> => {
+    if (attachImageFile(file)) return true
+    if (file.name.endsWith('.md') && file.path) {
+      addAttachedNote({ title: file.name.replace(/\.md$/, ''), filePath: file.path })
+      return true
+    }
+    return attachDocumentFromFile(file)
+  }, [addAttachedNote, attachDocumentFromFile, attachImageFile])
 
   const handleNewSession = async () => {
     if (!vaultPath) return
@@ -842,7 +878,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
   }
 
   const handleSend = async () => {
-    if (!input.trim()) return
+    const hasPendingAttachments = attachedNotes.length > 0 || attachedSelections.length > 0 || attachedImages.length > 0 || attachedDocuments.length > 0
+    if (!input.trim() && !hasPendingAttachments) return
 
     if (isStreaming) {
       editCompleteRef.current = true
@@ -877,7 +914,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       for (const document of sentDocuments) attachments.push({ type: 'document', label: document.name })
     }
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim(), attachments: attachments.length > 0 ? attachments : undefined }
+    const userContent = input.trim() || '请分析附件内容。'
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userContent, attachments: attachments.length > 0 ? attachments : undefined }
     setMessages((prev) => [...prev, userMsg])
     appendToDb(userMsg)
     renameCurrentSessionFromPrompt(userMsg.content, messages.length)
@@ -1224,27 +1262,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         e.preventDefault()
         const file = item.getAsFile()
         if (!file) continue
-        if (attachedImages.length >= MAX_ATTACHED_IMAGES) {
-          toast(`最多一次粘贴 ${MAX_ATTACHED_IMAGES} 张图片`, 'info')
-          continue
-        }
-        const reader = new FileReader()
-        reader.onload = () => {
-          if (!reader.result) return
-          const dataUrl = reader.result as string
-          if (dataUrl.length > MAX_IMAGE_DATA_URL_LENGTH) {
-            toast('图片过大，未添加到 AI 上下文', 'error')
-            return
-          }
-          setAttachedImages((prev) => {
-            if (prev.length >= MAX_ATTACHED_IMAGES) {
-              toast(`最多一次粘贴 ${MAX_ATTACHED_IMAGES} 张图片`, 'info')
-              return prev
-            }
-            return [...prev, dataUrl]
-          })
-        }
-        reader.readAsDataURL(file)
+        attachImageFile(file)
       } else if (item.kind === 'file') {
         const file = item.getAsFile() as FileWithPath | null
         if (file && isSupportedAiDocumentName(file.name)) {
@@ -1253,6 +1271,15 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         }
       }
     }
+  }
+
+  const handleAttachFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    for (const file of Array.from(files) as FileWithPath[]) {
+      const attached = await attachFileForAi(file)
+      if (!attached) toast(`暂不支持该附件：${file.name}`, 'info')
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const [confirmClear, setConfirmClear] = useState(false)
@@ -1393,6 +1420,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       el.removeEventListener('drop', handleDrop, true)
     }
   }, [vaultPath, currentFilePath, addAttachedNote, attachDocumentFromFile, attachDocumentFromPath])
+
+  const canSend = input.trim().length > 0 || attachedNotes.length > 0 || attachedSelections.length > 0 || attachedImages.length > 0 || attachedDocuments.length > 0
 
   return (
     <div
@@ -1698,6 +1727,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
           {/* Input row */}
           <div style={{ display: 'flex', alignItems: 'flex-end', padding: '8px 8px 8px 12px', gap: 6 }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".md,.txt,.csv,.tsv,.rtf,.pdf,.doc,.docx,.xls,.xlsx,image/*"
+              onChange={(event) => { void handleAttachFiles(event.currentTarget.files) }}
+              style={{ display: 'none' }}
+            />
             <textarea
               ref={inputRef}
               value={input}
@@ -1737,15 +1774,34 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 </svg>
               </button>
             ) : (
+              <>
               <button
-                onClick={handleSend}
-                disabled={!input.trim()}
+                onClick={() => fileInputRef.current?.click()}
+                type="button"
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: !input.trim() ? 'transparent' : 'var(--accent)',
-                  color: !input.trim() ? 'var(--text-tertiary)' : '#fff',
+                  background: 'transparent', color: 'var(--text-tertiary)',
                   border: 'none', borderRadius: 8,
-                  cursor: !input.trim() ? 'default' : 'pointer',
+                  cursor: 'pointer',
+                  transition: 'background 150ms, color 150ms',
+                  flexShrink: 0,
+                }}
+                title="添加图片、笔记或文档附件"
+                aria-label="添加附件"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.4 11.6l-8.8 8.8a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.7 9.7a2 2 0 0 1-2.8-2.8l8.9-8.9" />
+                </svg>
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                style={{
+                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: canSend ? 'var(--accent)' : 'transparent',
+                  color: canSend ? '#fff' : 'var(--text-tertiary)',
+                  border: 'none', borderRadius: 8,
+                  cursor: canSend ? 'pointer' : 'default',
                   transition: 'background 150ms, color 150ms',
                   flexShrink: 0,
                 }}
@@ -1754,6 +1810,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
                 </svg>
               </button>
+              </>
             )}
           </div>
 
