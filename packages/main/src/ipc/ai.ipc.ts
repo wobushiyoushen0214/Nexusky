@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1024,6 +1024,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'get_memory_overview',
+        description: '获取笔记记忆索引的覆盖率、过期数量、缺失数量以及概念/主题数量。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_memory_terms',
         description: '汇总已生成笔记记忆中的概念和主题，帮助发现知识库里的高频知识点。',
         parameters: {
@@ -1620,6 +1628,47 @@ graph TD
             chunk: memory.summary.slice(0, 100),
             score: 1
           }))
+        }
+      }
+      case 'get_memory_overview': {
+        const notes = getAllNotes(vaultPath)
+        const notesById = new Map(notes.map((note) => [note.id, note]))
+        const memories = readAllMemories(vaultPath)
+        const memoryNoteIds = new Set<string>()
+        const concepts = new Set<string>()
+        const topics = new Set<string>()
+        let current = 0
+        let stale = 0
+        let orphanMemories = 0
+        for (const memory of memories) {
+          const note = notesById.get(memory.noteId)
+          if (!note) {
+            orphanMemories += 1
+            continue
+          }
+          memoryNoteIds.add(memory.noteId)
+          if (memory.contentHash === note.contentHash) current += 1
+          else stale += 1
+          for (const concept of memory.concepts) {
+            const normalized = concept.trim().toLowerCase()
+            if (normalized) concepts.add(normalized)
+          }
+          for (const topic of memory.topics) {
+            const normalized = topic.trim().toLowerCase()
+            if (normalized) topics.add(normalized)
+          }
+        }
+        return {
+          content: formatMemoryOverviewToolResult({
+            notes: notes.length,
+            memories: memoryNoteIds.size,
+            current,
+            stale,
+            missing: notes.length - memoryNoteIds.size,
+            orphanMemories,
+            concepts: concepts.size,
+            topics: topics.size
+          })
         }
       }
       case 'list_memory_terms': {

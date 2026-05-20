@@ -190,6 +190,17 @@ export interface AiMemoryTermNoteResult {
   updatedAt: number
 }
 
+export interface AiMemoryOverview {
+  notes: number
+  memories: number
+  current: number
+  stale: number
+  missing: number
+  orphanMemories: number
+  concepts: number
+  topics: number
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -555,6 +566,21 @@ export function formatNotesByMemoryTermToolResult(term: string, notes: AiMemoryT
     `Updated: ${formatTimestamp(note.updatedAt)}`
   ].join('\n')).join('\n\n')
   return `Memory Term: ${term}\n\n${body}`
+}
+
+export function formatMemoryOverviewToolResult(overview: AiMemoryOverview): string {
+  const coverage = overview.notes > 0 ? `${Math.round((overview.memories / overview.notes) * 100)}%` : '0%'
+  return [
+    'Memory Overview',
+    `Notes: ${overview.notes}`,
+    `Memories: ${overview.memories} (${coverage})`,
+    `Current: ${overview.current}`,
+    `Stale: ${overview.stale}`,
+    `Missing: ${overview.missing}`,
+    `Orphan Memories: ${overview.orphanMemories}`,
+    `Concepts: ${overview.concepts}`,
+    `Topics: ${overview.topics}`
+  ].join('\n')
 }
 
 export function formatVaultOverviewToolResult(overview: AiVaultOverview): string {
