@@ -261,6 +261,8 @@
     "guideCreate": "7. 新建节点会优先靠近当前视图中心，并自动避开已有节点。",
     "searchPlaceholder": "搜索笔记卡片...",
     "empty": "没有匹配的笔记卡片",
+    "noteNode": "知识节点",
+    "propertyCount": "{{count}} 个属性",
     "noTags": "无标签"
   },
   "timeline": {

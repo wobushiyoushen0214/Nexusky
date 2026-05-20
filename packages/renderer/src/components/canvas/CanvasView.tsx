@@ -1172,7 +1172,13 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                 const status = valueToText(row.properties.status)
                 const source = valueToText(row.properties.source)
                 const propertyCount = Object.keys(row.properties).filter((key) => valueToText(row.properties[key])).length
-                const groupLabel = canvasMode === 'properties' ? getPrimaryTag(row) : canvasMode === 'time' && row.updatedAt ? new Date(row.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
+                const layerHint = canvasMode === 'properties'
+                  ? getPrimaryTag(row)
+                  : canvasMode === 'time' && row.updatedAt
+                    ? new Date(row.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                    : ''
+                const updated = row.updatedAt ? new Date(row.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
+                const metaItems = [source, status, updated, propertyCount > 0 ? t('canvas.propertyCount', { count: propertyCount }) : ''].filter(Boolean)
                 return (
                   <div
                     key={row.id}
@@ -1189,28 +1195,33 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                       top: pos.y - canvasMetrics.minY,
                       width: CARD_WIDTH,
                       minHeight: 112,
-                      padding: '12px 13px 11px',
+                      padding: '13px 14px 12px',
                       borderRadius: 7,
-                      border: dragging?.id === row.id ? '1px solid var(--border-default)' : '1px solid var(--border-subtle)',
-                      background: 'color-mix(in srgb, var(--bg-surface) 86%, var(--editor-bg))',
-                      boxShadow: dragging?.id === row.id ? '0 14px 34px rgba(0,0,0,0.32)' : '0 8px 20px rgba(0,0,0,0.12)',
+                      border: dragging?.id === row.id ? '1px solid var(--border-default)' : '1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent)',
+                      background: 'color-mix(in srgb, var(--bg-surface) 72%, var(--editor-bg))',
+                      boxShadow: dragging?.id === row.id ? '0 16px 36px rgba(0,0,0,0.34)' : '0 10px 24px rgba(0,0,0,0.11)',
                       cursor: dragging?.id === row.id ? 'grabbing' : 'grab',
                       userSelect: 'none',
                       zIndex: dragging?.id === row.id ? 4 : 1
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                      <div style={{ minWidth: 0, fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groupLabel || t('canvas.modeSpace')}</div>
-                      <div style={{ flexShrink: 0, fontSize: 10, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{propertyCount}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 9 }}>
+                      <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, color: 'var(--text-tertiary)' }}>
+                        {metaItems.join(' · ') || t('canvas.noteNode')}
+                      </div>
+                      {layerHint && (
+                        <div style={{ flexShrink: 0, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--bg-hover) 76%, transparent)', color: 'var(--text-tertiary)', fontSize: 10 }}>
+                          {layerHint}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: 34, fontSize: 13, lineHeight: 1.3, fontWeight: 720, color: 'var(--text-primary)', overflow: 'hidden' }}>{row.title}</div>
-                    <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
-                    <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    <div style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: 36, fontSize: 13.5, lineHeight: 1.32, fontWeight: 710, color: 'var(--text-primary)', overflow: 'hidden' }}>{row.title}</div>
+                    <div style={{ marginTop: 6, fontSize: 10.5, color: 'color-mix(in srgb, var(--text-tertiary) 88%, transparent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
+                    <div style={{ marginTop: 11, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {tags.slice(0, 3).map((tag) => (
-                        <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{tag}</span>
+                        <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--bg-hover) 70%, transparent)', color: 'var(--text-secondary)', fontSize: 10 }}>{tag}</span>
                       ))}
-                      {status && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{status}</span>}
-                      {source && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', fontSize: 10 }}>{source}</span>}
+                      {tags.length > 3 && <span style={{ padding: '2px 6px', borderRadius: 999, color: 'var(--text-tertiary)', fontSize: 10 }}>+{tags.length - 3}</span>}
                       {tags.length === 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('canvas.noTags')}</span>}
                     </div>
                   </div>

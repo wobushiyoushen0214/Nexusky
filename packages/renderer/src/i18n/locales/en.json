@@ -261,6 +261,8 @@
     "guideCreate": "7. New nodes appear near the current view center and avoid existing nodes.",
     "searchPlaceholder": "Search note cards...",
     "empty": "No matching note cards",
+    "noteNode": "Knowledge node",
+    "propertyCount": "{{count}} props",
     "noTags": "No tags"
   },
   "timeline": {
