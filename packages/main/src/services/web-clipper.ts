@@ -91,7 +91,7 @@ function stripHtml(html?: string, baseUrl?: string): string {
 export function formatWebClipMarkdown(payload: WebClipPayload, capturedAt = new Date()): { title: string; markdown: string } {
   const title = safeClipFileName(payload.title || payload.url || 'Untitled Web Clip')
   const source = payload.url?.trim()
-  const body = (payload.selection || payload.text || stripHtml(payload.html, source) || '').trim()
+  const body = (payload.selection || stripHtml(payload.html, source) || payload.text || '').trim()
   const lines = [
     '---',
     `title: "${title.replace(/"/g, '\\"')}"`,

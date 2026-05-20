@@ -19,14 +19,16 @@ async function getPagePayload(tab, selectionText = '') {
     func: () => ({
       title: document.title,
       url: location.href,
-      text: document.body?.innerText?.slice(0, 60000) || ''
+      text: document.body?.innerText?.slice(0, 60000) || '',
+      html: document.body?.innerHTML?.slice(0, 120000) || ''
     })
   })
   return {
     title: result?.title || tab.title || 'Untitled Web Clip',
     url: result?.url || tab.url || '',
     selection: selectionText,
-    text: selectionText || result?.text || ''
+    text: selectionText || result?.text || '',
+    html: selectionText ? '' : result?.html || ''
   }
 }
 

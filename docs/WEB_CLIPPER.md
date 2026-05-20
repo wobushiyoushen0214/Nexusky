@@ -4,7 +4,7 @@ Nexusky starts a local clipper endpoint on `http://127.0.0.1:17321` while the de
 
 ## Browser Extension
 
-Load `browser-extension/` as an unpacked Chromium extension. Use the toolbar button to save the current page, or the context menu to save the selected text.
+Load `browser-extension/` as an unpacked Chromium extension. Use the toolbar button to save the current page with links preserved, or the context menu to save the selected text.
 
 The extension sends:
 
@@ -18,7 +18,7 @@ The extension sends:
 }
 ```
 
-Nexusky writes the clip to `Clippings/YYYY-MM-DD Page title.md` in the active vault, indexes it immediately, and refreshes the file tree with the new file path. When only HTML is available, safe page links are preserved as Markdown links and relative links are resolved against the page URL.
+Nexusky writes the clip to `Clippings/YYYY-MM-DD Page title.md` in the active vault, indexes it immediately, and refreshes the file tree with the new file path. Whole-page clips prefer the HTML fallback so safe page links are preserved as Markdown links and relative links are resolved against the page URL; selected text clips stay plain text.
 
 ## Direct API
 

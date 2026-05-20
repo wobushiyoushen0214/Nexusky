@@ -178,7 +178,7 @@
 | Notion 导出导入 | 命令面板选择 Notion Markdown、CSV 或 HTML 导出文件夹，页面转 Markdown、数据库 CSV 转表格笔记，并把本地页面链接转为 wikilink |
 | Readwise 高亮导入 | 命令面板选择 Readwise CSV 导出文件，按文章生成带来源、作者和标签的 Markdown 笔记 |
 | Pocket 稍后读导入 | 命令面板选择 Pocket HTML 导出文件，将收藏链接转为带状态、来源和标签的阅读笔记 |
-| Web Clipper 链接保留 | 浏览器剪藏 HTML fallback 会把安全网页链接保留为 Markdown 链接，并按页面 URL 解析相对链接，保存后按新文件路径刷新文件树 |
+| Web Clipper 链接保留 | 浏览器扩展整页剪藏会发送 HTML fallback，把安全网页链接保留为 Markdown 链接，并按页面 URL 解析相对链接，保存后按新文件路径刷新文件树 |
 | Frontmatter 兼容 | 属性编辑统一通过 frontmatter 工具写回，兼容 CRLF 换行和标签栏/标签面板同步更新 |
 
 ### UI 与体验
