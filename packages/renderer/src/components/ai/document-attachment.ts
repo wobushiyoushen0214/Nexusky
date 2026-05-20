@@ -17,6 +17,7 @@ export interface AiDocumentAttachment {
   path?: string
   text: string
   truncated: boolean
+  method?: string
 }
 
 export function getDocumentExtension(name: string): string {
@@ -54,11 +55,22 @@ export function createDocumentAttachment(name: string, rawText: string, path?: s
   }
 }
 
+export function createDocumentAttachmentFromExtracted(extracted: { name: string; path: string; text: string; truncated: boolean; method: string }): AiDocumentAttachment {
+  return {
+    name: extracted.name,
+    path: extracted.path,
+    text: extracted.text,
+    truncated: extracted.truncated,
+    method: extracted.method
+  }
+}
+
 export function buildDocumentAttachmentContext(documents: AiDocumentAttachment[]): string {
   return documents.map((doc) => {
     const pathLine = doc.path ? `\nPath: ${doc.path}` : ''
+    const methodLine = doc.method ? `\nExtracted as: ${doc.method}` : ''
     const truncatedLine = doc.truncated ? '\nNote: content was truncated before sending.' : ''
     const body = doc.text || 'No readable text could be extracted. Use the filename and available metadata only.'
-    return `[Document: ${doc.name}]${pathLine}${truncatedLine}\n${body}`
+    return `[Document: ${doc.name}]${pathLine}${methodLine}${truncatedLine}\n${body}`
   }).join('\n\n')
 }

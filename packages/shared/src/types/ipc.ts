@@ -254,8 +254,17 @@ export interface AIProviderValidationResult {
   error?: string
 }
 
+export interface ExtractedDocumentText {
+  name: string
+  path: string
+  text: string
+  truncated: boolean
+  method: 'text' | 'docx' | 'xlsx' | 'pdf' | 'binary'
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
+  'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
   'file:stat': { params: { path: string }; result: { size: number; mtime: number } }
   'file:write': { params: { path: string; content: string; vaultPath?: string }; result: void }
   'file:list': { params: { dirPath: string }; result: FileEntry[] }

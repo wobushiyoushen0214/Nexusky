@@ -8,6 +8,7 @@ import { indexNote } from '../services/indexer'
 import { importObsidianVault } from '../services/obsidian-importer'
 import { importNotionExport } from '../services/notion-importer'
 import { importPocketBookmarks, importReadwiseCsv } from '../services/reader-importer'
+import { extractDocumentTextFromBuffer } from '../services/document-text'
 import { isPathInsideVault } from './file-path'
 import { notifyVaultFilesChanged } from './events'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
@@ -75,6 +76,10 @@ const writeNotifyPaths = new Set<string>()
 export function registerFileIPC(): void {
   ipcMain.handle('file:read', async (_event, params: { path: string }) => {
     return readFile(params.path, 'utf-8')
+  })
+
+  ipcMain.handle('file:extract-document-text', async (_event, params: { path: string }) => {
+    return extractDocumentTextFromBuffer(params.path, await readFile(params.path))
   })
 
   ipcMain.handle('file:stat', async (_event, params: { path: string }) => {

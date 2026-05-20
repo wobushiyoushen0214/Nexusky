@@ -9,7 +9,7 @@ import { renderMarkdown } from './MessageBubble'
 import { formatAiToolStatus } from './tool-labels'
 import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
-import { buildDocumentAttachmentContext, createDocumentAttachment, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
+import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -216,8 +216,8 @@ export function ChatPanel() {
     if (!isSupportedAiDocumentName(path)) return false
     const name = path.split(/[\\/]/).pop() || path
     try {
-      const raw = await window.api.invoke('file:read', { path })
-      addAttachedDocument(createDocumentAttachment(name, raw, path))
+      const extracted = await window.api.invoke('file:extract-document-text', { path })
+      addAttachedDocument(createDocumentAttachmentFromExtracted(extracted))
       return true
     } catch {
       toast(`无法读取文档：${name}`, 'error')
@@ -228,8 +228,12 @@ export function ChatPanel() {
   const attachDocumentFromFile = useCallback(async (file: FileWithPath): Promise<boolean> => {
     if (!isSupportedAiDocumentName(file.name)) return false
     try {
-      const raw = file.path ? await window.api.invoke('file:read', { path: file.path }) : await file.text()
-      addAttachedDocument(createDocumentAttachment(file.name, raw, file.path))
+      if (file.path) {
+        const extracted = await window.api.invoke('file:extract-document-text', { path: file.path })
+        addAttachedDocument(createDocumentAttachmentFromExtracted(extracted))
+      } else {
+        addAttachedDocument(createDocumentAttachment(file.name, await file.text()))
+      }
     } catch {
       toast(`无法读取文档：${file.name}`, 'error')
     }
