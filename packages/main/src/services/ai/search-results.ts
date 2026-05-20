@@ -182,6 +182,14 @@ export interface AiMemoryTermSummary {
   samplePaths: string[]
 }
 
+export interface AiMemoryTermNoteResult {
+  title: string
+  filePath: string
+  matchedTerms: string[]
+  summary: string
+  updatedAt: number
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -535,6 +543,18 @@ export function formatMemoryTermsToolResult(terms: AiMemoryTermSummary[]): strin
     `${index + 1}. ${term.term} (${term.type}, ${term.count})`,
     `Examples: ${term.samplePaths.length > 0 ? term.samplePaths.join(', ') : '(none)'}`
   ].join('\n')).join('\n\n')
+}
+
+export function formatNotesByMemoryTermToolResult(term: string, notes: AiMemoryTermNoteResult[]): string {
+  if (notes.length === 0) return `No notes found for memory term "${term}".`
+  const body = notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Matched: ${note.matchedTerms.join(', ')}`,
+    `Summary: ${note.summary || '(none)'}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
+  ].join('\n')).join('\n\n')
+  return `Memory Term: ${term}\n\n${body}`
 }
 
 export function formatVaultOverviewToolResult(overview: AiVaultOverview): string {
