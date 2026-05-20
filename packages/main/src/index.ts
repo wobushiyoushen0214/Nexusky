@@ -11,16 +11,10 @@ import { registerExportIPC } from './ipc/export.ipc'
 import { registerPluginIPC } from './ipc/plugin.ipc'
 import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
-import { logger } from './services/logger'
 import { startWebClipperServer, stopWebClipperServer } from './services/web-clipper'
+import { registerCrashReporting } from './services/crash-reporting'
 
-process.on('uncaughtException', (error) => {
-  logger.error('uncaughtException', error)
-})
-
-process.on('unhandledRejection', (reason) => {
-  logger.error('unhandledRejection', reason instanceof Error ? reason : new Error(String(reason)))
-})
+registerCrashReporting()
 
 let mainWindow: BrowserWindow | null = null
 const windows = new Set<BrowserWindow>()

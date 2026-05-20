@@ -785,7 +785,7 @@
 ### 发布与运营
 - [x] 自动更新（electron-updater）
 - [x] GitHub Actions CI 自动发布
-- [ ] 崩溃报告收集
+- [x] 崩溃报告收集（主进程异常、Promise rejection、渲染/子进程崩溃结构化落盘并上报）
 - [ ] 官网 + 文档站
 
 ---
