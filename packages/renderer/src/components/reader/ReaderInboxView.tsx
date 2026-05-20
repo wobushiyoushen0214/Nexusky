@@ -502,6 +502,7 @@ export function ReaderInboxView() {
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null)
   const [creatingDigest, setCreatingDigest] = useState(false)
   const [preparingDigestion, setPreparingDigestion] = useState(false)
+  const [preparingRowDigestId, setPreparingRowDigestId] = useState<string | null>(null)
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null)
   const [stageFocus, setStageFocus] = useState<ReaderTriageStage | 'all'>('all')
   const { source, sort, unreadOnly, showArchived } = viewSettings
@@ -669,15 +670,14 @@ export function ReaderInboxView() {
     }
   }
 
-  const askAiToDigestVisible = async () => {
-    if (!vaultPath || filtered.length === 0) return
-    setPreparingDigestion(true)
+  const prepareAiDigestRows = async (targetRows: PropertyTableRow[], maxRows = 12, maxExcerpts = 2): Promise<boolean> => {
+    if (!vaultPath || targetRows.length === 0) return false
     try {
-      const readerRows = filtered.filter((row) => getReaderSource(row)).slice(0, 12)
+      const readerRows = targetRows.filter((row) => getReaderSource(row)).slice(0, maxRows)
       const excerptEntries = await Promise.all(readerRows.map(async (row) => {
         try {
           const content = await window.api.invoke('file:read', { path: `${vaultPath}/${row.filePath}` })
-          return [row.filePath, extractReaderDigestExcerpts(content, 2)] as const
+          return [row.filePath, extractReaderDigestExcerpts(content, maxExcerpts)] as const
         } catch {
           return [row.filePath, []] as const
         }
@@ -685,16 +685,35 @@ export function ReaderInboxView() {
       const draft = {
         mode: 'chat' as const,
         agentMode: true,
-        prompt: createReaderDigestionPrompt(filtered, Object.fromEntries(excerptEntries))
+        prompt: createReaderDigestionPrompt(targetRows, Object.fromEntries(excerptEntries), maxRows)
       }
       safeSet('nexusky-pending-ai-draft', JSON.stringify(draft))
       setRightPanel('chat')
       window.dispatchEvent(new CustomEvent('ai-command-draft', { detail: draft }))
       toast(t('reader.aiDigestReady'), 'success')
+      return true
     } catch {
       toast(t('reader.aiDigestFailed'), 'error')
+      return false
+    }
+  }
+
+  const askAiToDigestVisible = async () => {
+    if (filtered.length === 0) return
+    setPreparingDigestion(true)
+    try {
+      await prepareAiDigestRows(filtered)
     } finally {
       setPreparingDigestion(false)
+    }
+  }
+
+  const askAiToDigestRow = async (row: PropertyTableRow) => {
+    setPreparingRowDigestId(row.id)
+    try {
+      await prepareAiDigestRows([row], 1, 3)
+    } finally {
+      setPreparingRowDigestId(null)
     }
   }
 
@@ -917,6 +936,7 @@ export function ReaderInboxView() {
             onOpen={() => void openRow(selectedRow)}
             onOpenInKnowledgeSpace={() => openRowInKnowledgeSpace(selectedRow)}
             onOpenSource={() => void openSource(selectedRow)}
+            onAiDigest={() => void askAiToDigestRow(selectedRow)}
             onPrevious={() => selectAdjacentRow(-1)}
             onNext={() => selectAdjacentRow(1)}
             onCompleteNext={() => void completeAndSelectNext(selectedRow)}
@@ -928,6 +948,7 @@ export function ReaderInboxView() {
             onToggleArchive={() => void updateStatus(selectedRow, isArchivedReaderRow(selectedRow) ? 'unread' : 'archived')}
             hasPrevious={Boolean(getAdjacentReaderRow(filtered, selectedRow.id, -1))}
             hasNext={Boolean(getAdjacentReaderRow(filtered, selectedRow.id, 1))}
+            digesting={preparingRowDigestId === selectedRow.id}
             t={t}
           />
         ) : (
@@ -1029,6 +1050,7 @@ function ReaderBrief({
   onOpen,
   onOpenInKnowledgeSpace,
   onOpenSource,
+  onAiDigest,
   onPrevious,
   onNext,
   onCompleteNext,
@@ -1040,6 +1062,7 @@ function ReaderBrief({
   onToggleArchive,
   hasPrevious,
   hasNext,
+  digesting,
   t
 }: {
   row: PropertyTableRow
@@ -1049,6 +1072,7 @@ function ReaderBrief({
   onOpen: () => void
   onOpenInKnowledgeSpace: () => void
   onOpenSource: () => void
+  onAiDigest: () => void
   onPrevious: () => void
   onNext: () => void
   onCompleteNext: () => void
@@ -1060,6 +1084,7 @@ function ReaderBrief({
   onToggleArchive: () => void
   hasPrevious: boolean
   hasNext: boolean
+  digesting: boolean
   t: ReaderTranslator
 }) {
   const source = getReaderSource(row)
@@ -1178,6 +1203,9 @@ function ReaderBrief({
           </button>
           <button onClick={onOpenInKnowledgeSpace} title={t('reader.openInSpace')} aria-label={t('reader.openInSpace')} style={smallIconButtonBaseStyle}>
             <SpaceIcon />
+          </button>
+          <button onClick={onAiDigest} disabled={digesting} title={digesting ? t('reader.preparingAiDigestItem') : t('reader.aiDigestItem')} aria-label={digesting ? t('reader.preparingAiDigestItem') : t('reader.aiDigestItem')} style={{ ...smallIconButtonBaseStyle, background: digesting ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: digesting ? 'var(--accent-text)' : 'var(--text-secondary)', cursor: digesting ? 'default' : 'pointer', opacity: digesting ? 0.75 : 1 }}>
+            <SparkIcon />
           </button>
           <button onClick={onToggleNote} title={t('reader.addNote')} aria-label={t('reader.addNote')} style={{ ...smallIconButtonBaseStyle, background: noteActive ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: noteActive ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
             <NoteIcon />
