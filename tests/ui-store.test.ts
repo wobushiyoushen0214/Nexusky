@@ -82,6 +82,45 @@ describe('ui store workspace widths', () => {
     })
   })
 
+  it('keeps note-scoped right panels unavailable outside the editor view', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setWorkspaceScope('workspace:/vault/a')
+    store.setRightPanel('tags')
+    expect(useUIStore.getState().rightPanel).toBe('tags')
+
+    store.setMainView('graph')
+    expect(useUIStore.getState().rightPanel).toBe('none')
+
+    store.setRightPanel('tags')
+    expect(useUIStore.getState().rightPanel).toBe('none')
+    store.toggleRightPanel('outline')
+    expect(useUIStore.getState().rightPanel).toBe('none')
+
+    store.setRightPanel('chat')
+    expect(useUIStore.getState().rightPanel).toBe('chat')
+    store.setMainView('canvas')
+    expect(useUIStore.getState().rightPanel).toBe('chat')
+
+    expect(JSON.parse(localStorage.getItem('nexusky-workspace-layouts') || '{}')).toEqual({
+      'workspace:/vault/a': { mainView: 'canvas', rightPanel: 'chat', sidebarCollapsed: false },
+    })
+  })
+
+  it('sanitizes saved note-scoped panels when restoring non-editor views', async () => {
+    localStorage.setItem('nexusky-workspace-layouts', JSON.stringify({
+      'workspace:/vault/a': { mainView: 'graph', rightPanel: 'tags', sidebarCollapsed: true },
+    }))
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+
+    useUIStore.getState().setWorkspaceScope('workspace:/vault/a')
+
+    expect(useUIStore.getState().mainView).toBe('graph')
+    expect(useUIStore.getState().rightPanel).toBe('none')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+  })
+
   it('uses legacy global workspace layout only as a fallback', async () => {
     localStorage.setItem('nexusky-workspace-main-view', 'canvas')
     localStorage.setItem('nexusky-workspace-right-panel', 'chat')

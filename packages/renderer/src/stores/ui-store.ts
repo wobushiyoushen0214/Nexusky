@@ -26,7 +26,7 @@ const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph']
 const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas']
-const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'history'])
+const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
   rightPanel: Panel
@@ -208,17 +208,26 @@ function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
 function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scoped = getSavedWorkspaceLayouts()[scope]
   if (scoped && MAIN_VIEW_IDS.includes(scoped.mainView) && PANEL_IDS.includes(scoped.rightPanel) && typeof scoped.sidebarCollapsed === 'boolean') {
-    return scoped
+    return { ...scoped, rightPanel: getAvailableRightPanel(scoped.mainView, scoped.rightPanel) }
   }
   return {
     mainView: getInitialMainView(),
-    rightPanel: getInitialRightPanel(),
+    rightPanel: getAvailableRightPanel(getInitialMainView(), getInitialRightPanel()),
     sidebarCollapsed: getInitialSidebarCollapsed(),
   }
 }
 
+function isRightPanelAvailable(mainView: MainView, panel: Panel): boolean {
+  return panel === 'none' || mainView === 'editor' || !NOTE_SCOPED_PANELS.has(panel)
+}
+
+function getAvailableRightPanel(mainView: MainView, panel: Panel): Panel {
+  return isRightPanelAvailable(mainView, panel) ? panel : 'none'
+}
+
 function saveWorkspaceLayout(scope: string, partial: Partial<WorkspaceLayout>): WorkspaceLayout {
-  const next = { ...getInitialWorkspaceLayout(scope), ...partial }
+  const nextRaw = { ...getInitialWorkspaceLayout(scope), ...partial }
+  const next = { ...nextRaw, rightPanel: getAvailableRightPanel(nextRaw.mainView, nextRaw.rightPanel) }
   safeSetJSON(WORKSPACE_LAYOUTS_KEY, { ...getSavedWorkspaceLayouts(), [scope]: next })
   return next
 }
@@ -264,17 +273,19 @@ export const useUIStore = create<UIState>((set, get) => ({
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
 
   setRightPanel: (panel) => {
+    if (!isRightPanelAvailable(get().mainView, panel)) return
     const layout = saveWorkspaceLayout(get().workspaceScope, { rightPanel: panel })
     set({ rightPanel: layout.rightPanel, ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {}) })
   },
   toggleRightPanel: (panel) => {
+    if (!isRightPanelAvailable(get().mainView, panel)) return
     const next = get().rightPanel === panel ? 'none' : panel
     const layout = saveWorkspaceLayout(get().workspaceScope, { rightPanel: next })
     set({ rightPanel: layout.rightPanel, ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {}) })
   },
   setMainView: (view) => {
     const currentPanel = get().rightPanel
-    const rightPanel = view === 'editor' || !NOTE_SCOPED_PANELS.has(currentPanel) ? currentPanel : 'none'
+    const rightPanel = getAvailableRightPanel(view, currentPanel)
     const layout = saveWorkspaceLayout(get().workspaceScope, { mainView: view, rightPanel })
     set({ mainView: layout.mainView, rightPanel: layout.rightPanel, ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {}) })
   },

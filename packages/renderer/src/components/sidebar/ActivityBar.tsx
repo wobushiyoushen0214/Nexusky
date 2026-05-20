@@ -7,6 +7,8 @@ import { useActivityBarStore } from '../../stores/activity-bar-store'
 import { ACTIVITY_BAR_REGISTRY } from './activity-bar-registry'
 import { ContextMenu } from '../ContextMenu'
 
+const FILE_SCOPED_ITEM_IDS = new Set(['outline', 'properties', 'tags'])
+
 const iconMap: Record<string, React.ReactNode> = {
   files: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>,
   search: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
@@ -24,7 +26,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export function ActivityBar() {
   const { t } = useTranslation()
-  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, rightPanel, sidebarCollapsed, toggleSidebar } = useUIStore()
+  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar } = useUIStore()
   const { vaultPath, refreshFiles } = useVaultStore()
   const openFile = useEditorStore((s) => s.openFile)
   const { visibleIds, toggleVisibility } = useActivityBarStore()
@@ -141,10 +143,12 @@ export function ActivityBar() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8, gap: 4, overflow: 'hidden' }}>
         {visibleItems.map((item) => {
           const isActive = item!.id === activeId
+          const isDisabled = mainView !== 'editor' && FILE_SCOPED_ITEM_IDS.has(item!.id)
           return (
             <button
               key={item!.id}
-              onClick={actionMap[item!.id]}
+              onClick={isDisabled ? undefined : actionMap[item!.id]}
+              disabled={isDisabled}
               title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}`}
               style={{
                 width: 40,
@@ -155,19 +159,20 @@ export function ActivityBar() {
                 borderRadius: 8,
                 border: 'none',
                 background: isActive ? 'var(--bg-hover)' : 'transparent',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                cursor: 'pointer',
+                color: isDisabled ? 'var(--border-default)' : isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                opacity: isDisabled ? 0.55 : 1,
                 position: 'relative',
                 transition: 'color 0.15s, background 0.15s',
               }}
               onMouseEnter={(e) => {
-                if (!isActive) {
+                if (!isActive && !isDisabled) {
                   e.currentTarget.style.background = 'var(--bg-hover)'
                   e.currentTarget.style.color = 'var(--text-secondary)'
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isActive) {
+                if (!isActive && !isDisabled) {
                   e.currentTarget.style.background = 'transparent'
                   e.currentTarget.style.color = 'var(--text-tertiary)'
                 }
