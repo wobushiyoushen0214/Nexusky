@@ -24,5 +24,6 @@ describe('activity bar registry', () => {
     expect(isActivityBarItemAvailable(item('graph'), { mainView: 'graph', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('chat'), { mainView: 'canvas', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('timeline'), { mainView: 'timeline', currentFilePath: null })).toBe(true)
+    expect(isActivityBarItemAvailable(item('reader'), { mainView: 'reader', currentFilePath: null })).toBe(true)
   })
 })

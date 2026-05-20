@@ -1,0 +1,212 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useEditorStore } from '../../stores/editor-store'
+import { useUIStore } from '../../stores/ui-store'
+import { useVaultStore } from '../../stores/vault-store'
+import type { PropertyTableRow } from '@shared/types/ipc'
+
+type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
+
+function propertyText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(String).join(' ')
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return ''
+}
+
+export function getReaderSource(row: PropertyTableRow): ReaderSource | null {
+  const source = propertyText(row.properties.source).toLowerCase()
+  if (source === 'notion' || source === 'readwise' || source === 'pocket') return source
+  const path = row.filePath.replace(/\\/g, '/').toLowerCase()
+  if (path.startsWith('imports/notion/')) return 'notion'
+  if (path.startsWith('imports/readwise/')) return 'readwise'
+  if (path.startsWith('imports/pocket/')) return 'pocket'
+  return null
+}
+
+export function isUnreadReaderRow(row: PropertyTableRow): boolean {
+  const status = propertyText(row.properties.status).toLowerCase()
+  return status === '' || ['unread', 'new', 'todo', 'to-read'].includes(status)
+}
+
+export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource, query: string, unreadOnly: boolean): PropertyTableRow[] {
+  const q = query.trim().toLowerCase()
+  return rows
+    .filter((row) => {
+      const rowSource = getReaderSource(row)
+      if (!rowSource) return false
+      if (source !== 'all' && rowSource !== source) return false
+      if (unreadOnly && !isUnreadReaderRow(row)) return false
+      if (!q) return true
+      const haystack = [
+        row.title,
+        row.filePath,
+        propertyText(row.properties.author),
+        propertyText(row.properties.url),
+        propertyText(row.properties.tags),
+        propertyText(row.properties.status)
+      ].join(' ').toLowerCase()
+      return haystack.includes(q)
+    })
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+}
+
+function sourceLabel(source: ReaderSource | null): string {
+  if (source === 'notion') return 'Notion'
+  if (source === 'readwise') return 'Readwise'
+  if (source === 'pocket') return 'Pocket'
+  return 'Reader'
+}
+
+function sourceColor(source: ReaderSource | null): string {
+  if (source === 'notion') return '#e6b17e'
+  if (source === 'readwise') return '#74c69d'
+  if (source === 'pocket') return '#ff6b6b'
+  return 'var(--accent)'
+}
+
+function formatDate(value: number): string {
+  if (!value) return ''
+  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+export function ReaderInboxView() {
+  const { t } = useTranslation()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const openFile = useEditorStore((s) => s.openFile)
+  const setMainView = useUIStore((s) => s.setMainView)
+  const [rows, setRows] = useState<PropertyTableRow[]>([])
+  const [query, setQuery] = useState('')
+  const [source, setSource] = useState<ReaderSource>('all')
+  const [unreadOnly, setUnreadOnly] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const loadRows = async () => {
+    if (!vaultPath) return
+    setLoading(true)
+    try {
+      const result = await window.api.invoke('db:get-property-rows', { vaultPath })
+      setRows(result)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadRows()
+  }, [vaultPath])
+
+  useEffect(() => {
+    const cleanup = window.api.onVaultChanged(() => {
+      void loadRows()
+    })
+    return () => { cleanup() }
+  }, [vaultPath])
+
+  const readerRows = useMemo(() => rows.filter((row) => getReaderSource(row)), [rows])
+  const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly), [query, rows, source, unreadOnly])
+  const counts = useMemo(() => {
+    const next: Record<ReaderSource, number> = { all: readerRows.length, notion: 0, readwise: 0, pocket: 0 }
+    for (const row of readerRows) {
+      const rowSource = getReaderSource(row)
+      if (rowSource) next[rowSource]++
+    }
+    return next
+  }, [readerRows])
+  const unreadCount = readerRows.filter(isUnreadReaderRow).length
+
+  const openRow = async (row: PropertyTableRow) => {
+    if (!vaultPath) return
+    await openFile(`${vaultPath}/${row.filePath}`)
+    setMainView('editor')
+  }
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
+      <div style={{ flexShrink: 0, padding: '22px 28px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 20, lineHeight: 1.2, fontWeight: 700 }}>{t('reader.title')}</h1>
+            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {t('reader.summary', { count: readerRows.length, unread: unreadCount })}
+            </div>
+          </div>
+          <button
+            onClick={() => loadRows()}
+            disabled={loading}
+            style={{ height: 30, padding: '0 11px', border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: loading ? 'default' : 'pointer' }}
+          >
+            {loading ? t('reader.loading') : t('reader.refresh')}
+          </button>
+        </div>
+
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('reader.searchPlaceholder')}
+            style={{ width: 320, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
+          />
+          <div style={{ display: 'flex', padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+            {(['all', 'notion', 'readwise', 'pocket'] as ReaderSource[]).map((item) => (
+              <button
+                key={item}
+                onClick={() => setSource(item)}
+                style={{ height: 26, padding: '0 10px', border: 'none', borderRadius: 5, background: source === item ? 'var(--accent-muted)' : 'transparent', color: source === item ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
+              >
+                {item === 'all' ? t('reader.allSources') : sourceLabel(item)} · {counts[item]}
+              </button>
+            ))}
+          </div>
+          <label style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
+            {t('reader.unreadOnly')}
+          </label>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px 36px' }}>
+        {filtered.length === 0 ? (
+          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+            {readerRows.length === 0 ? t('reader.emptyImports') : t('reader.emptyFilter')}
+          </div>
+        ) : (
+          <div style={{ maxWidth: 980, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+            {filtered.map((row) => {
+              const rowSource = getReaderSource(row)
+              const color = sourceColor(rowSource)
+              const tags = propertyText(row.properties.tags).split(/\s+/).filter(Boolean).slice(0, 3)
+              const url = propertyText(row.properties.url)
+              const author = propertyText(row.properties.author)
+              const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
+              return (
+                <button
+                  key={row.id}
+                  onClick={() => openRow(row)}
+                  style={{ minHeight: 148, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 10, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)', color: 'var(--text-primary)', textAlign: 'left', padding: 14, cursor: 'pointer' }}
+                >
+                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: color }} />
+                      {sourceLabel(rowSource)}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{formatDate(row.updatedAt)}</span>
+                  </span>
+                  <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 38, fontSize: 14, lineHeight: 1.35, fontWeight: 700 }}>{row.title}</span>
+                  <span style={{ minHeight: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    {author || url || row.filePath}
+                  </span>
+                  <span style={{ marginTop: 'auto', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+                    {status && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{status}</span>}
+                    {tags.map((tag) => (
+                      <span key={tag} style={{ maxWidth: 86, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', fontSize: 10 }}>{tag}</span>
+                    ))}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

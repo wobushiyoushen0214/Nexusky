@@ -33,6 +33,7 @@
     "bases": "属性数据库",
     "canvas": "自由画布",
     "timeline": "时间线",
+    "reader": "阅读收件箱",
     "outline": "文档大纲",
     "properties": "属性",
     "tags": "标签",
@@ -118,6 +119,7 @@
       "bases": { "label": "打开属性数据库", "description": "按属性浏览、筛选和排序笔记" },
       "canvas": { "label": "打开自由画布", "description": "在可拖拽画布中整理笔记卡片" },
       "timeline": { "label": "打开时间线视图", "description": "按创建或更新时间回看笔记活动" },
+      "readerInbox": { "label": "打开阅读收件箱", "description": "集中浏览 Notion、Readwise 和 Pocket 导入内容" },
       "graphCurrent": { "label": "为当前笔记生成 AI 图谱", "description": "基于当前笔记推断概念关系" },
       "inferLinks": { "label": "推断全库语义链接", "description": "补齐隐含关联并刷新知识图谱" },
       "memoryIndex": { "label": "生成 AI 记忆索引", "description": "为长期知识关联生成笔记级记忆" },
@@ -241,6 +243,18 @@
     "empty": "没有匹配的时间线记录",
     "root": "根目录",
     "unknownDate": "未知日期"
+  },
+  "reader": {
+    "title": "阅读收件箱",
+    "summary": "共 {{count}} 条阅读材料，{{unread}} 条待读",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "searchPlaceholder": "搜索标题、作者、来源、标签或状态...",
+    "allSources": "全部",
+    "unreadOnly": "只看待读",
+    "unread": "unread",
+    "emptyImports": "还没有导入 Notion、Readwise 或 Pocket 内容",
+    "emptyFilter": "没有匹配的阅读条目"
   },
   "common": {
     "close": "关闭",

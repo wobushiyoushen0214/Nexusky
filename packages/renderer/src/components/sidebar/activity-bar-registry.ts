@@ -9,7 +9,7 @@ export interface ActivityBarItemDef {
 }
 
 export interface ActivityBarAvailabilityContext {
-  mainView: 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline'
+  mainView: 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader'
   currentFilePath: string | null
 }
 
@@ -21,11 +21,12 @@ export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
   { id: 'bases', labelKey: 'activityBar.bases', defaultVisible: true, defaultOrder: 4 },
   { id: 'canvas', labelKey: 'activityBar.canvas', shortcut: 'Ctrl+Shift+C', defaultVisible: true, defaultOrder: 5 },
   { id: 'timeline', labelKey: 'activityBar.timeline', defaultVisible: true, defaultOrder: 6 },
-  { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: true, defaultOrder: 7, requiresCurrentFile: true },
-  { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: true, defaultOrder: 8, requiresCurrentFile: true },
-  { id: 'calendar', labelKey: 'activityBar.calendar', defaultVisible: false, defaultOrder: 9 },
-  { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: false, defaultOrder: 10 },
-  { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 11 },
+  { id: 'reader', labelKey: 'activityBar.reader', defaultVisible: true, defaultOrder: 7 },
+  { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: true, defaultOrder: 8, requiresCurrentFile: true },
+  { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: true, defaultOrder: 9, requiresCurrentFile: true },
+  { id: 'calendar', labelKey: 'activityBar.calendar', defaultVisible: false, defaultOrder: 10 },
+  { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: false, defaultOrder: 11 },
+  { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 12 },
 ]
 
 export function isActivityBarItemAvailable(item: ActivityBarItemDef, context: ActivityBarAvailabilityContext): boolean {
