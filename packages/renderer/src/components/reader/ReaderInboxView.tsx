@@ -137,6 +137,17 @@ export function extractReaderDigestExcerpts(content: string, maxItems = 3): stri
   return excerpts
 }
 
+function digestLinkPart(value: string): string {
+  return value.replace(/[\[\]\r\n|]/g, '').trim()
+}
+
+export function getReaderDigestLink(row: PropertyTableRow): string {
+  const target = digestLinkPart(row.filePath.replace(/\\/g, '/').replace(/\.md$/i, ''))
+  const alias = digestLinkPart(row.title)
+  if (!target) return alias ? `[[${alias}]]` : '[[Untitled]]'
+  return alias ? `[[${target}|${alias}]]` : `[[${target}]]`
+}
+
 export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new Date(), excerptsByPath: Record<string, string[]> = {}): string {
   const date = now.toISOString().slice(0, 10)
   const readerRows = rows.filter((row) => getReaderSource(row))
@@ -165,7 +176,7 @@ export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new D
     const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? 'unread' : '')
     const url = getReaderSourceUrl(row)
     const meta = [source, author, status].filter(Boolean).join(' · ')
-    lines.push(`- [[${row.title}]]${meta ? ` - ${meta}` : ''}`)
+    lines.push(`- ${getReaderDigestLink(row)}${meta ? ` - ${meta}` : ''}`)
     lines.push(`  - Path: ${row.filePath}`)
     if (url) lines.push(`  - Source: ${url}`)
     const excerpts = excerptsByPath[row.filePath] || []

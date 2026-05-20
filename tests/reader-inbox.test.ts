@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getReaderDigestLink, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -109,11 +109,17 @@ describe('reader inbox helpers', () => {
     expect(digest).toContain('items: 1')
     expect(digest).toContain('source_paths:\n  - Imports/Pocket/Later.md')
     expect(digest).toContain('# Reading Digest 2026-05-20')
-    expect(digest).toContain('- [[Later]] - Pocket · Ada · unread')
+    expect(digest).toContain('- [[Imports/Pocket/Later|Later]] - Pocket · Ada · unread')
     expect(digest).toContain('  - Path: Imports/Pocket/Later.md')
     expect(digest).toContain('  - Source: https://example.com')
     expect(digest).toContain('  - Excerpt: A compact takeaway from the saved article.')
     expect(digest).not.toContain('Regular')
+  })
+
+  it('uses exact file paths for digest wikilinks to avoid duplicate title ambiguity', () => {
+    expect(getReaderDigestLink(row('Imports/Pocket/Same Title.md', { source: 'pocket' }))).toBe('[[Imports/Pocket/Same Title|Same Title]]')
+    expect(getReaderDigestLink(row('Imports/Readwise/Same Title.md', { source: 'readwise' }))).toBe('[[Imports/Readwise/Same Title|Same Title]]')
+    expect(getReaderDigestLink(row('Imports/Pocket/Bad|Title.md', { source: 'pocket' }))).toBe('[[Imports/Pocket/BadTitle|BadTitle]]')
   })
 
   it('extracts reader digest excerpts from highlights, notes, and body fallback', () => {
