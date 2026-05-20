@@ -59,6 +59,8 @@ interface CanvasViewportBox {
 }
 
 type CanvasMode = 'space' | 'properties' | 'time'
+type RoutePoint = { x: number; y: number }
+type CanvasEdgeRoute = { key: string; points: RoutePoint[] }
 
 const CARD_WIDTH = 210
 const CARD_HEIGHT = 112
@@ -66,6 +68,8 @@ const BASE_CANVAS_WIDTH = 1200
 const BASE_CANVAS_HEIGHT = 760
 const CANVAS_PADDING = 760
 const CARD_GAP = 32
+const GROUP_GAP_X = 320
+const GROUP_GAP_Y = 170
 
 function getCanvasStorageKey(vaultPath: string): string {
   return `nexusky-canvas-layout:${encodeURIComponent(vaultPath)}`
@@ -151,6 +155,40 @@ function getPrimaryTag(row: PropertyTableRow): string {
   return getTextValues(row.properties.tags)[0] || 'untagged'
 }
 
+function getArchiveGroup(row: PropertyTableRow): string {
+  const source = valueToText(row.properties.source).toLowerCase()
+  if (source) return `source:${source}`
+  const status = valueToText(row.properties.status).toLowerCase()
+  if (status && ['unread', 'to-read', 'todo', 'archived', 'read'].includes(status)) return `status:${status}`
+  return `tag:${getPrimaryTag(row)}`
+}
+
+export function buildArchivePositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
+  const groups = new Map<string, PropertyTableRow[]>()
+  for (const row of rows) {
+    const key = getArchiveGroup(row)
+    groups.set(key, [...(groups.get(key) || []), row])
+  }
+  const positions: Record<string, CanvasPosition> = {}
+  Array.from(groups.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .forEach(([, items], groupIndex) => {
+      const groupColumn = groupIndex % 3
+      const groupRow = Math.floor(groupIndex / 3)
+      const originX = 40 + groupColumn * GROUP_GAP_X
+      const originY = 40 + groupRow * 420
+      items.forEach((row, index) => {
+        const column = index % 2
+        const itemRow = Math.floor(index / 2)
+        positions[row.id] = {
+          x: originX + column * GROUP_GAP_X * 0.72,
+          y: originY + itemRow * GROUP_GAP_Y
+        }
+      })
+    })
+  return positions
+}
+
 function buildTimePositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
   const dayRows = new Map<string, PropertyTableRow[]>()
   const sorted = [...rows].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
@@ -165,6 +203,154 @@ function buildTimePositions(rows: PropertyTableRow[]): Record<string, CanvasPosi
     })
   })
   return positions
+}
+
+function centerOf(position: CanvasPosition): RoutePoint {
+  return {
+    x: position.x + CARD_WIDTH / 2,
+    y: position.y + CARD_HEIGHT / 2
+  }
+}
+
+function cardRect(position: CanvasPosition, padding = 14) {
+  return {
+    left: position.x - padding,
+    right: position.x + CARD_WIDTH + padding,
+    top: position.y - padding,
+    bottom: position.y + CARD_HEIGHT + padding
+  }
+}
+
+function cardPort(from: CanvasPosition, to: CanvasPosition): RoutePoint {
+  const fromCenter = centerOf(from)
+  const toCenter = centerOf(to)
+  const dx = toCenter.x - fromCenter.x
+  const dy = toCenter.y - fromCenter.y
+  const gap = 18
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return { x: dx >= 0 ? from.x + CARD_WIDTH + gap : from.x - gap, y: fromCenter.y }
+  }
+  return { x: fromCenter.x, y: dy >= 0 ? from.y + CARD_HEIGHT + gap : from.y - gap }
+}
+
+function pointInRect(point: RoutePoint, rect: ReturnType<typeof cardRect>): boolean {
+  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom
+}
+
+function segmentCrossesRect(a: RoutePoint, b: RoutePoint, rect: ReturnType<typeof cardRect>): boolean {
+  if (pointInRect(a, rect) || pointInRect(b, rect)) return true
+  if (a.y === b.y) {
+    const minX = Math.min(a.x, b.x)
+    const maxX = Math.max(a.x, b.x)
+    return a.y >= rect.top && a.y <= rect.bottom && maxX >= rect.left && minX <= rect.right
+  }
+  if (a.x === b.x) {
+    const minY = Math.min(a.y, b.y)
+    const maxY = Math.max(a.y, b.y)
+    return a.x >= rect.left && a.x <= rect.right && maxY >= rect.top && minY <= rect.bottom
+  }
+  return false
+}
+
+function routeCrossesCards(points: RoutePoint[], blockers: ReturnType<typeof cardRect>[]): boolean {
+  for (let i = 0; i < points.length - 1; i++) {
+    if (blockers.some((rect) => segmentCrossesRect(points[i], points[i + 1], rect))) return true
+  }
+  return false
+}
+
+export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition, blockers: ReturnType<typeof cardRect>[]): RoutePoint[] {
+  const start = cardPort(source, target)
+  const end = cardPort(target, source)
+  const sourceCenter = centerOf(source)
+  const targetCenter = centerOf(target)
+  const xs = new Set<number>([start.x, end.x, sourceCenter.x, targetCenter.x])
+  const ys = new Set<number>([start.y, end.y, sourceCenter.y, targetCenter.y])
+  for (const rect of blockers) {
+    xs.add(rect.left)
+    xs.add(rect.right)
+    ys.add(rect.top)
+    ys.add(rect.bottom)
+  }
+  const xValues = Array.from(xs).sort((a, b) => a - b)
+  const yValues = Array.from(ys).sort((a, b) => a - b)
+  const nodes = new Map<string, RoutePoint>()
+  for (const x of xValues) {
+    for (const y of yValues) {
+      const point = { x, y }
+      if (!blockers.some((rect) => pointInRect(point, rect))) nodes.set(`${x},${y}`, point)
+    }
+  }
+  const startKey = `${start.x},${start.y}`
+  const endKey = `${end.x},${end.y}`
+  nodes.set(startKey, start)
+  nodes.set(endKey, end)
+  const nodeKeys = Array.from(nodes.keys())
+  const queue = [startKey]
+  const visited = new Set<string>([startKey])
+  const previous = new Map<string, string>()
+  const neighbors = (key: string): string[] => {
+    const point = nodes.get(key)
+    if (!point) return []
+    const candidates = nodeKeys.map((candidateKey) => nodes.get(candidateKey)!).filter((candidate) => candidate.x === point.x || candidate.y === point.y)
+    const next: string[] = []
+    for (const direction of [-1, 1]) {
+      const horizontal = candidates
+        .filter((candidate) => candidate.y === point.y && (candidate.x - point.x) * direction > 0)
+        .sort((a, b) => Math.abs(a.x - point.x) - Math.abs(b.x - point.x))[0]
+      const vertical = candidates
+        .filter((candidate) => candidate.x === point.x && (candidate.y - point.y) * direction > 0)
+        .sort((a, b) => Math.abs(a.y - point.y) - Math.abs(b.y - point.y))[0]
+      for (const candidate of [horizontal, vertical]) {
+        if (candidate && !routeCrossesCards([point, candidate], blockers)) next.push(`${candidate.x},${candidate.y}`)
+      }
+    }
+    return next
+  }
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (current === endKey) break
+    for (const next of neighbors(current)) {
+      if (visited.has(next)) continue
+      visited.add(next)
+      previous.set(next, current)
+      queue.push(next)
+    }
+  }
+  if (visited.has(endKey)) {
+    const route: RoutePoint[] = []
+    let current = endKey
+    while (current) {
+      const point = nodes.get(current)
+      if (point) route.unshift(point)
+      const prev = previous.get(current)
+      if (!prev) break
+      current = prev
+    }
+    const compact = compactRoute(route)
+    if (!routeCrossesCards(compact, blockers)) return compact
+  }
+  const fallbackCandidates = [
+    [start, { x: start.x, y: Math.min(source.y, target.y) - 42 }, { x: end.x, y: Math.min(source.y, target.y) - 42 }, end],
+    [start, { x: start.x, y: Math.max(source.y + CARD_HEIGHT, target.y + CARD_HEIGHT) + 42 }, { x: end.x, y: Math.max(source.y + CARD_HEIGHT, target.y + CARD_HEIGHT) + 42 }, end],
+    [start, { x: Math.min(source.x, target.x) - 42, y: start.y }, { x: Math.min(source.x, target.x) - 42, y: end.y }, end],
+    [start, { x: Math.max(source.x + CARD_WIDTH, target.x + CARD_WIDTH) + 42, y: start.y }, { x: Math.max(source.x + CARD_WIDTH, target.x + CARD_WIDTH) + 42, y: end.y }, end]
+  ]
+  return compactRoute(fallbackCandidates.find((route) => !routeCrossesCards(route, blockers)) || fallbackCandidates[0])
+}
+
+function compactRoute(points: RoutePoint[]): RoutePoint[] {
+  const deduped = points.filter((point, index) => index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y)
+  return deduped.filter((point, index) => {
+    if (index === 0 || index === deduped.length - 1) return true
+    const prev = deduped[index - 1]
+    const next = deduped[index + 1]
+    return !((prev.x === point.x && point.x === next.x) || (prev.y === point.y && point.y === next.y))
+  })
+}
+
+function routePath(points: RoutePoint[]): string {
+  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
 }
 
 function buildPropertyPositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
@@ -307,9 +493,10 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
       setRows(result)
       setGraph(graphData)
       const saved = safeGetJSON<Record<string, CanvasPosition>>(getCanvasStorageKey(vaultPath), {})
+      const archived = buildArchivePositions(result)
       const merged: Record<string, CanvasPosition> = {}
       result.forEach((row, index) => {
-        merged[row.id] = row.filePath === preferred?.filePath ? preferred.position : saved[row.id] || defaultPosition(index)
+        merged[row.id] = row.filePath === preferred?.filePath ? preferred.position : saved[row.id] || archived[row.id] || defaultPosition(index)
       })
       if (preferred) safeSetJSON(getCanvasStorageKey(vaultPath), merged)
       setPositions(merged)
@@ -421,8 +608,12 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     }
   }, [vaultPath])
 
-  const canvasEdges = useMemo(() => {
+  const canvasEdges = useMemo<CanvasEdgeRoute[]>(() => {
     if (!graph) return []
+    const blockers = filteredRows.map((row, index) => ({
+      id: row.id,
+      rect: cardRect(modePositions[row.id] || defaultPosition(index))
+    }))
     return graph.edges
       .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
       .map((edge) => {
@@ -431,20 +622,17 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         if (!source || !target) return null
         return {
           key: `${edge.source}->${edge.target}`,
-          x1: source.x - canvasMetrics.minX + CARD_WIDTH / 2,
-          y1: source.y - canvasMetrics.minY + CARD_HEIGHT / 2,
-          x2: target.x - canvasMetrics.minX + CARD_WIDTH / 2,
-          y2: target.y - canvasMetrics.minY + CARD_HEIGHT / 2
+          points: routeBetweenCards(source, target, blockers.filter((blocker) => blocker.id !== edge.source && blocker.id !== edge.target).map((blocker) => blocker.rect)).map((point) => ({
+            x: point.x - canvasMetrics.minX,
+            y: point.y - canvasMetrics.minY
+          }))
         }
       })
-      .filter((edge): edge is { key: string; x1: number; y1: number; x2: number; y2: number } => edge !== null)
-  }, [canvasMetrics.minX, canvasMetrics.minY, graph, modePositions, visibleIds])
+      .filter((edge): edge is CanvasEdgeRoute => edge !== null)
+  }, [canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph, modePositions, visibleIds])
 
   const resetLayout = () => {
-    const next: Record<string, CanvasPosition> = {}
-    rows.forEach((row, index) => {
-      next[row.id] = defaultPosition(index)
-    })
+    const next = buildArchivePositions(rows)
     setPositions(next)
     if (vaultPath) safeSetJSON(getCanvasStorageKey(vaultPath), next)
     requestAnimationFrame(() => {
@@ -617,7 +805,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           ) : (
             <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
               <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 2 }}>
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 0 }}>
                 <defs>
                   <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
                     <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
@@ -625,9 +813,9 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                 </defs>
                 {canvasEdges.map((edge) => (
                   <g key={edge.key}>
-                    <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="var(--editor-bg)" strokeWidth="5" strokeOpacity="0.82" />
-                    <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="color-mix(in srgb, var(--text-tertiary) 58%, transparent)" strokeWidth="1.25" strokeLinecap="round" markerEnd="url(#canvas-arrow)" />
-                    <line className="knowledge-flow-line" x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="color-mix(in srgb, var(--text-secondary) 75%, transparent)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 16" />
+                    <path d={routePath(edge.points)} fill="none" stroke="var(--editor-bg)" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.82" />
+                    <path d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-tertiary) 58%, transparent)" strokeWidth="1.25" strokeLinejoin="round" strokeLinecap="round" markerEnd="url(#canvas-arrow)" />
+                    <path className="knowledge-flow-line" d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-secondary) 75%, transparent)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="3 16" />
                   </g>
                 ))}
               </svg>

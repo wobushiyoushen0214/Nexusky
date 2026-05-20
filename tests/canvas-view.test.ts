@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { findAvailablePosition, getCanvasInitialScrollKey, getViewportCenteredCardOrigin } from '../packages/renderer/src/components/canvas/CanvasView'
+import { buildArchivePositions, findAvailablePosition, getCanvasInitialScrollKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
+
+function row(id: string, properties: PropertyTableRow['properties']): PropertyTableRow {
+  return {
+    id,
+    title: id,
+    filePath: `${id}.md`,
+    createdAt: 1,
+    updatedAt: 1,
+    properties
+  }
+}
 
 describe('canvas card placement', () => {
   it('keys initial scroll by vault only', () => {
@@ -42,5 +54,27 @@ describe('canvas card placement', () => {
 
   it('falls back to the default grid when the viewport is unavailable', () => {
     expect(getViewportCenteredCardOrigin(null, { minX: -760, minY: -760 }, 1, 5)).toEqual({ x: 290, y: 210 })
+  })
+
+  it('archives initial card positions by metadata groups', () => {
+    const positions = buildArchivePositions([
+      row('readwise-a', { source: 'readwise' }),
+      row('readwise-b', { source: 'readwise' }),
+      row('project', { tags: ['project'] })
+    ])
+
+    expect(Math.abs(positions['readwise-a'].x - positions['readwise-b'].x)).toBeLessThan(260)
+    expect(Math.abs(positions.project.x - positions['readwise-a'].x)).toBeGreaterThanOrEqual(300)
+  })
+
+  it('routes links around blocking cards with elbow paths', () => {
+    const route = routeBetweenCards(
+      { x: 0, y: 0 },
+      { x: 520, y: 0 },
+      [{ left: 240, right: 450, top: -14, bottom: 126 }]
+    )
+
+    expect(route.length).toBeGreaterThan(2)
+    expect(route.some((point) => point.y !== 56)).toBe(true)
   })
 })
