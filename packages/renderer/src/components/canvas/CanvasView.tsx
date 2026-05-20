@@ -4,7 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
-import { safeGetJSON, safeSetJSON } from '../../utils/storage'
+import { safeGetJSON, safeRemove, safeSetJSON } from '../../utils/storage'
 import './KnowledgeSpace.css'
 import type { GraphData, PropertyTableRow } from '@shared/types/ipc'
 
@@ -62,6 +62,11 @@ type CanvasMode = 'space' | 'properties' | 'time'
 type RoutePoint = { x: number; y: number }
 type CanvasEdgeRoute = { key: string; points: RoutePoint[] }
 
+interface PendingCanvasFocus {
+  filePath: string
+  mode?: CanvasMode
+}
+
 const CARD_WIDTH = 210
 const CARD_HEIGHT = 112
 const BASE_CANVAS_WIDTH = 1200
@@ -73,6 +78,7 @@ const ARCHIVE_CARD_GAP_Y = 42
 const ARCHIVE_CLUSTER_GAP_X = 180
 const ARCHIVE_CLUSTER_GAP_Y = 150
 const ROUTE_CLEARANCE = 24
+const PENDING_CANVAS_FOCUS_KEY = 'nexusky-pending-canvas-focus'
 
 function getCanvasStorageKey(vaultPath: string): string {
   return `nexusky-canvas-layout:${encodeURIComponent(vaultPath)}`
@@ -80,6 +86,13 @@ function getCanvasStorageKey(vaultPath: string): string {
 
 function getCanvasViewportStorageKey(vaultPath: string): string {
   return `nexusky-canvas-viewport:${encodeURIComponent(vaultPath)}`
+}
+
+function getPendingCanvasFocus(): PendingCanvasFocus | null {
+  const pending = safeGetJSON<Partial<PendingCanvasFocus> | null>(PENDING_CANVAS_FOCUS_KEY, null)
+  if (!pending || typeof pending.filePath !== 'string' || !pending.filePath.trim()) return null
+  const mode = pending.mode === 'space' || pending.mode === 'properties' || pending.mode === 'time' ? pending.mode : undefined
+  return { filePath: pending.filePath, mode }
 }
 
 export function getCanvasInitialScrollKey(vaultPath: string | null | undefined): string {
@@ -511,6 +524,21 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         merged[row.id] = row.filePath === preferred?.filePath ? preferred.position : saved[row.id] || archived[row.id] || defaultPosition(index)
       })
       if (preferred) safeSetJSON(getCanvasStorageKey(vaultPath), merged)
+      const pendingFocus = getPendingCanvasFocus()
+      const focusRow = pendingFocus ? result.find((row) => row.filePath === pendingFocus.filePath) : null
+      if (pendingFocus) safeRemove(PENDING_CANVAS_FOCUS_KEY)
+      if (focusRow) {
+        const position = merged[focusRow.id]
+        if (position) {
+          pendingScrollRef.current = {
+            focusX: position.x + CARD_WIDTH / 2,
+            focusY: position.y + CARD_HEIGHT / 2
+          }
+          initialScrollKeyRef.current = getCanvasInitialScrollKey(vaultPath)
+        }
+        if (pendingFocus?.mode) setCanvasMode(pendingFocus.mode)
+        if (query.trim()) setQuery('')
+      }
       setPositions(merged)
     } finally {
       setLoading(false)

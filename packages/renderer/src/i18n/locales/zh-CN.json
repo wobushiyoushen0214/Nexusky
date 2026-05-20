@@ -302,6 +302,7 @@
     "detailTags": "标签",
     "openNextUnread": "打开下一条待读",
     "openItem": "打开条目",
+    "openInSpace": "在知识空间定位",
     "markRead": "标记已读",
     "markUnread": "标记待读",
     "markVisibleRead": "当前结果标记已读",

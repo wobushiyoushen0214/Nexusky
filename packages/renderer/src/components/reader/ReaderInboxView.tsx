@@ -20,6 +20,7 @@ interface ReaderViewSettings {
 }
 
 const READER_VIEW_SETTINGS_KEY = 'nexusky-reader-view-settings'
+const PENDING_CANVAS_FOCUS_KEY = 'nexusky-pending-canvas-focus'
 const READER_SOURCES: ReaderSource[] = ['all', 'notion', 'readwise', 'pocket']
 const READER_SORTS: ReaderSort[] = ['updated', 'oldest', 'title', 'source']
 const READER_TRIAGE_STAGES: ReaderTriageStage[] = ['next', 'connect', 'later', 'archived']
@@ -495,6 +496,11 @@ export function ReaderInboxView() {
     setMainView('editor')
   }
 
+  const openRowInKnowledgeSpace = (row: PropertyTableRow) => {
+    safeSet(PENDING_CANVAS_FOCUS_KEY, JSON.stringify({ filePath: row.filePath, mode: 'space' }))
+    setMainView('canvas')
+  }
+
   const importSource = async (target: Exclude<ReaderSource, 'all'>) => {
     if (!vaultPath) return
     setImporting(target)
@@ -806,6 +812,7 @@ export function ReaderInboxView() {
                 noteDraft={noteDrafts[selectedRow.id] || ''}
                 savingNote={savingNoteId === selectedRow.id}
                 onOpen={() => void openRow(selectedRow)}
+                onOpenInKnowledgeSpace={() => openRowInKnowledgeSpace(selectedRow)}
                 onOpenSource={() => void openSource(selectedRow)}
                 onToggleNote={() => setActiveNoteId(activeNoteId === selectedRow.id ? null : selectedRow.id)}
                 onNoteChange={(value) => setNoteDrafts((current) => ({ ...current, [selectedRow.id]: value }))}
@@ -863,6 +870,10 @@ function DigestIcon() {
   return <IconSvg><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5" /><path d="M10 12h6" /><path d="M10 16h6" /></IconSvg>
 }
 
+function SpaceIcon() {
+  return <IconSvg><rect x="4" y="4" width="6" height="6" rx="1.5" /><rect x="14" y="4" width="6" height="6" rx="1.5" /><rect x="9" y="14" width="6" height="6" rx="1.5" /><path d="M10 7h4" /><path d="M12 10v4" /></IconSvg>
+}
+
 function NoteIcon() {
   return <IconSvg><path d="M5 4h14v16H5z" /><path d="M8 8h8" /><path d="M8 12h5" /><path d="M16 17h3" /><path d="M17.5 15.5v3" /></IconSvg>
 }
@@ -890,6 +901,7 @@ function ReaderBrief({
   noteDraft,
   savingNote,
   onOpen,
+  onOpenInKnowledgeSpace,
   onOpenSource,
   onToggleNote,
   onNoteChange,
@@ -904,6 +916,7 @@ function ReaderBrief({
   noteDraft: string
   savingNote: boolean
   onOpen: () => void
+  onOpenInKnowledgeSpace: () => void
   onOpenSource: () => void
   onToggleNote: () => void
   onNoteChange: (value: string) => void
@@ -1016,6 +1029,9 @@ function ReaderBrief({
           {t('reader.openItem')}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button onClick={onOpenInKnowledgeSpace} title={t('reader.openInSpace')} aria-label={t('reader.openInSpace')} style={smallIconButtonBaseStyle}>
+            <SpaceIcon />
+          </button>
           <button onClick={onToggleNote} title={t('reader.addNote')} aria-label={t('reader.addNote')} style={{ ...smallIconButtonBaseStyle, background: noteActive ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: noteActive ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
             <NoteIcon />
           </button>
