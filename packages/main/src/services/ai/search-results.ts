@@ -164,6 +164,13 @@ export interface AiNoteMemoryResult {
   updatedAt: number
 }
 
+export interface AiMissingMemoryNoteResult {
+  title: string
+  filePath: string
+  updatedAt: number
+  reason: 'missing' | 'stale'
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -485,6 +492,16 @@ export function formatNoteMemoriesToolResult(memories: AiNoteMemoryResult[]): st
     `Topics: ${memory.topics.length > 0 ? memory.topics.join(', ') : '(none)'}`,
     `Summary: ${memory.summary || '(none)'}`,
     `Updated: ${formatTimestamp(memory.updatedAt)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatMissingMemoryNotesToolResult(notes: AiMissingMemoryNoteResult[]): string {
+  if (notes.length === 0) return 'No missing or stale note memories found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Reason: ${note.reason}`,
+    `Updated: ${formatTimestamp(note.updatedAt)}`
   ].join('\n')).join('\n\n')
 }
 

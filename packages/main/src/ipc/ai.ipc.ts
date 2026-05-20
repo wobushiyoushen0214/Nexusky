@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1024,6 +1024,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_notes_missing_memory',
+        description: '列出缺少笔记记忆或记忆已过期的笔记，适合诊断 memory 关系结果不完整的原因。',
+        parameters: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', description: 'missing、stale 或 all，默认 all' },
+            query: { type: 'string', description: '按标题或路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note',
         description: '读取指定笔记的完整内容。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
@@ -1558,6 +1573,37 @@ graph TD
             title: memory.title,
             filePath: memory.filePath,
             chunk: memory.summary.slice(0, 100),
+            score: 1
+          }))
+        }
+      }
+      case 'list_notes_missing_memory': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const status = getStringArg(args, 'status').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getAllNotes(vaultPath)
+          .map((note) => {
+            const memory = readMemory(vaultPath, note.id)
+            const reason = memory ? (memory.contentHash === note.contentHash ? null : 'stale') : 'missing'
+            if (!reason) return null
+            return {
+              title: note.title,
+              filePath: note.filePath,
+              updatedAt: note.updatedAt,
+              reason
+            }
+          })
+          .filter((note): note is { title: string; filePath: string; updatedAt: number; reason: 'missing' | 'stale' } => note !== null)
+          .filter((note) => status === 'missing' || status === 'stale' ? note.reason === status : true)
+          .filter((note) => !query || [note.title, note.filePath].some((value) => value.toLowerCase().includes(query)))
+          .sort((a, b) => b.updatedAt - a.updatedAt || a.filePath.localeCompare(b.filePath))
+          .slice(0, limit)
+        return {
+          content: formatMissingMemoryNotesToolResult(notes),
+          sources: notes.map((note) => ({
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Memory ${note.reason}`,
             score: 1
           }))
         }

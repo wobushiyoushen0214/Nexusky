@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -440,6 +440,21 @@ describe('formatNoteMemoriesToolResult', () => {
 
   it('marks empty note memory results explicitly', () => {
     expect(formatNoteMemoriesToolResult([])).toBe('No note memories found.')
+  })
+})
+
+describe('formatMissingMemoryNotesToolResult', () => {
+  it('formats missing and stale note memories with paths and reasons', () => {
+    const output = formatMissingMemoryNotesToolResult([
+      { title: 'Draft', filePath: 'Inbox/Draft.md', reason: 'missing', updatedAt: 1700000000000 },
+      { title: 'Changed', filePath: 'Notes/Changed.md', reason: 'stale', updatedAt: 1700000100000 }
+    ])
+
+    expect(output).toBe('1. **Draft**\nPath: Inbox/Draft.md\nReason: missing\nUpdated: 2023-11-14T22:13:20.000Z\n\n2. **Changed**\nPath: Notes/Changed.md\nReason: stale\nUpdated: 2023-11-14T22:15:00.000Z')
+  })
+
+  it('marks complete memory coverage explicitly', () => {
+    expect(formatMissingMemoryNotesToolResult([])).toBe('No missing or stale note memories found.')
   })
 })
 
