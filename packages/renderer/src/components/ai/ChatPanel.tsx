@@ -649,14 +649,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     updatePlanMsg()
 
     if (result.success && result.files.length > 0) {
-      useEditorStore.getState().openFile(result.files[0])
-      useVaultStore.getState().refreshFiles()
+      await useVaultStore.getState().refreshFiles()
+      await useEditorStore.getState().openFile(result.files[0])
       const dirName = targetDir.split(/[\\/]/).pop()
       const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件。` }
       setMessages((msgs) => [...msgs, msg])
       appendToDb(msg)
     } else if (result.files.length > 0) {
-      useVaultStore.getState().refreshFiles()
+      await useVaultStore.getState().refreshFiles()
       appendAssistantMessage(`已停止，生成了 ${result.files.length} 个文件。`)
     } else {
       appendAssistantMessage(`生成失败: ${result.error || '未知错误'}`)
@@ -1048,7 +1048,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             const title = titleMatch ? titleMatch[1].trim().replace(/[\\/:*?"<>|]/g, '') : '新笔记'
             const newPath = await getAvailableNotePath(vaultPath, title)
             await window.api.invoke('file:create', { path: newPath, content: result.content, vaultPath })
-            useEditorStore.getState().openFile(newPath)
+            await useVaultStore.getState().refreshFiles()
+            await useEditorStore.getState().openFile(newPath)
             const createdTitle = newPath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || title
             const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${createdTitle}」并打开。` }
             setMessages((msgs) => [...msgs, msg])
@@ -1108,6 +1109,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     await window.api.invoke('file:write', { path: editResult.filePath, content: editResult.content, vaultPath: vaultPath || undefined })
+    await useVaultStore.getState().refreshFiles()
     if (tabIndex >= 0) {
       const tabs = [...store.tabs]
       tabs[tabIndex] = { ...tabs[tabIndex], content: editResult.content, isDirty: false }

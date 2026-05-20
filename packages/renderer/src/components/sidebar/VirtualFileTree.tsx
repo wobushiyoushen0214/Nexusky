@@ -39,23 +39,66 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
   const [lazyChildren, setLazyChildren] = useState<Map<string, FileEntry[]>>(new Map())
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
   const lastClickedRef = useRef<number>(-1)
+  const entriesRef = useRef(entries)
+  const expandedPathsRef = useRef(expandedPaths)
+  const lazyChildrenRef = useRef(lazyChildren)
+
+  useEffect(() => { entriesRef.current = entries }, [entries])
+  useEffect(() => { expandedPathsRef.current = expandedPaths }, [expandedPaths])
+  useEffect(() => { lazyChildrenRef.current = lazyChildren }, [lazyChildren])
+
+  const reloadExpandedChildren = useCallback(async () => {
+    const paths = new Set<string>()
+    const expanded = expandedPathsRef.current
+    const lazy = lazyChildrenRef.current
+    const collect = (items: FileEntry[]) => {
+      for (const item of items) {
+        if (!item.isDirectory || !expanded.has(item.path)) continue
+        paths.add(item.path)
+        collect(lazy.get(item.path) || item.children || [])
+      }
+    }
+    collect(entriesRef.current)
+    if (paths.size === 0) return
+
+    const updates = await Promise.all(Array.from(paths).map(async (path) => {
+      try {
+        const children = await window.api.invoke('file:list-shallow', { dirPath: path })
+        return [path, children] as const
+      } catch {
+        return null
+      }
+    }))
+
+    setLazyChildren((prev) => {
+      const next = new Map(prev)
+      for (const update of updates) {
+        if (update) next.set(update[0], update[1])
+      }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     if (defaultExpanded) {
-      const set = new Set<string>()
+      const rootDirs: string[] = []
       function collectDirs(items: FileEntry[]) {
         for (const item of items) {
           if (item.isDirectory) {
-            set.add(item.path)
+            rootDirs.push(item.path)
             if (item.children && item.children.length > 0) collectDirs(item.children)
           }
         }
       }
       collectDirs(entries)
-      setExpandedPaths(set)
+      setExpandedPaths((prev) => {
+        const next = new Set(prev)
+        for (const path of rootDirs) next.add(path)
+        return next
+      })
 
       const loadExpanded = async () => {
-        const newLazy = new Map<string, FileEntry[]>()
+        const newLazy = new Map(lazyChildrenRef.current)
         for (const item of entries) {
           if (item.isDirectory && (!item.children || item.children.length === 0)) {
             try {
@@ -72,6 +115,13 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
       setLazyChildren(new Map())
     }
   }, [defaultExpanded, entries])
+
+  useEffect(() => {
+    const cleanup = window.api.onVaultChanged(() => {
+      void reloadExpandedChildren()
+    })
+    return () => { cleanup() }
+  }, [reloadExpandedChildren])
 
   const flatNodes = useMemo(() => {
     const nodes: FlatNode[] = []
