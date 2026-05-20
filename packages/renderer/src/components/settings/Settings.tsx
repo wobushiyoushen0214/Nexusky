@@ -551,6 +551,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
   const [onedriveConfig, setOnedriveConfig] = useState({ clientId: '', folder: '/Nexusky' })
+  const [webdavConfig, setWebdavConfig] = useState({ url: '', username: '', password: '', folder: '/Nexusky' })
   const [icloudPath, setIcloudPath] = useState<string | null>(null)
 
   useEffect(() => {
@@ -559,6 +560,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
     window.api.invoke('cloud:get-onedrive-config', undefined).then((c) => {
       if (c) setOnedriveConfig({ clientId: c.clientId, folder: c.folder })
     })
+    window.api.invoke('cloud:get-webdav-config', undefined).then((c) => setWebdavConfig({ url: c.url, username: c.username || '', password: c.password || '', folder: c.folder }))
     window.api.invoke('cloud:get-icloud-path', undefined).then(setIcloudPath)
   }, [])
 
@@ -632,6 +634,10 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           <button onClick={() => switchProvider('onedrive')} style={providerBtnStyle(activeProvider === 'onedrive')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
             OneDrive
+          </button>
+          <button onClick={() => switchProvider('webdav')} style={providerBtnStyle(activeProvider === 'webdav')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 4h16v16H4z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+            WebDAV
           </button>
         </div>
       </div>
@@ -718,6 +724,79 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
               style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
             >
               保存配置
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeProvider === 'webdav' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>WebDAV URL</label>
+            <input
+              value={webdavConfig.url}
+              onChange={(e) => setWebdavConfig({ ...webdavConfig, url: e.target.value })}
+              style={inputStyle}
+              placeholder="https://dav.example.com/remote.php/dav/files/user"
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>用户名</label>
+              <input
+                value={webdavConfig.username}
+                onChange={(e) => setWebdavConfig({ ...webdavConfig, username: e.target.value })}
+                style={inputStyle}
+                placeholder="user"
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>密码 / App Password</label>
+              <input
+                type="password"
+                value={webdavConfig.password}
+                onChange={(e) => setWebdavConfig({ ...webdavConfig, password: e.target.value })}
+                style={inputStyle}
+                placeholder="••••••••"
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+              />
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>远端文件夹</label>
+            <input
+              value={webdavConfig.folder}
+              onChange={(e) => setWebdavConfig({ ...webdavConfig, folder: e.target.value })}
+              style={inputStyle}
+              placeholder="/Nexusky"
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={async () => {
+                await window.api.invoke('cloud:save-webdav-config', webdavConfig)
+                toast('WebDAV 配置已保存', 'success')
+              }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+            >
+              保存配置
+            </button>
+            <button
+              onClick={async () => {
+                await window.api.invoke('cloud:save-webdav-config', webdavConfig)
+                const result = await window.api.invoke('cloud:test-connection', { provider: 'webdav' })
+                toast(result.ok ? 'WebDAV 连接成功' : `连接失败: ${result.error}`, result.ok ? 'success' : 'error')
+              }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
+            >
+              测试连接
             </button>
           </div>
         </div>

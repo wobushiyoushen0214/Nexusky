@@ -23,6 +23,7 @@ import {
 import { SyncProviderType } from '../services/cloud/provider'
 import { OneDriveConfig, startOneDriveAuth } from '../services/cloud/onedrive-provider'
 import { ICloudSyncProvider } from '../services/cloud/icloud-provider'
+import { WebDavConfig, normalizeWebDavConfig } from '../services/cloud/webdav-provider'
 
 export function registerCloudIPC(): void {
   ipcMain.handle('cloud:get-config', () => {
@@ -105,6 +106,14 @@ export function registerCloudIPC(): void {
   ipcMain.handle('cloud:save-onedrive-config', (_event, params: { clientId: string; folder: string }) => {
     const existing = (store.get('onedriveConfig') as Partial<OneDriveConfig> | undefined) || {}
     store.set('onedriveConfig', { ...existing, clientId: params.clientId, folder: params.folder })
+  })
+
+  ipcMain.handle('cloud:get-webdav-config', () => {
+    return normalizeWebDavConfig(store.get('webdavConfig') as Partial<WebDavConfig> | undefined)
+  })
+
+  ipcMain.handle('cloud:save-webdav-config', (_event, params: WebDavConfig) => {
+    store.set('webdavConfig', normalizeWebDavConfig(params))
   })
 
   ipcMain.handle('cloud:get-icloud-path', () => {

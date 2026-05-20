@@ -385,6 +385,8 @@ export interface IPCChannelMap {
   'cloud:onedrive-auth': { params: { clientId: string }; result: { success: boolean; error?: string } }
   'cloud:get-onedrive-config': { params: undefined; result: { clientId: string; folder: string; hasToken: boolean } | null }
   'cloud:save-onedrive-config': { params: { clientId: string; folder: string }; result: void }
+  'cloud:get-webdav-config': { params: undefined; result: { url: string; username?: string; password?: string; folder: string } }
+  'cloud:save-webdav-config': { params: { url: string; username?: string; password?: string; folder: string }; result: void }
   'cloud:get-icloud-path': { params: undefined; result: string | null }
   'cloud:set-icloud-path': { params: { path: string }; result: void }
   'cloud:push-index': { params: { vaultPath: string }; result: boolean }
