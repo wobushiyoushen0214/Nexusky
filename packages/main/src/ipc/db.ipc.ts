@@ -12,6 +12,7 @@ import { extractJsonFromText } from '../services/ai/json'
 import { collectDueFlashcardsFromNotes, getLocalDateFromStamp, getLocalDateStamp, parseFlashcardsFromMarkdown, reviewFlashcardInMarkdown } from '../services/ai/flashcards'
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIndexResult } from '../services/vault-indexer'
+import { getCachedVaultQuery } from '../services/db-query-cache'
 import type Database from 'better-sqlite3'
 import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
 
@@ -167,38 +168,40 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('db:get-all-notes', async (_event, params: { vaultPath: string }) => {
-    return getAllNotes(params.vaultPath)
+    return getCachedVaultQuery(params.vaultPath, 'all-notes', () => getAllNotes(params.vaultPath))
   })
 
   ipcMain.handle('db:get-property-rows', async (_event, params: { vaultPath: string }) => {
-    return getPropertyRows(params.vaultPath)
+    return getCachedVaultQuery(params.vaultPath, 'property-rows', () => getPropertyRows(params.vaultPath))
   })
 
   ipcMain.handle('db:get-recent-notes', async (_event, params: { vaultPath: string; limit?: number }) => {
-    const db = getDatabase(params.vaultPath)
     const limit = params.limit || 50
-    return db.prepare(
-      'SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt FROM notes ORDER BY updated_at DESC LIMIT ?'
-    ).all(limit)
+    return getCachedVaultQuery(params.vaultPath, `recent:${limit}`, () => {
+      const db = getDatabase(params.vaultPath)
+      return db.prepare(
+        'SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt FROM notes ORDER BY updated_at DESC LIMIT ?'
+      ).all(limit)
+    })
   })
 
   ipcMain.handle('db:get-outgoing-links', async (_event, params: { vaultPath: string; noteId?: string; filePath?: string }) => {
     const noteId = resolveNoteId(params.vaultPath, params)
-    return noteId ? getOutgoingLinks(params.vaultPath, noteId) : []
+    return noteId ? getCachedVaultQuery(params.vaultPath, `outgoing:${noteId}`, () => getOutgoingLinks(params.vaultPath, noteId)) : []
   })
 
   ipcMain.handle('db:get-backlinks', async (_event, params: { vaultPath: string; noteId?: string; filePath?: string }) => {
     const noteId = resolveNoteId(params.vaultPath, params)
-    return noteId ? getBacklinks(params.vaultPath, noteId) : []
+    return noteId ? getCachedVaultQuery(params.vaultPath, `backlinks:${noteId}`, () => getBacklinks(params.vaultPath, noteId)) : []
   })
 
   ipcMain.handle('db:get-unlinked-mentions', async (_event, params: { vaultPath: string; noteId?: string; filePath?: string }) => {
     const noteId = resolveNoteId(params.vaultPath, params)
-    return noteId ? getUnlinkedMentions(params.vaultPath, noteId) : []
+    return noteId ? getCachedVaultQuery(params.vaultPath, `unlinked:${noteId}`, () => getUnlinkedMentions(params.vaultPath, noteId)) : []
   })
 
   ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string }) => {
-    return getGraphData(params.vaultPath)
+    return getCachedVaultQuery(params.vaultPath, 'graph', () => getGraphData(params.vaultPath))
   })
 
   ipcMain.handle('db:search-notes', async (_event, params: { vaultPath: string; query: string }) => {
@@ -299,11 +302,11 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('db:get-tags', async (_event, params: { vaultPath: string }) => {
-    return getAllTags(params.vaultPath)
+    return getCachedVaultQuery(params.vaultPath, 'tags', () => getAllTags(params.vaultPath))
   })
 
   ipcMain.handle('db:get-notes-by-tag', async (_event, params: { vaultPath: string; tag: string }) => {
-    return getNotesByTag(params.vaultPath, params.tag)
+    return getCachedVaultQuery(params.vaultPath, `tag:${params.tag}`, () => getNotesByTag(params.vaultPath, params.tag))
   })
 
   ipcMain.handle('flashcards:list-due', async (_event, params: { vaultPath: string; today?: string; limit?: number }) => {

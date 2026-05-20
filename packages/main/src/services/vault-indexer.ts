@@ -2,6 +2,7 @@ import { readdirSync } from 'fs'
 import { extname, join } from 'path'
 import { getDatabase } from './database'
 import { indexNote } from './indexer'
+import { invalidateVaultQueryCache } from './db-query-cache'
 
 export interface VaultIndexProgress {
   current: number
@@ -51,6 +52,7 @@ export function cleanupStaleNoteIndexes(vaultPath: string, files: string[]): num
     deleteLinks.run(note.id, note.id)
     deleteNote.run(note.id)
   }
+  invalidateVaultQueryCache(vaultPath)
   return staleNotes.length
 }
 

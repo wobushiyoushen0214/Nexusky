@@ -780,7 +780,7 @@
 - [x] 编辑器 state cache LRU 上限
 - [x] localStorage 安全包装统一用于核心 UI 状态
 - [x] Worker Thread 后台索引（全量 vault 索引在独立 worker 中执行并回传进度）
-- [ ] 数据库查询缓存
+- [x] 数据库查询缓存（vault-scoped TTL/LRU，索引变更自动失效）
 
 ### 发布与运营
 - [x] 自动更新（electron-updater）

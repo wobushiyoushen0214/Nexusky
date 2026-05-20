@@ -5,6 +5,7 @@ import type Database from 'better-sqlite3'
 import { getDatabase } from './database'
 import matter from 'gray-matter'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
+import { invalidateVaultQueryCache } from './db-query-cache'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*]\s+(?:\[[ xX]\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
@@ -129,6 +130,7 @@ export function indexNote(vaultPath: string, filePath: string): void {
 
   transaction()
   resolveLinks(db, id, title, aliases)
+  invalidateVaultQueryCache(vaultPath)
 }
 
 export function removeNoteIndex(vaultPath: string, filePath: string): void {
@@ -143,6 +145,7 @@ export function removeNoteIndex(vaultPath: string, filePath: string): void {
     }
   }
   db.prepare('DELETE FROM notes WHERE file_path = ?').run(relPath)
+  invalidateVaultQueryCache(vaultPath)
 }
 
 export function getAllNotes(vaultPath: string): NoteIndex[] {
