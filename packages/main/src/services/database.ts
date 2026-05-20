@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3'
 import { join } from 'path'
-import { app } from 'electron'
 
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null

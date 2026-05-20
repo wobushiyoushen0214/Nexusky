@@ -779,7 +779,7 @@
 - [x] Wikilink 重命名精准定位（利用 DB 查询）
 - [x] 编辑器 state cache LRU 上限
 - [x] localStorage 安全包装统一用于核心 UI 状态
-- [ ] Worker Thread 后台索引
+- [x] Worker Thread 后台索引（全量 vault 索引在独立 worker 中执行并回传进度）
 - [ ] 数据库查询缓存
 
 ### 发布与运营

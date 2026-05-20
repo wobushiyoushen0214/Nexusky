@@ -1,7 +1,8 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { readdirSync, readFileSync, writeFileSync } from 'fs'
-import { join, extname, resolve, relative } from 'path'
+import { readFileSync, writeFileSync } from 'fs'
+import { join, resolve, relative } from 'path'
 import { randomUUID } from 'crypto'
+import { Worker } from 'worker_threads'
 import { indexNote, removeNoteIndex, getAllNotes, getPropertyRows, getOutgoingLinks, getBacklinks, getUnlinkedMentions, getGraphData, getAllTags, getNotesByTag, getAllTasks } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
 import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '../services/embedding'
@@ -10,6 +11,7 @@ import { aiManager } from '../services/ai'
 import { extractJsonFromText } from '../services/ai/json'
 import { collectDueFlashcardsFromNotes, getLocalDateFromStamp, getLocalDateStamp, parseFlashcardsFromMarkdown, reviewFlashcardInMarkdown } from '../services/ai/flashcards'
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
+import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIndexResult } from '../services/vault-indexer'
 import type Database from 'better-sqlite3'
 import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
 
@@ -97,46 +99,53 @@ const RELATION_TYPES = new Set<KanbanRelationType>(['blocks', 'depends_on', 'rel
 const FLASHCARD_RATINGS = new Set<FlashcardReviewRating>(['again', 'hard', 'good', 'easy'])
 const embeddingJobs = new Map<string, EmbeddingJobStatus>()
 
+function runIndexVaultWorker(vaultPath: string, onProgress: (progress: VaultIndexProgress) => void): Promise<VaultIndexResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(join(__dirname, 'indexVaultWorker.js'), { workerData: { vaultPath } })
+    let settled = false
+    worker.on('message', (message: { type?: string; current?: number; total?: number; indexed?: number; error?: string }) => {
+      if (message.type === 'progress') {
+        onProgress({ current: message.current || 0, total: message.total || 0 })
+      } else if (message.type === 'done') {
+        settled = true
+        resolve({ indexed: message.indexed || 0 })
+      } else if (message.type === 'error') {
+        settled = true
+        reject(new Error(message.error || '索引 Worker 执行失败'))
+      }
+    })
+    worker.on('error', (error) => {
+      if (!settled) {
+        settled = true
+        reject(error)
+      }
+    })
+    worker.on('exit', (code) => {
+      if (!settled && code !== 0) {
+        settled = true
+        reject(new Error(`索引 Worker 退出码 ${code}`))
+      }
+    })
+  })
+}
+
 export function registerDbIPC(): void {
   ipcMain.handle('db:index-vault', async (event, params: { vaultPath: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
-    const files = collectMarkdownFiles(params.vaultPath)
-    const db = getDatabase(params.vaultPath)
-
-    // Clean up stale records for files that no longer exist
-    const allNotes = db.prepare('SELECT id, file_path FROM notes').all() as { id: string; file_path: string }[]
-    const existingRelPaths = new Set(files.map((f) => f.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')))
-    const staleNotes = allNotes.filter((n) => !existingRelPaths.has(n.file_path))
-    if (staleNotes.length > 0) {
-      const deleteNote = db.prepare('DELETE FROM notes WHERE id = ?')
-      const deleteFtsMap = db.prepare('DELETE FROM notes_fts_map WHERE note_id = ?')
-      const deleteLinks = db.prepare('DELETE FROM links WHERE source_note_id = ? OR target_note_id = ?')
-      for (const note of staleNotes) {
-        const ftsRow = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?').get(note.id) as { rowid: number } | undefined
-        if (ftsRow) {
-          db.prepare('DELETE FROM notes_fts WHERE rowid = ?').run(ftsRow.rowid)
-          deleteFtsMap.run(note.id)
-        }
-        deleteLinks.run(note.id, note.id)
-        deleteNote.run(note.id)
-      }
-    }
-
-    const BATCH_SIZE = 20
-    for (let i = 0; i < files.length; i += BATCH_SIZE) {
-      const batch = files.slice(i, i + BATCH_SIZE)
-      for (const file of batch) {
-        indexNote(params.vaultPath, file)
-      }
+    const onProgress = (progress: VaultIndexProgress) => {
       if (window && !window.isDestroyed()) {
-        window.webContents.send('db:index-progress', { current: Math.min(i + BATCH_SIZE, files.length), total: files.length })
-      }
-      if (i + BATCH_SIZE < files.length) {
-        await new Promise((resolve) => setImmediate(resolve))
+        window.webContents.send('db:index-progress', progress)
       }
     }
-    invalidateEmbeddingCache()
-    return { indexed: files.length }
+    try {
+      const result = process.env.NEXUSKY_DISABLE_INDEX_WORKER === '1'
+        ? await indexVault(params.vaultPath, onProgress)
+        : await runIndexVaultWorker(params.vaultPath, onProgress)
+      invalidateEmbeddingCache()
+      return result
+    } finally {
+      closeDatabase()
+    }
   })
 
   ipcMain.handle('db:index-file', async (_event, params: { vaultPath: string; filePath: string }) => {
@@ -873,24 +882,4 @@ function createIndexedRelations(db: Database.Database, tasks: KanbanTaskRow[], r
 
 function toRelativePath(vaultPath: string, filePath: string): string {
   return filePath.replace(vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
-}
-
-function collectMarkdownFiles(dirPath: string): string[] {
-  const results: string[] = []
-
-  function walk(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const fullPath = join(dir, entry.name)
-      if (entry.isDirectory()) {
-        walk(fullPath)
-      } else if (extname(entry.name) === '.md') {
-        results.push(fullPath)
-      }
-    }
-  }
-
-  walk(dirPath)
-  return results
 }

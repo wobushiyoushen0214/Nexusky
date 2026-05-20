@@ -10,7 +10,8 @@ export default defineConfig({
       minify: true,
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'packages/main/src/index.ts')
+          index: resolve(__dirname, 'packages/main/src/index.ts'),
+          indexVaultWorker: resolve(__dirname, 'packages/main/src/workers/index-vault-worker.ts')
         }
       }
     },
