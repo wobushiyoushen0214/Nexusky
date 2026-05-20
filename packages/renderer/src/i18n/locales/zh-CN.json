@@ -218,6 +218,11 @@
     "refresh": "刷新",
     "loading": "加载中...",
     "reset": "重排",
+    "resetBasis": {
+      "space": "按来源、状态和主标签重新归档",
+      "properties": "按主标签重新归档",
+      "time": "按更新时间重新归档"
+    },
     "modeSpace": "空间",
     "modeProperties": "属性",
     "modeTime": "时间",

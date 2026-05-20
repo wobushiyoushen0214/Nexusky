@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
-function row(id: string, properties: PropertyTableRow['properties']): PropertyTableRow {
+function row(id: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
   return {
     id,
     title: id,
     filePath: `${id}.md`,
-    createdAt: 1,
-    updatedAt: 1,
+    createdAt: updatedAt,
+    updatedAt,
     properties
   }
 }
@@ -65,6 +65,25 @@ describe('canvas card placement', () => {
 
     expect(Math.abs(positions['readwise-a'].x - positions['readwise-b'].x)).toBeLessThan(260)
     expect(Math.abs(positions.project.x - positions['readwise-a'].x)).toBeGreaterThanOrEqual(300)
+  })
+
+  it('rebuilds mode layouts from the current mode basis', () => {
+    const rows = [
+      row('react-a', { tags: ['react'] }, Date.parse('2026-05-20T08:00:00Z')),
+      row('react-b', { tags: ['react'] }, Date.parse('2026-05-19T08:00:00Z')),
+      row('vue-a', { tags: ['vue'] }, Date.parse('2026-05-20T09:00:00Z'))
+    ]
+
+    const properties = buildCanvasModePositions(rows, 'properties')
+    expect(Math.abs(properties['react-a'].x - properties['react-b'].x)).toBeLessThan(260)
+    expect(Math.abs(properties['vue-a'].x - properties['react-a'].x)).toBeGreaterThanOrEqual(300)
+
+    const time = buildCanvasModePositions(rows, 'time')
+    expect(Math.abs(time['react-a'].x - time['vue-a'].x)).toBeLessThan(260)
+    expect(
+      Math.abs(time['react-b'].x - time['react-a'].x) >= 300 ||
+      Math.abs(time['react-b'].y - time['react-a'].y) >= 190
+    ).toBe(true)
   })
 
   it('suggests implicit associations without duplicating existing graph links', () => {

@@ -91,6 +91,11 @@ const ARCHIVE_CLUSTER_GAP_Y = 150
 const ROUTE_CLEARANCE = 24
 const PENDING_CANVAS_FOCUS_KEY = 'nexusky-pending-canvas-focus'
 
+type CanvasLayoutGroup = {
+  key: string
+  rows: PropertyTableRow[]
+}
+
 function getCanvasStorageKey(vaultPath: string): string {
   return `nexusky-canvas-layout:${encodeURIComponent(vaultPath)}`
 }
@@ -196,6 +201,34 @@ function getArchiveGroup(row: PropertyTableRow): string {
   const status = valueToText(row.properties.status).toLowerCase()
   if (status && ['unread', 'to-read', 'todo', 'archived', 'read'].includes(status)) return `status:${status}`
   return `tag:${getPrimaryTag(row)}`
+}
+
+function buildClusterPositions(groups: CanvasLayoutGroup[]): Record<string, CanvasPosition> {
+  const positions: Record<string, CanvasPosition> = {}
+  const stepX = CARD_WIDTH + ARCHIVE_CARD_GAP_X
+  const stepY = CARD_HEIGHT + ARCHIVE_CARD_GAP_Y
+  const maxClusterWidth = stepX * 3 + ARCHIVE_CLUSTER_GAP_X
+  const clusterHeights = [40, 40, 40]
+
+  groups.forEach((group, groupIndex) => {
+    const lane = clusterHeights.indexOf(Math.min(...clusterHeights))
+    const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(group.rows.length))))
+    const rowsInCluster = Math.ceil(group.rows.length / columns)
+    const originX = 40 + lane * maxClusterWidth
+    const originY = clusterHeights[lane]
+    group.rows.forEach((row, index) => {
+      const column = index % columns
+      const itemRow = Math.floor(index / columns)
+      const stagger = itemRow % 2 === 0 ? 0 : 16
+      positions[row.id] = {
+        x: originX + column * stepX + stagger,
+        y: originY + itemRow * stepY
+      }
+    })
+    clusterHeights[lane] = originY + rowsInCluster * stepY + ARCHIVE_CLUSTER_GAP_Y + (groupIndex % 2) * 28
+  })
+
+  return positions
 }
 
 function associationKey(source: string, target: string): string {
@@ -310,47 +343,21 @@ export function buildArchivePositions(rows: PropertyTableRow[]): Record<string, 
     const key = getArchiveGroup(row)
     groups.set(key, [...(groups.get(key) || []), row])
   }
-  const positions: Record<string, CanvasPosition> = {}
-  const stepX = CARD_WIDTH + ARCHIVE_CARD_GAP_X
-  const stepY = CARD_HEIGHT + ARCHIVE_CARD_GAP_Y
-  const maxClusterWidth = stepX * 3 + ARCHIVE_CLUSTER_GAP_X
-  const clusterHeights = [40, 40, 40]
-  Array.from(groups.entries())
+  return buildClusterPositions(Array.from(groups.entries())
     .sort(([a, itemsA], [b, itemsB]) => itemsB.length - itemsA.length || a.localeCompare(b))
-    .forEach(([, items], groupIndex) => {
-      const lane = clusterHeights.indexOf(Math.min(...clusterHeights))
-      const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(items.length))))
-      const rowsInCluster = Math.ceil(items.length / columns)
-      const originX = 40 + lane * maxClusterWidth
-      const originY = clusterHeights[lane]
-      items.forEach((row, index) => {
-        const column = index % columns
-        const itemRow = Math.floor(index / columns)
-        const stagger = itemRow % 2 === 0 ? 0 : 16
-        positions[row.id] = {
-          x: originX + column * stepX + stagger,
-          y: originY + itemRow * stepY
-        }
-      })
-      clusterHeights[lane] = originY + rowsInCluster * stepY + ARCHIVE_CLUSTER_GAP_Y + (groupIndex % 2) * 28
-    })
-  return positions
+    .map(([key, groupRows]) => ({ key, rows: groupRows })))
 }
 
-function buildTimePositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
+export function buildTimePositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
   const dayRows = new Map<string, PropertyTableRow[]>()
   const sorted = [...rows].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
   for (const row of sorted) {
     const key = row.updatedAt ? new Date(row.updatedAt).toISOString().slice(0, 10) : 'unknown'
     dayRows.set(key, [...(dayRows.get(key) || []), row])
   }
-  const positions: Record<string, CanvasPosition> = {}
-  Array.from(dayRows.entries()).forEach(([, items], column) => {
-    items.forEach((row, index) => {
-      positions[row.id] = { x: 40 + column * 270, y: 72 + index * 150 }
-    })
-  })
-  return positions
+  return buildClusterPositions(Array.from(dayRows.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([key, groupRows]) => ({ key, rows: groupRows })))
 }
 
 function centerOf(position: CanvasPosition): RoutePoint {
@@ -503,21 +510,21 @@ function routePath(points: RoutePoint[]): string {
   return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
 }
 
-function buildPropertyPositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
+export function buildPropertyPositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
   const tagRows = new Map<string, PropertyTableRow[]>()
   for (const row of rows) {
     const key = getPrimaryTag(row)
     tagRows.set(key, [...(tagRows.get(key) || []), row])
   }
-  const positions: Record<string, CanvasPosition> = {}
-  Array.from(tagRows.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([, items], column) => {
-      items.forEach((row, index) => {
-        positions[row.id] = { x: 40 + column * 270, y: 72 + index * 150 }
-      })
-    })
-  return positions
+  return buildClusterPositions(Array.from(tagRows.entries())
+    .sort(([a, itemsA], [b, itemsB]) => itemsB.length - itemsA.length || a.localeCompare(b))
+    .map(([key, groupRows]) => ({ key, rows: groupRows })))
+}
+
+export function buildCanvasModePositions(rows: PropertyTableRow[], mode: CanvasMode): Record<string, CanvasPosition> {
+  if (mode === 'time') return buildTimePositions(rows)
+  if (mode === 'properties') return buildPropertyPositions(rows)
+  return buildArchivePositions(rows)
 }
 
 function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>): CanvasMetrics {
@@ -610,9 +617,8 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   }, [rows, query])
 
   const modePositions = useMemo(() => {
-    if (canvasMode === 'time') return applyCanvasModeOverrides(buildTimePositions(filteredRows), modePositionOverrides.time)
-    if (canvasMode === 'properties') return applyCanvasModeOverrides(buildPropertyPositions(filteredRows), modePositionOverrides.properties)
-    return positions
+    if (canvasMode === 'space') return positions
+    return applyCanvasModeOverrides(buildCanvasModePositions(filteredRows, canvasMode), modePositionOverrides[canvasMode])
   }, [canvasMode, filteredRows, modePositionOverrides.properties, modePositionOverrides.time, positions])
 
   const layoutRows = canvasMode === 'space' ? rows : filteredRows
@@ -869,17 +875,17 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   const suggestionKeys = useMemo(() => canvasSuggestedEdges.map((edge) => edge.key), [canvasSuggestedEdges])
 
   const resetLayout = () => {
+    const next = buildCanvasModePositions(rows, canvasMode)
     if (canvasMode === 'space') {
-      const next = buildArchivePositions(rows)
       setPositions(next)
       if (vaultPath) safeSetJSON(getCanvasModeStorageKey(vaultPath, 'space'), next)
     } else {
       setModePositionOverrides((current) => {
-        const next = { ...current }
-        delete next[canvasMode]
-        return next
+        const updated = { ...current, [canvasMode]: next }
+        modePositionOverridesRef.current = updated
+        return updated
       })
-      if (vaultPath) safeRemove(getCanvasModeStorageKey(vaultPath, canvasMode))
+      if (vaultPath) safeSetJSON(getCanvasModeStorageKey(vaultPath, canvasMode), next)
     }
     requestAnimationFrame(() => {
       const viewport = canvasRef.current
@@ -1232,7 +1238,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
             <CanvasIconButton title={t('canvas.fitView')} onClick={fitToView}>
               <FitIcon />
             </CanvasIconButton>
-            <CanvasIconButton title={t('canvas.reset')} onClick={resetLayout}>
+            <CanvasIconButton title={t(`canvas.resetBasis.${canvasMode}`)} onClick={resetLayout}>
               <ResetIcon />
             </CanvasIconButton>
             <CanvasIconButton title={loading ? t('canvas.loading') : t('canvas.refresh')} disabled={loading} onClick={() => loadRows()}>

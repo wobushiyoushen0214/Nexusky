@@ -218,6 +218,11 @@
     "refresh": "Refresh",
     "loading": "Loading...",
     "reset": "Reset",
+    "resetBasis": {
+      "space": "Re-archive by source, status, and primary tag",
+      "properties": "Re-archive by primary tag",
+      "time": "Re-archive by updated date"
+    },
     "modeSpace": "Space",
     "modeProperties": "Properties",
     "modeTime": "Time",
