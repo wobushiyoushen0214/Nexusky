@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
 import type { FileEntry } from '@shared/types/ipc'
 
+export const VAULT_FILES_REFRESHED_EVENT = 'nexusky:vault-files-refreshed'
+
 interface VaultState {
   vaultPath: string | null
   files: FileEntry[]
@@ -20,6 +22,8 @@ interface VaultState {
 function loadFavorites(): string[] {
   return safeGetJSON<string[]>('nexusky-favorites', [])
 }
+
+let refreshRequestId = 0
 
 export const useVaultStore = create<VaultState>((set, get) => ({
   vaultPath: null,
@@ -68,8 +72,11 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   refreshFiles: async () => {
     const { vaultPath } = get()
     if (!vaultPath) return
+    const requestId = ++refreshRequestId
     const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+    if (requestId !== refreshRequestId) return
     set({ files })
+    window.dispatchEvent(new CustomEvent(VAULT_FILES_REFRESHED_EVENT, { detail: { vaultPath } }))
   },
 
   indexVault: async () => {

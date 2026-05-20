@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
-import { useVaultStore } from '../../stores/vault-store'
+import { VAULT_FILES_REFRESHED_EVENT, useVaultStore } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import type { FileEntry } from '@shared/types/ipc'
@@ -117,10 +117,15 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
   }, [defaultExpanded, entries])
 
   useEffect(() => {
-    const cleanup = window.api.onVaultChanged(() => {
+    const reload = () => {
       void reloadExpandedChildren()
-    })
-    return () => { cleanup() }
+    }
+    const cleanup = window.api.onVaultChanged(reload)
+    window.addEventListener(VAULT_FILES_REFRESHED_EVENT, reload)
+    return () => {
+      cleanup()
+      window.removeEventListener(VAULT_FILES_REFRESHED_EVENT, reload)
+    }
   }, [reloadExpandedChildren])
 
   const flatNodes = useMemo(() => {
