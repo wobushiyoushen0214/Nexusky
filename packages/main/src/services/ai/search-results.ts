@@ -27,6 +27,16 @@ export interface AiNoteLinksSummary {
   }[]
 }
 
+export interface AiCurrentNoteLinkStatsResult {
+  title: string
+  filePath: string
+  outgoing: number
+  resolvedOutgoing: number
+  unresolvedOutgoing: number
+  backlinks: number
+  unlinkedMentions: number
+}
+
 export interface AiNoteHeadingSummary {
   title: string
   filePath: string
@@ -343,6 +353,23 @@ export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
     '',
     'Unlinked Mentions:',
     unlinkedMentions
+  ].join('\n')
+}
+
+export function formatCurrentNoteLinkStatsToolResult(stats: AiCurrentNoteLinkStatsResult): string {
+  const signals: string[] = []
+  if (stats.resolvedOutgoing === 0 && stats.backlinks === 0) signals.push('orphan')
+  if (stats.resolvedOutgoing === 0) signals.push('dead-end')
+  if (stats.backlinks === 0) signals.push('unreferenced')
+  if (stats.unresolvedOutgoing > 0) signals.push('has unresolved links')
+  if (stats.unlinkedMentions > 0) signals.push('has unlinked mentions')
+  return [
+    `Current Note Link Summary: ${stats.title}`,
+    `Path: ${stats.filePath}`,
+    `Outgoing: ${stats.outgoing} (${stats.resolvedOutgoing} resolved, ${stats.unresolvedOutgoing} unresolved)`,
+    `Backlinks: ${stats.backlinks}`,
+    `Unlinked Mentions: ${stats.unlinkedMentions}`,
+    `Signals: ${signals.length > 0 ? signals.join(', ') : 'connected'}`
   ].join('\n')
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCurrentNotePropertiesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -126,6 +126,34 @@ describe('formatNoteLinksToolResult', () => {
     })
 
     expect(output).toBe('Title: Solo\nPath: Solo.md\n\nOutgoing:\n(none)\n\nBacklinks:\n(none)\n\nUnlinked Mentions:\n(none)')
+  })
+
+  it('formats current note link stats with relationship signals', () => {
+    const output = formatCurrentNoteLinkStatsToolResult({
+      title: 'Topic',
+      filePath: 'Topic.md',
+      outgoing: 2,
+      resolvedOutgoing: 1,
+      unresolvedOutgoing: 1,
+      backlinks: 0,
+      unlinkedMentions: 3
+    })
+
+    expect(output).toBe('Current Note Link Summary: Topic\nPath: Topic.md\nOutgoing: 2 (1 resolved, 1 unresolved)\nBacklinks: 0\nUnlinked Mentions: 3\nSignals: unreferenced, has unresolved links, has unlinked mentions')
+  })
+
+  it('marks current note link stats as connected when no signal applies', () => {
+    const output = formatCurrentNoteLinkStatsToolResult({
+      title: 'Connected',
+      filePath: 'Connected.md',
+      outgoing: 2,
+      resolvedOutgoing: 2,
+      unresolvedOutgoing: 0,
+      backlinks: 1,
+      unlinkedMentions: 0
+    })
+
+    expect(output).toContain('Signals: connected')
   })
 })
 

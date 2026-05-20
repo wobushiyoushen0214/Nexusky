@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatCurrentNotePropertiesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -1253,6 +1253,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'summarize_current_note_links',
+        description: '汇总当前编辑器正在打开笔记的关系健康度，包括出链、已解析出链、断链、反链、未链接提及数量和 orphan/dead-end/unreferenced 信号。适合先判断是否需要展开 list_current_note_links。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_note_headings',
         description: '列出指定笔记的 Markdown 标题目录。适合先查看长笔记结构，再用 read_note 读取某个 heading。',
         parameters: {
@@ -2241,6 +2249,36 @@ graph TD
       case 'list_current_note_links': {
         if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 list_note_links 指定标题/路径。' }
         return executeToolCall('list_note_links', { title: currentFilePath }, vaultPath, currentFilePath)
+      }
+      case 'summarize_current_note_links': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 list_note_links 指定标题/路径。' }
+        const note = findNoteForAiTool(vaultPath, currentFilePath)
+        if (!note) return { content: `未找到当前笔记「${currentFilePath}」的索引记录。请先刷新索引。` }
+        const db = getDatabase(vaultPath)
+        const row = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(note.filePath) as { id: string } | undefined
+        if (!row) return { content: `未找到笔记索引「${note.filePath}」。请先刷新索引。` }
+        const outgoing = getOutgoingLinks(vaultPath, row.id)
+        const backlinks = getBacklinks(vaultPath, row.id)
+        const unlinkedMentions = getUnlinkedMentions(vaultPath, row.id)
+        const resolvedOutgoing = outgoing.filter((link) => link.resolved).length
+        const unresolvedOutgoing = outgoing.length - resolvedOutgoing
+        return {
+          content: formatCurrentNoteLinkStatsToolResult({
+            title: note.title,
+            filePath: note.filePath,
+            outgoing: outgoing.length,
+            resolvedOutgoing,
+            unresolvedOutgoing,
+            backlinks: backlinks.length,
+            unlinkedMentions: unlinkedMentions.length
+          }),
+          sources: [{
+            title: note.title,
+            filePath: note.filePath,
+            chunk: `Outgoing: ${outgoing.length}; Backlinks: ${backlinks.length}; Unlinked mentions: ${unlinkedMentions.length}`,
+            score: 1
+          }]
+        }
       }
       case 'list_note_headings': {
         const title = getStringArg(args, 'title')
