@@ -10,6 +10,7 @@ import type { PropertyTableRow } from '@shared/types/ipc'
 
 type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
 type ReaderSort = 'updated' | 'oldest' | 'title' | 'source'
+type ReaderTriageStage = 'next' | 'connect' | 'later' | 'archived'
 type ReaderTranslator = ReturnType<typeof useTranslation>['t']
 interface ReaderViewSettings {
   source: ReaderSource
@@ -21,6 +22,7 @@ interface ReaderViewSettings {
 const READER_VIEW_SETTINGS_KEY = 'nexusky-reader-view-settings'
 const READER_SOURCES: ReaderSource[] = ['all', 'notion', 'readwise', 'pocket']
 const READER_SORTS: ReaderSort[] = ['updated', 'oldest', 'title', 'source']
+const READER_TRIAGE_STAGES: ReaderTriageStage[] = ['next', 'connect', 'later', 'archived']
 const DEFAULT_READER_VIEW_SETTINGS: ReaderViewSettings = {
   source: 'all',
   sort: 'updated',
@@ -78,6 +80,27 @@ export function isUnreadReaderRow(row: PropertyTableRow): boolean {
 
 export function isArchivedReaderRow(row: PropertyTableRow): boolean {
   return propertyText(row.properties.status).toLowerCase() === 'archived'
+}
+
+export function getReaderTriageStage(row: PropertyTableRow): ReaderTriageStage {
+  const status = propertyText(row.properties.status).toLowerCase()
+  if (status === 'archived') return 'archived'
+  if (['unread', 'new', 'todo', 'to-read'].includes(status)) return 'next'
+  if (['read', 'done', 'processed', 'connected'].includes(status)) return 'connect'
+  if (['later', 'someday', 'parked'].includes(status)) return 'later'
+  if (propertyText(row.properties.tags).trim()) return 'connect'
+  if (getReaderSource(row) === 'readwise') return 'connect'
+  if (!status) return 'next'
+  return 'later'
+}
+
+export function countReaderRowsByTriage(rows: PropertyTableRow[]): Record<ReaderTriageStage, number> {
+  const counts: Record<ReaderTriageStage, number> = { next: 0, connect: 0, later: 0, archived: 0 }
+  for (const row of rows) {
+    if (!getReaderSource(row)) continue
+    counts[getReaderTriageStage(row)]++
+  }
+  return counts
 }
 
 export function getReaderSourceUrl(row: PropertyTableRow): string {
@@ -299,6 +322,24 @@ function sourceColor(source: ReaderSource | null): string {
   return 'var(--accent)'
 }
 
+function triageColor(stage: ReaderTriageStage): string {
+  if (stage === 'next') return '#8fb3ff'
+  if (stage === 'connect') return '#74c69d'
+  if (stage === 'later') return '#c9a66b'
+  return 'var(--text-tertiary)'
+}
+
+function getReaderTriageReason(row: PropertyTableRow, t: ReaderTranslator): string {
+  const status = propertyText(row.properties.status).toLowerCase()
+  const stage = getReaderTriageStage(row)
+  if (stage === 'archived') return t('reader.triageReason.archived')
+  if (stage === 'next') return t('reader.triageReason.unread')
+  if (['read', 'done', 'processed', 'connected'].includes(status)) return t('reader.triageReason.read')
+  if (propertyText(row.properties.tags).trim()) return t('reader.triageReason.tagged')
+  if (getReaderSourceUrl(row)) return t('reader.triageReason.source')
+  return t('reader.triageReason.later')
+}
+
 function formatDate(value: number): string {
   if (!value) return ''
   return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -434,6 +475,10 @@ export function ReaderInboxView() {
   const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived, sort), [query, rows, showArchived, sort, source, unreadOnly])
   const sourceCountRows = useMemo(() => filterReaderRows(rows, 'all', query, unreadOnly, !showArchived, 'updated'), [query, rows, showArchived, unreadOnly])
   const counts = useMemo(() => countReaderRowsBySource(sourceCountRows), [sourceCountRows])
+  const triageCounts = useMemo(() => countReaderRowsByTriage(filtered), [filtered])
+  const triageGroups = useMemo(() => READER_TRIAGE_STAGES
+    .map((stage) => ({ stage, rows: filtered.filter((row) => getReaderTriageStage(row) === stage) }))
+    .filter((group) => group.rows.length > 0), [filtered])
   const unreadCount = countUnreadReaderRows(readerRows)
   const archivableVisibleRows = useMemo(() => getArchivableReaderRows(filtered), [filtered])
   const unarchivableVisibleRows = useMemo(() => getUnarchivableReaderRows(filtered), [filtered])
@@ -690,6 +735,18 @@ export function ReaderInboxView() {
             ))}
           </div>
         </div>
+
+        <div style={{ maxWidth: 1180, margin: '16px auto 0', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+          {READER_TRIAGE_STAGES.map((stage) => (
+            <div key={stage} style={{ minWidth: 0, padding: '10px 11px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: 9, alignItems: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: triageColor(stage) }} />
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 650 }}>
+                {t(`reader.triage.${stage}`)}
+              </span>
+              <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{triageCounts[stage]}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{ flex: 1, overflow: 'hidden', padding: '24px 30px 34px' }}>
@@ -704,28 +761,41 @@ export function ReaderInboxView() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('reader.queue')}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{filtered.length}</div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {filtered.map((row) => {
-                  const rowSource = getReaderSource(row)
-                  const active = selectedRow?.id === row.id
-                  const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
-                  return (
-                    <button
-                      key={row.id}
-                      onClick={() => setSelectedRowId(row.id)}
-                      style={{ minHeight: 62, width: '100%', display: 'grid', gridTemplateColumns: '10px minmax(0, 1fr) auto', alignItems: 'center', gap: 10, padding: '9px 10px', border: 'none', borderRadius: 7, background: active ? 'var(--accent-muted)' : 'transparent', color: active ? 'var(--accent-text)' : 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      <span style={{ width: 7, height: 7, borderRadius: 999, background: sourceColor(rowSource) }} />
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: active ? 720 : 640 }}>{row.title}</span>
-                        <span style={{ display: 'block', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: active ? 'var(--accent-text)' : 'var(--text-tertiary)', opacity: active ? 0.8 : 1 }}>
-                          {sourceLabel(rowSource)}{status ? ` · ${status}` : ''} · {formatDate(row.updatedAt)}
-                        </span>
-                      </span>
-                      {isUnreadReaderRow(row) && <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)' }} />}
-                    </button>
-                  )
-                })}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {triageGroups.map((group) => (
+                  <div key={group.stage}>
+                    <div style={{ margin: '0 4px 5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: 999, background: triageColor(group.stage) }} />
+                        {t(`reader.triage.${group.stage}`)}
+                      </div>
+                      <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>{group.rows.length}</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {group.rows.map((row) => {
+                        const rowSource = getReaderSource(row)
+                        const active = selectedRow?.id === row.id
+                        const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
+                        return (
+                          <button
+                            key={row.id}
+                            onClick={() => setSelectedRowId(row.id)}
+                            style={{ minHeight: 62, width: '100%', display: 'grid', gridTemplateColumns: '10px minmax(0, 1fr) auto', alignItems: 'center', gap: 10, padding: '9px 10px', border: 'none', borderRadius: 7, background: active ? 'var(--bg-elevated)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', outline: active ? '1px solid var(--border)' : 'none' }}
+                          >
+                            <span style={{ width: 7, height: 7, borderRadius: 999, background: sourceColor(rowSource) }} />
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: active ? 720 : 640 }}>{row.title}</span>
+                              <span style={{ display: 'block', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                                {sourceLabel(rowSource)}{status ? ` · ${status}` : ''} · {formatDate(row.updatedAt)}
+                              </span>
+                            </span>
+                            {isUnreadReaderRow(row) && <span style={{ width: 6, height: 6, borderRadius: 999, background: triageColor('next') }} />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -849,6 +919,8 @@ function ReaderBrief({
   const author = propertyText(row.properties.author)
   const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
   const tags = propertyText(row.properties.tags).split(/\s+/).filter(Boolean).slice(0, 8)
+  const stage = getReaderTriageStage(row)
+  const triageReason = getReaderTriageReason(row, t)
   const noteActive = activeNoteId === row.id
   const archived = isArchivedReaderRow(row)
 
@@ -884,6 +956,14 @@ function ReaderBrief({
             <div style={detailLabelStyle}>{t('reader.detailStatus')}</div>
             <div style={detailValueStyle}>{status || t('reader.noStatus')}</div>
           </div>
+        </div>
+
+        <div style={{ padding: '12px 13px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--editor-bg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 999, background: triageColor(stage) }} />
+            <div style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 690 }}>{t(`reader.triage.${stage}`)}</div>
+          </div>
+          <div style={{ marginTop: 7, color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.5 }}>{triageReason}</div>
         </div>
 
         <div>

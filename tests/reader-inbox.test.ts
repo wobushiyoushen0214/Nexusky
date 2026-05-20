@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countReaderRowsBySource, countUnreadReaderRows, createReaderDigestMarkdown, createReaderDigestionPrompt, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, getUnarchivableReaderRows, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countReaderRowsBySource, countReaderRowsByTriage, countUnreadReaderRows, createReaderDigestMarkdown, createReaderDigestionPrompt, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, getReaderTriageStage, getUnarchivableReaderRows, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -129,6 +129,29 @@ describe('reader inbox helpers', () => {
 
     expect(getNextUnreadReaderRow(rows)?.filePath).toBe('Imports/Readwise/Next.md')
     expect(getNextUnreadReaderRow([rows[0]])).toBeNull()
+  })
+
+  it('triages reader rows into digestion stages', () => {
+    const rows = [
+      row('Imports/Pocket/Unread.md', { source: 'pocket', status: 'unread' }, 10),
+      row('Imports/Readwise/Read.md', { source: 'readwise', status: 'read' }, 20),
+      row('Imports/Notion/Tagged.md', { source: 'notion', tags: ['project'] }, 30),
+      row('Imports/Pocket/Later.md', { source: 'pocket', status: 'later' }, 40),
+      row('Imports/Pocket/Archived.md', { source: 'pocket', status: 'archived' }, 50),
+      row('Notes/Regular.md', {}, 60)
+    ]
+
+    expect(getReaderTriageStage(rows[0])).toBe('next')
+    expect(getReaderTriageStage(rows[1])).toBe('connect')
+    expect(getReaderTriageStage(rows[2])).toBe('connect')
+    expect(getReaderTriageStage(rows[3])).toBe('later')
+    expect(getReaderTriageStage(rows[4])).toBe('archived')
+    expect(countReaderRowsByTriage(rows)).toEqual({
+      next: 1,
+      connect: 2,
+      later: 1,
+      archived: 1
+    })
   })
 
   it('only exposes http source URLs for external opening', () => {
