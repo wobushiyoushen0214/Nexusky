@@ -49,6 +49,25 @@ describe('reader inbox helpers', () => {
     expect(countUnreadReaderRows(rows)).toBe(2)
   })
 
+  it('sorts reading items by title or source when requested', () => {
+    const rows = [
+      row('Imports/Pocket/Zebra.md', { source: 'pocket' }, 30),
+      row('Imports/Readwise/Alpha.md', { source: 'readwise' }, 10),
+      row('Imports/Notion/Middle.md', { source: 'notion' }, 20)
+    ]
+
+    expect(filterReaderRows(rows, 'all', '', false, false, 'title').map((item) => item.filePath)).toEqual([
+      'Imports/Readwise/Alpha.md',
+      'Imports/Notion/Middle.md',
+      'Imports/Pocket/Zebra.md'
+    ])
+    expect(filterReaderRows(rows, 'all', '', false, false, 'source').map((item) => item.filePath)).toEqual([
+      'Imports/Notion/Middle.md',
+      'Imports/Pocket/Zebra.md',
+      'Imports/Readwise/Alpha.md'
+    ])
+  })
+
   it('only exposes http source URLs for external opening', () => {
     expect(getReaderSourceUrl(row('Imports/Pocket/A.md', { url: 'https://example.com/a' }))).toBe('https://example.com/a')
     expect(getReaderSourceUrl(row('Imports/Pocket/B.md', { url: 'http://example.com/b' }))).toBe('http://example.com/b')

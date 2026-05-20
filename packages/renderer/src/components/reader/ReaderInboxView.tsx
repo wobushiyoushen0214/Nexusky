@@ -8,6 +8,7 @@ import { updateMarkdownProperty } from '../../utils/frontmatter'
 import type { PropertyTableRow } from '@shared/types/ipc'
 
 type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
+type ReaderSort = 'updated' | 'title' | 'source'
 
 function propertyText(value: unknown): string {
   if (Array.isArray(value)) return value.map(String).join(' ')
@@ -39,7 +40,7 @@ export function getReaderSourceUrl(row: PropertyTableRow): string {
   return /^https?:\/\//i.test(url) ? url : ''
 }
 
-export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource, query: string, unreadOnly: boolean, hideArchived = false): PropertyTableRow[] {
+export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource, query: string, unreadOnly: boolean, hideArchived = false, sort: ReaderSort = 'updated'): PropertyTableRow[] {
   const q = query.trim().toLowerCase()
   return rows
     .filter((row) => {
@@ -59,7 +60,11 @@ export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource,
       ].join(' ').toLowerCase()
       return haystack.includes(q)
     })
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .sort((a, b) => {
+      if (sort === 'title') return a.title.localeCompare(b.title) || (b.updatedAt || 0) - (a.updatedAt || 0)
+      if (sort === 'source') return sourceLabel(getReaderSource(a)).localeCompare(sourceLabel(getReaderSource(b))) || (b.updatedAt || 0) - (a.updatedAt || 0)
+      return (b.updatedAt || 0) - (a.updatedAt || 0)
+    })
 }
 
 export function countUnreadReaderRows(rows: PropertyTableRow[]): number {
@@ -111,6 +116,7 @@ export function ReaderInboxView() {
   const [rows, setRows] = useState<PropertyTableRow[]>([])
   const [query, setQuery] = useState('')
   const [source, setSource] = useState<ReaderSource>('all')
+  const [sort, setSort] = useState<ReaderSort>('updated')
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -142,7 +148,7 @@ export function ReaderInboxView() {
   }, [vaultPath])
 
   const readerRows = useMemo(() => rows.filter((row) => getReaderSource(row)), [rows])
-  const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived), [query, rows, showArchived, source, unreadOnly])
+  const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived, sort), [query, rows, showArchived, sort, source, unreadOnly])
   const counts = useMemo(() => {
     const next: Record<ReaderSource, number> = { all: readerRows.length, notion: 0, readwise: 0, pocket: 0 }
     for (const row of readerRows) {
@@ -297,6 +303,15 @@ export function ReaderInboxView() {
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
             {t('reader.showArchived')}
           </label>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as ReaderSort)}
+            style={{ height: 32, padding: '0 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }}
+          >
+            <option value="updated">{t('reader.sortUpdated')}</option>
+            <option value="title">{t('reader.sortTitle')}</option>
+            <option value="source">{t('reader.sortSource')}</option>
+          </select>
           <button
             onClick={() => void markVisibleRead()}
             disabled={!filtered.some(isUnreadReaderRow)}
