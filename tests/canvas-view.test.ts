@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties']): PropertyTableRow {
@@ -100,6 +100,20 @@ describe('canvas card placement', () => {
     expect(getNextCanvasAssociationKey(keys, 'a', 1)).toBe('b')
     expect(getNextCanvasAssociationKey(keys, 'a', -1)).toBe('c')
     expect(getNextCanvasAssociationKey([], 'a', 1)).toBeNull()
+  })
+
+  it('applies per-mode manual position overrides without mutating the base layout', () => {
+    const base = {
+      a: { x: 40, y: 72 },
+      b: { x: 310, y: 72 }
+    }
+    const merged = applyCanvasModeOverrides(base, { b: { x: 500, y: 240 } })
+
+    expect(merged).toEqual({
+      a: { x: 40, y: 72 },
+      b: { x: 500, y: 240 }
+    })
+    expect(base.b).toEqual({ x: 310, y: 72 })
   })
 
   it('routes links around blocking cards with elbow paths', () => {
