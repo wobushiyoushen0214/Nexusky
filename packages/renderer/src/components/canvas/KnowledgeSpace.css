@@ -2,11 +2,24 @@
   animation: knowledge-flow 1.9s linear infinite;
 }
 
+.knowledge-suggestion-line {
+  animation: knowledge-suggestion-pulse 2.8s ease-out infinite;
+}
+
 @keyframes knowledge-flow {
   from {
     stroke-dashoffset: 0;
   }
   to {
     stroke-dashoffset: -19;
+  }
+}
+
+@keyframes knowledge-suggestion-pulse {
+  0%, 100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.52;
   }
 }

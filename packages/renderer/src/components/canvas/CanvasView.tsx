@@ -61,6 +61,14 @@ interface CanvasViewportBox {
 type CanvasMode = 'space' | 'properties' | 'time'
 type RoutePoint = { x: number; y: number }
 type CanvasEdgeRoute = { key: string; points: RoutePoint[] }
+type CanvasAssociationReason = 'tag' | 'source' | 'title'
+
+interface CanvasAssociationSuggestion {
+  source: string
+  target: string
+  reason: CanvasAssociationReason
+  score: number
+}
 
 interface PendingCanvasFocus {
   filePath: string
@@ -177,6 +185,65 @@ function getArchiveGroup(row: PropertyTableRow): string {
   const status = valueToText(row.properties.status).toLowerCase()
   if (status && ['unread', 'to-read', 'todo', 'archived', 'read'].includes(status)) return `status:${status}`
   return `tag:${getPrimaryTag(row)}`
+}
+
+function associationKey(source: string, target: string): string {
+  return source < target ? `${source}::${target}` : `${target}::${source}`
+}
+
+function tokenizeAssociationText(value: string): Set<string> {
+  return new Set(value
+    .toLowerCase()
+    .split(/[^a-z0-9\u4e00-\u9fa5]+/u)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2))
+}
+
+export function buildCanvasAssociationSuggestions(rows: PropertyTableRow[], edges: GraphData['edges'], maxSuggestions = 18): CanvasAssociationSuggestion[] {
+  const existing = new Set(edges.map((edge) => associationKey(edge.source, edge.target)))
+  const suggestions: CanvasAssociationSuggestion[] = []
+  for (let i = 0; i < rows.length; i++) {
+    for (let j = i + 1; j < rows.length; j++) {
+      const source = rows[i]
+      const target = rows[j]
+      if (existing.has(associationKey(source.id, target.id))) continue
+
+      const sourceTags = new Set(getTextValues(source.properties.tags).map((tag) => tag.toLowerCase()))
+      const targetTags = new Set(getTextValues(target.properties.tags).map((tag) => tag.toLowerCase()))
+      const sharedTags = Array.from(sourceTags).filter((tag) => targetTags.has(tag))
+      const sameSource = valueToText(source.properties.source).toLowerCase()
+        && valueToText(source.properties.source).toLowerCase() === valueToText(target.properties.source).toLowerCase()
+      const sourceTokens = tokenizeAssociationText(source.title)
+      const targetTokens = tokenizeAssociationText(target.title)
+      const sharedTitleTokens = Array.from(sourceTokens).filter((token) => targetTokens.has(token))
+
+      const tagScore = sharedTags.length * 4
+      const sourceScore = sameSource ? 2 : 0
+      const titleScore = Math.min(sharedTitleTokens.length, 2) * 2
+      const score = tagScore + sourceScore + titleScore
+      if (score < 4) continue
+
+      suggestions.push({
+        source: source.id,
+        target: target.id,
+        reason: tagScore >= sourceScore && tagScore >= titleScore ? 'tag' : sourceScore >= titleScore ? 'source' : 'title',
+        score
+      })
+    }
+  }
+
+  const degree = new Map<string, number>()
+  return suggestions
+    .sort((a, b) => b.score - a.score || a.source.localeCompare(b.source) || a.target.localeCompare(b.target))
+    .filter((suggestion) => {
+      const sourceCount = degree.get(suggestion.source) || 0
+      const targetCount = degree.get(suggestion.target) || 0
+      if (sourceCount >= 2 || targetCount >= 2) return false
+      degree.set(suggestion.source, sourceCount + 1)
+      degree.set(suggestion.target, targetCount + 1)
+      return true
+    })
+    .slice(0, maxSuggestions)
 }
 
 export function buildArchivePositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
@@ -671,6 +738,29 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
       .filter((edge): edge is CanvasEdgeRoute => edge !== null)
   }, [canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph, modePositions, visibleIds])
 
+  const canvasSuggestedEdges = useMemo<CanvasEdgeRoute[]>(() => {
+    const suggestions = buildCanvasAssociationSuggestions(filteredRows, graph?.edges || [])
+    if (suggestions.length === 0) return []
+    const blockers = filteredRows.map((row, index) => ({
+      id: row.id,
+      rect: cardRect(modePositions[row.id] || defaultPosition(index))
+    }))
+    return suggestions
+      .map((edge) => {
+        const source = modePositions[edge.source]
+        const target = modePositions[edge.target]
+        if (!source || !target) return null
+        return {
+          key: `${edge.source}~${edge.target}:${edge.reason}`,
+          points: routeBetweenCards(source, target, blockers.filter((blocker) => blocker.id !== edge.source && blocker.id !== edge.target).map((blocker) => blocker.rect)).map((point) => ({
+            x: point.x - canvasMetrics.minX,
+            y: point.y - canvasMetrics.minY
+          }))
+        }
+      })
+      .filter((edge): edge is CanvasEdgeRoute => edge !== null)
+  }, [canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph?.edges, modePositions])
+
   const resetLayout = () => {
     const next = buildArchivePositions(rows)
     setPositions(next)
@@ -851,6 +941,19 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
                   </marker>
                 </defs>
+                {canvasSuggestedEdges.map((edge) => (
+                  <path
+                    key={edge.key}
+                    className="knowledge-suggestion-line"
+                    d={routePath(edge.points)}
+                    fill="none"
+                    stroke="color-mix(in srgb, var(--text-tertiary) 40%, transparent)"
+                    strokeWidth="1"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    strokeDasharray="2 10"
+                  />
+                ))}
                 {canvasEdges.map((edge) => (
                   <g key={edge.key}>
                     <path d={routePath(edge.points)} fill="none" stroke="var(--editor-bg)" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.82" />
@@ -988,6 +1091,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
             <div>{t('canvas.guideDrag')}</div>
             <div>{t('canvas.guideOpen')}</div>
             <div>{t('canvas.guideLinks')}</div>
+            <div>{t('canvas.guideSuggestions')}</div>
             <div>{t('canvas.guideZoom')}</div>
             <div>{t('canvas.guidePan')}</div>
             <div>{t('canvas.guideCreate')}</div>

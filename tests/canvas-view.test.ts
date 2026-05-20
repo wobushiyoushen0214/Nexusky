@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildArchivePositions, findAvailablePosition, getCanvasInitialScrollKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { buildArchivePositions, buildCanvasAssociationSuggestions, findAvailablePosition, getCanvasInitialScrollKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties']): PropertyTableRow {
@@ -65,6 +65,20 @@ describe('canvas card placement', () => {
 
     expect(Math.abs(positions['readwise-a'].x - positions['readwise-b'].x)).toBeLessThan(260)
     expect(Math.abs(positions.project.x - positions['readwise-a'].x)).toBeGreaterThanOrEqual(300)
+  })
+
+  it('suggests implicit associations without duplicating existing graph links', () => {
+    const rows = [
+      row('react-hooks', { tags: ['react'], source: 'readwise' }),
+      row('react-props', { tags: ['react'], source: 'pocket' }),
+      row('pocket-react', { tags: ['css'], source: 'pocket' }),
+      row('loose', { tags: ['writing'] })
+    ]
+
+    expect(buildCanvasAssociationSuggestions(rows, [{ source: 'react-hooks', target: 'react-props' }]).map((edge) => [edge.source, edge.target])).toEqual([
+      ['react-props', 'pocket-react']
+    ])
+    expect(buildCanvasAssociationSuggestions(rows, []).map((edge) => [edge.source, edge.target])).toContainEqual(['react-hooks', 'react-props'])
   })
 
   it('routes links around blocking cards with elbow paths', () => {
