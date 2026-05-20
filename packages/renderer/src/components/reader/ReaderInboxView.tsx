@@ -57,6 +57,10 @@ export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource,
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
 }
 
+export function countUnreadReaderRows(rows: PropertyTableRow[]): number {
+  return rows.filter((row) => getReaderSource(row) && isUnreadReaderRow(row)).length
+}
+
 function sourceLabel(source: ReaderSource | null): string {
   if (source === 'notion') return 'Notion'
   if (source === 'readwise') return 'Readwise'
@@ -119,7 +123,7 @@ export function ReaderInboxView() {
     }
     return next
   }, [readerRows])
-  const unreadCount = readerRows.filter(isUnreadReaderRow).length
+  const unreadCount = countUnreadReaderRows(readerRows)
 
   const openRow = async (row: PropertyTableRow) => {
     if (!vaultPath) return
@@ -127,19 +131,35 @@ export function ReaderInboxView() {
     setMainView('editor')
   }
 
-  const updateStatus = async (row: PropertyTableRow, status: 'read' | 'unread') => {
+  const writeStatuses = async (targetRows: PropertyTableRow[], status: 'read' | 'unread') => {
     if (!vaultPath) return
-    const path = `${vaultPath}/${row.filePath}`
+    const changedIds: string[] = []
     try {
-      const content = await window.api.invoke('file:read', { path })
-      const updated = updateMarkdownProperty(content, 'status', status)
-      await window.api.invoke('file:write', { path, content: updated, vaultPath })
-      await window.api.invoke('db:index-file', { vaultPath, filePath: path })
-      setRows((current) => current.map((item) => item.id === row.id ? { ...item, properties: { ...item.properties, status }, updatedAt: Date.now() } : item))
-      toast(status === 'read' ? t('reader.markedRead') : t('reader.markedUnread'), 'success')
+      for (const row of targetRows) {
+        const path = `${vaultPath}/${row.filePath}`
+        const content = await window.api.invoke('file:read', { path })
+        const updated = updateMarkdownProperty(content, 'status', status)
+        await window.api.invoke('file:write', { path, content: updated, vaultPath })
+        await window.api.invoke('db:index-file', { vaultPath, filePath: path })
+        changedIds.push(row.id)
+      }
+      const changed = new Set(changedIds)
+      const updatedAt = Date.now()
+      setRows((current) => current.map((item) => changed.has(item.id) ? { ...item, properties: { ...item.properties, status }, updatedAt } : item))
+      toast(status === 'read' ? t('reader.markedReadCount', { count: changedIds.length }) : t('reader.markedUnread'), 'success')
     } catch {
       toast(t('reader.statusFailed'), 'error')
     }
+  }
+
+  const updateStatus = async (row: PropertyTableRow, status: 'read' | 'unread') => {
+    await writeStatuses([row], status)
+  }
+
+  const markVisibleRead = async () => {
+    const unreadRows = filtered.filter(isUnreadReaderRow)
+    if (unreadRows.length === 0) return
+    await writeStatuses(unreadRows, 'read')
   }
 
   const openSource = async (row: PropertyTableRow) => {
@@ -193,6 +213,13 @@ export function ReaderInboxView() {
             <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
             {t('reader.unreadOnly')}
           </label>
+          <button
+            onClick={() => void markVisibleRead()}
+            disabled={!filtered.some(isUnreadReaderRow)}
+            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: filtered.some(isUnreadReaderRow) ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: filtered.some(isUnreadReaderRow) ? 'pointer' : 'default', opacity: filtered.some(isUnreadReaderRow) ? 1 : 0.55 }}
+          >
+            {t('reader.markVisibleRead')}
+          </button>
         </div>
       </div>
 

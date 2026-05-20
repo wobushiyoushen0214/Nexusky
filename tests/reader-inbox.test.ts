@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterReaderRows, getReaderSource, getReaderSourceUrl, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { countUnreadReaderRows, filterReaderRows, getReaderSource, getReaderSourceUrl, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -38,6 +38,7 @@ describe('reader inbox helpers', () => {
     ])
     expect(filterReaderRows(rows, 'pocket', 'research', true).map((item) => item.filePath)).toEqual(['Imports/Pocket/Later.md'])
     expect(filterReaderRows(rows, 'all', 'Ada', false).map((item) => item.filePath)).toEqual(['Imports/Readwise/Book.md'])
+    expect(countUnreadReaderRows(rows)).toBe(2)
   })
 
   it('only exposes http source URLs for external opening', () => {
