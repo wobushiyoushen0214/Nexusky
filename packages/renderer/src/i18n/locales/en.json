@@ -254,6 +254,7 @@
     "unreadOnly": "Unread only",
     "showArchived": "Show archived",
     "sortUpdated": "Newest first",
+    "sortOldest": "Oldest first",
     "sortTitle": "Title A-Z",
     "sortSource": "Source",
     "unread": "unread",

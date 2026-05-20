@@ -9,7 +9,7 @@ import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import type { PropertyTableRow } from '@shared/types/ipc'
 
 type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
-type ReaderSort = 'updated' | 'title' | 'source'
+type ReaderSort = 'updated' | 'oldest' | 'title' | 'source'
 interface ReaderViewSettings {
   source: ReaderSource
   sort: ReaderSort
@@ -19,7 +19,7 @@ interface ReaderViewSettings {
 
 const READER_VIEW_SETTINGS_KEY = 'nexusky-reader-view-settings'
 const READER_SOURCES: ReaderSource[] = ['all', 'notion', 'readwise', 'pocket']
-const READER_SORTS: ReaderSort[] = ['updated', 'title', 'source']
+const READER_SORTS: ReaderSort[] = ['updated', 'oldest', 'title', 'source']
 const DEFAULT_READER_VIEW_SETTINGS: ReaderViewSettings = {
   source: 'all',
   sort: 'updated',
@@ -105,6 +105,7 @@ export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource,
       return haystack.includes(q)
     })
     .sort((a, b) => {
+      if (sort === 'oldest') return (a.updatedAt || 0) - (b.updatedAt || 0) || a.title.localeCompare(b.title)
       if (sort === 'title') return a.title.localeCompare(b.title) || (b.updatedAt || 0) - (a.updatedAt || 0)
       if (sort === 'source') return sourceLabel(getReaderSource(a)).localeCompare(sourceLabel(getReaderSource(b))) || (b.updatedAt || 0) - (a.updatedAt || 0)
       return (b.updatedAt || 0) - (a.updatedAt || 0)
@@ -504,6 +505,7 @@ export function ReaderInboxView() {
             style={{ height: 32, padding: '0 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }}
           >
             <option value="updated">{t('reader.sortUpdated')}</option>
+            <option value="oldest">{t('reader.sortOldest')}</option>
             <option value="title">{t('reader.sortTitle')}</option>
             <option value="source">{t('reader.sortSource')}</option>
           </select>

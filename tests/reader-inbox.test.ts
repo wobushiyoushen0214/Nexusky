@@ -66,17 +66,22 @@ describe('reader inbox helpers', () => {
       'Imports/Pocket/Zebra.md',
       'Imports/Readwise/Alpha.md'
     ])
+    expect(filterReaderRows(rows, 'all', '', false, false, 'oldest').map((item) => item.filePath)).toEqual([
+      'Imports/Readwise/Alpha.md',
+      'Imports/Notion/Middle.md',
+      'Imports/Pocket/Zebra.md'
+    ])
   })
 
   it('normalizes persisted reader view settings', () => {
     expect(normalizeReaderViewSettings({
       source: 'pocket',
-      sort: 'source',
+      sort: 'oldest',
       unreadOnly: true,
       showArchived: true
     })).toEqual({
       source: 'pocket',
-      sort: 'source',
+      sort: 'oldest',
       unreadOnly: true,
       showArchived: true
     })
