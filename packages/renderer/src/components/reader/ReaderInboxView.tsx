@@ -400,6 +400,49 @@ const detailValueStyle: CSSProperties = {
   color: 'var(--text-secondary)'
 }
 
+const readerShellStyle: CSSProperties = {
+  height: '100%',
+  display: 'grid',
+  gridTemplateColumns: '230px minmax(340px, 0.9fr) minmax(420px, 1.1fr)',
+  gap: 0,
+  background: 'var(--editor-bg)',
+  color: 'var(--text-primary)'
+}
+
+const readerRailStyle: CSSProperties = {
+  minHeight: 0,
+  padding: '22px 16px 18px 20px',
+  borderRight: '1px solid var(--border-subtle)',
+  background: 'color-mix(in srgb, var(--bg-surface) 54%, var(--editor-bg))',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 18
+}
+
+const readerSectionLabelStyle: CSSProperties = {
+  marginBottom: 8,
+  fontSize: 10,
+  fontWeight: 760,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: 'var(--text-tertiary)'
+}
+
+const readerFlowButtonBaseStyle: CSSProperties = {
+  width: '100%',
+  minHeight: 34,
+  padding: '8px 9px',
+  border: 'none',
+  borderRadius: 7,
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  gap: 8,
+  alignItems: 'center',
+  textAlign: 'left',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer'
+}
+
 const readerToggleStyle: CSSProperties = {
   height: 32,
   display: 'inline-flex',
@@ -444,6 +487,7 @@ export function ReaderInboxView() {
   const [creatingDigest, setCreatingDigest] = useState(false)
   const [preparingDigestion, setPreparingDigestion] = useState(false)
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null)
+  const [stageFocus, setStageFocus] = useState<ReaderTriageStage | 'all'>('all')
   const { source, sort, unreadOnly, showArchived } = viewSettings
 
   const loadRows = async () => {
@@ -473,10 +517,11 @@ export function ReaderInboxView() {
   }, [viewSettings])
 
   const readerRows = useMemo(() => rows.filter((row) => getReaderSource(row)), [rows])
-  const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived, sort), [query, rows, showArchived, sort, source, unreadOnly])
+  const baseFiltered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived, sort), [query, rows, showArchived, sort, source, unreadOnly])
+  const filtered = useMemo(() => stageFocus === 'all' ? baseFiltered : baseFiltered.filter((row) => getReaderTriageStage(row) === stageFocus), [baseFiltered, stageFocus])
   const sourceCountRows = useMemo(() => filterReaderRows(rows, 'all', query, unreadOnly, !showArchived, 'updated'), [query, rows, showArchived, unreadOnly])
   const counts = useMemo(() => countReaderRowsBySource(sourceCountRows), [sourceCountRows])
-  const triageCounts = useMemo(() => countReaderRowsByTriage(filtered), [filtered])
+  const triageCounts = useMemo(() => countReaderRowsByTriage(baseFiltered), [baseFiltered])
   const triageGroups = useMemo(() => READER_TRIAGE_STAGES
     .map((stage) => ({ stage, rows: filtered.filter((row) => getReaderTriageStage(row) === stage) }))
     .filter((group) => group.rows.length > 0), [filtered])
@@ -664,165 +709,195 @@ export function ReaderInboxView() {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
-      <div style={{ flexShrink: 0, padding: '24px 30px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 24, alignItems: 'end' }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 720, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('reader.intake')}</div>
-            <h1 style={{ margin: '7px 0 0', fontSize: 24, lineHeight: 1.15, fontWeight: 760 }}>{t('reader.title')}</h1>
-            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-              {t('reader.summary', { count: readerRows.length, unread: unreadCount })}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: 18, alignItems: 'end' }}>
-            <ReaderMetric label={t('reader.inboxMetric')} value={readerRows.length} />
-            <ReaderMetric label={t('reader.unreadMetric')} value={unreadCount} />
-            <ReaderMetric label={t('reader.visibleMetric')} value={filtered.length} />
+    <div style={readerShellStyle}>
+      <aside style={readerRailStyle}>
+        <div>
+          <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('reader.intake')}</div>
+          <h1 style={{ margin: '8px 0 0', fontSize: 22, lineHeight: 1.14, fontWeight: 760 }}>{t('reader.title')}</h1>
+          <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.55, color: 'var(--text-tertiary)' }}>
+            {t('reader.summary', { count: readerRows.length, unread: unreadCount })}
           </div>
         </div>
 
-        <div style={{ maxWidth: 1180, margin: '18px auto 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 14, alignItems: 'start' }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+          <ReaderMetric label={t('reader.inboxMetric')} value={readerRows.length} />
+          <ReaderMetric label={t('reader.unreadMetric')} value={unreadCount} />
+          <ReaderMetric label={t('reader.visibleMetric')} value={filtered.length} />
+        </div>
+
+        <div>
+          <div style={readerSectionLabelStyle}>{t('reader.sourceLabel')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {READER_SOURCES.map((item) => {
+              const active = source === item
+              return (
+                <button
+                  key={item}
+                  onClick={() => setViewSettings((current) => ({ ...current, source: item }))}
+                  style={{ ...readerFlowButtonBaseStyle, background: active ? 'var(--bg-elevated)' : 'transparent', outline: active ? '1px solid var(--border-subtle)' : 'none' }}
+                >
+                  <span style={{ minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 999, background: item === 'all' ? 'var(--text-tertiary)' : sourceColor(item) }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: active ? 700 : 560, color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                      {item === 'all' ? t('reader.allSources') : sourceLabel(item)}
+                    </span>
+                  </span>
+                  <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{counts[item]}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div style={readerSectionLabelStyle}>{t('reader.flowLabel')}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <ReaderStageButton active={stageFocus === 'all'} label={t('reader.allStages')} count={baseFiltered.length} color="var(--text-tertiary)" onClick={() => setStageFocus('all')} />
+            {READER_TRIAGE_STAGES.map((stage) => (
+              <ReaderStageButton key={stage} active={stageFocus === stage} label={t(`reader.triage.${stage}`)} count={triageCounts[stage]} color={triageColor(stage)} onClick={() => setStageFocus(stage)} />
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ ...readerToggleStyle, justifyContent: 'space-between' }}>
+            <span>{t('reader.unreadOnly')}</span>
+            <input type="checkbox" checked={unreadOnly} onChange={(e) => setViewSettings((current) => ({ ...current, unreadOnly: e.target.checked }))} />
+          </label>
+          <label style={{ ...readerToggleStyle, justifyContent: 'space-between' }}>
+            <span>{t('reader.showArchived')}</span>
+            <input type="checkbox" checked={showArchived} onChange={(e) => setViewSettings((current) => ({ ...current, showArchived: e.target.checked }))} />
+          </label>
+        </div>
+
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {(['notion', 'readwise', 'pocket'] as const).map((item) => (
+            <button
+              key={item}
+              onClick={() => void importSource(item)}
+              disabled={Boolean(importing)}
+              style={{ ...quietButtonStyle, width: '100%', justifyContent: 'space-between', opacity: importing && importing !== item ? 0.55 : 1, cursor: importing ? 'default' : 'pointer' }}
+            >
+              <span>{importing === item ? t('reader.importing') : t(`reader.import.${item}`)}</span>
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: sourceColor(item) }} />
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <main style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-subtle)' }}>
+        <div style={{ flexShrink: 0, padding: '20px 20px 14px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center' }}>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('reader.searchPlaceholder')}
-              style={{ width: 330, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
+              style={{ width: '100%', height: 34, padding: '0 11px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
             />
-            <div style={{ display: 'flex', padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-              {READER_SOURCES.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => setViewSettings((current) => ({ ...current, source: item }))}
-                  style={{ height: 26, padding: '0 10px', border: 'none', borderRadius: 5, background: source === item ? 'var(--accent-muted)' : 'transparent', color: source === item ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
-                >
-                  {item === 'all' ? t('reader.allSources') : sourceLabel(item)} · {counts[item]}
-                </button>
-              ))}
-            </div>
-            <label style={readerToggleStyle}>
-              <input type="checkbox" checked={unreadOnly} onChange={(e) => setViewSettings((current) => ({ ...current, unreadOnly: e.target.checked }))} />
-              {t('reader.unreadOnly')}
-            </label>
-            <label style={readerToggleStyle}>
-              <input type="checkbox" checked={showArchived} onChange={(e) => setViewSettings((current) => ({ ...current, showArchived: e.target.checked }))} />
-              {t('reader.showArchived')}
-            </label>
             <select
               value={sort}
               onChange={(e) => setViewSettings((current) => ({ ...current, sort: e.target.value as ReaderSort }))}
-              style={{ height: 32, padding: '0 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }}
+              style={{ height: 34, padding: '0 9px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }}
             >
               <option value="updated">{t('reader.sortUpdated')}</option>
               <option value="oldest">{t('reader.sortOldest')}</option>
               <option value="title">{t('reader.sortTitle')}</option>
               <option value="source">{t('reader.sortSource')}</option>
             </select>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => loadRows()} disabled={loading} title={loading ? t('reader.loading') : t('reader.refresh')} aria-label={loading ? t('reader.loading') : t('reader.refresh')} style={{ ...iconButtonBaseStyle, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.65 : 1 }}><RefreshIcon /></button>
-              <button onClick={() => { if (nextUnreadRow) void openRow(nextUnreadRow) }} disabled={!nextUnreadRow} title={t('reader.openNextUnread')} aria-label={t('reader.openNextUnread')} style={{ ...iconButtonBaseStyle, background: nextUnreadRow ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: nextUnreadRow ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: nextUnreadRow ? 'pointer' : 'default', opacity: nextUnreadRow ? 1 : 0.55 }}><NextIcon /></button>
-              <button onClick={() => void markVisibleRead()} disabled={!filtered.some(isUnreadReaderRow)} title={t('reader.markVisibleRead')} aria-label={t('reader.markVisibleRead')} style={{ ...iconButtonBaseStyle, color: filtered.some(isUnreadReaderRow) ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: filtered.some(isUnreadReaderRow) ? 'pointer' : 'default', opacity: filtered.some(isUnreadReaderRow) ? 1 : 0.55 }}><CheckIcon /></button>
-              <button onClick={() => void archiveVisible()} disabled={archivableVisibleRows.length === 0} title={t('reader.archiveVisible')} aria-label={t('reader.archiveVisible')} style={{ ...iconButtonBaseStyle, color: archivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: archivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: archivableVisibleRows.length > 0 ? 1 : 0.55 }}><ArchiveIcon /></button>
-              <button onClick={() => void unarchiveVisible()} disabled={unarchivableVisibleRows.length === 0} title={t('reader.unarchiveVisible')} aria-label={t('reader.unarchiveVisible')} style={{ ...iconButtonBaseStyle, color: unarchivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: unarchivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: unarchivableVisibleRows.length > 0 ? 1 : 0.55 }}><UnarchiveIcon /></button>
-              <button onClick={() => void askAiToDigestVisible()} disabled={filtered.length === 0 || preparingDigestion} title={preparingDigestion ? t('reader.preparingAiDigest') : t('reader.aiDigestVisible')} aria-label={preparingDigestion ? t('reader.preparingAiDigest') : t('reader.aiDigestVisible')} style={{ ...iconButtonBaseStyle, background: filtered.length > 0 && !preparingDigestion ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: filtered.length > 0 && !preparingDigestion ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: filtered.length > 0 && !preparingDigestion ? 'pointer' : 'default', opacity: filtered.length > 0 && !preparingDigestion ? 1 : 0.55 }}><SparkIcon /></button>
-              <button onClick={() => void createDigest()} disabled={filtered.length === 0 || creatingDigest} title={creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')} aria-label={creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')} style={{ ...iconButtonBaseStyle, color: filtered.length > 0 && !creatingDigest ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: filtered.length > 0 && !creatingDigest ? 'pointer' : 'default', opacity: filtered.length > 0 && !creatingDigest ? 1 : 0.55 }}><DigestIcon /></button>
-            </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {(['notion', 'readwise', 'pocket'] as const).map((item) => (
-              <button
-                key={item}
-                onClick={() => void importSource(item)}
-                disabled={Boolean(importing)}
-                style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: importing ? 'default' : 'pointer', opacity: importing && importing !== item ? 0.55 : 1 }}
-              >
-                {importing === item ? t('reader.importing') : t(`reader.import.${item}`)}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={() => loadRows()} disabled={loading} title={loading ? t('reader.loading') : t('reader.refresh')} aria-label={loading ? t('reader.loading') : t('reader.refresh')} style={{ ...iconButtonBaseStyle, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.65 : 1 }}><RefreshIcon /></button>
+            <button onClick={() => { if (nextUnreadRow) void openRow(nextUnreadRow) }} disabled={!nextUnreadRow} title={t('reader.openNextUnread')} aria-label={t('reader.openNextUnread')} style={{ ...iconButtonBaseStyle, background: nextUnreadRow ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: nextUnreadRow ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: nextUnreadRow ? 'pointer' : 'default', opacity: nextUnreadRow ? 1 : 0.55 }}><NextIcon /></button>
+            <button onClick={() => void markVisibleRead()} disabled={!filtered.some(isUnreadReaderRow)} title={t('reader.markVisibleRead')} aria-label={t('reader.markVisibleRead')} style={{ ...iconButtonBaseStyle, color: filtered.some(isUnreadReaderRow) ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: filtered.some(isUnreadReaderRow) ? 'pointer' : 'default', opacity: filtered.some(isUnreadReaderRow) ? 1 : 0.55 }}><CheckIcon /></button>
+            <button onClick={() => void archiveVisible()} disabled={archivableVisibleRows.length === 0} title={t('reader.archiveVisible')} aria-label={t('reader.archiveVisible')} style={{ ...iconButtonBaseStyle, color: archivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: archivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: archivableVisibleRows.length > 0 ? 1 : 0.55 }}><ArchiveIcon /></button>
+            <button onClick={() => void unarchiveVisible()} disabled={unarchivableVisibleRows.length === 0} title={t('reader.unarchiveVisible')} aria-label={t('reader.unarchiveVisible')} style={{ ...iconButtonBaseStyle, color: unarchivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: unarchivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: unarchivableVisibleRows.length > 0 ? 1 : 0.55 }}><UnarchiveIcon /></button>
+            <button onClick={() => void askAiToDigestVisible()} disabled={filtered.length === 0 || preparingDigestion} title={preparingDigestion ? t('reader.preparingAiDigest') : t('reader.aiDigestVisible')} aria-label={preparingDigestion ? t('reader.preparingAiDigest') : t('reader.aiDigestVisible')} style={{ ...iconButtonBaseStyle, background: filtered.length > 0 && !preparingDigestion ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: filtered.length > 0 && !preparingDigestion ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: filtered.length > 0 && !preparingDigestion ? 'pointer' : 'default', opacity: filtered.length > 0 && !preparingDigestion ? 1 : 0.55 }}><SparkIcon /></button>
+            <button onClick={() => void createDigest()} disabled={filtered.length === 0 || creatingDigest} title={creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')} aria-label={creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')} style={{ ...iconButtonBaseStyle, color: filtered.length > 0 && !creatingDigest ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: filtered.length > 0 && !creatingDigest ? 'pointer' : 'default', opacity: filtered.length > 0 && !creatingDigest ? 1 : 0.55 }}><DigestIcon /></button>
           </div>
         </div>
 
-        <div style={{ maxWidth: 1180, margin: '16px auto 0', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-          {READER_TRIAGE_STAGES.map((stage) => (
-            <div key={stage} style={{ minWidth: 0, padding: '10px 11px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: 9, alignItems: 'center' }}>
-              <span style={{ width: 8, height: 8, borderRadius: 999, background: triageColor(stage) }} />
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 650 }}>
-                {t(`reader.triage.${stage}`)}
-              </span>
-              <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{triageCounts[stage]}</span>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '18px 16px 28px' }}>
+          {filtered.length === 0 ? (
+            <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
+              {readerRows.length === 0 ? t('reader.emptyImports') : t('reader.emptyFilter')}
             </div>
-          ))}
-        </div>
-      </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                <div>
+                  <div style={readerSectionLabelStyle}>{stageFocus === 'all' ? t('reader.queue') : t(`reader.triage.${stageFocus}`)}</div>
+                  <div style={{ marginTop: -4, color: 'var(--text-tertiary)', fontSize: 12 }}>{t('reader.visibleSummary', { count: filtered.length })}</div>
+                </div>
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{filtered.length}</div>
+              </div>
 
-      <div style={{ flex: 1, overflow: 'hidden', padding: '24px 30px 34px' }}>
-        {filtered.length === 0 ? (
+              {triageGroups.map((group) => (
+                <div key={group.stage}>
+                  <div style={{ margin: '0 4px 7px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 999, background: triageColor(group.stage) }} />
+                      {t(`reader.triage.${group.stage}`)}
+                    </div>
+                    <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>{group.rows.length}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {group.rows.map((row) => {
+                      const rowSource = getReaderSource(row)
+                      const active = selectedRow?.id === row.id
+                      const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
+                      return (
+                        <button
+                          key={row.id}
+                          onClick={() => setSelectedRowId(row.id)}
+                          style={{ width: '100%', minHeight: 82, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, padding: '12px 13px', border: '1px solid var(--border-subtle)', borderRadius: 8, background: active ? 'var(--bg-elevated)' : 'color-mix(in srgb, var(--bg-surface) 74%, transparent)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', boxShadow: active ? '0 14px 32px rgba(0,0,0,0.18)' : 'none' }}
+                        >
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 999, background: sourceColor(rowSource), flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: active ? 740 : 650 }}>{row.title}</span>
+                            </span>
+                            <span style={{ display: 'block', marginTop: 7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                              {sourceLabel(rowSource)}{status ? ` · ${status}` : ''} · {formatDate(row.updatedAt)}
+                            </span>
+                            <span style={{ display: 'block', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                              {row.filePath}
+                            </span>
+                          </span>
+                          <span style={{ alignSelf: 'start', color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {t(`reader.triage.${getReaderTriageStage(row)}`)}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      <div style={{ minWidth: 0, minHeight: 0, padding: '20px 22px 24px', overflow: 'hidden' }}>
+        {selectedRow ? (
+          <ReaderBrief
+            row={selectedRow}
+            activeNoteId={activeNoteId}
+            noteDraft={noteDrafts[selectedRow.id] || ''}
+            savingNote={savingNoteId === selectedRow.id}
+            onOpen={() => void openRow(selectedRow)}
+            onOpenInKnowledgeSpace={() => openRowInKnowledgeSpace(selectedRow)}
+            onOpenSource={() => void openSource(selectedRow)}
+            onToggleNote={() => setActiveNoteId(activeNoteId === selectedRow.id ? null : selectedRow.id)}
+            onNoteChange={(value) => setNoteDrafts((current) => ({ ...current, [selectedRow.id]: value }))}
+            onCancelNote={() => setActiveNoteId(null)}
+            onSaveNote={() => void saveReaderNote(selectedRow)}
+            onToggleRead={() => void updateStatus(selectedRow, isUnreadReaderRow(selectedRow) ? 'read' : 'unread')}
+            onToggleArchive={() => void updateStatus(selectedRow, isArchivedReaderRow(selectedRow) ? 'unread' : 'archived')}
+            t={t}
+          />
+        ) : (
           <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
             {readerRows.length === 0 ? t('reader.emptyImports') : t('reader.emptyFilter')}
-          </div>
-        ) : (
-          <div style={{ height: '100%', maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(280px, 360px) minmax(0, 1fr)', gap: 20 }}>
-            <div style={{ minHeight: 0, overflow: 'auto', padding: '14px 14px 14px 0', borderRight: '1px solid var(--border-subtle)' }}>
-              <div style={{ marginBottom: 10, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('reader.queue')}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{filtered.length}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {triageGroups.map((group) => (
-                  <div key={group.stage}>
-                    <div style={{ margin: '0 4px 5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        <span style={{ width: 6, height: 6, borderRadius: 999, background: triageColor(group.stage) }} />
-                        {t(`reader.triage.${group.stage}`)}
-                      </div>
-                      <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontVariantNumeric: 'tabular-nums' }}>{group.rows.length}</div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {group.rows.map((row) => {
-                        const rowSource = getReaderSource(row)
-                        const active = selectedRow?.id === row.id
-                        const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
-                        return (
-                          <button
-                            key={row.id}
-                            onClick={() => setSelectedRowId(row.id)}
-                            style={{ minHeight: 62, width: '100%', display: 'grid', gridTemplateColumns: '10px minmax(0, 1fr) auto', alignItems: 'center', gap: 10, padding: '9px 10px', border: 'none', borderRadius: 7, background: active ? 'var(--bg-elevated)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', outline: active ? '1px solid var(--border)' : 'none' }}
-                          >
-                            <span style={{ width: 7, height: 7, borderRadius: 999, background: sourceColor(rowSource) }} />
-                            <span style={{ minWidth: 0 }}>
-                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: active ? 720 : 640 }}>{row.title}</span>
-                              <span style={{ display: 'block', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                                {sourceLabel(rowSource)}{status ? ` · ${status}` : ''} · {formatDate(row.updatedAt)}
-                              </span>
-                            </span>
-                            {isUnreadReaderRow(row) && <span style={{ width: 6, height: 6, borderRadius: 999, background: triageColor('next') }} />}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {selectedRow && (
-              <ReaderBrief
-                row={selectedRow}
-                activeNoteId={activeNoteId}
-                noteDraft={noteDrafts[selectedRow.id] || ''}
-                savingNote={savingNoteId === selectedRow.id}
-                onOpen={() => void openRow(selectedRow)}
-                onOpenInKnowledgeSpace={() => openRowInKnowledgeSpace(selectedRow)}
-                onOpenSource={() => void openSource(selectedRow)}
-                onToggleNote={() => setActiveNoteId(activeNoteId === selectedRow.id ? null : selectedRow.id)}
-                onNoteChange={(value) => setNoteDrafts((current) => ({ ...current, [selectedRow.id]: value }))}
-                onCancelNote={() => setActiveNoteId(null)}
-                onSaveNote={() => void saveReaderNote(selectedRow)}
-                onToggleRead={() => void updateStatus(selectedRow, isUnreadReaderRow(selectedRow) ? 'read' : 'unread')}
-                onToggleArchive={() => void updateStatus(selectedRow, isArchivedReaderRow(selectedRow) ? 'unread' : 'archived')}
-                t={t}
-              />
-            )}
           </div>
         )}
       </div>
@@ -888,10 +963,22 @@ function FolderIcon() {
 
 function ReaderMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div style={{ textAlign: 'right' }}>
+    <div style={{ minWidth: 0, textAlign: 'left' }}>
       <div style={{ color: 'var(--text-primary)', fontSize: 18, lineHeight: 1.05, fontWeight: 740, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      <div style={{ marginTop: 4, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ marginTop: 4, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
     </div>
+  )
+}
+
+function ReaderStageButton({ active, label, count, color, onClick }: { active: boolean; label: string; count: number; color: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{ ...readerFlowButtonBaseStyle, background: active ? 'var(--bg-elevated)' : 'transparent', outline: active ? '1px solid var(--border-subtle)' : 'none' }}>
+      <span style={{ minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 7, height: 7, borderRadius: 999, background: color, flexShrink: 0 }} />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: active ? 700 : 560, color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{label}</span>
+      </span>
+      <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+    </button>
   )
 }
 
