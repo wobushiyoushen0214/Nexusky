@@ -5,7 +5,7 @@ import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { safeSet } from '../utils/storage'
-import type { LocalPlugin } from '@shared/types/ipc'
+import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
 
 type CommandCategory = 'file' | 'search' | 'ai' | 'plugin' | 'graph' | 'sync' | 'export' | 'interface'
 
@@ -47,6 +47,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     safeSet('nexusky-pending-ai-draft', JSON.stringify(draft))
     setRightPanel('chat')
     window.dispatchEvent(new CustomEvent('ai-command-draft', { detail: draft }))
+  }, [setRightPanel])
+
+  const openPluginPanel = useCallback((plugin: LocalPlugin, panel: PluginPanel) => {
+    window.dispatchEvent(new CustomEvent('plugin-panel-open', { detail: { plugin, panel } }))
+    setRightPanel('plugin')
   }, [setRightPanel])
 
   const getCurrentNoteTitle = useCallback(() => {
@@ -225,7 +230,15 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       keywords: ['plugin', plugin.id, command.id],
       action: () => queueAiDraft({ mode: command.mode || 'chat', prompt: command.prompt })
     }))),
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, getCurrentNoteTitle, requireCurrentNote, plugins, t])
+    ...plugins.flatMap((plugin) => plugin.panels.map((panel) => ({
+      id: `plugin-panel:${plugin.id}:${panel.id}`,
+      category: 'plugin' as const,
+      label: `${plugin.name}: ${panel.title}`,
+      description: panel.description || plugin.version,
+      keywords: ['plugin', 'panel', plugin.id, panel.id],
+      action: () => openPluginPanel(plugin, panel)
+    }))),
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, t])
 
   const filtered = query.trim()
     ? commands.filter((c) => {

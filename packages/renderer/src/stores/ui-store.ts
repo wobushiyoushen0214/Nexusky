@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import i18n from '../i18n'
 import { safeGet, safeGetJSON, safeRemove, safeSet, safeSetJSON } from '../utils/storage'
 
-type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph'
+type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'kanban' | 'history' | 'graph' | 'plugin'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
 
@@ -24,7 +24,7 @@ const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
-const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph']
+const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph', 'plugin']
 const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 

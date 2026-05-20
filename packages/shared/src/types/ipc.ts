@@ -40,11 +40,27 @@ export interface PluginCommand {
   mode?: 'chat' | 'edit'
 }
 
+export interface PluginPanel {
+  id: string
+  title: string
+  description?: string
+  content?: string
+}
+
+export interface PluginEditorExtension {
+  id: string
+  title: string
+  description?: string
+  kind: 'markdown' | 'toolbar' | 'slash'
+}
+
 export interface LocalPlugin {
   id: string
   name: string
   version?: string
   commands: PluginCommand[]
+  panels: PluginPanel[]
+  editorExtensions: PluginEditorExtension[]
 }
 
 export interface CssSnippet {

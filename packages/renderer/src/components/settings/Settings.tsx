@@ -1467,7 +1467,7 @@ function PluginsTab() {
 
       {plugins.length === 0 ? (
         <div style={{ padding: 18, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.7 }}>
-          暂未发现插件。参考 docs/PLUGIN_COMMANDS.md 创建 JSON 文件后，插件命令会出现在命令面板的“插件”分组中。
+          暂未发现插件。参考 docs/PLUGIN_COMMANDS.md 创建 JSON 文件后，插件声明会出现在命令面板、Slash 菜单或插件面板中。
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1485,6 +1485,24 @@ function PluginsTab() {
                       {command.description && <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{command.description}</span>}
                     </span>
                     <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--accent-text)' }}>{command.mode || 'chat'}</span>
+                  </div>
+                ))}
+                {plugin.panels.map((panel) => (
+                  <div key={panel.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px', borderRadius: 6, background: 'var(--bg-elevated)' }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{panel.title}</span>
+                      {panel.description && <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{panel.description}</span>}
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--accent-text)' }}>panel</span>
+                  </div>
+                ))}
+                {plugin.editorExtensions.map((extension) => (
+                  <div key={extension.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px', borderRadius: 6, background: 'var(--bg-elevated)' }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extension.title}</span>
+                      {extension.description && <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{extension.description}</span>}
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--accent-text)' }}>{extension.kind}</span>
                   </div>
                 ))}
               </div>

@@ -20,6 +20,7 @@ import { getErrorMessage } from './utils/errors'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED } from './utils/css-snippets'
 import { applyThemePackage, THEME_PACKAGES_UPDATED } from './utils/theme-packages'
 import { safeGet } from './utils/storage'
+import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
 const BasesView = lazy(() => import('./components/bases/BasesView').then((m) => ({ default: m.BasesView })))
@@ -39,8 +40,30 @@ const FlashcardReviewPanel = lazy(() => import('./components/FlashcardReviewPane
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
+type ActivePluginPanel = { plugin: LocalPlugin; panel: PluginPanel }
 
 const FILE_REQUIRED_RIGHT_PANELS = new Set(['outline', 'properties', 'tags', 'history'])
+
+function PluginPanelView({ active }: { active: ActivePluginPanel | null }) {
+  if (!active) {
+    return <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>未选择插件面板</div>
+  }
+  const { plugin, panel } = active
+  return (
+    <div style={{ padding: 16, overflow: 'auto', fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{panel.title}</div>
+        <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>{plugin.name}{plugin.version ? ` · ${plugin.version}` : ''}</div>
+      </div>
+      {panel.description && <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)' }}>{panel.description}</p>}
+      {panel.content ? (
+        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', color: 'var(--text-primary)' }}>{panel.content}</pre>
+      ) : (
+        <div style={{ color: 'var(--text-tertiary)' }}>该插件面板没有声明内容。</div>
+      )}
+    </div>
+  )
+}
 
 function normalizeShortcutKey(key: string): string {
   if (key === ' ') return 'Space'
@@ -82,10 +105,22 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
   const [chatEverOpened, setChatEverOpened] = useState(false)
+  const [activePluginPanel, setActivePluginPanel] = useState<ActivePluginPanel | null>(null)
 
   useEffect(() => {
     if (rightPanel === 'chat') setChatEverOpened(true)
   }, [rightPanel])
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<ActivePluginPanel>).detail
+      if (!detail?.plugin || !detail?.panel) return
+      setActivePluginPanel(detail)
+      setRightPanel('plugin')
+    }
+    window.addEventListener('plugin-panel-open', handler)
+    return () => window.removeEventListener('plugin-panel-open', handler)
+  }, [setRightPanel])
 
   useEffect(() => {
     if (!currentFilePath && FILE_REQUIRED_RIGHT_PANELS.has(rightPanel)) {
@@ -399,7 +434,7 @@ export default function App() {
           <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'kanban' ? t('panels.kanban') : rightPanel === 'history' ? t('panels.history') : t('panels.outline')}
+                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'kanban' ? t('panels.kanban') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
@@ -420,6 +455,7 @@ export default function App() {
               {rightPanel === 'calendar' && <CalendarPanel />}
               {rightPanel === 'kanban' && <KanbanPanel />}
               {rightPanel === 'history' && <HistoryPanel />}
+              {rightPanel === 'plugin' && <PluginPanelView active={activePluginPanel} />}
               </Suspense>
               {chatEverOpened && (
                 <div style={{ flex: 1, overflow: 'hidden', display: rightPanel === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>

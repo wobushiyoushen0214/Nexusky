@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { mkdir, readdir, readFile } from 'fs/promises'
 import { join } from 'path'
-import type { CssSnippet, LocalPlugin, PluginCommand, ThemePackage } from '@shared/types/ipc'
+import type { CssSnippet, LocalPlugin, PluginCommand, PluginEditorExtension, PluginPanel, ThemePackage } from '@shared/types/ipc'
 
 const THEME_VARIABLES = new Set([
   '--bg-base',
@@ -40,18 +40,56 @@ function isCommand(value: unknown): value is PluginCommand {
   return typeof command.id === 'string' && typeof command.title === 'string' && typeof command.prompt === 'string'
 }
 
-function normalizePlugin(raw: unknown): LocalPlugin | null {
+function isPanel(value: unknown): value is PluginPanel {
+  if (!value || typeof value !== 'object') return false
+  const panel = value as Partial<PluginPanel>
+  return typeof panel.id === 'string' && typeof panel.title === 'string'
+}
+
+function isEditorExtension(value: unknown): value is PluginEditorExtension {
+  if (!value || typeof value !== 'object') return false
+  const extension = value as Partial<PluginEditorExtension>
+  return (
+    typeof extension.id === 'string' &&
+    typeof extension.title === 'string' &&
+    (extension.kind === 'markdown' || extension.kind === 'toolbar' || extension.kind === 'slash')
+  )
+}
+
+function safeOptionalText(value: unknown, max = 1200): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined
+}
+
+export function normalizePlugin(raw: unknown): LocalPlugin | null {
   if (!raw || typeof raw !== 'object') return null
-  const plugin = raw as Partial<LocalPlugin>
-  if (typeof plugin.id !== 'string' || typeof plugin.name !== 'string' || !Array.isArray(plugin.commands)) return null
-  const commands = plugin.commands.filter(isCommand).map((command) => ({
+  const plugin = raw as Partial<LocalPlugin> & { panels?: unknown; editorExtensions?: unknown; editor_extensions?: unknown }
+  if (typeof plugin.id !== 'string' || typeof plugin.name !== 'string') return null
+  const commands = Array.isArray(plugin.commands) ? plugin.commands.filter(isCommand).map((command) => ({
     id: command.id,
     title: command.title,
-    description: command.description,
+    description: safeOptionalText(command.description, 240),
     prompt: command.prompt,
     mode: command.mode === 'edit' ? 'edit' as const : 'chat' as const
+  })) : []
+  const rawPanels = Array.isArray(plugin.panels) ? plugin.panels : []
+  const panels = rawPanels.filter(isPanel).map((panel) => ({
+    id: panel.id,
+    title: panel.title,
+    description: safeOptionalText(panel.description, 240),
+    content: safeOptionalText(panel.content)
   }))
-  return { id: plugin.id, name: plugin.name, version: plugin.version, commands }
+  const rawExtensions = Array.isArray(plugin.editorExtensions)
+    ? plugin.editorExtensions
+    : Array.isArray(plugin.editor_extensions)
+      ? plugin.editor_extensions
+      : []
+  const editorExtensions = rawExtensions.filter(isEditorExtension).map((extension) => ({
+    id: extension.id,
+    title: extension.title,
+    description: safeOptionalText(extension.description, 240),
+    kind: extension.kind
+  }))
+  return { id: plugin.id, name: plugin.name, version: plugin.version, commands, panels, editorExtensions }
 }
 
 function isSafeCssValue(value: unknown): value is string {
