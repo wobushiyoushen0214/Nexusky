@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countReaderRowsBySource, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, getUnarchivableReaderRows, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countReaderRowsBySource, countUnreadReaderRows, createReaderDigestMarkdown, createReaderDigestionPrompt, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, getUnarchivableReaderRows, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -167,6 +167,23 @@ describe('reader inbox helpers', () => {
     expect(digest).toContain('  - Source: https://example.com')
     expect(digest).toContain('  - Excerpt: A compact takeaway from the saved article.')
     expect(digest).not.toContain('Regular')
+  })
+
+  it('creates an AI digestion prompt from visible reader rows', () => {
+    const prompt = createReaderDigestionPrompt([
+      row('Imports/Pocket/Later.md', { source: 'pocket', author: 'Ada', status: 'unread', url: 'https://example.com' }, 10),
+      row('Notes/Regular.md', {}, 20)
+    ], {
+      'Imports/Pocket/Later.md': ['A compact takeaway from the saved article.']
+    })
+
+    expect(prompt).toContain('待消化的信息流')
+    expect(prompt).toContain('值得立刻阅读/处理的 Top 3')
+    expect(prompt).toContain('1. Later')
+    expect(prompt).toContain('Path: Imports/Pocket/Later.md')
+    expect(prompt).toContain('Source: Pocket / Ada / unread')
+    expect(prompt).toContain('Excerpt: A compact takeaway from the saved article.')
+    expect(prompt).not.toContain('Regular')
   })
 
   it('uses exact file paths for digest wikilinks to avoid duplicate title ambiguity', () => {

@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { updateMarkdownProperty } from '../../utils/frontmatter'
-import { safeGetJSON, safeSetJSON } from '../../utils/storage'
+import { safeGetJSON, safeSet, safeSetJSON } from '../../utils/storage'
 import type { PropertyTableRow } from '@shared/types/ipc'
 
 type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
 type ReaderSort = 'updated' | 'oldest' | 'title' | 'source'
+type ReaderTranslator = ReturnType<typeof useTranslation>['t']
 interface ReaderViewSettings {
   source: ReaderSource
   sort: ReaderSort
@@ -252,6 +253,38 @@ export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new D
   return `${lines.join('\n')}\n`
 }
 
+export function createReaderDigestionPrompt(rows: PropertyTableRow[], excerptsByPath: Record<string, string[]> = {}, maxRows = 12): string {
+  const readerRows = rows.filter((row) => getReaderSource(row)).slice(0, maxRows)
+  const lines = [
+    '请把下面这些阅读收件箱条目当作待消化的信息流处理。',
+    '',
+    '请输出：',
+    '1. 值得立刻阅读/处理的 Top 3，并说明原因。',
+    '2. 每条内容的核心观点或可执行启发。',
+    '3. 可能关联的已有笔记主题或应该新建的笔记标题，用 [[wikilink]] 表示。',
+    '4. 建议动作：保留、归档、转任务、写入项目笔记，或丢弃。',
+    '5. 一个 15 分钟内可以完成的处理顺序。',
+    '',
+    `条目数量：${readerRows.length}${rows.length > readerRows.length ? `（已截取前 ${readerRows.length} 条）` : ''}`,
+    ''
+  ]
+
+  for (const [index, row] of readerRows.entries()) {
+    const source = sourceLabel(getReaderSource(row))
+    const author = propertyText(row.properties.author)
+    const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? 'unread' : '')
+    const url = getReaderSourceUrl(row)
+    lines.push(`${index + 1}. ${row.title}`)
+    lines.push(`   - Path: ${row.filePath}`)
+    lines.push(`   - Source: ${source}${author ? ` / ${author}` : ''}${status ? ` / ${status}` : ''}`)
+    if (url) lines.push(`   - URL: ${url}`)
+    const excerpts = excerptsByPath[row.filePath] || []
+    for (const excerpt of excerpts) lines.push(`   - Excerpt: ${excerpt}`)
+  }
+
+  return `${lines.join('\n')}\n`
+}
+
 function sourceLabel(source: ReaderSource | null): string {
   if (source === 'notion') return 'Notion'
   if (source === 'readwise') return 'Readwise'
@@ -269,6 +302,74 @@ function sourceColor(source: ReaderSource | null): string {
 function formatDate(value: number): string {
   if (!value) return ''
   return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+const iconButtonBaseStyle: CSSProperties = {
+  width: 32,
+  height: 32,
+  padding: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 6,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer'
+}
+
+const smallIconButtonBaseStyle: CSSProperties = {
+  ...iconButtonBaseStyle,
+  width: 26,
+  height: 26
+}
+
+const quietButtonStyle: CSSProperties = {
+  height: 30,
+  padding: '0 10px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 7,
+  borderRadius: 6,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  cursor: 'pointer'
+}
+
+const detailLabelStyle: CSSProperties = {
+  marginBottom: 5,
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: 'var(--text-tertiary)'
+}
+
+const detailValueStyle: CSSProperties = {
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  fontSize: 12,
+  lineHeight: 1.45,
+  color: 'var(--text-secondary)'
+}
+
+const readerToggleStyle: CSSProperties = {
+  height: 32,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '0 10px',
+  borderRadius: 6,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  cursor: 'pointer'
 }
 
 async function getAvailableReaderDigestPath(vaultPath: string, date: string): Promise<string> {
@@ -289,6 +390,7 @@ export function ReaderInboxView() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const setMainView = useUIStore((s) => s.setMainView)
+  const setRightPanel = useUIStore((s) => s.setRightPanel)
   const [rows, setRows] = useState<PropertyTableRow[]>([])
   const [query, setQuery] = useState('')
   const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(loadReaderViewSettings)
@@ -298,6 +400,8 @@ export function ReaderInboxView() {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null)
   const [creatingDigest, setCreatingDigest] = useState(false)
+  const [preparingDigestion, setPreparingDigestion] = useState(false)
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null)
   const { source, sort, unreadOnly, showArchived } = viewSettings
 
   const loadRows = async () => {
@@ -334,6 +438,11 @@ export function ReaderInboxView() {
   const archivableVisibleRows = useMemo(() => getArchivableReaderRows(filtered), [filtered])
   const unarchivableVisibleRows = useMemo(() => getUnarchivableReaderRows(filtered), [filtered])
   const nextUnreadRow = useMemo(() => getNextUnreadReaderRow(filtered), [filtered])
+  const selectedRow = useMemo(() => filtered.find((row) => row.id === selectedRowId) || nextUnreadRow || filtered[0] || null, [filtered, nextUnreadRow, selectedRowId])
+
+  useEffect(() => {
+    if (selectedRowId && !filtered.some((row) => row.id === selectedRowId)) setSelectedRowId(null)
+  }, [filtered, selectedRowId])
 
   const openRow = async (row: PropertyTableRow) => {
     if (!vaultPath) return
@@ -434,6 +543,35 @@ export function ReaderInboxView() {
     }
   }
 
+  const askAiToDigestVisible = async () => {
+    if (!vaultPath || filtered.length === 0) return
+    setPreparingDigestion(true)
+    try {
+      const readerRows = filtered.filter((row) => getReaderSource(row)).slice(0, 12)
+      const excerptEntries = await Promise.all(readerRows.map(async (row) => {
+        try {
+          const content = await window.api.invoke('file:read', { path: `${vaultPath}/${row.filePath}` })
+          return [row.filePath, extractReaderDigestExcerpts(content, 2)] as const
+        } catch {
+          return [row.filePath, []] as const
+        }
+      }))
+      const draft = {
+        mode: 'chat' as const,
+        agentMode: true,
+        prompt: createReaderDigestionPrompt(filtered, Object.fromEntries(excerptEntries))
+      }
+      safeSet('nexusky-pending-ai-draft', JSON.stringify(draft))
+      setRightPanel('chat')
+      window.dispatchEvent(new CustomEvent('ai-command-draft', { detail: draft }))
+      toast(t('reader.aiDigestReady'), 'success')
+    } catch {
+      toast(t('reader.aiDigestFailed'), 'error')
+    } finally {
+      setPreparingDigestion(false)
+    }
+  }
+
   const openSource = async (row: PropertyTableRow) => {
     const url = getReaderSourceUrl(row)
     if (!url) return
@@ -476,95 +614,70 @@ export function ReaderInboxView() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
-      <div style={{ flexShrink: 0, padding: '22px 28px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 20, lineHeight: 1.2, fontWeight: 700 }}>{t('reader.title')}</h1>
+      <div style={{ flexShrink: 0, padding: '24px 30px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 24, alignItems: 'end' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 720, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('reader.intake')}</div>
+            <h1 style={{ margin: '7px 0 0', fontSize: 24, lineHeight: 1.15, fontWeight: 760 }}>{t('reader.title')}</h1>
             <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
               {t('reader.summary', { count: readerRows.length, unread: unreadCount })}
             </div>
           </div>
-          <button
-            onClick={() => loadRows()}
-            disabled={loading}
-            style={{ height: 30, padding: '0 11px', border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: loading ? 'default' : 'pointer' }}
-          >
-            {loading ? t('reader.loading') : t('reader.refresh')}
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: 18, alignItems: 'end' }}>
+            <ReaderMetric label={t('reader.inboxMetric')} value={readerRows.length} />
+            <ReaderMetric label={t('reader.unreadMetric')} value={unreadCount} />
+            <ReaderMetric label={t('reader.visibleMetric')} value={filtered.length} />
+          </div>
         </div>
 
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('reader.searchPlaceholder')}
-            style={{ width: 320, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
-          />
-          <div style={{ display: 'flex', padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-            {READER_SOURCES.map((item) => (
-              <button
-                key={item}
-                onClick={() => setViewSettings((current) => ({ ...current, source: item }))}
-                style={{ height: 26, padding: '0 10px', border: 'none', borderRadius: 5, background: source === item ? 'var(--accent-muted)' : 'transparent', color: source === item ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
-              >
-                {item === 'all' ? t('reader.allSources') : sourceLabel(item)} · {counts[item]}
-              </button>
-            ))}
+        <div style={{ maxWidth: 1180, margin: '18px auto 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 14, alignItems: 'start' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('reader.searchPlaceholder')}
+              style={{ width: 330, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
+            />
+            <div style={{ display: 'flex', padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+              {READER_SOURCES.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setViewSettings((current) => ({ ...current, source: item }))}
+                  style={{ height: 26, padding: '0 10px', border: 'none', borderRadius: 5, background: source === item ? 'var(--accent-muted)' : 'transparent', color: source === item ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
+                >
+                  {item === 'all' ? t('reader.allSources') : sourceLabel(item)} · {counts[item]}
+                </button>
+              ))}
+            </div>
+            <label style={readerToggleStyle}>
+              <input type="checkbox" checked={unreadOnly} onChange={(e) => setViewSettings((current) => ({ ...current, unreadOnly: e.target.checked }))} />
+              {t('reader.unreadOnly')}
+            </label>
+            <label style={readerToggleStyle}>
+              <input type="checkbox" checked={showArchived} onChange={(e) => setViewSettings((current) => ({ ...current, showArchived: e.target.checked }))} />
+              {t('reader.showArchived')}
+            </label>
+            <select
+              value={sort}
+              onChange={(e) => setViewSettings((current) => ({ ...current, sort: e.target.value as ReaderSort }))}
+              style={{ height: 32, padding: '0 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }}
+            >
+              <option value="updated">{t('reader.sortUpdated')}</option>
+              <option value="oldest">{t('reader.sortOldest')}</option>
+              <option value="title">{t('reader.sortTitle')}</option>
+              <option value="source">{t('reader.sortSource')}</option>
+            </select>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => loadRows()} disabled={loading} title={loading ? t('reader.loading') : t('reader.refresh')} aria-label={loading ? t('reader.loading') : t('reader.refresh')} style={{ ...iconButtonBaseStyle, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.65 : 1 }}><RefreshIcon /></button>
+              <button onClick={() => { if (nextUnreadRow) void openRow(nextUnreadRow) }} disabled={!nextUnreadRow} title={t('reader.openNextUnread')} aria-label={t('reader.openNextUnread')} style={{ ...iconButtonBaseStyle, background: nextUnreadRow ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: nextUnreadRow ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: nextUnreadRow ? 'pointer' : 'default', opacity: nextUnreadRow ? 1 : 0.55 }}><NextIcon /></button>
+              <button onClick={() => void markVisibleRead()} disabled={!filtered.some(isUnreadReaderRow)} title={t('reader.markVisibleRead')} aria-label={t('reader.markVisibleRead')} style={{ ...iconButtonBaseStyle, color: filtered.some(isUnreadReaderRow) ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: filtered.some(isUnreadReaderRow) ? 'pointer' : 'default', opacity: filtered.some(isUnreadReaderRow) ? 1 : 0.55 }}><CheckIcon /></button>
+              <button onClick={() => void archiveVisible()} disabled={archivableVisibleRows.length === 0} title={t('reader.archiveVisible')} aria-label={t('reader.archiveVisible')} style={{ ...iconButtonBaseStyle, color: archivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: archivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: archivableVisibleRows.length > 0 ? 1 : 0.55 }}><ArchiveIcon /></button>
+              <button onClick={() => void unarchiveVisible()} disabled={unarchivableVisibleRows.length === 0} title={t('reader.unarchiveVisible')} aria-label={t('reader.unarchiveVisible')} style={{ ...iconButtonBaseStyle, color: unarchivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: unarchivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: unarchivableVisibleRows.length > 0 ? 1 : 0.55 }}><UnarchiveIcon /></button>
+              <button onClick={() => void askAiToDigestVisible()} disabled={filtered.length === 0 || preparingDigestion} title={preparingDigestion ? t('reader.preparingAiDigest') : t('reader.aiDigestVisible')} aria-label={preparingDigestion ? t('reader.preparingAiDigest') : t('reader.aiDigestVisible')} style={{ ...iconButtonBaseStyle, background: filtered.length > 0 && !preparingDigestion ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: filtered.length > 0 && !preparingDigestion ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: filtered.length > 0 && !preparingDigestion ? 'pointer' : 'default', opacity: filtered.length > 0 && !preparingDigestion ? 1 : 0.55 }}><SparkIcon /></button>
+              <button onClick={() => void createDigest()} disabled={filtered.length === 0 || creatingDigest} title={creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')} aria-label={creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')} style={{ ...iconButtonBaseStyle, color: filtered.length > 0 && !creatingDigest ? 'var(--text-secondary)' : 'var(--text-tertiary)', cursor: filtered.length > 0 && !creatingDigest ? 'pointer' : 'default', opacity: filtered.length > 0 && !creatingDigest ? 1 : 0.55 }}><DigestIcon /></button>
+            </div>
           </div>
-          <label style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-            <input type="checkbox" checked={unreadOnly} onChange={(e) => setViewSettings((current) => ({ ...current, unreadOnly: e.target.checked }))} />
-            {t('reader.unreadOnly')}
-          </label>
-          <label style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-            <input type="checkbox" checked={showArchived} onChange={(e) => setViewSettings((current) => ({ ...current, showArchived: e.target.checked }))} />
-            {t('reader.showArchived')}
-          </label>
-          <select
-            value={sort}
-            onChange={(e) => setViewSettings((current) => ({ ...current, sort: e.target.value as ReaderSort }))}
-            style={{ height: 32, padding: '0 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }}
-          >
-            <option value="updated">{t('reader.sortUpdated')}</option>
-            <option value="oldest">{t('reader.sortOldest')}</option>
-            <option value="title">{t('reader.sortTitle')}</option>
-            <option value="source">{t('reader.sortSource')}</option>
-          </select>
-          <button
-            onClick={() => { if (nextUnreadRow) void openRow(nextUnreadRow) }}
-            disabled={!nextUnreadRow}
-            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: nextUnreadRow ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: nextUnreadRow ? 'var(--accent-text)' : 'var(--text-tertiary)', fontSize: 12, cursor: nextUnreadRow ? 'pointer' : 'default', opacity: nextUnreadRow ? 1 : 0.55 }}
-          >
-            {t('reader.openNextUnread')}
-          </button>
-          <button
-            onClick={() => void markVisibleRead()}
-            disabled={!filtered.some(isUnreadReaderRow)}
-            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: filtered.some(isUnreadReaderRow) ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: filtered.some(isUnreadReaderRow) ? 'pointer' : 'default', opacity: filtered.some(isUnreadReaderRow) ? 1 : 0.55 }}
-          >
-            {t('reader.markVisibleRead')}
-          </button>
-          <button
-            onClick={() => void archiveVisible()}
-            disabled={archivableVisibleRows.length === 0}
-            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: archivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: archivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: archivableVisibleRows.length > 0 ? 1 : 0.55 }}
-          >
-            {t('reader.archiveVisible')}
-          </button>
-          <button
-            onClick={() => void unarchiveVisible()}
-            disabled={unarchivableVisibleRows.length === 0}
-            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: unarchivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: unarchivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: unarchivableVisibleRows.length > 0 ? 1 : 0.55 }}
-          >
-            {t('reader.unarchiveVisible')}
-          </button>
-          <button
-            onClick={() => void createDigest()}
-            disabled={filtered.length === 0 || creatingDigest}
-            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: filtered.length > 0 && !creatingDigest ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: filtered.length > 0 && !creatingDigest ? 'pointer' : 'default', opacity: filtered.length > 0 && !creatingDigest ? 1 : 0.55 }}
-          >
-            {creatingDigest ? t('reader.creatingDigest') : t('reader.createDigest')}
-          </button>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {(['notion', 'readwise', 'pocket'] as const).map((item) => (
               <button
                 key={item}
@@ -579,112 +692,264 @@ export function ReaderInboxView() {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px 36px' }}>
+      <div style={{ flex: 1, overflow: 'hidden', padding: '24px 30px 34px' }}>
         {filtered.length === 0 ? (
           <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
             {readerRows.length === 0 ? t('reader.emptyImports') : t('reader.emptyFilter')}
           </div>
         ) : (
-          <div style={{ maxWidth: 980, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-            {filtered.map((row) => {
-              const rowSource = getReaderSource(row)
-              const color = sourceColor(rowSource)
-              const tags = propertyText(row.properties.tags).split(/\s+/).filter(Boolean).slice(0, 3)
-              const url = getReaderSourceUrl(row)
-              const author = propertyText(row.properties.author)
-              const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
-              const noteActive = activeNoteId === row.id
-              const archived = isArchivedReaderRow(row)
-              return (
-                <div
-                  key={row.id}
-                  onClick={() => openRow(row)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void openRow(row) }}
-                  role="button"
-                  tabIndex={0}
-                  style={{ minHeight: 148, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 10, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)', color: 'var(--text-primary)', textAlign: 'left', padding: 14, cursor: 'pointer', outline: 'none' }}
-                >
-                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 999, background: color }} />
-                      {sourceLabel(rowSource)}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{formatDate(row.updatedAt)}</span>
-                  </span>
-                  <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 38, fontSize: 14, lineHeight: 1.35, fontWeight: 700 }}>{row.title}</span>
-                  <span style={{ minHeight: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                    {author || url || row.filePath}
-                  </span>
-                  <span style={{ marginTop: 'auto', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-                    {status && <span style={{ padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{status}</span>}
-                    {tags.map((tag) => (
-                      <span key={tag} style={{ maxWidth: 86, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', fontSize: 10 }}>{tag}</span>
-                    ))}
-                  </span>
-                  {noteActive && (
-                    <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <textarea
-                        autoFocus
-                        value={noteDrafts[row.id] || ''}
-                        onChange={(e) => setNoteDrafts((current) => ({ ...current, [row.id]: e.target.value }))}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        placeholder={t('reader.notePlaceholder')}
-                        rows={3}
-                        style={{ width: '100%', resize: 'vertical', minHeight: 62, padding: '8px 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 12, lineHeight: 1.4, outline: 'none' }}
-                      />
-                      <span style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setActiveNoteId(null) }}
-                          disabled={savingNoteId === row.id}
-                          style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 11, cursor: savingNoteId === row.id ? 'default' : 'pointer' }}
-                        >
-                          {t('reader.cancelNote')}
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); void saveReaderNote(row) }}
-                          disabled={savingNoteId === row.id}
-                          style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 11, cursor: savingNoteId === row.id ? 'default' : 'pointer' }}
-                        >
-                          {savingNoteId === row.id ? t('reader.savingNote') : t('reader.saveNote')}
-                        </button>
+          <div style={{ height: '100%', maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(280px, 360px) minmax(0, 1fr)', gap: 20 }}>
+            <div style={{ minHeight: 0, overflow: 'auto', padding: '14px 14px 14px 0', borderRight: '1px solid var(--border-subtle)' }}>
+              <div style={{ marginBottom: 10, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('reader.queue')}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{filtered.length}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {filtered.map((row) => {
+                  const rowSource = getReaderSource(row)
+                  const active = selectedRow?.id === row.id
+                  const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
+                  return (
+                    <button
+                      key={row.id}
+                      onClick={() => setSelectedRowId(row.id)}
+                      style={{ minHeight: 62, width: '100%', display: 'grid', gridTemplateColumns: '10px minmax(0, 1fr) auto', alignItems: 'center', gap: 10, padding: '9px 10px', border: 'none', borderRadius: 7, background: active ? 'var(--accent-muted)' : 'transparent', color: active ? 'var(--accent-text)' : 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span style={{ width: 7, height: 7, borderRadius: 999, background: sourceColor(rowSource) }} />
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: active ? 720 : 640 }}>{row.title}</span>
+                        <span style={{ display: 'block', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: active ? 'var(--accent-text)' : 'var(--text-tertiary)', opacity: active ? 0.8 : 1 }}>
+                          {sourceLabel(rowSource)}{status ? ` · ${status}` : ''} · {formatDate(row.updatedAt)}
+                        </span>
                       </span>
-                    </div>
-                  )}
-                  <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setActiveNoteId(noteActive ? null : row.id) }}
-                      style={{ height: 26, marginRight: 6, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: noteActive ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: noteActive ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
-                    >
-                      {t('reader.addNote')}
+                      {isUnreadReaderRow(row) && <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)' }} />}
                     </button>
-                    {url && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); void openSource(row) }}
-                        style={{ height: 26, marginRight: 6, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
-                      >
-                        {t('reader.openSource')}
-                      </button>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); void updateStatus(row, isUnreadReaderRow(row) ? 'read' : 'unread') }}
-                      disabled={archived}
-                      style={{ height: 26, marginRight: 6, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: archived ? 'var(--text-tertiary)' : 'var(--text-secondary)', fontSize: 11, cursor: archived ? 'default' : 'pointer', opacity: archived ? 0.55 : 1 }}
-                    >
-                      {isUnreadReaderRow(row) ? t('reader.markRead') : t('reader.markUnread')}
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); void updateStatus(row, archived ? 'unread' : 'archived') }}
-                      style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
-                    >
-                      {archived ? t('reader.unarchive') : t('reader.archive')}
-                    </button>
-                  </span>
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            </div>
+
+            {selectedRow && (
+              <ReaderBrief
+                row={selectedRow}
+                activeNoteId={activeNoteId}
+                noteDraft={noteDrafts[selectedRow.id] || ''}
+                savingNote={savingNoteId === selectedRow.id}
+                onOpen={() => void openRow(selectedRow)}
+                onOpenSource={() => void openSource(selectedRow)}
+                onToggleNote={() => setActiveNoteId(activeNoteId === selectedRow.id ? null : selectedRow.id)}
+                onNoteChange={(value) => setNoteDrafts((current) => ({ ...current, [selectedRow.id]: value }))}
+                onCancelNote={() => setActiveNoteId(null)}
+                onSaveNote={() => void saveReaderNote(selectedRow)}
+                onToggleRead={() => void updateStatus(selectedRow, isUnreadReaderRow(selectedRow) ? 'read' : 'unread')}
+                onToggleArchive={() => void updateStatus(selectedRow, isArchivedReaderRow(selectedRow) ? 'unread' : 'archived')}
+                t={t}
+              />
+            )}
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+function IconSvg({ children }: { children: ReactNode }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+
+function RefreshIcon() {
+  return <IconSvg><path d="M20 11a8 8 0 0 0-14.8-4.2L4 8" /><path d="M4 4v4h4" /><path d="M4 13a8 8 0 0 0 14.8 4.2L20 16" /><path d="M20 20v-4h-4" /></IconSvg>
+}
+
+function NextIcon() {
+  return <IconSvg><path d="M5 5l7 7-7 7" /><path d="M13 5l7 7-7 7" /></IconSvg>
+}
+
+function CheckIcon() {
+  return <IconSvg><path d="M20 6L9 17l-5-5" /></IconSvg>
+}
+
+function UnreadIcon() {
+  return <IconSvg><circle cx="12" cy="12" r="7" /><path d="M12 8v4l3 2" /></IconSvg>
+}
+
+function ArchiveIcon() {
+  return <IconSvg><path d="M3 7h18" /><path d="M5 7l1 13h12l1-13" /><path d="M9 11h6" /><path d="M4 4h16v3H4z" /></IconSvg>
+}
+
+function UnarchiveIcon() {
+  return <IconSvg><path d="M3 7h18" /><path d="M5 7l1 13h12l1-13" /><path d="M12 16V10" /><path d="M9 13l3-3 3 3" /><path d="M4 4h16v3H4z" /></IconSvg>
+}
+
+function SparkIcon() {
+  return <IconSvg><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" /></IconSvg>
+}
+
+function DigestIcon() {
+  return <IconSvg><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v5h5" /><path d="M10 12h6" /><path d="M10 16h6" /></IconSvg>
+}
+
+function NoteIcon() {
+  return <IconSvg><path d="M5 4h14v16H5z" /><path d="M8 8h8" /><path d="M8 12h5" /><path d="M16 17h3" /><path d="M17.5 15.5v3" /></IconSvg>
+}
+
+function ExternalLinkIcon() {
+  return <IconSvg><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5" /></IconSvg>
+}
+
+function FolderIcon() {
+  return <IconSvg><path d="M4 6h6l2 2h8v10a2 2 0 0 1-2 2H4z" /><path d="M4 6v12a2 2 0 0 0 2 2" /></IconSvg>
+}
+
+function ReaderMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ color: 'var(--text-primary)', fontSize: 18, lineHeight: 1.05, fontWeight: 740, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ marginTop: 4, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+    </div>
+  )
+}
+
+function ReaderBrief({
+  row,
+  activeNoteId,
+  noteDraft,
+  savingNote,
+  onOpen,
+  onOpenSource,
+  onToggleNote,
+  onNoteChange,
+  onCancelNote,
+  onSaveNote,
+  onToggleRead,
+  onToggleArchive,
+  t
+}: {
+  row: PropertyTableRow
+  activeNoteId: string | null
+  noteDraft: string
+  savingNote: boolean
+  onOpen: () => void
+  onOpenSource: () => void
+  onToggleNote: () => void
+  onNoteChange: (value: string) => void
+  onCancelNote: () => void
+  onSaveNote: () => void
+  onToggleRead: () => void
+  onToggleArchive: () => void
+  t: ReaderTranslator
+}) {
+  const source = getReaderSource(row)
+  const color = sourceColor(source)
+  const sourceUrl = getReaderSourceUrl(row)
+  const author = propertyText(row.properties.author)
+  const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
+  const tags = propertyText(row.properties.tags).split(/\s+/).filter(Boolean).slice(0, 8)
+  const noteActive = activeNoteId === row.id
+  const archived = isArchivedReaderRow(row)
+
+  return (
+    <section style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)' }}>
+      <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+          <div style={{ minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 12 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 999, background: color, boxShadow: `0 0 0 3px color-mix(in srgb, ${color} 20%, transparent)` }} />
+            <span>{sourceLabel(source)}</span>
+            {status && <span style={{ color: 'var(--text-tertiary)' }}>· {status}</span>}
+          </div>
+          <span style={{ flexShrink: 0, color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{formatDate(row.updatedAt)}</span>
+        </div>
+        <h2 style={{ margin: '14px 0 0', fontSize: 22, lineHeight: 1.22, fontWeight: 720, color: 'var(--text-primary)' }}>{row.title}</h2>
+      </div>
+
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px 18px' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={detailLabelStyle}>{t('reader.detailSource')}</div>
+            <div style={detailValueStyle}>{sourceLabel(source)}</div>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={detailLabelStyle}>{t('reader.detailUpdated')}</div>
+            <div style={detailValueStyle}>{formatDate(row.updatedAt) || t('reader.unknownDate')}</div>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={detailLabelStyle}>{t('reader.detailAuthor')}</div>
+            <div style={detailValueStyle}>{author || t('reader.noAuthor')}</div>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={detailLabelStyle}>{t('reader.detailStatus')}</div>
+            <div style={detailValueStyle}>{status || t('reader.noStatus')}</div>
+          </div>
+        </div>
+
+        <div>
+          <div style={detailLabelStyle}>{t('reader.detailPath')}</div>
+          <div style={{ ...detailValueStyle, display: 'flex', alignItems: 'center', gap: 7 }}>
+            <FolderIcon />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</span>
+          </div>
+        </div>
+
+        {tags.length > 0 && (
+          <div>
+            <div style={detailLabelStyle}>{t('reader.detailTags')}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {tags.map((tag) => (
+                <span key={tag} style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '3px 7px', borderRadius: 999, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11 }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {noteActive && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <div style={detailLabelStyle}>{t('reader.addNote')}</div>
+            <textarea
+              autoFocus
+              value={noteDraft}
+              onChange={(e) => onNoteChange(e.target.value)}
+              placeholder={t('reader.notePlaceholder')}
+              rows={5}
+              style={{ width: '100%', resize: 'vertical', minHeight: 96, padding: '10px 11px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 12, lineHeight: 1.55, outline: 'none' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 7 }}>
+              <button onClick={onCancelNote} disabled={savingNote} style={{ ...quietButtonStyle, opacity: savingNote ? 0.55 : 1, cursor: savingNote ? 'default' : 'pointer' }}>
+                {t('reader.cancelNote')}
+              </button>
+              <button onClick={onSaveNote} disabled={savingNote} style={{ ...quietButtonStyle, borderColor: 'var(--accent-muted)', background: 'var(--accent-muted)', color: 'var(--accent-text)', opacity: savingNote ? 0.7 : 1, cursor: savingNote ? 'default' : 'pointer' }}>
+                {savingNote ? t('reader.savingNote') : t('reader.saveNote')}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ flexShrink: 0, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: '1px solid var(--border-subtle)', background: 'var(--editor-bg)' }}>
+        <button onClick={onOpen} style={{ ...quietButtonStyle, borderColor: 'var(--accent-muted)', background: 'var(--accent-muted)', color: 'var(--accent-text)' }}>
+          <ExternalLinkIcon />
+          {t('reader.openItem')}
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button onClick={onToggleNote} title={t('reader.addNote')} aria-label={t('reader.addNote')} style={{ ...smallIconButtonBaseStyle, background: noteActive ? 'var(--accent-muted)' : 'var(--bg-elevated)', color: noteActive ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+            <NoteIcon />
+          </button>
+          <button onClick={onOpenSource} disabled={!sourceUrl} title={t('reader.openSource')} aria-label={t('reader.openSource')} style={{ ...smallIconButtonBaseStyle, opacity: sourceUrl ? 1 : 0.45, cursor: sourceUrl ? 'pointer' : 'default' }}>
+            <ExternalLinkIcon />
+          </button>
+          <button onClick={onToggleRead} disabled={archived} title={isUnreadReaderRow(row) ? t('reader.markRead') : t('reader.markUnread')} aria-label={isUnreadReaderRow(row) ? t('reader.markRead') : t('reader.markUnread')} style={{ ...smallIconButtonBaseStyle, opacity: archived ? 0.45 : 1, cursor: archived ? 'default' : 'pointer' }}>
+            {isUnreadReaderRow(row) ? <CheckIcon /> : <UnreadIcon />}
+          </button>
+          <button onClick={onToggleArchive} title={archived ? t('reader.unarchive') : t('reader.archive')} aria-label={archived ? t('reader.unarchive') : t('reader.archive')} style={smallIconButtonBaseStyle}>
+            {archived ? <UnarchiveIcon /> : <ArchiveIcon />}
+          </button>
+        </div>
+      </div>
+    </section>
   )
 }

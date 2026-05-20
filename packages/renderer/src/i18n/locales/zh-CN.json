@@ -258,6 +258,10 @@
   "reader": {
     "title": "阅读收件箱",
     "summary": "共 {{count}} 条阅读材料，{{unread}} 条待读",
+    "intake": "阅读输入",
+    "inboxMetric": "收件",
+    "unreadMetric": "待读",
+    "visibleMetric": "当前",
     "refresh": "刷新",
     "loading": "加载中...",
     "searchPlaceholder": "搜索标题、作者、来源、标签或状态...",

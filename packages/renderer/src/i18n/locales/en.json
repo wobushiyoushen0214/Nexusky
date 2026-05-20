@@ -258,6 +258,10 @@
   "reader": {
     "title": "Reader Inbox",
     "summary": "{{count}} reading items, {{unread}} unread",
+    "intake": "Reading intake",
+    "inboxMetric": "Inbox",
+    "unreadMetric": "Unread",
+    "visibleMetric": "Visible",
     "refresh": "Refresh",
     "loading": "Loading...",
     "searchPlaceholder": "Search titles, authors, sources, tags, or status...",
