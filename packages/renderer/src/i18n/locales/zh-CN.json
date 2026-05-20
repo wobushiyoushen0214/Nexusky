@@ -260,6 +260,7 @@
     "markRead": "标记已读",
     "markUnread": "标记待读",
     "markVisibleRead": "当前结果标记已读",
+    "archiveVisible": "归档当前结果",
     "openSource": "打开原文",
     "archive": "归档",
     "unarchive": "取消归档",

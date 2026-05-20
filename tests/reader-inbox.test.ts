@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, filterReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, filterReaderRows, getArchivableReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -66,6 +66,16 @@ describe('reader inbox helpers', () => {
       'Imports/Pocket/Zebra.md',
       'Imports/Readwise/Alpha.md'
     ])
+  })
+
+  it('finds only non-archived reader rows for bulk archiving', () => {
+    const rows = [
+      row('Imports/Pocket/Later.md', { status: 'unread' }, 10),
+      row('Imports/Readwise/Archived.md', { source: 'readwise', status: 'archived' }, 20),
+      row('Notes/Regular.md', {}, 30)
+    ]
+
+    expect(getArchivableReaderRows(rows).map((item) => item.filePath)).toEqual(['Imports/Pocket/Later.md'])
   })
 
   it('only exposes http source URLs for external opening', () => {

@@ -71,6 +71,10 @@ export function countUnreadReaderRows(rows: PropertyTableRow[]): number {
   return rows.filter((row) => getReaderSource(row) && isUnreadReaderRow(row)).length
 }
 
+export function getArchivableReaderRows(rows: PropertyTableRow[]): PropertyTableRow[] {
+  return rows.filter((row) => getReaderSource(row) && !isArchivedReaderRow(row))
+}
+
 export function appendReaderNote(content: string, note: string, now = new Date()): string {
   const clean = note.trim()
   if (!clean) return content
@@ -158,6 +162,7 @@ export function ReaderInboxView() {
     return next
   }, [readerRows])
   const unreadCount = countUnreadReaderRows(readerRows)
+  const archivableVisibleRows = useMemo(() => getArchivableReaderRows(filtered), [filtered])
 
   const openRow = async (row: PropertyTableRow) => {
     if (!vaultPath) return
@@ -216,6 +221,11 @@ export function ReaderInboxView() {
     const unreadRows = filtered.filter(isUnreadReaderRow)
     if (unreadRows.length === 0) return
     await writeStatuses(unreadRows, 'read')
+  }
+
+  const archiveVisible = async () => {
+    if (archivableVisibleRows.length === 0) return
+    await writeStatuses(archivableVisibleRows, 'archived')
   }
 
   const openSource = async (row: PropertyTableRow) => {
@@ -318,6 +328,13 @@ export function ReaderInboxView() {
             style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: filtered.some(isUnreadReaderRow) ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: filtered.some(isUnreadReaderRow) ? 'pointer' : 'default', opacity: filtered.some(isUnreadReaderRow) ? 1 : 0.55 }}
           >
             {t('reader.markVisibleRead')}
+          </button>
+          <button
+            onClick={() => void archiveVisible()}
+            disabled={archivableVisibleRows.length === 0}
+            style={{ height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: archivableVisibleRows.length > 0 ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontSize: 12, cursor: archivableVisibleRows.length > 0 ? 'pointer' : 'default', opacity: archivableVisibleRows.length > 0 ? 1 : 0.55 }}
+          >
+            {t('reader.archiveVisible')}
           </button>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(['notion', 'readwise', 'pocket'] as const).map((item) => (
