@@ -841,7 +841,8 @@ scripts/          → 开发脚本
 - [ ] Vim 模式
 - [x] 拼写检查（Electron 内置）
 - [ ] 表格公式计算
-- [ ] 脚注支持
+- [x] 脚注支持（AI Markdown 与 HTML/PDF/发布站点导出）
+- [x] Obsidian Callout 渲染（AI Markdown 与 HTML/PDF/发布站点导出）
 - [ ] 自定义 slash command 扩展
 
 ### 协作与平台
