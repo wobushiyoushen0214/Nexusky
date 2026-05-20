@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryRelatedNotesToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1039,6 +1039,20 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'read_note_memory',
+        description: '读取指定笔记的记忆摘要、概念、主题和是否过期。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '笔记标题、alias、路径或 wikilink' }
+          },
+          required: ['title']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'read_note',
         description: '读取指定笔记的完整内容。title 可传笔记标题、alias、Folder/Note 路径或 wikilink。',
         parameters: {
@@ -1606,6 +1620,43 @@ graph TD
             chunk: `Memory ${note.reason}`,
             score: 1
           }))
+        }
+      }
+      case 'read_note_memory': {
+        const title = getStringArg(args, 'title')
+        if (!title.trim()) return { content: 'read_note_memory 缺少 title 参数。请先搜索笔记，或提供要读取 memory 的笔记标题。' }
+        const note = findNoteForAiTool(vaultPath, title)
+        if (!note) {
+          const candidates = findNoteCandidatesForAiTool(vaultPath, title)
+          if (candidates.length > 1) {
+            return {
+              content: `找到多个可能的笔记，请用 read_note_memory 的 title 参数传入精确路径重试：\n${candidates.map((item) => `- ${item.filePath} (${item.title})`).join('\n')}`
+            }
+          }
+          return { content: `未找到标题为「${title}」的笔记。` }
+        }
+        const indexedNote = getAllNotes(vaultPath).find((item) => item.filePath === note.filePath)
+        if (!indexedNote) return { content: `未找到笔记「${note.title}」的索引记录。` }
+        const memory = readMemory(vaultPath, indexedNote.id)
+        if (!memory) return { content: `No memory found for ${note.title} (${note.filePath}).` }
+        const status = memory.contentHash === indexedNote.contentHash ? 'current' : 'stale'
+        return {
+          content: formatReadNoteMemoryToolResult({
+            title: note.title,
+            filePath: note.filePath,
+            folder: memory.folder,
+            concepts: memory.concepts,
+            topics: memory.topics,
+            summary: memory.summary,
+            updatedAt: memory.updatedAt,
+            status
+          }),
+          sources: [{
+            title: note.title,
+            filePath: note.filePath,
+            chunk: memory.summary.slice(0, 100),
+            score: status === 'current' ? 1 : 0.5
+          }]
         }
       }
       case 'read_note': {

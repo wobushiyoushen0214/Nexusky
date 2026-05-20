@@ -164,6 +164,10 @@ export interface AiNoteMemoryResult {
   updatedAt: number
 }
 
+export interface AiReadNoteMemoryResult extends AiNoteMemoryResult {
+  status: 'current' | 'stale'
+}
+
 export interface AiMissingMemoryNoteResult {
   title: string
   filePath: string
@@ -493,6 +497,19 @@ export function formatNoteMemoriesToolResult(memories: AiNoteMemoryResult[]): st
     `Summary: ${memory.summary || '(none)'}`,
     `Updated: ${formatTimestamp(memory.updatedAt)}`
   ].join('\n')).join('\n\n')
+}
+
+export function formatReadNoteMemoryToolResult(memory: AiReadNoteMemoryResult): string {
+  return [
+    `Title: ${memory.title}`,
+    `Path: ${memory.filePath}`,
+    `Folder: ${memory.folder}`,
+    `Status: ${memory.status}`,
+    `Concepts: ${memory.concepts.length > 0 ? memory.concepts.join(', ') : '(none)'}`,
+    `Topics: ${memory.topics.length > 0 ? memory.topics.join(', ') : '(none)'}`,
+    `Summary: ${memory.summary || '(none)'}`,
+    `Updated: ${formatTimestamp(memory.updatedAt)}`
+  ].join('\n')
 }
 
 export function formatMissingMemoryNotesToolResult(notes: AiMissingMemoryNoteResult[]): string {
