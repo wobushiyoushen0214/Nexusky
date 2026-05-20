@@ -111,6 +111,14 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         useVaultStore.getState().refreshFiles()
       }
     }},
+    { id: 'import-readwise', category: 'file', label: t('commandPalette.commands.importReadwise.label'), description: t('commandPalette.commands.importReadwise.description'), keywords: ['readwise', 'reader', 'highlight', 'import'], action: async () => {
+      if (!vaultPath) return
+      const result = await window.api.invoke('file:import-readwise', { vaultPath })
+      if (result.canceled) return
+      const { toast } = await import('../stores/toast-store')
+      toast(t('commandPalette.toasts.readwiseImported', { imported: result.imported }), result.imported > 0 ? 'success' : 'info')
+      useVaultStore.getState().refreshFiles()
+    }},
     { id: 'search', category: 'search', label: t('commandPalette.commands.search.label'), shortcut: 'Ctrl+Shift+F', keywords: ['find', 'search'], action: () => setSearchOpen(true) },
     { id: 'chat', category: 'ai', label: t('commandPalette.commands.chat.label'), shortcut: 'Ctrl+L', description: t('commandPalette.commands.chat.description'), keywords: ['chat', 'agent'], action: () => setRightPanel('chat') },
     { id: 'ai-rag', category: 'ai', label: t('commandPalette.commands.aiRag.label'), description: t('commandPalette.commands.aiRag.description'), keywords: ['rag', 'ask', 'agent'], action: () => queueAiDraft({ mode: 'chat', agentMode: true, prompt: t('commandPalette.prompts.rag') }) },

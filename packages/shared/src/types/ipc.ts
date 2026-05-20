@@ -352,6 +352,7 @@ export interface IPCChannelMap {
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string }; result: { success: boolean; files: string[]; error?: string } }
   'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number } }
+  'file:import-readwise': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
   'template:daily-note': { params: { vaultPath: string }; result: string }
   'template:get-templates': { params: undefined; result: NoteTemplate[] }
   'template:save-templates': { params: { templates: NoteTemplate[] }; result: void }

@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { dialog, ipcMain, shell } from 'electron'
 import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promises'
 import { readdir } from 'fs/promises'
 import { join, dirname, extname, relative, basename } from 'path'
@@ -6,6 +6,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypt
 import { getDatabase } from '../services/database'
 import { indexNote } from '../services/indexer'
 import { importObsidianVault } from '../services/obsidian-importer'
+import { importReadwiseCsv } from '../services/reader-importer'
 import { isPathInsideVault } from './file-path'
 import { notifyVaultFilesChanged } from './events'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
@@ -282,6 +283,24 @@ export function registerFileIPC(): void {
 
   ipcMain.handle('file:import-obsidian', async (_event, params: { sourcePath: string; vaultPath: string }) => {
     const result = await importObsidianVault(params.sourcePath, params.vaultPath)
+    notifyVaultFilesChanged()
+    return result
+  })
+
+  ipcMain.handle('file:import-readwise', async (_event, params: { sourcePath?: string; vaultPath: string }) => {
+    let sourcePath = params.sourcePath
+    if (!sourcePath) {
+      const result = await dialog.showOpenDialog({
+        properties: ['openFile'],
+        title: '选择 Readwise CSV 导出文件',
+        filters: [{ name: 'CSV', extensions: ['csv'] }]
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        return { imported: 0, skipped: 0, indexed: 0, canceled: true }
+      }
+      sourcePath = result.filePaths[0]
+    }
+    const result = await importReadwiseCsv(sourcePath, params.vaultPath)
     notifyVaultFilesChanged()
     return result
   })
