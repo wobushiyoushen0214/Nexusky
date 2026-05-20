@@ -39,6 +39,8 @@ const CommandPalette = lazy(() => import('./components/CommandPalette').then((m)
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
 
+const FILE_REQUIRED_RIGHT_PANELS = new Set(['outline', 'properties', 'tags', 'history'])
+
 function normalizeShortcutKey(key: string): string {
   if (key === ' ') return 'Space'
   if (key === 'Escape') return 'Esc'
@@ -72,7 +74,8 @@ function flatMdPaths(entries: FileEntry[]): string[] {
 export default function App() {
   const { t } = useTranslation()
   const { vaultPath, loadVault } = useVaultStore()
-  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setWorkspaceScope, setSidebarWidthScope } = useUIStore()
+  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore()
+  const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const [trashOpen, setTrashOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
@@ -81,6 +84,12 @@ export default function App() {
   useEffect(() => {
     if (rightPanel === 'chat') setChatEverOpened(true)
   }, [rightPanel])
+
+  useEffect(() => {
+    if (!currentFilePath && FILE_REQUIRED_RIGHT_PANELS.has(rightPanel)) {
+      setRightPanel('none')
+    }
+  }, [currentFilePath, rightPanel, setRightPanel])
 
   useEffect(() => {
     setWorkspaceScope(vaultPath ? `workspace:${vaultPath}` : 'workspace')
@@ -237,7 +246,7 @@ export default function App() {
       }
       if (matchesShortcut(e, getKey('outline'))) {
         e.preventDefault()
-        toggleRightPanel('outline')
+        if (useEditorStore.getState().currentFilePath) toggleRightPanel('outline')
       }
       if (matchesShortcut(e, getKey('settings'))) {
         e.preventDefault()

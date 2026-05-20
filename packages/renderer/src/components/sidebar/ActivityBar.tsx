@@ -29,6 +29,7 @@ export function ActivityBar() {
   const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar } = useUIStore()
   const { vaultPath, refreshFiles } = useVaultStore()
   const openFile = useEditorStore((s) => s.openFile)
+  const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const { visibleIds, toggleVisibility } = useActivityBarStore()
 
   const [moreOpen, setMoreOpen] = useState(false)
@@ -95,6 +96,7 @@ export function ActivityBar() {
     .filter(Boolean)
 
   const hiddenItems = ACTIVITY_BAR_REGISTRY.filter((item) => !visibleIds.includes(item.id))
+  const fileContextUnavailable = mainView !== 'editor' || !currentFilePath
 
   const getActiveId = () => {
     if (useUIStore.getState().mainView === 'graph') return 'graph'
@@ -143,7 +145,7 @@ export function ActivityBar() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8, gap: 4, overflow: 'hidden' }}>
         {visibleItems.map((item) => {
           const isActive = item!.id === activeId
-          const isDisabled = mainView !== 'editor' && FILE_SCOPED_ITEM_IDS.has(item!.id)
+          const isDisabled = fileContextUnavailable && FILE_SCOPED_ITEM_IDS.has(item!.id)
           return (
             <button
               key={item!.id}
