@@ -75,6 +75,8 @@ describe('canvas card placement', () => {
     )
 
     expect(route.length).toBeGreaterThan(2)
+    expect(route[0]).toEqual({ x: 210, y: 56 })
+    expect(route[route.length - 1]).toEqual({ x: 520, y: 56 })
     expect(route.some((point) => point.y !== 56)).toBe(true)
   })
 })

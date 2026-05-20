@@ -68,8 +68,11 @@ const BASE_CANVAS_WIDTH = 1200
 const BASE_CANVAS_HEIGHT = 760
 const CANVAS_PADDING = 760
 const CARD_GAP = 32
-const GROUP_GAP_X = 320
-const GROUP_GAP_Y = 170
+const ARCHIVE_CARD_GAP_X = 38
+const ARCHIVE_CARD_GAP_Y = 42
+const ARCHIVE_CLUSTER_GAP_X = 180
+const ARCHIVE_CLUSTER_GAP_Y = 150
+const ROUTE_CLEARANCE = 24
 
 function getCanvasStorageKey(vaultPath: string): string {
   return `nexusky-canvas-layout:${encodeURIComponent(vaultPath)}`
@@ -170,21 +173,28 @@ export function buildArchivePositions(rows: PropertyTableRow[]): Record<string, 
     groups.set(key, [...(groups.get(key) || []), row])
   }
   const positions: Record<string, CanvasPosition> = {}
+  const stepX = CARD_WIDTH + ARCHIVE_CARD_GAP_X
+  const stepY = CARD_HEIGHT + ARCHIVE_CARD_GAP_Y
+  const maxClusterWidth = stepX * 3 + ARCHIVE_CLUSTER_GAP_X
+  const clusterHeights = [40, 40, 40]
   Array.from(groups.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a, itemsA], [b, itemsB]) => itemsB.length - itemsA.length || a.localeCompare(b))
     .forEach(([, items], groupIndex) => {
-      const groupColumn = groupIndex % 3
-      const groupRow = Math.floor(groupIndex / 3)
-      const originX = 40 + groupColumn * GROUP_GAP_X
-      const originY = 40 + groupRow * 420
+      const lane = clusterHeights.indexOf(Math.min(...clusterHeights))
+      const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(items.length))))
+      const rowsInCluster = Math.ceil(items.length / columns)
+      const originX = 40 + lane * maxClusterWidth
+      const originY = clusterHeights[lane]
       items.forEach((row, index) => {
-        const column = index % 2
-        const itemRow = Math.floor(index / 2)
+        const column = index % columns
+        const itemRow = Math.floor(index / columns)
+        const stagger = itemRow % 2 === 0 ? 0 : 16
         positions[row.id] = {
-          x: originX + column * GROUP_GAP_X * 0.72,
-          y: originY + itemRow * GROUP_GAP_Y
+          x: originX + column * stepX + stagger,
+          y: originY + itemRow * stepY
         }
       })
+      clusterHeights[lane] = originY + rowsInCluster * stepY + ARCHIVE_CLUSTER_GAP_Y + (groupIndex % 2) * 28
     })
   return positions
 }
@@ -221,16 +231,15 @@ function cardRect(position: CanvasPosition, padding = 14) {
   }
 }
 
-function cardPort(from: CanvasPosition, to: CanvasPosition): RoutePoint {
+function cardPort(from: CanvasPosition, to: CanvasPosition, offset = 0): RoutePoint {
   const fromCenter = centerOf(from)
   const toCenter = centerOf(to)
   const dx = toCenter.x - fromCenter.x
   const dy = toCenter.y - fromCenter.y
-  const gap = 18
   if (Math.abs(dx) >= Math.abs(dy)) {
-    return { x: dx >= 0 ? from.x + CARD_WIDTH + gap : from.x - gap, y: fromCenter.y }
+    return { x: dx >= 0 ? from.x + CARD_WIDTH + offset : from.x - offset, y: fromCenter.y }
   }
-  return { x: fromCenter.x, y: dy >= 0 ? from.y + CARD_HEIGHT + gap : from.y - gap }
+  return { x: fromCenter.x, y: dy >= 0 ? from.y + CARD_HEIGHT + offset : from.y - offset }
 }
 
 function pointInRect(point: RoutePoint, rect: ReturnType<typeof cardRect>): boolean {
@@ -260,17 +269,19 @@ function routeCrossesCards(points: RoutePoint[], blockers: ReturnType<typeof car
 }
 
 export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition, blockers: ReturnType<typeof cardRect>[]): RoutePoint[] {
-  const start = cardPort(source, target)
-  const end = cardPort(target, source)
+  const sourceEdge = cardPort(source, target)
+  const targetEdge = cardPort(target, source)
+  const start = cardPort(source, target, ROUTE_CLEARANCE)
+  const end = cardPort(target, source, ROUTE_CLEARANCE)
   const sourceCenter = centerOf(source)
   const targetCenter = centerOf(target)
   const xs = new Set<number>([start.x, end.x, sourceCenter.x, targetCenter.x])
   const ys = new Set<number>([start.y, end.y, sourceCenter.y, targetCenter.y])
   for (const rect of blockers) {
-    xs.add(rect.left)
-    xs.add(rect.right)
-    ys.add(rect.top)
-    ys.add(rect.bottom)
+    xs.add(rect.left - ROUTE_CLEARANCE)
+    xs.add(rect.right + ROUTE_CLEARANCE)
+    ys.add(rect.top - ROUTE_CLEARANCE)
+    ys.add(rect.bottom + ROUTE_CLEARANCE)
   }
   const xValues = Array.from(xs).sort((a, b) => a - b)
   const yValues = Array.from(ys).sort((a, b) => a - b)
@@ -328,7 +339,7 @@ export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition
       current = prev
     }
     const compact = compactRoute(route)
-    if (!routeCrossesCards(compact, blockers)) return compact
+    if (!routeCrossesCards(compact, blockers)) return compactRoute([sourceEdge, ...compact, targetEdge])
   }
   const fallbackCandidates = [
     [start, { x: start.x, y: Math.min(source.y, target.y) - 42 }, { x: end.x, y: Math.min(source.y, target.y) - 42 }, end],
@@ -336,7 +347,8 @@ export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition
     [start, { x: Math.min(source.x, target.x) - 42, y: start.y }, { x: Math.min(source.x, target.x) - 42, y: end.y }, end],
     [start, { x: Math.max(source.x + CARD_WIDTH, target.x + CARD_WIDTH) + 42, y: start.y }, { x: Math.max(source.x + CARD_WIDTH, target.x + CARD_WIDTH) + 42, y: end.y }, end]
   ]
-  return compactRoute(fallbackCandidates.find((route) => !routeCrossesCards(route, blockers)) || fallbackCandidates[0])
+  const fallback = fallbackCandidates.find((route) => !routeCrossesCards(route, blockers)) || fallbackCandidates[0]
+  return compactRoute([sourceEdge, ...fallback, targetEdge])
 }
 
 function compactRoute(points: RoutePoint[]): RoutePoint[] {
