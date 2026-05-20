@@ -117,6 +117,7 @@ function OutgoingSection({
     if (!title) return
     const path = await getAvailableNotePath(vaultPath, title)
     await window.api.invoke('file:create', { path, content: `# ${title}\n\n`, vaultPath })
+    await window.api.invoke('db:index-file', { vaultPath, filePath: path })
     await refreshFiles()
     await openFile(path)
     const { toast } = await import('../../stores/toast-store')
