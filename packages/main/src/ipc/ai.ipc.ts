@@ -1508,6 +1508,32 @@ graph TD
         }
       }
     },
+    {
+      type: 'function',
+      function: {
+        name: 'create_note',
+        description: '当用户要求在普通 Agent 对话中直接创建笔记时调用。此工具不会写文件，只会返回切换到编辑模式的安全引导。',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '用户想创建的笔记标题，可选' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'edit_note',
+        description: '当用户要求在普通 Agent 对话中直接修改笔记时调用。此工具不会写文件，只会返回切换到编辑模式的安全引导。',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: '用户想修改的笔记标题、路径或当前笔记，可选' }
+          }
+        }
+      }
+    },
   ]
 
   async function executeToolCall(
