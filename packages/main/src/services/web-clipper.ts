@@ -128,11 +128,11 @@ async function getUniqueClipPath(vaultPath: string, title: string, capturedAt: D
   return join(dir, `${base} ${Date.now()}.md`)
 }
 
-function notifyVaultChanged(): void {
+function notifyVaultChanged(changedPaths: string[] = []): void {
   const getAllWindows = BrowserWindow?.getAllWindows
   if (typeof getAllWindows !== 'function') return
   for (const window of getAllWindows()) {
-    if (!window.isDestroyed()) window.webContents.send('vault:files-changed')
+    if (!window.isDestroyed()) window.webContents.send('vault:files-changed', changedPaths)
   }
 }
 
@@ -141,7 +141,7 @@ export async function saveWebClip(vaultPath: string, payload: WebClipPayload, ca
   const filePath = await getUniqueClipPath(vaultPath, title, capturedAt)
   await writeFile(filePath, markdown, 'utf-8')
   try { indexNote(vaultPath, filePath) } catch {}
-  notifyVaultChanged()
+  notifyVaultChanged([filePath])
   return { ok: true, path: filePath }
 }
 

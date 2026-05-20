@@ -18,7 +18,7 @@ The extension sends:
 }
 ```
 
-Nexusky writes the clip to `Clippings/YYYY-MM-DD Page title.md` in the active vault and indexes it immediately. When only HTML is available, safe page links are preserved as Markdown links and relative links are resolved against the page URL.
+Nexusky writes the clip to `Clippings/YYYY-MM-DD Page title.md` in the active vault, indexes it immediately, and refreshes the file tree with the new file path. When only HTML is available, safe page links are preserved as Markdown links and relative links are resolved against the page URL.
 
 ## Direct API
 
