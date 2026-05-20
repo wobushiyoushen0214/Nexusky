@@ -50,16 +50,16 @@ describe('vault store file refresh', () => {
     const invoke = vi.fn().mockResolvedValue(files)
     installWindowMock(invoke)
     const { useVaultStore, VAULT_FILES_REFRESHED_EVENT } = await import('../packages/renderer/src/stores/vault-store')
-    const events: string[] = []
+    const events: { vaultPath: string; changedPaths: string[] }[] = []
     window.addEventListener(VAULT_FILES_REFRESHED_EVENT, (event) => {
-      events.push((event as CustomEvent<{ vaultPath: string }>).detail.vaultPath)
+      events.push((event as CustomEvent<{ vaultPath: string; changedPaths: string[] }>).detail)
     })
 
     useVaultStore.getState().setVaultPath('/vault')
-    await useVaultStore.getState().refreshFiles()
+    await useVaultStore.getState().refreshFiles(['/vault/AI.md'])
 
     expect(useVaultStore.getState().files).toEqual(files)
-    expect(events).toEqual(['/vault'])
+    expect(events).toEqual([{ vaultPath: '/vault', changedPaths: ['/vault/AI.md'] }])
     expect(invoke).toHaveBeenCalledWith('file:list-shallow', { dirPath: '/vault' })
   })
 

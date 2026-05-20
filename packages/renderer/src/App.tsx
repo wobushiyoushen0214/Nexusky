@@ -249,8 +249,8 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const cleanup = window.api.onVaultChanged(() => {
-      useVaultStore.getState().refreshFiles()
+    const cleanup = window.api.onVaultChanged((changedPaths) => {
+      useVaultStore.getState().refreshFiles(changedPaths)
     })
     return () => { cleanup() }
   }, [])

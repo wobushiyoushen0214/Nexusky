@@ -1198,6 +1198,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const content = lines.join('\n')
     const path = `${vaultPath}/${fileName}`
     await window.api.invoke('file:create', { path, content, vaultPath })
+    await useVaultStore.getState().refreshFiles([path])
     const { openFile } = await import('../../stores/editor-store').then((m) => m.useEditorStore.getState())
     openFile(path)
   }

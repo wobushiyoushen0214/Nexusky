@@ -70,6 +70,7 @@ async function getUniqueRestorePath(destPath: string): Promise<string> {
 }
 
 let writeNotifyTimer: ReturnType<typeof setTimeout> | null = null
+const writeNotifyPaths = new Set<string>()
 
 export function registerFileIPC(): void {
   ipcMain.handle('file:read', async (_event, params: { path: string }) => {
@@ -91,9 +92,11 @@ export function registerFileIPC(): void {
     await writeFile(params.path, params.content, 'utf-8')
     if (params.vaultPath && params.path.endsWith('.md')) {
       try { indexNote(params.vaultPath, params.path) } catch {}
+      writeNotifyPaths.add(params.path)
       if (writeNotifyTimer) clearTimeout(writeNotifyTimer)
       writeNotifyTimer = setTimeout(() => {
-        notifyVaultFilesChanged()
+        notifyVaultFilesChanged(Array.from(writeNotifyPaths))
+        writeNotifyPaths.clear()
         writeNotifyTimer = null
       }, 120)
     }
@@ -117,7 +120,7 @@ export function registerFileIPC(): void {
       if (params.path.endsWith('.md')) {
         try { indexNote(params.vaultPath, params.path) } catch {}
       }
-      notifyVaultFilesChanged()
+      notifyVaultFilesChanged([params.path])
     }
   })
 
@@ -142,7 +145,7 @@ export function registerFileIPC(): void {
     } else {
       await rm(params.path, { recursive: true })
     }
-    if (params.vaultPath) notifyVaultFilesChanged()
+    if (params.vaultPath) notifyVaultFilesChanged([params.path])
   })
 
   ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string; vaultPath?: string }) => {
@@ -159,7 +162,7 @@ export function registerFileIPC(): void {
         await updateWikilinks(params.vaultPath, oldName, newName)
       }
     }
-    if (params.vaultPath) notifyVaultFilesChanged()
+    if (params.vaultPath) notifyVaultFilesChanged([params.oldPath, params.newPath])
   })
 
   ipcMain.handle('file:save-image', async (_event, params: { vaultPath: string; imageData: string; fileName: string }) => {
@@ -169,7 +172,7 @@ export function registerFileIPC(): void {
     if (!isPathInsideVault(filePath, assetsDir)) throw new Error('图片路径不在 assets 目录内')
     const base64Data = params.imageData.replace(/^data:image\/\w+;base64,/, '')
     await writeFile(filePath, Buffer.from(base64Data, 'base64'))
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([filePath])
     return `assets/${params.fileName}`
   })
 
@@ -273,18 +276,18 @@ export function registerFileIPC(): void {
     await mkdir(dirname(uniqueDestPath), { recursive: true })
     await rename(params.trashPath, uniqueDestPath)
     await rm(`${params.trashPath}.json`, { force: true })
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([uniqueDestPath])
   })
 
   ipcMain.handle('file:empty-trash', async (_event, params: { vaultPath: string }) => {
     const trashDir = join(params.vaultPath, '.trash')
     await rm(trashDir, { recursive: true, force: true })
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([params.vaultPath])
   })
 
   ipcMain.handle('file:import-obsidian', async (_event, params: { sourcePath: string; vaultPath: string }) => {
     const result = await importObsidianVault(params.sourcePath, params.vaultPath)
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([params.vaultPath])
     return result
   })
 
@@ -302,7 +305,7 @@ export function registerFileIPC(): void {
       sourcePath = result.filePaths[0]
     }
     const result = await importReadwiseCsv(sourcePath, params.vaultPath)
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([join(params.vaultPath, 'Imports', 'Readwise')])
     return result
   })
 
@@ -320,7 +323,7 @@ export function registerFileIPC(): void {
       sourcePath = result.filePaths[0]
     }
     const result = await importPocketBookmarks(sourcePath, params.vaultPath)
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([join(params.vaultPath, 'Imports', 'Pocket')])
     return result
   })
 
@@ -337,7 +340,7 @@ export function registerFileIPC(): void {
       sourcePath = result.filePaths[0]
     }
     const result = await importNotionExport(sourcePath, params.vaultPath)
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([join(params.vaultPath, 'Imports', 'Notion')])
     return result
   })
 }

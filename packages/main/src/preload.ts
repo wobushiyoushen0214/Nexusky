@@ -20,8 +20,8 @@ const api = {
     ipcRenderer.on('file:changed', handler)
     return () => { ipcRenderer.removeListener('file:changed', handler) }
   },
-  onVaultChanged: (callback: () => void) => {
-    const handler = () => callback()
+  onVaultChanged: (callback: (changedPaths: string[]) => void) => {
+    const handler = (_event: unknown, changedPaths?: string[]) => callback(changedPaths || [])
     ipcRenderer.on('vault:files-changed', handler)
     return () => { ipcRenderer.removeListener('vault:files-changed', handler) }
   },

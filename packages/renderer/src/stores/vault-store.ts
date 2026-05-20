@@ -4,6 +4,11 @@ import type { FileEntry } from '@shared/types/ipc'
 
 export const VAULT_FILES_REFRESHED_EVENT = 'nexusky:vault-files-refreshed'
 
+export interface VaultFilesRefreshedDetail {
+  vaultPath: string
+  changedPaths: string[]
+}
+
 interface VaultState {
   vaultPath: string | null
   files: FileEntry[]
@@ -13,7 +18,7 @@ interface VaultState {
   selectVault: () => Promise<void>
   createVault: (name: string) => Promise<void>
   loadVault: () => Promise<void>
-  refreshFiles: () => Promise<void>
+  refreshFiles: (changedPaths?: string[]) => Promise<void>
   indexVault: () => Promise<void>
   toggleFavorite: (path: string) => void
   isFavorite: (path: string) => boolean
@@ -69,14 +74,14 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     }
   },
 
-  refreshFiles: async () => {
+  refreshFiles: async (changedPaths = []) => {
     const { vaultPath } = get()
     if (!vaultPath) return
     const requestId = ++refreshRequestId
     const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
     if (requestId !== refreshRequestId) return
     set({ files })
-    window.dispatchEvent(new CustomEvent(VAULT_FILES_REFRESHED_EVENT, { detail: { vaultPath } }))
+    window.dispatchEvent(new CustomEvent<VaultFilesRefreshedDetail>(VAULT_FILES_REFRESHED_EVENT, { detail: { vaultPath, changedPaths } }))
   },
 
   indexVault: async () => {

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
-import { VAULT_FILES_REFRESHED_EVENT, useVaultStore } from '../../stores/vault-store'
+import { VAULT_FILES_REFRESHED_EVENT, useVaultStore, type VaultFilesRefreshedDetail } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import type { FileEntry } from '@shared/types/ipc'
@@ -14,6 +14,29 @@ interface FlatNode {
 
 const ITEM_HEIGHT = 30
 const OVERSCAN = 5
+
+function parentPath(path: string): string {
+  const normalized = path.replace(/\\/g, '/')
+  const index = normalized.lastIndexOf('/')
+  return index > 0 ? normalized.slice(0, index) : ''
+}
+
+export function getFileTreeReloadPaths(changedPaths: string[], expandedPaths: Set<string>, lazyPaths: Set<string>): string[] {
+  const reloadPaths = new Set<string>()
+  const expandedByNormalized = new Map(Array.from(expandedPaths).map((path) => [path.replace(/\\/g, '/'), path]))
+  const lazyByNormalized = new Map(Array.from(lazyPaths).map((path) => [path.replace(/\\/g, '/'), path]))
+  for (const changedPath of changedPaths) {
+    const normalized = changedPath.replace(/\\/g, '/')
+    for (const candidate of [normalized, parentPath(normalized)]) {
+      if (!candidate) continue
+      const expandedPath = expandedByNormalized.get(candidate)
+      const lazyPath = lazyByNormalized.get(candidate)
+      if (expandedPath) reloadPaths.add(expandedPath)
+      if (lazyPath) reloadPaths.add(lazyPath)
+    }
+  }
+  return Array.from(reloadPaths)
+}
 
 interface VirtualFileTreeProps {
   entries: FileEntry[]
@@ -79,6 +102,32 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
     })
   }, [])
 
+  const reloadChangedParents = useCallback(async (changedPaths: string[]) => {
+    const paths = getFileTreeReloadPaths(
+      changedPaths,
+      expandedPathsRef.current,
+      new Set(lazyChildrenRef.current.keys())
+    )
+    if (paths.length === 0) return
+
+    const updates = await Promise.all(paths.map(async (path) => {
+      try {
+        const children = await window.api.invoke('file:list-shallow', { dirPath: path })
+        return [path, children] as const
+      } catch {
+        return null
+      }
+    }))
+
+    setLazyChildren((prev) => {
+      const next = new Map(prev)
+      for (const update of updates) {
+        if (update) next.set(update[0], update[1])
+      }
+      return next
+    })
+  }, [])
+
   useEffect(() => {
     if (defaultExpanded) {
       const rootDirs: string[] = []
@@ -117,16 +166,21 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
   }, [defaultExpanded, entries])
 
   useEffect(() => {
-    const reload = () => {
-      void reloadExpandedChildren()
+    const reload = (changedPaths: string[] = []) => {
+      if (changedPaths.length > 0) void reloadChangedParents(changedPaths)
+      else void reloadExpandedChildren()
+    }
+    const reloadAfterLocalRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<VaultFilesRefreshedDetail>).detail
+      reload(detail?.changedPaths || [])
     }
     const cleanup = window.api.onVaultChanged(reload)
-    window.addEventListener(VAULT_FILES_REFRESHED_EVENT, reload)
+    window.addEventListener(VAULT_FILES_REFRESHED_EVENT, reloadAfterLocalRefresh)
     return () => {
       cleanup()
-      window.removeEventListener(VAULT_FILES_REFRESHED_EVENT, reload)
+      window.removeEventListener(VAULT_FILES_REFRESHED_EVENT, reloadAfterLocalRefresh)
     }
-  }, [reloadExpandedChildren])
+  }, [reloadChangedParents, reloadExpandedChildren])
 
   const flatNodes = useMemo(() => {
     const nodes: FlatNode[] = []

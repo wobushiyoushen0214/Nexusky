@@ -25,7 +25,7 @@ export function registerTemplateIPC(): void {
 
     await writeFile(filePath, content, 'utf-8')
     try { indexNote(params.vaultPath, filePath) } catch {}
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([filePath])
     return filePath
   })
 
@@ -74,7 +74,7 @@ export function registerTemplateIPC(): void {
     await mkdir(dirname(filePath), { recursive: true })
     await writeFile(filePath, content, 'utf-8')
     try { indexNote(params.vaultPath, filePath) } catch {}
-    notifyVaultFilesChanged()
+    notifyVaultFilesChanged([filePath])
     return filePath
   })
 }
