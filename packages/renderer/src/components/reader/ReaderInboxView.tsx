@@ -30,6 +30,11 @@ export function isUnreadReaderRow(row: PropertyTableRow): boolean {
   return status === '' || ['unread', 'new', 'todo', 'to-read'].includes(status)
 }
 
+export function getReaderSourceUrl(row: PropertyTableRow): string {
+  const url = propertyText(row.properties.url).trim()
+  return /^https?:\/\//i.test(url) ? url : ''
+}
+
 export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource, query: string, unreadOnly: boolean): PropertyTableRow[] {
   const q = query.trim().toLowerCase()
   return rows
@@ -137,6 +142,16 @@ export function ReaderInboxView() {
     }
   }
 
+  const openSource = async (row: PropertyTableRow) => {
+    const url = getReaderSourceUrl(row)
+    if (!url) return
+    try {
+      await window.api.invoke('app:open-external', { url })
+    } catch {
+      toast(t('reader.openSourceFailed'), 'error')
+    }
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
       <div style={{ flexShrink: 0, padding: '22px 28px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -192,7 +207,7 @@ export function ReaderInboxView() {
               const rowSource = getReaderSource(row)
               const color = sourceColor(rowSource)
               const tags = propertyText(row.properties.tags).split(/\s+/).filter(Boolean).slice(0, 3)
-              const url = propertyText(row.properties.url)
+              const url = getReaderSourceUrl(row)
               const author = propertyText(row.properties.author)
               const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
               return (
@@ -222,6 +237,14 @@ export function ReaderInboxView() {
                     ))}
                   </span>
                   <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    {url && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); void openSource(row) }}
+                        style={{ height: 26, marginRight: 6, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
+                      >
+                        {t('reader.openSource')}
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); void updateStatus(row, isUnreadReaderRow(row) ? 'read' : 'unread') }}
                       style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}

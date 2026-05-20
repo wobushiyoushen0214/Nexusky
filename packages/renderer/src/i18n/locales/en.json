@@ -255,8 +255,10 @@
     "unread": "unread",
     "markRead": "Mark read",
     "markUnread": "Mark unread",
+    "openSource": "Open source",
     "markedRead": "Marked as read",
     "markedUnread": "Marked as unread",
+    "openSourceFailed": "Failed to open source link",
     "statusFailed": "Failed to update reading status",
     "emptyImports": "No imported Notion, Readwise, or Pocket content yet",
     "emptyFilter": "No matching reading items"

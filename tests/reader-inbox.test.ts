@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterReaderRows, getReaderSource, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { filterReaderRows, getReaderSource, getReaderSourceUrl, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -38,5 +38,12 @@ describe('reader inbox helpers', () => {
     ])
     expect(filterReaderRows(rows, 'pocket', 'research', true).map((item) => item.filePath)).toEqual(['Imports/Pocket/Later.md'])
     expect(filterReaderRows(rows, 'all', 'Ada', false).map((item) => item.filePath)).toEqual(['Imports/Readwise/Book.md'])
+  })
+
+  it('only exposes http source URLs for external opening', () => {
+    expect(getReaderSourceUrl(row('Imports/Pocket/A.md', { url: 'https://example.com/a' }))).toBe('https://example.com/a')
+    expect(getReaderSourceUrl(row('Imports/Pocket/B.md', { url: 'http://example.com/b' }))).toBe('http://example.com/b')
+    expect(getReaderSourceUrl(row('Imports/Pocket/C.md', { url: 'file:///tmp/a' }))).toBe('')
+    expect(getReaderSourceUrl(row('Imports/Pocket/D.md', { url: 'javascript:alert(1)' }))).toBe('')
   })
 })

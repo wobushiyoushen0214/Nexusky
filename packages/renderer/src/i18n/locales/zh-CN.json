@@ -255,8 +255,10 @@
     "unread": "unread",
     "markRead": "标记已读",
     "markUnread": "标记待读",
+    "openSource": "打开原文",
     "markedRead": "已标记为已读",
     "markedUnread": "已标记为待读",
+    "openSourceFailed": "原文链接打开失败",
     "statusFailed": "阅读状态更新失败",
     "emptyImports": "还没有导入 Notion、Readwise 或 Pocket 内容",
     "emptyFilter": "没有匹配的阅读条目"
