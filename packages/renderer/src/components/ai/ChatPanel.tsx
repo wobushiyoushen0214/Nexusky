@@ -7,6 +7,7 @@ import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
 import { formatAiToolStatus } from './tool-labels'
+import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -138,9 +139,11 @@ export function ChatPanel() {
   const editTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [mentionIndex, setMentionIndex] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const restoringDraftRef = useRef(false)
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
   const [editUnbound, setEditUnbound] = useState(false)
+  const draftStorageKey = useMemo(() => getChatDraftStorageKey(vaultPath, currentSessionId), [vaultPath, currentSessionId])
 
   const tokenCount = useMemo(() => {
     let total = 0
@@ -476,6 +479,23 @@ export function ChatPanel() {
   }, [currentFilePath])
 
   useEffect(() => {
+    restoringDraftRef.current = true
+    setInput(normalizeChatDraft(safeGet(draftStorageKey)))
+    setShowMention(false)
+    setMentionQuery('')
+  }, [draftStorageKey])
+
+  useEffect(() => {
+    if (restoringDraftRef.current) {
+      restoringDraftRef.current = false
+      return
+    }
+    const draft = normalizeChatDraft(input)
+    if (draft.trim()) safeSet(draftStorageKey, draft)
+    else safeRemove(draftStorageKey)
+  }, [draftStorageKey, input])
+
+  useEffect(() => {
     const pending = safeGet('nexusky-pending-ai-draft')
     if (pending) {
       safeRemove('nexusky-pending-ai-draft')
@@ -800,6 +820,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setMessages((prev) => [...prev, userMsg])
     appendToDb(userMsg)
     setInput('')
+    safeRemove(draftStorageKey)
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')

@@ -67,7 +67,7 @@
 | 多 Provider 支持 | OpenAI、Claude、Ollama（本地）、自定义（中转站/国产模型） |
 | 配置自动检测 | 读取本地 Claude Code / Codex 配置，一键导入（跨平台） |
 | 模型下拉选择 | 预设最新模型列表（gpt-5.5/4.1/claude-4 等），支持自定义输入 |
-| AI 对话面板 | Ctrl+L 打开，流式输出，Markdown 渲染 |
+| AI 对话面板 | Ctrl+L 打开，流式输出，Markdown 渲染，未发送输入按 vault 和会话自动保存草稿 |
 | 多行输入 | 对话输入框支持 Shift+Enter 换行，textarea 多行编辑 |
 | 对话历史持久化 | 对话自动保存到 SQLite，重启恢复，避免 localStorage 配额限制 |
 | AI 任务模板 | 空状态提供知识库问答、笔记优化、选区改写、批量生成关联笔记等快捷任务 |
