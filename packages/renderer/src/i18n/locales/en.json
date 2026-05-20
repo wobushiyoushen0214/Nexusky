@@ -223,6 +223,13 @@
       "properties": "Re-archive by primary tag",
       "time": "Re-archive by updated date"
     },
+    "groupKind": {
+      "source": "Source",
+      "status": "Status",
+      "tag": "Tag",
+      "date": "Date",
+      "unknown": "Group"
+    },
     "modeSpace": "Space",
     "modeProperties": "Properties",
     "modeTime": "Time",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasGroupLabels, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -84,6 +84,23 @@ describe('canvas card placement', () => {
       Math.abs(time['react-b'].x - time['react-a'].x) >= 300 ||
       Math.abs(time['react-b'].y - time['react-a'].y) >= 190
     ).toBe(true)
+  })
+
+  it('builds visible group labels from the active canvas layer', () => {
+    const rows = [
+      row('react-a', { tags: ['react'], source: 'readwise' }, Date.parse('2026-05-20T08:00:00Z')),
+      row('react-b', { tags: ['react'], source: 'readwise' }, Date.parse('2026-05-20T09:00:00Z')),
+      row('vue-a', { tags: ['vue'], source: 'pocket' }, Date.parse('2026-05-19T08:00:00Z'))
+    ]
+
+    const labels = buildCanvasGroupLabels(rows, buildCanvasModePositions(rows, 'space'), 'space')
+    expect(labels).toContainEqual(expect.objectContaining({ kind: 'source', value: 'readwise', count: 2 }))
+
+    const propertyLabels = buildCanvasGroupLabels(rows, buildCanvasModePositions(rows, 'properties'), 'properties')
+    expect(propertyLabels).toContainEqual(expect.objectContaining({ kind: 'tag', value: 'react', count: 2 }))
+
+    const timeLabels = buildCanvasGroupLabels(rows, buildCanvasModePositions(rows, 'time'), 'time')
+    expect(timeLabels).toContainEqual(expect.objectContaining({ kind: 'date', value: '2026-05-20', count: 2 }))
   })
 
   it('suggests implicit associations without duplicating existing graph links', () => {

@@ -65,6 +65,8 @@ type RoutePoint = { x: number; y: number }
 type RouteSide = 'left' | 'right' | 'top' | 'bottom'
 type RoutePort = { side: RouteSide; edge: RoutePoint; clear: RoutePoint }
 type CanvasEdgeRoute = { key: string; points: RoutePoint[] }
+type CanvasGroupLabelKind = 'source' | 'status' | 'tag' | 'date' | 'unknown'
+type CanvasGroupLabel = { key: string; kind: CanvasGroupLabelKind; value: string; count: number; x: number; y: number }
 type CanvasAssociationReason = 'tag' | 'source' | 'title'
 type CanvasSuggestedEdgeRoute = CanvasAssociationSuggestion & CanvasEdgeRoute
 
@@ -203,6 +205,38 @@ function getArchiveGroup(row: PropertyTableRow): string {
   const status = valueToText(row.properties.status).toLowerCase()
   if (status && ['unread', 'to-read', 'todo', 'archived', 'read'].includes(status)) return `status:${status}`
   return `tag:${getPrimaryTag(row)}`
+}
+
+function getCanvasGroupKey(row: PropertyTableRow, mode: CanvasMode): string {
+  if (mode === 'properties') return `tag:${getPrimaryTag(row)}`
+  if (mode === 'time') return row.updatedAt ? `date:${new Date(row.updatedAt).toISOString().slice(0, 10)}` : 'unknown:date'
+  return getArchiveGroup(row)
+}
+
+function parseCanvasGroupKey(key: string): Pick<CanvasGroupLabel, 'kind' | 'value'> {
+  const [kind, ...rest] = key.split(':')
+  const value = rest.join(':') || key
+  if (kind === 'source' || kind === 'status' || kind === 'tag' || kind === 'date') return { kind, value }
+  return { kind: 'unknown', value }
+}
+
+export function buildCanvasGroupLabels(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>, mode: CanvasMode): CanvasGroupLabel[] {
+  const groups = new Map<string, PropertyTableRow[]>()
+  for (const row of rows) {
+    const key = getCanvasGroupKey(row, mode)
+    groups.set(key, [...(groups.get(key) || []), row])
+  }
+  return Array.from(groups.entries())
+    .map(([key, groupRows]) => {
+      const placed = groupRows.map((row) => positions[row.id]).filter((position): position is CanvasPosition => Boolean(position))
+      if (placed.length < 2) return null
+      const x = Math.min(...placed.map((position) => position.x))
+      const y = Math.min(...placed.map((position) => position.y))
+      const parsed = parseCanvasGroupKey(key)
+      return { key, ...parsed, count: placed.length, x, y: y - 30 }
+    })
+    .filter((label): label is CanvasGroupLabel => label !== null)
+    .sort((a, b) => a.y - b.y || a.x - b.x || a.key.localeCompare(b.key))
 }
 
 function buildClusterPositions(groups: CanvasLayoutGroup[]): Record<string, CanvasPosition> {
@@ -671,6 +705,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     if (canvasMode === 'space') return positions
     return applyCanvasModeOverrides(buildCanvasModePositions(filteredRows, canvasMode), modePositionOverrides[canvasMode])
   }, [canvasMode, filteredRows, modePositionOverrides.properties, modePositionOverrides.time, positions])
+  const canvasGroupLabels = useMemo(() => buildCanvasGroupLabels(filteredRows, modePositions, canvasMode), [canvasMode, filteredRows, modePositions])
 
   const layoutRows = canvasMode === 'space' ? rows : filteredRows
   const canvasMetrics = useMemo(() => getCanvasMetrics(layoutRows, modePositions), [layoutRows, modePositions])
@@ -1166,6 +1201,34 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                   </g>
                 ))}
               </svg>
+              {canvasGroupLabels.map((label) => (
+                <div
+                  key={label.key}
+                  style={{
+                    position: 'absolute',
+                    left: label.x - canvasMetrics.minX,
+                    top: label.y - canvasMetrics.minY,
+                    zIndex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    maxWidth: 220,
+                    height: 22,
+                    padding: '0 8px',
+                    borderRadius: 999,
+                    border: '1px solid color-mix(in srgb, var(--border-subtle) 66%, transparent)',
+                    background: 'color-mix(in srgb, var(--editor-bg) 84%, transparent)',
+                    color: 'var(--text-tertiary)',
+                    fontSize: 10.5,
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                  }}
+                >
+                  <span style={{ width: 5, height: 5, borderRadius: 999, background: 'currentColor', opacity: 0.72, flexShrink: 0 }} />
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(`canvas.groupKind.${label.kind}`)} · {label.value}</span>
+                  <span style={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums', opacity: 0.74 }}>{label.count}</span>
+                </div>
+              ))}
               {filteredRows.map((row, index) => {
                 const pos = modePositions[row.id] || defaultPosition(index)
                 const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []

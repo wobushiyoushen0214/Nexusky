@@ -223,6 +223,13 @@
       "properties": "按主标签重新归档",
       "time": "按更新时间重新归档"
     },
+    "groupKind": {
+      "source": "来源",
+      "status": "状态",
+      "tag": "标签",
+      "date": "日期",
+      "unknown": "分组"
+    },
     "modeSpace": "空间",
     "modeProperties": "属性",
     "modeTime": "时间",
