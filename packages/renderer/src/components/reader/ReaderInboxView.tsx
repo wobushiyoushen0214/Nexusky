@@ -116,6 +116,17 @@ export function countUnreadReaderRows(rows: PropertyTableRow[]): number {
   return rows.filter((row) => getReaderSource(row) && isUnreadReaderRow(row)).length
 }
 
+export function countReaderRowsBySource(rows: PropertyTableRow[]): Record<ReaderSource, number> {
+  const counts: Record<ReaderSource, number> = { all: 0, notion: 0, readwise: 0, pocket: 0 }
+  for (const row of rows) {
+    const source = getReaderSource(row)
+    if (!source) continue
+    counts.all++
+    counts[source]++
+  }
+  return counts
+}
+
 export function getNextUnreadReaderRow(rows: PropertyTableRow[]): PropertyTableRow | null {
   return rows.find((row) => getReaderSource(row) && isUnreadReaderRow(row)) || null
 }
@@ -317,14 +328,8 @@ export function ReaderInboxView() {
 
   const readerRows = useMemo(() => rows.filter((row) => getReaderSource(row)), [rows])
   const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived, sort), [query, rows, showArchived, sort, source, unreadOnly])
-  const counts = useMemo(() => {
-    const next: Record<ReaderSource, number> = { all: readerRows.length, notion: 0, readwise: 0, pocket: 0 }
-    for (const row of readerRows) {
-      const rowSource = getReaderSource(row)
-      if (rowSource) next[rowSource]++
-    }
-    return next
-  }, [readerRows])
+  const sourceCountRows = useMemo(() => filterReaderRows(rows, 'all', query, unreadOnly, !showArchived, 'updated'), [query, rows, showArchived, unreadOnly])
+  const counts = useMemo(() => countReaderRowsBySource(sourceCountRows), [sourceCountRows])
   const unreadCount = countUnreadReaderRows(readerRows)
   const archivableVisibleRows = useMemo(() => getArchivableReaderRows(filtered), [filtered])
   const unarchivableVisibleRows = useMemo(() => getUnarchivableReaderRows(filtered), [filtered])
