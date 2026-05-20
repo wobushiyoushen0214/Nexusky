@@ -4,6 +4,7 @@ import { writeFile, mkdir, readFile, readdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { store } from '../services/store'
 import { indexNote } from '../services/indexer'
+import { notifyVaultFilesChanged } from './events'
 import type { NoteTemplate, TemplateMarketplaceItem } from '@shared/types/ipc'
 
 export function registerTemplateIPC(): void {
@@ -24,6 +25,7 @@ export function registerTemplateIPC(): void {
 
     await writeFile(filePath, content, 'utf-8')
     try { indexNote(params.vaultPath, filePath) } catch {}
+    notifyVaultFilesChanged()
     return filePath
   })
 
@@ -72,6 +74,7 @@ export function registerTemplateIPC(): void {
     await mkdir(dirname(filePath), { recursive: true })
     await writeFile(filePath, content, 'utf-8')
     try { indexNote(params.vaultPath, filePath) } catch {}
+    notifyVaultFilesChanged()
     return filePath
   })
 }

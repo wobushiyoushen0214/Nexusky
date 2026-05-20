@@ -1,4 +1,4 @@
-import { ipcMain, shell, BrowserWindow } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promises'
 import { readdir } from 'fs/promises'
 import { join, dirname, extname, relative, basename } from 'path'
@@ -7,6 +7,7 @@ import { getDatabase } from '../services/database'
 import { indexNote } from '../services/indexer'
 import { importObsidianVault } from '../services/obsidian-importer'
 import { isPathInsideVault } from './file-path'
+import { notifyVaultFilesChanged } from './events'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
 async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> {
@@ -67,12 +68,6 @@ async function getUniqueRestorePath(destPath: string): Promise<string> {
 }
 
 let writeNotifyTimer: ReturnType<typeof setTimeout> | null = null
-
-function notifyVaultFilesChanged(): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send('vault:files-changed')
-  }
-}
 
 export function registerFileIPC(): void {
   ipcMain.handle('file:read', async (_event, params: { path: string }) => {
