@@ -139,9 +139,10 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
 
     let result = ''
     try {
+      const recentMessages = params.messages.filter((m) => m.role !== 'system').slice(-8)
+      const clientContextMessages = params.messages.filter((m) => m.role === 'system')
       for await (const chunk of aiManager.chat([
-        { role: 'system', content: systemPrompt },
-        ...params.messages.filter((m) => m.role !== 'system').slice(-8)
+        ...withMergedSystemContext(systemPrompt, [...clientContextMessages, ...recentMessages])
       ], controller.signal)) {
         if (controller.signal.aborted) throw new Error('已取消')
         if (chunk.type === 'text') result += chunk.content

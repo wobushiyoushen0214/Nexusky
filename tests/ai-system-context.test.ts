@@ -24,4 +24,17 @@ describe('AI system context merging', () => {
       { type: 'text', text: 'second' },
     ])).toBe('first\nsecond')
   })
+
+  it('merges multiple client system messages in order', () => {
+    const messages = withMergedSystemContext('Intent classifier', [
+      { role: 'system', content: '当前打开笔记: Daily' },
+      { role: 'system', content: '路径: Journal/Daily.md' },
+      { role: 'user', content: '从这篇笔记提取任务' },
+    ])
+
+    expect(messages[0].content).toBe('Intent classifier\n\n<client_context>\n当前打开笔记: Daily\n\n路径: Journal/Daily.md\n</client_context>')
+    expect(messages.slice(1)).toEqual([
+      { role: 'user', content: '从这篇笔记提取任务' },
+    ])
+  })
 })
