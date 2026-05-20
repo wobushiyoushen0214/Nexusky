@@ -17,4 +17,10 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('custom_tool')).toBe('custom_tool')
     expect(formatAiToolStatus('')).toBe('调用工具')
   })
+
+  it('truncates very long detail text', () => {
+    const label = formatAiToolStatus('search_notes', { query: 'a'.repeat(90) })
+    expect(label).toHaveLength('搜索笔记: '.length + 72)
+    expect(label.endsWith('...')).toBe(true)
+  })
 })

@@ -3,8 +3,12 @@ function getTextArg(args: Record<string, unknown>, key: string): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function truncateDetail(detail: string): string {
+  return detail.length > 72 ? `${detail.slice(0, 69)}...` : detail
+}
+
 function appendDetail(label: string, detail: string): string {
-  return detail ? `${label}: ${detail}` : label
+  return detail ? `${label}: ${truncateDetail(detail)}` : label
 }
 
 export function formatAiToolStatus(name: string, args: Record<string, unknown> = {}): string {
