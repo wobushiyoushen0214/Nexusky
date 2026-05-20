@@ -63,6 +63,12 @@ export interface LocalPlugin {
   editorExtensions: PluginEditorExtension[]
 }
 
+export interface PluginMarketplaceItem extends LocalPlugin {
+  author: string
+  tags: string[]
+  installed: boolean
+}
+
 export interface CssSnippet {
   name: string
   path: string
@@ -356,6 +362,9 @@ export interface IPCChannelMap {
   'template:install-community-pack': { params: { vaultPath: string }; result: { installed: number; templates: NoteTemplate[] } }
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
   'plugins:list': { params: { vaultPath: string }; result: LocalPlugin[] }
+  'plugins:get-marketplace': { params: { vaultPath: string }; result: PluginMarketplaceItem[] }
+  'plugins:install-marketplace': { params: { vaultPath: string; pluginId: string }; result: { installed: number; plugins: LocalPlugin[] } }
+  'plugins:install-marketplace-pack': { params: { vaultPath: string }; result: { installed: number; plugins: LocalPlugin[] } }
   'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }
   'themes:list': { params: { vaultPath: string }; result: ThemePackage[] }
   'cloud:get-config': { params: undefined; result: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }

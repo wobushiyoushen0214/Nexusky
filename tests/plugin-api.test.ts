@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { normalizePlugin } from '../packages/main/src/ipc/plugin.ipc'
+import { mkdtempSync, readFileSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { getPluginMarketplace, installMarketplacePlugins, normalizePlugin } from '../packages/main/src/ipc/plugin.ipc'
 
 describe('local plugin API', () => {
   it('normalizes commands, panels, and editor extension declarations', () => {
@@ -46,5 +49,24 @@ describe('local plugin API', () => {
   it('rejects manifests without plugin identity', () => {
     expect(normalizePlugin({ commands: [] })).toBeNull()
     expect(normalizePlugin(null)).toBeNull()
+  })
+
+  it('installs featured marketplace plugins without overwriting existing installs', async () => {
+    const vaultPath = mkdtempSync(join(tmpdir(), 'nexusky-plugin-market-'))
+    try {
+      let market = await getPluginMarketplace(vaultPath)
+      expect(market.some((plugin) => plugin.id === 'market-research-synthesizer' && !plugin.installed)).toBe(true)
+
+      const result = await installMarketplacePlugins(vaultPath, ['market-research-synthesizer'])
+      expect(result.installed).toBe(1)
+      expect(result.plugins.map((plugin) => plugin.id)).toContain('market-research-synthesizer')
+      expect(readFileSync(join(vaultPath, '.nexusky', 'plugins', 'market-research-synthesizer.json'), 'utf-8')).toContain('Research Synthesizer')
+
+      market = await getPluginMarketplace(vaultPath)
+      expect(market.find((plugin) => plugin.id === 'market-research-synthesizer')?.installed).toBe(true)
+      await expect(installMarketplacePlugins(vaultPath, ['market-research-synthesizer'])).resolves.toMatchObject({ installed: 0 })
+    } finally {
+      rmSync(vaultPath, { recursive: true, force: true })
+    }
   })
 })

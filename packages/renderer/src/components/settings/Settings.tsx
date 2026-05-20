@@ -9,7 +9,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { safeGet, safeSet } from '../../utils/storage'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCssSnippets, setEnabledSnippetNames } from '../../utils/css-snippets'
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
-import type { AIProviderConfig, CssSnippet, LocalPlugin, ThemePackage } from '@shared/types/ipc'
+import type { AIProviderConfig, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
@@ -1429,14 +1429,20 @@ function KeyBindingsTab() {
 function PluginsTab() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
+  const [marketplace, setMarketplace] = useState<PluginMarketplaceItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [installing, setInstalling] = useState<string | null>(null)
 
   const loadPlugins = async () => {
     if (!vaultPath) return
     setLoading(true)
     try {
-      const result = await window.api.invoke('plugins:list', { vaultPath })
+      const [result, market] = await Promise.all([
+        window.api.invoke('plugins:list', { vaultPath }),
+        window.api.invoke('plugins:get-marketplace', { vaultPath })
+      ])
       setPlugins(result)
+      setMarketplace(market)
     } finally {
       setLoading(false)
     }
@@ -1452,8 +1458,76 @@ function PluginsTab() {
     await window.api.invoke('file:reveal', { path: `${vaultPath}/.nexusky/plugins` })
   }
 
+  const installPlugin = async (pluginId: string) => {
+    if (!vaultPath) return
+    setInstalling(pluginId)
+    try {
+      const result = await window.api.invoke('plugins:install-marketplace', { vaultPath, pluginId })
+      setPlugins(result.plugins)
+      const market = await window.api.invoke('plugins:get-marketplace', { vaultPath })
+      setMarketplace(market)
+      toast(result.installed > 0 ? '插件已安装' : '插件已存在', result.installed > 0 ? 'success' : 'info')
+    } finally {
+      setInstalling(null)
+    }
+  }
+
+  const installPack = async () => {
+    if (!vaultPath) return
+    setInstalling('__pack__')
+    try {
+      const result = await window.api.invoke('plugins:install-marketplace-pack', { vaultPath })
+      setPlugins(result.plugins)
+      const market = await window.api.invoke('plugins:get-marketplace', { vaultPath })
+      setMarketplace(market)
+      toast(result.installed > 0 ? `已安装 ${result.installed} 个精选插件` : '精选插件已全部安装', result.installed > 0 ? 'success' : 'info')
+    } finally {
+      setInstalling(null)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+          <div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>精选插件市场</span>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>安装内置工作流插件，立即出现在命令面板、Slash 菜单和插件面板中。</p>
+          </div>
+          <button
+            onClick={installPack}
+            disabled={installing === '__pack__' || marketplace.every((plugin) => plugin.installed)}
+            style={{ flexShrink: 0, fontSize: 11, color: 'var(--accent-text)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: installing === '__pack__' ? 'default' : 'pointer', padding: '4px 8px', borderRadius: 4, opacity: marketplace.every((plugin) => plugin.installed) ? 0.6 : 1 }}
+          >
+            {installing === '__pack__' ? '安装中...' : '安装全部精选'}
+          </button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+          {marketplace.map((plugin) => (
+            <div key={plugin.id} style={{ padding: 10, borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plugin.name}</span>
+                  <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{plugin.author} · {plugin.commands.length} commands · {plugin.panels.length} panels</span>
+                </span>
+                <button
+                  onClick={() => installPlugin(plugin.id)}
+                  disabled={plugin.installed || installing === plugin.id}
+                  style={{ flexShrink: 0, fontSize: 10, color: plugin.installed ? 'var(--text-tertiary)' : 'var(--accent-text)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: plugin.installed ? 'default' : 'pointer', padding: '3px 7px', borderRadius: 4 }}
+                >
+                  {plugin.installed ? '已安装' : installing === plugin.id ? '安装中...' : '安装'}
+                </button>
+              </div>
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {plugin.tags.map((tag) => (
+                  <span key={tag} style={{ padding: '2px 5px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>本地插件命令</span>

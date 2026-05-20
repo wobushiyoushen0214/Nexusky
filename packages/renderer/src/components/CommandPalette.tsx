@@ -146,6 +146,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       if (!vaultPath) return
       window.dispatchEvent(new CustomEvent('open-flashcard-review'))
     }},
+    { id: 'plugin-marketplace-pack', category: 'plugin', label: t('commandPalette.commands.pluginMarketplacePack.label'), description: t('commandPalette.commands.pluginMarketplacePack.description'), keywords: ['plugin', 'marketplace', 'pack'], action: async () => {
+      if (!vaultPath) return
+      const { toast } = await import('../stores/toast-store')
+      const result = await window.api.invoke('plugins:install-marketplace-pack', { vaultPath })
+      setPlugins(result.plugins)
+      toast(result.installed > 0 ? t('commandPalette.toasts.pluginsInstalled', { count: result.installed }) : t('commandPalette.toasts.pluginsAlreadyInstalled'), result.installed > 0 ? 'success' : 'info')
+    }},
     { id: 'graph-full', category: 'graph', label: t('commandPalette.commands.graphFull.label'), shortcut: 'Ctrl+G', keywords: ['graph'], action: () => {
       setMainView('graph')
     }},
