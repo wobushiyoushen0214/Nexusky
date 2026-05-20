@@ -39,6 +39,7 @@
     "kanban": "看板",
     "dailyNote": "今日笔记",
     "more": "更多",
+    "requiresCurrentFile": "打开笔记后可用",
     "settings": "设置"
   },
   "panels": {

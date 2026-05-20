@@ -39,6 +39,7 @@
     "kanban": "Kanban",
     "dailyNote": "Daily Note",
     "more": "More",
+    "requiresCurrentFile": "Available after opening a note",
     "settings": "Settings"
   },
   "panels": {

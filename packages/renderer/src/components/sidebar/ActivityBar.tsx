@@ -4,10 +4,8 @@ import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useActivityBarStore } from '../../stores/activity-bar-store'
-import { ACTIVITY_BAR_REGISTRY } from './activity-bar-registry'
+import { ACTIVITY_BAR_REGISTRY, isActivityBarItemAvailable } from './activity-bar-registry'
 import { ContextMenu } from '../ContextMenu'
-
-const FILE_SCOPED_ITEM_IDS = new Set(['outline', 'properties', 'tags'])
 
 const iconMap: Record<string, React.ReactNode> = {
   files: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>,
@@ -96,7 +94,7 @@ export function ActivityBar() {
     .filter(Boolean)
 
   const hiddenItems = ACTIVITY_BAR_REGISTRY.filter((item) => !visibleIds.includes(item.id))
-  const fileContextUnavailable = mainView !== 'editor' || !currentFilePath
+  const availabilityContext = { mainView, currentFilePath }
 
   const getActiveId = () => {
     if (useUIStore.getState().mainView === 'graph') return 'graph'
@@ -145,13 +143,13 @@ export function ActivityBar() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8, gap: 4, overflow: 'hidden' }}>
         {visibleItems.map((item) => {
           const isActive = item!.id === activeId
-          const isDisabled = fileContextUnavailable && FILE_SCOPED_ITEM_IDS.has(item!.id)
+          const isDisabled = !isActivityBarItemAvailable(item!, availabilityContext)
           return (
             <button
               key={item!.id}
               onClick={isDisabled ? undefined : actionMap[item!.id]}
               disabled={isDisabled}
-              title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}`}
+              title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}${isDisabled ? ` - ${t('activityBar.requiresCurrentFile')}` : ''}`}
               style={{
                 width: 40,
                 height: 40,
@@ -265,18 +263,23 @@ export function ActivityBar() {
           minWidth: 160,
           zIndex: 100,
         }}>
-          {hiddenItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => { actionMap[item.id]?.(); setMoreOpen(false) }}
-              style={{ width: '100%', height: 30, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left' }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <span>{t(item.labelKey)}</span>
-              {item.shortcut && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{item.shortcut}</span>}
-            </button>
-          ))}
+          {hiddenItems.map((item) => {
+            const isDisabled = !isActivityBarItemAvailable(item, availabilityContext)
+            return (
+              <button
+                key={item.id}
+                onClick={isDisabled ? undefined : () => { actionMap[item.id]?.(); setMoreOpen(false) }}
+                disabled={isDisabled}
+                title={isDisabled ? t('activityBar.requiresCurrentFile') : undefined}
+                style={{ width: '100%', height: 30, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: isDisabled ? 'var(--border-default)' : 'var(--text-secondary)', background: 'transparent', border: 'none', borderRadius: 4, cursor: isDisabled ? 'not-allowed' : 'pointer', textAlign: 'left', opacity: isDisabled ? 0.55 : 1 }}
+                onMouseEnter={(e) => { if (!isDisabled) e.currentTarget.style.background = 'var(--bg-hover)' }}
+                onMouseLeave={(e) => { if (!isDisabled) e.currentTarget.style.background = 'transparent' }}
+              >
+                <span>{t(item.labelKey)}</span>
+                {item.shortcut && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{item.shortcut}</span>}
+              </button>
+            )
+          })}
         </div>
       )}
 
