@@ -47,6 +47,18 @@ describe('web clipper', () => {
     expect(markdown).not.toContain('<script>')
   })
 
+  it('preserves safe html links as markdown links', () => {
+    const { markdown } = formatWebClipMarkdown({
+      title: 'Links',
+      url: 'https://example.com/articles/page',
+      html: '<p>Read <a href="/next">next article</a> and <a href="javascript:alert(1)">bad link</a>.</p>'
+    })
+
+    expect(markdown).toContain('[next article](https://example.com/next)')
+    expect(markdown).toContain('bad link')
+    expect(markdown).not.toContain('javascript:alert')
+  })
+
   it('saves unique clipping notes and indexes them', async () => {
     const first = await saveWebClip(vaultPath, { title: 'Clip', url: 'https://example.com', text: 'Body' }, new Date('2026-05-20T00:00:00.000Z'))
     const second = await saveWebClip(vaultPath, { title: 'Clip', url: 'https://example.com/2', text: 'Body 2' }, new Date('2026-05-20T00:00:00.000Z'))

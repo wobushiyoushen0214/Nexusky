@@ -32,26 +32,66 @@ export function safeClipFileName(value: string): string {
   return (cleaned || 'Untitled Web Clip').slice(0, 120)
 }
 
-function stripHtml(html?: string): string {
-  if (!html) return ''
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<[^>]+>/g, '')
+function decodeHtmlEntities(value: string): string {
+  return value
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_match, code: string) => String.fromCodePoint(Number.parseInt(code, 10)))
+}
+
+function textFromHtml(value: string): string {
+  return decodeHtmlEntities(value.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim())
+}
+
+function markdownLinkText(value: string): string {
+  return value.replace(/[\[\]]/g, '').trim()
+}
+
+function markdownLinkUrl(value: string): string {
+  return value.replace(/\)/g, '%29').trim()
+}
+
+function normalizeClipHref(value: string, baseUrl?: string): string {
+  const href = decodeHtmlEntities(value).trim()
+  try {
+    const url = baseUrl ? new URL(href, baseUrl) : new URL(href)
+    return /^https?:$/i.test(url.protocol) ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+function stripHtml(html?: string, baseUrl?: string): string {
+  if (!html) return ''
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_match, attrs: string, labelHtml: string) => {
+      const hrefMatch = attrs.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
+      const href = hrefMatch ? normalizeClipHref(hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '', baseUrl) : ''
+      if (!href) return textFromHtml(labelHtml)
+      const label = markdownLinkText(textFromHtml(labelHtml) || href)
+      return `[${label}](${markdownLinkUrl(href)})`
+    })
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .split('\n')
+    .map(decodeHtmlEntities)
+    .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
 
 export function formatWebClipMarkdown(payload: WebClipPayload, capturedAt = new Date()): { title: string; markdown: string } {
   const title = safeClipFileName(payload.title || payload.url || 'Untitled Web Clip')
-  const body = (payload.selection || payload.text || stripHtml(payload.html) || '').trim()
   const source = payload.url?.trim()
+  const body = (payload.selection || payload.text || stripHtml(payload.html, source) || '').trim()
   const lines = [
     '---',
     `title: "${title.replace(/"/g, '\\"')}"`,

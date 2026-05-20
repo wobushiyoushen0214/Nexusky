@@ -178,6 +178,7 @@
 | Notion 导出导入 | 命令面板选择 Notion Markdown、CSV 或 HTML 导出文件夹，页面转 Markdown、数据库 CSV 转表格笔记，并把本地页面链接转为 wikilink |
 | Readwise 高亮导入 | 命令面板选择 Readwise CSV 导出文件，按文章生成带来源、作者和标签的 Markdown 笔记 |
 | Pocket 稍后读导入 | 命令面板选择 Pocket HTML 导出文件，将收藏链接转为带状态、来源和标签的阅读笔记 |
+| Web Clipper 链接保留 | 浏览器剪藏 HTML fallback 会把安全网页链接保留为 Markdown 链接，并按页面 URL 解析相对链接 |
 | Frontmatter 兼容 | 属性编辑统一通过 frontmatter 工具写回，兼容 CRLF 换行和标签栏/标签面板同步更新 |
 
 ### UI 与体验
@@ -855,7 +856,7 @@ scripts/          → 开发脚本
 ### 协作与平台
 - [ ] 实时协作编辑（CRDT + WebSocket）
 - [ ] Web 版本（共享渲染层代码）
-- [x] 浏览器扩展（本地 Web Clipper 服务 + Chromium 扩展网页剪藏到 vault）
+- [x] 浏览器扩展（本地 Web Clipper 服务 + Chromium 扩展网页剪藏到 vault，HTML fallback 保留 Markdown 链接）
 - [x] CLI 工具（`pnpm cli new/search` 命令行快速创建和搜索 vault 笔记）
 - [x] Notion 导出导入（Markdown、CSV 和 HTML 文件夹转为可索引笔记）
 - [x] Readwise 高亮导入（CSV 导出转为来源化 Markdown 笔记）

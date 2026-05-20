@@ -13,11 +13,12 @@ The extension sends:
   "title": "Page title",
   "url": "https://example.com/article",
   "selection": "Optional selected text",
-  "text": "Readable page text"
+  "text": "Readable page text",
+  "html": "Optional page HTML fallback"
 }
 ```
 
-Nexusky writes the clip to `Clippings/YYYY-MM-DD Page title.md` in the active vault and indexes it immediately.
+Nexusky writes the clip to `Clippings/YYYY-MM-DD Page title.md` in the active vault and indexes it immediately. When only HTML is available, safe page links are preserved as Markdown links and relative links are resolved against the page URL.
 
 ## Direct API
 
