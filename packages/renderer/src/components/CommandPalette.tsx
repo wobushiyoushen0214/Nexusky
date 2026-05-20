@@ -25,6 +25,7 @@ interface AICommandDraft {
   agentMode?: boolean
   attachSelection?: boolean
   unboundEdit?: boolean
+  requiresCurrentNote?: boolean
 }
 
 interface CommandPaletteProps {
@@ -108,7 +109,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'search', category: 'search', label: t('commandPalette.commands.search.label'), shortcut: 'Ctrl+Shift+F', keywords: ['find', 'search'], action: () => setSearchOpen(true) },
     { id: 'chat', category: 'ai', label: t('commandPalette.commands.chat.label'), shortcut: 'Ctrl+L', description: t('commandPalette.commands.chat.description'), keywords: ['chat', 'agent'], action: () => setRightPanel('chat') },
     { id: 'ai-rag', category: 'ai', label: t('commandPalette.commands.aiRag.label'), description: t('commandPalette.commands.aiRag.description'), keywords: ['rag', 'ask', 'agent'], action: () => queueAiDraft({ mode: 'chat', agentMode: true, prompt: t('commandPalette.prompts.rag') }) },
-    { id: 'ai-edit-current', category: 'ai', label: t('commandPalette.commands.aiEditCurrent.label'), description: t('commandPalette.commands.aiEditCurrent.description'), keywords: ['edit', 'rewrite'], action: () => { if (requireCurrentNote()) queueAiDraft({ mode: 'edit', prompt: t('commandPalette.prompts.editCurrent') }) } },
+    { id: 'ai-edit-current', category: 'ai', label: t('commandPalette.commands.aiEditCurrent.label'), description: t('commandPalette.commands.aiEditCurrent.description'), keywords: ['edit', 'rewrite'], action: () => { if (requireCurrentNote()) queueAiDraft({ mode: 'edit', requiresCurrentNote: true, prompt: t('commandPalette.prompts.editCurrent') }) } },
     { id: 'ai-rewrite-selection', category: 'ai', label: t('commandPalette.commands.aiRewriteSelection.label'), description: t('commandPalette.commands.aiRewriteSelection.description'), keywords: ['selection', 'rewrite'], action: () => queueAiDraft({ mode: 'edit', attachSelection: true, prompt: t('commandPalette.prompts.rewriteSelection') }) },
     { id: 'ai-new-note', category: 'ai', label: t('commandPalette.commands.aiNewNote.label'), description: t('commandPalette.commands.aiNewNote.description'), keywords: ['generate', 'create'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: t('commandPalette.prompts.newNote') }) },
     { id: 'ai-batch-notes', category: 'ai', label: t('commandPalette.commands.aiBatchNotes.label'), description: t('commandPalette.commands.aiBatchNotes.description'), keywords: ['batch', 'map', 'obsidian'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: t('commandPalette.prompts.batchNotes') }) },

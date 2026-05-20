@@ -21,6 +21,7 @@ interface AICommandDraft {
   agentMode?: boolean
   attachSelection?: boolean
   unboundEdit?: boolean
+  requiresCurrentNote?: boolean
 }
 
 const MAX_ATTACHED_NOTES = 20
@@ -444,6 +445,10 @@ export function ChatPanel() {
   }
 
   const applyCommandDraft = useCallback((draft: AICommandDraft) => {
+    if (draft.requiresCurrentNote && !currentFilePath) {
+      toast('请先打开一篇笔记', 'info')
+      return
+    }
     if (draft.mode === 'edit') {
       updateEditMode(true)
       setEditTarget(null)

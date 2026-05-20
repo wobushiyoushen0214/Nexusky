@@ -20,6 +20,7 @@ interface AICommandDraft {
   agentMode?: boolean
   attachSelection?: boolean
   unboundEdit?: boolean
+  requiresCurrentNote?: boolean
 }
 
 interface ChatHint {
@@ -41,7 +42,7 @@ const CHAT_HINTS: ChatHint[] = [
     title: '优化当前笔记',
     detail: '生成结构和表达修改方案，确认后应用',
     mark: 'ED',
-    draft: { mode: 'edit', prompt: '请优化当前笔记的结构、标题层级和表达清晰度，保留原有事实。' }
+    draft: { mode: 'edit', requiresCurrentNote: true, prompt: '请优化当前笔记的结构、标题层级和表达清晰度，保留原有事实。' }
   },
   {
     title: '改写选中文本',
