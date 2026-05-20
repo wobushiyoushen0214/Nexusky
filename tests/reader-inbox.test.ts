@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, filterReaderRows, getReaderSource, getReaderSourceUrl, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, filterReaderRows, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -26,12 +26,20 @@ describe('reader inbox helpers', () => {
       row('Imports/Pocket/Later.md', { status: 'unread', tags: ['research'], url: 'https://example.com' }, 10),
       row('Imports/Readwise/Book.md', { source: 'readwise', author: 'Ada', tags: ['book'] }, 20),
       row('Imports/Notion/Done.md', { source: 'notion', status: 'done' }, 30),
+      row('Imports/Pocket/Archived.md', { source: 'pocket', status: 'archived' }, 35),
       row('Notes/Regular.md', { tags: ['research'] }, 40)
     ]
 
     expect(isUnreadReaderRow(rows[0])).toBe(true)
     expect(isUnreadReaderRow(rows[2])).toBe(false)
+    expect(isArchivedReaderRow(rows[3])).toBe(true)
     expect(filterReaderRows(rows, 'all', '', false).map((item) => item.filePath)).toEqual([
+      'Imports/Pocket/Archived.md',
+      'Imports/Notion/Done.md',
+      'Imports/Readwise/Book.md',
+      'Imports/Pocket/Later.md'
+    ])
+    expect(filterReaderRows(rows, 'all', '', false, true).map((item) => item.filePath)).toEqual([
       'Imports/Notion/Done.md',
       'Imports/Readwise/Book.md',
       'Imports/Pocket/Later.md'

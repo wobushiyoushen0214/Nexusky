@@ -30,18 +30,23 @@ export function isUnreadReaderRow(row: PropertyTableRow): boolean {
   return status === '' || ['unread', 'new', 'todo', 'to-read'].includes(status)
 }
 
+export function isArchivedReaderRow(row: PropertyTableRow): boolean {
+  return propertyText(row.properties.status).toLowerCase() === 'archived'
+}
+
 export function getReaderSourceUrl(row: PropertyTableRow): string {
   const url = propertyText(row.properties.url).trim()
   return /^https?:\/\//i.test(url) ? url : ''
 }
 
-export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource, query: string, unreadOnly: boolean): PropertyTableRow[] {
+export function filterReaderRows(rows: PropertyTableRow[], source: ReaderSource, query: string, unreadOnly: boolean, hideArchived = false): PropertyTableRow[] {
   const q = query.trim().toLowerCase()
   return rows
     .filter((row) => {
       const rowSource = getReaderSource(row)
       if (!rowSource) return false
       if (source !== 'all' && rowSource !== source) return false
+      if (hideArchived && isArchivedReaderRow(row)) return false
       if (unreadOnly && !isUnreadReaderRow(row)) return false
       if (!q) return true
       const haystack = [
@@ -107,6 +112,7 @@ export function ReaderInboxView() {
   const [query, setQuery] = useState('')
   const [source, setSource] = useState<ReaderSource>('all')
   const [unreadOnly, setUnreadOnly] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState<ReaderSource | null>(null)
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
@@ -136,7 +142,7 @@ export function ReaderInboxView() {
   }, [vaultPath])
 
   const readerRows = useMemo(() => rows.filter((row) => getReaderSource(row)), [rows])
-  const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly), [query, rows, source, unreadOnly])
+  const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived), [query, rows, showArchived, source, unreadOnly])
   const counts = useMemo(() => {
     const next: Record<ReaderSource, number> = { all: readerRows.length, notion: 0, readwise: 0, pocket: 0 }
     for (const row of readerRows) {
@@ -170,7 +176,7 @@ export function ReaderInboxView() {
     }
   }
 
-  const writeStatuses = async (targetRows: PropertyTableRow[], status: 'read' | 'unread') => {
+  const writeStatuses = async (targetRows: PropertyTableRow[], status: 'read' | 'unread' | 'archived') => {
     if (!vaultPath) return
     const changedIds: string[] = []
     try {
@@ -185,13 +191,18 @@ export function ReaderInboxView() {
       const changed = new Set(changedIds)
       const updatedAt = Date.now()
       setRows((current) => current.map((item) => changed.has(item.id) ? { ...item, properties: { ...item.properties, status }, updatedAt } : item))
-      toast(status === 'read' ? t('reader.markedReadCount', { count: changedIds.length }) : t('reader.markedUnread'), 'success')
+      const message = status === 'read'
+        ? t('reader.markedReadCount', { count: changedIds.length })
+        : status === 'archived'
+          ? t('reader.archivedCount', { count: changedIds.length })
+          : t('reader.markedUnread')
+      toast(message, 'success')
     } catch {
       toast(t('reader.statusFailed'), 'error')
     }
   }
 
-  const updateStatus = async (row: PropertyTableRow, status: 'read' | 'unread') => {
+  const updateStatus = async (row: PropertyTableRow, status: 'read' | 'unread' | 'archived') => {
     await writeStatuses([row], status)
   }
 
@@ -282,6 +293,10 @@ export function ReaderInboxView() {
             <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
             {t('reader.unreadOnly')}
           </label>
+          <label style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+            {t('reader.showArchived')}
+          </label>
           <button
             onClick={() => void markVisibleRead()}
             disabled={!filtered.some(isUnreadReaderRow)}
@@ -319,6 +334,7 @@ export function ReaderInboxView() {
               const author = propertyText(row.properties.author)
               const status = propertyText(row.properties.status) || (isUnreadReaderRow(row) ? t('reader.unread') : '')
               const noteActive = activeNoteId === row.id
+              const archived = isArchivedReaderRow(row)
               return (
                 <div
                   key={row.id}
@@ -391,9 +407,16 @@ export function ReaderInboxView() {
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); void updateStatus(row, isUnreadReaderRow(row) ? 'read' : 'unread') }}
-                      style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
+                      disabled={archived}
+                      style={{ height: 26, marginRight: 6, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: archived ? 'var(--text-tertiary)' : 'var(--text-secondary)', fontSize: 11, cursor: archived ? 'default' : 'pointer', opacity: archived ? 0.55 : 1 }}
                     >
                       {isUnreadReaderRow(row) ? t('reader.markRead') : t('reader.markUnread')}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); void updateStatus(row, archived ? 'unread' : 'archived') }}
+                      style={{ height: 26, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      {archived ? t('reader.unarchive') : t('reader.archive')}
                     </button>
                   </span>
                 </div>
