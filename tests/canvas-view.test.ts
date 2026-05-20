@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasGroupLabels, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasGroupLabels, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards, routeBetweenCardsDuringDrag, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -208,5 +208,17 @@ describe('canvas card placement', () => {
     expect(route[route.length - 1].x === 560 || route[route.length - 1].y === 0 || route[route.length - 1].y === 112).toBe(true)
     expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
     expect(routeCrossesCards(route, blockers)).toBe(false)
+  })
+
+  it('uses a lightweight orthogonal route while a card is being dragged', () => {
+    const route = routeBetweenCardsDuringDrag(
+      { x: 0, y: 0 },
+      { x: 520, y: 160 }
+    )
+
+    expect(route.length).toBeLessThanOrEqual(4)
+    expect(route[0]).toEqual({ x: 210, y: 56 })
+    expect(route[route.length - 1]).toEqual({ x: 520, y: 216 })
+    expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
   })
 })

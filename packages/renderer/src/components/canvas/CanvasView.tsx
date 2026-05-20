@@ -19,6 +19,11 @@ interface DragState {
   offsetY: number
 }
 
+interface DragPreview {
+  id: string
+  position: CanvasPosition
+}
+
 interface PanState {
   startX: number
   startY: number
@@ -64,7 +69,7 @@ type CanvasMode = 'space' | 'properties' | 'time'
 type RoutePoint = { x: number; y: number }
 type RouteSide = 'left' | 'right' | 'top' | 'bottom'
 type RoutePort = { side: RouteSide; edge: RoutePoint; clear: RoutePoint }
-type CanvasEdgeRoute = { key: string; points: RoutePoint[] }
+type CanvasEdgeRoute = { key: string; source: string; target: string; points: RoutePoint[] }
 type CanvasGroupLabelKind = 'source' | 'status' | 'tag' | 'date' | 'unknown'
 type CanvasGroupLabel = { key: string; kind: CanvasGroupLabelKind; value: string; count: number; x: number; y: number }
 type CanvasAssociationReason = 'tag' | 'source' | 'title'
@@ -584,6 +589,20 @@ export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition
   return compactRoute([sourceEdge, ...fallback, targetEdge])
 }
 
+export function routeBetweenCardsDuringDrag(source: CanvasPosition, target: CanvasPosition): RoutePoint[] {
+  const sourceSide = preferredSide(source, target)
+  const targetSide = preferredSide(target, source)
+  const sourceEdge = cardPorts(source, 0).find((port) => port.side === sourceSide)?.edge || cardPorts(source, 0)[0].edge
+  const targetEdge = cardPorts(target, 0).find((port) => port.side === targetSide)?.edge || cardPorts(target, 0)[0].edge
+  if (sourceEdge.x === targetEdge.x || sourceEdge.y === targetEdge.y) return [sourceEdge, targetEdge]
+  if (sourceSide === 'left' || sourceSide === 'right') {
+    const midX = (sourceEdge.x + targetEdge.x) / 2
+    return compactRoute([sourceEdge, { x: midX, y: sourceEdge.y }, { x: midX, y: targetEdge.y }, targetEdge])
+  }
+  const midY = (sourceEdge.y + targetEdge.y) / 2
+  return compactRoute([sourceEdge, { x: sourceEdge.x, y: midY }, { x: targetEdge.x, y: midY }, targetEdge])
+}
+
 function compactRoute(points: RoutePoint[]): RoutePoint[] {
   const deduped = points.filter((point, index) => index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y)
   return deduped.filter((point, index) => {
@@ -660,6 +679,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [dragging, setDragging] = useState<DragState | null>(null)
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
   const [panning, setPanning] = useState<PanState | null>(null)
   const [showGuide, setShowGuide] = useState(false)
   const [zoom, setZoom] = useState(1)
@@ -667,6 +687,8 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   const [canvasMode, setCanvasMode] = useState<CanvasMode>(initialMode)
   const [activeSuggestionKey, setActiveSuggestionKey] = useState<string | null>(null)
   const [acceptingSuggestionKey, setAcceptingSuggestionKey] = useState<string | null>(null)
+  const [canvasEdges, setCanvasEdges] = useState<CanvasEdgeRoute[]>([])
+  const [canvasSuggestedEdges, setCanvasSuggestedEdges] = useState<CanvasSuggestedEdgeRoute[]>([])
   const canvasRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef<Record<string, CanvasPosition>>({})
   const modePositionOverridesRef = useRef<CanvasPositionOverrides>({})
@@ -677,6 +699,12 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   const pendingScrollRef = useRef<PendingScroll | null>(null)
   const saveViewportTimerRef = useRef<number | null>(null)
   const restoredViewportKeyRef = useRef<string | null>(null)
+  const dragPositionRef = useRef<CanvasPosition | null>(null)
+  const dragFrameRef = useRef<number | null>(null)
+  const routeGenerationRef = useRef(0)
+  const routeFocusRef = useRef<string | null>(null)
+  const routePausedRef = useRef(false)
+  const routeWorkerRef = useRef<Worker | null>(null)
 
   useEffect(() => {
     positionsRef.current = positions
@@ -708,6 +736,10 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     if (canvasMode === 'space') return positions
     return applyCanvasModeOverrides(buildCanvasModePositions(filteredRows, canvasMode), modePositionOverrides[canvasMode])
   }, [canvasMode, filteredRows, modePositionOverrides.properties, modePositionOverrides.time, positions])
+  const displayPositions = useMemo(() => {
+    if (!dragPreview) return modePositions
+    return { ...modePositions, [dragPreview.id]: dragPreview.position }
+  }, [dragPreview, modePositions])
   const canvasGroupLabels = useMemo(() => buildCanvasGroupLabels(filteredRows, modePositions, canvasMode), [canvasMode, filteredRows, modePositions])
 
   const layoutRows = canvasMode === 'space' ? rows : filteredRows
@@ -782,6 +814,28 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
 
   useEffect(() => {
     if (!dragging || !vaultPath) return
+    const applyPosition = (position: CanvasPosition) => {
+      if (canvasMode === 'space') {
+        const next = { ...positionsRef.current, [dragging.id]: position }
+        positionsRef.current = next
+        setPositions(next)
+      } else {
+        const next = {
+          ...modePositionOverridesRef.current,
+          [canvasMode]: {
+            ...(modePositionOverridesRef.current[canvasMode] || {}),
+            [dragging.id]: position
+          }
+        }
+        modePositionOverridesRef.current = next
+        setModePositionOverrides(next)
+      }
+    }
+    const applyDragPosition = () => {
+      dragFrameRef.current = null
+      const position = dragPositionRef.current
+      if (position) setDragPreview({ id: dragging.id, position })
+    }
     const handlePointerMove = (event: PointerEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect()
       if (!rect) return
@@ -790,41 +844,44 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
       const metrics = metricsRef.current
       const x = (event.clientX - rect.left + scrollLeft) / zoom + metrics.minX - dragging.offsetX
       const y = (event.clientY - rect.top + scrollTop) / zoom + metrics.minY - dragging.offsetY
-      if (canvasMode === 'space') {
-        setPositions((current) => {
-          const next = { ...current, [dragging.id]: { x, y } }
-          positionsRef.current = next
-          return next
-        })
-      } else {
-        setModePositionOverrides((current) => {
-          const next = {
-            ...current,
-            [canvasMode]: {
-              ...(current[canvasMode] || {}),
-              [dragging.id]: { x, y }
-            }
-          }
-          modePositionOverridesRef.current = next
-          return next
-        })
+      dragPositionRef.current = { x, y }
+      if (dragFrameRef.current === null) {
+        dragFrameRef.current = window.requestAnimationFrame(applyDragPosition)
       }
     }
     const handlePointerUp = () => {
-      setDragging(null)
+      if (dragFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragFrameRef.current)
+        dragFrameRef.current = null
+      }
+      const finalPosition = dragPositionRef.current
+      if (finalPosition) {
+        cancelRouteRefresh()
+        routePausedRef.current = true
+        routeFocusRef.current = null
+        applyLightweightRoutesForCard(dragging.id, { ...modePositions, [dragging.id]: finalPosition })
+        applyPosition(finalPosition)
+      }
       if (canvasMode === 'space') {
         safeSetJSON(getCanvasModeStorageKey(vaultPath, 'space'), positionsRef.current)
       } else {
         safeSetJSON(getCanvasModeStorageKey(vaultPath, canvasMode), modePositionOverridesRef.current[canvasMode] || {})
       }
+      dragPositionRef.current = null
+      setDragPreview(null)
+      setDragging(null)
     }
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('pointerup', handlePointerUp)
     return () => {
+      if (dragFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragFrameRef.current)
+        dragFrameRef.current = null
+      }
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [canvasMode, dragging, vaultPath, zoom])
+  }, [canvasMetrics.minX, canvasMetrics.minY, canvasMode, dragging, graph, modePositions, vaultPath, zoom])
 
   useEffect(() => {
     if (!panning) return
@@ -872,6 +929,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   }, [filteredRows.length, rows.length, vaultPath, zoom])
 
   const visibleIds = useMemo(() => new Set(filteredRows.map((row) => row.id)), [filteredRows])
+  const canvasAssociationSuggestions = useMemo(() => buildCanvasAssociationSuggestions(filteredRows, graph?.edges || []), [filteredRows, graph?.edges])
 
   const persistViewport = () => {
     if (!vaultPath) return
@@ -894,6 +952,61 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     }, 120)
   }
 
+  const cancelRouteRefresh = () => {
+    routeGenerationRef.current += 1
+    routeWorkerRef.current?.terminate()
+    routeWorkerRef.current = null
+  }
+
+  const applyLightweightRoutesForCard = (cardId: string, nextPositions: Record<string, CanvasPosition>) => {
+    if (!graph) return
+    const mergeRoutes = <T extends CanvasEdgeRoute>(current: T[], updates: T[]): T[] => {
+      const touched = new Set(updates.map((edge) => edge.key))
+      return [...current.filter((edge) => !touched.has(edge.key)), ...updates]
+    }
+    const routeEdge = (edge: Pick<CanvasEdgeRoute, 'source' | 'target'>): CanvasEdgeRoute | null => {
+      const source = nextPositions[edge.source]
+      const target = nextPositions[edge.target]
+      if (!source || !target) return null
+      return {
+        key: `${edge.source}->${edge.target}`,
+        source: edge.source,
+        target: edge.target,
+        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
+          x: point.x - canvasMetrics.minX,
+          y: point.y - canvasMetrics.minY
+        }))
+      }
+    }
+    const routeSuggestion = (edge: CanvasAssociationSuggestion): CanvasSuggestedEdgeRoute | null => {
+      const source = nextPositions[edge.source]
+      const target = nextPositions[edge.target]
+      if (!source || !target) return null
+      return {
+        key: `${edge.source}~${edge.target}:${edge.reason}`,
+        source: edge.source,
+        target: edge.target,
+        reason: edge.reason,
+        score: edge.score,
+        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
+          x: point.x - canvasMetrics.minX,
+          y: point.y - canvasMetrics.minY
+        }))
+      }
+    }
+    const edgeUpdates = graph.edges
+      .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
+      .filter((edge) => edge.source === cardId || edge.target === cardId)
+      .map(routeEdge)
+      .filter((edge): edge is CanvasEdgeRoute => edge !== null)
+    const suggestionUpdates = canvasAssociationSuggestions
+      .filter((edge) => edge.source === cardId || edge.target === cardId)
+      .map(routeSuggestion)
+      .filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
+    if (edgeUpdates.length > 0) setCanvasEdges((current) => mergeRoutes(current, edgeUpdates))
+    if (suggestionUpdates.length > 0) setCanvasSuggestedEdges((current) => mergeRoutes(current, suggestionUpdates))
+  }
+
   useEffect(() => {
     return () => {
       if (saveViewportTimerRef.current) window.clearTimeout(saveViewportTimerRef.current)
@@ -901,40 +1014,140 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     }
   }, [vaultPath])
 
-  const canvasEdges = useMemo<CanvasEdgeRoute[]>(() => {
-    if (!graph) return []
-    const blockers = filteredRows.map((row, index) => ({
-      id: row.id,
-      rect: cardRect(modePositions[row.id] || defaultPosition(index))
-    }))
-    return graph.edges
+  useEffect(() => {
+    const generation = routeGenerationRef.current + 1
+    routeGenerationRef.current = generation
+    routeWorkerRef.current?.terminate()
+    routeWorkerRef.current = null
+    if (routePausedRef.current) {
+      routePausedRef.current = false
+      return
+    }
+    if (!graph) {
+      setCanvasEdges([])
+      setCanvasSuggestedEdges([])
+      return
+    }
+
+    const visibleGraphEdges = graph.edges.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
+    const focusId = routeFocusRef.current
+    routeFocusRef.current = null
+    const fastEdge = (edge: Pick<CanvasEdgeRoute, 'source' | 'target'>): CanvasEdgeRoute | null => {
+      const source = modePositions[edge.source]
+      const target = modePositions[edge.target]
+      if (!source || !target) return null
+      return {
+        key: `${edge.source}->${edge.target}`,
+        source: edge.source,
+        target: edge.target,
+        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
+          x: point.x - canvasMetrics.minX,
+          y: point.y - canvasMetrics.minY
+        }))
+      }
+    }
+    const fastSuggestion = (edge: CanvasAssociationSuggestion): CanvasSuggestedEdgeRoute | null => {
+      const source = modePositions[edge.source]
+      const target = modePositions[edge.target]
+      if (!source || !target) return null
+      return {
+        key: `${edge.source}~${edge.target}:${edge.reason}`,
+        source: edge.source,
+        target: edge.target,
+        reason: edge.reason,
+        score: edge.score,
+        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
+          x: point.x - canvasMetrics.minX,
+          y: point.y - canvasMetrics.minY
+        }))
+      }
+    }
+    const mergeRoutes = <T extends CanvasEdgeRoute>(current: T[], updates: T[], validKeys: Set<string>, touchedKeys: Set<string>): T[] => [
+      ...current.filter((edge) => validKeys.has(edge.key) && !touchedKeys.has(edge.key)),
+      ...updates
+    ]
+
+    const pendingEdges = [...visibleGraphEdges]
+    const pendingSuggestions = [...canvasAssociationSuggestions]
+    const validEdgeKeys = new Set(visibleGraphEdges.map((edge) => `${edge.source}->${edge.target}`))
+    const validSuggestionKeys = new Set(canvasAssociationSuggestions.map((edge) => `${edge.source}~${edge.target}:${edge.reason}`))
+    if (focusId) {
+      const immediateEdges = visibleGraphEdges.filter((edge) => edge.source === focusId || edge.target === focusId).map(fastEdge).filter((edge): edge is CanvasEdgeRoute => edge !== null)
+      const immediateSuggestions = canvasAssociationSuggestions.filter((edge) => edge.source === focusId || edge.target === focusId).map(fastSuggestion).filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
+      const touchedEdges = new Set(immediateEdges.map((edge) => edge.key))
+      const touchedSuggestions = new Set(immediateSuggestions.map((edge) => edge.key))
+      if (immediateEdges.length > 0) setCanvasEdges((current) => mergeRoutes(current, immediateEdges, validEdgeKeys, touchedEdges))
+      if (immediateSuggestions.length > 0) setCanvasSuggestedEdges((current) => mergeRoutes(current, immediateSuggestions, validSuggestionKeys, touchedSuggestions))
+    } else {
+      setCanvasEdges((current) => current.filter((edge) => validEdgeKeys.has(edge.key)))
+      setCanvasSuggestedEdges((current) => current.filter((edge) => validSuggestionKeys.has(edge.key)))
+    }
+
+    const worker = new Worker(new URL('./canvas-route-worker.ts', import.meta.url), { type: 'module' })
+    routeWorkerRef.current = worker
+    worker.onmessage = (event: MessageEvent<{ generation: number; edges: CanvasEdgeRoute[]; suggestedEdges: CanvasSuggestedEdgeRoute[] }>) => {
+      if (event.data.generation !== routeGenerationRef.current || routeWorkerRef.current !== worker) return
+      const edgeUpdates = event.data.edges
+      const suggestionUpdates = event.data.suggestedEdges
+      const touchedEdges = new Set(edgeUpdates.map((edge) => edge.key))
+      const touchedSuggestions = new Set(suggestionUpdates.map((edge) => edge.key))
+      setCanvasEdges((current) => mergeRoutes(current, edgeUpdates, validEdgeKeys, touchedEdges))
+      setCanvasSuggestedEdges((current) => mergeRoutes(current, suggestionUpdates, validSuggestionKeys, touchedSuggestions))
+      worker.terminate()
+      if (routeWorkerRef.current === worker) routeWorkerRef.current = null
+    }
+    worker.onerror = () => {
+      worker.terminate()
+      if (routeWorkerRef.current === worker) routeWorkerRef.current = null
+    }
+    worker.postMessage({
+      generation,
+      positions: modePositions,
+      metrics: { minX: canvasMetrics.minX, minY: canvasMetrics.minY },
+      rows: filteredRows.map((row, index) => ({ id: row.id, fallbackIndex: index })),
+      edges: pendingEdges,
+      suggestions: pendingSuggestions
+    })
+    return () => {
+      worker.terminate()
+      if (routeWorkerRef.current === worker) routeWorkerRef.current = null
+    }
+  }, [canvasAssociationSuggestions, canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph, modePositions, visibleIds])
+
+  const visibleCanvasEdges = useMemo<CanvasEdgeRoute[]>(() => {
+    if (!graph || !dragPreview) return canvasEdges
+    const rerouted = graph.edges
       .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
+      .filter((edge) => edge.source === dragPreview.id || edge.target === dragPreview.id)
       .map((edge) => {
-        const source = modePositions[edge.source]
-        const target = modePositions[edge.target]
+        const source = displayPositions[edge.source]
+        const target = displayPositions[edge.target]
         if (!source || !target) return null
         return {
           key: `${edge.source}->${edge.target}`,
-          points: routeBetweenCards(source, target, blockers.filter((blocker) => blocker.id !== edge.source && blocker.id !== edge.target).map((blocker) => blocker.rect)).map((point) => ({
+          source: edge.source,
+          target: edge.target,
+          points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
             x: point.x - canvasMetrics.minX,
             y: point.y - canvasMetrics.minY
           }))
         }
       })
       .filter((edge): edge is CanvasEdgeRoute => edge !== null)
-  }, [canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph, modePositions, visibleIds])
+    if (rerouted.length === 0) return canvasEdges
+    return [
+      ...canvasEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
+      ...rerouted
+    ]
+  }, [canvasEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows, graph, visibleIds])
 
-  const canvasSuggestedEdges = useMemo<CanvasSuggestedEdgeRoute[]>(() => {
-    const suggestions = buildCanvasAssociationSuggestions(filteredRows, graph?.edges || [])
-    if (suggestions.length === 0) return []
-    const blockers = filteredRows.map((row, index) => ({
-      id: row.id,
-      rect: cardRect(modePositions[row.id] || defaultPosition(index))
-    }))
-    return suggestions
+  const visibleCanvasSuggestedEdges = useMemo<CanvasSuggestedEdgeRoute[]>(() => {
+    if (!dragPreview || canvasAssociationSuggestions.length === 0) return canvasSuggestedEdges
+    const rerouted = canvasAssociationSuggestions
+      .filter((edge) => edge.source === dragPreview.id || edge.target === dragPreview.id)
       .map((edge) => {
-        const source = modePositions[edge.source]
-        const target = modePositions[edge.target]
+        const source = displayPositions[edge.source]
+        const target = displayPositions[edge.target]
         if (!source || !target) return null
         return {
           key: `${edge.source}~${edge.target}:${edge.reason}`,
@@ -942,26 +1155,31 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           target: edge.target,
           reason: edge.reason,
           score: edge.score,
-          points: routeBetweenCards(source, target, blockers.filter((blocker) => blocker.id !== edge.source && blocker.id !== edge.target).map((blocker) => blocker.rect)).map((point) => ({
+          points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
             x: point.x - canvasMetrics.minX,
             y: point.y - canvasMetrics.minY
           }))
         }
       })
       .filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
-  }, [canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph?.edges, modePositions])
+    if (rerouted.length === 0) return canvasSuggestedEdges
+    return [
+      ...canvasSuggestedEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
+      ...rerouted
+    ]
+  }, [canvasAssociationSuggestions, canvasSuggestedEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows])
 
   const activeSuggestion = useMemo(() => {
     if (!activeSuggestionKey) return null
-    const edge = canvasSuggestedEdges.find((item) => item.key === activeSuggestionKey)
+    const edge = visibleCanvasSuggestedEdges.find((item) => item.key === activeSuggestionKey)
     if (!edge) return null
     const source = rows.find((row) => row.id === edge.source)
     const target = rows.find((row) => row.id === edge.target)
     if (!source || !target) return null
     return { edge, source, target }
-  }, [activeSuggestionKey, canvasSuggestedEdges, rows])
-  const activeSuggestionIndex = activeSuggestionKey ? canvasSuggestedEdges.findIndex((edge) => edge.key === activeSuggestionKey) : -1
-  const suggestionKeys = useMemo(() => canvasSuggestedEdges.map((edge) => edge.key), [canvasSuggestedEdges])
+  }, [activeSuggestionKey, visibleCanvasSuggestedEdges, rows])
+  const activeSuggestionIndex = activeSuggestionKey ? visibleCanvasSuggestedEdges.findIndex((edge) => edge.key === activeSuggestionKey) : -1
+  const suggestionKeys = useMemo(() => visibleCanvasSuggestedEdges.map((edge) => edge.key), [visibleCanvasSuggestedEdges])
 
   const resetLayout = () => {
     const next = buildCanvasModePositions(rows, canvasMode)
@@ -1178,7 +1396,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
                   </marker>
                 </defs>
-                {canvasSuggestedEdges.map((edge) => (
+                {visibleCanvasSuggestedEdges.map((edge) => (
                   <path
                     key={edge.key}
                     className="knowledge-suggestion-line"
@@ -1196,7 +1414,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     }}
                   />
                 ))}
-                {canvasEdges.map((edge) => (
+                {visibleCanvasEdges.map((edge) => (
                   <g key={edge.key}>
                     <path d={routePath(edge.points)} fill="none" stroke="var(--editor-bg)" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.82" />
                     <path d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-tertiary) 56%, transparent)" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" markerEnd="url(#canvas-arrow)" />
@@ -1233,7 +1451,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                 </div>
               ))}
               {filteredRows.map((row, index) => {
-                const pos = modePositions[row.id] || defaultPosition(index)
+                const pos = displayPositions[row.id] || defaultPosition(index)
                 const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []
                 const status = valueToText(row.properties.status)
                 const source = valueToText(row.properties.source)
@@ -1251,6 +1469,11 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     data-canvas-card
                     onPointerDown={(event) => {
                       const rect = event.currentTarget.getBoundingClientRect()
+                      routePausedRef.current = true
+                      routeFocusRef.current = null
+                      cancelRouteRefresh()
+                      dragPositionRef.current = { ...pos }
+                      setDragPreview({ id: row.id, position: pos })
                       setDragging({ id: row.id, offsetX: (event.clientX - rect.left) / zoom, offsetY: (event.clientY - rect.top) / zoom })
                       event.currentTarget.setPointerCapture(event.pointerId)
                     }}
@@ -1344,14 +1567,14 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
               <NewCardIcon />
             </CanvasIconButton>
           </div>
-          {canvasSuggestedEdges.length > 0 && (
+          {visibleCanvasSuggestedEdges.length > 0 && (
             <button
               type="button"
               onClick={() => selectAssociationSuggestion(1)}
               title={t('canvas.associationReview')}
               style={{ ...buttonStyle, height: 32, background: activeSuggestion ? 'var(--bg-elevated)' : 'var(--bg-surface)', boxShadow: '0 10px 28px rgba(0,0,0,0.18)' }}
             >
-              {t('canvas.associationReview')} · {canvasSuggestedEdges.length}
+              {t('canvas.associationReview')} · {visibleCanvasSuggestedEdges.length}
             </button>
           )}
           <div style={floatingGroupStyle}>
@@ -1393,7 +1616,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           <div style={{ position: 'absolute', right: 16, bottom: 18, zIndex: 6, width: 380, maxWidth: 'calc(100% - 32px)', padding: '14px 15px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', boxShadow: '0 18px 46px rgba(0,0,0,0.32)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('canvas.associationTitle')} · {t('canvas.associationCounter', { current: activeSuggestionIndex + 1, total: canvasSuggestedEdges.length })}</div>
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 760, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('canvas.associationTitle')} · {t('canvas.associationCounter', { current: activeSuggestionIndex + 1, total: visibleCanvasSuggestedEdges.length })}</div>
                 <div style={{ marginTop: 7, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontSize: 13, fontWeight: 690 }}>
                   <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeSuggestion.source.title}</span>
                   <span style={{ color: 'var(--text-tertiary)' }}>→</span>
@@ -1408,10 +1631,10 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
               {t(`canvas.associationReason.${activeSuggestion.edge.reason}`)}
             </div>
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => selectAssociationSuggestion(-1)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 0.55 : 1 }}>
+              <button onClick={() => selectAssociationSuggestion(-1)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key || visibleCanvasSuggestedEdges.length < 2} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key || visibleCanvasSuggestedEdges.length < 2 ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key || visibleCanvasSuggestedEdges.length < 2 ? 0.55 : 1 }}>
                 {t('canvas.associationPrevious')}
               </button>
-              <button onClick={() => selectAssociationSuggestion(1)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key || canvasSuggestedEdges.length < 2 ? 0.55 : 1 }}>
+              <button onClick={() => selectAssociationSuggestion(1)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key || visibleCanvasSuggestedEdges.length < 2} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key || visibleCanvasSuggestedEdges.length < 2 ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key || visibleCanvasSuggestedEdges.length < 2 ? 0.55 : 1 }}>
                 {t('canvas.associationNext')}
               </button>
               <button onClick={() => setActiveSuggestionKey(null)} disabled={acceptingSuggestionKey === activeSuggestion.edge.key} style={{ ...buttonStyle, cursor: acceptingSuggestionKey === activeSuggestion.edge.key ? 'default' : 'pointer', opacity: acceptingSuggestionKey === activeSuggestion.edge.key ? 0.55 : 1 }}>

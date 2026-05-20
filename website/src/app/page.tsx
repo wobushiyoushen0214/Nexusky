@@ -40,7 +40,7 @@ const features = [
   },
 ];
 
-const currentVersion = "0.3.7";
+const currentVersion = "0.3.8";
 const githubRepo = "wobushiyoushen0214/Nexusky";
 
 const downloads = [
