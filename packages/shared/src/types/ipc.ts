@@ -245,9 +245,9 @@ export interface IPCChannelMap {
   'db:get-all-notes': { params: { vaultPath: string }; result: NoteSearchResult[] }
   'db:get-property-rows': { params: { vaultPath: string }; result: PropertyTableRow[] }
   'db:get-recent-notes': { params: { vaultPath: string; limit?: number }; result: NoteSearchResult[] }
-  'db:get-outgoing-links': { params: { vaultPath: string; noteId: string }; result: OutgoingLinkResult[] }
-  'db:get-backlinks': { params: { vaultPath: string; noteId: string }; result: BacklinkResult[] }
-  'db:get-unlinked-mentions': { params: { vaultPath: string; noteId: string }; result: UnlinkedMentionResult[] }
+  'db:get-outgoing-links': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: OutgoingLinkResult[] }
+  'db:get-backlinks': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: BacklinkResult[] }
+  'db:get-unlinked-mentions': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: UnlinkedMentionResult[] }
   'db:get-graph': { params: { vaultPath: string }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
   'db:semantic-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }

@@ -20,12 +20,10 @@ export function BacklinksPanel() {
       setUnlinkedMentions([])
       return
     }
-    const relPath = currentFilePath.replace(vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
-    const noteId = md5(relPath)
     Promise.all([
-      window.api.invoke('db:get-outgoing-links', { vaultPath, noteId }),
-      window.api.invoke('db:get-backlinks', { vaultPath, noteId }),
-      window.api.invoke('db:get-unlinked-mentions', { vaultPath, noteId })
+      window.api.invoke('db:get-outgoing-links', { vaultPath, filePath: currentFilePath }),
+      window.api.invoke('db:get-backlinks', { vaultPath, filePath: currentFilePath }),
+      window.api.invoke('db:get-unlinked-mentions', { vaultPath, filePath: currentFilePath })
     ]).then(([nextOutgoingLinks, nextBacklinks, nextUnlinkedMentions]) => {
       setOutgoingLinks(nextOutgoingLinks)
       setBacklinks(nextBacklinks)
@@ -235,14 +233,4 @@ function LinkSection({
       ))}
     </div>
   )
-}
-
-function md5(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash |= 0
-  }
-  return Math.abs(hash).toString(16).padStart(8, '0') + str.length.toString(16).padStart(8, '0')
 }

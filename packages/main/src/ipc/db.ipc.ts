@@ -18,6 +18,15 @@ type KanbanRelationInput = KanbanAiPlan['relations'][number]
 type KanbanColumnRow = KanbanColumn
 type SqlValue = string | number | null
 
+function resolveNoteId(vaultPath: string, params: { noteId?: string; filePath?: string }): string | null {
+  if (params.noteId) return params.noteId
+  if (!params.filePath) return null
+  const relPath = params.filePath.replace(vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+  const db = getDatabase(vaultPath)
+  const row = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
+  return row?.id || null
+}
+
 function getErrorMessage(error: unknown, fallback = ''): string {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
@@ -162,16 +171,19 @@ export function registerDbIPC(): void {
     ).all(limit)
   })
 
-  ipcMain.handle('db:get-outgoing-links', async (_event, params: { vaultPath: string; noteId: string }) => {
-    return getOutgoingLinks(params.vaultPath, params.noteId)
+  ipcMain.handle('db:get-outgoing-links', async (_event, params: { vaultPath: string; noteId?: string; filePath?: string }) => {
+    const noteId = resolveNoteId(params.vaultPath, params)
+    return noteId ? getOutgoingLinks(params.vaultPath, noteId) : []
   })
 
-  ipcMain.handle('db:get-backlinks', async (_event, params: { vaultPath: string; noteId: string }) => {
-    return getBacklinks(params.vaultPath, params.noteId)
+  ipcMain.handle('db:get-backlinks', async (_event, params: { vaultPath: string; noteId?: string; filePath?: string }) => {
+    const noteId = resolveNoteId(params.vaultPath, params)
+    return noteId ? getBacklinks(params.vaultPath, noteId) : []
   })
 
-  ipcMain.handle('db:get-unlinked-mentions', async (_event, params: { vaultPath: string; noteId: string }) => {
-    return getUnlinkedMentions(params.vaultPath, params.noteId)
+  ipcMain.handle('db:get-unlinked-mentions', async (_event, params: { vaultPath: string; noteId?: string; filePath?: string }) => {
+    const noteId = resolveNoteId(params.vaultPath, params)
+    return noteId ? getUnlinkedMentions(params.vaultPath, noteId) : []
   })
 
   ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string }) => {
