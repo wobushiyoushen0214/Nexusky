@@ -62,6 +62,8 @@ interface CanvasViewportBox {
 
 type CanvasMode = 'space' | 'properties' | 'time'
 type RoutePoint = { x: number; y: number }
+type RouteSide = 'left' | 'right' | 'top' | 'bottom'
+type RoutePort = { side: RouteSide; edge: RoutePoint; clear: RoutePoint }
 type CanvasEdgeRoute = { key: string; points: RoutePoint[] }
 type CanvasAssociationReason = 'tag' | 'source' | 'title'
 type CanvasSuggestedEdgeRoute = CanvasAssociationSuggestion & CanvasEdgeRoute
@@ -367,6 +369,10 @@ function centerOf(position: CanvasPosition): RoutePoint {
   }
 }
 
+function distanceBetween(a: RoutePoint, b: RoutePoint): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+}
+
 function cardRect(position: CanvasPosition, padding = 14) {
   return {
     left: position.x - padding,
@@ -376,15 +382,23 @@ function cardRect(position: CanvasPosition, padding = 14) {
   }
 }
 
-function cardPort(from: CanvasPosition, to: CanvasPosition, offset = 0): RoutePoint {
+function cardPorts(position: CanvasPosition, offset = ROUTE_CLEARANCE): RoutePort[] {
+  const center = centerOf(position)
+  return [
+    { side: 'right', edge: { x: position.x + CARD_WIDTH, y: center.y }, clear: { x: position.x + CARD_WIDTH + offset, y: center.y } },
+    { side: 'left', edge: { x: position.x, y: center.y }, clear: { x: position.x - offset, y: center.y } },
+    { side: 'bottom', edge: { x: center.x, y: position.y + CARD_HEIGHT }, clear: { x: center.x, y: position.y + CARD_HEIGHT + offset } },
+    { side: 'top', edge: { x: center.x, y: position.y }, clear: { x: center.x, y: position.y - offset } }
+  ]
+}
+
+function preferredSide(from: CanvasPosition, to: CanvasPosition): RouteSide {
   const fromCenter = centerOf(from)
   const toCenter = centerOf(to)
   const dx = toCenter.x - fromCenter.x
   const dy = toCenter.y - fromCenter.y
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return { x: dx >= 0 ? from.x + CARD_WIDTH + offset : from.x - offset, y: fromCenter.y }
-  }
-  return { x: fromCenter.x, y: dy >= 0 ? from.y + CARD_HEIGHT + offset : from.y - offset }
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left'
+  return dy >= 0 ? 'bottom' : 'top'
 }
 
 function pointInRect(point: RoutePoint, rect: ReturnType<typeof cardRect>): boolean {
@@ -406,22 +420,34 @@ function segmentCrossesRect(a: RoutePoint, b: RoutePoint, rect: ReturnType<typeo
   return false
 }
 
-function routeCrossesCards(points: RoutePoint[], blockers: ReturnType<typeof cardRect>[]): boolean {
+export function routeCrossesCards(points: RoutePoint[], blockers: ReturnType<typeof cardRect>[]): boolean {
   for (let i = 0; i < points.length - 1; i++) {
     if (blockers.some((rect) => segmentCrossesRect(points[i], points[i + 1], rect))) return true
   }
   return false
 }
 
-export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition, blockers: ReturnType<typeof cardRect>[]): RoutePoint[] {
-  const sourceEdge = cardPort(source, target)
-  const targetEdge = cardPort(target, source)
-  const start = cardPort(source, target, ROUTE_CLEARANCE)
-  const end = cardPort(target, source, ROUTE_CLEARANCE)
-  const sourceCenter = centerOf(source)
-  const targetCenter = centerOf(target)
-  const xs = new Set<number>([start.x, end.x, sourceCenter.x, targetCenter.x])
-  const ys = new Set<number>([start.y, end.y, sourceCenter.y, targetCenter.y])
+function routeLength(points: RoutePoint[]): number {
+  return points.reduce((total, point, index) => index === 0 ? 0 : total + distanceBetween(points[index - 1], point), 0)
+}
+
+function routeBends(points: RoutePoint[]): number {
+  let bends = 0
+  for (let index = 1; index < points.length - 1; index++) {
+    const prev = points[index - 1]
+    const point = points[index]
+    const next = points[index + 1]
+    const prevHorizontal = prev.y === point.y
+    const nextHorizontal = point.y === next.y
+    if (prevHorizontal !== nextHorizontal) bends++
+  }
+  return bends
+}
+
+function findOrthogonalRoute(start: RoutePoint, end: RoutePoint, blockers: ReturnType<typeof cardRect>[]): RoutePoint[] | null {
+  if ((start.x === end.x || start.y === end.y) && !routeCrossesCards([start, end], blockers)) return [start, end]
+  const xs = new Set<number>([start.x, end.x])
+  const ys = new Set<number>([start.y, end.y])
   for (const rect of blockers) {
     xs.add(rect.left - ROUTE_CLEARANCE)
     xs.add(rect.right + ROUTE_CLEARANCE)
@@ -453,11 +479,11 @@ export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition
     for (const direction of [-1, 1]) {
       const horizontal = candidates
         .filter((candidate) => candidate.y === point.y && (candidate.x - point.x) * direction > 0)
-        .sort((a, b) => Math.abs(a.x - point.x) - Math.abs(b.x - point.x))[0]
+        .sort((a, b) => Math.abs(a.x - point.x) - Math.abs(b.x - point.x))
       const vertical = candidates
         .filter((candidate) => candidate.x === point.x && (candidate.y - point.y) * direction > 0)
-        .sort((a, b) => Math.abs(a.y - point.y) - Math.abs(b.y - point.y))[0]
-      for (const candidate of [horizontal, vertical]) {
+        .sort((a, b) => Math.abs(a.y - point.y) - Math.abs(b.y - point.y))
+      for (const candidate of [...horizontal, ...vertical]) {
         if (candidate && !routeCrossesCards([point, candidate], blockers)) next.push(`${candidate.x},${candidate.y}`)
       }
     }
@@ -484,8 +510,33 @@ export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition
       current = prev
     }
     const compact = compactRoute(route)
-    if (!routeCrossesCards(compact, blockers)) return compactRoute([sourceEdge, ...compact, targetEdge])
+    if (!routeCrossesCards(compact, blockers)) return compact
   }
+  return null
+}
+
+export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition, blockers: ReturnType<typeof cardRect>[]): RoutePoint[] {
+  const sourcePorts = cardPorts(source)
+  const targetPorts = cardPorts(target)
+  const sourcePreferred = preferredSide(source, target)
+  const targetPreferred = preferredSide(target, source)
+  const candidates = sourcePorts.flatMap((sourcePort) => targetPorts.map((targetPort) => {
+    const innerRoute = findOrthogonalRoute(sourcePort.clear, targetPort.clear, blockers)
+    if (!innerRoute) return null
+    const route = compactRoute([sourcePort.edge, ...innerRoute, targetPort.edge])
+    const penalty = (sourcePort.side === sourcePreferred ? 0 : 120) + (targetPort.side === targetPreferred ? 0 : 120)
+    const score = routeLength(route) + routeBends(route) * 80 + penalty
+    return { route, score }
+  })).filter((candidate): candidate is { route: RoutePoint[]; score: number } => candidate !== null && !routeCrossesCards(candidate.route, blockers))
+
+  if (candidates.length > 0) {
+    return candidates.sort((a, b) => a.score - b.score)[0].route
+  }
+
+  const sourceEdge = cardPorts(source, 0).find((port) => port.side === sourcePreferred)?.edge || cardPorts(source, 0)[0].edge
+  const targetEdge = cardPorts(target, 0).find((port) => port.side === targetPreferred)?.edge || cardPorts(target, 0)[0].edge
+  const start = cardPorts(source).find((port) => port.side === sourcePreferred)?.clear || cardPorts(source)[0].clear
+  const end = cardPorts(target).find((port) => port.side === targetPreferred)?.clear || cardPorts(target)[0].clear
   const fallbackCandidates = [
     [start, { x: start.x, y: Math.min(source.y, target.y) - 42 }, { x: end.x, y: Math.min(source.y, target.y) - 42 }, end],
     [start, { x: start.x, y: Math.max(source.y + CARD_HEIGHT, target.y + CARD_HEIGHT) + 42 }, { x: end.x, y: Math.max(source.y + CARD_HEIGHT, target.y + CARD_HEIGHT) + 42 }, end],
@@ -1083,7 +1134,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           ) : (
             <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
               <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: 0 }}>
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: 2, pointerEvents: 'none' }}>
                 <defs>
                   <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
                     <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
@@ -1110,8 +1161,8 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                 {canvasEdges.map((edge) => (
                   <g key={edge.key}>
                     <path d={routePath(edge.points)} fill="none" stroke="var(--editor-bg)" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.82" />
-                    <path d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-tertiary) 58%, transparent)" strokeWidth="1.25" strokeLinejoin="round" strokeLinecap="round" markerEnd="url(#canvas-arrow)" />
-                    <path className="knowledge-flow-line" d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-secondary) 75%, transparent)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="3 16" />
+                    <path d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-tertiary) 56%, transparent)" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" markerEnd="url(#canvas-arrow)" />
+                    <path className="knowledge-flow-line" d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-secondary) 78%, transparent)" strokeWidth="1.45" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="3 18" />
                   </g>
                 ))}
               </svg>
@@ -1145,7 +1196,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                       boxShadow: dragging?.id === row.id ? '0 14px 34px rgba(0,0,0,0.32)' : '0 8px 20px rgba(0,0,0,0.12)',
                       cursor: dragging?.id === row.id ? 'grabbing' : 'grab',
                       userSelect: 'none',
-                      zIndex: 1
+                      zIndex: dragging?.id === row.id ? 4 : 1
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>

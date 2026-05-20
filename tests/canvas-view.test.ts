@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -136,15 +136,34 @@ describe('canvas card placement', () => {
   })
 
   it('routes links around blocking cards with elbow paths', () => {
+    const blocker = { left: 240, right: 450, top: -14, bottom: 126 }
     const route = routeBetweenCards(
       { x: 0, y: 0 },
       { x: 520, y: 0 },
-      [{ left: 240, right: 450, top: -14, bottom: 126 }]
+      [blocker]
     )
 
     expect(route.length).toBeGreaterThan(2)
     expect(route[0]).toEqual({ x: 210, y: 56 })
     expect(route[route.length - 1]).toEqual({ x: 520, y: 56 })
     expect(route.some((point) => point.y !== 56)).toBe(true)
+    expect(routeCrossesCards(route, [blocker])).toBe(false)
+  })
+
+  it('chooses a free card edge instead of forcing a blocked side', () => {
+    const blockers = [
+      { left: 224, right: 520, top: -14, bottom: 126 },
+      { left: 238, right: 506, top: 180, bottom: 330 }
+    ]
+    const route = routeBetweenCards(
+      { x: 0, y: 0 },
+      { x: 560, y: 0 },
+      blockers
+    )
+
+    expect(route[0].x === 210 || route[0].y === 0 || route[0].y === 112).toBe(true)
+    expect(route[route.length - 1].x === 560 || route[route.length - 1].y === 0 || route[route.length - 1].y === 112).toBe(true)
+    expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
+    expect(routeCrossesCards(route, blockers)).toBe(false)
   })
 })
