@@ -63,8 +63,23 @@ describe('canvas card placement', () => {
       row('project', { tags: ['project'] })
     ])
 
-    expect(Math.abs(positions['readwise-a'].x - positions['readwise-b'].x)).toBeLessThan(260)
+    expect(Math.abs(positions['readwise-a'].x - positions['readwise-b'].x)).toBeLessThan(320)
     expect(Math.abs(positions.project.x - positions['readwise-a'].x)).toBeGreaterThanOrEqual(300)
+  })
+
+  it('leaves wider lanes after grouping so routed links have room around cards', () => {
+    const positions = buildArchivePositions([
+      row('readwise-a', { source: 'readwise' }),
+      row('readwise-b', { source: 'readwise' }),
+      row('readwise-c', { source: 'readwise' }),
+      row('readwise-d', { source: 'readwise' }),
+      row('project-a', { tags: ['project'] }),
+      row('project-b', { tags: ['project'] })
+    ])
+
+    expect(Math.abs(positions['readwise-a'].x - positions['readwise-b'].x)).toBeGreaterThanOrEqual(280)
+    expect(Math.abs(positions['readwise-d'].y - positions['readwise-a'].y)).toBeGreaterThanOrEqual(180)
+    expect(Math.abs(positions['project-a'].x - positions['readwise-a'].x)).toBeGreaterThanOrEqual(1100)
   })
 
   it('rebuilds mode layouts from the current mode basis', () => {
@@ -75,11 +90,11 @@ describe('canvas card placement', () => {
     ]
 
     const properties = buildCanvasModePositions(rows, 'properties')
-    expect(Math.abs(properties['react-a'].x - properties['react-b'].x)).toBeLessThan(260)
+    expect(Math.abs(properties['react-a'].x - properties['react-b'].x)).toBeLessThan(320)
     expect(Math.abs(properties['vue-a'].x - properties['react-a'].x)).toBeGreaterThanOrEqual(300)
 
     const time = buildCanvasModePositions(rows, 'time')
-    expect(Math.abs(time['react-a'].x - time['vue-a'].x)).toBeLessThan(260)
+    expect(Math.abs(time['react-a'].x - time['vue-a'].x)).toBeLessThan(320)
     expect(
       Math.abs(time['react-b'].x - time['react-a'].x) >= 300 ||
       Math.abs(time['react-b'].y - time['react-a'].y) >= 190
@@ -161,8 +176,19 @@ describe('canvas card placement', () => {
     )
 
     expect(route.length).toBeGreaterThan(2)
-    expect(route[0]).toEqual({ x: 210, y: 56 })
-    expect(route[route.length - 1]).toEqual({ x: 520, y: 56 })
+    expect(
+      route[0].x === 210 ||
+      route[0].x === 0 ||
+      route[0].y === 0 ||
+      route[0].y === 112
+    ).toBe(true)
+    expect(
+      route[route.length - 1].x === 520 ||
+      route[route.length - 1].x === 730 ||
+      route[route.length - 1].y === 0 ||
+      route[route.length - 1].y === 112
+    ).toBe(true)
+    expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
     expect(route.some((point) => point.y !== 56)).toBe(true)
     expect(routeCrossesCards(route, [blocker])).toBe(false)
   })

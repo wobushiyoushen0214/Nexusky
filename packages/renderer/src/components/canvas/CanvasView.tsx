@@ -88,11 +88,13 @@ const BASE_CANVAS_WIDTH = 1200
 const BASE_CANVAS_HEIGHT = 760
 const CANVAS_PADDING = 760
 const CARD_GAP = 32
-const ARCHIVE_CARD_GAP_X = 38
-const ARCHIVE_CARD_GAP_Y = 42
-const ARCHIVE_CLUSTER_GAP_X = 180
-const ARCHIVE_CLUSTER_GAP_Y = 150
-const ROUTE_CLEARANCE = 24
+const ARCHIVE_CARD_GAP_X = 72
+const ARCHIVE_CARD_GAP_Y = 68
+const ARCHIVE_CLUSTER_GAP_X = 260
+const ARCHIVE_CLUSTER_GAP_Y = 196
+const ROUTE_CLEARANCE = 52
+const ROUTE_CARD_PADDING = 26
+const ROUTE_SIDE_MISMATCH_PENALTY = 360
 const PENDING_CANVAS_FOCUS_KEY = 'nexusky-pending-canvas-focus'
 
 type CanvasLayoutGroup = {
@@ -244,7 +246,7 @@ function buildClusterPositions(groups: CanvasLayoutGroup[]): Record<string, Canv
   const stepX = CARD_WIDTH + ARCHIVE_CARD_GAP_X
   const stepY = CARD_HEIGHT + ARCHIVE_CARD_GAP_Y
   const maxClusterWidth = stepX * 3 + ARCHIVE_CLUSTER_GAP_X
-  const clusterHeights = [40, 40, 40]
+  const clusterHeights = [72, 72, 72]
 
   groups.forEach((group, groupIndex) => {
     const lane = clusterHeights.indexOf(Math.min(...clusterHeights))
@@ -255,13 +257,12 @@ function buildClusterPositions(groups: CanvasLayoutGroup[]): Record<string, Canv
     group.rows.forEach((row, index) => {
       const column = index % columns
       const itemRow = Math.floor(index / columns)
-      const stagger = itemRow % 2 === 0 ? 0 : 16
       positions[row.id] = {
-        x: originX + column * stepX + stagger,
+        x: originX + column * stepX,
         y: originY + itemRow * stepY
       }
     })
-    clusterHeights[lane] = originY + rowsInCluster * stepY + ARCHIVE_CLUSTER_GAP_Y + (groupIndex % 2) * 28
+    clusterHeights[lane] = originY + rowsInCluster * stepY + ARCHIVE_CLUSTER_GAP_Y + (groupIndex % 2) * 36
   })
 
   return positions
@@ -407,7 +408,7 @@ function distanceBetween(a: RoutePoint, b: RoutePoint): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
 }
 
-function cardRect(position: CanvasPosition, padding = 14) {
+function cardRect(position: CanvasPosition, padding = ROUTE_CARD_PADDING) {
   return {
     left: position.x - padding,
     right: position.x + CARD_WIDTH + padding,
@@ -558,7 +559,9 @@ export function routeBetweenCards(source: CanvasPosition, target: CanvasPosition
     const innerRoute = findOrthogonalRoute(sourcePort.clear, targetPort.clear, blockers)
     if (!innerRoute) return null
     const route = compactRoute([sourcePort.edge, ...innerRoute, targetPort.edge])
-    const penalty = (sourcePort.side === sourcePreferred ? 0 : 120) + (targetPort.side === targetPreferred ? 0 : 120)
+    const penalty =
+      (sourcePort.side === sourcePreferred ? 0 : ROUTE_SIDE_MISMATCH_PENALTY) +
+      (targetPort.side === targetPreferred ? 0 : ROUTE_SIDE_MISMATCH_PENALTY)
     const score = routeLength(route) + routeBends(route) * 80 + penalty
     return { route, score }
   })).filter((candidate): candidate is { route: RoutePoint[]; score: number } => candidate !== null && !routeCrossesCards(candidate.route, blockers))
@@ -1169,7 +1172,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
           ) : (
             <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
               <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: 2, pointerEvents: 'none' }}>
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: 0, pointerEvents: 'none' }}>
                 <defs>
                   <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
                     <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
@@ -1208,7 +1211,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     position: 'absolute',
                     left: label.x - canvasMetrics.minX,
                     top: label.y - canvasMetrics.minY,
-                    zIndex: 1,
+                    zIndex: 3,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
@@ -1257,15 +1260,16 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                       left: pos.x - canvasMetrics.minX,
                       top: pos.y - canvasMetrics.minY,
                       width: CARD_WIDTH,
-                      minHeight: 112,
+                      height: CARD_HEIGHT,
                       padding: '13px 14px 12px',
+                      overflow: 'hidden',
                       borderRadius: 7,
                       border: dragging?.id === row.id ? '1px solid var(--border-default)' : '1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent)',
                       background: 'color-mix(in srgb, var(--bg-surface) 72%, var(--editor-bg))',
                       boxShadow: dragging?.id === row.id ? '0 16px 36px rgba(0,0,0,0.34)' : '0 10px 24px rgba(0,0,0,0.11)',
                       cursor: dragging?.id === row.id ? 'grabbing' : 'grab',
                       userSelect: 'none',
-                      zIndex: dragging?.id === row.id ? 4 : 1
+                      zIndex: dragging?.id === row.id ? 5 : 2
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 9 }}>
@@ -1280,7 +1284,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     </div>
                     <div style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: 36, fontSize: 13.5, lineHeight: 1.32, fontWeight: 710, color: 'var(--text-primary)', overflow: 'hidden' }}>{row.title}</div>
                     <div style={{ marginTop: 6, fontSize: 10.5, color: 'color-mix(in srgb, var(--text-tertiary) 88%, transparent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
-                    <div style={{ marginTop: 11, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    <div style={{ marginTop: 11, display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 18, overflow: 'hidden' }}>
                       {tags.slice(0, 3).map((tag) => (
                         <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--bg-hover) 70%, transparent)', color: 'var(--text-secondary)', fontSize: 10 }}>{tag}</span>
                       ))}
