@@ -1,12 +1,22 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { Editor } from '@tiptap/react'
+import { useUIStore } from '../../stores/ui-store'
+import { useVaultStore } from '../../stores/vault-store'
+import { safeSet } from '../../utils/storage'
+import type { LocalPlugin } from '@shared/types/ipc'
 
 interface SlashItem {
+  id?: string
   title: string
   description: string
   icon: string
   keywords: string[]
   action: (editor: Editor) => void
+}
+
+interface AICommandDraft {
+  prompt: string
+  mode?: 'chat' | 'edit'
 }
 
 const SLASH_ITEMS: SlashItem[] = [
@@ -112,14 +122,36 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [slashPos, setSlashPos] = useState(-1)
+  const [plugins, setPlugins] = useState<LocalPlugin[]>([])
   const menuRef = useRef<HTMLDivElement>(null)
+  const { vaultPath } = useVaultStore()
+  const { setRightPanel } = useUIStore()
 
-  const filtered = SLASH_ITEMS.filter((item) => {
+  const queueAiDraft = useCallback((draft: AICommandDraft) => {
+    safeSet('nexusky-pending-ai-draft', JSON.stringify(draft))
+    setRightPanel('chat')
+    window.dispatchEvent(new CustomEvent('ai-command-draft', { detail: draft }))
+  }, [setRightPanel])
+
+  const items = useMemo<SlashItem[]>(() => [
+    ...SLASH_ITEMS,
+    ...plugins.flatMap((plugin) => plugin.commands.map((command) => ({
+      id: `plugin:${plugin.id}:${command.id}`,
+      title: command.title,
+      description: command.description || plugin.name,
+      icon: 'plugin',
+      keywords: ['plugin', 'ai', plugin.id, plugin.name, command.id, command.title, command.description || ''],
+      action: () => queueAiDraft({ mode: command.mode || 'chat', prompt: command.prompt })
+    })))
+  ], [plugins, queueAiDraft])
+
+  const filtered = useMemo(() => items.filter((item) => {
     if (!query) return true
     const q = query.toLowerCase()
     return item.title.toLowerCase().includes(q) ||
-      item.keywords.some((k) => k.includes(q))
-  })
+      item.description.toLowerCase().includes(q) ||
+      item.keywords.some((k) => k.toLowerCase().includes(q))
+  }), [items, query])
 
   const close = useCallback(() => {
     setOpen(false)
@@ -211,6 +243,24 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
   }, [open, editor, slashPos, selectedIndex, filtered, executeItem, close])
 
   useEffect(() => {
+    if (!open || !vaultPath) {
+      setPlugins([])
+      return
+    }
+    let cancelled = false
+    window.api.invoke('plugins:list', { vaultPath })
+      .then((result) => {
+        if (!cancelled) setPlugins(result)
+      })
+      .catch(() => {
+        if (!cancelled) setPlugins([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, vaultPath])
+
+  useEffect(() => {
     setSelectedIndex(0)
   }, [query])
 
@@ -245,7 +295,7 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
     >
       {filtered.map((item, i) => (
         <button
-          key={item.title}
+          key={item.id || item.title}
           onClick={() => executeItem(item)}
           style={{
             width: '100%',
@@ -310,6 +360,9 @@ function SlashIcon({ type }: { type: string }) {
   }
   if (type === 'math') {
     return <div style={s}><span style={{ fontSize: 12, fontStyle: 'italic' }}>fx</span></div>
+  }
+  if (type === 'plugin') {
+    return <div style={s}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l1.7 4.6L18 9.3l-4.3 1.7L12 16l-1.7-5L6 9.3l4.3-1.7L12 3z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"/><path d="M5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14z"/></svg></div>
   }
   return <div style={s}><span style={{ fontSize: 11 }}>?</span></div>
 }

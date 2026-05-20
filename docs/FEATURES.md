@@ -825,6 +825,7 @@ scripts/          → 开发脚本
 - [x] 多窗口支持（同时打开多个笔记窗口）
 - [x] 工作区布局和侧边栏宽度按 vault 独立记忆
 - [x] 拖拽分屏（左右并排编辑两个笔记）
+- [x] 自定义 slash command 扩展（本地插件命令可直接从编辑器 `/` 菜单唤起 AI 工作流）
 
 ### AI 进阶
 - [x] AI 笔记摘要生成（一键生成笔记摘要）
@@ -843,7 +844,6 @@ scripts/          → 开发脚本
 - [ ] 表格公式计算
 - [x] 脚注支持（AI Markdown 与 HTML/PDF/发布站点导出）
 - [x] Obsidian Callout 渲染（AI Markdown 与 HTML/PDF/发布站点导出）
-- [ ] 自定义 slash command 扩展
 
 ### 协作与平台
 - [ ] 实时协作编辑（CRDT + WebSocket）
