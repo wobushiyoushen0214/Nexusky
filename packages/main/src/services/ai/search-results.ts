@@ -22,6 +22,7 @@ export interface AiNoteLinksSummary {
   unlinkedMentions?: {
     sourceTitle: string
     sourcePath: string
+    line: number
     context: string
     mention: string
   }[]
@@ -43,6 +44,7 @@ export interface AiCurrentNoteUnlinkedReferenceResult {
   references: {
     targetTitle: string
     targetPath: string
+    line: number
     context: string
     mention: string
   }[]
@@ -348,7 +350,7 @@ export function formatNoteLinksToolResult(summary: AiNoteLinksSummary): string {
     : '(none)'
   const unlinkedMentions = summary.unlinkedMentions && summary.unlinkedMentions.length > 0
     ? summary.unlinkedMentions.map((mention, index) => (
-      `${index + 1}. ${mention.sourceTitle} (${mention.sourcePath}) - "${mention.mention}"${formatLinkContext(mention.context)}`
+      `${index + 1}. ${mention.sourceTitle} (${mention.sourcePath}:${mention.line}) - "${mention.mention}"${formatLinkContext(mention.context)}`
     )).join('\n')
     : '(none)'
 
@@ -387,7 +389,7 @@ export function formatCurrentNoteLinkStatsToolResult(stats: AiCurrentNoteLinkSta
 export function formatCurrentNoteUnlinkedReferencesToolResult(summary: AiCurrentNoteUnlinkedReferenceResult): string {
   if (summary.references.length === 0) return `No unlinked note references found in ${summary.title} (${summary.filePath}).`
   const body = summary.references.map((reference, index) => (
-    `${index + 1}. ${reference.targetTitle} (${reference.targetPath}) - "${reference.mention}"${formatLinkContext(reference.context)}`
+    `${index + 1}. ${reference.targetTitle} (${reference.targetPath}:${reference.line}) - "${reference.mention}"${formatLinkContext(reference.context)}`
   )).join('\n')
   return [
     `Current Note Unlinked References: ${summary.title}`,

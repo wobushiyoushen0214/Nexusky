@@ -114,11 +114,13 @@ describe('indexer', () => {
     expect(mentions).toHaveLength(1)
     expect(mentions[0].sourceTitle).toBe('Planning')
     expect(mentions[0].mention).toBe('Project')
+    expect(mentions[0].line).toBe(3)
     expect(mentions[0].context).toContain('Project needs')
 
     const outgoingMentions = getOutgoingUnlinkedMentions(vaultPath, planning!.id)
     expect(outgoingMentions.map((mention) => mention.targetTitle).sort()).toEqual(['Project', 'Roadmap'])
     expect(outgoingMentions.find((mention) => mention.targetTitle === 'Roadmap')?.mention).toBe('Roadmap')
+    expect(outgoingMentions.every((mention) => mention.line === 3)).toBe(true)
     expect(getUnlinkedMentions(vaultPath, plan!.id)).toHaveLength(0)
     expect(getOutgoingUnlinkedMentions(vaultPath, getAllNotes(vaultPath).find((note) => note.title === 'Linked')!.id)).toHaveLength(0)
 

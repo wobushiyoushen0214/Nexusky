@@ -93,6 +93,7 @@ export interface OutgoingLinkResult {
 export interface UnlinkedMentionResult {
   sourceTitle: string
   sourcePath: string
+  line: number
   context: string
   mention: string
 }

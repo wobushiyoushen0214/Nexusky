@@ -191,7 +191,7 @@ function LinkSection({
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sourceTitle}</span>
             {'mention' in item && (
-              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>提到 {item.mention}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line} · 提到 {item.mention}</span>
             )}
           </span>
           {item.context && (

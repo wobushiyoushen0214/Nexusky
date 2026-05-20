@@ -105,7 +105,7 @@ describe('formatNoteLinksToolResult', () => {
         { sourceTitle: 'Source', sourcePath: 'Source.md', context: 'References [[Topic]].' }
       ],
       unlinkedMentions: [
-        { sourceTitle: 'Loose', sourcePath: 'Loose.md', context: 'Topic appears without a link.', mention: 'Topic' }
+        { sourceTitle: 'Loose', sourcePath: 'Loose.md', line: 7, context: 'Topic appears without a link.', mention: 'Topic' }
       ]
     })
 
@@ -114,7 +114,7 @@ describe('formatNoteLinksToolResult', () => {
     expect(output).toContain('1. Next (Folder/Next.md) - See [[Next]] for details.')
     expect(output).toContain('2. Missing (unresolved) - See [[Missing]].')
     expect(output).toContain('1. Source (Source.md) - References [[Topic]].')
-    expect(output).toContain('1. Loose (Loose.md) - "Topic" - Topic appears without a link.')
+    expect(output).toContain('1. Loose (Loose.md:7) - "Topic" - Topic appears without a link.')
   })
 
   it('marks empty link sections explicitly', () => {
@@ -161,11 +161,11 @@ describe('formatNoteLinksToolResult', () => {
       title: 'Planning',
       filePath: 'Planning.md',
       references: [
-        { targetTitle: 'Project', targetPath: 'Project.md', mention: 'Project', context: 'Project needs a clearer roadmap.' }
+        { targetTitle: 'Project', targetPath: 'Project.md', line: 3, mention: 'Project', context: 'Project needs a clearer roadmap.' }
       ]
     })
 
-    expect(output).toBe('Current Note Unlinked References: Planning\nPath: Planning.md\n\n1. Project (Project.md) - "Project" - Project needs a clearer roadmap.')
+    expect(output).toBe('Current Note Unlinked References: Planning\nPath: Planning.md\n\n1. Project (Project.md:3) - "Project" - Project needs a clearer roadmap.')
   })
 
   it('marks empty current note unlinked references explicitly', () => {

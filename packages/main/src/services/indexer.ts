@@ -35,6 +35,7 @@ export interface OutgoingLinkIndex {
 export interface UnlinkedMentionIndex {
   sourceTitle: string
   sourcePath: string
+  line: number
   context: string
   mention: string
 }
@@ -42,6 +43,7 @@ export interface UnlinkedMentionIndex {
 export interface OutgoingUnlinkedMentionIndex {
   targetTitle: string
   targetPath: string
+  line: number
   context: string
   mention: string
 }
@@ -272,6 +274,7 @@ export function getUnlinkedMentions(vaultPath: string, noteId: string): Unlinked
     mentions.push({
       sourceTitle: row.title,
       sourcePath: row.filePath,
+      line: getLineNumberAtIndex(row.content, match.index),
       context: createMentionContext(row.content, match.index),
       mention: match.alias
     })
@@ -314,6 +317,7 @@ export function getOutgoingUnlinkedMentions(vaultPath: string, noteId: string): 
     mentions.push({
       targetTitle: candidate.title,
       targetPath: candidate.filePath,
+      line: getLineNumberAtIndex(source.content, match.index),
       context: createMentionContext(source.content, match.index),
       mention: match.alias
     })
@@ -596,6 +600,10 @@ function hasPlainMentionBoundary(content: string, alias: string, index: number):
   if (isWordChar(alias[0]) && isWordChar(before)) return false
   if (isWordChar(alias[alias.length - 1]) && isWordChar(after)) return false
   return true
+}
+
+function getLineNumberAtIndex(content: string, index: number): number {
+  return content.slice(0, Math.max(0, index)).split('\n').length
 }
 
 function createMentionContext(content: string, index: number): string {
