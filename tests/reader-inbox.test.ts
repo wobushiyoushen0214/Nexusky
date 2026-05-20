@@ -107,6 +107,7 @@ describe('reader inbox helpers', () => {
 
     expect(digest).toContain('source: reader-inbox')
     expect(digest).toContain('items: 1')
+    expect(digest).toContain('source_paths:\n  - Imports/Pocket/Later.md')
     expect(digest).toContain('# Reading Digest 2026-05-20')
     expect(digest).toContain('- [[Later]] - Pocket · Ada · unread')
     expect(digest).toContain('  - Path: Imports/Pocket/Later.md')

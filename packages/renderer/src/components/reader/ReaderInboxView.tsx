@@ -145,6 +145,8 @@ export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new D
     'source: reader-inbox',
     `created: ${date}`,
     `items: ${readerRows.length}`,
+    'source_paths:',
+    ...readerRows.map((row) => `  - ${row.filePath}`),
     '---',
     '',
     `# Reading Digest ${date}`,
