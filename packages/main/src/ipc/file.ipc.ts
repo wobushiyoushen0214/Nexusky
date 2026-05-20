@@ -1,19 +1,13 @@
 import { ipcMain, shell, BrowserWindow } from 'electron'
 import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promises'
 import { readdir } from 'fs/promises'
-import { join, dirname, extname, relative, basename, resolve, normalize } from 'path'
+import { join, dirname, extname, relative, basename } from 'path'
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
 import { getDatabase } from '../services/database'
 import { indexNote } from '../services/indexer'
 import { importObsidianVault } from '../services/obsidian-importer'
+import { isPathInsideVault } from './file-path'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
-
-function isPathSafe(filePath: string, vaultPath?: string): boolean {
-  if (!vaultPath) return true
-  const normalizedFile = normalize(resolve(filePath))
-  const normalizedVault = normalize(resolve(vaultPath))
-  return normalizedFile.startsWith(normalizedVault)
-}
 
 async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> {
   try {
@@ -91,7 +85,7 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:write', async (_event, params: { path: string; content: string; vaultPath?: string }) => {
-    if (params.vaultPath && !isPathSafe(params.path, params.vaultPath)) {
+    if (params.vaultPath && !isPathInsideVault(params.path, params.vaultPath)) {
       throw new Error('路径不在当前笔记空间内')
     }
     if (params.vaultPath && params.path.endsWith('.md')) {
@@ -117,10 +111,15 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:create', async (_event, params: { path: string; content?: string; vaultPath?: string }) => {
+    if (params.vaultPath && !isPathInsideVault(params.path, params.vaultPath)) {
+      throw new Error('路径不在当前笔记空间内')
+    }
     await mkdir(dirname(params.path), { recursive: true })
     await writeFile(params.path, params.content || '', 'utf-8')
-    if (params.vaultPath && params.path.endsWith('.md')) {
-      try { indexNote(params.vaultPath, params.path) } catch {}
+    if (params.vaultPath) {
+      if (params.path.endsWith('.md')) {
+        try { indexNote(params.vaultPath, params.path) } catch {}
+      }
       notifyVaultFilesChanged()
     }
   })
@@ -130,7 +129,7 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {
-    if (params.vaultPath && !isPathSafe(params.path, params.vaultPath)) {
+    if (params.vaultPath && !isPathInsideVault(params.path, params.vaultPath)) {
       throw new Error('路径不在当前笔记空间内')
     }
     if (params.vaultPath) {
@@ -146,9 +145,13 @@ export function registerFileIPC(): void {
     } else {
       await rm(params.path, { recursive: true })
     }
+    if (params.vaultPath) notifyVaultFilesChanged()
   })
 
   ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string; vaultPath?: string }) => {
+    if (params.vaultPath && (!isPathInsideVault(params.oldPath, params.vaultPath) || !isPathInsideVault(params.newPath, params.vaultPath))) {
+      throw new Error('路径不在当前笔记空间内')
+    }
     await mkdir(dirname(params.newPath), { recursive: true })
     await rename(params.oldPath, params.newPath)
 
@@ -159,14 +162,17 @@ export function registerFileIPC(): void {
         await updateWikilinks(params.vaultPath, oldName, newName)
       }
     }
+    if (params.vaultPath) notifyVaultFilesChanged()
   })
 
   ipcMain.handle('file:save-image', async (_event, params: { vaultPath: string; imageData: string; fileName: string }) => {
     const assetsDir = join(params.vaultPath, 'assets')
     await mkdir(assetsDir, { recursive: true })
     const filePath = join(assetsDir, params.fileName)
+    if (!isPathInsideVault(filePath, assetsDir)) throw new Error('图片路径不在 assets 目录内')
     const base64Data = params.imageData.replace(/^data:image\/\w+;base64,/, '')
     await writeFile(filePath, Buffer.from(base64Data, 'base64'))
+    notifyVaultFilesChanged()
     return `assets/${params.fileName}`
   })
 
@@ -264,20 +270,25 @@ export function registerFileIPC(): void {
       if (metadata.originalPath) originalPath = metadata.originalPath
     } catch {}
     const destPath = join(params.vaultPath, originalPath)
-    if (!isPathSafe(destPath, params.vaultPath)) throw new Error('恢复路径不在当前笔记空间内')
+    if (!isPathInsideVault(params.trashPath, join(params.vaultPath, '.trash'))) throw new Error('回收站路径不在当前笔记空间内')
+    if (!isPathInsideVault(destPath, params.vaultPath)) throw new Error('恢复路径不在当前笔记空间内')
     const uniqueDestPath = await getUniqueRestorePath(destPath)
     await mkdir(dirname(uniqueDestPath), { recursive: true })
     await rename(params.trashPath, uniqueDestPath)
     await rm(`${params.trashPath}.json`, { force: true })
+    notifyVaultFilesChanged()
   })
 
   ipcMain.handle('file:empty-trash', async (_event, params: { vaultPath: string }) => {
     const trashDir = join(params.vaultPath, '.trash')
     await rm(trashDir, { recursive: true, force: true })
+    notifyVaultFilesChanged()
   })
 
   ipcMain.handle('file:import-obsidian', async (_event, params: { sourcePath: string; vaultPath: string }) => {
-    return importObsidianVault(params.sourcePath, params.vaultPath)
+    const result = await importObsidianVault(params.sourcePath, params.vaultPath)
+    notifyVaultFilesChanged()
+    return result
   })
 }
 

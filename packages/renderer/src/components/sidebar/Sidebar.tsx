@@ -93,7 +93,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
     if (!newFileName.trim() || !vaultPath) return
     if (createType === 'folder') {
       const folderPath = `${vaultPath}/${newFileName.trim()}`
-      await window.api.invoke('file:create', { path: `${folderPath}/.gitkeep`, content: '' })
+      await window.api.invoke('file:create', { path: `${folderPath}/.gitkeep`, content: '', vaultPath })
       setIsCreating(false)
       setNewFileName('')
       await refreshFiles()

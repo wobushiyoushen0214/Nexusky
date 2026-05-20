@@ -119,7 +119,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
     const basePath = entry.isDirectory ? entry.path : entry.path.substring(0, entry.path.lastIndexOf('/'))
     if (creating === 'folder') {
       const folderPath = `${basePath}/${createName.trim()}`
-      await window.api.invoke('file:create', { path: `${folderPath}/.gitkeep`, content: '' })
+      await window.api.invoke('file:create', { path: `${folderPath}/.gitkeep`, content: '', vaultPath: vaultPath || undefined })
     } else {
       const name = createName.trim().endsWith('.md') ? createName.trim() : `${createName.trim()}.md`
       const path = `${basePath}/${name}`
