@@ -156,6 +156,22 @@ export function getNextUnreadReaderRow(rows: PropertyTableRow[]): PropertyTableR
   return rows.find((row) => getReaderSource(row) && isUnreadReaderRow(row)) || null
 }
 
+export function getAdjacentReaderRow(rows: PropertyTableRow[], currentId: string | null | undefined, direction: 1 | -1): PropertyTableRow | null {
+  const readerRows = rows.filter((row) => getReaderSource(row))
+  if (readerRows.length === 0) return null
+  const currentIndex = currentId ? readerRows.findIndex((row) => row.id === currentId) : -1
+  if (currentIndex < 0) return direction === 1 ? readerRows[0] : readerRows[readerRows.length - 1]
+  const nextIndex = currentIndex + direction
+  if (nextIndex >= 0 && nextIndex < readerRows.length) return readerRows[nextIndex]
+  return null
+}
+
+export function getNextReaderQueueRow(rows: PropertyTableRow[], currentId: string | null | undefined): PropertyTableRow | null {
+  const next = getAdjacentReaderRow(rows, currentId, 1)
+  if (next) return next
+  return getAdjacentReaderRow(rows, currentId, -1)
+}
+
 export function getArchivableReaderRows(rows: PropertyTableRow[]): PropertyTableRow[] {
   return rows.filter((row) => getReaderSource(row) && !isArchivedReaderRow(row))
 }
@@ -563,8 +579,8 @@ export function ReaderInboxView() {
     }
   }
 
-  const writeStatuses = async (targetRows: PropertyTableRow[], status: 'read' | 'unread' | 'archived') => {
-    if (!vaultPath) return
+  const writeStatuses = async (targetRows: PropertyTableRow[], status: 'read' | 'unread' | 'archived'): Promise<boolean> => {
+    if (!vaultPath) return false
     const changedIds: string[] = []
     try {
       for (const row of targetRows) {
@@ -584,13 +600,15 @@ export function ReaderInboxView() {
           ? t('reader.archivedCount', { count: changedIds.length })
           : t('reader.markedUnreadCount', { count: changedIds.length })
       toast(message, 'success')
+      return true
     } catch {
       toast(t('reader.statusFailed'), 'error')
+      return false
     }
   }
 
-  const updateStatus = async (row: PropertyTableRow, status: 'read' | 'unread' | 'archived') => {
-    await writeStatuses([row], status)
+  const updateStatus = async (row: PropertyTableRow, status: 'read' | 'unread' | 'archived'): Promise<boolean> => {
+    return writeStatuses([row], status)
   }
 
   const markVisibleRead = async () => {
@@ -607,6 +625,18 @@ export function ReaderInboxView() {
   const unarchiveVisible = async () => {
     if (unarchivableVisibleRows.length === 0) return
     await writeStatuses(unarchivableVisibleRows, 'unread')
+  }
+
+  const selectAdjacentRow = (direction: 1 | -1) => {
+    const target = getAdjacentReaderRow(filtered, selectedRow?.id, direction)
+    if (target) setSelectedRowId(target.id)
+  }
+
+  const completeAndSelectNext = async (row: PropertyTableRow) => {
+    const next = getNextReaderQueueRow(filtered, row.id)
+    const status = isUnreadReaderRow(row) ? 'read' : 'archived'
+    const updated = await updateStatus(row, status)
+    if (updated) setSelectedRowId(next?.id || null)
   }
 
   const createDigest = async () => {
@@ -887,12 +917,17 @@ export function ReaderInboxView() {
             onOpen={() => void openRow(selectedRow)}
             onOpenInKnowledgeSpace={() => openRowInKnowledgeSpace(selectedRow)}
             onOpenSource={() => void openSource(selectedRow)}
+            onPrevious={() => selectAdjacentRow(-1)}
+            onNext={() => selectAdjacentRow(1)}
+            onCompleteNext={() => void completeAndSelectNext(selectedRow)}
             onToggleNote={() => setActiveNoteId(activeNoteId === selectedRow.id ? null : selectedRow.id)}
             onNoteChange={(value) => setNoteDrafts((current) => ({ ...current, [selectedRow.id]: value }))}
             onCancelNote={() => setActiveNoteId(null)}
             onSaveNote={() => void saveReaderNote(selectedRow)}
             onToggleRead={() => void updateStatus(selectedRow, isUnreadReaderRow(selectedRow) ? 'read' : 'unread')}
             onToggleArchive={() => void updateStatus(selectedRow, isArchivedReaderRow(selectedRow) ? 'unread' : 'archived')}
+            hasPrevious={Boolean(getAdjacentReaderRow(filtered, selectedRow.id, -1))}
+            hasNext={Boolean(getAdjacentReaderRow(filtered, selectedRow.id, 1))}
             t={t}
           />
         ) : (
@@ -919,6 +954,10 @@ function RefreshIcon() {
 
 function NextIcon() {
   return <IconSvg><path d="M5 5l7 7-7 7" /><path d="M13 5l7 7-7 7" /></IconSvg>
+}
+
+function PreviousIcon() {
+  return <IconSvg><path d="M19 5l-7 7 7 7" /><path d="M11 5l-7 7 7 7" /></IconSvg>
 }
 
 function CheckIcon() {
@@ -990,12 +1029,17 @@ function ReaderBrief({
   onOpen,
   onOpenInKnowledgeSpace,
   onOpenSource,
+  onPrevious,
+  onNext,
+  onCompleteNext,
   onToggleNote,
   onNoteChange,
   onCancelNote,
   onSaveNote,
   onToggleRead,
   onToggleArchive,
+  hasPrevious,
+  hasNext,
   t
 }: {
   row: PropertyTableRow
@@ -1005,12 +1049,17 @@ function ReaderBrief({
   onOpen: () => void
   onOpenInKnowledgeSpace: () => void
   onOpenSource: () => void
+  onPrevious: () => void
+  onNext: () => void
+  onCompleteNext: () => void
   onToggleNote: () => void
   onNoteChange: (value: string) => void
   onCancelNote: () => void
   onSaveNote: () => void
   onToggleRead: () => void
   onToggleArchive: () => void
+  hasPrevious: boolean
+  hasNext: boolean
   t: ReaderTranslator
 }) {
   const source = getReaderSource(row)
@@ -1111,11 +1160,22 @@ function ReaderBrief({
       </div>
 
       <div style={{ flexShrink: 0, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: '1px solid var(--border-subtle)', background: 'var(--editor-bg)' }}>
-        <button onClick={onOpen} style={{ ...quietButtonStyle, borderColor: 'var(--accent-muted)', background: 'var(--accent-muted)', color: 'var(--accent-text)' }}>
-          <ExternalLinkIcon />
-          {t('reader.openItem')}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          <button onClick={onPrevious} disabled={!hasPrevious} title={t('reader.previousItem')} aria-label={t('reader.previousItem')} style={{ ...smallIconButtonBaseStyle, opacity: hasPrevious ? 1 : 0.45, cursor: hasPrevious ? 'pointer' : 'default' }}>
+            <PreviousIcon />
+          </button>
+          <button onClick={onNext} disabled={!hasNext} title={t('reader.nextItem')} aria-label={t('reader.nextItem')} style={{ ...smallIconButtonBaseStyle, opacity: hasNext ? 1 : 0.45, cursor: hasNext ? 'pointer' : 'default' }}>
+            <NextIcon />
+          </button>
+          <button onClick={onCompleteNext} style={{ ...quietButtonStyle, borderColor: 'var(--accent-muted)', background: 'var(--accent-muted)', color: 'var(--accent-text)' }}>
+            <CheckIcon />
+            {t('reader.completeNext')}
+          </button>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button onClick={onOpen} title={t('reader.openItem')} aria-label={t('reader.openItem')} style={smallIconButtonBaseStyle}>
+            <ExternalLinkIcon />
+          </button>
           <button onClick={onOpenInKnowledgeSpace} title={t('reader.openInSpace')} aria-label={t('reader.openInSpace')} style={smallIconButtonBaseStyle}>
             <SpaceIcon />
           </button>

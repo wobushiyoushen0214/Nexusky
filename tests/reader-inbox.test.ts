@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countReaderRowsBySource, countReaderRowsByTriage, countUnreadReaderRows, createReaderDigestMarkdown, createReaderDigestionPrompt, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, getReaderTriageStage, getUnarchivableReaderRows, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countReaderRowsBySource, countReaderRowsByTriage, countUnreadReaderRows, createReaderDigestMarkdown, createReaderDigestionPrompt, extractReaderDigestExcerpts, filterReaderRows, getAdjacentReaderRow, getArchivableReaderRows, getNextReaderQueueRow, getNextUnreadReaderRow, getReaderDigestLink, getReaderSource, getReaderSourceUrl, getReaderTriageStage, getUnarchivableReaderRows, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -129,6 +129,22 @@ describe('reader inbox helpers', () => {
 
     expect(getNextUnreadReaderRow(rows)?.filePath).toBe('Imports/Readwise/Next.md')
     expect(getNextUnreadReaderRow([rows[0]])).toBeNull()
+  })
+
+  it('moves through the visible reader queue without wrapping', () => {
+    const rows = [
+      row('Imports/Pocket/A.md', { source: 'pocket' }, 10),
+      row('Imports/Readwise/B.md', { source: 'readwise' }, 20),
+      row('Imports/Notion/C.md', { source: 'notion' }, 30),
+      row('Notes/Regular.md', {}, 40)
+    ]
+
+    expect(getAdjacentReaderRow(rows, null, 1)?.filePath).toBe('Imports/Pocket/A.md')
+    expect(getAdjacentReaderRow(rows, null, -1)?.filePath).toBe('Imports/Notion/C.md')
+    expect(getAdjacentReaderRow(rows, 'Imports/Readwise/B.md', 1)?.filePath).toBe('Imports/Notion/C.md')
+    expect(getAdjacentReaderRow(rows, 'Imports/Readwise/B.md', -1)?.filePath).toBe('Imports/Pocket/A.md')
+    expect(getAdjacentReaderRow(rows, 'Imports/Notion/C.md', 1)).toBeNull()
+    expect(getNextReaderQueueRow(rows, 'Imports/Notion/C.md')?.filePath).toBe('Imports/Readwise/B.md')
   })
 
   it('triages reader rows into digestion stages', () => {
