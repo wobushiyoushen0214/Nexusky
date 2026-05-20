@@ -1199,6 +1199,14 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_current_note_links',
+        description: '列出当前编辑器正在打开笔记的出链、反链和未链接提及。适合用户询问当前笔记关系或想补双链时使用。',
+        parameters: { type: 'object', properties: {} }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_note_headings',
         description: '列出指定笔记的 Markdown 标题目录。适合先查看长笔记结构，再用 read_note 读取某个 heading。',
         parameters: {
@@ -2128,6 +2136,10 @@ graph TD
             score: 1
           }]
         }
+      }
+      case 'list_current_note_links': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 list_note_links 指定标题/路径。' }
+        return executeToolCall('list_note_links', { title: currentFilePath }, vaultPath, currentFilePath)
       }
       case 'list_note_headings': {
         const title = getStringArg(args, 'title')
