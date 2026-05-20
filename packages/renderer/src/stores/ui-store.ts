@@ -7,7 +7,7 @@ export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', '
 const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'bases' | 'canvas'
+type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline'
 type Language = 'zh-CN' | 'en'
 type WorkspaceLayout = {
   mainView: MainView
@@ -25,7 +25,7 @@ const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'kanban', 'history', 'graph', 'plugin']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas', 'timeline']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {

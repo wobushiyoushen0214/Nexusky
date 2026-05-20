@@ -32,6 +32,7 @@
     "graph": "知识图谱",
     "bases": "属性数据库",
     "canvas": "自由画布",
+    "timeline": "时间线",
     "outline": "文档大纲",
     "properties": "属性",
     "tags": "标签",
@@ -112,6 +113,7 @@
       "graphFull": { "label": "打开全屏知识图谱" },
       "bases": { "label": "打开属性数据库", "description": "按属性浏览、筛选和排序笔记" },
       "canvas": { "label": "打开自由画布", "description": "在可拖拽画布中整理笔记卡片" },
+      "timeline": { "label": "打开时间线视图", "description": "按创建或更新时间回看笔记活动" },
       "graphCurrent": { "label": "为当前笔记生成 AI 图谱", "description": "基于当前笔记推断概念关系" },
       "inferLinks": { "label": "推断全库语义链接", "description": "补齐隐含关联并刷新知识图谱" },
       "memoryIndex": { "label": "生成 AI 记忆索引", "description": "为长期知识关联生成笔记级记忆" },
@@ -218,6 +220,18 @@
     "searchPlaceholder": "搜索笔记卡片...",
     "empty": "没有匹配的笔记卡片",
     "noTags": "无标签"
+  },
+  "timeline": {
+    "title": "时间线",
+    "summary": "共 {{count}} 篇笔记，今日更新 {{today}} 篇，近 7 天更新 {{week}} 篇",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "searchPlaceholder": "搜索标题、路径、标签或别名...",
+    "updated": "按更新",
+    "created": "按创建",
+    "empty": "没有匹配的时间线记录",
+    "root": "根目录",
+    "unknownDate": "未知日期"
   },
   "common": {
     "close": "关闭",

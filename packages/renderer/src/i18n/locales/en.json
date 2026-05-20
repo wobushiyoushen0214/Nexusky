@@ -32,6 +32,7 @@
     "graph": "Knowledge Graph",
     "bases": "Property Database",
     "canvas": "Canvas",
+    "timeline": "Timeline",
     "outline": "Outline",
     "properties": "Properties",
     "tags": "Tags",
@@ -112,6 +113,7 @@
       "graphFull": { "label": "Open full-screen knowledge graph" },
       "bases": { "label": "Open property database", "description": "Browse, filter, and sort notes by properties" },
       "canvas": { "label": "Open canvas", "description": "Organize note cards on a draggable canvas" },
+      "timeline": { "label": "Open timeline view", "description": "Review note activity by creation or update time" },
       "graphCurrent": { "label": "Generate AI graph for current note", "description": "Infer concept relationships from the current note" },
       "inferLinks": { "label": "Infer vault-wide semantic links", "description": "Fill implicit relationships and refresh the knowledge graph" },
       "memoryIndex": { "label": "Generate AI memory index", "description": "Create note-level memories for long-term knowledge linking" },
@@ -218,6 +220,18 @@
     "searchPlaceholder": "Search note cards...",
     "empty": "No matching note cards",
     "noTags": "No tags"
+  },
+  "timeline": {
+    "title": "Timeline",
+    "summary": "{{count}} notes, {{today}} updated today, {{week}} updated in the last 7 days",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "searchPlaceholder": "Search titles, paths, tags, or aliases...",
+    "updated": "Updated",
+    "created": "Created",
+    "empty": "No matching timeline entries",
+    "root": "Root",
+    "unknownDate": "Unknown date"
   },
   "common": {
     "close": "Close",

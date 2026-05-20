@@ -25,6 +25,7 @@ import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
 const BasesView = lazy(() => import('./components/bases/BasesView').then((m) => ({ default: m.BasesView })))
 const CanvasView = lazy(() => import('./components/canvas/CanvasView').then((m) => ({ default: m.CanvasView })))
+const TimelineView = lazy(() => import('./components/timeline/TimelineView').then((m) => ({ default: m.TimelineView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
 const Settings = lazy(() => import('./components/settings/Settings').then((m) => ({ default: m.Settings })))
 const SearchPanel = lazy(() => import('./components/SearchPanel').then((m) => ({ default: m.SearchPanel })))
@@ -421,6 +422,10 @@ export default function App() {
             ) : mainView === 'canvas' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><CanvasView /></Suspense>
+              </div>
+            ) : mainView === 'timeline' ? (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Suspense fallback={null}><TimelineView /></Suspense>
               </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>

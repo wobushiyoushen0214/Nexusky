@@ -23,5 +23,6 @@ describe('activity bar registry', () => {
   it('keeps global workspace items available outside the editor', () => {
     expect(isActivityBarItemAvailable(item('graph'), { mainView: 'graph', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('chat'), { mainView: 'canvas', currentFilePath: null })).toBe(true)
+    expect(isActivityBarItemAvailable(item('timeline'), { mainView: 'timeline', currentFilePath: null })).toBe(true)
   })
 })

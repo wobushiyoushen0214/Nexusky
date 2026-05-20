@@ -82,6 +82,19 @@ describe('ui store workspace widths', () => {
     })
   })
 
+  it('persists timeline as a main workspace view', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setWorkspaceScope('workspace:/vault/timeline')
+    store.setMainView('timeline')
+
+    expect(useUIStore.getState().mainView).toBe('timeline')
+    expect(JSON.parse(localStorage.getItem('nexusky-workspace-layouts') || '{}')).toEqual({
+      'workspace:/vault/timeline': { mainView: 'timeline', rightPanel: 'none', sidebarCollapsed: false },
+    })
+  })
+
   it('keeps note-scoped right panels unavailable outside the editor view', async () => {
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
     const store = useUIStore.getState()
