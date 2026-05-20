@@ -9,6 +9,7 @@ import { renderMarkdown } from './MessageBubble'
 import { formatAiToolStatus } from './tool-labels'
 import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
+import { buildDocumentAttachmentContext, createDocumentAttachment, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -29,6 +30,7 @@ interface AICommandDraft {
 const MAX_ATTACHED_NOTES = 20
 const MAX_ATTACHED_SELECTIONS = 8
 const MAX_ATTACHED_IMAGES = 4
+const MAX_ATTACHED_DOCUMENTS = 8
 const MAX_IMAGE_DATA_URL_LENGTH = 6_000_000
 const MAX_ATTACHMENT_CONTEXT_CHARS = 60_000
 const SELECTION_CHAR_LIMIT = 2000
@@ -133,6 +135,7 @@ export function ChatPanel() {
   const [editResult, setEditResult] = useState<{ content: string; original: string; filePath: string } | null>(null)
   const [editHistory, setEditHistory] = useState<string[]>([])
   const [attachedImages, setAttachedImages] = useState<string[]>([])
+  const [attachedDocuments, setAttachedDocuments] = useState<AiDocumentAttachment[]>([])
   const [editPreviewExpanded, setEditPreviewExpanded] = useState(false)
   const [editPreviewMode, setEditPreviewMode] = useState<'diff' | 'preview'>('diff')
   const [editElapsed, setEditElapsed] = useState(0)
@@ -196,6 +199,42 @@ export function ChatPanel() {
       return [...prev, note]
     })
   }, [])
+
+  const addAttachedDocument = useCallback((document: AiDocumentAttachment) => {
+    setAttachedDocuments((prev) => {
+      const key = document.path || document.name
+      if (prev.some((item) => (item.path || item.name) === key)) return prev
+      if (prev.length >= MAX_ATTACHED_DOCUMENTS) {
+        toast(`最多一次引用 ${MAX_ATTACHED_DOCUMENTS} 个文档`, 'info')
+        return prev
+      }
+      return [...prev, document]
+    })
+  }, [])
+
+  const attachDocumentFromPath = useCallback(async (path: string): Promise<boolean> => {
+    if (!isSupportedAiDocumentName(path)) return false
+    const name = path.split(/[\\/]/).pop() || path
+    try {
+      const raw = await window.api.invoke('file:read', { path })
+      addAttachedDocument(createDocumentAttachment(name, raw, path))
+      return true
+    } catch {
+      toast(`无法读取文档：${name}`, 'error')
+      return true
+    }
+  }, [addAttachedDocument])
+
+  const attachDocumentFromFile = useCallback(async (file: FileWithPath): Promise<boolean> => {
+    if (!isSupportedAiDocumentName(file.name)) return false
+    try {
+      const raw = file.path ? await window.api.invoke('file:read', { path: file.path }) : await file.text()
+      addAttachedDocument(createDocumentAttachment(file.name, raw, file.path))
+    } catch {
+      toast(`无法读取文档：${file.name}`, 'error')
+    }
+    return true
+  }, [addAttachedDocument])
 
   const handleNewSession = async () => {
     if (!vaultPath) return
@@ -752,13 +791,17 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       }
       setAttachedSelections([])
     }
+    if (attachedDocuments.length > 0) {
+      appendContext('[文档附件]', buildDocumentAttachmentContext(attachedDocuments))
+      setAttachedDocuments([])
+    }
     if (truncated) {
       toast('引用内容过长，已自动截断后发送', 'info')
     }
     return contextPrefix
   }
 
-  const applyChatAttachments = (chatMessages: IPCChatMessage[], userContent: string, contextPrefix: string): IPCChatMessage[] => {
+  const applyChatAttachments = (chatMessages: IPCChatMessage[], userContent: string, contextPrefix: string, images: string[]): IPCChatMessage[] => {
     const nextMessages = [...chatMessages]
     if (contextPrefix) {
       nextMessages[nextMessages.length - 1] = {
@@ -766,17 +809,16 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         content: `以下是参考笔记内容：\n\n${contextPrefix}\n用户问题：${userContent}`
       }
     }
-    if (attachedImages.length > 0) {
+    if (images.length > 0) {
       const currentContent = nextMessages[nextMessages.length - 1].content
       const imageContent: ChatContentPart[] = [
         { type: 'text', text: typeof currentContent === 'string' ? currentContent : '' },
-        ...attachedImages.map((img) => ({ type: 'image_url' as const, image_url: { url: img } }))
+        ...images.map((img) => ({ type: 'image_url' as const, image_url: { url: img } }))
       ]
       nextMessages[nextMessages.length - 1] = {
         role: 'user',
         content: imageContent
       }
-      setAttachedImages([])
     }
     return nextMessages
   }
@@ -815,15 +857,20 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       return
     }
 
-    const attachments: { type: 'note' | 'selection' | 'image'; label: string }[] = []
+    const sentImages = [...attachedImages]
+    const sentDocuments = [...attachedDocuments]
+    const attachments: { type: 'note' | 'selection' | 'image' | 'document'; label: string }[] = []
     if (attachedNotes.length > 0) {
       for (const note of attachedNotes) attachments.push({ type: 'note', label: note.title })
     }
     if (attachedSelections.length > 0) {
       for (const sel of attachedSelections) attachments.push({ type: 'selection', label: sel.source })
     }
-    if (attachedImages.length > 0) {
-      for (let i = 0; i < attachedImages.length; i++) attachments.push({ type: 'image', label: `图片 ${i + 1}` })
+    if (sentImages.length > 0) {
+      for (let i = 0; i < sentImages.length; i++) attachments.push({ type: 'image', label: `图片 ${i + 1}` })
+    }
+    if (sentDocuments.length > 0) {
+      for (const document of sentDocuments) attachments.push({ type: 'document', label: document.name })
     }
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim(), attachments: attachments.length > 0 ? attachments : undefined }
@@ -832,6 +879,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     renameCurrentSessionFromPrompt(userMsg.content, messages.length)
     setInput('')
     safeRemove(draftStorageKey)
+    setAttachedImages([])
+    setAttachedDocuments([])
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')
@@ -935,7 +984,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
       try {
         setToolStatus(agentMode ? 'Agent 正在处理...' : '正在生成回答...')
-        const attachedChatMessages = applyChatAttachments(chatMessages, userMsg.content, contextPrefix)
+        const attachedChatMessages = applyChatAttachments(chatMessages, userMsg.content, contextPrefix, sentImages)
         if (agentMode) {
           await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath, currentFilePath })
         } else {
@@ -1061,14 +1110,16 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         const selectionContext = attachedSelections.length > 0
           ? `\n\n选中文本上下文：\n${attachedSelections.map((sel) => `[${sel.source}]\n${sel.text}`).join('\n\n')}`
           : ''
-        const editInstruction = `${userMsg.content}${selectionContext}`
+        const documentContext = sentDocuments.length > 0 ? `\n\n文档附件上下文：\n${buildDocumentAttachmentContext(sentDocuments)}` : ''
+        const editInstruction = `${userMsg.content}${selectionContext}${documentContext}`
+        setAttachedDocuments([])
         const result = await window.api.invoke('ai:edit', {
           instruction: !filePath
             ? `创建一篇新笔记。要求：${editInstruction}`
             : editInstruction,
           fileContent,
           filePath: filePath || '(新文件)',
-          images: attachedImages.length > 0 ? attachedImages : undefined,
+          images: sentImages.length > 0 ? sentImages : undefined,
           history: editHistory.length > 0 ? editHistory : undefined
         })
         setAttachedImages([])
@@ -1106,7 +1157,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     const allMessages = [...messages, userMsg]
-    const chatMessages = applyChatAttachments(await buildChatMessages(allMessages), userMsg.content, contextPrefix)
+    const chatMessages = applyChatAttachments(await buildChatMessages(allMessages), userMsg.content, contextPrefix, sentImages)
     try {
       if (agentMode && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
@@ -1190,6 +1241,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           })
         }
         reader.readAsDataURL(file)
+      } else if (item.kind === 'file') {
+        const file = item.getAsFile() as FileWithPath | null
+        if (file && isSupportedAiDocumentName(file.name)) {
+          e.preventDefault()
+          void attachDocumentFromFile(file)
+        }
       }
     }
   }
@@ -1271,6 +1328,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           addAttachedNote({ title, filePath: text })
           return
         }
+        if (await attachDocumentFromPath(text)) return
         // Folder path — list .md files inside
         if (vaultPath && !text.includes('\n') && (text.startsWith('/') || text.includes(':'))) {
           try {
@@ -1315,6 +1373,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             const filePath = droppedFile.path
             const title = file.name.replace(/\.md$/, '')
             addAttachedNote({ title, filePath })
+          } else {
+            await attachDocumentFromFile(droppedFile)
           }
         }
       }
@@ -1328,7 +1388,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       el.removeEventListener('dragleave', handleDragLeave)
       el.removeEventListener('drop', handleDrop, true)
     }
-  }, [vaultPath, currentFilePath, addAttachedNote])
+  }, [vaultPath, currentFilePath, addAttachedNote, attachDocumentFromFile, attachDocumentFromPath])
 
   return (
     <div
@@ -1579,7 +1639,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           )}
 
           {/* Attached items inside input box */}
-          {(attachedNotes.length > 0 || attachedSelections.length > 0 || attachedImages.length > 0) && (
+          {(attachedNotes.length > 0 || attachedSelections.length > 0 || attachedImages.length > 0 || attachedDocuments.length > 0) && (
             <div style={{ padding: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {attachedImages.length > 0 && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1597,6 +1657,18 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                     <span key={note.filePath} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'var(--accent-muted)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       {note.title}
                       <button onClick={() => setAttachedNotes((prev) => prev.filter((n) => n.filePath !== note.filePath))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--accent-text)', cursor: 'pointer', padding: 0 }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {attachedDocuments.length > 0 && (
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {attachedDocuments.map((document) => (
+                    <span key={document.path || document.name} style={{ maxWidth: 180, fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{document.name}</span>
+                      <button onClick={() => setAttachedDocuments((prev) => prev.filter((item) => (item.path || item.name) !== (document.path || document.name)))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </button>
                     </span>
