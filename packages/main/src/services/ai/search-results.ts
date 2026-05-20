@@ -201,6 +201,14 @@ export interface AiMemoryOverview {
   topics: number
 }
 
+export interface AiMemoryFolderSummary {
+  path: string
+  notes: number
+  current: number
+  stale: number
+  missing: number
+}
+
 export interface AiVaultOverview {
   notes: number
   tags: number
@@ -581,6 +589,21 @@ export function formatMemoryOverviewToolResult(overview: AiMemoryOverview): stri
     `Concepts: ${overview.concepts}`,
     `Topics: ${overview.topics}`
   ].join('\n')
+}
+
+export function formatMemoryFoldersToolResult(folders: AiMemoryFolderSummary[]): string {
+  if (folders.length === 0) return 'No memory folders found.'
+  return folders.map((folder, index) => {
+    const covered = folder.current + folder.stale
+    const coverage = folder.notes > 0 ? `${Math.round((covered / folder.notes) * 100)}%` : '0%'
+    return [
+      `${index + 1}. ${folder.path} (${coverage})`,
+      `Notes: ${folder.notes}`,
+      `Current: ${folder.current}`,
+      `Stale: ${folder.stale}`,
+      `Missing: ${folder.missing}`
+    ].join('\n')
+  }).join('\n\n')
 }
 
 export function formatVaultOverviewToolResult(overview: AiVaultOverview): string {

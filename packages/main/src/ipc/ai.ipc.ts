@@ -6,7 +6,7 @@ import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { logger } from '../services/logger'
@@ -1032,6 +1032,20 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_memory_folders',
+        description: '按文件夹汇总笔记记忆覆盖情况，帮助定位缺少或过期 memory 较多的目录。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按文件夹路径过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_memory_terms',
         description: '汇总已生成笔记记忆中的概念和主题，帮助发现知识库里的高频知识点。',
         parameters: {
@@ -1670,6 +1684,26 @@ graph TD
             topics: topics.size
           })
         }
+      }
+      case 'list_memory_folders': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const folders = new Map<string, { path: string; notes: number; current: number; stale: number; missing: number }>()
+        for (const note of getAllNotes(vaultPath)) {
+          const path = getNoteFolderPath(note.filePath) || '_root'
+          const folder = folders.get(path) || { path, notes: 0, current: 0, stale: 0, missing: 0 }
+          folder.notes += 1
+          const memory = readMemory(vaultPath, note.id)
+          if (!memory) folder.missing += 1
+          else if (memory.contentHash === note.contentHash) folder.current += 1
+          else folder.stale += 1
+          folders.set(path, folder)
+        }
+        const rows = Array.from(folders.values())
+          .filter((folder) => !query || folder.path.toLowerCase().includes(query))
+          .sort((a, b) => b.missing - a.missing || b.stale - a.stale || b.notes - a.notes || a.path.localeCompare(b.path))
+          .slice(0, limit)
+        return { content: formatMemoryFoldersToolResult(rows) }
       }
       case 'list_memory_terms': {
         const query = getStringArg(args, 'query').trim().toLowerCase()
