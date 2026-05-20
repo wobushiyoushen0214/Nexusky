@@ -74,4 +74,49 @@ describe('reader importer', () => {
     })
     expect(row?.properties.tags).toEqual(expect.arrayContaining(['readwise', 'focus', 'productivity']))
   })
+
+  it('imports Pocket bookmark exports as reading notes and skips duplicates', async () => {
+    const { importPocketBookmarks, parsePocketBookmarksHtml } = await import('../packages/main/src/services/reader-importer')
+    const { getAllNotes, getPropertyRows } = await import('../packages/main/src/services/indexer')
+    const pocketPath = join(vaultPath, 'pocket.html')
+    const html = [
+      '<!DOCTYPE NETSCAPE-Bookmark-file-1>',
+      '<DL><p>',
+      '<DT><A HREF="https://example.com/deep?x=1&amp;y=2" ADD_DATE="1779235200" TAGS="focus, long form">Deep &amp; Useful</A>',
+      '<DT><A HREF="https://example.com/deep?x=1&amp;y=2" ADD_DATE="1779235200" TAGS="focus">Deep Duplicate</A>',
+      '<DT><A HREF="https://example.com/range" TAGS="learning">Range</A>',
+      '</DL><p>'
+    ].join('\n')
+    writeFileSync(pocketPath, html)
+
+    const parsed = parsePocketBookmarksHtml(html)
+    expect(parsed[0]).toMatchObject({
+      title: 'Deep & Useful',
+      url: 'https://example.com/deep?x=1&y=2',
+      tags: ['focus', 'long-form']
+    })
+
+    const result = await importPocketBookmarks(pocketPath, vaultPath)
+
+    expect(result).toMatchObject({ imported: 2, indexed: 2, skipped: 1 })
+    const notePath = join(vaultPath, 'Imports', 'Pocket', 'Deep & Useful.md')
+    expect(existsSync(notePath)).toBe(true)
+    const content = readFileSync(notePath, 'utf-8')
+    expect(content).toContain('source: pocket')
+    expect(content).toContain('status: unread')
+    expect(content).toContain('Source: https://example.com/deep?x=1&y=2')
+
+    expect(getAllNotes(vaultPath).map((note) => note.filePath).sort()).toEqual([
+      'Imports/Pocket/Deep & Useful.md',
+      'Imports/Pocket/Range.md'
+    ])
+    const row = getPropertyRows(vaultPath).find((item) => item.filePath === 'Imports/Pocket/Deep & Useful.md')
+    expect(row?.properties).toMatchObject({
+      title: 'Deep & Useful',
+      source: 'pocket',
+      url: 'https://example.com/deep?x=1&y=2',
+      status: 'unread'
+    })
+    expect(row?.properties.tags).toEqual(expect.arrayContaining(['pocket', 'read-later', 'focus', 'long-form']))
+  })
 })

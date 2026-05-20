@@ -19,6 +19,13 @@ interface HighlightRow {
   highlightedAt?: string
 }
 
+interface PocketItem {
+  title: string
+  url: string
+  tags: string[]
+  addedAt?: string
+}
+
 const headerAliases = {
   title: ['title', 'booktitle', 'documenttitle', 'article title'],
   author: ['author', 'authors'],
@@ -107,6 +114,46 @@ export function parseReadwiseCsv(content: string): HighlightRow[] {
   }).filter((row) => row.highlight)
 }
 
+function decodeHtml(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+}
+
+function parseAttributes(value: string): Record<string, string> {
+  const attrs: Record<string, string> = {}
+  const pattern = /([A-Za-z_:-]+)\s*=\s*"([^"]*)"/g
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(value))) {
+    attrs[match[1].toLowerCase()] = decodeHtml(match[2])
+  }
+  return attrs
+}
+
+export function parsePocketBookmarksHtml(content: string): PocketItem[] {
+  const items: PocketItem[] = []
+  const pattern = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(content))) {
+    const attrs = parseAttributes(match[1])
+    const url = attrs.href?.trim()
+    if (!url) continue
+    const title = decodeHtml(match[2].replace(/<[^>]+>/g, '').trim()) || url
+    const addedAt = attrs.add_date && /^\d+$/.test(attrs.add_date)
+      ? new Date(Number(attrs.add_date) * 1000).toISOString()
+      : undefined
+    const tags = (attrs.tags || '')
+      .split(',')
+      .map((tag) => tag.trim().replace(/\s+/g, '-'))
+      .filter(Boolean)
+    items.push({ title, url, tags, addedAt })
+  }
+  return items
+}
+
 function sanitizeFileName(value: string): string {
   return value
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ')
@@ -192,6 +239,62 @@ export async function importReadwiseCsv(sourcePath: string, vaultPath: string): 
     const title = groupedRows[0].title || basename(sourcePath, '.csv')
     const destPath = await uniquePath(importDir, title)
     await writeFile(destPath, renderHighlightNote(title, groupedRows), 'utf-8')
+    indexNote(vaultPath, destPath)
+    result.imported++
+    result.indexed++
+  }
+
+  return result
+}
+
+function renderPocketNote(item: PocketItem): string {
+  const tags = Array.from(new Set(['pocket', 'read-later', ...item.tags]))
+  const frontmatter = [
+    '---',
+    `title: ${yamlString(item.title)}`,
+    'source: pocket',
+    `url: ${yamlString(item.url)}`,
+    item.addedAt ? `added_at: ${yamlString(item.addedAt)}` : '',
+    'status: unread',
+    'tags:',
+    ...tags.map((tag) => `  - ${tag}`),
+    '---'
+  ].filter(Boolean)
+
+  return [
+    frontmatter.join('\n'),
+    '',
+    `# ${item.title}`,
+    '',
+    `Source: ${item.url}`,
+    item.addedAt ? `Added: ${item.addedAt}` : '',
+    '',
+    '## Notes',
+    ''
+  ].filter(Boolean).join('\n') + '\n'
+}
+
+export async function importPocketBookmarks(sourcePath: string, vaultPath: string): Promise<ReaderImportResult> {
+  const content = await readFile(sourcePath, 'utf-8')
+  const items = parsePocketBookmarksHtml(content)
+  const result: ReaderImportResult = { imported: 0, skipped: 0, indexed: 0 }
+  if (items.length === 0) {
+    result.skipped = 1
+    return result
+  }
+
+  const importDir = join(vaultPath, 'Imports', 'Pocket')
+  await mkdir(importDir, { recursive: true })
+  const seen = new Set<string>()
+
+  for (const item of items) {
+    if (seen.has(item.url)) {
+      result.skipped++
+      continue
+    }
+    seen.add(item.url)
+    const destPath = await uniquePath(importDir, item.title)
+    await writeFile(destPath, renderPocketNote(item), 'utf-8')
     indexNote(vaultPath, destPath)
     result.imported++
     result.indexed++
