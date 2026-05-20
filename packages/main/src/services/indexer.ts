@@ -39,6 +39,13 @@ export interface UnlinkedMentionIndex {
   mention: string
 }
 
+export interface OutgoingUnlinkedMentionIndex {
+  targetTitle: string
+  targetPath: string
+  context: string
+  mention: string
+}
+
 export function indexNote(vaultPath: string, filePath: string): void {
   const db = getDatabase(vaultPath)
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
@@ -266,6 +273,48 @@ export function getUnlinkedMentions(vaultPath: string, noteId: string): Unlinked
       sourceTitle: row.title,
       sourcePath: row.filePath,
       context: createMentionContext(row.content, match.index),
+      mention: match.alias
+    })
+  }
+  return mentions
+}
+
+export function getOutgoingUnlinkedMentions(vaultPath: string, noteId: string): OutgoingUnlinkedMentionIndex[] {
+  const db = getDatabase(vaultPath)
+  const source = db.prepare(`
+    SELECT n.id, n.title, n.file_path as filePath, f.content
+    FROM notes n
+    JOIN notes_fts_map m ON m.note_id = n.id
+    JOIN notes_fts f ON f.rowid = m.rowid
+    WHERE n.id = ?
+  `).get(noteId) as { id: string; title: string; filePath: string; content: string } | undefined
+  if (!source) return []
+
+  const candidates = db.prepare(`
+    SELECT id, title, file_path as filePath
+    FROM notes
+    WHERE id != ?
+    ORDER BY updated_at DESC
+  `).all(noteId) as { id: string; title: string; filePath: string }[]
+
+  const mentions: OutgoingUnlinkedMentionIndex[] = []
+  for (const candidate of candidates) {
+    const aliases = getNoteLookupAliases(db, candidate.id, candidate.title, candidate.filePath)
+    if (aliases.length === 0) continue
+    const hasExplicitLink = db.prepare(`
+      SELECT 1
+      FROM links
+      WHERE source_note_id = ?
+        AND (target_note_id = ? OR target_title IN (${aliases.map(() => '?').join(',')}))
+      LIMIT 1
+    `).get(noteId, candidate.id, ...aliases)
+    if (hasExplicitLink) continue
+    const match = findPlainMention(source.content, aliases)
+    if (!match) continue
+    mentions.push({
+      targetTitle: candidate.title,
+      targetPath: candidate.filePath,
+      context: createMentionContext(source.content, match.index),
       mention: match.alias
     })
   }

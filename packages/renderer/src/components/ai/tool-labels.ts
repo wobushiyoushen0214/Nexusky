@@ -35,6 +35,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return '读取当前笔记链接'
     case 'summarize_current_note_links':
       return '汇总当前笔记关系'
+    case 'list_current_note_unlinked_references':
+      return '查找当前笔记未链接引用'
     case 'list_note_headings':
       return appendDetail('读取笔记目录', getTextArg(args, 'title'))
     case 'list_current_note_headings':

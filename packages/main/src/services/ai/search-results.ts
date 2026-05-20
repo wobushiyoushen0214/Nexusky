@@ -37,6 +37,17 @@ export interface AiCurrentNoteLinkStatsResult {
   unlinkedMentions: number
 }
 
+export interface AiCurrentNoteUnlinkedReferenceResult {
+  title: string
+  filePath: string
+  references: {
+    targetTitle: string
+    targetPath: string
+    context: string
+    mention: string
+  }[]
+}
+
 export interface AiNoteHeadingSummary {
   title: string
   filePath: string
@@ -370,6 +381,19 @@ export function formatCurrentNoteLinkStatsToolResult(stats: AiCurrentNoteLinkSta
     `Backlinks: ${stats.backlinks}`,
     `Unlinked Mentions: ${stats.unlinkedMentions}`,
     `Signals: ${signals.length > 0 ? signals.join(', ') : 'connected'}`
+  ].join('\n')
+}
+
+export function formatCurrentNoteUnlinkedReferencesToolResult(summary: AiCurrentNoteUnlinkedReferenceResult): string {
+  if (summary.references.length === 0) return `No unlinked note references found in ${summary.title} (${summary.filePath}).`
+  const body = summary.references.map((reference, index) => (
+    `${index + 1}. ${reference.targetTitle} (${reference.targetPath}) - "${reference.mention}"${formatLinkContext(reference.context)}`
+  )).join('\n')
+  return [
+    `Current Note Unlinked References: ${summary.title}`,
+    `Path: ${summary.filePath}`,
+    '',
+    body
   ].join('\n')
 }
 

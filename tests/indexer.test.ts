@@ -83,28 +83,38 @@ describe('indexer', () => {
 
   it('should find unlinked mentions without duplicating explicit backlinks', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
-    const { indexNote, getAllNotes, getUnlinkedMentions } = await import('../packages/main/src/services/indexer')
+    const { indexNote, getAllNotes, getOutgoingUnlinkedMentions, getUnlinkedMentions } = await import('../packages/main/src/services/indexer')
 
     const targetPath = join(vaultPath, 'Project.md')
     const plainMentionPath = join(vaultPath, 'Planning.md')
     const linkedMentionPath = join(vaultPath, 'Linked.md')
+    const aliasTargetPath = join(vaultPath, 'Roadmap.md')
 
     writeFileSync(targetPath, '# Project\n\nCanonical project note.')
     writeFileSync(plainMentionPath, '# Planning\n\nProject needs a clearer roadmap.')
     writeFileSync(linkedMentionPath, '# Linked\n\nSee [[Project]] for details.')
+    writeFileSync(aliasTargetPath, '---\naliases:\n  - Plan\n---\n# Roadmap\n\nRoadmap note.')
 
     indexNote(vaultPath, targetPath)
     indexNote(vaultPath, plainMentionPath)
     indexNote(vaultPath, linkedMentionPath)
+    indexNote(vaultPath, aliasTargetPath)
 
     const project = getAllNotes(vaultPath).find((note) => note.title === 'Project')
+    const planning = getAllNotes(vaultPath).find((note) => note.title === 'Planning')
     expect(project).toBeTruthy()
+    expect(planning).toBeTruthy()
 
     const mentions = getUnlinkedMentions(vaultPath, project!.id)
     expect(mentions).toHaveLength(1)
     expect(mentions[0].sourceTitle).toBe('Planning')
     expect(mentions[0].mention).toBe('Project')
     expect(mentions[0].context).toContain('Project needs')
+
+    const outgoingMentions = getOutgoingUnlinkedMentions(vaultPath, planning!.id)
+    expect(outgoingMentions.map((mention) => mention.targetTitle).sort()).toEqual(['Project', 'Roadmap'])
+    expect(outgoingMentions.find((mention) => mention.targetTitle === 'Roadmap')?.mention).toBe('Roadmap')
+    expect(getOutgoingUnlinkedMentions(vaultPath, getAllNotes(vaultPath).find((note) => note.title === 'Linked')!.id)).toHaveLength(0)
 
     closeDatabase()
   })
