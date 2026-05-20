@@ -827,6 +827,33 @@ div[class*="ProseMirror"] {
   color: var(--accent-hover);
 }
 
+.editor-content .footnote-ref {
+  margin-left: 2px;
+  font-size: 0.72em;
+  vertical-align: super;
+}
+
+.editor-content .footnotes {
+  margin-top: 2.5rem;
+  padding-top: 0.5rem;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.editor-content .footnotes hr {
+  margin: 0 0 1rem;
+}
+
+.editor-content .footnotes ol {
+  padding-left: 1.25rem;
+}
+
+.editor-content .footnote-backref {
+  margin-left: 8px;
+  font-size: 0.85em;
+  color: var(--text-tertiary);
+}
+
 .editor-content strong {
   font-weight: 600;
   color: var(--text-primary);

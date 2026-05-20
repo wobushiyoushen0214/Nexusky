@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow, clipboard, shell } from 'electron'
 import { copyFile, mkdir, readdir, readFile, writeFile } from 'fs/promises'
 import { basename, dirname, extname, join, relative, posix } from 'path'
+import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -35,6 +36,10 @@ export function registerExportIPC(): void {
     table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
     th, td { border: 1px solid #e5e5e5; padding: 8px 12px; text-align: left; }
     th { background: #f9f9f9; }
+    .footnotes { margin-top: 2.5rem; font-size: 0.9em; color: #555; }
+    .footnotes hr { margin-bottom: 1rem; }
+    .footnote-ref { font-size: 0.78em; margin-left: 2px; }
+    .footnote-backref { margin-left: 8px; font-size: 0.85em; }
   </style>
 </head>
 <body>
@@ -65,6 +70,9 @@ ${markdownToHtml(params.content)}
       code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 0.85em; }
       pre { background: #f5f5f5; padding: 12px; border-radius: 6px; }
       blockquote { border-left: 3px solid #6366f1; padding-left: 12px; color: #555; }
+      .footnotes { margin-top: 2.5rem; font-size: 0.9em; color: #555; }
+      .footnote-ref { font-size: 0.78em; margin-left: 2px; }
+      .footnote-backref { margin-left: 8px; font-size: 0.85em; }
     </style></head><body>${markdownToHtml(params.content)}</body></html>`
 
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
@@ -97,6 +105,9 @@ table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
 th, td { border: 1px solid #e0e0e0; padding: 8px 12px; }
 th { background: #f5f5f5; font-weight: 600; }
 hr { border: none; height: 1px; background: #e0e0e0; margin: 2rem 0; }
+.footnotes { margin-top: 2.5rem; font-size: 0.9em; color: #555; }
+.footnote-ref { font-size: 0.78em; margin-left: 2px; }
+.footnote-backref { margin-left: 8px; font-size: 0.85em; }
 .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; font-size: 0.8rem; color: #999; text-align: center; }
 </style>
 </head>
@@ -166,7 +177,7 @@ ${markdownToHtml(params.content)}
 }
 
 function markdownToHtml(md: string, wikilinkLookup = new Map<string, string>()): string {
-  let html = md
+  let html = renderMarkdownFootnotes(md)
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -185,7 +196,7 @@ function markdownToHtml(md: string, wikilinkLookup = new Map<string, string>()):
 
   html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
   html = html.split('\n').map((line) => {
-    if (line.startsWith('<h') || line.startsWith('<ul') || line.startsWith('<li') || line.startsWith('<blockquote') || line.startsWith('<hr') || line.startsWith('<img')) return line
+    if (/^<\/?(h\d|ul|ol|li|blockquote|hr|img|section)\b/.test(line)) return line
     if (line.trim() === '') return ''
     return `<p>${line}</p>`
   }).join('\n')
@@ -349,6 +360,10 @@ img { max-width: 100%; border-radius: 8px; }
 table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
 th, td { border: 1px solid #d9dee8; padding: 8px 10px; text-align: left; }
 th { background: #edf0f6; }
+.footnotes { margin-top: 2.75rem; font-size: 0.9em; color: #526070; }
+.footnotes hr { margin-bottom: 1rem; }
+.footnote-ref { font-size: 0.78em; margin-left: 2px; }
+.footnote-backref { margin-left: 8px; font-size: 0.85em; }
 .muted { color: #687386; }
 .index-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 22px; }
 .index-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid #dce1eb; border-radius: 8px; background: #fff; text-decoration: none; color: #18212f; }
