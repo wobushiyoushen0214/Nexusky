@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getReaderDigestLink, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow } from '../packages/renderer/src/components/reader/ReaderInboxView'
+import { appendReaderNote, countUnreadReaderRows, createReaderDigestMarkdown, extractReaderDigestExcerpts, filterReaderRows, getArchivableReaderRows, getReaderDigestLink, getReaderSource, getReaderSourceUrl, isArchivedReaderRow, isUnreadReaderRow, normalizeReaderViewSettings } from '../packages/renderer/src/components/reader/ReaderInboxView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(filePath: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -66,6 +66,32 @@ describe('reader inbox helpers', () => {
       'Imports/Pocket/Zebra.md',
       'Imports/Readwise/Alpha.md'
     ])
+  })
+
+  it('normalizes persisted reader view settings', () => {
+    expect(normalizeReaderViewSettings({
+      source: 'pocket',
+      sort: 'source',
+      unreadOnly: true,
+      showArchived: true
+    })).toEqual({
+      source: 'pocket',
+      sort: 'source',
+      unreadOnly: true,
+      showArchived: true
+    })
+
+    expect(normalizeReaderViewSettings({
+      source: 'rss',
+      sort: 'random',
+      unreadOnly: 'yes',
+      showArchived: null
+    })).toEqual({
+      source: 'all',
+      sort: 'updated',
+      unreadOnly: false,
+      showArchived: false
+    })
   })
 
   it('finds only non-archived reader rows for bulk archiving', () => {

@@ -5,10 +5,54 @@ import { toast } from '../../stores/toast-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { updateMarkdownProperty } from '../../utils/frontmatter'
+import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import type { PropertyTableRow } from '@shared/types/ipc'
 
 type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
 type ReaderSort = 'updated' | 'title' | 'source'
+interface ReaderViewSettings {
+  source: ReaderSource
+  sort: ReaderSort
+  unreadOnly: boolean
+  showArchived: boolean
+}
+
+const READER_VIEW_SETTINGS_KEY = 'nexusky-reader-view-settings'
+const READER_SOURCES: ReaderSource[] = ['all', 'notion', 'readwise', 'pocket']
+const READER_SORTS: ReaderSort[] = ['updated', 'title', 'source']
+const DEFAULT_READER_VIEW_SETTINGS: ReaderViewSettings = {
+  source: 'all',
+  sort: 'updated',
+  unreadOnly: false,
+  showArchived: false
+}
+
+function isReaderSource(value: unknown): value is ReaderSource {
+  return typeof value === 'string' && READER_SOURCES.includes(value as ReaderSource)
+}
+
+function isReaderSort(value: unknown): value is ReaderSort {
+  return typeof value === 'string' && READER_SORTS.includes(value as ReaderSort)
+}
+
+export function normalizeReaderViewSettings(value: unknown): ReaderViewSettings {
+  if (!value || typeof value !== 'object') return { ...DEFAULT_READER_VIEW_SETTINGS }
+  const input = value as Partial<ReaderViewSettings>
+  return {
+    source: isReaderSource(input.source) ? input.source : DEFAULT_READER_VIEW_SETTINGS.source,
+    sort: isReaderSort(input.sort) ? input.sort : DEFAULT_READER_VIEW_SETTINGS.sort,
+    unreadOnly: typeof input.unreadOnly === 'boolean' ? input.unreadOnly : DEFAULT_READER_VIEW_SETTINGS.unreadOnly,
+    showArchived: typeof input.showArchived === 'boolean' ? input.showArchived : DEFAULT_READER_VIEW_SETTINGS.showArchived
+  }
+}
+
+function loadReaderViewSettings(): ReaderViewSettings {
+  return normalizeReaderViewSettings(safeGetJSON<unknown>(READER_VIEW_SETTINGS_KEY, DEFAULT_READER_VIEW_SETTINGS))
+}
+
+function saveReaderViewSettings(settings: ReaderViewSettings): void {
+  safeSetJSON(READER_VIEW_SETTINGS_KEY, settings)
+}
 
 function propertyText(value: unknown): string {
   if (Array.isArray(value)) return value.map(String).join(' ')
@@ -227,16 +271,14 @@ export function ReaderInboxView() {
   const setMainView = useUIStore((s) => s.setMainView)
   const [rows, setRows] = useState<PropertyTableRow[]>([])
   const [query, setQuery] = useState('')
-  const [source, setSource] = useState<ReaderSource>('all')
-  const [sort, setSort] = useState<ReaderSort>('updated')
-  const [unreadOnly, setUnreadOnly] = useState(false)
-  const [showArchived, setShowArchived] = useState(false)
+  const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(loadReaderViewSettings)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState<ReaderSource | null>(null)
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({})
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null)
   const [creatingDigest, setCreatingDigest] = useState(false)
+  const { source, sort, unreadOnly, showArchived } = viewSettings
 
   const loadRows = async () => {
     if (!vaultPath) return
@@ -259,6 +301,10 @@ export function ReaderInboxView() {
     })
     return () => { cleanup() }
   }, [vaultPath])
+
+  useEffect(() => {
+    saveReaderViewSettings(viewSettings)
+  }, [viewSettings])
 
   const readerRows = useMemo(() => rows.filter((row) => getReaderSource(row)), [rows])
   const filtered = useMemo(() => filterReaderRows(rows, source, query, unreadOnly, !showArchived, sort), [query, rows, showArchived, sort, source, unreadOnly])
@@ -434,10 +480,10 @@ export function ReaderInboxView() {
             style={{ width: 320, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
           />
           <div style={{ display: 'flex', padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-            {(['all', 'notion', 'readwise', 'pocket'] as ReaderSource[]).map((item) => (
+            {READER_SOURCES.map((item) => (
               <button
                 key={item}
-                onClick={() => setSource(item)}
+                onClick={() => setViewSettings((current) => ({ ...current, source: item }))}
                 style={{ height: 26, padding: '0 10px', border: 'none', borderRadius: 5, background: source === item ? 'var(--accent-muted)' : 'transparent', color: source === item ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
               >
                 {item === 'all' ? t('reader.allSources') : sourceLabel(item)} · {counts[item]}
@@ -445,16 +491,16 @@ export function ReaderInboxView() {
             ))}
           </div>
           <label style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-            <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
+            <input type="checkbox" checked={unreadOnly} onChange={(e) => setViewSettings((current) => ({ ...current, unreadOnly: e.target.checked }))} />
             {t('reader.unreadOnly')}
           </label>
           <label style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+            <input type="checkbox" checked={showArchived} onChange={(e) => setViewSettings((current) => ({ ...current, showArchived: e.target.checked }))} />
             {t('reader.showArchived')}
           </label>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as ReaderSort)}
+            onChange={(e) => setViewSettings((current) => ({ ...current, sort: e.target.value as ReaderSort }))}
             style={{ height: 32, padding: '0 9px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }}
           >
             <option value="updated">{t('reader.sortUpdated')}</option>
