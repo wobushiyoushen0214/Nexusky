@@ -65,6 +65,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return '汇总知识库'
     case 'list_tasks':
       return appendDetail('查询任务', getTextArg(args, 'query') || getTextArg(args, 'status'))
+    case 'list_current_note_tasks':
+      return appendDetail('查询当前笔记任务', getTextArg(args, 'query') || getTextArg(args, 'status'))
     case 'list_tags':
       return appendDetail('查询标签', getTextArg(args, 'query'))
     case 'list_folders':

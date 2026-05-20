@@ -1304,6 +1304,21 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'list_current_note_tasks',
+        description: '列出当前编辑器正在打开笔记中的 Markdown 任务，默认返回未完成任务。',
+        parameters: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', description: 'open、done 或 all，默认 open' },
+            query: { type: 'string', description: '按任务文本过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_tags',
         description: '列出知识库中的标签及使用次数，可按标签名过滤。',
         parameters: {
@@ -2277,6 +2292,32 @@ graph TD
             if (!query) return true
             return [task.text, task.noteTitle, task.filePath].some((value) => value.toLowerCase().includes(query))
           })
+          .slice(0, limit)
+        return {
+          content: formatListTasksToolResult(tasks),
+          sources: tasks.map((task) => ({
+            title: task.noteTitle,
+            filePath: task.filePath,
+            chunk: `${task.done ? '[x]' : '[ ]'} ${task.text}`.slice(0, 100),
+            score: 1
+          }))
+        }
+      }
+      case 'list_current_note_tasks': {
+        if (!currentFilePath) return { content: '当前没有打开的笔记。请先打开一篇笔记，或改用 list_tasks 查询全库任务。' }
+        const note = findNoteForAiTool(vaultPath, currentFilePath)
+        if (!note) return { content: `未找到当前笔记「${currentFilePath}」的索引记录。请先刷新索引。` }
+        const status = getStringArg(args, 'status').trim().toLowerCase()
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const tasks = getAllTasks(vaultPath)
+          .filter((task) => task.filePath === note.filePath)
+          .filter((task) => {
+            if (status === 'done') return task.done
+            if (status === 'all') return true
+            return !task.done
+          })
+          .filter((task) => !query || task.text.toLowerCase().includes(query))
           .slice(0, limit)
         return {
           content: formatListTasksToolResult(tasks),

@@ -12,6 +12,7 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('list_current_note_headings')).toBe('读取当前笔记目录')
     expect(formatAiToolStatus('list_current_note_blocks')).toBe('读取当前笔记块引用')
     expect(formatAiToolStatus('read_current_note_memory')).toBe('读取当前笔记记忆')
+    expect(formatAiToolStatus('list_current_note_tasks', { status: 'open' })).toBe('查询当前笔记任务: open')
   })
 
   it('labels memory and structure tools in user-facing language', () => {
