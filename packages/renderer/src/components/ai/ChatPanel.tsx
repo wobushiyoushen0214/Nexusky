@@ -489,9 +489,22 @@ export function ChatPanel() {
   const TOKEN_THRESHOLD = 12
   const RECENT_KEEP = 6
 
+  const getCurrentNoteContextMessage = (): IPCChatMessage | null => {
+    if (!currentFilePath) return null
+    const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || currentFilePath
+    return {
+      role: 'system',
+      content: `当前打开笔记: ${title}\n路径: ${currentFilePath}\n当用户提到“当前笔记”“这篇笔记”或“这里”时，优先指这篇笔记；需要读取内容时可用 read_note 并传入该路径。`
+    }
+  }
+
   const buildChatMessages = async (allMessages: Message[]): Promise<IPCChatMessage[]> => {
+    const currentNoteContext = getCurrentNoteContextMessage()
     if (allMessages.length <= TOKEN_THRESHOLD) {
-      return allMessages.map((m) => ({ role: m.role, content: m.content }))
+      return [
+        ...(currentNoteContext ? [currentNoteContext] : []),
+        ...allMessages.map((m) => ({ role: m.role, content: m.content }))
+      ]
     }
 
     const recentMessages = allMessages.slice(-RECENT_KEEP)
@@ -502,6 +515,7 @@ export function ChatPanel() {
     // Only regenerate when new messages have rolled into the "old" window
     if (contextSummaryRef.current && summarizedCountRef.current === oldCount) {
       return [
+        ...(currentNoteContext ? [currentNoteContext] : []),
         { role: 'system', content: `Below is a summary of the prior conversation. Continue based on this context:\n${contextSummaryRef.current}` },
         ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
       ]
@@ -559,6 +573,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     return [
+      ...(currentNoteContext ? [currentNoteContext] : []),
       { role: 'system', content: `Below is a summary of the prior conversation. Continue based on this context:\n${summary}` },
       ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
     ]
