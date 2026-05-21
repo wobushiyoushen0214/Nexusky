@@ -9,13 +9,19 @@ export interface KnowledgeMaintenanceNote {
 }
 
 export interface KnowledgeMaintenanceItem {
-  type: 'fix_unresolved_link' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
+  type: 'fix_unresolved_link' | 'review_overdue_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
   title: string
   filePath: string
   priority: number
   action: string
   reason: string
   detail: string
+}
+
+export interface KnowledgeMaintenanceTask {
+  text: string
+  done: boolean
+  filePath: string
 }
 
 interface KnowledgeMaintenanceQueueOptions {
@@ -30,6 +36,7 @@ interface KnowledgeMaintenanceQueueOptions {
   largeNoteCharactersByPath?: Map<string, number>
   missingPropertiesByPath?: Map<string, string[]>
   openTaskCountByPath?: Map<string, number>
+  overdueTaskCountByPath?: Map<string, number>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   limit?: number
@@ -53,6 +60,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const largeCharacters = options.largeNoteCharactersByPath?.get(note.filePath) || 0
     const missingProperties = options.missingPropertiesByPath?.get(note.filePath) || []
     const openTaskCount = options.openTaskCountByPath?.get(note.filePath) || 0
+    const overdueTaskCount = options.overdueTaskCountByPath?.get(note.filePath) || 0
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -125,15 +133,28 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
-    if (openTaskCount > 0) {
+    if (overdueTaskCount > 0) {
+      items.push({
+        type: 'review_overdue_tasks',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 90 + Math.min(overdueTaskCount, 10),
+        action: `Review ${overdueTaskCount} overdue task${overdueTaskCount === 1 ? '' : 's'} in this note`,
+        reason: 'Overdue tasks should surface before general knowledge maintenance.',
+        detail: `Overdue tasks: ${overdueTaskCount}`
+      })
+    }
+
+    if (openTaskCount > overdueTaskCount) {
+      const remainingOpenTasks = openTaskCount - overdueTaskCount
       items.push({
         type: 'review_open_tasks',
         title: note.title,
         filePath: note.filePath,
-        priority: 60 + Math.min(openTaskCount, 10),
-        action: `Review ${openTaskCount} open task${openTaskCount === 1 ? '' : 's'} in this note`,
+        priority: 60 + Math.min(remainingOpenTasks, 10),
+        action: `Review ${remainingOpenTasks} open task${remainingOpenTasks === 1 ? '' : 's'} in this note`,
         reason: 'Open tasks embedded in notes should feed the next-action workflow.',
-        detail: `Open tasks: ${openTaskCount}`
+        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}`
       })
     }
 
@@ -194,4 +215,20 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     })
     .sort((a, b) => b.priority - a.priority || a.filePath.localeCompare(b.filePath) || a.action.localeCompare(b.action))
     .slice(0, limit)
+}
+
+export function getOverdueTaskCountByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const task of tasks) {
+    if (task.done) continue
+    const due = extractTaskDueDate(task.text)
+    if (!due || due >= todayIso) continue
+    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
+  }
+  return counts
+}
+
+function extractTaskDueDate(text: string): string | null {
+  const match = text.match(/(?:^|\s|\[)due::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
+  return match ? match[1] : null
 }

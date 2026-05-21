@@ -10,7 +10,7 @@ import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractM
 import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { findKnowledgeBridgeNotes } from '../services/ai/graph-insights'
-import { buildKnowledgeMaintenanceQueue } from '../services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getOverdueTaskCountByPath } from '../services/ai/maintenance-queue'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -78,6 +78,13 @@ function normalizeMaintenanceProperties(value: unknown): string[] {
       ? value.split(/[\s,]+/)
       : ['status', 'summary']
   return Array.from(new Set(rawValues.map((item) => item.trim()).filter((item) => /^[A-Za-z0-9_-]+$/.test(item))))
+}
+
+function localDateIso(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function normalizeSimilarityThreshold(value: unknown): number {
@@ -2931,11 +2938,13 @@ graph TD
         const propertyRows = getPropertyRows(vaultPath)
         const propertyRowsByPath = new Map(propertyRows.map((row) => [row.filePath, row.properties]))
         const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
+        const tasks = getAllTasks(vaultPath)
         const openTaskCountByPath = new Map<string, number>()
-        for (const task of getAllTasks(vaultPath)) {
+        for (const task of tasks) {
           if (task.done) continue
           openTaskCountByPath.set(task.filePath, (openTaskCountByPath.get(task.filePath) || 0) + 1)
         }
+        const overdueTaskCountByPath = getOverdueTaskCountByPath(tasks, localDateIso())
         const emptyNotePaths = new Set<string>()
         const largeNoteCharactersByPath = new Map<string, number>()
         for (const note of notes) {
@@ -3003,6 +3012,7 @@ graph TD
           largeNoteCharactersByPath,
           missingPropertiesByPath,
           openTaskCountByPath,
+          overdueTaskCountByPath,
           bridges,
           query,
           limit

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildKnowledgeMaintenanceQueue } from '../packages/main/src/services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getOverdueTaskCountByPath } from '../packages/main/src/services/ai/maintenance-queue'
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
@@ -12,6 +12,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         { id: 'dup-title-a', title: 'Project', filePath: 'A/Project.md', updatedAt: 1700000000001 },
         { id: 'dup-title-b', title: 'Project', filePath: 'B/Project.md', updatedAt: 1700000000001 },
         { id: 'dup-alias', title: 'Launch', filePath: 'Launch.md', updatedAt: 1700000000001 },
+        { id: 'overdue', title: 'Overdue Tasks', filePath: 'Overdue.md', updatedAt: 1700000000002 },
         { id: 'tasks', title: 'Task Note', filePath: 'Task Note.md', updatedAt: 1700000000002 },
         { id: 'mentioned', title: 'Mentioned', filePath: 'Mentioned.md', updatedAt: 1700000000002 },
         { id: 'stale', title: 'Changed', filePath: 'Changed.md', updatedAt: 1700000000003 },
@@ -34,6 +35,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['dup-title-a', 1],
         ['dup-title-b', 1],
         ['dup-alias', 1],
+        ['overdue', 1],
         ['tasks', 1],
         ['mentioned', 1],
         ['stale', 1],
@@ -64,16 +66,21 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['Metadata Gap.md', ['status', 'summary']]
       ]),
       openTaskCountByPath: new Map([
+        ['Overdue.md', 3],
         ['Task Note.md', 4]
+      ]),
+      overdueTaskCountByPath: new Map([
+        ['Overdue.md', 2]
       ]),
       bridges: [
         { title: 'Synthesis', filePath: 'Synthesis.md', score: 8, connections: 2, folders: ['Projects', 'Research'], tags: ['delivery', 'research'] }
       ],
-      limit: 14
+      limit: 20
     })
 
     expect(queue.map((item) => item.type)).toEqual([
       'fix_unresolved_link',
+      'review_overdue_tasks',
       'connect_orphan',
       'fill_empty_note',
       'resolve_duplicate_title',
@@ -81,6 +88,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       'resolve_duplicate_alias',
       'review_open_tasks',
       'link_unlinked_reference',
+      'review_open_tasks',
       'refresh_memory',
       'split_large_note',
       'refresh_memory',
@@ -91,39 +99,51 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       title: 'Broken Source',
       action: 'Resolve or create [[Missing]]'
     })
-    expect(queue[2]).toMatchObject({
+    expect(queue[1]).toMatchObject({
+      title: 'Overdue Tasks',
+      action: 'Review 2 overdue tasks in this note'
+    })
+    expect(queue[3]).toMatchObject({
       title: 'Blank',
       action: 'Fill this empty note with a summary, source, or next action'
     })
-    expect(queue[3]).toMatchObject({
+    expect(queue[4]).toMatchObject({
       title: 'Project',
       action: 'Rename or add a unique alias to disambiguate this note title'
     })
-    expect(queue[5]).toMatchObject({
+    expect(queue[6]).toMatchObject({
       title: 'Launch',
       action: 'Make duplicate alias unique: Project'
     })
-    expect(queue[6]).toMatchObject({
+    expect(queue[7]).toMatchObject({
       title: 'Task Note',
       action: 'Review 4 open tasks in this note'
     })
     expect(queue[8]).toMatchObject({
+      title: 'Mentioned',
+      action: 'Convert 3 unlinked mentions into wikilinks'
+    })
+    expect(queue[9]).toMatchObject({
+      title: 'Overdue Tasks',
+      action: 'Review 1 open task in this note'
+    })
+    expect(queue[10]).toMatchObject({
       title: 'Changed',
       action: 'Regenerate this note memory from current content'
     })
-    expect(queue[9]).toMatchObject({
+    expect(queue[11]).toMatchObject({
       title: 'Long Research',
       action: 'Split this long note into focused linked notes or add a map-of-content section'
     })
-    expect(queue[10]).toMatchObject({
+    expect(queue[12]).toMatchObject({
       title: 'New Idea',
       action: 'Generate AI memory for this note'
     })
-    expect(queue[11]).toMatchObject({
+    expect(queue[13]).toMatchObject({
       title: 'Metadata Gap',
       action: 'Fill missing properties: status, summary'
     })
-    expect(queue[12]).toMatchObject({
+    expect(queue[14]).toMatchObject({
       title: 'Synthesis',
       detail: 'Folders: Projects, Research; tags: delivery, research'
     })
@@ -152,5 +172,19 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       bridges: [],
       query: 'archive'
     })).toEqual([])
+  })
+
+  it('counts overdue task due markers by path', () => {
+    const counts = getOverdueTaskCountByPath([
+      { text: 'Follow up due:: 2026-05-20', done: false, filePath: 'A.md' },
+      { text: 'Ship [due:: 2026-05-21]', done: false, filePath: 'A.md' },
+      { text: 'Done due:: 2026-05-19', done: true, filePath: 'A.md' },
+      { text: 'Review due: 2026-05-18', done: false, filePath: 'B.md' }
+    ], '2026-05-21')
+
+    expect(counts).toEqual(new Map([
+      ['A.md', 1],
+      ['B.md', 1]
+    ]))
   })
 })
