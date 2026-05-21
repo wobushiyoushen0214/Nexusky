@@ -491,12 +491,14 @@ describe('formatConnectionOpportunitiesToolResult', () => {
         sourcePath: 'Research/Knowledge Graphs.md',
         targetTitle: 'AI Notes',
         targetPath: 'Projects/AI Notes.md',
+        suggestedSourcePath: 'Projects/AI Notes.md',
+        suggestedWikilink: '[[Research/Knowledge Graphs]]',
         reasons: ['shared tag: #ai', 'shared concept: Knowledge Graph'],
         score: 7
       }
     ])
 
-    expect(output).toBe('1. **Knowledge Graphs** -> **AI Notes**\nSource: Research/Knowledge Graphs.md\nTarget: Projects/AI Notes.md\nReasons: shared tag: #ai; shared concept: Knowledge Graph\nScore: 7.0')
+    expect(output).toBe('1. **Knowledge Graphs** -> **AI Notes**\nSource: Research/Knowledge Graphs.md\nTarget: Projects/AI Notes.md\nReasons: shared tag: #ai; shared concept: Knowledge Graph\nScore: 7.0\nSuggested edit: add [[Research/Knowledge Graphs]] to Projects/AI Notes.md')
   })
 
   it('marks empty connection opportunities explicitly', () => {

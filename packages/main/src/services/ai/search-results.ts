@@ -190,6 +190,11 @@ export interface AiConnectionOpportunityResult {
   sourcePath: string
   targetTitle: string
   targetPath: string
+  suggestedSourceTitle?: string
+  suggestedSourcePath?: string
+  suggestedTargetTitle?: string
+  suggestedTargetPath?: string
+  suggestedWikilink?: string
   score: number
   reasons: string[]
 }
@@ -611,13 +616,19 @@ export function formatMemoryRelatedNotesToolResult(pairs: AiMemoryRelatedNotePai
 
 export function formatConnectionOpportunitiesToolResult(pairs: AiConnectionOpportunityResult[]): string {
   if (pairs.length === 0) return 'No connection opportunities found.'
-  return pairs.map((pair, index) => [
-    `${index + 1}. **${pair.sourceTitle}** -> **${pair.targetTitle}**`,
-    `Source: ${pair.sourcePath}`,
-    `Target: ${pair.targetPath}`,
-    `Reasons: ${pair.reasons.length > 0 ? pair.reasons.join('; ') : '(none)'}`,
-    `Score: ${pair.score.toFixed(1)}`
-  ].join('\n')).join('\n\n')
+  return pairs.map((pair, index) => {
+    const lines = [
+      `${index + 1}. **${pair.sourceTitle}** -> **${pair.targetTitle}**`,
+      `Source: ${pair.sourcePath}`,
+      `Target: ${pair.targetPath}`,
+      `Reasons: ${pair.reasons.length > 0 ? pair.reasons.join('; ') : '(none)'}`,
+      `Score: ${pair.score.toFixed(1)}`
+    ]
+    if (pair.suggestedSourcePath && pair.suggestedWikilink) {
+      lines.push(`Suggested edit: add ${pair.suggestedWikilink} to ${pair.suggestedSourcePath}`)
+    }
+    return lines.join('\n')
+  }).join('\n\n')
 }
 
 export function formatNoteMemoriesToolResult(memories: AiNoteMemoryResult[]): string {

@@ -64,6 +64,11 @@ describe('findConnectionOpportunities', () => {
       'shared property: project=Nexusky',
       'shared concept: Knowledge Graph'
     ])
+    expect(results[0]).toMatchObject({
+      suggestedSourcePath: 'Projects/AI Notes.md',
+      suggestedTargetPath: 'Research/Knowledge Graphs.md',
+      suggestedWikilink: '[[Research/Knowledge Graphs]]'
+    })
     expect(results.some((result) => result.targetPath === 'Research/Linked Graph.md' && result.sourcePath === 'Research/Knowledge Graphs.md')).toBe(false)
   })
 

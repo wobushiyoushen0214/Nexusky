@@ -12,6 +12,11 @@ export interface ConnectionOpportunityResult {
   sourcePath: string
   targetTitle: string
   targetPath: string
+  suggestedSourceTitle: string
+  suggestedSourcePath: string
+  suggestedTargetTitle: string
+  suggestedTargetPath: string
+  suggestedWikilink: string
   score: number
   reasons: string[]
 }
@@ -40,6 +45,7 @@ export function findConnectionOpportunities(options: ConnectionOpportunityOption
   const noteIdsByPath = new Map(options.notes.map((note) => [note.filePath, note.id]))
   const featuresByNoteId = buildFeaturesByNoteId(options.notes, options.propertyRows, options.memories || [])
   const linkedPairKeys = buildLinkedPairKeys(options.notes, options.outgoingLinksByNoteId, noteIdsByPath)
+  const degreeByNoteId = buildDegreeByNoteId(options.notes, options.outgoingLinksByNoteId, noteIdsByPath)
   const featureGroups = new Map<string, { label: string; weight: number; noteIds: string[] }>()
 
   for (const [noteId, features] of featuresByNoteId) {
@@ -77,11 +83,17 @@ export function findConnectionOpportunities(options: ConnectionOpportunityOption
       const source = notesById.get(pair.sourceId)
       const target = notesById.get(pair.targetId)
       if (!source || !target) return null
+      const suggestion = chooseLinkSuggestion(source, target, degreeByNoteId)
       return {
         sourceTitle: source.title,
         sourcePath: source.filePath,
         targetTitle: target.title,
         targetPath: target.filePath,
+        suggestedSourceTitle: suggestion.source.title,
+        suggestedSourcePath: suggestion.source.filePath,
+        suggestedTargetTitle: suggestion.target.title,
+        suggestedTargetPath: suggestion.target.filePath,
+        suggestedWikilink: toWikilink(suggestion.target),
         score: pair.score,
         reasons: pair.reasons
       }
@@ -163,6 +175,36 @@ function buildLinkedPairKeys(
     }
   }
   return linked
+}
+
+function buildDegreeByNoteId(
+  notes: NoteIndex[],
+  outgoingLinksByNoteId: Map<string, OutgoingLinkIndex[]>,
+  noteIdsByPath: Map<string, string>
+): Map<string, number> {
+  const degree = new Map(notes.map((note) => [note.id, 0]))
+  for (const note of notes) {
+    for (const link of outgoingLinksByNoteId.get(note.id) || []) {
+      if (!link.resolved || !link.targetPath) continue
+      const targetId = noteIdsByPath.get(link.targetPath)
+      if (!targetId) continue
+      degree.set(note.id, (degree.get(note.id) || 0) + 1)
+      degree.set(targetId, (degree.get(targetId) || 0) + 1)
+    }
+  }
+  return degree
+}
+
+function chooseLinkSuggestion(source: NoteIndex, target: NoteIndex, degreeByNoteId: Map<string, number>): { source: NoteIndex; target: NoteIndex } {
+  const sourceDegree = degreeByNoteId.get(source.id) || 0
+  const targetDegree = degreeByNoteId.get(target.id) || 0
+  return sourceDegree <= targetDegree ? { source, target } : { source: target, target: source }
+}
+
+function toWikilink(note: NoteIndex): string {
+  const pathTarget = note.filePath.replace(/\.md$/i, '')
+  const fileTitle = pathTarget.split('/').pop() || pathTarget
+  return fileTitle === note.title ? `[[${pathTarget}]]` : `[[${pathTarget}|${note.title}]]`
 }
 
 function addFeature(features: Map<string, Feature[]>, noteId: string, key: string, label: string, weight: number): void {
