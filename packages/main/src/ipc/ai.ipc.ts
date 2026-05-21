@@ -10,7 +10,7 @@ import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractM
 import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { findKnowledgeBridgeNotes } from '../services/ai/graph-insights'
-import { buildKnowledgeMaintenanceQueue, getOverdueTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getOverdueTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -83,6 +83,7 @@ function normalizeMaintenanceProperties(value: unknown): string[] {
 const KNOWLEDGE_MAINTENANCE_TYPES = new Set<KnowledgeMaintenanceType>([
   'fix_unresolved_link',
   'review_overdue_tasks',
+  'review_due_today_tasks',
   'connect_orphan',
   'fill_empty_note',
   'resolve_duplicate_title',
@@ -1738,7 +1739,7 @@ graph TD
           type: 'object',
           properties: {
             query: { type: 'string', description: '按标题、路径、动作、原因或细节过滤，可选' },
-            type: { type: 'string', description: '只返回某类维护项，可选：fix_unresolved_link、review_overdue_tasks、connect_orphan、fill_empty_note、resolve_duplicate_title、resolve_duplicate_alias、review_open_tasks、link_unlinked_reference、refresh_memory、split_large_note、fill_missing_property、maintain_bridge' },
+            type: { type: 'string', description: '只返回某类维护项，可选：fix_unresolved_link、review_overdue_tasks、review_due_today_tasks、connect_orphan、fill_empty_note、resolve_duplicate_title、resolve_duplicate_alias、review_open_tasks、link_unlinked_reference、refresh_memory、split_large_note、fill_missing_property、maintain_bridge' },
             minCharacters: { type: 'number', description: '超长笔记字符阈值，默认 8000' },
             requiredProperties: { type: 'string', description: '需要检查的必填属性，逗号或空格分隔，默认 status,summary' },
             limit: { type: 'number', description: '返回维护动作数量，1-10，默认 5' }
@@ -2967,7 +2968,9 @@ graph TD
           if (task.done) continue
           openTaskCountByPath.set(task.filePath, (openTaskCountByPath.get(task.filePath) || 0) + 1)
         }
-        const overdueTaskInfoByPath = getOverdueTaskInfoByPath(tasks, localDateIso())
+        const todayIso = localDateIso()
+        const overdueTaskInfoByPath = getOverdueTaskInfoByPath(tasks, todayIso)
+        const dueTodayTaskInfoByPath = getDueTodayTaskInfoByPath(tasks, todayIso)
         const emptyNotePaths = new Set<string>()
         const largeNoteCharactersByPath = new Map<string, number>()
         for (const note of notes) {
@@ -3036,6 +3039,7 @@ graph TD
           missingPropertiesByPath,
           openTaskCountByPath,
           overdueTaskInfoByPath,
+          dueTodayTaskInfoByPath,
           bridges,
           query,
           type,

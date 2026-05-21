@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildKnowledgeMaintenanceQueue, getOverdueTaskCountByPath, getOverdueTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getOverdueTaskCountByPath, getOverdueTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
@@ -13,6 +13,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         { id: 'dup-title-b', title: 'Project', filePath: 'B/Project.md', updatedAt: 1700000000001 },
         { id: 'dup-alias', title: 'Launch', filePath: 'Launch.md', updatedAt: 1700000000001 },
         { id: 'overdue', title: 'Overdue Tasks', filePath: 'Overdue.md', updatedAt: 1700000000002 },
+        { id: 'due-today', title: 'Daily Review', filePath: 'Daily Review.md', updatedAt: 1700000000002 },
         { id: 'tasks', title: 'Task Note', filePath: 'Task Note.md', updatedAt: 1700000000002 },
         { id: 'mentioned', title: 'Mentioned', filePath: 'Mentioned.md', updatedAt: 1700000000002 },
         { id: 'stale', title: 'Changed', filePath: 'Changed.md', updatedAt: 1700000000003 },
@@ -36,6 +37,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['dup-title-b', 1],
         ['dup-alias', 1],
         ['overdue', 1],
+        ['due-today', 1],
         ['tasks', 1],
         ['mentioned', 1],
         ['stale', 1],
@@ -67,10 +69,14 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       ]),
       openTaskCountByPath: new Map([
         ['Overdue.md', 3],
+        ['Daily Review.md', 2],
         ['Task Note.md', 4]
       ]),
       overdueTaskInfoByPath: new Map([
         ['Overdue.md', { count: 2, earliestDue: '2026-05-18' }]
+      ]),
+      dueTodayTaskInfoByPath: new Map([
+        ['Daily Review.md', { count: 2, earliestDue: '2026-05-21' }]
       ]),
       bridges: [
         { title: 'Synthesis', filePath: 'Synthesis.md', score: 8, connections: 2, folders: ['Projects', 'Research'], tags: ['delivery', 'research'] }
@@ -81,6 +87,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(queue.map((item) => item.type)).toEqual([
       'fix_unresolved_link',
       'review_overdue_tasks',
+      'review_due_today_tasks',
       'connect_orphan',
       'fill_empty_note',
       'resolve_duplicate_title',
@@ -104,47 +111,52 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       action: 'Review 2 overdue tasks in this note',
       detail: 'Overdue tasks: 2; earliest due: 2026-05-18'
     })
-    expect(queue[3]).toMatchObject({
+    expect(queue[2]).toMatchObject({
+      title: 'Daily Review',
+      action: 'Review 2 tasks due today in this note',
+      detail: 'Due today: 2; date: 2026-05-21'
+    })
+    expect(queue[4]).toMatchObject({
       title: 'Blank',
       action: 'Fill this empty note with a summary, source, or next action'
     })
-    expect(queue[4]).toMatchObject({
+    expect(queue[5]).toMatchObject({
       title: 'Project',
       action: 'Rename or add a unique alias to disambiguate this note title'
     })
-    expect(queue[6]).toMatchObject({
+    expect(queue[7]).toMatchObject({
       title: 'Launch',
       action: 'Make duplicate alias unique: Project'
     })
-    expect(queue[7]).toMatchObject({
+    expect(queue[8]).toMatchObject({
       title: 'Task Note',
       action: 'Review 4 open tasks in this note'
     })
-    expect(queue[8]).toMatchObject({
+    expect(queue[9]).toMatchObject({
       title: 'Mentioned',
       action: 'Convert 3 unlinked mentions into wikilinks'
     })
-    expect(queue[9]).toMatchObject({
+    expect(queue[10]).toMatchObject({
       title: 'Overdue Tasks',
       action: 'Review 1 open task in this note'
     })
-    expect(queue[10]).toMatchObject({
+    expect(queue[11]).toMatchObject({
       title: 'Changed',
       action: 'Regenerate this note memory from current content'
     })
-    expect(queue[11]).toMatchObject({
+    expect(queue[12]).toMatchObject({
       title: 'Long Research',
       action: 'Split this long note into focused linked notes or add a map-of-content section'
     })
-    expect(queue[12]).toMatchObject({
+    expect(queue[13]).toMatchObject({
       title: 'New Idea',
       action: 'Generate AI memory for this note'
     })
-    expect(queue[13]).toMatchObject({
+    expect(queue[14]).toMatchObject({
       title: 'Metadata Gap',
       action: 'Fill missing properties: status, summary'
     })
-    expect(queue[14]).toMatchObject({
+    expect(queue[15]).toMatchObject({
       title: 'Synthesis',
       detail: 'Folders: Projects, Research; tags: delivery, research'
     })
@@ -194,7 +206,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(queue[0]).toMatchObject({ title: 'Beta', type: 'link_unlinked_reference' })
   })
 
-  it('counts overdue task due markers by path', () => {
+  it('counts overdue and due today task due markers by path', () => {
     const tasks = [
       { text: 'Follow up due:: 2026-05-20', done: false, filePath: 'A.md' },
       { text: 'Ship [due:: 2026-05-21]', done: false, filePath: 'A.md' },
@@ -203,6 +215,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     ]
     const counts = getOverdueTaskCountByPath(tasks, '2026-05-21')
     const info = getOverdueTaskInfoByPath(tasks, '2026-05-21')
+    const dueToday = getDueTodayTaskInfoByPath(tasks, '2026-05-21')
 
     expect(counts).toEqual(new Map([
       ['A.md', 1],
@@ -211,6 +224,9 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(info).toEqual(new Map([
       ['A.md', { count: 1, earliestDue: '2026-05-20' }],
       ['B.md', { count: 1, earliestDue: '2026-05-18' }]
+    ]))
+    expect(dueToday).toEqual(new Map([
+      ['A.md', { count: 1, earliestDue: '2026-05-21' }]
     ]))
   })
 })
