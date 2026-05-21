@@ -619,17 +619,40 @@ function getNoteLookupAliases(db: Database.Database, noteId: string, title: stri
 }
 
 function findPlainMention(content: string, aliases: string[]): { alias: string; index: number } | null {
-  const lowerContent = content.toLowerCase()
   const sortedAliases = [...aliases].sort((a, b) => b.length - a.length)
   for (const alias of sortedAliases) {
     const lowerAlias = alias.toLowerCase()
-    let index = lowerContent.indexOf(lowerAlias)
-    while (index >= 0) {
-      const before = content.slice(Math.max(0, index - 2), index)
-      const after = content.slice(index + alias.length, index + alias.length + 2)
-      const insideWikiLink = before === '[[' && (after.startsWith(']') || after.startsWith('|'))
-      if (!insideWikiLink && hasPlainMentionBoundary(content, alias, index)) return { alias, index }
-      index = lowerContent.indexOf(lowerAlias, index + alias.length)
+    const parts = content.split(/(\r\n|\n|\r)/)
+    let offset = 0
+    let inFence = false
+
+    for (let partIndex = 0; partIndex < parts.length; partIndex += 2) {
+      const line = parts[partIndex] || ''
+      const ending = parts[partIndex + 1] || ''
+      const trimmed = line.trim()
+      if (isMarkdownFenceLine(trimmed)) {
+        inFence = !inFence
+        offset += line.length + ending.length
+        continue
+      }
+      if (inFence) {
+        offset += line.length + ending.length
+        continue
+      }
+
+      const searchableLine = stripInlineCode(line)
+      const lowerLine = searchableLine.toLowerCase()
+      let index = lowerLine.indexOf(lowerAlias)
+      while (index >= 0) {
+        const before = searchableLine.slice(Math.max(0, index - 2), index)
+        const after = searchableLine.slice(index + alias.length, index + alias.length + 2)
+        const insideWikiLink = before === '[[' && (after.startsWith(']') || after.startsWith('|'))
+        const absoluteIndex = offset + index
+        if (!insideWikiLink && hasPlainMentionBoundary(searchableLine, alias, index)) return { alias, index: absoluteIndex }
+        index = lowerLine.indexOf(lowerAlias, index + alias.length)
+      }
+
+      offset += line.length + ending.length
     }
   }
   return null

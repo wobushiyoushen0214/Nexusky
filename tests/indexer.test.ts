@@ -264,6 +264,43 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should ignore markdown code while finding unlinked mentions', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingUnlinkedMentions, getUnlinkedMentions } = await import('../packages/main/src/services/indexer')
+
+    const targetPath = join(vaultPath, 'Project.md')
+    const sourcePath = join(vaultPath, 'Code Mentions.md')
+    writeFileSync(targetPath, '# Project\n\nCanonical project note.')
+    writeFileSync(sourcePath, [
+      '# Code Mentions',
+      '',
+      '`Project` should stay literal.',
+      '',
+      '```',
+      'Project hidden in code.',
+      '```',
+      '',
+      'Project visible mention.'
+    ].join('\n'))
+
+    indexNote(vaultPath, targetPath)
+    indexNote(vaultPath, sourcePath)
+
+    const project = getAllNotes(vaultPath).find((note) => note.title === 'Project')
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Code Mentions')
+    expect(project).toBeTruthy()
+    expect(source).toBeTruthy()
+
+    expect(getUnlinkedMentions(vaultPath, project!.id)).toEqual([
+      { sourceTitle: 'Code Mentions', sourcePath: 'Code Mentions.md', line: 9, context: 'Project visible mention.', mention: 'Project' }
+    ])
+    expect(getOutgoingUnlinkedMentions(vaultPath, source!.id)).toEqual([
+      { targetTitle: 'Project', targetPath: 'Project.md', line: 9, context: 'Project visible mention.', mention: 'Project' }
+    ])
+
+    closeDatabase()
+  })
+
   it('should return resolved and unresolved outgoing links', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
