@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { stripMarkdownComments } from '../packages/shared/src/markdown/comments'
 import { renderMarkdownHighlights } from '../packages/shared/src/markdown/highlights'
 
 describe('markdown highlights', () => {
@@ -24,5 +25,9 @@ describe('markdown highlights', () => {
 
   it('preserves surrounding markdown for downstream renderers', () => {
     expect(renderMarkdownHighlights('This is **==important==**.')).toBe('This is **<mark>important</mark>**.')
+  })
+
+  it('does not render highlights hidden inside Obsidian comments', () => {
+    expect(renderMarkdownHighlights(stripMarkdownComments('Visible %%==hidden==%%'))).toBe('Visible ')
   })
 })

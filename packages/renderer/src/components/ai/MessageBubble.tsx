@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
+import { stripMarkdownComments } from '@shared/markdown/comments'
 import type { ChatSource } from '@shared/types/ipc'
 import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
 
@@ -15,7 +16,7 @@ const PURIFY_CONFIG = {
 }
 
 export function renderMarkdown(md: string): string {
-  const html = marked.parse(renderMarkdownHighlights(renderMarkdownCallouts(renderMarkdownFootnotes(md))), { async: false }) as string
+  const html = marked.parse(renderMarkdownHighlights(renderMarkdownCallouts(renderMarkdownFootnotes(stripMarkdownComments(md)))), { async: false }) as string
   return DOMPurify.sanitize(html, PURIFY_CONFIG)
 }
 

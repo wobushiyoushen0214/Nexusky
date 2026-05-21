@@ -5,6 +5,7 @@ import matter from 'gray-matter'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
+import { stripMarkdownComments } from '@shared/markdown/comments'
 import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, type PublishWikilinkLookup } from '../services/publish'
 
 export function registerExportIPC(): void {
@@ -200,7 +201,7 @@ ${markdownToHtml(params.content)}
 }
 
 function markdownToHtml(md: string, wikilinkLookup: PublishWikilinkLookup = buildPublishWikilinkLookup([])): string {
-  let html = renderMarkdownHighlights(renderMarkdownCallouts(renderMarkdownFootnotes(md)))
+  let html = renderMarkdownHighlights(renderMarkdownCallouts(renderMarkdownFootnotes(stripMarkdownComments(md))))
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
