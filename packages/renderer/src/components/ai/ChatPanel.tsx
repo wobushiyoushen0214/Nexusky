@@ -17,6 +17,8 @@ import type { ChatContentPart, ChatSource, GeneratedNoteBatchPlanItem, IPCChatMe
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
+type BatchPlanItem = { title: string; done: boolean }
+type SharedBatchPlan = { id: string; items: BatchPlanItem[] }
 
 interface AICommandDraft {
   prompt: string
@@ -705,7 +707,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
   const executeBatchGenerate = async (
     instruction: string,
     targetDir: string,
-    options: { label?: string; silentSummary?: boolean } = {}
+    options: { label?: string; silentSummary?: boolean; sharedPlan?: SharedBatchPlan; suppressResultMessage?: boolean } = {}
   ): Promise<{ success: boolean; error?: string; files: string[] }> => {
     setIsStreaming(true)
     streamContentRef.current = ''
@@ -714,11 +716,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     if (editTimerRef.current) clearInterval(editTimerRef.current)
     editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
 
-    const planMsgId = Date.now().toString()
-    let planItems: { title: string; done: boolean }[] = []
+    const planMsgId = options.sharedPlan?.id || Date.now().toString()
+    let planItems: BatchPlanItem[] = []
+    let planItemIndexes: number[] = []
 
     const updatePlanMsg = () => {
-      const lines = planItems.map((item) => `${item.done ? '✓' : '○'} ${item.title}`).join('\n')
+      const visibleItems = options.sharedPlan?.items || planItems
+      const lines = visibleItems.map((item) => `${item.done ? '✓' : '○'} ${item.title}`).join('\n')
       setMessages((msgs) => {
         const idx = msgs.findIndex((m) => m.id === planMsgId)
         if (idx >= 0) {
@@ -735,13 +739,27 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setStreamContent(options.label ? `正在规划「${options.label}」笔记结构...` : '正在规划笔记结构...')
       } else if (data.stage === 'planned' && data.plan) {
         planItems = data.plan.map((p) => ({ title: options.label ? `${options.label} / ${p.title}` : p.title, done: false }))
+        if (options.sharedPlan) {
+          const startIndex = options.sharedPlan.items.length
+          options.sharedPlan.items.push(...planItems)
+          planItemIndexes = planItems.map((_, index) => startIndex + index)
+        }
         setStreamContent('')
-        const lines = planItems.map((item) => `○ ${item.title}`).join('\n')
-        setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
+        if (options.sharedPlan) {
+          updatePlanMsg()
+        } else {
+          const lines = planItems.map((item) => `○ ${item.title}`).join('\n')
+          setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
+        }
       } else if (data.stage === 'generating' && data.current) {
         if (batchCancelledRef.current) return
         if (data.current > 1) {
-          planItems[data.current - 2] = { ...planItems[data.current - 2], done: true }
+          if (options.sharedPlan && planItemIndexes[data.current - 2] !== undefined) {
+            const index = planItemIndexes[data.current - 2]
+            options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
+          } else {
+            planItems[data.current - 2] = { ...planItems[data.current - 2], done: true }
+          }
         }
         updatePlanMsg()
       } else if (data.stage === 'indexing') {
@@ -749,7 +767,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           setStreamContent('')
           return
         }
-        planItems = planItems.map((item) => ({ ...item, done: true }))
+        if (options.sharedPlan && planItemIndexes.length > 0) {
+          for (const index of planItemIndexes) {
+            options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
+          }
+        } else {
+          planItems = planItems.map((item) => ({ ...item, done: true }))
+        }
         updatePlanMsg()
         setStreamContent('正在索引笔记关系...')
       } else if (data.stage === 'index-error') {
@@ -770,7 +794,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     if (result.success && !batchCancelledRef.current) {
-      planItems = planItems.map((item) => ({ ...item, done: true }))
+      if (options.sharedPlan && planItemIndexes.length > 0) {
+        for (const index of planItemIndexes) {
+          options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
+        }
+      } else {
+        planItems = planItems.map((item) => ({ ...item, done: true }))
+      }
       updatePlanMsg()
     }
 
@@ -778,18 +808,18 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       await useVaultStore.getState().refreshFiles()
       await useEditorStore.getState().openFile(result.files[0])
       const dirName = targetDir.split(/[\\/]/).pop()
-      if (!options.silentSummary) {
+      if (!options.silentSummary && !options.suppressResultMessage) {
         const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件。` }
         setMessages((msgs) => [...msgs, msg])
         appendToDb(msg)
       }
     } else if (result.files.length > 0) {
       await useVaultStore.getState().refreshFiles()
-      appendAssistantMessage(`已停止，生成了 ${result.files.length} 个文件。`)
+      if (!options.suppressResultMessage) appendAssistantMessage(`已停止，生成了 ${result.files.length} 个文件。`)
     } else if (batchCancelledRef.current || result.error === '已取消') {
-      appendAssistantMessage('已停止，未生成新文件。')
+      if (!options.suppressResultMessage) appendAssistantMessage('已停止，未生成新文件。')
     } else {
-      appendAssistantMessage(`生成失败: ${result.error || '未知错误'}`)
+      if (!options.suppressResultMessage) appendAssistantMessage(`生成失败: ${result.error || '未知错误'}`)
     }
     setStreamContent('')
     setToolStatus(null)
@@ -1163,17 +1193,30 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             if (plannedBatches.length > 0) {
               if (editTimerRef.current) clearInterval(editTimerRef.current)
               editTimerRef.current = null
+              const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
+              setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
               const completedBatches: { dir: string; count: number }[] = []
+              let batchError: string | null = null
               for (const batch of plannedBatches) {
                 if (batchCancelledRef.current) break
                 const perDirInstruction = `${batchInstruction}\n\n批量目录规划：本次只生成「${batch.topic}」主题，放到「${batch.dir}」目录下。请生成 ${batch.count} 篇独立 Markdown 笔记。`
-                const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true })
+                const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true, sharedPlan, suppressResultMessage: true })
                 if (result.files.length > 0) {
                   completedBatches.push({ dir: batch.dir, count: result.files.length })
                 }
-                if (!result.success || batchCancelledRef.current) break
+                if (!result.success) {
+                  batchError = result.error || '未知错误'
+                  break
+                }
+                if (batchCancelledRef.current) break
               }
-              if (!batchCancelledRef.current && completedBatches.length > 0) {
+              if (batchCancelledRef.current) {
+                const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
+                appendAssistantMessage(totalFiles > 0 ? `已停止，已生成 ${totalFiles} 个文件。` : '已停止，未生成新文件。')
+              } else if (batchError) {
+                const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
+                appendAssistantMessage(totalFiles > 0 ? `批量生成中断：已生成 ${totalFiles} 个文件，失败原因：${batchError}` : `批量生成失败：${batchError}`)
+              } else if (completedBatches.length > 0) {
                 appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
               }
             } else {
@@ -1181,17 +1224,30 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               if (specifiedDirs.length > 0) {
                 if (editTimerRef.current) clearInterval(editTimerRef.current)
                 editTimerRef.current = null
+                const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
+                setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
                 const completedBatches: { dir: string; count: number }[] = []
+                let batchError: string | null = null
                 for (const dir of specifiedDirs) {
                   if (batchCancelledRef.current) break
                   const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
-                  const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`, { label: dir, silentSummary: true })
+                  const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`, { label: dir, silentSummary: true, sharedPlan, suppressResultMessage: true })
                   if (result.files.length > 0) {
                     completedBatches.push({ dir, count: result.files.length })
                   }
-                  if (!result.success || batchCancelledRef.current) break
+                  if (!result.success) {
+                    batchError = result.error || '未知错误'
+                    break
+                  }
+                  if (batchCancelledRef.current) break
                 }
-                if (!batchCancelledRef.current && completedBatches.length > 0) {
+                if (batchCancelledRef.current) {
+                  const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
+                  appendAssistantMessage(totalFiles > 0 ? `已停止，已生成 ${totalFiles} 个文件。` : '已停止，未生成新文件。')
+                } else if (batchError) {
+                  const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
+                  appendAssistantMessage(totalFiles > 0 ? `批量生成中断：已生成 ${totalFiles} 个文件，失败原因：${batchError}` : `批量生成失败：${batchError}`)
+                } else if (completedBatches.length > 0) {
                   appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
                 }
                 return
