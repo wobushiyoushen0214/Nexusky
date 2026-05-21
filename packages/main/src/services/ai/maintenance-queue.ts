@@ -24,6 +24,11 @@ export interface KnowledgeMaintenanceTask {
   filePath: string
 }
 
+export interface OverdueTaskInfo {
+  count: number
+  earliestDue: string
+}
+
 interface KnowledgeMaintenanceQueueOptions {
   notes: KnowledgeMaintenanceNote[]
   outgoingLinksByNoteId: Map<string, OutgoingLinkIndex[]>
@@ -37,6 +42,7 @@ interface KnowledgeMaintenanceQueueOptions {
   missingPropertiesByPath?: Map<string, string[]>
   openTaskCountByPath?: Map<string, number>
   overdueTaskCountByPath?: Map<string, number>
+  overdueTaskInfoByPath?: Map<string, OverdueTaskInfo>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   limit?: number
@@ -60,7 +66,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const largeCharacters = options.largeNoteCharactersByPath?.get(note.filePath) || 0
     const missingProperties = options.missingPropertiesByPath?.get(note.filePath) || []
     const openTaskCount = options.openTaskCountByPath?.get(note.filePath) || 0
-    const overdueTaskCount = options.overdueTaskCountByPath?.get(note.filePath) || 0
+    const overdueTaskInfo = options.overdueTaskInfoByPath?.get(note.filePath)
+    const overdueTaskCount = overdueTaskInfo?.count ?? options.overdueTaskCountByPath?.get(note.filePath) ?? 0
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -141,7 +148,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         priority: 90 + Math.min(overdueTaskCount, 10),
         action: `Review ${overdueTaskCount} overdue task${overdueTaskCount === 1 ? '' : 's'} in this note`,
         reason: 'Overdue tasks should surface before general knowledge maintenance.',
-        detail: `Overdue tasks: ${overdueTaskCount}`
+        detail: overdueTaskInfo ? `Overdue tasks: ${overdueTaskCount}; earliest due: ${overdueTaskInfo.earliestDue}` : `Overdue tasks: ${overdueTaskCount}`
       })
     }
 
@@ -218,14 +225,22 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
 }
 
 export function getOverdueTaskCountByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, number> {
+  const info = getOverdueTaskInfoByPath(tasks, todayIso)
+  return new Map(Array.from(info.entries()).map(([filePath, item]) => [filePath, item.count]))
+}
+
+export function getOverdueTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, OverdueTaskInfo> {
   const counts = new Map<string, number>()
+  const earliestByPath = new Map<string, string>()
   for (const task of tasks) {
     if (task.done) continue
     const due = extractTaskDueDate(task.text)
     if (!due || due >= todayIso) continue
     counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
+    const earliest = earliestByPath.get(task.filePath)
+    if (!earliest || due < earliest) earliestByPath.set(task.filePath, due)
   }
-  return counts
+  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliestByPath.get(filePath) || '' }]))
 }
 
 function extractTaskDueDate(text: string): string | null {

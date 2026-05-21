@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildKnowledgeMaintenanceQueue, getOverdueTaskCountByPath } from '../packages/main/src/services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getOverdueTaskCountByPath, getOverdueTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
@@ -69,8 +69,8 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['Overdue.md', 3],
         ['Task Note.md', 4]
       ]),
-      overdueTaskCountByPath: new Map([
-        ['Overdue.md', 2]
+      overdueTaskInfoByPath: new Map([
+        ['Overdue.md', { count: 2, earliestDue: '2026-05-18' }]
       ]),
       bridges: [
         { title: 'Synthesis', filePath: 'Synthesis.md', score: 8, connections: 2, folders: ['Projects', 'Research'], tags: ['delivery', 'research'] }
@@ -101,7 +101,8 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     })
     expect(queue[1]).toMatchObject({
       title: 'Overdue Tasks',
-      action: 'Review 2 overdue tasks in this note'
+      action: 'Review 2 overdue tasks in this note',
+      detail: 'Overdue tasks: 2; earliest due: 2026-05-18'
     })
     expect(queue[3]).toMatchObject({
       title: 'Blank',
@@ -175,16 +176,22 @@ describe('buildKnowledgeMaintenanceQueue', () => {
   })
 
   it('counts overdue task due markers by path', () => {
-    const counts = getOverdueTaskCountByPath([
+    const tasks = [
       { text: 'Follow up due:: 2026-05-20', done: false, filePath: 'A.md' },
       { text: 'Ship [due:: 2026-05-21]', done: false, filePath: 'A.md' },
       { text: 'Done due:: 2026-05-19', done: true, filePath: 'A.md' },
       { text: 'Review due: 2026-05-18', done: false, filePath: 'B.md' }
-    ], '2026-05-21')
+    ]
+    const counts = getOverdueTaskCountByPath(tasks, '2026-05-21')
+    const info = getOverdueTaskInfoByPath(tasks, '2026-05-21')
 
     expect(counts).toEqual(new Map([
       ['A.md', 1],
       ['B.md', 1]
+    ]))
+    expect(info).toEqual(new Map([
+      ['A.md', { count: 1, earliestDue: '2026-05-20' }],
+      ['B.md', { count: 1, earliestDue: '2026-05-18' }]
     ]))
   })
 })
