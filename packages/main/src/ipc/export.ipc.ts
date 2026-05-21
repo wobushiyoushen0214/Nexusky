@@ -173,7 +173,7 @@ ${markdownToHtml(params.content)}
       title: note.title,
       href: note.href,
       path: note.relPath,
-      text: toPublishSearchText(note.body).slice(0, 4000)
+      text: toPublishSearchText(expandPublishTransclusions(note.body, notes)).slice(0, 4000)
     }))
 
     for (const asset of assetFiles) {

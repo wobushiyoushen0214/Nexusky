@@ -95,5 +95,10 @@ describe('publish wikilink lookup', () => {
     expect(expanded).toContain('> Block text.')
     expect(expanded).not.toContain('Hidden detail.')
     expect(expanded).not.toContain('^block-1')
+
+    const searchText = toPublishSearchText(expanded)
+    expect(searchText).toContain('Selected detail')
+    expect(searchText).toContain('Block text')
+    expect(searchText).not.toContain('Hidden detail')
   })
 })
