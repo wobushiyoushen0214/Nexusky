@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
+import { buildPublishWikilinkLookup, expandPublishTransclusions, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
 
 describe('publish wikilink lookup', () => {
   it('resolves published wikilinks by title, filename, nested path, heading, and case variant', () => {
@@ -65,5 +65,35 @@ describe('publish wikilink lookup', () => {
     expect(text).not.toContain('private launch keyword')
     expect(text).not.toContain('code sample')
     expect(text).not.toContain('==important==')
+  })
+
+  it('expands Obsidian transclusions for published notes', () => {
+    const expanded = expandPublishTransclusions('Intro\n\n![[Target#Details|Details Embed]]\n\n![[Target#^block-1]]', [
+      {
+        title: 'Target',
+        relPath: 'Target.md',
+        href: 'Target.html',
+        body: [
+          '# Target',
+          '',
+          'Opening text.',
+          '',
+          '## Details',
+          'Selected detail.',
+          '',
+          '## Later',
+          'Hidden detail.',
+          '',
+          'Block text. ^block-1'
+        ].join('\n')
+      }
+    ])
+
+    expect(expanded).toContain('> [!note] Details Embed')
+    expect(expanded).toContain('> Selected detail.')
+    expect(expanded).toContain('> [!note] Target')
+    expect(expanded).toContain('> Block text.')
+    expect(expanded).not.toContain('Hidden detail.')
+    expect(expanded).not.toContain('^block-1')
   })
 })

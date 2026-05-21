@@ -6,7 +6,7 @@ import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishWikilinkLookup } from '../services/publish'
+import { buildPublishWikilinkLookup, expandPublishTransclusions, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishWikilinkLookup } from '../services/publish'
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -191,7 +191,7 @@ ${markdownToHtml(params.content)}
         aliases: item.aliases,
         href: relativeHref(note.href, item.href)
       })))
-      await writeFile(dest, renderPublishPage(note.title, markdownToHtml(note.body, pageLookup), notes, note.href, searchIndex), 'utf-8')
+      await writeFile(dest, renderPublishPage(note.title, markdownToHtml(expandPublishTransclusions(note.body, notes), pageLookup), notes, note.href, searchIndex), 'utf-8')
     }
 
     await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes, searchIndex), 'utf-8')

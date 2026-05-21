@@ -1,5 +1,6 @@
 import { basename } from 'path'
 import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
+import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading } from './ai/note-lookup'
 
 export interface PublishWikilinkNote {
   title: string
@@ -11,6 +12,10 @@ export interface PublishWikilinkNote {
 export interface PublishWikilinkLookup {
   exact: Map<string, string>
   caseInsensitive: Map<string, string>
+}
+
+export interface PublishTransclusionNote extends PublishWikilinkNote {
+  body: string
 }
 
 const SKIPPED_PUBLISH_ENTRIES = new Set(['.obsidian', '.nexusky', '.trash', '.git', '.DS_Store'])
@@ -82,6 +87,37 @@ export function toPublishSearchText(markdown: string): string {
     .replace(/[#>*_`~=!\-[\]()]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+export function expandPublishTransclusions(markdown: string, notes: PublishTransclusionNote[]): string {
+  if (!markdown.includes('![[')) return markdown
+
+  const lookup = buildPublishWikilinkLookup(notes)
+  return markdown.replace(/!\[\[([^\]]+)\]\]/g, (match, rawTarget: string) => {
+    const [target, label] = rawTarget.split('|')
+    const href = resolvePublishWikilinkHref(lookup, target)
+    if (href === '#') return match
+
+    const note = notes.find((item) => item.href === href)
+    if (!note) return match
+
+    const reference = `[[${rawTarget}]]`
+    const blockId = extractNoteReferenceBlockId(reference)
+    const heading = blockId ? null : extractNoteReferenceHeading(reference)
+    const content = blockId
+      ? extractMarkdownBlockReference(note.body, blockId)
+      : heading
+        ? extractMarkdownHeadingSection(note.body, heading)
+        : note.body
+    const body = (content || note.body).trim()
+    if (!body) return match
+
+    const title = (label || note.title).trim()
+    return [
+      `> [!note] ${title}`,
+      ...body.split('\n').map((line) => `> ${line}`)
+    ].join('\n')
+  })
 }
 
 function normalizePublishWikilinkTarget(target: string): string {
