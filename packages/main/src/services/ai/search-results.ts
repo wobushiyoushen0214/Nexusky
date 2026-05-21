@@ -185,6 +185,15 @@ export interface AiMemoryRelatedNotePairResult {
   reason: string
 }
 
+export interface AiConnectionOpportunityResult {
+  sourceTitle: string
+  sourcePath: string
+  targetTitle: string
+  targetPath: string
+  score: number
+  reasons: string[]
+}
+
 export interface AiNoteMemoryResult {
   title: string
   filePath: string
@@ -597,6 +606,17 @@ export function formatMemoryRelatedNotesToolResult(pairs: AiMemoryRelatedNotePai
     `Target: ${pair.targetPath}`,
     `Reason: ${pair.reason || '(none)'}`,
     `Score: ${pair.score.toFixed(3)}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatConnectionOpportunitiesToolResult(pairs: AiConnectionOpportunityResult[]): string {
+  if (pairs.length === 0) return 'No connection opportunities found.'
+  return pairs.map((pair, index) => [
+    `${index + 1}. **${pair.sourceTitle}** -> **${pair.targetTitle}**`,
+    `Source: ${pair.sourcePath}`,
+    `Target: ${pair.targetPath}`,
+    `Reasons: ${pair.reasons.length > 0 ? pair.reasons.join('; ') : '(none)'}`,
+    `Score: ${pair.score.toFixed(1)}`
   ].join('\n')).join('\n\n')
 }
 

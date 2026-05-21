@@ -49,6 +49,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return appendDetail('查找相似笔记', getTextArg(args, 'query'))
     case 'find_memory_related_notes':
       return appendDetail('查找记忆关联', getTextArg(args, 'query'))
+    case 'find_connection_opportunities':
+      return appendDetail('查找连接机会', getTextArg(args, 'query'))
     case 'list_note_memories':
       return appendDetail('浏览笔记记忆', getTextArg(args, 'query'))
     case 'read_note_memory':

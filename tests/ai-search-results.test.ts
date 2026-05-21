@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
+import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../packages/main/src/services/ai/search-results'
 
 describe('formatSearchNotesToolResult', () => {
   it('includes file paths so the agent can disambiguate read_note calls', () => {
@@ -480,6 +480,27 @@ describe('formatMemoryRelatedNotesToolResult', () => {
 
   it('marks empty memory-related note results explicitly', () => {
     expect(formatMemoryRelatedNotesToolResult([])).toBe('No memory-related notes found.')
+  })
+})
+
+describe('formatConnectionOpportunitiesToolResult', () => {
+  it('formats connection opportunities with reasons and score', () => {
+    const output = formatConnectionOpportunitiesToolResult([
+      {
+        sourceTitle: 'Knowledge Graphs',
+        sourcePath: 'Research/Knowledge Graphs.md',
+        targetTitle: 'AI Notes',
+        targetPath: 'Projects/AI Notes.md',
+        reasons: ['shared tag: #ai', 'shared concept: Knowledge Graph'],
+        score: 7
+      }
+    ])
+
+    expect(output).toBe('1. **Knowledge Graphs** -> **AI Notes**\nSource: Research/Knowledge Graphs.md\nTarget: Projects/AI Notes.md\nReasons: shared tag: #ai; shared concept: Knowledge Graph\nScore: 7.0')
+  })
+
+  it('marks empty connection opportunities explicitly', () => {
+    expect(formatConnectionOpportunitiesToolResult([])).toBe('No connection opportunities found.')
   })
 })
 

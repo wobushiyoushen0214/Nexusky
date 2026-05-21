@@ -7,7 +7,8 @@ import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata, ensureGeneratedNoteWikilinks } from '../services/ai/note-writing'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -1127,6 +1128,20 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'find_connection_opportunities',
+        description: '查找尚未互链但共享标签、属性或记忆概念的笔记对，适合主动发现可补 wikilink 的连接机会。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按来源/目标标题、路径或连接理由过滤，可选' },
+            limit: { type: 'number', description: '返回结果数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_note_memories',
         description: '列出已生成的笔记记忆摘要、概念和主题，适合先快速了解知识库内容再决定读取哪些笔记。',
         parameters: {
@@ -1865,6 +1880,37 @@ graph TD
               title: pair.targetTitle,
               filePath: pair.targetPath,
               chunk: `${pair.reason}; related to ${pair.sourceTitle}`,
+              score: pair.score
+            }
+          ])
+        }
+      }
+      case 'find_connection_opportunities': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getAllNotes(vaultPath)
+        const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
+        const pairs = findConnectionOpportunities({
+          notes,
+          propertyRows: getPropertyRows(vaultPath),
+          memories: readAllMemories(vaultPath),
+          outgoingLinksByNoteId,
+          query,
+          limit
+        })
+        return {
+          content: formatConnectionOpportunitiesToolResult(pairs),
+          sources: pairs.flatMap((pair) => [
+            {
+              title: pair.sourceTitle,
+              filePath: pair.sourcePath,
+              chunk: `Connection opportunity with ${pair.targetTitle}: ${pair.reasons.join('; ')}`.slice(0, 100),
+              score: pair.score
+            },
+            {
+              title: pair.targetTitle,
+              filePath: pair.targetPath,
+              chunk: `Connection opportunity with ${pair.sourceTitle}: ${pair.reasons.join('; ')}`.slice(0, 100),
               score: pair.score
             }
           ])
