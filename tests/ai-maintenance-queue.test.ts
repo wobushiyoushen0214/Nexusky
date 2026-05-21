@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getElevatedTaskCountByPath, getHighPriorityTaskInfoByPath, getOverdueTaskCountByPath, getOverdueTaskInfoByPath, getScheduledTaskInfoByPath, getUpcomingTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getElevatedTaskCountByPath, getHighPriorityTaskInfoByPath, getOverdueTaskCountByPath, getOverdueTaskInfoByPath, getScheduledTaskInfoByPath, getStartedTaskInfoByPath, getUpcomingTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
@@ -285,7 +285,33 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(queue[1]).toMatchObject({
       title: 'Scheduled Work',
       action: 'Review 2 open tasks in this note',
-      detail: 'Open tasks: 3; overdue: 0; due today: 0; high priority: 0; scheduled: 1; upcoming: 0'
+      detail: 'Open tasks: 3; overdue: 0; due today: 0; high priority: 0; scheduled: 1; started: 0; upcoming: 0'
+    })
+  })
+
+  it('queues started tasks separately from general open tasks', () => {
+    const queue = buildKnowledgeMaintenanceQueue({
+      notes: [
+        { id: 'a', title: 'Started Work', filePath: 'Started Work.md', updatedAt: 1700000000000 }
+      ],
+      outgoingLinksByNoteId: new Map(),
+      backlinkCountByNoteId: new Map([['a', 1]]),
+      unlinkedMentionCountByNoteId: new Map(),
+      openTaskCountByPath: new Map([['Started Work.md', 2]]),
+      startedTaskInfoByPath: new Map([['Started Work.md', { count: 1, earliestDue: '2026-05-19' }]]),
+      bridges: []
+    })
+
+    expect(queue.map((item) => item.type)).toEqual(['review_started_tasks', 'review_open_tasks'])
+    expect(queue[0]).toMatchObject({
+      title: 'Started Work',
+      action: 'Review 1 started task in this note',
+      detail: 'Started tasks: 1; earliest start: 2026-05-19'
+    })
+    expect(queue[1]).toMatchObject({
+      title: 'Started Work',
+      action: 'Review 1 open task in this note',
+      detail: 'Open tasks: 2; overdue: 0; due today: 0; high priority: 0; scheduled: 0; started: 1; upcoming: 0'
     })
   })
 
@@ -307,6 +333,10 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       { text: 'Draft agenda [scheduled:: 2026-05-21]', done: false, filePath: 'F.md' },
       { text: 'Future scheduled \u23F3 2026-05-22', done: false, filePath: 'F.md' },
       { text: 'Scheduled with due \u23F3 2026-05-20 \uD83D\uDCC5 2026-05-24', done: false, filePath: 'F.md' },
+      { text: 'Begin research \uD83D\uDEEB 2026-05-19', done: false, filePath: 'G.md' },
+      { text: 'Read brief [start:: 2026-05-21]', done: false, filePath: 'G.md' },
+      { text: 'Future start \uD83D\uDEEB 2026-05-22', done: false, filePath: 'G.md' },
+      { text: 'Started with schedule \uD83D\uDEEB 2026-05-20 \u23F3 2026-05-20', done: false, filePath: 'G.md' },
       { text: 'Done due:: 2026-05-19', done: true, filePath: 'A.md' },
       { text: 'Done priority \u23EB', done: true, filePath: 'C.md' },
       { text: 'Review due: 2026-05-18', done: false, filePath: 'B.md' }
@@ -316,6 +346,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     const dueToday = getDueTodayTaskInfoByPath(tasks, '2026-05-21')
     const highPriority = getHighPriorityTaskInfoByPath(tasks)
     const scheduled = getScheduledTaskInfoByPath(tasks, '2026-05-21')
+    const started = getStartedTaskInfoByPath(tasks, '2026-05-21')
     const elevated = getElevatedTaskCountByPath(tasks, '2026-05-21', 3)
     const upcoming = getUpcomingTaskInfoByPath(tasks, '2026-05-21', 3)
 
@@ -336,7 +367,11 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       ['E.md', { count: 1, highestPriority: 'highest' }]
     ]))
     expect(scheduled).toEqual(new Map([
-      ['F.md', { count: 2, earliestDue: '2026-05-20' }]
+      ['F.md', { count: 2, earliestDue: '2026-05-20' }],
+      ['G.md', { count: 1, earliestDue: '2026-05-20' }]
+    ]))
+    expect(started).toEqual(new Map([
+      ['G.md', { count: 2, earliestDue: '2026-05-19' }]
     ]))
     expect(elevated).toEqual(new Map([
       ['A.md', 3],
@@ -344,7 +379,8 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       ['C.md', 2],
       ['D.md', 1],
       ['E.md', 2],
-      ['F.md', 3]
+      ['F.md', 3],
+      ['G.md', 3]
     ]))
     expect(upcoming).toEqual(new Map([
       ['A.md', { count: 1, earliestDue: '2026-05-24' }],
