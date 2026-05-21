@@ -137,13 +137,17 @@ published: false
 
 status:: draft
 priority:: 2
++ [/] next:: Review draft
+- [?] risk:: unclear scope
 aliases:: Old Alias
 `, 'status', 'active')
-    const updated = updateMarkdownProperty(next, 'aliases', ['One', 'Two'])
+    const updated = updateMarkdownProperty(updateMarkdownProperty(updateMarkdownProperty(next, 'aliases', ['One', 'Two']), 'next', 'Publish'), 'risk', null)
 
     expect(updated.startsWith('---\n')).toBe(false)
     expect(updated).toContain('status:: active')
     expect(updated).toContain('priority:: 2')
+    expect(updated).toContain('+ [/] next:: Publish')
+    expect(updated).not.toContain('- [?] risk::')
     expect(updated).toContain('aliases:: One, Two')
   })
 

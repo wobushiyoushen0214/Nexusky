@@ -85,7 +85,7 @@ function extractFrontmatter(markdown: string): { raw: string; end: number } | nu
 
 function updateDataviewInlineProperty(markdown: string, key: string, value: FrontmatterValue): string | null {
   const lines = markdown.split('\n')
-  const fieldPattern = new RegExp(`^(\\s*(?:[-*]\\s+(?:\\[[ xX]\\]\\s+)?)?)${escapeRegExp(key)}::\\s*(.*?)\\s*$`)
+  const fieldPattern = new RegExp(`^(\\s*(?:[-*+]\\s+(?:\\[[^\\]\\r\\n]?\\]\\s+)?)?)${escapeRegExp(key)}::\\s*(.*?)\\s*$`)
   let inFence = false
 
   for (let index = 0; index < lines.length; index++) {
