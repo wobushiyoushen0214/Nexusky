@@ -810,8 +810,8 @@ function extractTasks(content: string): { text: string; done: boolean }[] {
     }
     if (inFence) continue
 
-    const todoMatch = line.match(/^[-*]\s+\[\s?\]\s+(.+)/)
-    const doneMatch = line.match(/^[-*]\s+\[x\]\s+(.+)/i)
+    const todoMatch = line.match(/^\s*[-*+]\s+\[\s?\]\s+(.+)/)
+    const doneMatch = line.match(/^\s*[-*+]\s+\[x\]\s+(.+)/i)
     if (todoMatch) tasks.push({ text: todoMatch[1].trim(), done: false })
     else if (doneMatch) tasks.push({ text: doneMatch[1].trim(), done: true })
   }

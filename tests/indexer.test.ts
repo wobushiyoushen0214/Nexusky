@@ -352,12 +352,21 @@ describe('indexer', () => {
     const { indexNote, getAllTasks } = await import('../packages/main/src/services/indexer')
 
     const filePath = join(vaultPath, 'Tasks.md')
-    writeFileSync(filePath, '# Tasks\n\n- [ ] Open item\n- [x] Done item')
+    writeFileSync(filePath, [
+      '# Tasks',
+      '',
+      '- [ ] Open item',
+      '  - [ ] Nested open item',
+      '\t+ [x] Nested done item',
+      '* [x] Done item'
+    ].join('\n'))
 
     indexNote(vaultPath, filePath)
 
     expect(getAllTasks(vaultPath)).toEqual([
       { text: 'Open item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
+      { text: 'Nested open item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
+      { text: 'Nested done item', done: true, noteTitle: 'Tasks', filePath: 'Tasks.md' },
       { text: 'Done item', done: true, noteTitle: 'Tasks', filePath: 'Tasks.md' },
     ])
 
