@@ -20,6 +20,7 @@ describe('AI tool status labels', () => {
 
   it('labels memory and structure tools in user-facing language', () => {
     expect(formatAiToolStatus('find_connection_opportunities', { query: 'graph' })).toBe('查找连接机会: graph')
+    expect(formatAiToolStatus('list_knowledge_bridges', { query: 'research' })).toBe('分析知识桥梁: research')
     expect(formatAiToolStatus('list_memory_term_pairs', { type: 'mixed' })).toBe('分析概念共现: mixed')
     expect(formatAiToolStatus('list_notes_by_property', { key: 'status' })).toBe('按属性找笔记: status')
     expect(formatAiToolStatus('get_vault_overview')).toBe('汇总知识库')

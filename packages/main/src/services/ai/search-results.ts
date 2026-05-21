@@ -168,6 +168,15 @@ export interface AiLinkHubResult {
   total: number
 }
 
+export interface AiKnowledgeBridgeResult {
+  title: string
+  filePath: string
+  score: number
+  connections: number
+  folders: string[]
+  tags: string[]
+}
+
 export interface AiSimilarNotePairResult {
   sourceTitle: string
   sourcePath: string
@@ -590,6 +599,19 @@ export function formatLinkHubsToolResult(notes: AiLinkHubResult[]): string {
     `Backlinks: ${note.backlinks}`,
     `Outgoing: ${note.outgoing}`,
     `Total: ${note.total}`
+  ].join('\n')).join('\n\n')
+}
+
+export function formatKnowledgeBridgesToolResult(notes: AiKnowledgeBridgeResult[]): string {
+  if (notes.length === 0) return 'No knowledge bridge notes found.'
+  return notes.map((note, index) => [
+    `${index + 1}. **${note.title}**`,
+    `Path: ${note.filePath}`,
+    `Bridge Score: ${note.score}`,
+    `Connections: ${note.connections}`,
+    `Neighbor Folders: ${note.folders.length > 0 ? note.folders.join(', ') : '(none)'}`,
+    `Neighbor Tags: ${note.tags.length > 0 ? note.tags.join(', ') : '(none)'}`,
+    'Suggested action: maintain this note as a synthesis point across clusters.'
   ].join('\n')).join('\n\n')
 }
 

@@ -103,6 +103,8 @@ export function formatAiToolStatus(name: string, args: Record<string, unknown> =
       return appendDetail('检查终点笔记', getTextArg(args, 'query'))
     case 'list_link_hubs':
       return appendDetail('分析链接枢纽', getTextArg(args, 'mode'))
+    case 'list_knowledge_bridges':
+      return appendDetail('分析知识桥梁', getTextArg(args, 'query'))
     case 'list_untagged_notes':
       return appendDetail('检查无标签笔记', getTextArg(args, 'query'))
     case 'list_empty_notes':
