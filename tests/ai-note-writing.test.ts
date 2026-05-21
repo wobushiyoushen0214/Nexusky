@@ -38,6 +38,35 @@ describe('generated note writing prompts', () => {
     expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n参见 [[自定义 Hook|封装逻辑]]。', 'Hooks 入门', ['Hooks 入门', '自定义 Hook', '状态管理'])).not.toContain('[[Hooks 入门]]')
   })
 
+  it('merges missing wikilinks into an existing related-notes section', () => {
+    expect(ensureGeneratedNoteWikilinks([
+      '# Hooks 入门',
+      '',
+      '内容',
+      '',
+      '## 相关笔记',
+      '',
+      '- [[自定义 Hook]]',
+      '',
+      '## 后续',
+      '',
+      '练习。'
+    ].join('\n'), 'Hooks 入门', ['自定义 Hook', '状态管理'])).toBe([
+      '# Hooks 入门',
+      '',
+      '内容',
+      '',
+      '## 相关笔记',
+      '',
+      '- [[自定义 Hook]]',
+      '- [[状态管理]]',
+      '',
+      '## 后续',
+      '',
+      '练习。'
+    ].join('\n'))
+  })
+
   it('adds frontmatter metadata to generated notes', () => {
     expect(ensureGeneratedNoteMetadata('# Hooks 入门\n\n内容', 'Hooks 入门', '基础 Hook')).toBe([
       '---',

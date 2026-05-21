@@ -26,6 +26,28 @@ function hasWikilinkToTitle(content: string, title: string): boolean {
   return content.includes(`[[${title}]]`) || content.includes(`[[${title}|`)
 }
 
+function appendMissingRelatedLinks(content: string, missingLinks: string[]): string {
+  const linkLines = missingLinks.map((title) => `- [[${title}]]`)
+  const lines = content.split('\n')
+  const headingIndex = lines.findIndex((line) => /^##\s+相关笔记\s*$/.test(line.trim()))
+
+  if (headingIndex < 0) {
+    return `${content}\n\n## 相关笔记\n\n${linkLines.join('\n')}`
+  }
+
+  const nextHeadingIndex = lines.findIndex((line, index) => index > headingIndex && /^#{1,6}\s+/.test(line.trim()))
+  const insertIndex = nextHeadingIndex < 0 ? lines.length : nextHeadingIndex
+  const before = lines.slice(0, insertIndex)
+  const after = lines.slice(insertIndex)
+
+  while (before.length > headingIndex + 1 && before[before.length - 1].trim() === '') before.pop()
+  const lastLine = before[before.length - 1]?.trim() || ''
+  const spacer = /^##\s+相关笔记\s*$/.test(lastLine) || (lastLine && !/^[-*]\s+/.test(lastLine)) ? [''] : []
+  const tailSpacer = after.length > 0 && after[0].trim() !== '' ? [''] : []
+
+  return [...before, ...spacer, ...linkLines, ...tailSpacer, ...after].join('\n').trim()
+}
+
 function serializeYamlString(value: string): string {
   return JSON.stringify(value)
 }
@@ -63,5 +85,5 @@ export function ensureGeneratedNoteWikilinks(content: string, currentTitle: stri
 
   if (missingLinks.length === 0) return trimmed
 
-  return `${trimmed}\n\n## 相关笔记\n\n${missingLinks.map((title) => `- [[${title}]]`).join('\n')}`
+  return appendMissingRelatedLinks(trimmed, missingLinks)
 }
