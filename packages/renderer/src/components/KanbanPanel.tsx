@@ -19,6 +19,13 @@ const PRIORITY_COLOR = [
   'oklch(0.65 0.15 25)'
 ]
 
+const PRIORITY_TONE = [
+  'color-mix(in srgb, var(--bg-elevated) 78%, transparent)',
+  'color-mix(in srgb, var(--accent-muted) 58%, transparent)',
+  'oklch(0.38 0.055 85 / 0.48)',
+  'oklch(0.36 0.07 25 / 0.5)'
+]
+
 type PendingKanbanAiWrite =
   | { mode: 'breakdown'; plan: KanbanAiPlan; taskId: string; title: string; description?: string; columnId: string }
   | { mode: 'from-note'; plan: KanbanAiPlan; filePath: string; content: string; columnId?: string }
@@ -37,9 +44,10 @@ export function KanbanPanel() {
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null)
   const [dropColumnId, setDropColumnId] = useState<string | null>(null)
   const [newTitle, setNewTitle] = useState('')
-  const [activeComposerColumnId, setActiveComposerColumnId] = useState<string | null>(null)
+  const [newTaskColumnId, setNewTaskColumnId] = useState('')
   const [analysis, setAnalysis] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [boardLoading, setBoardLoading] = useState(true)
   const aiStopRequestedRef = useRef(false)
   const [detailDraft, setDetailDraft] = useState<Partial<KanbanTask>>({})
   const [newRelationTarget, setNewRelationTarget] = useState('')
@@ -62,7 +70,7 @@ export function KanbanPanel() {
 
   useEffect(() => {
     if (!vaultPath) return
-    loadBoard()
+    loadBoard(true)
   }, [vaultPath])
 
   useEffect(() => {
@@ -71,21 +79,35 @@ export function KanbanPanel() {
     setNewRelationType('related')
   }, [selectedTaskId, selectedTask])
 
-  const loadBoard = async () => {
-    if (!vaultPath) return
-    const [nextColumns, nextTasks, nextRelations] = await Promise.all([
-      window.api.invoke('kanban:get-columns', { vaultPath }),
-      window.api.invoke('kanban:get-tasks', { vaultPath }),
-      window.api.invoke('kanban:get-relations', { vaultPath })
-    ])
-    setColumns(nextColumns)
-    setTasks(nextTasks)
-    setRelations(nextRelations)
-    if (activeComposerColumnId && !nextColumns.some((column) => column.id === activeComposerColumnId)) {
-      setActiveComposerColumnId(null)
+  useEffect(() => {
+    if (columns.length === 0) {
+      setNewTaskColumnId('')
+      return
     }
-    if (selectedTaskId && !nextTasks.some((task) => task.id === selectedTaskId)) {
-      setSelectedTaskId(null)
+    if (!columns.some((column) => column.id === newTaskColumnId)) {
+      setNewTaskColumnId(columns[0].id)
+    }
+  }, [columns, newTaskColumnId])
+
+  const loadBoard = async (showSkeleton = false) => {
+    if (!vaultPath) return
+    if (showSkeleton) setBoardLoading(true)
+    try {
+      const [nextColumns, nextTasks, nextRelations] = await Promise.all([
+        window.api.invoke('kanban:get-columns', { vaultPath }),
+        window.api.invoke('kanban:get-tasks', { vaultPath }),
+        window.api.invoke('kanban:get-relations', { vaultPath })
+      ])
+      setColumns(nextColumns)
+      setTasks(nextTasks)
+      setRelations(nextRelations)
+      if (selectedTaskId && !nextTasks.some((task) => task.id === selectedTaskId)) {
+        setSelectedTaskId(null)
+      }
+    } catch (e: unknown) {
+      toast(getErrorMessage(e) || '看板加载失败', 'error')
+    } finally {
+      setBoardLoading(false)
     }
   }
 
@@ -95,7 +117,7 @@ export function KanbanPanel() {
 
   const handleCreateTask = async (columnId?: string) => {
     if (!vaultPath || !newTitle.trim()) return
-    const targetColumnId = columnId || activeComposerColumnId || columns[0]?.id
+    const targetColumnId = columnId || newTaskColumnId || columns[0]?.id
     if (!targetColumnId) return
     const id = crypto.randomUUID()
     await window.api.invoke('kanban:create-task', {
@@ -106,7 +128,6 @@ export function KanbanPanel() {
       priority: 1
     })
     setNewTitle('')
-    setActiveComposerColumnId(null)
     await loadBoard()
     setSelectedTaskId(id)
   }
@@ -370,7 +391,8 @@ export function KanbanPanel() {
                 <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)', flexShrink: 0 }} />
                 <span>{totalTasks} 个任务</span>
               </div>
-              <div style={boardTitleStyle}>看板</div>
+              <div style={boardTitleStyle}>任务看板</div>
+              <div style={boardSubtitleStyle}>按状态推进任务，AI 只在需要时辅助拆解和排序。</div>
             </div>
             <div style={boardActionRowStyle}>
               {busy && (
@@ -396,7 +418,38 @@ export function KanbanPanel() {
               </button>
             </div>
           </div>
-
+          <div style={boardComposerStyle}>
+            <select
+              value={newTaskColumnId}
+              onChange={(e) => setNewTaskColumnId(e.target.value)}
+              disabled={columns.length === 0}
+              title="选择任务状态"
+              style={boardComposerSelectStyle}
+            >
+              {columns.length === 0 ? (
+                <option value="">暂无列</option>
+              ) : columns.map((column) => (
+                <option key={column.id} value={column.id}>{column.name}</option>
+              ))}
+            </select>
+            <input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateTask()
+                if (e.key === 'Escape') setNewTitle('')
+              }}
+              placeholder="添加一个新任务"
+              style={boardComposerInputStyle}
+            />
+            <button
+              onClick={() => handleCreateTask()}
+              disabled={createDisabled}
+              style={{ ...primaryButtonStyle, height: 34, opacity: createDisabled ? 0.45 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
+            >
+              添加任务
+            </button>
+          </div>
         </div>
       </div>
 
@@ -411,89 +464,65 @@ export function KanbanPanel() {
           </div>
         )}
 
-        <div style={boardGridStyle}>
-          {columns.map((column) => {
-            const columnTasks = tasksByColumn(column.id)
-            const isDropTarget = dropColumnId === column.id
-            return (
-              <section
-                key={column.id}
-                onDragOver={(e) => { e.preventDefault(); setDropColumnId(column.id) }}
-                onDragLeave={() => setDropColumnId(null)}
-                onDrop={() => handleDropTask(column.id)}
-                style={{
-                  ...laneStyle,
-                  borderColor: isDropTarget ? 'rgba(124, 110, 245, 0.5)' : 'var(--border-subtle)',
-                  background: isDropTarget ? 'var(--accent-muted)' : laneStyle.background,
-                  outline: isDropTarget ? '1px solid rgba(124, 110, 245, 0.24)' : 'none',
-                  overflow: 'hidden',
-                  minHeight: 360
-                }}
-              >
-                <div style={laneHeaderStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                    <span style={columnDotStyle(column.name)} />
-                    <span style={laneTitleStyle}>{column.name}</span>
-                  </div>
-                  <span style={countPillStyle}>{columnTasks.length}</span>
-                </div>
-
-                <div style={laneStackStyle(columnTasks.length > 0)}>
-                  {activeComposerColumnId === column.id ? (
-                    <div style={columnComposerStyle}>
-                      <input
-                        value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleCreateTask(column.id)
-                          if (e.key === 'Escape') {
-                            setNewTitle('')
-                            setActiveComposerColumnId(null)
-                          }
-                        }}
-                        autoFocus
-                        placeholder="任务标题"
-                        style={columnComposerInputStyle}
-                      />
-                      <button
-                        onClick={() => handleCreateTask(column.id)}
-                        disabled={createDisabled}
-                        style={{ ...smallPrimaryButtonStyle, opacity: createDisabled ? 0.45 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
-                      >
-                        添加
-                      </button>
+        {boardLoading ? (
+          <BoardSkeleton columnCount={Math.max(3, columns.length || 3)} />
+        ) : columns.length === 0 ? (
+          <div style={emptyBoardStyle}>
+            <Icon name="note" />
+            <span>看板还没有列</span>
+          </div>
+        ) : (
+          <div style={boardGridStyle}>
+            {columns.map((column) => {
+              const columnTasks = tasksByColumn(column.id)
+              const isDropTarget = dropColumnId === column.id
+              return (
+                <section
+                  key={column.id}
+                  onDragOver={(e) => { e.preventDefault(); setDropColumnId(column.id) }}
+                  onDragLeave={() => setDropColumnId(null)}
+                  onDrop={() => handleDropTask(column.id)}
+                  style={{
+                    ...laneStyle,
+                    borderColor: isDropTarget ? 'color-mix(in srgb, var(--accent) 52%, var(--border-subtle))' : 'var(--border-subtle)',
+                    background: isDropTarget ? 'color-mix(in srgb, var(--accent-muted) 68%, var(--bg-base))' : laneStyle.background,
+                    outline: isDropTarget ? '1px solid color-mix(in srgb, var(--accent) 24%, transparent)' : 'none',
+                    overflow: 'hidden',
+                    minHeight: 420
+                  }}
+                >
+                  <div style={laneHeaderStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                      <span style={columnDotStyle(column.name)} />
+                      <span style={{ minWidth: 0 }}>
+                        <span style={laneTitleStyle}>{column.name}</span>
+                        <span style={laneMetaStyle}>{columnLaneHint(column.name, columnTasks.length)}</span>
+                      </span>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setNewTitle('')
-                        setActiveComposerColumnId(column.id)
-                      }}
-                      style={columnAddButtonStyle}
-                    >
-                      <Icon name="plus" />
-                      <span>添加任务</span>
-                    </button>
-                  )}
-                  {columnTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      relationCount={relations.filter((relation) => relation.sourceTaskId === task.id || relation.targetTaskId === task.id).length}
-                      highlighted={relatedTaskIds.has(task.id)}
-                      selected={task.id === selectedTaskId}
-                      onSelect={() => setSelectedTaskId(task.id)}
-                      onHover={(hover) => setHoverTaskId(hover ? task.id : null)}
-                      onDragStart={() => setDraggingTaskId(task.id)}
-                      onDropBefore={() => handleDropTask(column.id, task.id)}
-                    />
-                  ))}
-                  {columnTasks.length === 0 && <EmptyColumn />}
-                </div>
-              </section>
-            )
-          })}
-        </div>
+                    <span style={countPillStyle}>{columnTasks.length}</span>
+                  </div>
+
+                  <div style={laneStackStyle(columnTasks.length > 0)}>
+                    {columnTasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        relationCount={relations.filter((relation) => relation.sourceTaskId === task.id || relation.targetTaskId === task.id).length}
+                        highlighted={relatedTaskIds.has(task.id)}
+                        selected={task.id === selectedTaskId}
+                        onSelect={() => setSelectedTaskId(task.id)}
+                        onHover={(hover) => setHoverTaskId(hover ? task.id : null)}
+                        onDragStart={() => setDraggingTaskId(task.id)}
+                        onDropBefore={() => handleDropTask(column.id, task.id)}
+                      />
+                    ))}
+                    {columnTasks.length === 0 && <EmptyColumn />}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {selectedTask && (
@@ -609,6 +638,9 @@ function TaskCard({
   onDragStart: () => void
   onDropBefore: () => void
 }) {
+  const priorityIndex = Math.max(0, Math.min(3, task.priority))
+  const hasMeta = task.priority > 0 || task.dueDate || task.sourceFilePath || relationCount > 0
+
   return (
     <button
       draggable
@@ -620,33 +652,39 @@ function TaskCard({
       onDrop={(e) => { e.stopPropagation(); onDropBefore() }}
       style={{
         width: '100%',
-        minHeight: 54,
-        padding: '8px 10px',
+        minHeight: 68,
+        padding: 0,
         textAlign: 'left',
-        borderRadius: 7,
-        border: `1px solid ${selected || highlighted ? 'rgba(124, 110, 245, 0.48)' : 'var(--border-subtle)'}`,
-        background: selected ? 'var(--accent-muted)' : highlighted ? 'color-mix(in srgb, var(--accent-muted) 62%, transparent)' : 'var(--bg-surface)',
+        borderRadius: 10,
+        border: `1px solid ${selected || highlighted ? taskAccentBorder(priorityIndex) : 'var(--border-subtle)'}`,
+        background: selected ? taskSelectedBackground(priorityIndex) : highlighted ? 'color-mix(in srgb, var(--bg-elevated) 82%, transparent)' : 'var(--bg-surface)',
         color: 'var(--text-primary)',
         cursor: 'grab',
-        transition: 'background 150ms ease, border-color 150ms ease, transform 150ms ease'
+        overflow: 'hidden',
+        boxShadow: 'none',
+        transition: 'background 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1)'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-        <span style={{ marginTop: 5, width: 5, height: 5, borderRadius: 999, background: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))], flexShrink: 0 }} />
-        <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 610, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
-        {relationCount > 0 && (
-          <span title="有关联任务" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--accent-text)', fontSize: 10, flexShrink: 0, paddingTop: 2 }}>
-            <Icon name="link" />
-            {relationCount}
+      <div style={{ minWidth: 0, padding: '10px 11px 9px' }}>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <span style={taskPriorityDotStyle(priorityIndex)} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 690, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
+          <span style={{ ...priorityPillStyle, color: PRIORITY_COLOR[priorityIndex], background: PRIORITY_TONE[priorityIndex] }}>{PRIORITY_LABEL[priorityIndex]}</span>
+        </span>
+        {task.description && <span style={{ marginTop: 6, paddingLeft: 15, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</span>}
+        {hasMeta && (
+          <span style={{ ...taskMetaRowStyle, paddingLeft: 15 }}>
+            {task.dueDate && <span style={taskMetaPillStyle(dueDateTone(task.dueDate))}>{task.dueDate}</span>}
+            {task.sourceFilePath && <span style={taskMetaPillStyle('neutral')}>笔记</span>}
+            {relationCount > 0 && (
+              <span title="有关联任务" style={{ ...taskMetaPillStyle('cool'), marginLeft: 'auto' }}>
+                <Icon name="link" />
+                {relationCount}
+              </span>
+            )}
           </span>
         )}
       </div>
-      {task.description && <div style={{ marginTop: 5, paddingLeft: 14, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</div>}
-      {(task.priority > 0 || task.dueDate || task.sourceFilePath) && <div style={{ marginTop: 7, paddingLeft: 14, display: 'flex', alignItems: 'center', gap: 6, minHeight: 16 }}>
-        <span style={{ ...priorityPillStyle, color: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))] }}>{PRIORITY_LABEL[Math.max(0, Math.min(3, task.priority))]}</span>
-        {task.dueDate && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{task.dueDate}</span>}
-        {task.sourceFilePath && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>笔记</span>}
-      </div>}
     </button>
   )
 }
@@ -656,6 +694,29 @@ function EmptyColumn() {
     <div style={emptyColumnStyle}>
       <Icon name="plus" />
       <span>暂无任务</span>
+    </div>
+  )
+}
+
+function BoardSkeleton({ columnCount }: { columnCount: number }) {
+  return (
+    <div style={boardGridStyle} aria-label="看板加载中">
+      {Array.from({ length: columnCount }).map((_, columnIndex) => (
+        <section key={columnIndex} style={{ ...laneStyle, overflow: 'hidden', minHeight: 420 }}>
+          <div style={laneHeaderStyle}>
+            <span style={{ ...skeletonLineStyle, width: 96 }} />
+            <span style={{ ...skeletonLineStyle, width: 24 }} />
+          </div>
+          <div style={{ ...laneStackStyle(true), paddingTop: 10 }}>
+            {Array.from({ length: 4 }).map((__, taskIndex) => (
+              <div key={taskIndex} style={skeletonCardStyle}>
+                <span style={{ ...skeletonLineStyle, width: `${62 + taskIndex * 7}%` }} />
+                <span style={{ ...skeletonLineStyle, width: `${42 + taskIndex * 5}%`, opacity: 0.58 }} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }
@@ -805,13 +866,6 @@ const primaryButtonStyle: React.CSSProperties = {
   fontWeight: 600
 }
 
-const smallPrimaryButtonStyle: React.CSSProperties = {
-  ...primaryButtonStyle,
-  height: 28,
-  padding: '0 9px',
-  fontSize: 11
-}
-
 const dangerButtonStyle: React.CSSProperties = {
   ...toolbarButtonStyle,
   color: 'var(--danger)',
@@ -840,14 +894,14 @@ const boardShellStyle: React.CSSProperties = {
   position: 'relative',
   display: 'grid',
   gridTemplateRows: 'auto 1fr',
-  background: 'var(--editor-bg)',
+  background: 'color-mix(in srgb, var(--editor-bg) 90%, var(--bg-base))',
   overflow: 'hidden'
 }
 
 const boardHeaderStyle: React.CSSProperties = {
-  padding: '14px 18px 12px',
-  borderBottom: '1px solid var(--border-subtle)',
-  background: 'var(--editor-bg)'
+  padding: '16px 18px 13px',
+  borderBottom: '1px solid color-mix(in srgb, var(--border-subtle) 76%, transparent)',
+  background: 'color-mix(in srgb, var(--editor-bg) 86%, var(--bg-surface))'
 }
 
 const boardEyebrowStyle: React.CSSProperties = {
@@ -870,6 +924,13 @@ const boardTitleStyle: React.CSSProperties = {
   letterSpacing: 0
 }
 
+const boardSubtitleStyle: React.CSSProperties = {
+  marginTop: 5,
+  color: 'var(--text-tertiary)',
+  fontSize: 11,
+  lineHeight: 1.45
+}
+
 const boardActionRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -885,31 +946,68 @@ const boardContentStyle: React.CSSProperties = {
   padding: 18
 }
 
+const boardComposerStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '132px minmax(220px, 460px) auto',
+  alignItems: 'center',
+  gap: 8,
+  maxWidth: 720
+}
+
+const boardComposerSelectStyle: React.CSSProperties = {
+  minWidth: 0,
+  width: '100%',
+  height: 34,
+  padding: '0 9px',
+  borderRadius: 7,
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 86%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-elevated) 72%, transparent)',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  outline: 'none'
+}
+
+const boardComposerInputStyle: React.CSSProperties = {
+  minWidth: 0,
+  width: '100%',
+  height: 34,
+  padding: '0 11px',
+  borderRadius: 7,
+  border: '1px solid color-mix(in srgb, var(--border-default) 76%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-base) 76%, transparent)',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+  outline: 'none'
+}
+
 const boardGridStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(272px, 1fr))',
+  gridTemplateColumns: 'repeat(3, minmax(282px, 1fr))',
   alignItems: 'start',
-  gap: 12,
-  minWidth: 880
+  gap: 14,
+  minWidth: 920
 }
 
 const laneStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateRows: 'auto minmax(0, 1fr)',
   borderRadius: 8,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-base)'
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-base) 86%, var(--bg-surface))'
 }
 
 const laneHeaderStyle: React.CSSProperties = {
-  height: 44,
-  padding: '0 12px 0 13px',
+  height: 48,
+  padding: '0 12px',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  borderBottom: '1px solid var(--border-subtle)',
-  background: 'var(--bg-surface)'
+  borderBottom: '1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-surface) 72%, transparent)'
 }
 
 const laneTitleStyle: React.CSSProperties = {
+  display: 'block',
   fontSize: 12,
   fontWeight: 690,
   color: 'var(--text-primary)',
@@ -918,67 +1016,74 @@ const laneTitleStyle: React.CSSProperties = {
   whiteSpace: 'nowrap'
 }
 
+const laneMetaStyle: React.CSSProperties = {
+  display: 'block',
+  marginTop: 2,
+  color: 'var(--text-tertiary)',
+  fontSize: 10,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap'
+}
+
 function laneStackStyle(hasTasks: boolean): React.CSSProperties {
   return {
-    padding: '8px 8px 10px',
+    padding: hasTasks ? '9px 9px 11px' : '9px 9px 12px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 7
+    gap: 8,
+    minHeight: 0
   }
 }
 
-const columnAddButtonStyle: React.CSSProperties = {
-  height: 30,
-  width: '100%',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
-  borderRadius: 7,
-  border: '1px dashed var(--border-subtle)',
-  background: 'transparent',
-  color: 'var(--text-tertiary)',
-  fontSize: 11,
-  cursor: 'pointer'
-}
-
-const columnComposerStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) auto',
-  gap: 7,
-  padding: 7,
-  borderRadius: 8,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-surface)'
-}
-
-const columnComposerInputStyle: React.CSSProperties = {
-  minWidth: 0,
-  width: '100%',
-  height: 28,
-  padding: '0 8px',
-  borderRadius: 6,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-elevated)',
-  color: 'var(--text-primary)',
-  fontSize: 12,
-  outline: 'none'
-}
-
 const emptyColumnStyle: React.CSSProperties = {
-  minHeight: 112,
+  minHeight: 0,
+  height: '100%',
+  flex: 1,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   gap: 7,
   padding: '12px 10px',
   borderRadius: 8,
-  border: '1px dashed var(--border-subtle)',
-  background: 'var(--bg-surface)',
+  border: '1px dashed color-mix(in srgb, var(--border-subtle) 76%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-surface) 62%, transparent)',
   fontSize: 11,
   lineHeight: 1.5,
   color: 'var(--text-tertiary)',
   textAlign: 'center'
+}
+
+const emptyBoardStyle: React.CSSProperties = {
+  minHeight: 320,
+  display: 'grid',
+  placeItems: 'center',
+  alignContent: 'center',
+  gap: 10,
+  border: '1px dashed var(--border-subtle)',
+  borderRadius: 10,
+  background: 'var(--bg-base)',
+  color: 'var(--text-tertiary)',
+  fontSize: 12
+}
+
+const skeletonLineStyle: React.CSSProperties = {
+  display: 'block',
+  height: 10,
+  borderRadius: 999,
+  background: 'linear-gradient(90deg, var(--bg-elevated), color-mix(in srgb, var(--bg-elevated) 62%, var(--text-tertiary)), var(--bg-elevated))',
+  backgroundSize: '220% 100%',
+  animation: 'pulse 1.35s ease-in-out infinite'
+}
+
+const skeletonCardStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 10,
+  padding: '13px 12px',
+  minHeight: 68,
+  borderRadius: 10,
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-surface) 70%, transparent)'
 }
 
 const iconButtonStyle: React.CSSProperties = {
@@ -1191,7 +1296,7 @@ const countPillStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   borderRadius: 999,
-  background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-elevated) 76%, transparent)',
   color: 'var(--text-tertiary)',
   fontSize: 10,
   fontWeight: 600
@@ -1199,13 +1304,33 @@ const countPillStyle: React.CSSProperties = {
 
 const priorityPillStyle: React.CSSProperties = {
   height: 16,
-  padding: '0 5px',
+  padding: '0 6px',
   display: 'inline-flex',
   alignItems: 'center',
-  borderRadius: 4,
+  borderRadius: 999,
   background: 'color-mix(in srgb, var(--bg-elevated) 76%, transparent)',
   fontSize: 10,
-  fontWeight: 600
+  fontWeight: 700,
+  flexShrink: 0
+}
+
+const taskMetaRowStyle: React.CSSProperties = {
+  marginTop: 9,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  minHeight: 18
+}
+
+function taskPriorityDotStyle(priorityIndex: number): React.CSSProperties {
+  return {
+    width: 7,
+    height: 7,
+    marginTop: 5,
+    borderRadius: 999,
+    background: PRIORITY_COLOR[priorityIndex],
+    flexShrink: 0
+  }
 }
 
 const relationBadgeStyle: React.CSSProperties = {
@@ -1243,4 +1368,59 @@ function columnDotStyle(name: string): React.CSSProperties {
     background: color,
     flexShrink: 0
   }
+}
+
+function columnLaneHint(name: string, count: number): string {
+  if (count === 0) return '等待补充'
+  if (/完成|done/i.test(name)) return '已收束'
+  if (/进行|progress|doing/i.test(name)) return '正在推进'
+  return '待排序'
+}
+
+function dueDateTone(dueDate: string): 'neutral' | 'warm' {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const due = new Date(dueDate)
+  if (Number.isNaN(due.getTime())) return 'neutral'
+  return due.getTime() < today.getTime() ? 'warm' : 'neutral'
+}
+
+function taskMetaPillStyle(tone: 'neutral' | 'warm' | 'cool'): React.CSSProperties {
+  const color = tone === 'warm'
+    ? 'oklch(0.73 0.13 65)'
+    : tone === 'cool'
+      ? 'var(--accent-text)'
+      : 'var(--text-tertiary)'
+  const background = tone === 'warm'
+    ? 'oklch(0.35 0.06 65 / 0.35)'
+    : tone === 'cool'
+      ? 'color-mix(in srgb, var(--accent-muted) 68%, transparent)'
+      : 'color-mix(in srgb, var(--bg-elevated) 72%, transparent)'
+
+  return {
+    minWidth: 0,
+    height: 18,
+    padding: '0 6px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    color,
+    background,
+    fontSize: 10,
+    fontWeight: 620,
+    whiteSpace: 'nowrap'
+  }
+}
+
+function taskAccentBorder(priorityIndex: number): string {
+  if (priorityIndex >= 3) return 'oklch(0.65 0.15 25 / 0.56)'
+  if (priorityIndex >= 2) return 'oklch(0.75 0.12 85 / 0.52)'
+  return 'color-mix(in srgb, var(--accent) 44%, var(--border-subtle))'
+}
+
+function taskSelectedBackground(priorityIndex: number): string {
+  if (priorityIndex >= 3) return 'oklch(0.25 0.045 25 / 0.82)'
+  if (priorityIndex >= 2) return 'oklch(0.26 0.04 85 / 0.82)'
+  return 'color-mix(in srgb, var(--accent-muted) 72%, var(--bg-surface))'
 }
