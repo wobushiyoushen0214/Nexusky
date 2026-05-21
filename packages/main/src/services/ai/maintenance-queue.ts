@@ -9,7 +9,7 @@ export interface KnowledgeMaintenanceNote {
 }
 
 export interface KnowledgeMaintenanceItem {
-  type: 'fix_unresolved_link' | 'review_overdue_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
+  type: KnowledgeMaintenanceType
   title: string
   filePath: string
   priority: number
@@ -17,6 +17,8 @@ export interface KnowledgeMaintenanceItem {
   reason: string
   detail: string
 }
+
+export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
 
 export interface KnowledgeMaintenanceTask {
   text: string
@@ -45,6 +47,7 @@ interface KnowledgeMaintenanceQueueOptions {
   overdueTaskInfoByPath?: Map<string, OverdueTaskInfo>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
+  type?: KnowledgeMaintenanceType
   limit?: number
 }
 
@@ -52,6 +55,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
   const limit = Math.max(1, Math.floor(options.limit || 5))
   const items: KnowledgeMaintenanceItem[] = []
   const query = (options.query || '').trim().toLowerCase()
+  const type = options.type
   const bridgeByPath = new Map(options.bridges.map((bridge) => [bridge.filePath, bridge]))
 
   for (const note of options.notes) {
@@ -217,6 +221,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
 
   return items
     .filter((item) => {
+      if (type && item.type !== type) return false
       if (!query) return true
       return [item.title, item.filePath, item.action, item.reason, item.detail, item.type].some((value) => value.toLowerCase().includes(query))
     })

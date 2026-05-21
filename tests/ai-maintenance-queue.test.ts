@@ -175,6 +175,25 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     })).toEqual([])
   })
 
+  it('filters maintenance items by type', () => {
+    const queue = buildKnowledgeMaintenanceQueue({
+      notes: [
+        { id: 'a', title: 'Alpha', filePath: 'Alpha.md', updatedAt: 1700000000000 },
+        { id: 'b', title: 'Beta', filePath: 'Beta.md', updatedAt: 1700000000000 }
+      ],
+      outgoingLinksByNoteId: new Map([
+        ['a', [{ targetTitle: 'Missing', line: 1, context: '[[Missing]]', resolved: false }]]
+      ]),
+      backlinkCountByNoteId: new Map([['a', 1], ['b', 1]]),
+      unlinkedMentionCountByNoteId: new Map([['b', 2]]),
+      bridges: [],
+      type: 'link_unlinked_reference'
+    })
+
+    expect(queue).toHaveLength(1)
+    expect(queue[0]).toMatchObject({ title: 'Beta', type: 'link_unlinked_reference' })
+  })
+
   it('counts overdue task due markers by path', () => {
     const tasks = [
       { text: 'Follow up due:: 2026-05-20', done: false, filePath: 'A.md' },

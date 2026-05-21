@@ -10,7 +10,7 @@ import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractM
 import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { findKnowledgeBridgeNotes } from '../services/ai/graph-insights'
-import { buildKnowledgeMaintenanceQueue, getOverdueTaskInfoByPath } from '../services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getOverdueTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -78,6 +78,27 @@ function normalizeMaintenanceProperties(value: unknown): string[] {
       ? value.split(/[\s,]+/)
       : ['status', 'summary']
   return Array.from(new Set(rawValues.map((item) => item.trim()).filter((item) => /^[A-Za-z0-9_-]+$/.test(item))))
+}
+
+const KNOWLEDGE_MAINTENANCE_TYPES = new Set<KnowledgeMaintenanceType>([
+  'fix_unresolved_link',
+  'review_overdue_tasks',
+  'connect_orphan',
+  'fill_empty_note',
+  'resolve_duplicate_title',
+  'resolve_duplicate_alias',
+  'review_open_tasks',
+  'link_unlinked_reference',
+  'refresh_memory',
+  'split_large_note',
+  'fill_missing_property',
+  'maintain_bridge'
+])
+
+function normalizeMaintenanceType(value: unknown): KnowledgeMaintenanceType | undefined {
+  if (typeof value !== 'string') return undefined
+  const type = value.trim() as KnowledgeMaintenanceType
+  return KNOWLEDGE_MAINTENANCE_TYPES.has(type) ? type : undefined
 }
 
 function localDateIso(date = new Date()): string {
@@ -1717,6 +1738,7 @@ graph TD
           type: 'object',
           properties: {
             query: { type: 'string', description: '按标题、路径、动作、原因或细节过滤，可选' },
+            type: { type: 'string', description: '只返回某类维护项，可选：fix_unresolved_link、review_overdue_tasks、connect_orphan、fill_empty_note、resolve_duplicate_title、resolve_duplicate_alias、review_open_tasks、link_unlinked_reference、refresh_memory、split_large_note、fill_missing_property、maintain_bridge' },
             minCharacters: { type: 'number', description: '超长笔记字符阈值，默认 8000' },
             requiredProperties: { type: 'string', description: '需要检查的必填属性，逗号或空格分隔，默认 status,summary' },
             limit: { type: 'number', description: '返回维护动作数量，1-10，默认 5' }
@@ -2931,6 +2953,7 @@ graph TD
       }
       case 'plan_knowledge_maintenance': {
         const query = getStringArg(args, 'query').trim().toLowerCase()
+        const type = normalizeMaintenanceType(args.type)
         const limit = normalizeToolLimit(args.limit)
         const minCharacters = normalizeMinCharacters(args.minCharacters)
         const requiredProperties = normalizeMaintenanceProperties(args.requiredProperties)
@@ -3015,6 +3038,7 @@ graph TD
           overdueTaskInfoByPath,
           bridges,
           query,
+          type,
           limit
         })
         return {
