@@ -707,7 +707,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
   const executeBatchGenerate = async (
     instruction: string,
     targetDir: string,
-    options: { label?: string; silentSummary?: boolean; sharedPlan?: SharedBatchPlan; suppressResultMessage?: boolean } = {}
+    options: { label?: string; silentSummary?: boolean; sharedPlan?: SharedBatchPlan; suppressResultMessage?: boolean; openFirstFile?: boolean } = {}
   ): Promise<{ success: boolean; error?: string; files: string[] }> => {
     setIsStreaming(true)
     streamContentRef.current = ''
@@ -806,7 +806,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
     if (result.success && !batchCancelledRef.current && result.files.length > 0) {
       await useVaultStore.getState().refreshFiles()
-      await useEditorStore.getState().openFile(result.files[0])
+      if (options.openFirstFile !== false) {
+        await useEditorStore.getState().openFile(result.files[0])
+      }
       const dirName = targetDir.split(/[\\/]/).pop()
       if (!options.silentSummary && !options.suppressResultMessage) {
         const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件。` }
@@ -1196,12 +1198,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
               setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
               const completedBatches: { dir: string; count: number }[] = []
+              let firstGeneratedFile: string | null = null
               let batchError: string | null = null
               for (const batch of plannedBatches) {
                 if (batchCancelledRef.current) break
                 const perDirInstruction = `${batchInstruction}\n\n批量目录规划：本次只生成「${batch.topic}」主题，放到「${batch.dir}」目录下。请生成 ${batch.count} 篇独立 Markdown 笔记。`
-                const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true, sharedPlan, suppressResultMessage: true })
+                const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true, sharedPlan, suppressResultMessage: true, openFirstFile: false })
                 if (result.files.length > 0) {
+                  if (!firstGeneratedFile) firstGeneratedFile = result.files[0]
                   completedBatches.push({ dir: batch.dir, count: result.files.length })
                 }
                 if (!result.success) {
@@ -1217,6 +1221,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
                 appendAssistantMessage(totalFiles > 0 ? `批量生成中断：已生成 ${totalFiles} 个文件，失败原因：${batchError}` : `批量生成失败：${batchError}`)
               } else if (completedBatches.length > 0) {
+                if (firstGeneratedFile) await useEditorStore.getState().openFile(firstGeneratedFile)
                 appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
               }
             } else {
@@ -1227,12 +1232,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
                 setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
                 const completedBatches: { dir: string; count: number }[] = []
+                let firstGeneratedFile: string | null = null
                 let batchError: string | null = null
                 for (const dir of specifiedDirs) {
                   if (batchCancelledRef.current) break
                   const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
-                  const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`, { label: dir, silentSummary: true, sharedPlan, suppressResultMessage: true })
+                  const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`, { label: dir, silentSummary: true, sharedPlan, suppressResultMessage: true, openFirstFile: false })
                   if (result.files.length > 0) {
+                    if (!firstGeneratedFile) firstGeneratedFile = result.files[0]
                     completedBatches.push({ dir, count: result.files.length })
                   }
                   if (!result.success) {
@@ -1248,6 +1255,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
                   appendAssistantMessage(totalFiles > 0 ? `批量生成中断：已生成 ${totalFiles} 个文件，失败原因：${batchError}` : `批量生成失败：${batchError}`)
                 } else if (completedBatches.length > 0) {
+                  if (firstGeneratedFile) await useEditorStore.getState().openFile(firstGeneratedFile)
                   appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
                 }
                 return
