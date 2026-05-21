@@ -360,67 +360,64 @@ export function KanbanPanel() {
   }
 
   return (
-    <div style={{ height: '100%', position: 'relative', display: 'grid', gridTemplateRows: 'auto 1fr', background: 'var(--editor-bg)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--editor-bg)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 14 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 20, fontWeight: 760, color: 'var(--text-primary)', lineHeight: 1.2 }}>看板</div>
-            <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--accent)', boxShadow: '0 0 0 3px var(--accent-muted)', flexShrink: 0 }} />
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {totalTasks} 个任务
-              </span>
+    <div style={boardShellStyle}>
+      <div style={boardHeaderStyle}>
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={boardEyebrowStyle}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)', flexShrink: 0 }} />
+                <span>{totalTasks} 个任务</span>
+              </div>
+              <div style={boardTitleStyle}>任务画布</div>
+            </div>
+            <div style={boardActionRowStyle}>
+              {busy && (
+                <button
+                  onClick={handleStopAiTask}
+                  title="停止 AI 任务"
+                  style={{ ...squareButtonStyle, color: 'var(--danger)', borderColor: 'rgba(248, 113, 113, 0.28)', background: 'var(--danger-muted)' }}
+                >
+                  <Icon name="x" />
+                </button>
+              )}
+              <button onClick={handleImportIndexedTasks} disabled={busy === 'import-indexed'} title="导入 Markdown 待办" style={compactButtonStyle}>
+                {busy === 'import-indexed' ? <span style={miniLoadingStyle} /> : <Icon name="note" />}
+                <span>导入待办</span>
+              </button>
+              <button onClick={handleGenerateFromNote} disabled={busy === 'from-note'} title="从当前笔记生成任务" style={compactButtonStyle}>
+                {busy === 'from-note' ? <span style={miniLoadingStyle} /> : <Icon name="spark" />}
+                <span>从笔记生成</span>
+              </button>
+              <button onClick={handleAnalyze} disabled={busy === 'analyze'} title="AI 分析" style={insightButtonStyle}>
+                {busy === 'analyze' ? <span style={miniLoadingStyle} /> : <Icon name="spark" />}
+                <span>分析</span>
+              </button>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {busy && (
-              <button
-                onClick={handleStopAiTask}
-                title="停止 AI 任务"
-                style={{ ...squareButtonStyle, color: 'var(--danger)', borderColor: 'rgba(248, 113, 113, 0.28)', background: 'var(--danger-muted)' }}
-              >
-                <Icon name="x" />
-              </button>
-            )}
-            <button onClick={handleImportIndexedTasks} disabled={busy === 'import-indexed'} title="导入 Markdown 待办" style={compactButtonStyle}>
-              {busy === 'import-indexed' ? <span style={miniLoadingStyle} /> : <Icon name="note" />}
-              <span>导入待办</span>
-            </button>
-            <button onClick={handleGenerateFromNote} disabled={busy === 'from-note'} title="从当前笔记生成任务" style={compactButtonStyle}>
-              {busy === 'from-note' ? <span style={miniLoadingStyle} /> : <Icon name="spark" />}
-              <span>从笔记生成</span>
-            </button>
-            <button onClick={handleAnalyze} disabled={busy === 'analyze'} title="AI 分析" style={{ ...compactButtonStyle, color: 'var(--accent-text)', borderColor: 'rgba(124, 110, 245, 0.28)', background: 'var(--accent-muted)' }}>
-              {busy === 'analyze' ? <span style={miniLoadingStyle} /> : <Icon name="spark" />}
-              <span>分析</span>
-            </button>
-          </div>
-        </div>
 
-        <div style={composerStyle}>
-          <label style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 650, color: 'var(--text-secondary)' }}>添加任务</span>
+          <div style={quickCaptureStyle}>
+            <Icon name="plus" />
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask() }}
-              placeholder="输入任务名称"
-              style={inputStyle}
+              placeholder="写下一个任务"
+              style={quickCaptureInputStyle}
             />
-          </label>
-          <button
-            onClick={() => handleCreateTask()}
-            disabled={createDisabled}
-            title="添加任务"
-            style={{ ...primaryButtonStyle, height: 32, alignSelf: 'end', opacity: createDisabled ? 0.55 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
-          >
-            <Icon name="plus" />
-            <span style={{ marginLeft: 5 }}>添加</span>
-          </button>
+            <button
+              onClick={() => handleCreateTask()}
+              disabled={createDisabled}
+              title="添加任务"
+              style={{ ...primaryButtonStyle, height: 30, opacity: createDisabled ? 0.45 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
+            >
+              添加
+            </button>
+          </div>
         </div>
       </div>
 
-      <div style={{ minHeight: 0, overflow: 'auto', padding: 18 }}>
+      <div style={boardContentStyle}>
         {analysis && (
           <div style={analysisCardStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -431,7 +428,7 @@ export function KanbanPanel() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(260px, 1fr))', alignItems: 'start', gap: 14, minWidth: 840 }}>
+        <div style={boardGridStyle}>
           {columns.map((column) => {
             const columnTasks = tasksByColumn(column.id)
             const isDropTarget = dropColumnId === column.id
@@ -442,22 +439,23 @@ export function KanbanPanel() {
                 onDragLeave={() => setDropColumnId(null)}
                 onDrop={() => handleDropTask(column.id)}
                 style={{
-                  borderRadius: 8,
-                  border: `1px solid ${isDropTarget ? 'rgba(124, 110, 245, 0.48)' : 'var(--border-subtle)'}`,
-                  background: isDropTarget ? 'var(--accent-muted)' : 'var(--bg-base)',
+                  ...laneStyle,
+                  borderColor: isDropTarget ? 'rgba(124, 110, 245, 0.5)' : 'transparent',
+                  background: isDropTarget ? 'var(--accent-muted)' : laneStyle.background,
+                  outline: isDropTarget ? '1px solid rgba(124, 110, 245, 0.24)' : 'none',
                   overflow: 'hidden',
                   minHeight: 360
                 }}
               >
-                <div style={{ height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: columnTasks.length > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
+                <div style={laneHeaderStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                     <span style={columnDotStyle(column.name)} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{column.name}</span>
+                    <span style={laneTitleStyle}>{column.name}</span>
                   </div>
                   <span style={countPillStyle}>{columnTasks.length}</span>
                 </div>
 
-                <div style={{ padding: columnTasks.length > 0 ? 8 : 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={laneStackStyle(columnTasks.length > 0)}>
                   {columnTasks.map((task) => (
                     <TaskCard
                       key={task.id}
@@ -606,31 +604,31 @@ function TaskCard({
       onDrop={(e) => { e.stopPropagation(); onDropBefore() }}
       style={{
         width: '100%',
-        minHeight: 58,
-        padding: '8px 9px',
+        minHeight: 72,
+        padding: '10px 11px',
         textAlign: 'left',
-        borderRadius: 7,
-        border: `1px solid ${selected || highlighted ? 'rgba(124, 110, 245, 0.48)' : 'var(--border-subtle)'}`,
-        background: selected ? 'var(--accent-muted)' : highlighted ? 'rgba(124, 110, 245, 0.08)' : 'var(--bg-surface)',
+        borderRadius: 8,
+        border: `1px solid ${selected || highlighted ? 'rgba(124, 110, 245, 0.46)' : 'color-mix(in srgb, var(--border-subtle) 78%, transparent)'}`,
+        background: selected ? 'var(--accent-muted)' : highlighted ? 'color-mix(in srgb, var(--accent-muted) 64%, transparent)' : 'color-mix(in srgb, var(--bg-surface) 82%, var(--editor-bg))',
         color: 'var(--text-primary)',
         cursor: 'grab',
-        transition: 'background 120ms ease, border-color 120ms ease'
+        transition: 'background 150ms ease, border-color 150ms ease, transform 150ms ease'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 520, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 610, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
         {relationCount > 0 && (
-          <span title="有关联任务" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--accent-text)', fontSize: 10, flexShrink: 0 }}>
+          <span title="有关联任务" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--accent-text)', fontSize: 10, flexShrink: 0, paddingTop: 2 }}>
             <Icon name="link" />
             {relationCount}
           </span>
         )}
       </div>
-      {task.description && <div style={{ marginTop: 5, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.42, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</div>}
-      <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 6, minHeight: 16 }}>
+      {task.description && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.48, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</div>}
+      <div style={{ marginTop: 9, display: 'flex', alignItems: 'center', gap: 6, minHeight: 16 }}>
         <span style={{ ...priorityPillStyle, color: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))] }}>{PRIORITY_LABEL[Math.max(0, Math.min(3, task.priority))]}</span>
         {task.dueDate && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{task.dueDate}</span>}
-        {task.sourceFilePath && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>来源</span>}
+        {task.sourceFilePath && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>笔记</span>}
       </div>
     </button>
   )
@@ -638,7 +636,7 @@ function TaskCard({
 
 function EmptyColumn() {
   return (
-    <div style={{ padding: '12px 10px 14px', fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+    <div style={{ minHeight: 104, display: 'grid', placeItems: 'center', padding: '12px 10px', borderRadius: 8, border: '1px dashed color-mix(in srgb, var(--border-subtle) 78%, transparent)', fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', textAlign: 'center' }}>
       拖入任务或从顶部添加
     </div>
   )
@@ -673,17 +671,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const toolbarButtonStyle: React.CSSProperties = {
   height: 32,
   minWidth: 0,
-  padding: '0 10px',
+  padding: '0 11px',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderRadius: 6,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-elevated)',
+  borderRadius: 7,
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-elevated) 72%, transparent)',
   color: 'var(--text-secondary)',
   fontSize: 12,
   cursor: 'pointer',
-  whiteSpace: 'nowrap'
+  whiteSpace: 'nowrap',
+  transition: 'background 150ms ease, border-color 150ms ease, color 150ms ease'
 }
 
 const compactButtonStyle: React.CSSProperties = {
@@ -692,6 +691,13 @@ const compactButtonStyle: React.CSSProperties = {
   height: 30,
   padding: '0 8px',
   fontSize: 11
+}
+
+const insightButtonStyle: React.CSSProperties = {
+  ...compactButtonStyle,
+  color: 'var(--accent-text)',
+  borderColor: 'rgba(124, 110, 245, 0.28)',
+  background: 'color-mix(in srgb, var(--accent-muted) 82%, transparent)'
 }
 
 const primaryButtonStyle: React.CSSProperties = {
@@ -725,6 +731,120 @@ const squareButtonStyle: React.CSSProperties = {
   flexShrink: 0
 }
 
+const boardShellStyle: React.CSSProperties = {
+  height: '100%',
+  position: 'relative',
+  display: 'grid',
+  gridTemplateRows: 'auto 1fr',
+  background: 'var(--editor-bg)',
+  overflow: 'hidden'
+}
+
+const boardHeaderStyle: React.CSSProperties = {
+  padding: '20px 22px 16px',
+  borderBottom: '1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent)',
+  background: 'color-mix(in srgb, var(--editor-bg) 92%, var(--bg-base))'
+}
+
+const boardEyebrowStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  height: 22,
+  color: 'var(--text-tertiary)',
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: 0
+}
+
+const boardTitleStyle: React.CSSProperties = {
+  marginTop: 2,
+  color: 'var(--text-primary)',
+  fontSize: 24,
+  fontWeight: 760,
+  lineHeight: 1.18,
+  letterSpacing: 0
+}
+
+const boardActionRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: 6,
+  flexShrink: 0,
+  flexWrap: 'wrap'
+}
+
+const quickCaptureStyle: React.CSSProperties = {
+  height: 42,
+  display: 'grid',
+  gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+  alignItems: 'center',
+  gap: 8,
+  padding: '0 7px 0 12px',
+  borderRadius: 8,
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-surface) 70%, var(--editor-bg))',
+  color: 'var(--text-tertiary)'
+}
+
+const quickCaptureInputStyle: React.CSSProperties = {
+  width: '100%',
+  height: 36,
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--text-primary)',
+  fontSize: 13,
+  outline: 'none',
+  minWidth: 0
+}
+
+const boardContentStyle: React.CSSProperties = {
+  minHeight: 0,
+  overflow: 'auto',
+  padding: '18px 22px 24px'
+}
+
+const boardGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(272px, 1fr))',
+  alignItems: 'start',
+  gap: 16,
+  minWidth: 880
+}
+
+const laneStyle: React.CSSProperties = {
+  borderRadius: 10,
+  border: '1px solid transparent',
+  background: 'color-mix(in srgb, var(--bg-base) 72%, transparent)'
+}
+
+const laneHeaderStyle: React.CSSProperties = {
+  height: 42,
+  padding: '0 12px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between'
+}
+
+const laneTitleStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 690,
+  color: 'var(--text-primary)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap'
+}
+
+function laneStackStyle(hasTasks: boolean): React.CSSProperties {
+  return {
+    padding: hasTasks ? '0 8px 10px' : '0 8px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8
+  }
+}
+
 const iconButtonStyle: React.CSSProperties = {
   width: 26,
   height: 26,
@@ -753,17 +873,6 @@ const smallIconButtonStyle: React.CSSProperties = {
   flexShrink: 0
 }
 
-const composerStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) auto',
-  alignItems: 'end',
-  gap: 8,
-  padding: 10,
-  borderRadius: 8,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-base)'
-}
-
 const inputStyle: React.CSSProperties = {
   width: '100%',
   height: 32,
@@ -777,11 +886,11 @@ const inputStyle: React.CSSProperties = {
 }
 
 const analysisCardStyle: React.CSSProperties = {
-  marginBottom: 10,
-  padding: 11,
-  borderRadius: 8,
-  border: '1px solid rgba(124, 110, 245, 0.2)',
-  background: 'var(--accent-muted)'
+  marginBottom: 14,
+  padding: '12px 13px',
+  borderRadius: 10,
+  border: '1px solid rgba(124, 110, 245, 0.22)',
+  background: 'color-mix(in srgb, var(--accent-muted) 82%, var(--bg-base))'
 }
 
 const detailDrawerStyle: React.CSSProperties = {
@@ -805,7 +914,7 @@ const countPillStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   borderRadius: 999,
-  background: 'var(--bg-elevated)',
+  background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)',
   color: 'var(--text-tertiary)',
   fontSize: 10,
   fontWeight: 600
@@ -817,7 +926,7 @@ const priorityPillStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   borderRadius: 4,
-  background: 'var(--bg-elevated)',
+  background: 'color-mix(in srgb, var(--bg-elevated) 76%, transparent)',
   fontSize: 10,
   fontWeight: 600
 }
@@ -851,8 +960,8 @@ function columnDotStyle(name: string): React.CSSProperties {
       ? 'oklch(0.74 0.12 85)'
       : 'var(--accent)'
   return {
-    width: 6,
-    height: 6,
+    width: 7,
+    height: 7,
     borderRadius: 999,
     background: color,
     flexShrink: 0
