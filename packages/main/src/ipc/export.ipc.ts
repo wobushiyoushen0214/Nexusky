@@ -4,6 +4,7 @@ import { basename, dirname, extname, join, relative, posix } from 'path'
 import matter from 'gray-matter'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
+import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, type PublishWikilinkLookup } from '../services/publish'
 
 export function registerExportIPC(): void {
@@ -34,6 +35,7 @@ export function registerExportIPC(): void {
     pre { background: #f4f4f5; padding: 16px; border-radius: 8px; overflow-x: auto; }
     pre code { background: none; padding: 0; }
     blockquote { border-left: 3px solid #6366f1; padding-left: 1rem; color: #666; margin: 1rem 0; }
+    mark { background: #fff2a8; border-radius: 3px; padding: 0 2px; }
     .callout { margin: 1.25rem 0; padding: 12px 14px; border: 1px solid #d9dee8; border-radius: 8px; background: #f5f7fb; }
     .callout-title { font-weight: 700; color: #273246; }
     .callout-body { margin-top: 6px; color: #526070; }
@@ -78,6 +80,7 @@ ${markdownToHtml(params.content)}
       code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 0.85em; }
       pre { background: #f5f5f5; padding: 12px; border-radius: 6px; }
       blockquote { border-left: 3px solid #6366f1; padding-left: 12px; color: #555; }
+      mark { background: #fff2a8; border-radius: 3px; padding: 0 2px; }
       .callout { margin: 1.25rem 0; padding: 12px 14px; border: 1px solid #d9dee8; border-radius: 8px; background: #f5f7fb; }
       .callout-title { font-weight: 700; color: #273246; }
       .callout-body { margin-top: 6px; color: #526070; }
@@ -111,6 +114,7 @@ code { background: #f0f0f5; padding: 2px 6px; border-radius: 4px; font-size: 0.8
 pre { background: #1e1e2e; color: #cdd6f4; padding: 18px; border-radius: 10px; overflow-x: auto; }
 pre code { background: none; color: inherit; }
 blockquote { border-left: 3px solid #7c6ef0; padding-left: 1rem; color: #555; margin: 1rem 0; }
+mark { background: #fff2a8; border-radius: 3px; padding: 0 2px; }
 .callout { margin: 1.25rem 0; padding: 12px 14px; border: 1px solid #d9dee8; border-radius: 8px; background: #f5f7fb; }
 .callout-title { font-weight: 700; color: #273246; }
 .callout-body { margin-top: 6px; color: #526070; }
@@ -196,7 +200,7 @@ ${markdownToHtml(params.content)}
 }
 
 function markdownToHtml(md: string, wikilinkLookup: PublishWikilinkLookup = buildPublishWikilinkLookup([])): string {
-  let html = renderMarkdownCallouts(renderMarkdownFootnotes(md))
+  let html = renderMarkdownHighlights(renderMarkdownCallouts(renderMarkdownFootnotes(md)))
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
