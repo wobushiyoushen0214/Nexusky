@@ -10,7 +10,7 @@ import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractM
 import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { findKnowledgeBridgeNotes } from '../services/ai/graph-insights'
-import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getHighPriorityTaskInfoByPath, getOverdueTaskInfoByPath, getUpcomingTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getElevatedTaskCountByPath, getHighPriorityTaskInfoByPath, getOverdueTaskInfoByPath, getUpcomingTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -2983,6 +2983,7 @@ graph TD
         const dueTodayTaskInfoByPath = getDueTodayTaskInfoByPath(tasks, todayIso)
         const highPriorityTaskInfoByPath = getHighPriorityTaskInfoByPath(tasks)
         const upcomingTaskInfoByPath = getUpcomingTaskInfoByPath(tasks, todayIso, upcomingDays)
+        const elevatedTaskCountByPath = getElevatedTaskCountByPath(tasks, todayIso, upcomingDays)
         const emptyNotePaths = new Set<string>()
         const largeNoteCharactersByPath = new Map<string, number>()
         for (const note of notes) {
@@ -3050,6 +3051,7 @@ graph TD
           largeNoteCharactersByPath,
           missingPropertiesByPath,
           openTaskCountByPath,
+          elevatedTaskCountByPath,
           overdueTaskInfoByPath,
           dueTodayTaskInfoByPath,
           highPriorityTaskInfoByPath,

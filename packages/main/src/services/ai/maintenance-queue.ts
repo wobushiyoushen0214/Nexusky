@@ -50,6 +50,7 @@ interface KnowledgeMaintenanceQueueOptions {
   largeNoteCharactersByPath?: Map<string, number>
   missingPropertiesByPath?: Map<string, string[]>
   openTaskCountByPath?: Map<string, number>
+  elevatedTaskCountByPath?: Map<string, number>
   overdueTaskCountByPath?: Map<string, number>
   overdueTaskInfoByPath?: Map<string, DueTaskInfo>
   dueTodayTaskInfoByPath?: Map<string, DueTaskInfo>
@@ -80,6 +81,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const largeCharacters = options.largeNoteCharactersByPath?.get(note.filePath) || 0
     const missingProperties = options.missingPropertiesByPath?.get(note.filePath) || []
     const openTaskCount = options.openTaskCountByPath?.get(note.filePath) || 0
+    const elevatedTaskCount = options.elevatedTaskCountByPath?.get(note.filePath)
     const overdueTaskInfo = options.overdueTaskInfoByPath?.get(note.filePath)
     const overdueTaskCount = overdueTaskInfo?.count ?? options.overdueTaskCountByPath?.get(note.filePath) ?? 0
     const dueTodayTaskInfo = options.dueTodayTaskInfoByPath?.get(note.filePath)
@@ -208,9 +210,10 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
-    const elevatedTaskCount = overdueTaskCount + dueTodayTaskCount + highPriorityTaskCount + upcomingTaskCount
-    if (openTaskCount > elevatedTaskCount) {
-      const remainingOpenTasks = openTaskCount - elevatedTaskCount
+    const elevatedTaskCountFallback = overdueTaskCount + dueTodayTaskCount + highPriorityTaskCount + upcomingTaskCount
+    const elevatedOpenTaskCount = elevatedTaskCount ?? elevatedTaskCountFallback
+    if (openTaskCount > elevatedOpenTaskCount) {
+      const remainingOpenTasks = openTaskCount - elevatedOpenTaskCount
       items.push({
         type: 'review_open_tasks',
         title: note.title,
@@ -324,6 +327,19 @@ export function getHighPriorityTaskInfoByPath(tasks: KnowledgeMaintenanceTask[])
     if (!highest || priority === 'highest') highestByPath.set(task.filePath, priority)
   }
   return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, highestPriority: highestByPath.get(filePath) || 'high' }]))
+}
+
+export function getElevatedTaskCountByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, upcomingDays: number): Map<string, number> {
+  const counts = new Map<string, number>()
+  const maxIso = addDaysIso(todayIso, Math.max(1, Math.floor(upcomingDays)))
+  for (const task of tasks) {
+    if (task.done) continue
+    const due = extractTaskDueDate(task.text)
+    const hasElevatedDue = Boolean(due && due <= maxIso)
+    if (!hasElevatedDue && !extractHighTaskPriority(task.text)) continue
+    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
+  }
+  return counts
 }
 
 export function getUpcomingTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, days: number): Map<string, DueTaskInfo> {
