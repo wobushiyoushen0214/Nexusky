@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteWikilinks } from '../packages/main/src/services/ai/note-writing'
+import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata, ensureGeneratedNoteWikilinks } from '../packages/main/src/services/ai/note-writing'
 
 describe('generated note writing prompts', () => {
   it('requires natural wikilinks to same-batch notes', () => {
@@ -36,5 +36,27 @@ describe('generated note writing prompts', () => {
     expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n参见 [[自定义 Hook|封装逻辑]]。', 'Hooks 入门', ['Hooks 入门', '自定义 Hook', '状态管理'])).toContain('- [[状态管理]]')
     expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n参见 [[自定义 Hook|封装逻辑]]。', 'Hooks 入门', ['Hooks 入门', '自定义 Hook', '状态管理'])).not.toContain('- [[自定义 Hook]]')
     expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n参见 [[自定义 Hook|封装逻辑]]。', 'Hooks 入门', ['Hooks 入门', '自定义 Hook', '状态管理'])).not.toContain('[[Hooks 入门]]')
+  })
+
+  it('adds frontmatter metadata to generated notes', () => {
+    expect(ensureGeneratedNoteMetadata('# Hooks 入门\n\n内容', 'Hooks 入门', '基础 Hook')).toBe([
+      '---',
+      'title: "Hooks 入门"',
+      'summary: "基础 Hook"',
+      'tags:',
+      '  - "ai-generated"',
+      '  - "batch-note"',
+      'status: seed',
+      'source: ai-batch',
+      '---',
+      '# Hooks 入门',
+      '',
+      '内容'
+    ].join('\n'))
+  })
+
+  it('does not duplicate existing frontmatter', () => {
+    const content = '---\ntitle: "Existing"\n---\n# Existing\n'
+    expect(ensureGeneratedNoteMetadata(content, 'Next', 'Summary')).toBe(content.trim())
   })
 })

@@ -26,6 +26,32 @@ function hasWikilinkToTitle(content: string, title: string): boolean {
   return content.includes(`[[${title}]]`) || content.includes(`[[${title}|`)
 }
 
+function serializeYamlString(value: string): string {
+  return JSON.stringify(value)
+}
+
+function serializeYamlList(values: string[]): string[] {
+  return values.map((value) => `  - ${serializeYamlString(value)}`)
+}
+
+export function ensureGeneratedNoteMetadata(content: string, title: string, summary: string): string {
+  const trimmed = content.trim()
+  if (!trimmed || trimmed.startsWith('---\n') || trimmed.startsWith('---\r\n')) return trimmed
+
+  const frontmatter = [
+    '---',
+    `title: ${serializeYamlString(title)}`,
+    ...(summary.trim() ? [`summary: ${serializeYamlString(summary.trim())}`] : []),
+    'tags:',
+    ...serializeYamlList(['ai-generated', 'batch-note']),
+    'status: seed',
+    'source: ai-batch',
+    '---'
+  ]
+
+  return `${frontmatter.join('\n')}\n${trimmed}`
+}
+
 export function ensureGeneratedNoteWikilinks(content: string, currentTitle: string, siblingTitles: string[], maxLinks = 4): string {
   const trimmed = content.trim()
   if (!trimmed) return trimmed
