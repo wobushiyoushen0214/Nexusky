@@ -947,6 +947,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     finishStoppedGeneration('已停止，未生成新文件。')
   }
 
+  const finishIfStoppedGeneration = (message?: string): boolean => {
+    if (!batchCancelledRef.current) return false
+    finishStoppedGeneration(message)
+    return true
+  }
+
   const handleSelectFolder = (folderName: string) => {
     if (!pendingBatch || !vaultPath) return
     batchCancelledRef.current = false
@@ -1099,10 +1105,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setStreamContent('')
 
     const contextPrefix = editMode ? '' : await collectAttachmentContext()
+    if (finishIfStoppedGeneration()) return
 
     if (vaultPath && !editMode) {
       const allMessages = [...messages, userMsg]
       const chatMessages = await buildChatMessages(allMessages)
+      if (finishIfStoppedGeneration()) return
       let intent = 'chat'
       try {
         setToolStatus('识别请求意图...')
@@ -1113,15 +1121,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         intent = detected.intent || 'chat'
       } catch (e: unknown) {
         if (isCancellationError(e)) {
-          editCompleteRef.current = true
-          streamContentRef.current = ''
-          setStreamContent('')
-          setIsStreaming(false)
-          setToolStatus(null)
+          finishStoppedGeneration()
           return
         }
         intent = 'chat'
       }
+      if (finishIfStoppedGeneration()) return
 
       if (intent === 'graph') {
         editCompleteRef.current = true
@@ -1204,6 +1209,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath })
         }
       } catch (e: unknown) {
+        if (isCancellationError(e) || batchCancelledRef.current) {
+          finishStoppedGeneration()
+          return
+        }
         appendAssistantMessage(friendlyError(getErrorMessage(e)))
         streamContentRef.current = ''
         setStreamContent('')
