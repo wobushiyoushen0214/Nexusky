@@ -37,6 +37,7 @@ export function KanbanPanel() {
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null)
   const [dropColumnId, setDropColumnId] = useState<string | null>(null)
   const [newTitle, setNewTitle] = useState('')
+  const [newColumnId, setNewColumnId] = useState('')
   const [analysis, setAnalysis] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const aiStopRequestedRef = useRef(false)
@@ -80,6 +81,9 @@ export function KanbanPanel() {
     setColumns(nextColumns)
     setTasks(nextTasks)
     setRelations(nextRelations)
+    if (!newColumnId || !nextColumns.some((column) => column.id === newColumnId)) {
+      setNewColumnId(nextColumns[0]?.id || '')
+    }
     if (selectedTaskId && !nextTasks.some((task) => task.id === selectedTaskId)) {
       setSelectedTaskId(null)
     }
@@ -91,7 +95,7 @@ export function KanbanPanel() {
 
   const handleCreateTask = async (columnId?: string) => {
     if (!vaultPath || !newTitle.trim()) return
-    const targetColumnId = columnId || columns[0]?.id
+    const targetColumnId = columnId || newColumnId || columns[0]?.id
     if (!targetColumnId) return
     const id = crypto.randomUUID()
     await window.api.invoke('kanban:create-task', {
@@ -377,11 +381,11 @@ export function KanbanPanel() {
                   <Icon name="x" />
                 </button>
               )}
-              <button onClick={handleImportIndexedTasks} disabled={busy === 'import-indexed'} title="导入 Markdown 待办" style={compactButtonStyle}>
+              <button onClick={handleImportIndexedTasks} disabled={busy === 'import-indexed'} title="导入 Markdown 待办" style={toolButtonStyle}>
                 {busy === 'import-indexed' ? <span style={miniLoadingStyle} /> : <Icon name="note" />}
                 <span>导入待办</span>
               </button>
-              <button onClick={handleGenerateFromNote} disabled={busy === 'from-note'} title="从当前笔记生成任务" style={compactButtonStyle}>
+              <button onClick={handleGenerateFromNote} disabled={busy === 'from-note'} title="从当前笔记生成任务" style={toolButtonStyle}>
                 {busy === 'from-note' ? <span style={miniLoadingStyle} /> : <Icon name="spark" />}
                 <span>从笔记生成</span>
               </button>
@@ -397,15 +401,24 @@ export function KanbanPanel() {
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask() }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask(newColumnId) }}
               placeholder="写下一个任务"
               style={quickCaptureInputStyle}
             />
+            <select
+              value={newColumnId}
+              onChange={(e) => setNewColumnId(e.target.value)}
+              disabled={columns.length === 0}
+              style={quickCaptureSelectStyle}
+              title="添加到"
+            >
+              {columns.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}
+            </select>
             <button
-              onClick={() => handleCreateTask()}
+              onClick={() => handleCreateTask(newColumnId)}
               disabled={createDisabled}
               title="添加任务"
-              style={{ ...primaryButtonStyle, height: 30, opacity: createDisabled ? 0.45 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
+              style={{ ...primaryButtonStyle, height: 32, opacity: createDisabled ? 0.45 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
             >
               添加
             </button>
@@ -436,7 +449,7 @@ export function KanbanPanel() {
                 onDrop={() => handleDropTask(column.id)}
                 style={{
                   ...laneStyle,
-                  borderColor: isDropTarget ? 'rgba(124, 110, 245, 0.5)' : 'transparent',
+                  borderColor: isDropTarget ? 'rgba(124, 110, 245, 0.5)' : 'var(--border-subtle)',
                   background: isDropTarget ? 'var(--accent-muted)' : laneStyle.background,
                   outline: isDropTarget ? '1px solid rgba(124, 110, 245, 0.24)' : 'none',
                   overflow: 'hidden',
@@ -597,18 +610,19 @@ function TaskCard({
       onDrop={(e) => { e.stopPropagation(); onDropBefore() }}
       style={{
         width: '100%',
-        minHeight: 72,
-        padding: '10px 11px',
+        minHeight: 76,
+        padding: '11px 12px',
         textAlign: 'left',
         borderRadius: 8,
-        border: `1px solid ${selected || highlighted ? 'rgba(124, 110, 245, 0.46)' : 'color-mix(in srgb, var(--border-subtle) 78%, transparent)'}`,
-        background: selected ? 'var(--accent-muted)' : highlighted ? 'color-mix(in srgb, var(--accent-muted) 64%, transparent)' : 'color-mix(in srgb, var(--bg-surface) 82%, var(--editor-bg))',
+        border: `1px solid ${selected || highlighted ? 'rgba(124, 110, 245, 0.48)' : 'var(--border-subtle)'}`,
+        background: selected ? 'var(--accent-muted)' : highlighted ? 'color-mix(in srgb, var(--accent-muted) 62%, transparent)' : 'var(--bg-surface)',
         color: 'var(--text-primary)',
         cursor: 'grab',
         transition: 'background 150ms ease, border-color 150ms ease, transform 150ms ease'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+        <span style={{ marginTop: 4, width: 6, height: 6, borderRadius: 999, background: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))], flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 610, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
         {relationCount > 0 && (
           <span title="有关联任务" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--accent-text)', fontSize: 10, flexShrink: 0, paddingTop: 2 }}>
@@ -617,8 +631,8 @@ function TaskCard({
           </span>
         )}
       </div>
-      {task.description && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.48, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</div>}
-      <div style={{ marginTop: 9, display: 'flex', alignItems: 'center', gap: 6, minHeight: 16 }}>
+      {task.description && <div style={{ marginTop: 7, paddingLeft: 15, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.48, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</div>}
+      <div style={{ marginTop: 10, paddingLeft: 15, display: 'flex', alignItems: 'center', gap: 6, minHeight: 16 }}>
         <span style={{ ...priorityPillStyle, color: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))] }}>{PRIORITY_LABEL[Math.max(0, Math.min(3, task.priority))]}</span>
         {task.dueDate && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{task.dueDate}</span>}
         {task.sourceFilePath && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>笔记</span>}
@@ -629,8 +643,9 @@ function TaskCard({
 
 function EmptyColumn() {
   return (
-    <div style={{ minHeight: 104, display: 'grid', placeItems: 'center', padding: '12px 10px', borderRadius: 8, border: '1px dashed color-mix(in srgb, var(--border-subtle) 78%, transparent)', fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-      拖入任务或从顶部添加
+    <div style={emptyColumnStyle}>
+      <Icon name="plus" />
+      <span>暂无任务</span>
     </div>
   )
 }
@@ -756,11 +771,20 @@ const compactButtonStyle: React.CSSProperties = {
   fontSize: 11
 }
 
-const insightButtonStyle: React.CSSProperties = {
+const toolButtonStyle: React.CSSProperties = {
   ...compactButtonStyle,
+  height: 32,
+  padding: '0 10px',
+  background: 'var(--bg-base)',
+  borderColor: 'var(--border-subtle)',
+  color: 'var(--text-secondary)'
+}
+
+const insightButtonStyle: React.CSSProperties = {
+  ...toolButtonStyle,
   color: 'var(--accent-text)',
   borderColor: 'rgba(124, 110, 245, 0.28)',
-  background: 'color-mix(in srgb, var(--accent-muted) 82%, transparent)'
+  background: 'var(--accent-muted)'
 }
 
 const primaryButtonStyle: React.CSSProperties = {
@@ -833,18 +857,18 @@ const boardActionRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'flex-end',
-  gap: 6,
+  gap: 7,
   flexShrink: 0,
   flexWrap: 'wrap'
 }
 
 const quickCaptureStyle: React.CSSProperties = {
-  height: 42,
+  height: 46,
   display: 'grid',
-  gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+  gridTemplateColumns: 'auto minmax(0, 1fr) minmax(108px, 136px) auto',
   alignItems: 'center',
   gap: 8,
-  padding: '0 7px 0 12px',
+  padding: '0 7px 0 13px',
   borderRadius: 8,
   border: '1px solid var(--border-subtle)',
   background: 'var(--bg-base)',
@@ -858,6 +882,19 @@ const quickCaptureInputStyle: React.CSSProperties = {
   background: 'transparent',
   color: 'var(--text-primary)',
   fontSize: 13,
+  outline: 'none',
+  minWidth: 0
+}
+
+const quickCaptureSelectStyle: React.CSSProperties = {
+  width: '100%',
+  height: 32,
+  padding: '0 8px',
+  borderRadius: 6,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
   outline: 'none',
   minWidth: 0
 }
@@ -878,16 +915,18 @@ const boardGridStyle: React.CSSProperties = {
 
 const laneStyle: React.CSSProperties = {
   borderRadius: 8,
-  border: '1px solid transparent',
+  border: '1px solid var(--border-subtle)',
   background: 'var(--bg-base)'
 }
 
 const laneHeaderStyle: React.CSSProperties = {
-  height: 42,
-  padding: '0 12px',
+  height: 44,
+  padding: '0 12px 0 13px',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between'
+  justifyContent: 'space-between',
+  borderBottom: '1px solid var(--border-subtle)',
+  background: 'var(--bg-surface)'
 }
 
 const laneTitleStyle: React.CSSProperties = {
@@ -901,11 +940,27 @@ const laneTitleStyle: React.CSSProperties = {
 
 function laneStackStyle(hasTasks: boolean): React.CSSProperties {
   return {
-    padding: hasTasks ? '0 8px 10px' : '0 8px 12px',
+    padding: hasTasks ? 9 : '10px 9px',
     display: 'flex',
     flexDirection: 'column',
     gap: 8
   }
+}
+
+const emptyColumnStyle: React.CSSProperties = {
+  minHeight: 112,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 7,
+  padding: '12px 10px',
+  borderRadius: 8,
+  border: '1px dashed var(--border-subtle)',
+  background: 'var(--bg-surface)',
+  fontSize: 11,
+  lineHeight: 1.5,
+  color: 'var(--text-tertiary)',
+  textAlign: 'center'
 }
 
 const iconButtonStyle: React.CSSProperties = {
