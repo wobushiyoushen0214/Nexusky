@@ -56,6 +56,7 @@ export function KanbanPanel() {
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) || null, [tasks, selectedTaskId])
   const totalTasks = tasks.length
+  const columnNameById = useMemo(() => new Map(columns.map((column) => [column.id, column.name])), [columns])
 
   const relatedTaskIds = useMemo(() => {
     const anchor = hoverTaskId || selectedTaskId
@@ -132,12 +133,13 @@ export function KanbanPanel() {
     setSelectedTaskId(id)
   }
 
-  const handleDropTask = async (columnId: string, beforeTaskId?: string) => {
-    if (!vaultPath || !draggingTaskId) return
-    const moving = tasks.find((task) => task.id === draggingTaskId)
+  const handleDropTask = async (columnId: string, beforeTaskId?: string, droppedTaskId?: string) => {
+    const taskId = droppedTaskId || draggingTaskId
+    if (!vaultPath || !taskId) return
+    const moving = tasks.find((task) => task.id === taskId)
     if (!moving) return
 
-    const remaining = tasks.filter((task) => task.id !== draggingTaskId)
+    const remaining = tasks.filter((task) => task.id !== taskId)
     const targetTasks = remaining
       .filter((task) => task.columnId === columnId)
       .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -168,6 +170,7 @@ export function KanbanPanel() {
       id: selectedTask.id,
       title,
       description: String(detailDraft.description || ''),
+      columnId: String(detailDraft.columnId || selectedTask.columnId),
       priority: Number(detailDraft.priority || 0),
       dueDate: detailDraft.dueDate || null
     })
@@ -479,9 +482,12 @@ export function KanbanPanel() {
               return (
                 <section
                   key={column.id}
-                  onDragOver={(e) => { e.preventDefault(); setDropColumnId(column.id) }}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropColumnId(column.id) }}
                   onDragLeave={() => setDropColumnId(null)}
-                  onDrop={() => handleDropTask(column.id)}
+                  onDrop={(e) => {
+                    const taskId = e.dataTransfer.getData('application/x-nexusky-kanban-task') || e.dataTransfer.getData('text/plain')
+                    handleDropTask(column.id, undefined, taskId || undefined)
+                  }}
                   style={{
                     ...laneStyle,
                     borderColor: isDropTarget ? 'color-mix(in srgb, var(--accent) 52%, var(--border-subtle))' : 'var(--border-subtle)',
@@ -512,8 +518,22 @@ export function KanbanPanel() {
                         selected={task.id === selectedTaskId}
                         onSelect={() => setSelectedTaskId(task.id)}
                         onHover={(hover) => setHoverTaskId(hover ? task.id : null)}
-                        onDragStart={() => setDraggingTaskId(task.id)}
-                        onDropBefore={() => handleDropTask(column.id, task.id)}
+                        statusLabel={columnNameById.get(task.columnId) || column.name}
+                        statusColor={columnStatusColor(columnNameById.get(task.columnId) || column.name)}
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = 'move'
+                          e.dataTransfer.setData('text/plain', task.id)
+                          e.dataTransfer.setData('application/x-nexusky-kanban-task', task.id)
+                          setDraggingTaskId(task.id)
+                        }}
+                        onDragEnd={() => {
+                          setDraggingTaskId(null)
+                          setDropColumnId(null)
+                        }}
+                        onDropBefore={(e) => {
+                          const taskId = e.dataTransfer.getData('application/x-nexusky-kanban-task') || e.dataTransfer.getData('text/plain')
+                          handleDropTask(column.id, task.id, taskId || undefined)
+                        }}
                       />
                     ))}
                     {columnTasks.length === 0 && <EmptyColumn />}
@@ -526,40 +546,57 @@ export function KanbanPanel() {
       </div>
 
       {selectedTask && (
-        <aside style={detailDrawerStyle}>
-          <div style={{ minHeight: 60, padding: '0 18px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div style={{ maxWidth: 880, height: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div
+          style={detailOverlayStyle}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setSelectedTaskId(null)
+          }}
+        >
+          <aside style={detailModalStyle} onMouseDown={(e) => e.stopPropagation()}>
+          <div style={detailHeaderStyle}>
+            <div style={{ minWidth: 0 }}>
+              <div style={detailTitleRowStyle}>
+                <span style={columnDotStyle(columnNameById.get(String(detailDraft.columnId || selectedTask.columnId)) || '')} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 730, color: 'var(--text-primary)' }}>任务详情</div>
                 <div style={{ marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedTask.sourceFilePath || '看板任务'}</div>
               </div>
-              <button onClick={() => setSelectedTaskId(null)} style={iconButtonStyle} title="关闭">
-                <Icon name="x" />
-              </button>
+              </div>
             </div>
+            <button onClick={() => setSelectedTaskId(null)} style={iconButtonStyle} title="关闭">
+              <Icon name="x" />
+            </button>
           </div>
 
-          <div style={{ padding: '18px 18px 28px', overflowY: 'auto' }}>
-            <div style={{ maxWidth: 880, margin: '0 auto' }}>
+          <div style={detailBodyStyle}>
+            <section style={detailSectionStyle}>
             <Field label="标题">
-              <input value={String(detailDraft.title || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, title: e.target.value }))} style={{ ...inputStyle, height: 36, fontSize: 13 }} />
+              <input value={String(detailDraft.title || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, title: e.target.value }))} style={detailInputStyle} />
             </Field>
             <Field label="说明">
-              <textarea value={String(detailDraft.description || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, description: e.target.value }))} style={{ ...inputStyle, minHeight: 112, paddingTop: 9, resize: 'vertical', lineHeight: 1.55 }} />
+              <textarea value={String(detailDraft.description || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, description: e.target.value }))} style={detailTextareaStyle} />
             </Field>
+            </section>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10 }}>
+            <section style={detailSectionStyle}>
+            <div style={detailMetaGridStyle}>
+              <Field label="状态">
+                <select value={String(detailDraft.columnId || selectedTask.columnId)} onChange={(e) => setDetailDraft((draft) => ({ ...draft, columnId: e.target.value }))} style={detailInputStyle}>
+                  {columns.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}
+                </select>
+              </Field>
               <Field label="优先级">
-                <select value={Number(detailDraft.priority || 0)} onChange={(e) => setDetailDraft((draft) => ({ ...draft, priority: Number(e.target.value) }))} style={inputStyle}>
+                <select value={Number(detailDraft.priority || 0)} onChange={(e) => setDetailDraft((draft) => ({ ...draft, priority: Number(e.target.value) }))} style={detailInputStyle}>
                   {PRIORITY_LABEL.map((label, index) => <option key={label} value={index}>{label}</option>)}
                 </select>
               </Field>
               <Field label="截止日">
-                <input type="date" value={String(detailDraft.dueDate || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, dueDate: e.target.value || null }))} style={inputStyle} />
+                <input type="date" value={String(detailDraft.dueDate || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, dueDate: e.target.value || null }))} style={detailInputStyle} />
               </Field>
             </div>
+            </section>
 
-            <div style={{ display: 'grid', gridTemplateColumns: selectedTask.sourceFilePath ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8, margin: '4px 0 16px' }}>
+            <div style={detailActionRowStyle}>
               <button onClick={handleSaveDetail} style={primaryButtonStyle}>保存</button>
               <button onClick={handleBreakdown} disabled={busy === 'breakdown'} style={toolbarButtonStyle}>{busy === 'breakdown' ? '拆解中' : 'AI 拆解'}</button>
               {!selectedTask.sourceFilePath && <button onClick={handleDeleteTask} style={dangerButtonStyle}>删除</button>}
@@ -572,10 +609,10 @@ export function KanbanPanel() {
               </div>
             )}
 
-            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <section style={detailRelationSectionStyle}>
+              <div style={detailSectionTitleStyle}>
                 <Icon name="link" />
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>关联关系</span>
+                <span>关联关系</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
                 {selectedRelations.map((relation) => {
@@ -593,22 +630,22 @@ export function KanbanPanel() {
                 })}
                 {selectedRelations.length === 0 && <div style={{ padding: '8px 0', fontSize: 11, color: 'var(--text-tertiary)' }}>暂无关联</div>}
               </div>
-              <select value={newRelationTarget} onChange={(e) => setNewRelationTarget(e.target.value)} style={{ ...inputStyle, marginBottom: 6 }}>
+              <select value={newRelationTarget} onChange={(e) => setNewRelationTarget(e.target.value)} style={{ ...detailInputStyle, marginBottom: 7 }}>
                 <option value="">选择关联任务</option>
                 {candidateRelationTargets.map((task) => <option key={task.id} value={task.id}>{task.title}</option>)}
               </select>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6 }}>
-                <select value={newRelationType} onChange={(e) => setNewRelationType(e.target.value as KanbanRelation['relationType'])} style={inputStyle}>
+              <div style={detailRelationControlsStyle}>
+                <select value={newRelationType} onChange={(e) => setNewRelationType(e.target.value as KanbanRelation['relationType'])} style={detailInputStyle}>
                   <option value="related">关联</option>
                   <option value="blocks">阻塞</option>
                   <option value="depends_on">依赖</option>
                 </select>
                 <button onClick={handleCreateRelation} style={toolbarButtonStyle}>添加</button>
               </div>
-            </div>
-            </div>
+            </section>
           </div>
-        </aside>
+          </aside>
+        </div>
       )}
       <AiWritePreviewModal
         pending={pendingAiWrite}
@@ -621,25 +658,31 @@ export function KanbanPanel() {
 
 function TaskCard({
   task,
+  statusLabel,
+  statusColor,
   relationCount,
   highlighted,
   selected,
   onSelect,
   onHover,
   onDragStart,
+  onDragEnd,
   onDropBefore
 }: {
   task: KanbanTask
+  statusLabel: string
+  statusColor: string
   relationCount: number
   highlighted: boolean
   selected: boolean
   onSelect: () => void
   onHover: (hover: boolean) => void
-  onDragStart: () => void
-  onDropBefore: () => void
+  onDragStart: (event: React.DragEvent<HTMLButtonElement>) => void
+  onDragEnd: () => void
+  onDropBefore: (event: React.DragEvent<HTMLButtonElement>) => void
 }) {
   const priorityIndex = Math.max(0, Math.min(3, task.priority))
-  const hasMeta = task.priority > 0 || task.dueDate || task.sourceFilePath || relationCount > 0
+  const hasMeta = task.priority > 0 || task.dueDate || task.sourceFilePath || relationCount > 0 || statusLabel
 
   return (
     <button
@@ -648,8 +691,9 @@ function TaskCard({
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
       onDragStart={onDragStart}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => { e.stopPropagation(); onDropBefore() }}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+      onDrop={(e) => { e.stopPropagation(); onDropBefore(e) }}
       style={{
         width: '100%',
         minHeight: 68,
@@ -667,13 +711,14 @@ function TaskCard({
     >
       <div style={{ minWidth: 0, padding: '10px 11px 9px' }}>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <span style={taskPriorityDotStyle(priorityIndex)} />
+          <span style={taskStatusDotStyle(statusColor)} />
           <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 690, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
           <span style={{ ...priorityPillStyle, color: PRIORITY_COLOR[priorityIndex], background: PRIORITY_TONE[priorityIndex] }}>{PRIORITY_LABEL[priorityIndex]}</span>
         </span>
         {task.description && <span style={{ marginTop: 6, paddingLeft: 15, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</span>}
         {hasMeta && (
           <span style={{ ...taskMetaRowStyle, paddingLeft: 15 }}>
+            {statusLabel && <span style={taskStatusPillStyle(statusColor)}>{statusLabel}</span>}
             {task.dueDate && <span style={taskMetaPillStyle(dueDateTone(task.dueDate))}>{task.dueDate}</span>}
             {task.sourceFilePath && <span style={taskMetaPillStyle('neutral')}>笔记</span>}
             {relationCount > 0 && (
@@ -1275,17 +1320,112 @@ const aiWriteFooterStyle: React.CSSProperties = {
   borderTop: '1px solid color-mix(in srgb, var(--border-subtle) 74%, transparent)'
 }
 
-const detailDrawerStyle: React.CSSProperties = {
+const detailOverlayStyle: React.CSSProperties = {
   position: 'absolute',
   left: 0,
   right: 0,
   top: 0,
   bottom: 0,
   zIndex: 8,
+  padding: 18,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(8, 8, 13, 0.54)'
+}
+
+const detailModalStyle: React.CSSProperties = {
+  width: 'min(680px, calc(100vw - 48px))',
+  maxHeight: 'min(640px, calc(100vh - 48px))',
   display: 'grid',
   gridTemplateRows: 'auto 1fr',
-  background: 'var(--editor-bg)',
-  overflow: 'hidden'
+  overflow: 'hidden',
+  borderRadius: 12,
+  border: '1px solid color-mix(in srgb, var(--border-default) 86%, transparent)',
+  background: 'var(--bg-elevated)',
+  boxShadow: '0 24px 70px rgba(0, 0, 0, 0.42)'
+}
+
+const detailHeaderStyle: React.CSSProperties = {
+  minHeight: 58,
+  padding: '0 16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 10,
+  borderBottom: '1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-surface) 58%, transparent)'
+}
+
+const detailTitleRowStyle: React.CSSProperties = {
+  minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 9
+}
+
+const detailBodyStyle: React.CSSProperties = {
+  minHeight: 0,
+  padding: '16px 16px 18px',
+  overflowY: 'auto',
+  display: 'grid',
+  gap: 12
+}
+
+const detailSectionStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 10
+}
+
+const detailMetaGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: 10
+}
+
+const detailInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  height: 34,
+  paddingLeft: 12,
+  borderColor: 'color-mix(in srgb, var(--border-subtle) 86%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-surface) 64%, transparent)',
+  fontSize: 12.5
+}
+
+const detailTextareaStyle: React.CSSProperties = {
+  ...detailInputStyle,
+  minHeight: 88,
+  paddingTop: 9,
+  resize: 'vertical',
+  lineHeight: 1.55
+}
+
+const detailActionRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+  gap: 8,
+  alignItems: 'center'
+}
+
+const detailRelationSectionStyle: React.CSSProperties = {
+  paddingTop: 12,
+  borderTop: '1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent)'
+}
+
+const detailSectionTitleStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 7,
+  marginBottom: 8,
+  color: 'var(--text-primary)',
+  fontSize: 12,
+  fontWeight: 650
+}
+
+const detailRelationControlsStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  gap: 7
 }
 
 const countPillStyle: React.CSSProperties = {
@@ -1322,13 +1462,13 @@ const taskMetaRowStyle: React.CSSProperties = {
   minHeight: 18
 }
 
-function taskPriorityDotStyle(priorityIndex: number): React.CSSProperties {
+function taskStatusDotStyle(color: string): React.CSSProperties {
   return {
     width: 7,
     height: 7,
     marginTop: 5,
     borderRadius: 999,
-    background: PRIORITY_COLOR[priorityIndex],
+    background: color,
     flexShrink: 0
   }
 }
@@ -1356,18 +1496,19 @@ const miniLoadingStyle: React.CSSProperties = {
 }
 
 function columnDotStyle(name: string): React.CSSProperties {
-  const color = name.includes('完成')
-    ? 'oklch(0.7 0.13 155)'
-    : name.includes('进行')
-      ? 'oklch(0.74 0.12 85)'
-      : 'var(--accent)'
   return {
     width: 7,
     height: 7,
     borderRadius: 999,
-    background: color,
+    background: columnStatusColor(name),
     flexShrink: 0
   }
+}
+
+function columnStatusColor(name: string): string {
+  if (/完成|done/i.test(name)) return 'oklch(0.7 0.13 155)'
+  if (/进行|progress|doing/i.test(name)) return 'oklch(0.74 0.12 85)'
+  return 'var(--accent)'
 }
 
 function columnLaneHint(name: string, count: number): string {
@@ -1410,6 +1551,14 @@ function taskMetaPillStyle(tone: 'neutral' | 'warm' | 'cool'): React.CSSProperti
     fontSize: 10,
     fontWeight: 620,
     whiteSpace: 'nowrap'
+  }
+}
+
+function taskStatusPillStyle(color: string): React.CSSProperties {
+  return {
+    ...taskMetaPillStyle('neutral'),
+    color,
+    background: `color-mix(in srgb, ${color} 14%, var(--bg-elevated))`
   }
 }
 
