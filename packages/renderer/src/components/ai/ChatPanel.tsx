@@ -12,6 +12,7 @@ import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './
 import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
 import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
 import { stopPendingBatchPlanContent } from './batch-progress'
+import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-stream'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -382,7 +383,8 @@ export function ChatPanel() {
   }, [isStreaming])
 
   useEffect(() => {
-    const cleanup = window.api.onAiEditStream((event: { type: string; content?: string }) => {
+    const cleanup = window.api.onAiEditStream((event: AiEditStreamEvent) => {
+      if (!shouldApplyAiEditStreamEvent(isStreamingRef.current, event)) return
       if (event.type === 'text' && event.content) {
         setEditStreamContent((prev) => prev + event.content)
       } else if (event.type === 'done') {
@@ -713,6 +715,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     isStreamingRef.current = false
     setIsStreaming(false)
     setToolStatus(null)
+    setEditStreamContent('')
   }, [])
 
   const executeBatchGenerate = async (
@@ -936,6 +939,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     editCompleteRef.current = true
     streamContentRef.current = ''
     setStreamContent('')
+    setEditStreamContent('')
     if (editTimerRef.current) clearInterval(editTimerRef.current)
     editTimerRef.current = null
     setIsStreaming(false)
@@ -1103,6 +1107,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')
+    setEditStreamContent('')
 
     const contextPrefix = editMode ? '' : await collectAttachmentContext()
     if (finishIfStoppedGeneration()) return
