@@ -932,6 +932,15 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     })
   }
 
+  const finishStoppedBatchWithoutFiles = () => {
+    editCompleteRef.current = true
+    streamContentRef.current = ''
+    setStreamContent('')
+    setIsStreaming(false)
+    setToolStatus(null)
+    appendAssistantMessage('已停止，未生成新文件。')
+  }
+
   const handleSelectFolder = (folderName: string) => {
     if (!pendingBatch || !vaultPath) return
     batchCancelledRef.current = false
@@ -1254,6 +1263,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             setStreamContent('')
 
             const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+            if (batchCancelledRef.current) {
+              finishStoppedBatchWithoutFiles()
+              return
+            }
             const dirs = files.filter((f) => f.isDirectory && !f.name.startsWith('.')).map((f) => f.name)
 
             const recentContext = messages.slice(-10).map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content.slice(0, 200)}`).join('\n')
@@ -1272,23 +1285,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               }
             } catch (e: unknown) {
               if (isCancellationError(e)) {
-                editCompleteRef.current = true
-                streamContentRef.current = ''
-                setStreamContent('')
-                setIsStreaming(false)
-                setToolStatus(null)
-                appendAssistantMessage('已停止，未生成新文件。')
+                finishStoppedBatchWithoutFiles()
                 return
               }
             }
 
             if (batchCancelledRef.current) {
-              editCompleteRef.current = true
-              streamContentRef.current = ''
-              setStreamContent('')
-              setIsStreaming(false)
-              setToolStatus(null)
-              appendAssistantMessage('已停止，未生成新文件。')
+              finishStoppedBatchWithoutFiles()
               return
             }
 
