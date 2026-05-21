@@ -10,6 +10,7 @@ import { formatAiToolStatus } from './tool-labels'
 import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
 import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
+import { MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -879,9 +880,33 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
   const handleConfirmBatchPlan = () => {
     if (!pendingBatchPlan) return
-    const plan = pendingBatchPlan
+    const plan = {
+      instruction: pendingBatchPlan.instruction,
+      batches: normalizeEditableBatchPlan(pendingBatchPlan.batches)
+    }
+    if (plan.batches.length === 0) {
+      toast('请至少保留一个目录计划', 'info')
+      return
+    }
     setPendingBatchPlan(null)
     void executeBatchPlan(plan.instruction, plan.batches)
+  }
+
+  const updatePendingBatchPlanBatch = (index: number, patch: Partial<GeneratedNoteBatchPlanItem>) => {
+    setPendingBatchPlan((plan) => {
+      if (!plan) return plan
+      return {
+        ...plan,
+        batches: plan.batches.map((batch, i) => i === index ? { ...batch, ...patch } : batch)
+      }
+    })
+  }
+
+  const removePendingBatchPlanBatch = (index: number) => {
+    setPendingBatchPlan((plan) => {
+      if (!plan) return plan
+      return { ...plan, batches: plan.batches.filter((_, i) => i !== index) }
+    })
   }
 
   const handleSelectFolder = (folderName: string) => {
@@ -1709,13 +1734,40 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               </div>
             </div>
             <div style={{ display: 'grid', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
-              {pendingBatchPlan.batches.map((batch) => (
-                <div key={`${batch.dir}:${batch.topic}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', padding: '7px 9px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{batch.dir}</div>
-                    <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{batch.topic}</div>
+              {pendingBatchPlan.batches.map((batch, index) => (
+                <div key={`${index}:${batch.dir}:${batch.topic}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 62px 24px', gap: 6, alignItems: 'center', padding: '7px 9px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>
+                  <div style={{ minWidth: 0, display: 'grid', gap: 5 }}>
+                    <input
+                      value={batch.dir}
+                      onChange={(e) => updatePendingBatchPlanBatch(index, { dir: e.currentTarget.value })}
+                      placeholder="目录"
+                      title="目录"
+                      style={{ width: '100%', height: 24, padding: '0 7px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', minWidth: 0 }}
+                    />
+                    <input
+                      value={batch.topic}
+                      onChange={(e) => updatePendingBatchPlanBatch(index, { topic: e.currentTarget.value })}
+                      placeholder="主题"
+                      title="主题"
+                      style={{ width: '100%', height: 24, padding: '0 7px', fontSize: 11, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-secondary)', outline: 'none', minWidth: 0 }}
+                    />
                   </div>
-                  <span style={{ fontSize: 11, color: 'var(--accent-text)', background: 'var(--accent-muted)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{batch.count} 篇</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_EDITABLE_BATCH_NOTE_COUNT}
+                    value={batch.count}
+                    onChange={(e) => updatePendingBatchPlanBatch(index, { count: normalizeEditableBatchCount(e.currentTarget.value) })}
+                    title="篇数"
+                    style={{ width: 62, height: 28, padding: '0 7px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--accent-text)', outline: 'none' }}
+                  />
+                  <button
+                    onClick={() => removePendingBatchPlanBatch(index)}
+                    title="移除该目录"
+                    style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
             </div>
