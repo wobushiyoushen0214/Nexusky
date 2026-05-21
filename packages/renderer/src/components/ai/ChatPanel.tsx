@@ -932,13 +932,19 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     })
   }
 
-  const finishStoppedBatchWithoutFiles = () => {
+  const finishStoppedGeneration = (message = '已停止。') => {
     editCompleteRef.current = true
     streamContentRef.current = ''
     setStreamContent('')
+    if (editTimerRef.current) clearInterval(editTimerRef.current)
+    editTimerRef.current = null
     setIsStreaming(false)
     setToolStatus(null)
-    appendAssistantMessage('已停止，未生成新文件。')
+    appendAssistantMessage(message)
+  }
+
+  const finishStoppedBatchWithoutFiles = () => {
+    finishStoppedGeneration('已停止，未生成新文件。')
   }
 
   const handleSelectFolder = (folderName: string) => {
@@ -1243,11 +1249,20 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             editIntent = 'edit'
           }
 
+          if (batchCancelledRef.current) {
+            finishStoppedGeneration()
+            return
+          }
+
           if (editIntent === 'chat') {
             try {
               setToolStatus('正在生成回答...')
               await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
             } catch (e: unknown) {
+              if (isCancellationError(e) || batchCancelledRef.current) {
+                finishStoppedGeneration()
+                return
+              }
               appendAssistantMessage(friendlyError(getErrorMessage(e)))
               streamContentRef.current = ''
               setStreamContent('')
@@ -1363,6 +1378,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         if (filePath) {
           fileContent = await window.api.invoke('file:read', { path: filePath })
         }
+        if (batchCancelledRef.current) {
+          finishStoppedGeneration()
+          return
+        }
 
         editTimerRef.current = setInterval(() => setEditElapsed((t) => t + 1), 1000)
         const selectionContext = attachedSelections.length > 0
@@ -1371,6 +1390,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         const documentContext = sentDocuments.length > 0 ? `\n\n文档附件上下文：\n${buildDocumentAttachmentContext(sentDocuments)}` : ''
         const editInstruction = `${userMsg.content}${selectionContext}${documentContext}`
         setAttachedDocuments([])
+        if (batchCancelledRef.current) {
+          finishStoppedGeneration()
+          return
+        }
         const result = await window.api.invoke('ai:edit', {
           instruction: !filePath
             ? `创建一篇新笔记。要求：${editInstruction}`
@@ -1404,6 +1427,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           appendAssistantMessage(isCancellationError(result.error) ? '已停止生成修改方案。' : `编辑失败: ${result.error}`)
         }
       } catch (e: unknown) {
+        if (isCancellationError(e) || batchCancelledRef.current) {
+          finishStoppedGeneration('已停止生成修改方案。')
+          return
+        }
         appendAssistantMessage(friendlyError(getErrorMessage(e)))
       }
       if (editTimerRef.current) clearInterval(editTimerRef.current)
@@ -1423,6 +1450,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: unknown) {
+      if (isCancellationError(e) || batchCancelledRef.current) {
+        finishStoppedGeneration()
+        return
+      }
       appendAssistantMessage(friendlyError(getErrorMessage(e)))
       setStreamContent('')
       setIsStreaming(false)
