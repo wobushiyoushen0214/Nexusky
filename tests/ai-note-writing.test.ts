@@ -67,6 +67,27 @@ describe('generated note writing prompts', () => {
     ].join('\n'))
   })
 
+  it('reuses common related-link heading variants', () => {
+    expect(ensureGeneratedNoteWikilinks([
+      '# Hooks 入门',
+      '',
+      '内容',
+      '',
+      '## Related Notes',
+      '',
+      '- [[自定义 Hook]]'
+    ].join('\n'), 'Hooks 入门', ['自定义 Hook', '状态管理'])).toBe([
+      '# Hooks 入门',
+      '',
+      '内容',
+      '',
+      '## Related Notes',
+      '',
+      '- [[自定义 Hook]]',
+      '- [[状态管理]]'
+    ].join('\n'))
+  })
+
   it('adds frontmatter metadata to generated notes', () => {
     expect(ensureGeneratedNoteMetadata('# Hooks 入门\n\n内容', 'Hooks 入门', '基础 Hook')).toBe([
       '---',

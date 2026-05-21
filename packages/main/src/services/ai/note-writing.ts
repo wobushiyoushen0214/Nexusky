@@ -26,10 +26,14 @@ function hasWikilinkToTitle(content: string, title: string): boolean {
   return content.includes(`[[${title}]]`) || content.includes(`[[${title}|`)
 }
 
+function isRelatedNotesHeading(line: string): boolean {
+  return /^##\s+(相关笔记|相关链接|延伸阅读|Related Notes|Related Links)\s*$/i.test(line.trim())
+}
+
 function appendMissingRelatedLinks(content: string, missingLinks: string[]): string {
   const linkLines = missingLinks.map((title) => `- [[${title}]]`)
   const lines = content.split('\n')
-  const headingIndex = lines.findIndex((line) => /^##\s+相关笔记\s*$/.test(line.trim()))
+  const headingIndex = lines.findIndex(isRelatedNotesHeading)
 
   if (headingIndex < 0) {
     return `${content}\n\n## 相关笔记\n\n${linkLines.join('\n')}`
@@ -42,7 +46,7 @@ function appendMissingRelatedLinks(content: string, missingLinks: string[]): str
 
   while (before.length > headingIndex + 1 && before[before.length - 1].trim() === '') before.pop()
   const lastLine = before[before.length - 1]?.trim() || ''
-  const spacer = /^##\s+相关笔记\s*$/.test(lastLine) || (lastLine && !/^[-*]\s+/.test(lastLine)) ? [''] : []
+  const spacer = isRelatedNotesHeading(lastLine) || (lastLine && !/^[-*]\s+/.test(lastLine)) ? [''] : []
   const tailSpacer = after.length > 0 && after[0].trim() !== '' ? [''] : []
 
   return [...before, ...spacer, ...linkLines, ...tailSpacer, ...after].join('\n').trim()
