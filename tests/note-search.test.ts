@@ -29,5 +29,11 @@ describe('note search', () => {
     expect(searchNotes(vault, 'Folder/Target')).toMatchObject([
       { title: 'Target', filePath: 'Folder/Target.md', aliasMatch: undefined }
     ])
+    expect(searchNotes(vault, '[[Folder/Target.md#Details|details]]')).toMatchObject([
+      { title: 'Target', filePath: 'Folder/Target.md', aliasMatch: undefined }
+    ])
+    expect(searchNotes(vault, 'Folder/Target^block-1')).toMatchObject([
+      { title: 'Target', filePath: 'Folder/Target.md', aliasMatch: undefined }
+    ])
   })
 })

@@ -7,7 +7,7 @@ type SearchNoteRow = NoteSearchResult & {
 
 export function searchNotes(vaultPath: string, query: string): NoteSearchResult[] {
   const db = getDatabase(vaultPath)
-  const normalizedQuery = query.trim().replace(/\\/g, '/')
+  const normalizedQuery = normalizeNoteSearchQuery(query)
   const pattern = `%${normalizedQuery}%`
   const titleRows = db.prepare(`
     SELECT id, title, file_path as filePath, NULL as aliasMatch, updated_at as updatedAt
@@ -51,4 +51,12 @@ export function searchNotes(vaultPath: string, query: string): NoteSearchResult[
     .sort((a, b) => a.rank - b.rank || b.updatedAt - a.updatedAt)
     .slice(0, 20)
     .map(({ updatedAt: _updatedAt, rank: _rank, ...row }) => row)
+}
+
+function normalizeNoteSearchQuery(query: string): string {
+  let value = query.trim()
+  const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
+  if (wikiMatch) value = wikiMatch[1]
+  value = value.split('|')[0].split('#')[0].replace(/\^[A-Za-z0-9_-]+$/, '').trim().replace(/\\/g, '/')
+  return value.replace(/\.md$/i, '')
 }
