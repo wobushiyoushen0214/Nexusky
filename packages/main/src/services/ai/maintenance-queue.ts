@@ -9,7 +9,7 @@ export interface KnowledgeMaintenanceNote {
 }
 
 export interface KnowledgeMaintenanceItem {
-  type: 'fix_unresolved_link' | 'connect_orphan' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'link_unlinked_reference' | 'refresh_memory' | 'maintain_bridge'
+  type: 'fix_unresolved_link' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'maintain_bridge'
   title: string
   filePath: string
   priority: number
@@ -26,6 +26,8 @@ interface KnowledgeMaintenanceQueueOptions {
   memoryStatusByNoteId?: Map<string, 'missing' | 'stale'>
   duplicateTitleCountByPath?: Map<string, number>
   duplicateAliasesByPath?: Map<string, string[]>
+  emptyNotePaths?: Set<string>
+  largeNoteCharactersByPath?: Map<string, number>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   limit?: number
@@ -45,6 +47,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const memoryStatus = options.memoryStatusByNoteId?.get(note.id)
     const duplicateTitleCount = options.duplicateTitleCountByPath?.get(note.filePath) || 0
     const duplicateAliases = options.duplicateAliasesByPath?.get(note.filePath) || []
+    const isEmpty = options.emptyNotePaths?.has(note.filePath) || false
+    const largeCharacters = options.largeNoteCharactersByPath?.get(note.filePath) || 0
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -56,6 +60,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         action: `Resolve or create [[${link.targetTitle}]]`,
         reason: 'Broken wikilink blocks graph navigation and AI note lookup.',
         detail: link.context || link.targetTitle
+      })
+    }
+
+    if (isEmpty) {
+      items.push({
+        type: 'fill_empty_note',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 78,
+        action: 'Fill this empty note with a summary, source, or next action',
+        reason: 'Empty notes add noise and usually indicate unfinished capture.',
+        detail: `Updated: ${new Date(note.updatedAt).toISOString()}`
       })
     }
 
@@ -114,6 +130,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         action: memoryStatus === 'stale' ? 'Regenerate this note memory from current content' : 'Generate AI memory for this note',
         reason: memoryStatus === 'stale' ? 'The note changed after its AI memory was generated.' : 'This note has no AI memory for semantic navigation.',
         detail: `Memory status: ${memoryStatus}`
+      })
+    }
+
+    if (largeCharacters > 0) {
+      items.push({
+        type: 'split_large_note',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 56,
+        action: 'Split this long note into focused linked notes or add a map-of-content section',
+        reason: 'Very long notes are harder to navigate, summarize, and connect precisely.',
+        detail: `${largeCharacters} characters`
       })
     }
 

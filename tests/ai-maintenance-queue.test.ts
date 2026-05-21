@@ -3,16 +3,18 @@ import { buildKnowledgeMaintenanceQueue } from '../packages/main/src/services/ai
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
-  it('prioritizes broken links, isolated notes, unlinked mentions, memory refresh, and bridge maintenance', () => {
+  it('prioritizes broken links, isolated notes, empty notes, duplicates, unlinked mentions, long notes, memory refresh, and bridge maintenance', () => {
     const queue = buildKnowledgeMaintenanceQueue({
       notes: [
         { id: 'broken', title: 'Broken Source', filePath: 'Broken.md', updatedAt: 1700000000000 },
         { id: 'orphan', title: 'Orphan', filePath: 'Orphan.md', updatedAt: 1700000000001 },
+        { id: 'empty', title: 'Blank', filePath: 'Blank.md', updatedAt: 1700000000001 },
         { id: 'dup-title-a', title: 'Project', filePath: 'A/Project.md', updatedAt: 1700000000001 },
         { id: 'dup-title-b', title: 'Project', filePath: 'B/Project.md', updatedAt: 1700000000001 },
         { id: 'dup-alias', title: 'Launch', filePath: 'Launch.md', updatedAt: 1700000000001 },
         { id: 'mentioned', title: 'Mentioned', filePath: 'Mentioned.md', updatedAt: 1700000000002 },
         { id: 'stale', title: 'Changed', filePath: 'Changed.md', updatedAt: 1700000000003 },
+        { id: 'large', title: 'Long Research', filePath: 'Long.md', updatedAt: 1700000000003 },
         { id: 'missing', title: 'New Idea', filePath: 'New Idea.md', updatedAt: 1700000000004 },
         { id: 'bridge', title: 'Synthesis', filePath: 'Synthesis.md', updatedAt: 1700000000003 }
       ],
@@ -26,11 +28,13 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       backlinkCountByNoteId: new Map([
         ['broken', 1],
         ['orphan', 0],
+        ['empty', 1],
         ['dup-title-a', 1],
         ['dup-title-b', 1],
         ['dup-alias', 1],
         ['mentioned', 1],
         ['stale', 1],
+        ['large', 1],
         ['missing', 1],
         ['bridge', 2]
       ]),
@@ -48,20 +52,26 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       duplicateAliasesByPath: new Map([
         ['Launch.md', ['Project']]
       ]),
+      emptyNotePaths: new Set(['Blank.md']),
+      largeNoteCharactersByPath: new Map([
+        ['Long.md', 12000]
+      ]),
       bridges: [
         { title: 'Synthesis', filePath: 'Synthesis.md', score: 8, connections: 2, folders: ['Projects', 'Research'], tags: ['delivery', 'research'] }
       ],
-      limit: 10
+      limit: 12
     })
 
     expect(queue.map((item) => item.type)).toEqual([
       'fix_unresolved_link',
       'connect_orphan',
+      'fill_empty_note',
       'resolve_duplicate_title',
       'resolve_duplicate_title',
       'resolve_duplicate_alias',
       'link_unlinked_reference',
       'refresh_memory',
+      'split_large_note',
       'refresh_memory',
       'maintain_bridge'
     ])
@@ -69,23 +79,31 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       title: 'Broken Source',
       action: 'Resolve or create [[Missing]]'
     })
+    expect(queue[2]).toMatchObject({
+      title: 'Blank',
+      action: 'Fill this empty note with a summary, source, or next action'
+    })
     expect(queue[3]).toMatchObject({
       title: 'Project',
       action: 'Rename or add a unique alias to disambiguate this note title'
     })
-    expect(queue[4]).toMatchObject({
+    expect(queue[5]).toMatchObject({
       title: 'Launch',
       action: 'Make duplicate alias unique: Project'
     })
-    expect(queue[6]).toMatchObject({
+    expect(queue[7]).toMatchObject({
       title: 'Changed',
       action: 'Regenerate this note memory from current content'
     })
-    expect(queue[7]).toMatchObject({
+    expect(queue[8]).toMatchObject({
+      title: 'Long Research',
+      action: 'Split this long note into focused linked notes or add a map-of-content section'
+    })
+    expect(queue[9]).toMatchObject({
       title: 'New Idea',
       action: 'Generate AI memory for this note'
     })
-    expect(queue[8]).toMatchObject({
+    expect(queue[10]).toMatchObject({
       title: 'Synthesis',
       detail: 'Folders: Projects, Research; tags: delivery, research'
     })

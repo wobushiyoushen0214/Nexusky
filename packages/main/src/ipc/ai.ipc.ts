@@ -1701,6 +1701,7 @@ graph TD
           type: 'object',
           properties: {
             query: { type: 'string', description: '按标题、路径、动作、原因或细节过滤，可选' },
+            minCharacters: { type: 'number', description: '超长笔记字符阈值，默认 8000' },
             limit: { type: 'number', description: '返回维护动作数量，1-10，默认 5' }
           }
         }
@@ -2914,9 +2915,19 @@ graph TD
       case 'plan_knowledge_maintenance': {
         const query = getStringArg(args, 'query').trim().toLowerCase()
         const limit = normalizeToolLimit(args.limit)
+        const minCharacters = normalizeMinCharacters(args.minCharacters)
         const notes = getAllNotes(vaultPath)
         const propertyRows = getPropertyRows(vaultPath)
         const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
+        const emptyNotePaths = new Set<string>()
+        const largeNoteCharactersByPath = new Map<string, number>()
+        for (const note of notes) {
+          try {
+            const content = readFileSync(join(vaultPath, note.filePath), 'utf-8')
+            if (isEmptyMarkdownNote(content)) emptyNotePaths.add(note.filePath)
+            if (content.length >= minCharacters) largeNoteCharactersByPath.set(note.filePath, content.length)
+          } catch {}
+        }
         const titleGroups = new Map<string, { title: string; filePaths: string[] }>()
         for (const note of notes) {
           const key = note.title.trim().toLowerCase()
@@ -2963,6 +2974,8 @@ graph TD
           })),
           duplicateTitleCountByPath,
           duplicateAliasesByPath,
+          emptyNotePaths,
+          largeNoteCharactersByPath,
           bridges,
           query,
           limit
