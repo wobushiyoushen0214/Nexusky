@@ -4,7 +4,7 @@ import { store } from '../services/store'
 import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
-import { normalizeGeneratedNotePlan } from '../services/ai/note-plan'
+import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
 import { formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
@@ -619,6 +619,70 @@ graph TD
     } catch (err: unknown) {
       if (controller.signal.aborted) return { success: false, error: '已取消' }
       return { success: false, error: getErrorMessage(err) }
+    } finally {
+      finishAiTask(windowId, controller)
+    }
+  })
+
+  ipcMain.handle('ai:plan-note-batches', async (event, params: { instruction: string; existingDirs?: string[] }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { success: false, error: '窗口不存在', batches: [] }
+
+    const config = aiManager.getActiveConfig()
+    if (!config) return { success: false, error: '未配置 AI 提供商', batches: [] }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { success: false, error: configError, batches: [] }
+
+    const windowId = window.id
+    const controller = startAiTask(windowId)
+    const provider = aiManager.getProvider(config)
+    const existingDirs = (params.existingDirs || []).filter((dir) => typeof dir === 'string' && dir.trim()).slice(0, 100)
+
+    let planResult = ''
+    try {
+      for await (const chunk of provider.chatStream([
+        { role: 'system', content: `你是批量笔记创建前的语义规划助手。请先理解用户想生成哪些主题目录，而不是让用户手动选择目录。
+
+输出 JSON 数组，每项包含：
+- dir: 目录名，简短安全，不含文件名后缀；可复用 existingDirs 中语义匹配的目录名
+- topic: 该目录的主题
+- count: 该目录需要生成的笔记数量
+
+规则：
+1. 如果用户要求“10 种框架/工具/主题，每种 5-8 篇”，你必须推断并列出 10 个不同目录，count 必须落在 5-8 之间。
+2. 如果用户指定数量范围但未指定精确值，选择范围内一个合理整数，优先选择 6。
+3. 如果用户没有给每个目录的数量，默认每个目录 5 篇。
+4. 如果用户明确说放在不同目录中，不要返回单个总目录。
+5. 目录名应是主题本身，例如 React、Vue、Laravel、Django；不要使用“开发框架 1”这类占位名。
+6. 只输出 JSON，不要解释。` },
+        { role: 'user', content: `已有目录（可复用，不必强制使用）：\n${existingDirs.length > 0 ? existingDirs.map((dir) => `- ${dir}`).join('\n') : '(无)'}\n\n用户请求：\n${params.instruction}` }
+      ], controller.signal)) {
+        if (controller.signal.aborted) break
+        if (chunk.type === 'text') planResult += chunk.content
+        if (chunk.type === 'error') {
+          finishAiTask(windowId, controller)
+          return { success: false, error: chunk.content, batches: [] }
+        }
+      }
+    } catch (err: unknown) {
+      finishAiTask(windowId, controller)
+      return { success: false, error: controller.signal.aborted ? '已取消' : getErrorMessage(err), batches: [] }
+    }
+
+    if (controller.signal.aborted) {
+      finishAiTask(windowId, controller)
+      return { success: false, error: '已取消', batches: [] }
+    }
+
+    try {
+      const parsed = extractJsonFromText<{ batches?: unknown } | unknown[]>(planResult)
+      const parsedPlan = Array.isArray(parsed) ? parsed : parsed.batches
+      if (!Array.isArray(parsedPlan)) throw new Error('empty')
+      const batches = normalizeGeneratedNoteBatchPlan(parsedPlan as { dir: string; topic: string; count: number }[])
+      if (batches.length === 0) throw new Error('empty')
+      return { success: true, batches }
+    } catch {
+      return { success: false, error: '批量目录规划解析失败', batches: [] }
     } finally {
       finishAiTask(windowId, controller)
     }

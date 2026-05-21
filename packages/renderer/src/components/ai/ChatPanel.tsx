@@ -13,7 +13,7 @@ import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumen
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
-import type { ChatContentPart, ChatSource, IPCChatMessage } from '@shared/types/ipc'
+import type { ChatContentPart, ChatSource, GeneratedNoteBatchPlanItem, IPCChatMessage } from '@shared/types/ipc'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
@@ -1093,7 +1093,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           }
 
           if (editIntent === 'batch') {
-            setToolStatus('正在规划批量笔记...')
+            setToolStatus('正在分析批量目录...')
             streamContentRef.current = ''
             setStreamContent('')
 
@@ -1105,33 +1105,52 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               ? `对话上下文：\n${recentContext}\n\n当前指令: ${userMsg.content}`
               : userMsg.content
 
-            let specifiedDirs: string[] = []
-            const msgLower = userMsg.content.toLowerCase()
-            for (const dir of dirs) {
-              if (msgLower.includes(dir.toLowerCase())) {
-                specifiedDirs.push(dir)
+            let plannedBatches: GeneratedNoteBatchPlanItem[] = []
+            try {
+              const planned = await window.api.invoke('ai:plan-note-batches', {
+                instruction: batchInstruction,
+                existingDirs: dirs
+              })
+              if (planned.success && planned.batches.length > 0) {
+                plannedBatches = planned.batches
+              }
+            } catch (e: unknown) {
+              if (isCancellationError(e)) {
+                editCompleteRef.current = true
+                streamContentRef.current = ''
+                setStreamContent('')
+                setIsStreaming(false)
+                setToolStatus(null)
+                return
               }
             }
 
-            if (specifiedDirs.length > 1) {
+            if (plannedBatches.length > 0) {
               if (editTimerRef.current) clearInterval(editTimerRef.current)
               editTimerRef.current = null
-              for (const dir of specifiedDirs) {
-                const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
-                await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`)
+              for (const batch of plannedBatches) {
+                const perDirInstruction = `${batchInstruction}\n\n批量目录规划：本次只生成「${batch.topic}」主题，放到「${batch.dir}」目录下。请生成 ${batch.count} 篇独立 Markdown 笔记。`
+                await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`)
               }
-            } else if (specifiedDirs.length === 1) {
-              if (editTimerRef.current) clearInterval(editTimerRef.current)
-              editTimerRef.current = null
-              await executeBatchGenerate(batchInstruction, `${vaultPath}/${specifiedDirs[0]}`)
             } else {
+              const specifiedDirs = dirs.filter((dir) => userMsg.content.toLowerCase().includes(dir.toLowerCase()))
+              if (specifiedDirs.length > 0) {
+                if (editTimerRef.current) clearInterval(editTimerRef.current)
+                editTimerRef.current = null
+                for (const dir of specifiedDirs) {
+                  const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
+                  await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`)
+                }
+                return
+              }
+
               setFolderOptions(dirs)
               setPendingBatch({ instruction: batchInstruction })
               setIsStreaming(false)
               setToolStatus(null)
               if (editTimerRef.current) clearInterval(editTimerRef.current)
               editTimerRef.current = null
-              appendAssistantMessage('请选择笔记存放目录：')
+              appendAssistantMessage('无法自动规划批量目录，请选择笔记存放目录：')
             }
             return
           }

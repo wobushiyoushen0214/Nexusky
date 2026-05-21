@@ -225,6 +225,12 @@ export interface GeneratedFlashcard {
   tags: string[]
 }
 
+export interface GeneratedNoteBatchPlanItem {
+  dir: string
+  topic: string
+  count: number
+}
+
 export type FlashcardReviewRating = 'again' | 'hard' | 'good' | 'easy'
 
 export interface FlashcardQueueItem extends GeneratedFlashcard {
@@ -359,6 +365,7 @@ export interface IPCChannelMap {
   'ai:detect-local-config': { params: undefined; result: { claude?: { apiKey: string; baseUrl: string; source?: string }; openai?: { apiKey: string; source?: string }; codex?: { command: string; source?: string }; skipped?: string[] } }
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }
+  'ai:plan-note-batches': { params: { instruction: string; existingDirs?: string[] }; result: { success: boolean; batches: GeneratedNoteBatchPlanItem[]; error?: string } }
   'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string }; result: { success: boolean; files: string[]; error?: string } }
   'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number } }
   'file:import-readwise': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
