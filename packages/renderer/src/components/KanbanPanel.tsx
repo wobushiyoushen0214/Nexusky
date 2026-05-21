@@ -3,7 +3,6 @@ import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
 import { getErrorMessage, isCancellationError } from '../utils/errors'
-import { ConfirmModal } from './ConfirmModal'
 import type { KanbanAiPlan, KanbanColumn, KanbanRelation, KanbanTask } from '@shared/types/ipc'
 
 const RELATION_LABEL: Record<KanbanRelation['relationType'], string> = {
@@ -24,19 +23,6 @@ type PendingKanbanAiWrite =
   | { mode: 'breakdown'; plan: KanbanAiPlan; taskId: string; title: string; description?: string; columnId: string }
   | { mode: 'from-note'; plan: KanbanAiPlan; filePath: string; content: string; columnId?: string }
   | { mode: 'indexed'; plan: KanbanAiPlan; columnId?: string }
-
-function formatKanbanAiPreview(plan: KanbanAiPlan): string {
-  const titles = plan.tasks.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
-  const more = plan.tasks.length > 8 ? `\n...另有 ${plan.tasks.length - 8} 个任务` : ''
-  const relationText = plan.relations.length > 0 ? `\n\n包含 ${plan.relations.length} 条依赖/关联关系。` : ''
-  return `AI 将创建 ${plan.tasks.length} 个任务：\n\n${titles}${more}${relationText}\n\n是否写入看板？`
-}
-
-function formatKanbanImportPreview(plan: KanbanAiPlan): string {
-  const titles = plan.tasks.slice(0, 10).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
-  const more = plan.tasks.length > 10 ? `\n...另有 ${plan.tasks.length - 10} 个待办` : ''
-  return `将从已索引的 Markdown checkbox 导入 ${plan.tasks.length} 个未完成待办：\n\n${titles}${more}\n\n是否写入看板？`
-}
 
 export function KanbanPanel() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
@@ -61,6 +47,11 @@ export function KanbanPanel() {
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) || null, [tasks, selectedTaskId])
   const totalTasks = tasks.length
+  const activeTasks = useMemo(() => {
+    const doneColumnIds = new Set(columns.filter((column) => column.name.includes('完成')).map((column) => column.id))
+    return tasks.filter((task) => !doneColumnIds.has(task.columnId)).length
+  }, [columns, tasks])
+  const sourcedTasks = useMemo(() => tasks.filter((task) => !!task.sourceFilePath).length, [tasks])
 
   const relatedTaskIds = useMemo(() => {
     const anchor = hoverTaskId || selectedTaskId
@@ -286,7 +277,12 @@ export function KanbanPanel() {
         columnId: columns[0]?.id
       })
     } catch (e: unknown) {
-      toast(getErrorMessage(e) || '导入 Markdown 待办失败', 'error')
+      const message = getErrorMessage(e)
+      if (message.includes("No handler registered for 'kanban:import-indexed-tasks'")) {
+        toast('导入待办需要重启应用加载新的主进程能力', 'error')
+      } else {
+        toast(message || '导入 Markdown 待办失败', 'error')
+      }
     } finally {
       setBusy(null)
     }
@@ -329,7 +325,12 @@ export function KanbanPanel() {
       await loadBoard()
     } catch (e: unknown) {
       if (aiStopRequestedRef.current || isCancellationError(e)) return
-      toast(getErrorMessage(e) || 'AI 任务写入失败', 'error')
+      const message = getErrorMessage(e)
+      if (message.includes("No handler registered for 'kanban:import-indexed-tasks'")) {
+        toast('导入待办需要重启应用加载新的主进程能力', 'error')
+      } else {
+        toast(message || 'AI 任务写入失败', 'error')
+      }
     } finally {
       setBusy(null)
     }
@@ -367,7 +368,7 @@ export function KanbanPanel() {
             <div style={{ minWidth: 0 }}>
               <div style={boardEyebrowStyle}>
                 <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)', flexShrink: 0 }} />
-                <span>{totalTasks} 个任务</span>
+                <span>Flow Map</span>
               </div>
               <div style={boardTitleStyle}>任务画布</div>
             </div>
@@ -394,6 +395,12 @@ export function KanbanPanel() {
                 <span>分析</span>
               </button>
             </div>
+          </div>
+
+          <div style={boardSignalStyle}>
+            <span style={signalItemStyle}>活跃 {activeTasks}</span>
+            <span style={signalItemStyle}>笔记来源 {sourcedTasks}</span>
+            <span style={signalItemStyle}>关联 {relations.length}</span>
           </div>
 
           <div style={quickCaptureStyle}>
@@ -429,7 +436,7 @@ export function KanbanPanel() {
         )}
 
         <div style={boardGridStyle}>
-          {columns.map((column) => {
+          {columns.map((column, index) => {
             const columnTasks = tasksByColumn(column.id)
             const isDropTarget = dropColumnId === column.id
             return (
@@ -443,6 +450,7 @@ export function KanbanPanel() {
                   borderColor: isDropTarget ? 'rgba(124, 110, 245, 0.5)' : 'transparent',
                   background: isDropTarget ? 'var(--accent-muted)' : laneStyle.background,
                   outline: isDropTarget ? '1px solid rgba(124, 110, 245, 0.24)' : 'none',
+                  marginTop: index % 2 === 1 ? 10 : 0,
                   overflow: 'hidden',
                   minHeight: 360
                 }}
@@ -452,7 +460,10 @@ export function KanbanPanel() {
                     <span style={columnDotStyle(column.name)} />
                     <span style={laneTitleStyle}>{column.name}</span>
                   </div>
-                  <span style={countPillStyle}>{columnTasks.length}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={laneIndexStyle}>{String(index + 1).padStart(2, '0')}</span>
+                    <span style={countPillStyle}>{columnTasks.length}</span>
+                  </div>
                 </div>
 
                 <div style={laneStackStyle(columnTasks.length > 0)}>
@@ -562,11 +573,8 @@ export function KanbanPanel() {
           </div>
         </aside>
       )}
-      <ConfirmModal
-        open={!!pendingAiWrite}
-        title="确认写入看板"
-        message={pendingAiWrite ? pendingAiWrite.mode === 'indexed' ? formatKanbanImportPreview(pendingAiWrite.plan) : formatKanbanAiPreview(pendingAiWrite.plan) : ''}
-        confirmText="写入"
+      <AiWritePreviewModal
+        pending={pendingAiWrite}
         onConfirm={confirmAiWrite}
         onCancel={() => setPendingAiWrite(null)}
       />
@@ -638,6 +646,76 @@ function EmptyColumn() {
   return (
     <div style={{ minHeight: 104, display: 'grid', placeItems: 'center', padding: '12px 10px', borderRadius: 8, border: '1px dashed color-mix(in srgb, var(--border-subtle) 78%, transparent)', fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', textAlign: 'center' }}>
       拖入任务或从顶部添加
+    </div>
+  )
+}
+
+function AiWritePreviewModal({
+  pending,
+  onConfirm,
+  onCancel
+}: {
+  pending: PendingKanbanAiWrite | null
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  if (!pending) return null
+  const modeLabel = pending.mode === 'indexed' ? '导入待办' : pending.mode === 'from-note' ? '从笔记生成' : 'AI 拆解'
+  const heading = pending.mode === 'indexed' ? '导入这些 Markdown 待办' : pending.mode === 'from-note' ? '把笔记线索写入任务画布' : '把拆解结果写入任务画布'
+  const tasks = pending.plan.tasks.slice(0, 7)
+  const hiddenCount = Math.max(0, pending.plan.tasks.length - tasks.length)
+
+  return (
+    <div style={aiWriteOverlayStyle} onClick={onCancel}>
+      <div style={aiWriteModalStyle} onClick={(e) => e.stopPropagation()}>
+        <div style={aiWriteHeaderStyle}>
+          <div style={{ minWidth: 0 }}>
+            <div style={aiWriteKickerStyle}>
+              <Icon name="spark" />
+              <span>{modeLabel}</span>
+            </div>
+            <div style={aiWriteTitleStyle}>{heading}</div>
+          </div>
+          <button onClick={onCancel} style={iconButtonStyle} title="关闭">
+            <Icon name="x" />
+          </button>
+        </div>
+
+        <div style={aiWriteStatsStyle}>
+          <span style={aiWriteStatStyle}>{pending.plan.tasks.length} 个任务</span>
+          <span style={aiWriteStatStyle}>{pending.plan.relations.length} 条关联</span>
+          <span style={aiWriteStatStyle}>写入待办列</span>
+        </div>
+
+        <div style={aiWriteListStyle}>
+          {tasks.map((task, index) => (
+            <div key={`${task.title}-${index}`} style={aiWriteTaskRowStyle}>
+              <span style={aiWriteTaskIndexStyle}>{String(index + 1).padStart(2, '0')}</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={aiWriteTaskTitleStyle}>{task.title}</div>
+                {task.description && <div style={aiWriteTaskDescStyle}>{task.description}</div>}
+              </div>
+            </div>
+          ))}
+          {hiddenCount > 0 && (
+            <div style={aiWriteMoreStyle}>
+              另有 {hiddenCount} 个任务会一起写入
+            </div>
+          )}
+        </div>
+
+        {pending.plan.relations.length > 0 && (
+          <div style={aiWriteRelationHintStyle}>
+            <Icon name="link" />
+            <span>依赖和关联会随任务一起进入画布。</span>
+          </div>
+        )}
+
+        <div style={aiWriteFooterStyle}>
+          <button onClick={onCancel} style={toolbarButtonStyle}>取消</button>
+          <button onClick={onConfirm} autoFocus style={primaryButtonStyle}>写入画布</button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -736,14 +814,18 @@ const boardShellStyle: React.CSSProperties = {
   position: 'relative',
   display: 'grid',
   gridTemplateRows: 'auto 1fr',
-  background: 'var(--editor-bg)',
+  background: [
+    'radial-gradient(circle at 12% 6%, rgba(124, 110, 245, 0.13), transparent 30%)',
+    'radial-gradient(circle at 82% 18%, rgba(74, 222, 128, 0.07), transparent 26%)',
+    'linear-gradient(135deg, color-mix(in srgb, var(--editor-bg) 94%, var(--bg-base)), var(--editor-bg))'
+  ].join(', '),
   overflow: 'hidden'
 }
 
 const boardHeaderStyle: React.CSSProperties = {
   padding: '20px 22px 16px',
   borderBottom: '1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent)',
-  background: 'color-mix(in srgb, var(--editor-bg) 92%, var(--bg-base))'
+  background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-base) 52%, transparent), transparent)'
 }
 
 const boardEyebrowStyle: React.CSSProperties = {
@@ -760,8 +842,8 @@ const boardEyebrowStyle: React.CSSProperties = {
 const boardTitleStyle: React.CSSProperties = {
   marginTop: 2,
   color: 'var(--text-primary)',
-  fontSize: 24,
-  fontWeight: 760,
+  fontSize: 26,
+  fontWeight: 780,
   lineHeight: 1.18,
   letterSpacing: 0
 }
@@ -776,15 +858,15 @@ const boardActionRowStyle: React.CSSProperties = {
 }
 
 const quickCaptureStyle: React.CSSProperties = {
-  height: 42,
+  height: 44,
   display: 'grid',
   gridTemplateColumns: 'auto minmax(0, 1fr) auto',
   alignItems: 'center',
   gap: 8,
   padding: '0 7px 0 12px',
   borderRadius: 8,
-  border: '1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent)',
-  background: 'color-mix(in srgb, var(--bg-surface) 70%, var(--editor-bg))',
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent)',
+  background: 'linear-gradient(90deg, color-mix(in srgb, var(--bg-surface) 86%, transparent), color-mix(in srgb, var(--bg-base) 62%, transparent))',
   color: 'var(--text-tertiary)'
 }
 
@@ -802,7 +884,7 @@ const quickCaptureInputStyle: React.CSSProperties = {
 const boardContentStyle: React.CSSProperties = {
   minHeight: 0,
   overflow: 'auto',
-  padding: '18px 22px 24px'
+  padding: '18px 22px 26px'
 }
 
 const boardGridStyle: React.CSSProperties = {
@@ -814,9 +896,12 @@ const boardGridStyle: React.CSSProperties = {
 }
 
 const laneStyle: React.CSSProperties = {
-  borderRadius: 10,
+  borderRadius: 12,
   border: '1px solid transparent',
-  background: 'color-mix(in srgb, var(--bg-base) 72%, transparent)'
+  background: [
+    'linear-gradient(180deg, color-mix(in srgb, var(--bg-base) 78%, transparent), color-mix(in srgb, var(--editor-bg) 88%, transparent))',
+    'radial-gradient(circle at 50% 0%, rgba(124, 110, 245, 0.06), transparent 38%)'
+  ].join(', ')
 }
 
 const laneHeaderStyle: React.CSSProperties = {
@@ -834,6 +919,33 @@ const laneTitleStyle: React.CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap'
+}
+
+const boardSignalStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 7,
+  flexWrap: 'wrap'
+}
+
+const signalItemStyle: React.CSSProperties = {
+  height: 22,
+  padding: '0 8px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  borderRadius: 999,
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 62%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-base) 52%, transparent)',
+  color: 'var(--text-tertiary)',
+  fontSize: 11,
+  fontWeight: 560
+}
+
+const laneIndexStyle: React.CSSProperties = {
+  color: 'color-mix(in srgb, var(--text-tertiary) 70%, transparent)',
+  fontSize: 10,
+  fontWeight: 700,
+  fontVariantNumeric: 'tabular-nums'
 }
 
 function laneStackStyle(hasTasks: boolean): React.CSSProperties {
@@ -891,6 +1003,150 @@ const analysisCardStyle: React.CSSProperties = {
   borderRadius: 10,
   border: '1px solid rgba(124, 110, 245, 0.22)',
   background: 'color-mix(in srgb, var(--accent-muted) 82%, var(--bg-base))'
+}
+
+const aiWriteOverlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 210,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 20,
+  background: 'rgba(8, 8, 13, 0.62)'
+}
+
+const aiWriteModalStyle: React.CSSProperties = {
+  width: 'min(620px, calc(100vw - 40px))',
+  maxHeight: 'min(720px, calc(100vh - 40px))',
+  display: 'grid',
+  gridTemplateRows: 'auto auto minmax(0, 1fr) auto auto',
+  overflow: 'hidden',
+  borderRadius: 12,
+  border: '1px solid color-mix(in srgb, var(--border-default) 88%, transparent)',
+  background: [
+    'radial-gradient(circle at 18% 0%, rgba(124, 110, 245, 0.14), transparent 34%)',
+    'linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 86%, var(--bg-base)), var(--bg-base))'
+  ].join(', '),
+  boxShadow: '0 24px 70px rgba(0, 0, 0, 0.42)'
+}
+
+const aiWriteHeaderStyle: React.CSSProperties = {
+  minHeight: 86,
+  padding: '18px 18px 14px',
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 14
+}
+
+const aiWriteKickerStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  color: 'var(--accent-text)',
+  fontSize: 11,
+  fontWeight: 680
+}
+
+const aiWriteTitleStyle: React.CSSProperties = {
+  marginTop: 7,
+  color: 'var(--text-primary)',
+  fontSize: 18,
+  fontWeight: 760,
+  lineHeight: 1.28
+}
+
+const aiWriteStatsStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 7,
+  flexWrap: 'wrap',
+  padding: '0 18px 12px'
+}
+
+const aiWriteStatStyle: React.CSSProperties = {
+  height: 24,
+  padding: '0 9px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  borderRadius: 999,
+  background: 'color-mix(in srgb, var(--bg-elevated) 82%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 75%, transparent)',
+  color: 'var(--text-secondary)',
+  fontSize: 11,
+  fontWeight: 590
+}
+
+const aiWriteListStyle: React.CSSProperties = {
+  minHeight: 0,
+  overflowY: 'auto',
+  padding: '0 18px 14px',
+  display: 'grid',
+  gap: 8
+}
+
+const aiWriteTaskRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '34px minmax(0, 1fr)',
+  gap: 10,
+  padding: '10px 11px',
+  borderRadius: 8,
+  border: '1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent)',
+  background: 'color-mix(in srgb, var(--bg-surface) 74%, transparent)'
+}
+
+const aiWriteTaskIndexStyle: React.CSSProperties = {
+  color: 'var(--accent-text)',
+  fontSize: 11,
+  fontWeight: 760,
+  fontVariantNumeric: 'tabular-nums'
+}
+
+const aiWriteTaskTitleStyle: React.CSSProperties = {
+  color: 'var(--text-primary)',
+  fontSize: 13,
+  fontWeight: 650,
+  lineHeight: 1.42,
+  overflowWrap: 'anywhere'
+}
+
+const aiWriteTaskDescStyle: React.CSSProperties = {
+  marginTop: 4,
+  color: 'var(--text-tertiary)',
+  fontSize: 11,
+  lineHeight: 1.45,
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden'
+}
+
+const aiWriteMoreStyle: React.CSSProperties = {
+  padding: '4px 2px',
+  color: 'var(--text-tertiary)',
+  fontSize: 11,
+  textAlign: 'center'
+}
+
+const aiWriteRelationHintStyle: React.CSSProperties = {
+  margin: '0 18px 14px',
+  padding: '9px 10px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 7,
+  borderRadius: 8,
+  background: 'color-mix(in srgb, var(--accent-muted) 70%, transparent)',
+  color: 'var(--text-secondary)',
+  fontSize: 11
+}
+
+const aiWriteFooterStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: 8,
+  padding: '14px 18px 18px',
+  borderTop: '1px solid color-mix(in srgb, var(--border-subtle) 74%, transparent)'
 }
 
 const detailDrawerStyle: React.CSSProperties = {
