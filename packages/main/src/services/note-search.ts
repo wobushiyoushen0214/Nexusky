@@ -55,7 +55,7 @@ export function searchNotes(vaultPath: string, query: string): NoteSearchResult[
 
 function normalizeNoteSearchQuery(query: string): string {
   let value = query.trim()
-  const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
+  const wikiMatch = value.match(/^!?\[\[([\s\S]+)\]\]$/)
   if (wikiMatch) value = wikiMatch[1]
   value = value.split('|')[0].split('#')[0].replace(/\^[A-Za-z0-9_-]+$/, '').trim().replace(/\\/g, '/')
   return value.replace(/\.md$/i, '')

@@ -11,7 +11,7 @@ export function normalizeObsidianLinkTarget(value: string): string {
 }
 
 export function parseObsidianLinkReference(value: string): ObsidianLinkReference {
-  const [rawTarget, rawLabel] = value.trim().replace(/^\[\[|\]\]$/g, '').split('|')
+  const [rawTarget, rawLabel] = value.trim().replace(/^!?\[\[|\]\]$/g, '').split('|')
   const hashIndex = rawTarget.indexOf('#')
   const targetWithOptionalBlock = hashIndex >= 0 ? rawTarget.slice(0, hashIndex) : rawTarget
   const fragment = hashIndex >= 0 ? rawTarget.slice(hashIndex + 1).trim() : undefined

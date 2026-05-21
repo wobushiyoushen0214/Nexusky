@@ -7,6 +7,7 @@ describe('Obsidian link utilities', () => {
     expect(normalizeObsidianLinkTarget('Target#^block-1')).toBe('Target')
     expect(normalizeObsidianLinkTarget('Target^block-1')).toBe('Target')
     expect(normalizeObsidianLinkTarget(' Target | alias ')).toBe('Target')
+    expect(normalizeObsidianLinkTarget('![[Folder/Target.md#Details|label]]')).toBe('Folder/Target')
   })
 
   it('parses heading and block reference fragments', () => {
@@ -18,6 +19,7 @@ describe('Obsidian link utilities', () => {
     })
     expect(parseObsidianLinkReference('Target#^block-1')).toMatchObject({ target: 'Target', blockId: 'block-1' })
     expect(parseObsidianLinkReference('Target^block-1')).toMatchObject({ target: 'Target', blockId: 'block-1' })
+    expect(parseObsidianLinkReference('![[Target#^block-1]]')).toMatchObject({ target: 'Target', blockId: 'block-1' })
   })
 
   it('selects heading and block content for transclusions', () => {
