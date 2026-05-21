@@ -9,7 +9,7 @@ export interface KnowledgeMaintenanceNote {
 }
 
 export interface KnowledgeMaintenanceItem {
-  type: 'fix_unresolved_link' | 'connect_orphan' | 'link_unlinked_reference' | 'refresh_memory' | 'maintain_bridge'
+  type: 'fix_unresolved_link' | 'connect_orphan' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'link_unlinked_reference' | 'refresh_memory' | 'maintain_bridge'
   title: string
   filePath: string
   priority: number
@@ -24,6 +24,8 @@ interface KnowledgeMaintenanceQueueOptions {
   backlinkCountByNoteId: Map<string, number>
   unlinkedMentionCountByNoteId: Map<string, number>
   memoryStatusByNoteId?: Map<string, 'missing' | 'stale'>
+  duplicateTitleCountByPath?: Map<string, number>
+  duplicateAliasesByPath?: Map<string, string[]>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   limit?: number
@@ -41,6 +43,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const backlinkCount = options.backlinkCountByNoteId.get(note.id) || 0
     const unlinkedMentionCount = options.unlinkedMentionCountByNoteId.get(note.id) || 0
     const memoryStatus = options.memoryStatusByNoteId?.get(note.id)
+    const duplicateTitleCount = options.duplicateTitleCountByPath?.get(note.filePath) || 0
+    const duplicateAliases = options.duplicateAliasesByPath?.get(note.filePath) || []
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -52,6 +56,30 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         action: `Resolve or create [[${link.targetTitle}]]`,
         reason: 'Broken wikilink blocks graph navigation and AI note lookup.',
         detail: link.context || link.targetTitle
+      })
+    }
+
+    if (duplicateTitleCount > 1) {
+      items.push({
+        type: 'resolve_duplicate_title',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 76,
+        action: 'Rename or add a unique alias to disambiguate this note title',
+        reason: 'Duplicate note titles make wikilink resolution and Agent note lookup ambiguous.',
+        detail: `${duplicateTitleCount} notes share title: ${note.title}`
+      })
+    }
+
+    if (duplicateAliases.length > 0) {
+      items.push({
+        type: 'resolve_duplicate_alias',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 72,
+        action: `Make duplicate alias${duplicateAliases.length === 1 ? '' : 'es'} unique: ${duplicateAliases.join(', ')}`,
+        reason: 'Duplicate aliases can route wikilinks and Agent reads to the wrong note.',
+        detail: `Duplicate aliases: ${duplicateAliases.join(', ')}`
       })
     }
 

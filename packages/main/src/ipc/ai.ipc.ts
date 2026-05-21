@@ -2915,11 +2915,39 @@ graph TD
         const query = getStringArg(args, 'query').trim().toLowerCase()
         const limit = normalizeToolLimit(args.limit)
         const notes = getAllNotes(vaultPath)
+        const propertyRows = getPropertyRows(vaultPath)
         const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
+        const titleGroups = new Map<string, { title: string; filePaths: string[] }>()
+        for (const note of notes) {
+          const key = note.title.trim().toLowerCase()
+          if (!key) continue
+          const group = titleGroups.get(key) || { title: note.title, filePaths: [] }
+          group.filePaths.push(note.filePath)
+          titleGroups.set(key, group)
+        }
+        const duplicateTitleCountByPath = new Map<string, number>()
+        for (const group of titleGroups.values()) {
+          if (group.filePaths.length < 2) continue
+          for (const filePath of group.filePaths) duplicateTitleCountByPath.set(filePath, group.filePaths.length)
+        }
+        const aliasGroups = new Map<string, { alias: string; filePaths: string[] }>()
+        for (const row of propertyRows) {
+          for (const alias of getPropertyTextValues(row.properties.aliases)) {
+            const key = alias.toLowerCase()
+            const group = aliasGroups.get(key) || { alias, filePaths: [] }
+            group.filePaths.push(row.filePath)
+            aliasGroups.set(key, group)
+          }
+        }
+        const duplicateAliasesByPath = new Map<string, string[]>()
+        for (const group of aliasGroups.values()) {
+          if (group.filePaths.length < 2) continue
+          for (const filePath of group.filePaths) duplicateAliasesByPath.set(filePath, [...(duplicateAliasesByPath.get(filePath) || []), group.alias])
+        }
         const bridges = findKnowledgeBridgeNotes({
           notes,
           outgoingLinksByNoteId,
-          propertyRows: getPropertyRows(vaultPath),
+          propertyRows,
           limit: Math.max(limit, 10)
         })
         const items = buildKnowledgeMaintenanceQueue({
@@ -2933,6 +2961,8 @@ graph TD
             if (memory.contentHash !== note.contentHash) return [[note.id, 'stale' as const]]
             return []
           })),
+          duplicateTitleCountByPath,
+          duplicateAliasesByPath,
           bridges,
           query,
           limit
