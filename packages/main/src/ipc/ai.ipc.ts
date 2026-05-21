@@ -5,6 +5,7 @@ import { semanticSearch, findSimilarNotes } from '../services/embedding'
 import { listOllamaModels } from '../services/ai/ollama-provider'
 import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../services/ai/note-plan'
+import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt } from '../services/ai/note-writing'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
 import { formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { parseToolArguments } from '../services/ai/tool-arguments'
@@ -769,16 +770,10 @@ graph TD
 
       let noteContent = ''
       try {
+        const siblingTitles = safeNames.filter((_, j) => j !== i)
         for await (const chunk of provider.chatStream([
-          { role: 'system', content: `你是一个知识库笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。
-
-规则：
-1. 第一行必须是 # 标题，标题必须和给定的标题完全一致
-2. 不要使用 [[]] 双链语法，写自然流畅的内容即可
-3. 内容包含分节、要点，结构清晰
-4. 在内容中自然地提及相关概念和主题，但不要硬塞链接
-5. 只输出 Markdown 内容，不要其他解释` },
-          { role: 'user', content: `标题: ${safeNames[i]}\n描述: ${item.brief}\n\n同批次的其他笔记主题（可在内容中自然提及相关概念）:\n${safeNames.filter((_, j) => j !== i).map((n) => `- ${n}`).join('\n')}` }
+          { role: 'system', content: buildGeneratedNoteSystemPrompt() },
+          { role: 'user', content: buildGeneratedNoteUserPrompt(safeNames[i], item.brief, siblingTitles) }
         ], controller.signal)) {
           if (controller.signal.aborted) break
           if (chunk.type === 'text') noteContent += chunk.content
