@@ -9,7 +9,7 @@ export interface KnowledgeMaintenanceNote {
 }
 
 export interface KnowledgeMaintenanceItem {
-  type: 'fix_unresolved_link' | 'connect_orphan' | 'link_unlinked_reference' | 'maintain_bridge'
+  type: 'fix_unresolved_link' | 'connect_orphan' | 'link_unlinked_reference' | 'refresh_memory' | 'maintain_bridge'
   title: string
   filePath: string
   priority: number
@@ -23,6 +23,7 @@ interface KnowledgeMaintenanceQueueOptions {
   outgoingLinksByNoteId: Map<string, OutgoingLinkIndex[]>
   backlinkCountByNoteId: Map<string, number>
   unlinkedMentionCountByNoteId: Map<string, number>
+  memoryStatusByNoteId?: Map<string, 'missing' | 'stale'>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   limit?: number
@@ -39,6 +40,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const resolvedOutgoing = outgoing.filter((link) => link.resolved).length
     const backlinkCount = options.backlinkCountByNoteId.get(note.id) || 0
     const unlinkedMentionCount = options.unlinkedMentionCountByNoteId.get(note.id) || 0
+    const memoryStatus = options.memoryStatusByNoteId?.get(note.id)
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -72,6 +74,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         action: `Convert ${unlinkedMentionCount} unlinked mention${unlinkedMentionCount === 1 ? '' : 's'} into wikilinks`,
         reason: 'Other notes mention this title without linking to it.',
         detail: `Unlinked mentions: ${unlinkedMentionCount}`
+      })
+    }
+
+    if (memoryStatus) {
+      items.push({
+        type: 'refresh_memory',
+        title: note.title,
+        filePath: note.filePath,
+        priority: memoryStatus === 'stale' ? 58 : 52,
+        action: memoryStatus === 'stale' ? 'Regenerate this note memory from current content' : 'Generate AI memory for this note',
+        reason: memoryStatus === 'stale' ? 'The note changed after its AI memory was generated.' : 'This note has no AI memory for semantic navigation.',
+        detail: `Memory status: ${memoryStatus}`
       })
     }
 

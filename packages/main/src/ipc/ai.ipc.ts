@@ -2927,6 +2927,12 @@ graph TD
           outgoingLinksByNoteId,
           backlinkCountByNoteId: new Map(notes.map((note) => [note.id, getBacklinks(vaultPath, note.id).length])),
           unlinkedMentionCountByNoteId: new Map(notes.map((note) => [note.id, getUnlinkedMentions(vaultPath, note.id).length])),
+          memoryStatusByNoteId: new Map(notes.flatMap<[string, 'missing' | 'stale']>((note) => {
+            const memory = readMemory(vaultPath, note.id)
+            if (!memory) return [[note.id, 'missing' as const]]
+            if (memory.contentHash !== note.contentHash) return [[note.id, 'stale' as const]]
+            return []
+          })),
           bridges,
           query,
           limit

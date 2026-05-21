@@ -3,12 +3,14 @@ import { buildKnowledgeMaintenanceQueue } from '../packages/main/src/services/ai
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
-  it('prioritizes broken links, isolated notes, unlinked mentions, and bridge maintenance', () => {
+  it('prioritizes broken links, isolated notes, unlinked mentions, memory refresh, and bridge maintenance', () => {
     const queue = buildKnowledgeMaintenanceQueue({
       notes: [
         { id: 'broken', title: 'Broken Source', filePath: 'Broken.md', updatedAt: 1700000000000 },
         { id: 'orphan', title: 'Orphan', filePath: 'Orphan.md', updatedAt: 1700000000001 },
         { id: 'mentioned', title: 'Mentioned', filePath: 'Mentioned.md', updatedAt: 1700000000002 },
+        { id: 'stale', title: 'Changed', filePath: 'Changed.md', updatedAt: 1700000000003 },
+        { id: 'missing', title: 'New Idea', filePath: 'New Idea.md', updatedAt: 1700000000004 },
         { id: 'bridge', title: 'Synthesis', filePath: 'Synthesis.md', updatedAt: 1700000000003 }
       ],
       outgoingLinksByNoteId: new Map<string, OutgoingLinkIndex[]>([
@@ -22,10 +24,16 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['broken', 1],
         ['orphan', 0],
         ['mentioned', 1],
+        ['stale', 1],
+        ['missing', 1],
         ['bridge', 2]
       ]),
       unlinkedMentionCountByNoteId: new Map([
         ['mentioned', 3]
+      ]),
+      memoryStatusByNoteId: new Map([
+        ['stale', 'stale'],
+        ['missing', 'missing']
       ]),
       bridges: [
         { title: 'Synthesis', filePath: 'Synthesis.md', score: 8, connections: 2, folders: ['Projects', 'Research'], tags: ['delivery', 'research'] }
@@ -37,6 +45,8 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       'fix_unresolved_link',
       'connect_orphan',
       'link_unlinked_reference',
+      'refresh_memory',
+      'refresh_memory',
       'maintain_bridge'
     ])
     expect(queue[0]).toMatchObject({
@@ -44,6 +54,14 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       action: 'Resolve or create [[Missing]]'
     })
     expect(queue[3]).toMatchObject({
+      title: 'Changed',
+      action: 'Regenerate this note memory from current content'
+    })
+    expect(queue[4]).toMatchObject({
+      title: 'New Idea',
+      action: 'Generate AI memory for this note'
+    })
+    expect(queue[5]).toMatchObject({
       title: 'Synthesis',
       detail: 'Folders: Projects, Research; tags: delivery, research'
     })
