@@ -436,9 +436,11 @@ export function ChatPanel() {
     }
 
     setIsStreaming(true)
+    batchCancelledRef.current = false
     pendingSourcesRef.current = []
     streamContentRef.current = ''
     setStreamContent('')
+    setEditStreamContent('')
 
     const chatMessages = await buildChatMessages(remaining)
     try {
@@ -448,6 +450,16 @@ export function ChatPanel() {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: unknown) {
+      if (isCancellationError(e) || batchCancelledRef.current) {
+        editCompleteRef.current = true
+        streamContentRef.current = ''
+        setStreamContent('')
+        pendingSourcesRef.current = []
+        setIsStreaming(false)
+        setToolStatus(null)
+        appendAssistantMessage('已停止。')
+        return
+      }
       appendAssistantMessage(friendlyError(getErrorMessage(e)))
       streamContentRef.current = ''
       setStreamContent('')
@@ -476,9 +488,11 @@ export function ChatPanel() {
 
     // Seed stream with partial content so continuation appends to it
     setIsStreaming(true)
+    batchCancelledRef.current = false
     pendingSourcesRef.current = []
     streamContentRef.current = msg.content
     setStreamContent(msg.content)
+    setEditStreamContent('')
 
     const chatMessages = await buildChatMessages(remaining)
     chatMessages.push({ role: 'assistant', content: msg.content })
@@ -489,6 +503,16 @@ export function ChatPanel() {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
       }
     } catch (e: unknown) {
+      if (isCancellationError(e) || batchCancelledRef.current) {
+        editCompleteRef.current = true
+        streamContentRef.current = ''
+        setStreamContent('')
+        pendingSourcesRef.current = []
+        setIsStreaming(false)
+        setToolStatus(null)
+        appendAssistantMessage('已停止。')
+        return
+      }
       appendAssistantMessage(friendlyError(getErrorMessage(e)))
       streamContentRef.current = ''
       setStreamContent('')
