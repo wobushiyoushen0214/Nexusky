@@ -88,7 +88,7 @@ interface PendingCanvasFocus {
 }
 
 const CARD_WIDTH = 210
-const CARD_HEIGHT = 112
+const CARD_HEIGHT = 132
 const BASE_CANVAS_WIDTH = 1200
 const BASE_CANVAS_HEIGHT = 760
 const CANVAS_PADDING = 760
@@ -1546,6 +1546,8 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                       height: CARD_HEIGHT,
                       padding: '13px 14px 12px',
                       overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
                       borderRadius: 7,
                       border: dragging?.id === row.id ? '1px solid var(--border-default)' : '1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent)',
                       background: 'color-mix(in srgb, var(--bg-surface) 72%, var(--editor-bg))',
@@ -1555,24 +1557,24 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                       zIndex: dragging?.id === row.id ? 5 : 2
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 9 }}>
-                      <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, color: 'var(--text-tertiary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexShrink: 0 }}>
+                      <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5, lineHeight: 1.25, color: 'var(--text-tertiary)' }}>
                         {metaItems.join(' · ') || t('canvas.noteNode')}
                       </div>
                       {layerHint && (
-                        <div style={{ flexShrink: 0, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--bg-hover) 76%, transparent)', color: 'var(--text-tertiary)', fontSize: 10 }}>
+                        <div style={{ flexShrink: 0, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--bg-hover) 76%, transparent)', color: 'var(--text-tertiary)', fontSize: 10, lineHeight: 1.2 }}>
                           {layerHint}
                         </div>
                       )}
                     </div>
                     <div style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', minHeight: 36, fontSize: 13.5, lineHeight: 1.32, fontWeight: 710, color: 'var(--text-primary)', overflow: 'hidden' }}>{row.title}</div>
-                    <div style={{ marginTop: 6, fontSize: 10.5, color: 'color-mix(in srgb, var(--text-tertiary) 88%, transparent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.filePath}</div>
-                    <div style={{ marginTop: 11, display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 18, overflow: 'hidden' }}>
+                    <div style={{ marginTop: 5, fontSize: 10.5, lineHeight: 1.25, color: 'color-mix(in srgb, var(--text-tertiary) 88%, transparent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{row.filePath}</div>
+                    <div style={{ marginTop: 'auto', paddingTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 26, overflow: 'hidden', flexShrink: 0 }}>
                       {tags.slice(0, 3).map((tag) => (
-                        <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--bg-hover) 70%, transparent)', color: 'var(--text-secondary)', fontSize: 10 }}>{tag}</span>
+                        <span key={tag} style={{ padding: '2px 6px', borderRadius: 999, background: 'color-mix(in srgb, var(--bg-hover) 70%, transparent)', color: 'var(--text-secondary)', fontSize: 10, lineHeight: 1.2 }}>{tag}</span>
                       ))}
-                      {tags.length > 3 && <span style={{ padding: '2px 6px', borderRadius: 999, color: 'var(--text-tertiary)', fontSize: 10 }}>+{tags.length - 3}</span>}
-                      {tags.length === 0 && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('canvas.noTags')}</span>}
+                      {tags.length > 3 && <span style={{ padding: '2px 6px', borderRadius: 999, color: 'var(--text-tertiary)', fontSize: 10, lineHeight: 1.2 }}>+{tags.length - 3}</span>}
+                      {tags.length === 0 && <span style={{ fontSize: 10, lineHeight: 1.2, color: 'var(--text-tertiary)' }}>{t('canvas.noTags')}</span>}
                     </div>
                   </div>
                 )

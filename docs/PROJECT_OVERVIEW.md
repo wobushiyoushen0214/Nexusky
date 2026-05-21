@@ -473,7 +473,7 @@ pnpm dist
 - `pnpm dev` 启动 Electron + Vite 开发环境。
 - `pnpm typecheck` 依次检查 shared、main、renderer。
 - `pnpm test` 运行 Vitest 全量测试。
-- `pnpm rebuild better-sqlite3` 可在 Node ABI 不匹配时重编译本地 SQLite 原生模块。
+- `pnpm run rebuild` 可在 Electron ABI 不匹配时重编译本地 SQLite 原生模块。不要使用 `pnpm rebuild better-sqlite3`，那会按系统 Node 编译，可能重新触发 `NODE_MODULE_VERSION` 不匹配。
 
 ## 17. 新增功能时的代码导航
 

@@ -49,7 +49,7 @@ describe('canvas card placement', () => {
       0
     )
 
-    expect(origin).toEqual({ x: -65, y: -376 })
+    expect(origin).toEqual({ x: -65, y: -386 })
   })
 
   it('falls back to the default grid when the viewport is unavailable', () => {
@@ -168,7 +168,7 @@ describe('canvas card placement', () => {
   })
 
   it('routes links around blocking cards with elbow paths', () => {
-    const blocker = { left: 240, right: 450, top: -14, bottom: 126 }
+    const blocker = { left: 240, right: 450, top: -14, bottom: 146 }
     const route = routeBetweenCards(
       { x: 0, y: 0 },
       { x: 520, y: 0 },
@@ -180,23 +180,23 @@ describe('canvas card placement', () => {
       route[0].x === 210 ||
       route[0].x === 0 ||
       route[0].y === 0 ||
-      route[0].y === 112
+      route[0].y === 132
     ).toBe(true)
     expect(
       route[route.length - 1].x === 520 ||
       route[route.length - 1].x === 730 ||
       route[route.length - 1].y === 0 ||
-      route[route.length - 1].y === 112
+      route[route.length - 1].y === 132
     ).toBe(true)
     expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
-    expect(route.some((point) => point.y !== 56)).toBe(true)
+    expect(route.some((point) => point.y !== 66)).toBe(true)
     expect(routeCrossesCards(route, [blocker])).toBe(false)
   })
 
   it('chooses a free card edge instead of forcing a blocked side', () => {
     const blockers = [
-      { left: 224, right: 520, top: -14, bottom: 126 },
-      { left: 238, right: 506, top: 180, bottom: 330 }
+      { left: 224, right: 520, top: -14, bottom: 146 },
+      { left: 238, right: 506, top: 180, bottom: 350 }
     ]
     const route = routeBetweenCards(
       { x: 0, y: 0 },
@@ -204,8 +204,8 @@ describe('canvas card placement', () => {
       blockers
     )
 
-    expect(route[0].x === 210 || route[0].y === 0 || route[0].y === 112).toBe(true)
-    expect(route[route.length - 1].x === 560 || route[route.length - 1].y === 0 || route[route.length - 1].y === 112).toBe(true)
+    expect(route[0].x === 210 || route[0].y === 0 || route[0].y === 132).toBe(true)
+    expect(route[route.length - 1].x === 560 || route[route.length - 1].y === 0 || route[route.length - 1].y === 132).toBe(true)
     expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
     expect(routeCrossesCards(route, blockers)).toBe(false)
   })
@@ -217,8 +217,8 @@ describe('canvas card placement', () => {
     )
 
     expect(route.length).toBeLessThanOrEqual(4)
-    expect(route[0]).toEqual({ x: 210, y: 56 })
-    expect(route[route.length - 1]).toEqual({ x: 520, y: 216 })
+    expect(route[0]).toEqual({ x: 210, y: 66 })
+    expect(route[route.length - 1]).toEqual({ x: 520, y: 226 })
     expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
   })
 

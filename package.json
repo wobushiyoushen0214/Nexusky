@@ -16,8 +16,9 @@
     "scripts": {
         "dev": "node scripts/dev.mjs",
         "build": "electron-vite build",
-        "rebuild": "electron-builder install-app-deps",
-        "postinstall": "electron-builder install-app-deps",
+        "rebuild": "node scripts/rebuild-native.mjs",
+        "rebuild:app-deps": "electron-builder install-app-deps",
+        "postinstall": "node scripts/rebuild-native.mjs",
         "preview": "electron-vite preview",
         "pack": "electron-vite build && electron-builder --dir",
         "dist": "electron-vite build && electron-builder",
