@@ -409,6 +409,28 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should not index wikilinks inside markdown image alt text', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
+
+    const sourcePath = join(vaultPath, 'Source.md')
+    const targetPath = join(vaultPath, 'Target.md')
+    writeFileSync(targetPath, '# Target\n\nVisible target.')
+    writeFileSync(sourcePath, '# Source\n\n![Diagram for [[Target]]](image.png)\n\n![[Target]]')
+
+    indexNote(vaultPath, targetPath)
+    indexNote(vaultPath, sourcePath)
+
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Source')
+    expect(source).toBeTruthy()
+
+    const links = getOutgoingLinks(vaultPath, source!.id)
+    expect(links).toHaveLength(1)
+    expect(links[0]).toMatchObject({ targetTitle: 'Target', targetPath: 'Target.md', resolved: true, line: 5 })
+
+    closeDatabase()
+  })
+
   it('should resolve Obsidian block reference wikilinks to the note target', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')

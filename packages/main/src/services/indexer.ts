@@ -464,7 +464,7 @@ function extractLinks(content: string): { targetTitle: string; context: string; 
 
     let match: RegExpExecArray | null
     WIKILINK_REGEX.lastIndex = 0
-    while ((match = WIKILINK_REGEX.exec(stripInlineCode(line))) !== null) {
+    while ((match = WIKILINK_REGEX.exec(stripMarkdownImageAltText(stripInlineCode(line)))) !== null) {
       const targetTitle = normalizeWikiLinkTarget(match[1])
       if (!targetTitle) continue
       links.push({
@@ -832,6 +832,10 @@ function isMarkdownFenceLine(trimmedLine: string): boolean {
 
 function stripInlineCode(line: string): string {
   return line.replace(/`+[^`]*`+/g, (match) => ' '.repeat(match.length))
+}
+
+function stripMarkdownImageAltText(line: string): string {
+  return line.replace(/!\[[\s\S]*?\]\([^)]+\)/g, (match) => ' '.repeat(match.length))
 }
 
 function stripMarkdownLinkDestinations(line: string): string {
