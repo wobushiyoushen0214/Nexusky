@@ -540,11 +540,12 @@ export function Editor() {
       const el = (e.target as HTMLElement).closest('.wiki-link-inline') as HTMLElement | null
       if (!el) { if (linkPreviewTimer.current) clearTimeout(linkPreviewTimer.current); setLinkPreview(null); return }
       const title = el.getAttribute('data-title') || el.textContent?.replace(/^\[\[|\]\]$/g, '') || ''
-      const targetTitle = normalizeObsidianLinkTarget(title)
-      if (!targetTitle) return
+      const reference = parseObsidianLinkReference(title)
+      if (!reference.target) return
+      const cacheKey = title.trim()
       linkPreviewTimer.current = setTimeout(async () => {
         if (cancelled) return
-        const cached = linkPreviewCache.current.get(targetTitle)
+        const cached = linkPreviewCache.current.get(cacheKey)
         if (cached) {
           const rect = el.getBoundingClientRect()
           setLinkPreview({ x: rect.left, y: rect.bottom + 4, content: cached })
@@ -553,14 +554,14 @@ export function Editor() {
         const vault = useVaultStore.getState().vaultPath
         if (!vault) return
         try {
-          const results = await window.api.invoke('db:search-notes', { vaultPath: vault, query: targetTitle })
+          const results = await window.api.invoke('db:search-notes', { vaultPath: vault, query: reference.target })
           if (cancelled) return
-          const exact = findExactNoteMatch(results, targetTitle)
+          const exact = findExactNoteMatch(results, reference.target)
           if (exact) {
             const text = await window.api.invoke('file:read', { path: `${vault}/${exact.filePath}` })
             if (cancelled) return
-            const preview = text.slice(0, 500)
-            linkPreviewCache.current.set(targetTitle, preview)
+            const preview = selectMarkdownReferenceContent(text, reference).slice(0, 500)
+            linkPreviewCache.current.set(cacheKey, preview)
             const rect = el.getBoundingClientRect()
             setLinkPreview({ x: rect.left, y: rect.bottom + 4, content: preview })
           }
