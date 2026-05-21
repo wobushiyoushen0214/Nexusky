@@ -637,7 +637,7 @@ describe('indexer', () => {
       'tags: "#research #active"',
       'status: active',
       'priority: 2',
-      'cssclass: wide-page',
+      'cssclass: wide-page readable',
       '---',
       '# Project',
       '',
@@ -657,7 +657,7 @@ describe('indexer', () => {
         tags: ['active', 'research'],
         status: 'active',
         priority: 2,
-        cssclasses: ['wide-page']
+        cssclasses: ['wide-page', 'readable']
       }
     })
 
@@ -679,7 +679,7 @@ describe('indexer', () => {
       'priority:: 2',
       'published:: true',
       'tags:: #research, active',
-      'cssclass:: wide-page',
+      'cssclass:: wide-page readable',
       '+ [/] next:: Review draft',
       '- [?] risk:: unclear scope'
     ].join('\n'))
@@ -705,7 +705,7 @@ describe('indexer', () => {
         status: 'active',
         priority: 2,
         published: true,
-        cssclasses: ['wide-page'],
+        cssclasses: ['wide-page', 'readable'],
         next: 'Review draft',
         risk: 'unclear scope'
       }

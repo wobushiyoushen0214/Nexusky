@@ -23,8 +23,8 @@ export function parseNoteProperties(markdown: string): NoteProperties {
   const aliases = readList(block.raw, 'aliases')
   const legacyAlias = readList(block.raw, 'alias')
   const tags = readTags(block.raw)
-  const cssclasses = readList(block.raw, 'cssclasses')
-  const legacyCssclass = readList(block.raw, 'cssclass')
+  const cssclasses = readCssClasses(block.raw, 'cssclasses')
+  const legacyCssclass = readCssClasses(block.raw, 'cssclass')
 
   return {
     title,
@@ -142,6 +142,13 @@ function readTags(raw: string): string[] {
   return readList(raw, 'tags')
     .flatMap((tag) => tag.split(/[\s,]+/))
     .map((tag) => tag.replace(/^#/, '').trim())
+    .filter(Boolean)
+}
+
+function readCssClasses(raw: string, key: string): string[] {
+  return readList(raw, key)
+    .flatMap((className) => className.split(/[\s,]+/))
+    .map((className) => className.trim())
     .filter(Boolean)
 }
 

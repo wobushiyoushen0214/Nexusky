@@ -221,7 +221,7 @@ export function getPropertyRows(vaultPath: string): PropertyTableRow[] {
     properties.title = normalizePropertyValue(frontmatter.title) ?? inlineProperties.title ?? note.title
     properties.aliases = aliasesByNote.get(note.id) || normalizeListProperty(frontmatter.aliases ?? frontmatter.alias ?? inlineProperties.aliases ?? inlineProperties.alias)
     properties.tags = tagsByNote.get(note.id) || normalizeTagNames(frontmatter.tags ?? inlineProperties.tags)
-    properties.cssclasses = normalizeListProperty(frontmatter.cssclasses ?? frontmatter.cssclass ?? inlineProperties.cssclasses ?? inlineProperties.cssclass)
+    properties.cssclasses = normalizeCssClasses(frontmatter.cssclasses ?? frontmatter.cssclass ?? inlineProperties.cssclasses ?? inlineProperties.cssclass)
 
     return {
       ...note,
@@ -614,6 +614,14 @@ function normalizeTagNames(value: unknown): string[] {
   return values
     .flatMap((item) => item.split(/[\s,]+/))
     .map((item) => item.replace(/^#/, '').trim())
+    .filter(Boolean)
+}
+
+function normalizeCssClasses(value: unknown): string[] {
+  const values = Array.isArray(value) ? value.flatMap((item) => normalizeListProperty(item)) : normalizeListProperty(value)
+  return values
+    .flatMap((item) => item.split(/[\s,]+/))
+    .map((item) => item.trim())
     .filter(Boolean)
 }
 
