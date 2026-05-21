@@ -37,7 +37,7 @@ export function KanbanPanel() {
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null)
   const [dropColumnId, setDropColumnId] = useState<string | null>(null)
   const [newTitle, setNewTitle] = useState('')
-  const [newColumnId, setNewColumnId] = useState('')
+  const [activeComposerColumnId, setActiveComposerColumnId] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const aiStopRequestedRef = useRef(false)
@@ -81,8 +81,8 @@ export function KanbanPanel() {
     setColumns(nextColumns)
     setTasks(nextTasks)
     setRelations(nextRelations)
-    if (!newColumnId || !nextColumns.some((column) => column.id === newColumnId)) {
-      setNewColumnId(nextColumns[0]?.id || '')
+    if (activeComposerColumnId && !nextColumns.some((column) => column.id === activeComposerColumnId)) {
+      setActiveComposerColumnId(null)
     }
     if (selectedTaskId && !nextTasks.some((task) => task.id === selectedTaskId)) {
       setSelectedTaskId(null)
@@ -95,7 +95,7 @@ export function KanbanPanel() {
 
   const handleCreateTask = async (columnId?: string) => {
     if (!vaultPath || !newTitle.trim()) return
-    const targetColumnId = columnId || newColumnId || columns[0]?.id
+    const targetColumnId = columnId || activeComposerColumnId || columns[0]?.id
     if (!targetColumnId) return
     const id = crypto.randomUUID()
     await window.api.invoke('kanban:create-task', {
@@ -106,6 +106,7 @@ export function KanbanPanel() {
       priority: 1
     })
     setNewTitle('')
+    setActiveComposerColumnId(null)
     await loadBoard()
     setSelectedTaskId(id)
   }
@@ -396,33 +397,6 @@ export function KanbanPanel() {
             </div>
           </div>
 
-          <div style={quickCaptureStyle}>
-            <Icon name="plus" />
-            <input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask(newColumnId) }}
-              placeholder="写下一个任务"
-              style={quickCaptureInputStyle}
-            />
-            <select
-              value={newColumnId}
-              onChange={(e) => setNewColumnId(e.target.value)}
-              disabled={columns.length === 0}
-              style={quickCaptureSelectStyle}
-              title="添加到"
-            >
-              {columns.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}
-            </select>
-            <button
-              onClick={() => handleCreateTask(newColumnId)}
-              disabled={createDisabled}
-              title="添加任务"
-              style={{ ...primaryButtonStyle, height: 32, opacity: createDisabled ? 0.45 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
-            >
-              添加
-            </button>
-          </div>
         </div>
       </div>
 
@@ -465,6 +439,42 @@ export function KanbanPanel() {
                 </div>
 
                 <div style={laneStackStyle(columnTasks.length > 0)}>
+                  {activeComposerColumnId === column.id ? (
+                    <div style={columnComposerStyle}>
+                      <input
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateTask(column.id)
+                          if (e.key === 'Escape') {
+                            setNewTitle('')
+                            setActiveComposerColumnId(null)
+                          }
+                        }}
+                        autoFocus
+                        placeholder="任务标题"
+                        style={columnComposerInputStyle}
+                      />
+                      <button
+                        onClick={() => handleCreateTask(column.id)}
+                        disabled={createDisabled}
+                        style={{ ...smallPrimaryButtonStyle, opacity: createDisabled ? 0.45 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
+                      >
+                        添加
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setNewTitle('')
+                        setActiveComposerColumnId(column.id)
+                      }}
+                      style={columnAddButtonStyle}
+                    >
+                      <Icon name="plus" />
+                      <span>添加任务</span>
+                    </button>
+                  )}
                   {columnTasks.map((task) => (
                     <TaskCard
                       key={task.id}
@@ -610,10 +620,10 @@ function TaskCard({
       onDrop={(e) => { e.stopPropagation(); onDropBefore() }}
       style={{
         width: '100%',
-        minHeight: 76,
-        padding: '11px 12px',
+        minHeight: 54,
+        padding: '8px 10px',
         textAlign: 'left',
-        borderRadius: 8,
+        borderRadius: 7,
         border: `1px solid ${selected || highlighted ? 'rgba(124, 110, 245, 0.48)' : 'var(--border-subtle)'}`,
         background: selected ? 'var(--accent-muted)' : highlighted ? 'color-mix(in srgb, var(--accent-muted) 62%, transparent)' : 'var(--bg-surface)',
         color: 'var(--text-primary)',
@@ -622,8 +632,8 @@ function TaskCard({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-        <span style={{ marginTop: 4, width: 6, height: 6, borderRadius: 999, background: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))], flexShrink: 0 }} />
-        <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 610, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
+        <span style={{ marginTop: 5, width: 5, height: 5, borderRadius: 999, background: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))], flexShrink: 0 }} />
+        <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 610, lineHeight: 1.42, overflowWrap: 'anywhere' }}>{task.title}</span>
         {relationCount > 0 && (
           <span title="有关联任务" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--accent-text)', fontSize: 10, flexShrink: 0, paddingTop: 2 }}>
             <Icon name="link" />
@@ -631,12 +641,12 @@ function TaskCard({
           </span>
         )}
       </div>
-      {task.description && <div style={{ marginTop: 7, paddingLeft: 15, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.48, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</div>}
-      <div style={{ marginTop: 10, paddingLeft: 15, display: 'flex', alignItems: 'center', gap: 6, minHeight: 16 }}>
+      {task.description && <div style={{ marginTop: 5, paddingLeft: 14, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.description}</div>}
+      {(task.priority > 0 || task.dueDate || task.sourceFilePath) && <div style={{ marginTop: 7, paddingLeft: 14, display: 'flex', alignItems: 'center', gap: 6, minHeight: 16 }}>
         <span style={{ ...priorityPillStyle, color: PRIORITY_COLOR[Math.max(0, Math.min(3, task.priority))] }}>{PRIORITY_LABEL[Math.max(0, Math.min(3, task.priority))]}</span>
         {task.dueDate && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{task.dueDate}</span>}
         {task.sourceFilePath && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>笔记</span>}
-      </div>
+      </div>}
     </button>
   )
 }
@@ -795,6 +805,13 @@ const primaryButtonStyle: React.CSSProperties = {
   fontWeight: 600
 }
 
+const smallPrimaryButtonStyle: React.CSSProperties = {
+  ...primaryButtonStyle,
+  height: 28,
+  padding: '0 9px',
+  fontSize: 11
+}
+
 const dangerButtonStyle: React.CSSProperties = {
   ...toolbarButtonStyle,
   color: 'var(--danger)',
@@ -828,7 +845,7 @@ const boardShellStyle: React.CSSProperties = {
 }
 
 const boardHeaderStyle: React.CSSProperties = {
-  padding: '16px 18px 14px',
+  padding: '14px 18px 12px',
   borderBottom: '1px solid var(--border-subtle)',
   background: 'var(--editor-bg)'
 }
@@ -847,7 +864,7 @@ const boardEyebrowStyle: React.CSSProperties = {
 const boardTitleStyle: React.CSSProperties = {
   marginTop: 2,
   color: 'var(--text-primary)',
-  fontSize: 20,
+  fontSize: 18,
   fontWeight: 760,
   lineHeight: 1.18,
   letterSpacing: 0
@@ -862,43 +879,6 @@ const boardActionRowStyle: React.CSSProperties = {
   flexWrap: 'wrap'
 }
 
-const quickCaptureStyle: React.CSSProperties = {
-  height: 46,
-  display: 'grid',
-  gridTemplateColumns: 'auto minmax(0, 1fr) minmax(108px, 136px) auto',
-  alignItems: 'center',
-  gap: 8,
-  padding: '0 7px 0 13px',
-  borderRadius: 8,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-base)',
-  color: 'var(--text-tertiary)'
-}
-
-const quickCaptureInputStyle: React.CSSProperties = {
-  width: '100%',
-  height: 36,
-  border: 'none',
-  background: 'transparent',
-  color: 'var(--text-primary)',
-  fontSize: 13,
-  outline: 'none',
-  minWidth: 0
-}
-
-const quickCaptureSelectStyle: React.CSSProperties = {
-  width: '100%',
-  height: 32,
-  padding: '0 8px',
-  borderRadius: 6,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--bg-elevated)',
-  color: 'var(--text-secondary)',
-  fontSize: 12,
-  outline: 'none',
-  minWidth: 0
-}
-
 const boardContentStyle: React.CSSProperties = {
   minHeight: 0,
   overflow: 'auto',
@@ -909,7 +889,7 @@ const boardGridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(3, minmax(272px, 1fr))',
   alignItems: 'start',
-  gap: 16,
+  gap: 12,
   minWidth: 880
 }
 
@@ -940,11 +920,49 @@ const laneTitleStyle: React.CSSProperties = {
 
 function laneStackStyle(hasTasks: boolean): React.CSSProperties {
   return {
-    padding: hasTasks ? 9 : '10px 9px',
+    padding: '8px 8px 10px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 8
+    gap: 7
   }
+}
+
+const columnAddButtonStyle: React.CSSProperties = {
+  height: 30,
+  width: '100%',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  borderRadius: 7,
+  border: '1px dashed var(--border-subtle)',
+  background: 'transparent',
+  color: 'var(--text-tertiary)',
+  fontSize: 11,
+  cursor: 'pointer'
+}
+
+const columnComposerStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  gap: 7,
+  padding: 7,
+  borderRadius: 8,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-surface)'
+}
+
+const columnComposerInputStyle: React.CSSProperties = {
+  minWidth: 0,
+  width: '100%',
+  height: 28,
+  padding: '0 8px',
+  borderRadius: 6,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+  outline: 'none'
 }
 
 const emptyColumnStyle: React.CSSProperties = {
