@@ -19,6 +19,7 @@ interface FileEntry { name: string; path: string; isDirectory: boolean; children
 type FileWithPath = File & { path?: string }
 type BatchPlanItem = { title: string; done: boolean }
 type SharedBatchPlan = { id: string; items: BatchPlanItem[] }
+type PendingBatchPlan = { instruction: string; batches: GeneratedNoteBatchPlanItem[] }
 
 interface AICommandDraft {
   prompt: string
@@ -149,6 +150,7 @@ export function ChatPanel() {
   const restoringDraftRef = useRef(false)
   const batchCancelledRef = useRef(false)
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
+  const [pendingBatchPlan, setPendingBatchPlan] = useState<PendingBatchPlan | null>(null)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
   const [editUnbound, setEditUnbound] = useState(false)
   const draftStorageKey = useMemo(() => getChatDraftStorageKey(vaultPath, currentSessionId), [vaultPath, currentSessionId])
@@ -830,13 +832,62 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     editCompleteRef.current = true
     setIsStreaming(false)
     setPendingBatch(null)
+    setPendingBatchPlan(null)
     setFolderOptions([])
     return result
+  }
+
+  const executeBatchPlan = async (batchInstruction: string, batches: GeneratedNoteBatchPlanItem[]) => {
+    if (!vaultPath || batches.length === 0) return
+    if (editTimerRef.current) clearInterval(editTimerRef.current)
+    editTimerRef.current = null
+    batchCancelledRef.current = false
+
+    const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
+    setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
+
+    const completedBatches: { dir: string; count: number }[] = []
+    let firstGeneratedFile: string | null = null
+    let batchError: string | null = null
+
+    for (const batch of batches) {
+      if (batchCancelledRef.current) break
+      const perDirInstruction = `${batchInstruction}\n\n批量目录规划：本次只生成「${batch.topic}」主题，放到「${batch.dir}」目录下。请生成 ${batch.count} 篇独立 Markdown 笔记。`
+      const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true, sharedPlan, suppressResultMessage: true, openFirstFile: false })
+      if (result.files.length > 0) {
+        if (!firstGeneratedFile) firstGeneratedFile = result.files[0]
+        completedBatches.push({ dir: batch.dir, count: result.files.length })
+      }
+      if (!result.success) {
+        batchError = result.error || '未知错误'
+        break
+      }
+      if (batchCancelledRef.current) break
+    }
+
+    if (batchCancelledRef.current) {
+      const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
+      appendAssistantMessage(totalFiles > 0 ? `已停止，已生成 ${totalFiles} 个文件。` : '已停止，未生成新文件。')
+    } else if (batchError) {
+      const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
+      appendAssistantMessage(totalFiles > 0 ? `批量生成中断：已生成 ${totalFiles} 个文件，失败原因：${batchError}` : `批量生成失败：${batchError}`)
+    } else if (completedBatches.length > 0) {
+      if (firstGeneratedFile) await useEditorStore.getState().openFile(firstGeneratedFile)
+      appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
+    }
+  }
+
+  const handleConfirmBatchPlan = () => {
+    if (!pendingBatchPlan) return
+    const plan = pendingBatchPlan
+    setPendingBatchPlan(null)
+    void executeBatchPlan(plan.instruction, plan.batches)
   }
 
   const handleSelectFolder = (folderName: string) => {
     if (!pendingBatch || !vaultPath) return
     batchCancelledRef.current = false
+    setPendingBatchPlan(null)
     const targetDir = `${vaultPath}/${folderName}`
     const confirmMsg: Message = { id: Date.now().toString(), role: 'user', content: folderName }
     setMessages((msgs) => [...msgs, confirmMsg])
@@ -971,6 +1022,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
     const userContent = input.trim() || '请分析附件内容。'
     batchCancelledRef.current = false
+    setPendingBatchPlan(null)
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userContent, attachments: attachments.length > 0 ? attachments : undefined }
     setMessages((prev) => [...prev, userMsg])
     appendToDb(userMsg)
@@ -1193,37 +1245,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             }
 
             if (plannedBatches.length > 0) {
+              setPendingBatchPlan({ instruction: batchInstruction, batches: plannedBatches })
+              setIsStreaming(false)
+              setToolStatus(null)
               if (editTimerRef.current) clearInterval(editTimerRef.current)
               editTimerRef.current = null
-              const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
-              setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
-              const completedBatches: { dir: string; count: number }[] = []
-              let firstGeneratedFile: string | null = null
-              let batchError: string | null = null
-              for (const batch of plannedBatches) {
-                if (batchCancelledRef.current) break
-                const perDirInstruction = `${batchInstruction}\n\n批量目录规划：本次只生成「${batch.topic}」主题，放到「${batch.dir}」目录下。请生成 ${batch.count} 篇独立 Markdown 笔记。`
-                const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true, sharedPlan, suppressResultMessage: true, openFirstFile: false })
-                if (result.files.length > 0) {
-                  if (!firstGeneratedFile) firstGeneratedFile = result.files[0]
-                  completedBatches.push({ dir: batch.dir, count: result.files.length })
-                }
-                if (!result.success) {
-                  batchError = result.error || '未知错误'
-                  break
-                }
-                if (batchCancelledRef.current) break
-              }
-              if (batchCancelledRef.current) {
-                const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
-                appendAssistantMessage(totalFiles > 0 ? `已停止，已生成 ${totalFiles} 个文件。` : '已停止，未生成新文件。')
-              } else if (batchError) {
-                const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
-                appendAssistantMessage(totalFiles > 0 ? `批量生成中断：已生成 ${totalFiles} 个文件，失败原因：${batchError}` : `批量生成失败：${batchError}`)
-              } else if (completedBatches.length > 0) {
-                if (firstGeneratedFile) await useEditorStore.getState().openFile(firstGeneratedFile)
-                appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
-              }
+              appendAssistantMessage(`已规划 ${plannedBatches.length} 个目录、共 ${plannedBatches.reduce((sum, batch) => sum + batch.count, 0)} 篇笔记。确认后开始生成。`)
             } else {
               const specifiedDirs = dirs.filter((dir) => userMsg.content.toLowerCase().includes(dir.toLowerCase()))
               if (specifiedDirs.length > 0) {
@@ -1654,6 +1681,47 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         onRegenerate={handleRegenerate}
         onContinue={handleContinue}
       />
+
+      {/* Confirm AI-planned batch generation before writing files */}
+      {pendingBatchPlan && (
+        <div style={{ padding: '8px 14px', flexShrink: 0 }}>
+          <div style={{ background: 'var(--bg-base)', border: '1px solid var(--accent-muted)', borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>确认批量生成计划</div>
+                <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  {pendingBatchPlan.batches.length} 个目录，预计 {pendingBatchPlan.batches.reduce((sum, batch) => sum + batch.count, 0)} 篇笔记
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <button
+                  onClick={handleConfirmBatchPlan}
+                  style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                >
+                  开始生成
+                </button>
+                <button
+                  onClick={() => setPendingBatchPlan(null)}
+                  style={{ height: 28, padding: '0 10px', fontSize: 12, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
+              {pendingBatchPlan.batches.map((batch) => (
+                <div key={`${batch.dir}:${batch.topic}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', padding: '7px 9px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{batch.dir}</div>
+                    <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{batch.topic}</div>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--accent-text)', background: 'var(--accent-muted)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{batch.count} 篇</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Folder picker for batch generation */}
       {pendingBatch && folderOptions.length >= 0 && (
