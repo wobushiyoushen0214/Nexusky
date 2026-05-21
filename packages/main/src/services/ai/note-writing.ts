@@ -21,3 +21,21 @@ export function buildGeneratedNoteUserPrompt(title: string, brief: string, sibli
 同批次可链接的其他笔记标题（需要从中选择 2-4 个自然写成 [[标题]]）:
 ${siblingList}`
 }
+
+function hasWikilinkToTitle(content: string, title: string): boolean {
+  return content.includes(`[[${title}]]`) || content.includes(`[[${title}|`)
+}
+
+export function ensureGeneratedNoteWikilinks(content: string, currentTitle: string, siblingTitles: string[], maxLinks = 4): string {
+  const trimmed = content.trim()
+  if (!trimmed) return trimmed
+
+  const candidates = siblingTitles
+    .filter((title) => title && title !== currentTitle)
+    .slice(0, maxLinks)
+  const missingLinks = candidates.filter((title) => !hasWikilinkToTitle(trimmed, title))
+
+  if (missingLinks.length === 0) return trimmed
+
+  return `${trimmed}\n\n## 相关笔记\n\n${missingLinks.map((title) => `- [[${title}]]`).join('\n')}`
+}

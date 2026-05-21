@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt } from '../packages/main/src/services/ai/note-writing'
+import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteWikilinks } from '../packages/main/src/services/ai/note-writing'
 
 describe('generated note writing prompts', () => {
   it('requires natural wikilinks to same-batch notes', () => {
@@ -17,5 +17,24 @@ describe('generated note writing prompts', () => {
     expect(prompt).toContain('描述: 基础 Hook')
     expect(prompt).toContain('- 自定义 Hook')
     expect(prompt).toContain('- 状态管理')
+  })
+
+  it('appends missing same-batch wikilinks to generated content', () => {
+    expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n内容', 'Hooks 入门', ['自定义 Hook', '状态管理'])).toBe([
+      '# Hooks 入门',
+      '',
+      '内容',
+      '',
+      '## 相关笔记',
+      '',
+      '- [[自定义 Hook]]',
+      '- [[状态管理]]'
+    ].join('\n'))
+  })
+
+  it('does not duplicate existing wikilinks or link to itself', () => {
+    expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n参见 [[自定义 Hook|封装逻辑]]。', 'Hooks 入门', ['Hooks 入门', '自定义 Hook', '状态管理'])).toContain('- [[状态管理]]')
+    expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n参见 [[自定义 Hook|封装逻辑]]。', 'Hooks 入门', ['Hooks 入门', '自定义 Hook', '状态管理'])).not.toContain('- [[自定义 Hook]]')
+    expect(ensureGeneratedNoteWikilinks('# Hooks 入门\n\n参见 [[自定义 Hook|封装逻辑]]。', 'Hooks 入门', ['Hooks 入门', '自定义 Hook', '状态管理'])).not.toContain('[[Hooks 入门]]')
   })
 })
