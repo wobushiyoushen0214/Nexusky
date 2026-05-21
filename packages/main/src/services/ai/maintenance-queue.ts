@@ -314,6 +314,8 @@ function addDaysIso(dateIso: string, days: number): string {
 }
 
 function extractTaskDueDate(text: string): string | null {
-  const match = text.match(/(?:^|\s|\[)due::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
-  return match ? match[1] : null
+  const inlineMatch = text.match(/(?:^|\s|\[)due::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
+  if (inlineMatch) return inlineMatch[1]
+  const tasksPluginMatch = text.match(/(?:^|\s)\uD83D\uDCC5\s*(\d{4}-\d{2}-\d{2})(?:$|\s)/)
+  return tasksPluginMatch ? tasksPluginMatch[1] : null
 }

@@ -225,6 +225,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       { text: 'Prepare due:: 2026-05-24', done: false, filePath: 'A.md' },
       { text: 'Later due:: 2026-05-30', done: false, filePath: 'A.md' },
       { text: 'Book due:: 2026-05-22', done: false, filePath: 'B.md' },
+      { text: 'Renew license \uD83D\uDCC5 2026-05-23', done: false, filePath: 'B.md' },
       { text: 'Done due:: 2026-05-19', done: true, filePath: 'A.md' },
       { text: 'Review due: 2026-05-18', done: false, filePath: 'B.md' }
     ]
@@ -246,7 +247,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     ]))
     expect(upcoming).toEqual(new Map([
       ['A.md', { count: 1, earliestDue: '2026-05-24' }],
-      ['B.md', { count: 1, earliestDue: '2026-05-22' }]
+      ['B.md', { count: 2, earliestDue: '2026-05-22' }]
     ]))
   })
 })
