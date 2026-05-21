@@ -145,6 +145,7 @@ export function ChatPanel() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const restoringDraftRef = useRef(false)
+  const batchCancelledRef = useRef(false)
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
   const [editUnbound, setEditUnbound] = useState(false)
@@ -693,7 +694,19 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     ]
   }
 
-  const executeBatchGenerate = async (instruction: string, targetDir: string) => {
+  const stopGeneration = useCallback(() => {
+    batchCancelledRef.current = true
+    window.api.invoke('ai:stop', undefined).catch(() => {})
+    isStreamingRef.current = false
+    setIsStreaming(false)
+    setToolStatus(null)
+  }, [])
+
+  const executeBatchGenerate = async (
+    instruction: string,
+    targetDir: string,
+    options: { label?: string; silentSummary?: boolean } = {}
+  ): Promise<{ success: boolean; error?: string; files: string[] }> => {
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')
@@ -719,18 +732,23 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
     const cleanup = window.api.onAiNotesProgress((data) => {
       if (data.stage === 'planning') {
-        setStreamContent('正在规划笔记结构...')
+        setStreamContent(options.label ? `正在规划「${options.label}」笔记结构...` : '正在规划笔记结构...')
       } else if (data.stage === 'planned' && data.plan) {
-        planItems = data.plan.map((p) => ({ title: p.title, done: false }))
+        planItems = data.plan.map((p) => ({ title: options.label ? `${options.label} / ${p.title}` : p.title, done: false }))
         setStreamContent('')
         const lines = planItems.map((item) => `○ ${item.title}`).join('\n')
         setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
       } else if (data.stage === 'generating' && data.current) {
+        if (batchCancelledRef.current) return
         if (data.current > 1) {
           planItems[data.current - 2] = { ...planItems[data.current - 2], done: true }
         }
         updatePlanMsg()
       } else if (data.stage === 'indexing') {
+        if (batchCancelledRef.current) {
+          setStreamContent('')
+          return
+        }
         planItems = planItems.map((item) => ({ ...item, done: true }))
         updatePlanMsg()
         setStreamContent('正在索引笔记关系...')
@@ -738,8 +756,6 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setStreamContent('')
         appendAssistantMessage(`⚠️ ${data.message}（文件已生成，但知识图谱索引失败，可手动重建索引）`)
       } else if (data.stage === 'done') {
-        planItems = planItems.map((item) => ({ ...item, done: true }))
-        updatePlanMsg()
         setStreamContent('')
       }
     })
@@ -753,20 +769,25 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       cleanup()
     }
 
-    // Mark all done
-    planItems = planItems.map((item) => ({ ...item, done: true }))
-    updatePlanMsg()
+    if (result.success && !batchCancelledRef.current) {
+      planItems = planItems.map((item) => ({ ...item, done: true }))
+      updatePlanMsg()
+    }
 
-    if (result.success && result.files.length > 0) {
+    if (result.success && !batchCancelledRef.current && result.files.length > 0) {
       await useVaultStore.getState().refreshFiles()
       await useEditorStore.getState().openFile(result.files[0])
       const dirName = targetDir.split(/[\\/]/).pop()
-      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件。` }
-      setMessages((msgs) => [...msgs, msg])
-      appendToDb(msg)
+      if (!options.silentSummary) {
+        const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已在「${dirName}」下生成 ${result.files.length} 个文件。` }
+        setMessages((msgs) => [...msgs, msg])
+        appendToDb(msg)
+      }
     } else if (result.files.length > 0) {
       await useVaultStore.getState().refreshFiles()
       appendAssistantMessage(`已停止，生成了 ${result.files.length} 个文件。`)
+    } else if (batchCancelledRef.current || result.error === '已取消') {
+      appendAssistantMessage('已停止，未生成新文件。')
     } else {
       appendAssistantMessage(`生成失败: ${result.error || '未知错误'}`)
     }
@@ -778,10 +799,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setIsStreaming(false)
     setPendingBatch(null)
     setFolderOptions([])
+    return result
   }
 
   const handleSelectFolder = (folderName: string) => {
     if (!pendingBatch || !vaultPath) return
+    batchCancelledRef.current = false
     const targetDir = `${vaultPath}/${folderName}`
     const confirmMsg: Message = { id: Date.now().toString(), role: 'user', content: folderName }
     setMessages((msgs) => [...msgs, confirmMsg])
@@ -915,6 +938,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     const userContent = input.trim() || '请分析附件内容。'
+    batchCancelledRef.current = false
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userContent, attachments: attachments.length > 0 ? attachments : undefined }
     setMessages((prev) => [...prev, userMsg])
     appendToDb(userMsg)
@@ -1121,25 +1145,54 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 setStreamContent('')
                 setIsStreaming(false)
                 setToolStatus(null)
+                appendAssistantMessage('已停止，未生成新文件。')
                 return
               }
+            }
+
+            if (batchCancelledRef.current) {
+              editCompleteRef.current = true
+              streamContentRef.current = ''
+              setStreamContent('')
+              setIsStreaming(false)
+              setToolStatus(null)
+              appendAssistantMessage('已停止，未生成新文件。')
+              return
             }
 
             if (plannedBatches.length > 0) {
               if (editTimerRef.current) clearInterval(editTimerRef.current)
               editTimerRef.current = null
+              const completedBatches: { dir: string; count: number }[] = []
               for (const batch of plannedBatches) {
+                if (batchCancelledRef.current) break
                 const perDirInstruction = `${batchInstruction}\n\n批量目录规划：本次只生成「${batch.topic}」主题，放到「${batch.dir}」目录下。请生成 ${batch.count} 篇独立 Markdown 笔记。`
-                await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`)
+                const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true })
+                if (result.files.length > 0) {
+                  completedBatches.push({ dir: batch.dir, count: result.files.length })
+                }
+                if (!result.success || batchCancelledRef.current) break
+              }
+              if (!batchCancelledRef.current && completedBatches.length > 0) {
+                appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
               }
             } else {
               const specifiedDirs = dirs.filter((dir) => userMsg.content.toLowerCase().includes(dir.toLowerCase()))
               if (specifiedDirs.length > 0) {
                 if (editTimerRef.current) clearInterval(editTimerRef.current)
                 editTimerRef.current = null
+                const completedBatches: { dir: string; count: number }[] = []
                 for (const dir of specifiedDirs) {
+                  if (batchCancelledRef.current) break
                   const perDirInstruction = `${batchInstruction}\n\n注意：本次只生成与「${dir}」主题相关的笔记，放到「${dir}」目录下。`
-                  await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`)
+                  const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${dir}`, { label: dir, silentSummary: true })
+                  if (result.files.length > 0) {
+                    completedBatches.push({ dir, count: result.files.length })
+                  }
+                  if (!result.success || batchCancelledRef.current) break
+                }
+                if (!batchCancelledRef.current && completedBatches.length > 0) {
+                  appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
                 }
                 return
               }
@@ -1779,7 +1832,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             />
             {isStreaming ? (
               <button
-                onClick={() => { window.api.invoke('ai:stop', undefined); isStreamingRef.current = false; setIsStreaming(false); setToolStatus(null) }}
+                onClick={stopGeneration}
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'var(--bg-surface)', color: 'var(--text-secondary)',
