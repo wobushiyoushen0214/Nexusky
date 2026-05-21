@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import type { ChatSource } from '@shared/types/ipc'
+import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -32,7 +33,7 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, onContinue }: MessageBubbleProps) {
-  const isPlanList = msg.role === 'assistant' && /^[○✓] .+/m.test(msg.content) && !msg.content.includes('\n\n')
+  const isPlanList = msg.role === 'assistant' && isBatchPlanContent(msg.content)
 
   return (
     <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', minWidth: 0 }}>
@@ -65,20 +66,25 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, on
           ) : isPlanList ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {msg.content.split('\n').filter(Boolean).map((line, i) => {
-                const done = line.startsWith('✓')
-                const title = line.replace(/^[○✓]\s*/, '')
+                const { state, title } = parseBatchPlanLine(line)
+                const done = state === 'done'
+                const stopped = state === 'stopped'
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
                     {done ? (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
+                    ) : stopped ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
+                      </svg>
                     ) : (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, animation: 'spin 2s linear infinite' }}>
                         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                       </svg>
                     )}
-                    <span style={{ fontSize: 12, color: done ? 'var(--text-primary)' : 'var(--text-secondary)', opacity: done ? 1 : 0.8 }}>{title}</span>
+                    <span style={{ fontSize: 12, color: done ? 'var(--text-primary)' : stopped ? 'var(--text-tertiary)' : 'var(--text-secondary)', opacity: done ? 1 : 0.8 }}>{title}</span>
                   </div>
                 )
               })}

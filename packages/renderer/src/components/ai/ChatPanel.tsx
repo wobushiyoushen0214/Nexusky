@@ -11,6 +11,7 @@ import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
 import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
 import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
+import { stopPendingBatchPlanContent } from './batch-progress'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -150,6 +151,7 @@ export function ChatPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const restoringDraftRef = useRef(false)
   const batchCancelledRef = useRef(false)
+  const activeBatchPlanMsgIdsRef = useRef<Set<string>>(new Set())
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [pendingBatchPlan, setPendingBatchPlan] = useState<PendingBatchPlan | null>(null)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
@@ -701,6 +703,12 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
   const stopGeneration = useCallback(() => {
     batchCancelledRef.current = true
+    const activePlanIds = activeBatchPlanMsgIdsRef.current
+    if (activePlanIds.size > 0) {
+      setMessages((msgs) => msgs.map((msg) => (
+        activePlanIds.has(msg.id) ? { ...msg, content: stopPendingBatchPlanContent(msg.content) } : msg
+      )))
+    }
     window.api.invoke('ai:stop', undefined).catch(() => {})
     isStreamingRef.current = false
     setIsStreaming(false)
@@ -741,6 +749,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       if (data.stage === 'planning') {
         setStreamContent(options.label ? `正在规划「${options.label}」笔记结构...` : '正在规划笔记结构...')
       } else if (data.stage === 'planned' && data.plan) {
+        if (batchCancelledRef.current) {
+          setStreamContent('')
+          return
+        }
         planItems = data.plan.map((p) => ({ title: options.label ? `${options.label} / ${p.title}` : p.title, done: false }))
         if (options.sharedPlan) {
           const startIndex = options.sharedPlan.items.length
@@ -752,6 +764,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           updatePlanMsg()
         } else {
           const lines = planItems.map((item) => `○ ${item.title}`).join('\n')
+          activeBatchPlanMsgIdsRef.current.add(planMsgId)
           setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
         }
       } else if (data.stage === 'generating' && data.current) {
@@ -835,6 +848,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setPendingBatch(null)
     setPendingBatchPlan(null)
     setFolderOptions([])
+    if (!options.sharedPlan) activeBatchPlanMsgIdsRef.current.delete(planMsgId)
     return result
   }
 
@@ -845,6 +859,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     batchCancelledRef.current = false
 
     const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
+    activeBatchPlanMsgIdsRef.current.add(sharedPlan.id)
     setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
 
     const completedBatches: { dir: string; count: number }[] = []
@@ -876,6 +891,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       if (firstGeneratedFile) await useEditorStore.getState().openFile(firstGeneratedFile)
       appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
     }
+    activeBatchPlanMsgIdsRef.current.delete(sharedPlan.id)
   }
 
   const handleConfirmBatchPlan = () => {
@@ -1289,6 +1305,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 if (editTimerRef.current) clearInterval(editTimerRef.current)
                 editTimerRef.current = null
                 const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
+                activeBatchPlanMsgIdsRef.current.add(sharedPlan.id)
                 setMessages((msgs) => [...msgs, { id: sharedPlan.id, role: 'assistant', content: '○ 正在规划批量笔记...' }])
                 const completedBatches: { dir: string; count: number }[] = []
                 let firstGeneratedFile: string | null = null
@@ -1317,6 +1334,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   if (firstGeneratedFile) await useEditorStore.getState().openFile(firstGeneratedFile)
                   appendAssistantMessage(`批量生成完成：${completedBatches.map((batch) => `「${batch.dir}」${batch.count} 篇`).join('、')}。`)
                 }
+                activeBatchPlanMsgIdsRef.current.delete(sharedPlan.id)
                 return
               }
 
