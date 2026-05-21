@@ -34,6 +34,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
+import { normalizeObsidianLinkTarget } from '../../utils/obsidian-link'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
 function stripFrontmatter(content: string): string {
@@ -54,7 +55,12 @@ function isEmbeddedNote(note: EmbeddedNote | null): note is EmbeddedNote {
 }
 
 function findExactNoteMatch(results: NoteSearchResult[], title: string): NoteSearchResult | undefined {
-  return results.find((result) => result.title === title || result.aliasMatch === title)
+  const target = normalizeObsidianLinkTarget(title)
+  return results.find((result) => {
+    const filePath = normalizeObsidianLinkTarget(result.filePath)
+    const fileName = normalizeObsidianLinkTarget(result.filePath.replace(/^.*[\\/]/, ''))
+    return result.title === target || result.aliasMatch === target || filePath === target || fileName === target
+  })
 }
 
 class LRUCache<K, V> {
@@ -356,7 +362,7 @@ export function Editor() {
       }
     }
     const handleWikilink = async (e: Event) => {
-      const title = (e as CustomEvent).detail?.title
+      const title = normalizeObsidianLinkTarget((e as CustomEvent).detail?.title || '')
       if (!title) return
       const vaultPath = (await window.api.invoke('vault:get', undefined))
       if (!vaultPath) return
@@ -533,10 +539,11 @@ export function Editor() {
       const el = (e.target as HTMLElement).closest('.wiki-link-inline') as HTMLElement | null
       if (!el) { if (linkPreviewTimer.current) clearTimeout(linkPreviewTimer.current); setLinkPreview(null); return }
       const title = el.getAttribute('data-title') || el.textContent?.replace(/^\[\[|\]\]$/g, '') || ''
-      if (!title) return
+      const targetTitle = normalizeObsidianLinkTarget(title)
+      if (!targetTitle) return
       linkPreviewTimer.current = setTimeout(async () => {
         if (cancelled) return
-        const cached = linkPreviewCache.current.get(title)
+        const cached = linkPreviewCache.current.get(targetTitle)
         if (cached) {
           const rect = el.getBoundingClientRect()
           setLinkPreview({ x: rect.left, y: rect.bottom + 4, content: cached })
@@ -545,14 +552,14 @@ export function Editor() {
         const vault = useVaultStore.getState().vaultPath
         if (!vault) return
         try {
-          const results = await window.api.invoke('db:search-notes', { vaultPath: vault, query: title })
+          const results = await window.api.invoke('db:search-notes', { vaultPath: vault, query: targetTitle })
           if (cancelled) return
-          const exact = findExactNoteMatch(results, title)
+          const exact = findExactNoteMatch(results, targetTitle)
           if (exact) {
             const text = await window.api.invoke('file:read', { path: `${vault}/${exact.filePath}` })
             if (cancelled) return
             const preview = text.slice(0, 500)
-            linkPreviewCache.current.set(title, preview)
+            linkPreviewCache.current.set(targetTitle, preview)
             const rect = el.getBoundingClientRect()
             setLinkPreview({ x: rect.left, y: rect.bottom + 4, content: preview })
           }
@@ -847,7 +854,8 @@ function TransclusionBlocks({ content }: { content: string }) {
       const titles: string[] = []
       let match
       while ((match = regex.exec(content)) !== null) {
-        titles.push(match[1])
+        const target = normalizeObsidianLinkTarget(match[1])
+        if (target) titles.push(target)
       }
       if (titles.length === 0 || !vaultPath) { setEmbeds([]); return }
 

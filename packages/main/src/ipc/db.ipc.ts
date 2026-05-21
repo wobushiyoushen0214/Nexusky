@@ -13,6 +13,7 @@ import { collectDueFlashcardsFromNotes, getLocalDateFromStamp, getLocalDateStamp
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIndexResult } from '../services/vault-indexer'
 import { getCachedVaultQuery } from '../services/db-query-cache'
+import { searchNotes } from '../services/note-search'
 import type Database from 'better-sqlite3'
 import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
 
@@ -205,37 +206,7 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('db:search-notes', async (_event, params: { vaultPath: string; query: string }) => {
-    const db = getDatabase(params.vaultPath)
-    const pattern = `%${params.query}%`
-    const titleRows = db.prepare(`
-      SELECT id, title, file_path as filePath, NULL as aliasMatch, updated_at as updatedAt
-      FROM notes
-      WHERE title LIKE ?
-      ORDER BY updated_at DESC
-      LIMIT 20
-    `).all(pattern) as { id: string; title: string; filePath: string; aliasMatch: null; updatedAt: number }[]
-    const aliasRows = db.prepare(`
-      SELECT n.id, n.title, n.file_path as filePath, a.alias as aliasMatch, n.updated_at as updatedAt
-      FROM note_aliases a
-      JOIN notes n ON n.id = a.note_id
-      WHERE a.alias LIKE ?
-      ORDER BY n.updated_at DESC
-      LIMIT 20
-    `).all(pattern) as { id: string; title: string; filePath: string; aliasMatch: string; updatedAt: number }[]
-
-    const merged = new Map<string, { id: string; title: string; filePath: string; aliasMatch?: string; updatedAt: number; rank: number }>()
-    for (const row of titleRows) {
-      merged.set(row.id, { id: row.id, title: row.title, filePath: row.filePath, updatedAt: row.updatedAt, rank: 0 })
-    }
-    for (const row of aliasRows) {
-      if (!merged.has(row.id)) {
-        merged.set(row.id, { id: row.id, title: row.title, filePath: row.filePath, aliasMatch: row.aliasMatch, updatedAt: row.updatedAt, rank: 1 })
-      }
-    }
-    return Array.from(merged.values())
-      .sort((a, b) => a.rank - b.rank || b.updatedAt - a.updatedAt)
-      .slice(0, 20)
-      .map(({ updatedAt: _updatedAt, rank: _rank, ...row }) => row)
+    return searchNotes(params.vaultPath, params.query)
   })
 
   ipcMain.handle('db:semantic-search', async (_event, params: { vaultPath: string; query: string }) => {
