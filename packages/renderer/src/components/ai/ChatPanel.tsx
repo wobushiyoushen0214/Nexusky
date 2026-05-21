@@ -350,6 +350,7 @@ export function ChatPanel() {
         }
         streamContentRef.current = ''
         setStreamContent('')
+        pendingSourcesRef.current = []
         setIsStreaming(false)
       } else if (event.type === 'retry') {
         setToolStatus(event.content)
@@ -369,14 +370,16 @@ export function ChatPanel() {
   const prevStreaming = useRef(false)
   const editCompleteRef = useRef(false)
   useEffect(() => {
-    if (prevStreaming.current && !isStreaming && streamContentRef.current && !editCompleteRef.current) {
-      const sources = pendingSourcesRef.current.length > 0 ? [...pendingSourcesRef.current] : undefined
-      const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContentRef.current, sources }
-      setMessages((msgs) => [...msgs, msg])
-      appendToDb(msg)
+    if (prevStreaming.current && !isStreaming) {
+      if (streamContentRef.current && !editCompleteRef.current) {
+        const sources = pendingSourcesRef.current.length > 0 ? [...pendingSourcesRef.current] : undefined
+        const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContentRef.current, sources }
+        setMessages((msgs) => [...msgs, msg])
+        appendToDb(msg)
+        streamContentRef.current = ''
+        setStreamContent('')
+      }
       pendingSourcesRef.current = []
-      streamContentRef.current = ''
-      setStreamContent('')
     }
     editCompleteRef.current = false
     prevStreaming.current = isStreaming
@@ -433,6 +436,7 @@ export function ChatPanel() {
     }
 
     setIsStreaming(true)
+    pendingSourcesRef.current = []
     streamContentRef.current = ''
     setStreamContent('')
 
@@ -447,6 +451,7 @@ export function ChatPanel() {
       appendAssistantMessage(friendlyError(getErrorMessage(e)))
       streamContentRef.current = ''
       setStreamContent('')
+      pendingSourcesRef.current = []
       setIsStreaming(false)
     }
   }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, appendAssistantMessage])
@@ -471,6 +476,7 @@ export function ChatPanel() {
 
     // Seed stream with partial content so continuation appends to it
     setIsStreaming(true)
+    pendingSourcesRef.current = []
     streamContentRef.current = msg.content
     setStreamContent(msg.content)
 
@@ -486,6 +492,7 @@ export function ChatPanel() {
       appendAssistantMessage(friendlyError(getErrorMessage(e)))
       streamContentRef.current = ''
       setStreamContent('')
+      pendingSourcesRef.current = []
       setIsStreaming(false)
     }
   }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, appendAssistantMessage])
@@ -939,6 +946,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     editCompleteRef.current = true
     streamContentRef.current = ''
     setStreamContent('')
+    pendingSourcesRef.current = []
     setEditStreamContent('')
     if (editTimerRef.current) clearInterval(editTimerRef.current)
     editTimerRef.current = null
@@ -1105,6 +1113,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setAttachedImages([])
     setAttachedDocuments([])
     setIsStreaming(true)
+    pendingSourcesRef.current = []
     streamContentRef.current = ''
     setStreamContent('')
     setEditStreamContent('')
