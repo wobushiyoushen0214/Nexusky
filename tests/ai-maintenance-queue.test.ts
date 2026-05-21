@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildKnowledgeMaintenanceQueue, getBlockedTaskInfoByPath, getDueTodayTaskInfoByPath, getElevatedTaskCountByPath, getHighPriorityTaskInfoByPath, getOverdueTaskCountByPath, getOverdueTaskInfoByPath, getScheduledTaskInfoByPath, getStartedTaskInfoByPath, getUpcomingTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getBlockedTaskInfoByPath, getDueTodayTaskInfoByPath, getElevatedTaskCountByPath, getHighPriorityTaskInfoByPath, getOverdueTaskCountByPath, getOverdueTaskInfoByPath, getRecurringTaskInfoByPath, getScheduledTaskInfoByPath, getStartedTaskInfoByPath, getUpcomingTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
@@ -285,7 +285,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(queue[1]).toMatchObject({
       title: 'Scheduled Work',
       action: 'Review 2 open tasks in this note',
-      detail: 'Open tasks: 3; overdue: 0; due today: 0; high priority: 0; scheduled: 1; started: 0; blocked: 0; upcoming: 0'
+      detail: 'Open tasks: 3; overdue: 0; due today: 0; high priority: 0; scheduled: 1; started: 0; blocked: 0; recurring: 0; upcoming: 0'
     })
   })
 
@@ -311,7 +311,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(queue[1]).toMatchObject({
       title: 'Started Work',
       action: 'Review 1 open task in this note',
-      detail: 'Open tasks: 2; overdue: 0; due today: 0; high priority: 0; scheduled: 0; started: 1; blocked: 0; upcoming: 0'
+      detail: 'Open tasks: 2; overdue: 0; due today: 0; high priority: 0; scheduled: 0; started: 1; blocked: 0; recurring: 0; upcoming: 0'
     })
   })
 
@@ -337,7 +337,33 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(queue[1]).toMatchObject({
       title: 'Blocked Work',
       action: 'Review 1 open task in this note',
-      detail: 'Open tasks: 3; overdue: 0; due today: 0; high priority: 0; scheduled: 0; started: 0; blocked: 2; upcoming: 0'
+      detail: 'Open tasks: 3; overdue: 0; due today: 0; high priority: 0; scheduled: 0; started: 0; blocked: 2; recurring: 0; upcoming: 0'
+    })
+  })
+
+  it('queues recurring tasks separately from general open tasks', () => {
+    const queue = buildKnowledgeMaintenanceQueue({
+      notes: [
+        { id: 'a', title: 'Recurring Work', filePath: 'Recurring Work.md', updatedAt: 1700000000000 }
+      ],
+      outgoingLinksByNoteId: new Map(),
+      backlinkCountByNoteId: new Map([['a', 1]]),
+      unlinkedMentionCountByNoteId: new Map(),
+      openTaskCountByPath: new Map([['Recurring Work.md', 3]]),
+      recurringTaskInfoByPath: new Map([['Recurring Work.md', { count: 2, signal: 'recurring' }]]),
+      bridges: []
+    })
+
+    expect(queue.map((item) => item.type)).toEqual(['review_recurring_tasks', 'review_open_tasks'])
+    expect(queue[0]).toMatchObject({
+      title: 'Recurring Work',
+      action: 'Review 2 recurring tasks in this note',
+      detail: 'Recurring tasks: 2; signal: recurring'
+    })
+    expect(queue[1]).toMatchObject({
+      title: 'Recurring Work',
+      action: 'Review 1 open task in this note',
+      detail: 'Open tasks: 3; overdue: 0; due today: 0; high priority: 0; scheduled: 0; started: 0; blocked: 0; recurring: 2; upcoming: 0'
     })
   })
 
@@ -366,9 +392,12 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       { text: 'Wait on legal [status:: blocked]', done: false, filePath: 'H.md' },
       { text: 'Get finance answer blocked:: finance', done: false, filePath: 'H.md' },
       { text: 'Vendor reply #waiting', done: false, filePath: 'H.md' },
+      { text: 'Daily review \uD83D\uDD01 every day', done: false, filePath: 'I.md' },
+      { text: 'Weekly report [repeat:: every week]', done: false, filePath: 'I.md' },
       { text: 'Done due:: 2026-05-19', done: true, filePath: 'A.md' },
       { text: 'Done priority \u23EB', done: true, filePath: 'C.md' },
       { text: 'Done blocked [status:: blocked]', done: true, filePath: 'H.md' },
+      { text: 'Done recurring \uD83D\uDD01 every week', done: true, filePath: 'I.md' },
       { text: 'Review due: 2026-05-18', done: false, filePath: 'B.md' }
     ]
     const counts = getOverdueTaskCountByPath(tasks, '2026-05-21')
@@ -378,6 +407,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     const scheduled = getScheduledTaskInfoByPath(tasks, '2026-05-21')
     const started = getStartedTaskInfoByPath(tasks, '2026-05-21')
     const blocked = getBlockedTaskInfoByPath(tasks)
+    const recurring = getRecurringTaskInfoByPath(tasks)
     const elevated = getElevatedTaskCountByPath(tasks, '2026-05-21', 3)
     const upcoming = getUpcomingTaskInfoByPath(tasks, '2026-05-21', 3)
 
@@ -407,6 +437,9 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(blocked).toEqual(new Map([
       ['H.md', { count: 3, signal: 'blocked' }]
     ]))
+    expect(recurring).toEqual(new Map([
+      ['I.md', { count: 2, signal: 'recurring' }]
+    ]))
     expect(elevated).toEqual(new Map([
       ['A.md', 3],
       ['B.md', 3],
@@ -415,7 +448,8 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       ['E.md', 2],
       ['F.md', 3],
       ['G.md', 3],
-      ['H.md', 3]
+      ['H.md', 3],
+      ['I.md', 2]
     ]))
     expect(upcoming).toEqual(new Map([
       ['A.md', { count: 1, earliestDue: '2026-05-24' }],

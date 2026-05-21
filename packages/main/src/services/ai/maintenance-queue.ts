@@ -18,7 +18,7 @@ export interface KnowledgeMaintenanceItem {
   detail: string
 }
 
-export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'review_high_priority_tasks' | 'review_scheduled_tasks' | 'review_started_tasks' | 'review_blocked_tasks' | 'review_upcoming_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
+export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'review_high_priority_tasks' | 'review_scheduled_tasks' | 'review_started_tasks' | 'review_blocked_tasks' | 'review_recurring_tasks' | 'review_upcoming_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
 
 export interface KnowledgeMaintenanceTask {
   text: string
@@ -43,6 +43,11 @@ export interface BlockedTaskInfo {
   signal: string
 }
 
+export interface RecurringTaskInfo {
+  count: number
+  signal: string
+}
+
 interface KnowledgeMaintenanceQueueOptions {
   notes: KnowledgeMaintenanceNote[]
   outgoingLinksByNoteId: Map<string, OutgoingLinkIndex[]>
@@ -63,6 +68,7 @@ interface KnowledgeMaintenanceQueueOptions {
   scheduledTaskInfoByPath?: Map<string, DueTaskInfo>
   startedTaskInfoByPath?: Map<string, DueTaskInfo>
   blockedTaskInfoByPath?: Map<string, BlockedTaskInfo>
+  recurringTaskInfoByPath?: Map<string, RecurringTaskInfo>
   upcomingTaskInfoByPath?: Map<string, DueTaskInfo>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
@@ -102,6 +108,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const startedTaskCount = startedTaskInfo?.count || 0
     const blockedTaskInfo = options.blockedTaskInfoByPath?.get(note.filePath)
     const blockedTaskCount = blockedTaskInfo?.count || 0
+    const recurringTaskInfo = options.recurringTaskInfoByPath?.get(note.filePath)
+    const recurringTaskCount = recurringTaskInfo?.count || 0
     const upcomingTaskInfo = options.upcomingTaskInfoByPath?.get(note.filePath)
     const upcomingTaskCount = upcomingTaskInfo?.count || 0
 
@@ -248,6 +256,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
+    if (recurringTaskCount > 0) {
+      items.push({
+        type: 'review_recurring_tasks',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 66 + Math.min(recurringTaskCount, 5),
+        action: `Review ${recurringTaskCount} recurring task${recurringTaskCount === 1 ? '' : 's'} in this note`,
+        reason: 'Recurring tasks define routines that should stay visible in the maintenance plan.',
+        detail: `Recurring tasks: ${recurringTaskCount}; signal: ${recurringTaskInfo?.signal || ''}`
+      })
+    }
+
     if (upcomingTaskCount > 0) {
       items.push({
         type: 'review_upcoming_tasks',
@@ -260,7 +280,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
-    const elevatedTaskCountFallback = overdueTaskCount + dueTodayTaskCount + highPriorityTaskCount + scheduledTaskCount + startedTaskCount + blockedTaskCount + upcomingTaskCount
+    const elevatedTaskCountFallback = overdueTaskCount + dueTodayTaskCount + highPriorityTaskCount + scheduledTaskCount + startedTaskCount + blockedTaskCount + recurringTaskCount + upcomingTaskCount
     const elevatedOpenTaskCount = elevatedTaskCount ?? elevatedTaskCountFallback
     if (openTaskCount > elevatedOpenTaskCount) {
       const remainingOpenTasks = openTaskCount - elevatedOpenTaskCount
@@ -271,7 +291,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         priority: 60 + Math.min(remainingOpenTasks, 10),
         action: `Review ${remainingOpenTasks} open task${remainingOpenTasks === 1 ? '' : 's'} in this note`,
         reason: 'Open tasks embedded in notes should feed the next-action workflow.',
-        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; high priority: ${highPriorityTaskCount}; scheduled: ${scheduledTaskCount}; started: ${startedTaskCount}; blocked: ${blockedTaskCount}; upcoming: ${upcomingTaskCount}`
+        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; high priority: ${highPriorityTaskCount}; scheduled: ${scheduledTaskCount}; started: ${startedTaskCount}; blocked: ${blockedTaskCount}; recurring: ${recurringTaskCount}; upcoming: ${upcomingTaskCount}`
       })
     }
 
@@ -422,6 +442,19 @@ export function getBlockedTaskInfoByPath(tasks: KnowledgeMaintenanceTask[]): Map
   return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, signal: signalsByPath.get(filePath) || '' }]))
 }
 
+export function getRecurringTaskInfoByPath(tasks: KnowledgeMaintenanceTask[]): Map<string, RecurringTaskInfo> {
+  const counts = new Map<string, number>()
+  const signalsByPath = new Map<string, string>()
+  for (const task of tasks) {
+    if (task.done) continue
+    const signal = extractRecurringTaskSignal(task.text)
+    if (!signal) continue
+    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
+    if (!signalsByPath.has(task.filePath)) signalsByPath.set(task.filePath, signal)
+  }
+  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, signal: signalsByPath.get(filePath) || '' }]))
+}
+
 export function getElevatedTaskCountByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, upcomingDays: number): Map<string, number> {
   const counts = new Map<string, number>()
   const maxIso = addDaysIso(todayIso, Math.max(1, Math.floor(upcomingDays)))
@@ -433,7 +466,7 @@ export function getElevatedTaskCountByPath(tasks: KnowledgeMaintenanceTask[], to
     const isScheduled = Boolean(scheduled && scheduled <= todayIso)
     const start = due || scheduled ? null : extractTaskStartDate(task.text)
     const isStarted = Boolean(start && start <= todayIso)
-    if (!hasElevatedDue && !isScheduled && !isStarted && !extractBlockedTaskSignal(task.text) && !extractHighTaskPriority(task.text)) continue
+    if (!hasElevatedDue && !isScheduled && !isStarted && !extractRecurringTaskSignal(task.text) && !extractBlockedTaskSignal(task.text) && !extractHighTaskPriority(task.text)) continue
     counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
   }
   return counts
@@ -488,6 +521,12 @@ function extractBlockedTaskSignal(text: string): string | null {
   if (fieldMatch) return fieldMatch[1].toLowerCase()
   const tagMatch = text.match(/(?:^|\s)#(blocked|waiting)(?:$|\s|[.,;:!?])/i)
   return tagMatch ? tagMatch[1].toLowerCase() : null
+}
+
+function extractRecurringTaskSignal(text: string): string | null {
+  if (/(?:^|\s)\uD83D\uDD01(?:$|\s)/.test(text)) return 'recurring'
+  const match = text.match(/(?:^|\s|\[)(repeat|recur|recurrence)::?\s*([^\]\n,;]+)/i)
+  return match ? match[1].toLowerCase() : null
 }
 
 function extractHighTaskPriority(text: string): 'highest' | 'high' | null {
