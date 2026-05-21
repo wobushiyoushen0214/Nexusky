@@ -9,7 +9,7 @@ export interface ActivityBarItemDef {
 }
 
 export interface ActivityBarAvailabilityContext {
-  mainView: 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader'
+  mainView: 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader' | 'kanban'
   currentFilePath: string | null
 }
 
@@ -23,7 +23,7 @@ export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
   { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: true, defaultOrder: 8, requiresCurrentFile: true },
   { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: true, defaultOrder: 9, requiresCurrentFile: true },
   { id: 'calendar', labelKey: 'activityBar.calendar', defaultVisible: false, defaultOrder: 10 },
-  { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: false, defaultOrder: 11 },
+  { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: true, defaultOrder: 11 },
   { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 12 },
 ]
 

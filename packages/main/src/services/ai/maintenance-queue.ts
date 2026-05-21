@@ -493,28 +493,28 @@ function addDaysIso(dateIso: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
-function extractTaskDueDate(text: string): string | null {
+export function extractTaskDueDate(text: string): string | null {
   const inlineMatch = text.match(/(?:^|\s|\[)due::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
   if (inlineMatch) return inlineMatch[1]
   const tasksPluginMatch = text.match(/(?:^|\s)\uD83D\uDCC5\s*(\d{4}-\d{2}-\d{2})(?:$|\s)/)
   return tasksPluginMatch ? tasksPluginMatch[1] : null
 }
 
-function extractTaskScheduledDate(text: string): string | null {
+export function extractTaskScheduledDate(text: string): string | null {
   const inlineMatch = text.match(/(?:^|\s|\[)scheduled::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
   if (inlineMatch) return inlineMatch[1]
   const tasksPluginMatch = text.match(/(?:^|\s)\u23F3\s*(\d{4}-\d{2}-\d{2})(?:$|\s)/)
   return tasksPluginMatch ? tasksPluginMatch[1] : null
 }
 
-function extractTaskStartDate(text: string): string | null {
+export function extractTaskStartDate(text: string): string | null {
   const inlineMatch = text.match(/(?:^|\s|\[)start::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
   if (inlineMatch) return inlineMatch[1]
   const tasksPluginMatch = text.match(/(?:^|\s)\uD83D\uDEEB\s*(\d{4}-\d{2}-\d{2})(?:$|\s)/)
   return tasksPluginMatch ? tasksPluginMatch[1] : null
 }
 
-function extractBlockedTaskSignal(text: string): string | null {
+export function extractBlockedTaskSignal(text: string): string | null {
   const statusMatch = text.match(/(?:^|\s|\[)status::?\s*(blocked|waiting|wait)(?:\]|$|\s|,)/i)
   if (statusMatch) return statusMatch[1].toLowerCase() === 'wait' ? 'waiting' : statusMatch[1].toLowerCase()
   const fieldMatch = text.match(/(?:^|\s|\[)(blocked|waiting|blocked by)::?\s*([^\]\n,;]+)/i)
@@ -523,13 +523,13 @@ function extractBlockedTaskSignal(text: string): string | null {
   return tagMatch ? tagMatch[1].toLowerCase() : null
 }
 
-function extractRecurringTaskSignal(text: string): string | null {
+export function extractRecurringTaskSignal(text: string): string | null {
   if (/(?:^|\s)\uD83D\uDD01(?:$|\s)/.test(text)) return 'recurring'
   const match = text.match(/(?:^|\s|\[)(repeat|recur|recurrence)::?\s*([^\]\n,;]+)/i)
   return match ? match[1].toLowerCase() : null
 }
 
-function extractHighTaskPriority(text: string): 'highest' | 'high' | null {
+export function extractHighTaskPriority(text: string): 'highest' | 'high' | null {
   if (/(?:^|\s)\uD83D\uDD3A(?:$|\s)/.test(text)) return 'highest'
   if (/(?:^|\s)\u23EB(?:$|\s)/.test(text)) return 'high'
   const match = text.match(/(?:^|\s|\[)priority::?\s*(highest|high)(?:\]|$|\s|,)/i)

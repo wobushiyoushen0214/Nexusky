@@ -430,6 +430,10 @@ export default function App() {
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><ReaderInboxView /></Suspense>
               </div>
+            ) : mainView === 'kanban' ? (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Suspense fallback={null}><KanbanPanel /></Suspense>
+              </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><GraphView /></Suspense>
@@ -442,7 +446,7 @@ export default function App() {
           <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'kanban' ? t('panels.kanban') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
+                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
@@ -461,7 +465,6 @@ export default function App() {
               {rightPanel === 'properties' && <PropertiesPanel />}
               {rightPanel === 'tags' && <TagsPanel />}
               {rightPanel === 'calendar' && <CalendarPanel />}
-              {rightPanel === 'kanban' && <KanbanPanel />}
               {rightPanel === 'history' && <HistoryPanel />}
               {rightPanel === 'plugin' && <PluginPanelView active={activePluginPanel} />}
               </Suspense>

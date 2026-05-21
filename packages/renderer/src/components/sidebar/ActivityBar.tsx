@@ -81,7 +81,16 @@ export function ActivityBar() {
     properties: () => toggleRightPanel('properties'),
     tags: () => toggleRightPanel('tags'),
     calendar: () => toggleRightPanel('calendar'),
-    kanban: () => toggleRightPanel('kanban'),
+    kanban: () => {
+      const state = useUIStore.getState()
+      if (state.mainView === 'kanban') {
+        setMainView('editor')
+        if (state.sidebarCollapsed) toggleSidebar()
+      } else {
+        setMainView('kanban')
+        if (!state.sidebarCollapsed) toggleSidebar()
+      }
+    },
     'daily-note': async () => {
       if (!vaultPath) return
       const p = await window.api.invoke('template:daily-note', { vaultPath })
@@ -100,13 +109,13 @@ export function ActivityBar() {
     if (useUIStore.getState().mainView === 'graph') return 'graph'
     if (['bases', 'canvas', 'timeline'].includes(useUIStore.getState().mainView)) return 'canvas'
     if (useUIStore.getState().mainView === 'reader') return 'reader'
+    if (useUIStore.getState().mainView === 'kanban') return 'kanban'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
     if (rightPanel === 'outline') return 'outline'
     if (rightPanel === 'properties') return 'properties'
     if (rightPanel === 'tags') return 'tags'
     if (rightPanel === 'calendar') return 'calendar'
-    if (rightPanel === 'kanban') return 'kanban'
     return ''
   }
 

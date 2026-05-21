@@ -321,6 +321,7 @@ export interface IPCChannelMap {
   'kanban:delete-column': { params: { vaultPath: string; id: string }; result: void }
   'kanban:reorder-columns': { params: { vaultPath: string; columnIds: string[] }; result: void }
   'kanban:get-tasks': { params: { vaultPath: string }; result: KanbanTask[] }
+  'kanban:import-indexed-tasks': { params: { vaultPath: string; columnId?: string; preview?: boolean; limit?: number; plan?: KanbanAiPlan }; result: { tasks: KanbanTask[] | KanbanAiPlan['tasks']; relations: KanbanRelation[] | KanbanAiPlan['relations']; summary: string; plan?: KanbanAiPlan } }
   'kanban:create-task': { params: { vaultPath: string; id: string; columnId: string; title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }; result: void }
   'kanban:update-task': { params: { vaultPath: string; id: string; title?: string; description?: string; columnId?: string; sortOrder?: number; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }; result: void }
   'kanban:delete-task': { params: { vaultPath: string; id: string }; result: void }

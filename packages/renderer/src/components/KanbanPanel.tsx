@@ -23,12 +23,19 @@ const PRIORITY_COLOR = [
 type PendingKanbanAiWrite =
   | { mode: 'breakdown'; plan: KanbanAiPlan; taskId: string; title: string; description?: string; columnId: string }
   | { mode: 'from-note'; plan: KanbanAiPlan; filePath: string; content: string; columnId?: string }
+  | { mode: 'indexed'; plan: KanbanAiPlan; columnId?: string }
 
 function formatKanbanAiPreview(plan: KanbanAiPlan): string {
   const titles = plan.tasks.slice(0, 8).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
   const more = plan.tasks.length > 8 ? `\n...另有 ${plan.tasks.length - 8} 个任务` : ''
   const relationText = plan.relations.length > 0 ? `\n\n包含 ${plan.relations.length} 条依赖/关联关系。` : ''
   return `AI 将创建 ${plan.tasks.length} 个任务：\n\n${titles}${more}${relationText}\n\n是否写入看板？`
+}
+
+function formatKanbanImportPreview(plan: KanbanAiPlan): string {
+  const titles = plan.tasks.slice(0, 10).map((task, index) => `${index + 1}. ${task.title}`).join('\n')
+  const more = plan.tasks.length > 10 ? `\n...另有 ${plan.tasks.length - 10} 个待办` : ''
+  return `将从已索引的 Markdown checkbox 导入 ${plan.tasks.length} 个未完成待办：\n\n${titles}${more}\n\n是否写入看板？`
 }
 
 export function KanbanPanel() {
@@ -259,12 +266,38 @@ export function KanbanPanel() {
     }
   }
 
+  const handleImportIndexedTasks = async () => {
+    if (!vaultPath) return
+    aiStopRequestedRef.current = false
+    setBusy('import-indexed')
+    try {
+      const result = await window.api.invoke('kanban:import-indexed-tasks', {
+        vaultPath,
+        columnId: columns[0]?.id,
+        preview: true
+      })
+      if (!result.plan?.tasks?.length) {
+        toast('没有可导入的 Markdown 待办', 'info')
+        return
+      }
+      setPendingAiWrite({
+        mode: 'indexed',
+        plan: result.plan,
+        columnId: columns[0]?.id
+      })
+    } catch (e: unknown) {
+      toast(getErrorMessage(e) || '导入 Markdown 待办失败', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const confirmAiWrite = async () => {
     if (!vaultPath || !pendingAiWrite) return
     const pending = pendingAiWrite
     setPendingAiWrite(null)
     aiStopRequestedRef.current = false
-    setBusy(pending.mode === 'breakdown' ? 'breakdown' : 'from-note')
+    setBusy(pending.mode === 'breakdown' ? 'breakdown' : pending.mode === 'indexed' ? 'import-indexed' : 'from-note')
     try {
       if (pending.mode === 'breakdown') {
         const committed = await window.api.invoke('kanban:ai-breakdown-task', {
@@ -272,6 +305,13 @@ export function KanbanPanel() {
           taskId: pending.taskId,
           title: pending.title,
           description: pending.description,
+          columnId: pending.columnId,
+          plan: pending.plan
+        })
+        toast(committed.summary, 'success')
+      } else if (pending.mode === 'indexed') {
+        const committed = await window.api.invoke('kanban:import-indexed-tasks', {
+          vaultPath,
           columnId: pending.columnId,
           plan: pending.plan
         })
@@ -309,6 +349,7 @@ export function KanbanPanel() {
   const candidateRelationTargets = selectedTask
     ? tasks.filter((task) => task.id !== selectedTask.id && !selectedRelations.some((relation) => relation.sourceTaskId === task.id || relation.targetTaskId === task.id))
     : []
+  const createDisabled = !newTitle.trim() || columns.length === 0
 
   if (!vaultPath) {
     return (
@@ -320,15 +361,18 @@ export function KanbanPanel() {
 
   return (
     <div style={{ height: '100%', position: 'relative', display: 'grid', gridTemplateRows: 'auto 1fr', background: 'var(--editor-bg)', overflow: 'hidden' }}>
-      <div style={{ padding: '10px 12px 12px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--editor-bg)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--accent)', boxShadow: '0 0 0 3px var(--accent-muted)', flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {totalTasks} 个任务
-            </span>
+      <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--editor-bg)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 14 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 20, fontWeight: 760, color: 'var(--text-primary)', lineHeight: 1.2 }}>看板</div>
+            <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--accent)', boxShadow: '0 0 0 3px var(--accent-muted)', flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {totalTasks} 个任务
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {busy && (
               <button
                 onClick={handleStopAiTask}
@@ -338,30 +382,45 @@ export function KanbanPanel() {
                 <Icon name="x" />
               </button>
             )}
-            <button onClick={handleGenerateFromNote} disabled={busy === 'from-note'} title="从当前笔记生成任务" style={squareButtonStyle}>
-              {busy === 'from-note' ? <span style={miniLoadingStyle} /> : <Icon name="note" />}
+            <button onClick={handleImportIndexedTasks} disabled={busy === 'import-indexed'} title="导入 Markdown 待办" style={compactButtonStyle}>
+              {busy === 'import-indexed' ? <span style={miniLoadingStyle} /> : <Icon name="note" />}
+              <span>导入待办</span>
             </button>
-            <button onClick={handleAnalyze} disabled={busy === 'analyze'} title="AI 分析" style={{ ...squareButtonStyle, width: 42, color: 'var(--accent-text)', borderColor: 'rgba(124, 110, 245, 0.28)', background: 'var(--accent-muted)' }}>
-              {busy === 'analyze' ? <span style={miniLoadingStyle} /> : 'AI'}
+            <button onClick={handleGenerateFromNote} disabled={busy === 'from-note'} title="从当前笔记生成任务" style={compactButtonStyle}>
+              {busy === 'from-note' ? <span style={miniLoadingStyle} /> : <Icon name="spark" />}
+              <span>从笔记生成</span>
+            </button>
+            <button onClick={handleAnalyze} disabled={busy === 'analyze'} title="AI 分析" style={{ ...compactButtonStyle, color: 'var(--accent-text)', borderColor: 'rgba(124, 110, 245, 0.28)', background: 'var(--accent-muted)' }}>
+              {busy === 'analyze' ? <span style={miniLoadingStyle} /> : <Icon name="spark" />}
+              <span>分析</span>
             </button>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 32px', gap: 8 }}>
-          <input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask() }}
-            placeholder="添加任务"
-            style={inputStyle}
-          />
-          <button onClick={() => handleCreateTask()} title="添加任务" style={{ ...squareButtonStyle, background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>
+        <div style={composerStyle}>
+          <label style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 650, color: 'var(--text-secondary)' }}>添加任务</span>
+            <input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask() }}
+              placeholder="输入任务名称"
+              style={inputStyle}
+            />
+          </label>
+          <button
+            onClick={() => handleCreateTask()}
+            disabled={createDisabled}
+            title="添加任务"
+            style={{ ...primaryButtonStyle, height: 32, alignSelf: 'end', opacity: createDisabled ? 0.55 : 1, cursor: createDisabled ? 'default' : 'pointer' }}
+          >
             <Icon name="plus" />
+            <span style={{ marginLeft: 5 }}>添加</span>
           </button>
         </div>
       </div>
 
-      <div style={{ minHeight: 0, overflowY: 'auto', padding: selectedTask ? '10px 10px calc(58% + 10px)' : '10px' }}>
+      <div style={{ minHeight: 0, overflow: 'auto', padding: 18 }}>
         {analysis && (
           <div style={analysisCardStyle}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -372,7 +431,7 @@ export function KanbanPanel() {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(260px, 1fr))', alignItems: 'start', gap: 14, minWidth: 840 }}>
           {columns.map((column) => {
             const columnTasks = tasksByColumn(column.id)
             const isDropTarget = dropColumnId === column.id
@@ -386,7 +445,8 @@ export function KanbanPanel() {
                   borderRadius: 8,
                   border: `1px solid ${isDropTarget ? 'rgba(124, 110, 245, 0.48)' : 'var(--border-subtle)'}`,
                   background: isDropTarget ? 'var(--accent-muted)' : 'var(--bg-base)',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  minHeight: 360
                 }}
               >
                 <div style={{ height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: columnTasks.length > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
@@ -397,7 +457,7 @@ export function KanbanPanel() {
                   <span style={countPillStyle}>{columnTasks.length}</span>
                 </div>
 
-                <div style={{ padding: columnTasks.length > 0 ? 6 : 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ padding: columnTasks.length > 0 ? 8 : 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {columnTasks.map((task) => (
                     <TaskCard
                       key={task.id}
@@ -421,22 +481,28 @@ export function KanbanPanel() {
 
       {selectedTask && (
         <aside style={detailDrawerStyle}>
-          <div style={{ height: 40, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>任务详情</span>
-            <button onClick={() => setSelectedTaskId(null)} style={iconButtonStyle} title="关闭">
-              <Icon name="x" />
-            </button>
+          <div style={{ minHeight: 60, padding: '0 18px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ maxWidth: 880, height: '100%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 730, color: 'var(--text-primary)' }}>任务详情</div>
+                <div style={{ marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedTask.sourceFilePath || '看板任务'}</div>
+              </div>
+              <button onClick={() => setSelectedTaskId(null)} style={iconButtonStyle} title="关闭">
+                <Icon name="x" />
+              </button>
+            </div>
           </div>
 
-          <div style={{ padding: 12, overflowY: 'auto' }}>
+          <div style={{ padding: '18px 18px 28px', overflowY: 'auto' }}>
+            <div style={{ maxWidth: 880, margin: '0 auto' }}>
             <Field label="标题">
-              <input value={String(detailDraft.title || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, title: e.target.value }))} style={inputStyle} />
+              <input value={String(detailDraft.title || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, title: e.target.value }))} style={{ ...inputStyle, height: 36, fontSize: 13 }} />
             </Field>
             <Field label="说明">
-              <textarea value={String(detailDraft.description || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, description: e.target.value }))} style={{ ...inputStyle, height: 70, paddingTop: 8, resize: 'none', lineHeight: 1.5 }} />
+              <textarea value={String(detailDraft.description || '')} onChange={(e) => setDetailDraft((draft) => ({ ...draft, description: e.target.value }))} style={{ ...inputStyle, minHeight: 112, paddingTop: 9, resize: 'vertical', lineHeight: 1.55 }} />
             </Field>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10 }}>
               <Field label="优先级">
                 <select value={Number(detailDraft.priority || 0)} onChange={(e) => setDetailDraft((draft) => ({ ...draft, priority: Number(e.target.value) }))} style={inputStyle}>
                   {PRIORITY_LABEL.map((label, index) => <option key={label} value={index}>{label}</option>)}
@@ -447,7 +513,7 @@ export function KanbanPanel() {
               </Field>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: selectedTask.sourceFilePath ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8, margin: '2px 0 14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: selectedTask.sourceFilePath ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8, margin: '4px 0 16px' }}>
               <button onClick={handleSaveDetail} style={primaryButtonStyle}>保存</button>
               <button onClick={handleBreakdown} disabled={busy === 'breakdown'} style={toolbarButtonStyle}>{busy === 'breakdown' ? '拆解中' : 'AI 拆解'}</button>
               {!selectedTask.sourceFilePath && <button onClick={handleDeleteTask} style={dangerButtonStyle}>删除</button>}
@@ -460,8 +526,8 @@ export function KanbanPanel() {
               </div>
             )}
 
-            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                 <Icon name="link" />
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>关联关系</span>
               </div>
@@ -494,13 +560,14 @@ export function KanbanPanel() {
                 <button onClick={handleCreateRelation} style={toolbarButtonStyle}>添加</button>
               </div>
             </div>
+            </div>
           </div>
         </aside>
       )}
       <ConfirmModal
         open={!!pendingAiWrite}
         title="确认写入看板"
-        message={pendingAiWrite ? formatKanbanAiPreview(pendingAiWrite.plan) : ''}
+        message={pendingAiWrite ? pendingAiWrite.mode === 'indexed' ? formatKanbanImportPreview(pendingAiWrite.plan) : formatKanbanAiPreview(pendingAiWrite.plan) : ''}
         confirmText="写入"
         onConfirm={confirmAiWrite}
         onCancel={() => setPendingAiWrite(null)}
@@ -607,6 +674,9 @@ const toolbarButtonStyle: React.CSSProperties = {
   height: 32,
   minWidth: 0,
   padding: '0 10px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   borderRadius: 6,
   border: '1px solid var(--border-subtle)',
   background: 'var(--bg-elevated)',
@@ -614,6 +684,14 @@ const toolbarButtonStyle: React.CSSProperties = {
   fontSize: 12,
   cursor: 'pointer',
   whiteSpace: 'nowrap'
+}
+
+const compactButtonStyle: React.CSSProperties = {
+  ...toolbarButtonStyle,
+  gap: 5,
+  height: 30,
+  padding: '0 8px',
+  fontSize: 11
 }
 
 const primaryButtonStyle: React.CSSProperties = {
@@ -675,6 +753,17 @@ const smallIconButtonStyle: React.CSSProperties = {
   flexShrink: 0
 }
 
+const composerStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
+  alignItems: 'end',
+  gap: 8,
+  padding: 10,
+  borderRadius: 8,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-base)'
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   height: 32,
@@ -699,13 +788,12 @@ const detailDrawerStyle: React.CSSProperties = {
   position: 'absolute',
   left: 0,
   right: 0,
+  top: 0,
   bottom: 0,
-  maxHeight: '58%',
+  zIndex: 8,
   display: 'grid',
   gridTemplateRows: 'auto 1fr',
-  borderTop: '1px solid var(--border-default)',
-  background: 'var(--bg-base)',
-  boxShadow: '0 -18px 42px rgba(0,0,0,0.32)',
+  background: 'var(--editor-bg)',
   overflow: 'hidden'
 }
 

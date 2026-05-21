@@ -14,6 +14,7 @@ import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIndexResult } from '../services/vault-indexer'
 import { getCachedVaultQuery } from '../services/db-query-cache'
 import { searchNotes } from '../services/note-search'
+import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
 import type Database from 'better-sqlite3'
 import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
 
@@ -95,6 +96,13 @@ interface KanbanRelationRow {
   sourceTaskId: string
   targetTaskId: string
   relationType: KanbanRelationType
+}
+
+interface IndexedTaskRow {
+  text: string
+  done: boolean
+  noteTitle: string
+  filePath: string
 }
 
 const RELATION_TYPES = new Set<KanbanRelationType>(['blocks', 'depends_on', 'related'])
@@ -368,6 +376,31 @@ export function registerDbIPC(): void {
       LEFT JOIN notes n ON n.id = t.source_note_id
       ORDER BY t.column_id ASC, t.sort_order ASC, t.created_at ASC
     `).all() as KanbanTaskRow[]
+  })
+
+  ipcMain.handle('kanban:import-indexed-tasks', async (_event, params: { vaultPath: string; columnId?: string; preview?: boolean; limit?: number; plan?: KanbanAiPlan }) => {
+    const db = getDatabase(params.vaultPath)
+    const targetColumnId = params.columnId || getFirstKanbanColumnId(db)
+    const limit = Math.max(1, Math.min(50, Math.floor(params.limit || 30)))
+    const plan = params.plan ? normalizeKanbanAiPlan(params.plan, 50) : (() => {
+      const noteRows = db.prepare('SELECT id, file_path as filePath FROM notes').all() as { id: string; filePath: string }[]
+      const noteIdByPath = new Map(noteRows.map((note) => [note.filePath, note.id]))
+      const existingRows = db.prepare('SELECT title, source_file_path as sourceFilePath FROM kanban_tasks WHERE source_file_path IS NOT NULL').all() as { title: string; sourceFilePath: string | null }[]
+      const existingKeys = new Set(existingRows.map((task) => normalizeKanbanTaskKey(task.sourceFilePath, task.title)))
+      return {
+        tasks: getAllTasks(params.vaultPath)
+          .filter((task) => !task.done)
+          .map((task) => buildKanbanTaskFromIndexedTask(task, noteIdByPath.get(task.filePath) || null))
+          .filter((task) => !existingKeys.has(normalizeKanbanTaskKey(task.sourceFilePath, task.title)))
+          .slice(0, limit),
+        relations: []
+      }
+    })()
+    if (params.preview) {
+      return { plan, tasks: plan.tasks, relations: plan.relations, summary: `将导入 ${plan.tasks.length} 个 Markdown 待办` }
+    }
+    const created = createKanbanTasks(db, targetColumnId, plan.tasks)
+    return { tasks: created, relations: [], summary: `已导入 ${created.length} 个 Markdown 待办` }
   })
 
   ipcMain.handle('kanban:create-task', async (_event, params: { vaultPath: string; id: string; columnId: string; title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }) => {
@@ -783,7 +816,7 @@ function normalizeKanbanAiRelation(value: unknown): KanbanRelationInput {
   }
 }
 
-function normalizeKanbanAiPlan(parsed: unknown): KanbanAiPlan {
+function normalizeKanbanAiPlan(parsed: unknown, maxTasks = 12): KanbanAiPlan {
   const source = isRecord(parsed) ? parsed : {}
   const tasks = Array.isArray(source.tasks) ? source.tasks : []
   const relations = Array.isArray(source.relations) ? source.relations : []
@@ -792,10 +825,59 @@ function normalizeKanbanAiPlan(parsed: unknown): KanbanAiPlan {
     tasks: tasks
       .map(normalizeKanbanAiTask)
       .filter((task) => task.title.length > 0)
-      .slice(0, 12),
+      .slice(0, maxTasks),
     relations: relations
       .map(normalizeKanbanAiRelation)
       .filter((relation) => Number.isInteger(relation.sourceIndex) && Number.isInteger(relation.targetIndex))
+  }
+}
+
+function cleanIndexedTaskTitle(text: string): string {
+  return text
+    .replace(/(?:^|\s|\[)(due|scheduled|start)::?\s*\d{4}-\d{2}-\d{2}(?:\]|$|\s|,|;)/gi, ' ')
+    .replace(/(?:^|\s|\[)priority::?\s*(highest|high)(?:\]|$|\s|,|;)/gi, ' ')
+    .replace(/(?:^|\s|\[)status::?\s*(blocked|waiting|wait)(?:\]|$|\s|,|;)/gi, ' ')
+    .replace(/(?:^|\s|\[)(repeat|recur|recurrence)::?\s*([a-z0-9_-]+)(?:\]|$|\s|,|;)/gi, ' ')
+    .replace(/(?:^|\s)\uD83D\uDCC5\s*\d{4}-\d{2}-\d{2}(?:$|\s)/g, ' ')
+    .replace(/(?:^|\s)\u23F3\s*\d{4}-\d{2}-\d{2}(?:$|\s)/g, ' ')
+    .replace(/(?:^|\s)\uD83D\uDEEB\s*\d{4}-\d{2}-\d{2}(?:$|\s)/g, ' ')
+    .replace(/(?:^|\s)(\uD83D\uDD3A|\u23EB|\uD83D\uDD01)(?:$|\s)/g, ' ')
+    .replace(/(?:^|\s)#(blocked|waiting)(?:$|\s|[.,;:!?])/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function normalizeKanbanTaskKey(sourceFilePath: string | null | undefined, title: string): string {
+  return `${sourceFilePath || ''}::${title.trim().toLowerCase()}`
+}
+
+function buildKanbanTaskFromIndexedTask(task: IndexedTaskRow, sourceNoteId: string | null): KanbanTaskInput {
+  const dueDate = extractTaskDueDate(task.text)
+  const scheduledDate = extractTaskScheduledDate(task.text)
+  const startDate = extractTaskStartDate(task.text)
+  const highPriority = extractHighTaskPriority(task.text)
+  const blocked = extractBlockedTaskSignal(task.text)
+  const recurring = extractRecurringTaskSignal(task.text)
+  const signals = [
+    dueDate ? `due ${dueDate}` : '',
+    scheduledDate ? `scheduled ${scheduledDate}` : '',
+    startDate ? `start ${startDate}` : '',
+    highPriority ? `priority ${highPriority}` : '',
+    blocked ? `blocked ${blocked}` : '',
+    recurring ? `recurring ${recurring}` : ''
+  ].filter(Boolean)
+
+  return {
+    title: cleanIndexedTaskTitle(task.text) || task.text,
+    description: [
+      `Source note: ${task.noteTitle}`,
+      signals.length > 0 ? `Signals: ${signals.join(', ')}` : '',
+      `Original task: ${task.text}`
+    ].filter(Boolean).join('\n'),
+    priority: highPriority === 'highest' ? 3 : highPriority === 'high' || blocked ? 2 : 1,
+    dueDate,
+    sourceNoteId,
+    sourceFilePath: task.filePath
   }
 }
 
