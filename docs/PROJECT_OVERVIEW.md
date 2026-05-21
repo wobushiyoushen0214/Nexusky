@@ -2,7 +2,7 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：`26bd7f9`
+最后核对版本：`09f55cb`
 
 ## 1. 一句话理解
 
@@ -204,6 +204,12 @@ main/services/*
 | `conversations` / `chat_sessions` | AI 对话历史与多会话 |
 | `schema_version` | 数据库迁移版本 |
 
+旧 vault 兼容策略：
+
+- `getDatabase(vaultPath)` 打开数据库后会先做一次结构修复，再执行 `CREATE TABLE IF NOT EXISTS` 和版本迁移，最后再次修复，确保旧数据库即使 `schema_version` 已经是当前版本，也能补齐后来新增的字段。
+- 结构修复覆盖 `links.context/line/link_type`、`conversations.sources/session_id`、`kanban_tasks` 来源和时间字段等历史版本常见缺列，避免打开旧文件空间后在索引、图谱、看板或 AI 历史查询中出现 `no such column`。
+- 如果旧 `links` 表缺少可追溯的 `source_note_id`，修复后会清理无法归属到现有笔记的脏链接行；重新索引 vault 会从 Markdown 源文件重建正确链接关系。
+
 ### 7.3 索引流程
 
 `packages/main/src/services/indexer.ts` 是 Markdown 到数据库的核心转换层。
@@ -244,6 +250,7 @@ main/services/*
 
 - 渲染进程不直接读写本地文件。
 - `file:write`、`file:create`、`file:delete`、`file:rename` 等写操作应校验路径位于 vault 内。
+- `vault:select`、`vault:create`、`vault:clear-current` 会关闭当前 SQLite 连接并清空 vault 查询缓存，避免切换或创建文件空间时复用旧连接、旧查询结果或旧 schema 状态。
 - 长任务通过 `ai-task-control` 提供取消控制。
 - AI streaming 通过事件回传，而不是普通 invoke 返回大文本。
 
@@ -387,7 +394,7 @@ Zustand stores 位于 `packages/renderer/src/stores/`。
 
 | 导入器 | 文件 | 说明 |
 | --- | --- | --- |
-| Obsidian | `obsidian-importer.ts` | 导入 vault，转换 callout，索引属性、别名和链接 |
+| Obsidian | `obsidian-importer.ts` | 导入 vault，转换 callout，索引属性、别名和链接；保留 `.canvas` 原文件并生成可索引 Markdown 地图 |
 | Notion | `notion-importer.ts` | Markdown/CSV/HTML 导出转 Markdown，转换本地页面链接 |
 | Readwise/Pocket | `reader-importer.ts` | 阅读材料转换为 Markdown 阅读笔记 |
 | Web Clipper | `web-clipper.ts` + `browser-extension/` | 本地服务接收浏览器扩展剪藏 |

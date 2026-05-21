@@ -86,4 +86,39 @@ describe('obsidian importer', () => {
     expect(existsSync(join(vaultPath, '.obsidian', 'app.json'))).toBe(false)
     expect(getAllNotes(vaultPath).some((note) => note.filePath === '.hidden-note.md')).toBe(true)
   })
+
+  it('preserves Obsidian Canvas files and creates indexed markdown maps', async () => {
+    const { importObsidianVault } = await import('../packages/main/src/services/obsidian-importer')
+    const { getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
+
+    mkdirSync(join(sourcePath, 'Folder'), { recursive: true })
+    writeFileSync(join(sourcePath, 'Project.md'), '# Project\n\nProject note.')
+    writeFileSync(join(sourcePath, 'Folder', 'Next.md'), '# Next\n\nNext note.')
+    writeFileSync(join(sourcePath, 'Research.canvas'), JSON.stringify({
+      nodes: [
+        { id: 'a', type: 'file', file: 'Project.md' },
+        { id: 'b', type: 'file', file: 'Folder/Next.md' },
+        { id: 'c', type: 'text', text: '# Question\n\nWhat should we connect next?' }
+      ],
+      edges: [
+        { fromNode: 'a', toNode: 'b', label: 'leads to' },
+        { fromNode: 'c', toNode: 'a' }
+      ]
+    }))
+
+    const result = await importObsidianVault(sourcePath, vaultPath)
+
+    expect(result).toMatchObject({ imported: 4, converted: 1, indexed: 3 })
+    expect(existsSync(join(vaultPath, 'Research.canvas'))).toBe(true)
+    expect(existsSync(join(vaultPath, 'Research.canvas.md'))).toBe(true)
+
+    const notes = getAllNotes(vaultPath)
+    const canvasNote = notes.find((note) => note.filePath === 'Research.canvas.md')
+    expect(canvasNote).toBeTruthy()
+    expect(canvasNote!.title).toBe('Research Canvas')
+
+    const links = getOutgoingLinks(vaultPath, canvasNote!.id)
+    expect(Array.from(new Set(links.map((link) => link.targetPath))).sort()).toEqual(['Folder/Next.md', 'Project.md'])
+    expect(links.every((link) => link.resolved)).toBe(true)
+  })
 })
