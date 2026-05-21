@@ -1,3 +1,5 @@
+import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
+
 export interface NoteProperties {
   title: string
   aliases: string[]
@@ -85,18 +87,20 @@ function extractFrontmatter(markdown: string): { raw: string; end: number } | nu
 
 function updateDataviewInlineProperty(markdown: string, key: string, value: FrontmatterValue): string | null {
   const lines = markdown.split('\n')
+  const visibleLines = stripMarkdownComments(markdown, { preserveLineBreaks: true }).split('\n')
   const fieldPattern = new RegExp(`^(\\s*(?:[-*+]\\s+(?:\\[[^\\]\\r\\n]?\\]\\s+)?)?)${escapeRegExp(key)}::\\s*(.*?)\\s*$`)
   let inFence = false
 
   for (let index = 0; index < lines.length; index++) {
-    const trimmed = lines[index].trim()
+    const visibleLine = visibleLines[index] || ''
+    const trimmed = visibleLine.trim()
     if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
       inFence = !inFence
       continue
     }
     if (inFence) continue
 
-    const match = lines[index].match(fieldPattern)
+    const match = visibleLine.match(fieldPattern)
     if (!match) continue
 
     const serialized = serializeInlineValue(value)

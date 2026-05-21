@@ -151,6 +151,20 @@ aliases:: Old Alias
     expect(updated).toContain('aliases:: One, Two')
   })
 
+  it('ignores Dataview inline properties inside Obsidian comments', () => {
+    const next = updateMarkdownProperty(`# Body
+
+%%
+status:: hidden
+%%
+status:: active
+`, 'status', 'done')
+
+    expect(next).toContain('status:: hidden')
+    expect(next).toContain('status:: done')
+    expect(next).not.toContain('---\n')
+  })
+
   it('keeps frontmatter precedence when both frontmatter and Dataview inline fields exist', () => {
     const next = updateMarkdownProperty(`---
 status: draft
