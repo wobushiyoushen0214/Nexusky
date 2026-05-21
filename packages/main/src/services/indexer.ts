@@ -593,7 +593,9 @@ function normalizeListProperty(value: unknown): string[] {
 }
 
 function normalizeTagNames(value: unknown): string[] {
-  return normalizeListProperty(value)
+  const values = Array.isArray(value) ? value.flatMap((item) => normalizeListProperty(item)) : normalizeListProperty(value)
+  return values
+    .flatMap((item) => item.split(/[\s,]+/))
     .map((item) => item.replace(/^#/, '').trim())
     .filter(Boolean)
 }

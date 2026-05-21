@@ -409,12 +409,10 @@ describe('indexer', () => {
       'title: Project Display',
       'aliases:',
       '  - Project Alias',
-      'tags:',
-      '  - research',
+      'tags: "#research #active"',
       'status: active',
       'priority: 2',
-      'cssclasses:',
-      '  - wide-page',
+      'cssclass: wide-page',
       '---',
       '# Project',
       '',
@@ -431,7 +429,7 @@ describe('indexer', () => {
       properties: {
         title: 'Project Display',
         aliases: ['Project Alias'],
-        tags: ['research'],
+        tags: ['active', 'research'],
         status: 'active',
         priority: 2,
         cssclasses: ['wide-page']

@@ -25,14 +25,26 @@ cssclasses:
 
   it('normalizes hash-prefixed Obsidian frontmatter tags', () => {
     const props = parseNoteProperties(`---
-tags:
-  - "#project"
-  - active
+tags: "#project #active"
 ---
 # Body
 `)
 
     expect(props.tags).toEqual(['project', 'active'])
+  })
+
+  it('parses legacy Obsidian cssclass and migrates it to cssclasses', () => {
+    const markdown = `---
+cssclass: wide-page
+---
+# Body
+`
+    const props = parseNoteProperties(markdown)
+    const next = updateNoteProperties(markdown, { ...props, cssclasses: ['wide-page', 'readable'] })
+
+    expect(props.cssclasses).toEqual(['wide-page'])
+    expect(next).not.toContain('cssclass: wide-page')
+    expect(next).toContain('cssclasses:\n  - "wide-page"\n  - "readable"')
   })
 
   it('parses CRLF frontmatter from Windows vaults', () => {

@@ -22,14 +22,15 @@ export function parseNoteProperties(markdown: string): NoteProperties {
   const title = readScalar(block.raw, 'title')
   const aliases = readList(block.raw, 'aliases')
   const legacyAlias = readList(block.raw, 'alias')
-  const tags = readList(block.raw, 'tags').map((tag) => tag.replace(/^#/, ''))
+  const tags = readTags(block.raw)
   const cssclasses = readList(block.raw, 'cssclasses')
+  const legacyCssclass = readList(block.raw, 'cssclass')
 
   return {
     title,
     aliases: aliases.length > 0 ? aliases : legacyAlias,
     tags,
-    cssclasses
+    cssclasses: cssclasses.length > 0 ? cssclasses : legacyCssclass
   }
 }
 
@@ -39,6 +40,7 @@ export function updateNoteProperties(markdown: string, next: NoteProperties): st
   let raw = block?.raw || ''
 
   raw = removeProperty(raw, 'alias')
+  raw = removeProperty(raw, 'cssclass')
   raw = writeProperty(raw, 'title', next.title.trim())
   raw = writeProperty(raw, 'aliases', normalizeList(next.aliases))
   raw = writeProperty(raw, 'tags', normalizeList(next.tags).map((tag) => tag.replace(/^#/, '')))
@@ -134,6 +136,13 @@ function readList(raw: string, key: string): string[] {
     if (match) values.push(unquote(match[1].trim()))
   }
   return values
+}
+
+function readTags(raw: string): string[] {
+  return readList(raw, 'tags')
+    .flatMap((tag) => tag.split(/[\s,]+/))
+    .map((tag) => tag.replace(/^#/, '').trim())
+    .filter(Boolean)
 }
 
 function writeProperty(raw: string, key: string, value: FrontmatterValue): string {
