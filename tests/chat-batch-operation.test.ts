@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate } from '../packages/renderer/src/components/ai/batch-operation'
+import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate, shouldApplyBatchProgressEvent } from '../packages/renderer/src/components/ai/batch-operation'
 
 describe('chat batch operation helpers', () => {
   it('identifies stale batch operations', () => {
@@ -11,5 +11,11 @@ describe('chat batch operation helpers', () => {
     expect(shouldApplyBatchOperationUpdate(3, 3, false)).toBe(true)
     expect(shouldApplyBatchOperationUpdate(3, 3, true)).toBe(false)
     expect(shouldApplyBatchOperationUpdate(4, 3, false)).toBe(false)
+  })
+
+  it('requires progress events to match the active request id', () => {
+    expect(shouldApplyBatchProgressEvent(3, 3, false, 3)).toBe(true)
+    expect(shouldApplyBatchProgressEvent(3, 3, false, 2)).toBe(false)
+    expect(shouldApplyBatchProgressEvent(3, 3, false, undefined)).toBe(false)
   })
 })

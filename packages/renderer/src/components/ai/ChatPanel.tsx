@@ -11,7 +11,7 @@ import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
 import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
 import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
-import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate } from './batch-operation'
+import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate, shouldApplyBatchProgressEvent } from './batch-operation'
 import { stopPendingBatchPlanContent } from './batch-progress'
 import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-stream'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
@@ -760,7 +760,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
   ): Promise<{ success: boolean; error?: string; files: string[] }> => {
     const operationId = options.operationId ?? ++batchOperationIdRef.current
     const isCurrentOperation = () => isCurrentBatchOperation(batchOperationIdRef.current, operationId)
-    const shouldApplyOperationUpdate = () => shouldApplyBatchOperationUpdate(batchOperationIdRef.current, operationId, batchCancelledRef.current)
+    const shouldApplyOperationUpdate = (requestId: number | undefined) => shouldApplyBatchProgressEvent(batchOperationIdRef.current, operationId, batchCancelledRef.current, requestId)
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')
@@ -787,7 +787,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     const cleanup = window.api.onAiNotesProgress((data) => {
-      if (!shouldApplyOperationUpdate()) {
+      if (!shouldApplyOperationUpdate(data.requestId)) {
         if (isCurrentOperation()) setStreamContent('')
         return
       }
@@ -838,7 +838,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
     let result: { success: boolean; error?: string; files: string[] }
     try {
-      result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir })
+      result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir, requestId: operationId })
     } catch (e: unknown) {
       result = { success: false, error: friendlyError(getErrorMessage(e)), files: [] }
     } finally {

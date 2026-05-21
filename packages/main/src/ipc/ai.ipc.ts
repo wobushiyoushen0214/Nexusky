@@ -688,7 +688,7 @@ graph TD
     }
   })
 
-  ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string; vaultPath: string; targetDir?: string }) => {
+  ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在', files: [] }
 
@@ -699,13 +699,16 @@ graph TD
 
     const windowId = window.id
     const controller = startAiTask(windowId)
+    const sendProgress = (data: { stage: string; message: string; plan?: { title: string; brief?: string }[]; current?: number; total?: number }) => {
+      window.webContents.send('ai:generate-notes-progress', { requestId: params.requestId, ...data })
+    }
 
     const provider = aiManager.getProvider(config)
     const { writeFileSync, mkdirSync, existsSync, readFileSync } = require('fs')
     const { join, basename } = require('path')
 
     // Step 1: Ask AI to plan the notes
-    window.webContents.send('ai:generate-notes-progress', { stage: 'planning', message: '正在规划笔记结构...' })
+    sendProgress({ stage: 'planning', message: '正在规划笔记结构...' })
 
     let planResult = ''
     try {
@@ -752,7 +755,7 @@ graph TD
       isNameTaken: (title) => existsSync(join(targetDir, `${title}.md`))
     })
 
-    window.webContents.send('ai:generate-notes-progress', { stage: 'planned', message: `将在「${dirName}」下生成 ${plan.length} 篇笔记`, plan })
+    sendProgress({ stage: 'planned', message: `将在「${dirName}」下生成 ${plan.length} 篇笔记`, plan })
 
     // Pre-compute safe file names for consistent wikilinks
     const safeNames = plan.map((p) => p.title)
@@ -762,7 +765,7 @@ graph TD
     for (let i = 0; i < plan.length; i++) {
       if (controller.signal.aborted) break
       const item = plan[i]
-      window.webContents.send('ai:generate-notes-progress', { stage: 'generating', message: `正在生成 (${i + 1}/${plan.length}): ${item.title}`, current: i + 1, total: plan.length })
+      sendProgress({ stage: 'generating', message: `正在生成 (${i + 1}/${plan.length}): ${item.title}`, current: i + 1, total: plan.length })
 
       let noteContent = ''
       try {
@@ -794,7 +797,7 @@ graph TD
 
     // Step 3: Index all generated files and infer semantic relationships
     if (createdFiles.length > 0) {
-      window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在索引笔记关系...' })
+      sendProgress({ stage: 'indexing', message: '正在索引笔记关系...' })
       let indexErr: string | null = null
       for (const fp of createdFiles) {
         try { indexNote(params.vaultPath, fp) } catch (e: unknown) {
@@ -806,7 +809,7 @@ graph TD
 
       // Step 4: AI-powered semantic link inference
       if (createdFiles.length >= 2 && !controller.signal.aborted) {
-        window.webContents.send('ai:generate-notes-progress', { stage: 'indexing', message: '正在分析笔记语义关系...' })
+        sendProgress({ stage: 'indexing', message: '正在分析笔记语义关系...' })
         try {
           const noteSummaries = createdFiles.map((fp) => {
             const content = readFileSync(fp, 'utf-8')
@@ -860,13 +863,13 @@ graph TD
 
       window.webContents.send('vault:files-changed')
       if (indexErr) {
-        window.webContents.send('ai:generate-notes-progress', { stage: 'index-error', message: `索引失败: ${indexErr}` })
+        sendProgress({ stage: 'index-error', message: `索引失败: ${indexErr}` })
       }
     }
 
     const aborted = controller.signal.aborted
     finishAiTask(windowId, controller)
-    window.webContents.send('ai:generate-notes-progress', { stage: 'done', message: aborted ? `已停止，已生成 ${createdFiles.length} 个文件` : `完成！已生成 ${createdFiles.length} 个文件` })
+    sendProgress({ stage: 'done', message: aborted ? `已停止，已生成 ${createdFiles.length} 个文件` : `完成！已生成 ${createdFiles.length} 个文件` })
     return { success: !aborted, error: aborted ? '已取消' : undefined, files: createdFiles }
   })
 

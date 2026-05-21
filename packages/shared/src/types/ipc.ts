@@ -213,6 +213,7 @@ export interface AIStreamEvent {
 export interface AINotesProgress {
   stage: 'planning' | 'planned' | 'generating' | 'indexing' | 'index-error' | 'done' | string
   message: string
+  requestId?: number
   plan?: { title: string; brief?: string }[]
   current?: number
   total?: number
@@ -366,7 +367,7 @@ export interface IPCChannelMap {
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }
   'ai:plan-note-batches': { params: { instruction: string; existingDirs?: string[] }; result: { success: boolean; batches: GeneratedNoteBatchPlanItem[]; error?: string } }
-  'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string }; result: { success: boolean; files: string[]; error?: string } }
+  'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number }; result: { success: boolean; files: string[]; error?: string } }
   'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number } }
   'file:import-readwise': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
   'file:import-pocket': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
