@@ -18,7 +18,7 @@ export interface KnowledgeMaintenanceItem {
   detail: string
 }
 
-export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
+export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'review_upcoming_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
 
 export interface KnowledgeMaintenanceTask {
   text: string
@@ -48,6 +48,7 @@ interface KnowledgeMaintenanceQueueOptions {
   overdueTaskCountByPath?: Map<string, number>
   overdueTaskInfoByPath?: Map<string, DueTaskInfo>
   dueTodayTaskInfoByPath?: Map<string, DueTaskInfo>
+  upcomingTaskInfoByPath?: Map<string, DueTaskInfo>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   type?: KnowledgeMaintenanceType
@@ -77,6 +78,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const overdueTaskCount = overdueTaskInfo?.count ?? options.overdueTaskCountByPath?.get(note.filePath) ?? 0
     const dueTodayTaskInfo = options.dueTodayTaskInfoByPath?.get(note.filePath)
     const dueTodayTaskCount = dueTodayTaskInfo?.count || 0
+    const upcomingTaskInfo = options.upcomingTaskInfoByPath?.get(note.filePath)
+    const upcomingTaskCount = upcomingTaskInfo?.count || 0
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -173,7 +176,19 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
-    const scheduledTaskCount = overdueTaskCount + dueTodayTaskCount
+    if (upcomingTaskCount > 0) {
+      items.push({
+        type: 'review_upcoming_tasks',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 74 + Math.min(upcomingTaskCount, 5),
+        action: `Review ${upcomingTaskCount} upcoming task${upcomingTaskCount === 1 ? '' : 's'} in this note`,
+        reason: 'Upcoming due dates let the Agent prepare work before it becomes overdue.',
+        detail: `Upcoming tasks: ${upcomingTaskCount}; next due: ${upcomingTaskInfo?.earliestDue || ''}`
+      })
+    }
+
+    const scheduledTaskCount = overdueTaskCount + dueTodayTaskCount + upcomingTaskCount
     if (openTaskCount > scheduledTaskCount) {
       const remainingOpenTasks = openTaskCount - scheduledTaskCount
       items.push({
@@ -183,7 +198,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         priority: 60 + Math.min(remainingOpenTasks, 10),
         action: `Review ${remainingOpenTasks} open task${remainingOpenTasks === 1 ? '' : 's'} in this note`,
         reason: 'Open tasks embedded in notes should feed the next-action workflow.',
-        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}`
+        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; upcoming: ${upcomingTaskCount}`
       })
     }
 
@@ -275,6 +290,27 @@ export function getDueTodayTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], tod
     counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
   }
   return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: todayIso }]))
+}
+
+export function getUpcomingTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, days: number): Map<string, DueTaskInfo> {
+  const maxIso = addDaysIso(todayIso, Math.max(1, Math.floor(days)))
+  const counts = new Map<string, number>()
+  const earliestByPath = new Map<string, string>()
+  for (const task of tasks) {
+    if (task.done) continue
+    const due = extractTaskDueDate(task.text)
+    if (!due || due <= todayIso || due > maxIso) continue
+    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
+    const earliest = earliestByPath.get(task.filePath)
+    if (!earliest || due < earliest) earliestByPath.set(task.filePath, due)
+  }
+  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliestByPath.get(filePath) || '' }]))
+}
+
+function addDaysIso(dateIso: string, days: number): string {
+  const [year, month, day] = dateIso.split('-').map((value) => Number(value))
+  const date = new Date(Date.UTC(year, month - 1, day + days))
+  return date.toISOString().slice(0, 10)
 }
 
 function extractTaskDueDate(text: string): string | null {

@@ -10,7 +10,7 @@ import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractM
 import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { findKnowledgeBridgeNotes } from '../services/ai/graph-insights'
-import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getOverdueTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getOverdueTaskInfoByPath, getUpcomingTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -84,6 +84,7 @@ const KNOWLEDGE_MAINTENANCE_TYPES = new Set<KnowledgeMaintenanceType>([
   'fix_unresolved_link',
   'review_overdue_tasks',
   'review_due_today_tasks',
+  'review_upcoming_tasks',
   'connect_orphan',
   'fill_empty_note',
   'resolve_duplicate_title',
@@ -100,6 +101,12 @@ function normalizeMaintenanceType(value: unknown): KnowledgeMaintenanceType | un
   if (typeof value !== 'string') return undefined
   const type = value.trim() as KnowledgeMaintenanceType
   return KNOWLEDGE_MAINTENANCE_TYPES.has(type) ? type : undefined
+}
+
+function normalizeUpcomingDays(value: unknown): number {
+  const number = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(number)) return 7
+  return Math.min(30, Math.max(1, Math.floor(number)))
 }
 
 function localDateIso(date = new Date()): string {
@@ -1739,7 +1746,8 @@ graph TD
           type: 'object',
           properties: {
             query: { type: 'string', description: '按标题、路径、动作、原因或细节过滤，可选' },
-            type: { type: 'string', description: '只返回某类维护项，可选：fix_unresolved_link、review_overdue_tasks、review_due_today_tasks、connect_orphan、fill_empty_note、resolve_duplicate_title、resolve_duplicate_alias、review_open_tasks、link_unlinked_reference、refresh_memory、split_large_note、fill_missing_property、maintain_bridge' },
+            type: { type: 'string', description: '只返回某类维护项，可选：fix_unresolved_link、review_overdue_tasks、review_due_today_tasks、review_upcoming_tasks、connect_orphan、fill_empty_note、resolve_duplicate_title、resolve_duplicate_alias、review_open_tasks、link_unlinked_reference、refresh_memory、split_large_note、fill_missing_property、maintain_bridge' },
+            upcomingDays: { type: 'number', description: '即将到期任务窗口天数，默认 7，范围 1-30' },
             minCharacters: { type: 'number', description: '超长笔记字符阈值，默认 8000' },
             requiredProperties: { type: 'string', description: '需要检查的必填属性，逗号或空格分隔，默认 status,summary' },
             limit: { type: 'number', description: '返回维护动作数量，1-10，默认 5' }
@@ -2957,6 +2965,7 @@ graph TD
         const type = normalizeMaintenanceType(args.type)
         const limit = normalizeToolLimit(args.limit)
         const minCharacters = normalizeMinCharacters(args.minCharacters)
+        const upcomingDays = normalizeUpcomingDays(args.upcomingDays)
         const requiredProperties = normalizeMaintenanceProperties(args.requiredProperties)
         const notes = getAllNotes(vaultPath)
         const propertyRows = getPropertyRows(vaultPath)
@@ -2971,6 +2980,7 @@ graph TD
         const todayIso = localDateIso()
         const overdueTaskInfoByPath = getOverdueTaskInfoByPath(tasks, todayIso)
         const dueTodayTaskInfoByPath = getDueTodayTaskInfoByPath(tasks, todayIso)
+        const upcomingTaskInfoByPath = getUpcomingTaskInfoByPath(tasks, todayIso, upcomingDays)
         const emptyNotePaths = new Set<string>()
         const largeNoteCharactersByPath = new Map<string, number>()
         for (const note of notes) {
@@ -3040,6 +3050,7 @@ graph TD
           openTaskCountByPath,
           overdueTaskInfoByPath,
           dueTodayTaskInfoByPath,
+          upcomingTaskInfoByPath,
           bridges,
           query,
           type,
