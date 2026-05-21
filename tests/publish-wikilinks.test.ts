@@ -11,6 +11,8 @@ describe('publish wikilink lookup', () => {
     expect(resolvePublishWikilinkHref(lookup, 'Target Note')).toBe('Folder/Target Note.html')
     expect(resolvePublishWikilinkHref(lookup, 'Folder/Target Note')).toBe('Folder/Target Note.html')
     expect(resolvePublishWikilinkHref(lookup, 'Folder/Target Note.md#Details')).toBe('Folder/Target Note.html')
+    expect(resolvePublishWikilinkHref(lookup, 'Folder/Target Note.md#^block-1')).toBe('Folder/Target Note.html')
+    expect(resolvePublishWikilinkHref(lookup, 'Folder/Target Note^block-1')).toBe('Folder/Target Note.html')
     expect(resolvePublishWikilinkHref(lookup, 'folder/target note')).toBe('Folder/Target Note.html')
     expect(resolvePublishWikilinkHref(lookup, 'PROJECT')).toBe('Project.html')
   })

@@ -479,11 +479,18 @@ function extractLinks(content: string): { targetTitle: string; context: string; 
 }
 
 function normalizeWikiLinkTarget(target: string): string {
-  return normalizeNotePathTarget(target.split('#')[0].trim().replace(/\\/g, '/'))
+  return normalizeNotePathTarget(stripObsidianLinkFragment(target).replace(/\\/g, '/'))
 }
 
 function normalizeNotePathTarget(target: string): string {
   return target.replace(/\.md$/i, '')
+}
+
+function stripObsidianLinkFragment(target: string): string {
+  return target
+    .split('#')[0]
+    .replace(/\^[A-Za-z0-9_-]+$/, '')
+    .trim()
 }
 
 function extractAliases(frontmatter: Record<string, unknown>): string[] {

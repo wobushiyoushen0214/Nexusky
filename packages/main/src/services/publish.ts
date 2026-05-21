@@ -85,9 +85,14 @@ export function toPublishSearchText(markdown: string): string {
 }
 
 function normalizePublishWikilinkTarget(target: string): string {
-  return target
-    .split('#')[0]
+  return stripObsidianLinkFragment(target)
     .trim()
     .replace(/\\/g, '/')
     .replace(/\.md$/i, '')
+}
+
+function stripObsidianLinkFragment(target: string): string {
+  return target
+    .split('#')[0]
+    .replace(/\^[A-Za-z0-9_-]+$/, '')
 }
