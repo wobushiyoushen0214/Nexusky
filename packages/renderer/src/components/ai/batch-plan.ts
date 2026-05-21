@@ -20,6 +20,15 @@ export function normalizeEditableBatchCount(value: unknown): number {
   return Math.min(MAX_EDITABLE_BATCH_NOTE_COUNT, Math.max(1, Math.floor(count)))
 }
 
+export function createEditableBatchPlanItem(index: number): GeneratedNoteBatchPlanItem {
+  const topic = `Topic ${index + 1}`
+  return {
+    dir: topic,
+    topic,
+    count: 5
+  }
+}
+
 export function normalizeEditableBatchPlan(batches: GeneratedNoteBatchPlanItem[]): GeneratedNoteBatchPlanItem[] {
   return batches.map((batch, index) => {
     const fallbackTopic = batch.topic.trim() || batch.dir.trim() || `Topic ${index + 1}`

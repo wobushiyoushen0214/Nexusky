@@ -10,7 +10,7 @@ import { formatAiToolStatus } from './tool-labels'
 import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
 import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
-import { MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
+import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -909,6 +909,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     })
   }
 
+  const addPendingBatchPlanBatch = () => {
+    setPendingBatchPlan((plan) => {
+      if (!plan) return plan
+      return { ...plan, batches: [...plan.batches, createEditableBatchPlanItem(plan.batches.length)] }
+    })
+  }
+
   const handleSelectFolder = (folderName: string) => {
     if (!pendingBatch || !vaultPath) return
     batchCancelledRef.current = false
@@ -1720,8 +1727,15 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button
+                  onClick={addPendingBatchPlanBatch}
+                  style={{ height: 28, padding: '0 10px', fontSize: 12, color: 'var(--accent-text)', background: 'var(--accent-muted)', border: '1px solid var(--accent-muted)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  添加目录
+                </button>
+                <button
                   onClick={handleConfirmBatchPlan}
-                  style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                  disabled={pendingBatchPlan.batches.length === 0}
+                  style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: pendingBatchPlan.batches.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 500, whiteSpace: 'nowrap', opacity: pendingBatchPlan.batches.length === 0 ? 0.5 : 1 }}
                 >
                   开始生成
                 </button>

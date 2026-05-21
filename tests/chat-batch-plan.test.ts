@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeEditableBatchCount, normalizeEditableBatchPlan, sanitizeEditableBatchDir } from '../packages/renderer/src/components/ai/batch-plan'
+import { createEditableBatchPlanItem, normalizeEditableBatchCount, normalizeEditableBatchPlan, sanitizeEditableBatchDir } from '../packages/renderer/src/components/ai/batch-plan'
 
 describe('editable chat batch plan helpers', () => {
   it('sanitizes user-edited directories before file generation', () => {
@@ -12,6 +12,14 @@ describe('editable chat batch plan helpers', () => {
     expect(normalizeEditableBatchCount(99)).toBe(20)
     expect(normalizeEditableBatchCount('6')).toBe(6)
     expect(normalizeEditableBatchCount(Number.NaN)).toBe(5)
+  })
+
+  it('creates a default editable batch plan row', () => {
+    expect(createEditableBatchPlanItem(2)).toEqual({
+      dir: 'Topic 3',
+      topic: 'Topic 3',
+      count: 5
+    })
   })
 
   it('normalizes editable batch plans for execution', () => {
