@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getOverdueTaskCountByPath, getOverdueTaskInfoByPath, getUpcomingTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, getDueTodayTaskInfoByPath, getHighPriorityTaskInfoByPath, getOverdueTaskCountByPath, getOverdueTaskInfoByPath, getUpcomingTaskInfoByPath } from '../packages/main/src/services/ai/maintenance-queue'
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
@@ -14,6 +14,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         { id: 'dup-alias', title: 'Launch', filePath: 'Launch.md', updatedAt: 1700000000001 },
         { id: 'overdue', title: 'Overdue Tasks', filePath: 'Overdue.md', updatedAt: 1700000000002 },
         { id: 'due-today', title: 'Daily Review', filePath: 'Daily Review.md', updatedAt: 1700000000002 },
+        { id: 'priority', title: 'Priority Note', filePath: 'Priority Note.md', updatedAt: 1700000000002 },
         { id: 'upcoming', title: 'Plan Ahead', filePath: 'Plan Ahead.md', updatedAt: 1700000000002 },
         { id: 'tasks', title: 'Task Note', filePath: 'Task Note.md', updatedAt: 1700000000002 },
         { id: 'mentioned', title: 'Mentioned', filePath: 'Mentioned.md', updatedAt: 1700000000002 },
@@ -39,6 +40,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['dup-alias', 1],
         ['overdue', 1],
         ['due-today', 1],
+        ['priority', 1],
         ['upcoming', 1],
         ['tasks', 1],
         ['mentioned', 1],
@@ -72,6 +74,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       openTaskCountByPath: new Map([
         ['Overdue.md', 3],
         ['Daily Review.md', 2],
+        ['Priority Note.md', 3],
         ['Plan Ahead.md', 1],
         ['Task Note.md', 4]
       ]),
@@ -80,6 +83,9 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       ]),
       dueTodayTaskInfoByPath: new Map([
         ['Daily Review.md', { count: 2, earliestDue: '2026-05-21' }]
+      ]),
+      highPriorityTaskInfoByPath: new Map([
+        ['Priority Note.md', { count: 2, highestPriority: 'highest' }]
       ]),
       upcomingTaskInfoByPath: new Map([
         ['Plan Ahead.md', { count: 1, earliestDue: '2026-05-25' }]
@@ -94,6 +100,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       'fix_unresolved_link',
       'review_overdue_tasks',
       'review_due_today_tasks',
+      'review_high_priority_tasks',
       'connect_orphan',
       'fill_empty_note',
       'resolve_duplicate_title',
@@ -102,6 +109,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       'resolve_duplicate_alias',
       'review_open_tasks',
       'link_unlinked_reference',
+      'review_open_tasks',
       'review_open_tasks',
       'refresh_memory',
       'split_large_note',
@@ -123,52 +131,61 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       action: 'Review 2 tasks due today in this note',
       detail: 'Due today: 2; date: 2026-05-21'
     })
-    expect(queue[4]).toMatchObject({
+    expect(queue[3]).toMatchObject({
+      title: 'Priority Note',
+      action: 'Review 2 high-priority tasks in this note',
+      detail: 'High-priority tasks: 2; highest priority: highest'
+    })
+    expect(queue[5]).toMatchObject({
       title: 'Blank',
       action: 'Fill this empty note with a summary, source, or next action'
     })
-    expect(queue[5]).toMatchObject({
+    expect(queue[6]).toMatchObject({
       title: 'Project',
       action: 'Rename or add a unique alias to disambiguate this note title'
     })
-    expect(queue[7]).toMatchObject({
+    expect(queue[8]).toMatchObject({
       title: 'Plan Ahead',
       action: 'Review 1 upcoming task in this note',
       detail: 'Upcoming tasks: 1; next due: 2026-05-25'
     })
-    expect(queue[8]).toMatchObject({
+    expect(queue[9]).toMatchObject({
       title: 'Launch',
       action: 'Make duplicate alias unique: Project'
     })
-    expect(queue[9]).toMatchObject({
+    expect(queue[10]).toMatchObject({
       title: 'Task Note',
       action: 'Review 4 open tasks in this note'
     })
-    expect(queue[10]).toMatchObject({
+    expect(queue[11]).toMatchObject({
       title: 'Mentioned',
       action: 'Convert 3 unlinked mentions into wikilinks'
     })
-    expect(queue[11]).toMatchObject({
+    expect(queue[12]).toMatchObject({
       title: 'Overdue Tasks',
       action: 'Review 1 open task in this note'
     })
-    expect(queue[12]).toMatchObject({
+    expect(queue[13]).toMatchObject({
+      title: 'Priority Note',
+      action: 'Review 1 open task in this note'
+    })
+    expect(queue[14]).toMatchObject({
       title: 'Changed',
       action: 'Regenerate this note memory from current content'
     })
-    expect(queue[13]).toMatchObject({
+    expect(queue[15]).toMatchObject({
       title: 'Long Research',
       action: 'Split this long note into focused linked notes or add a map-of-content section'
     })
-    expect(queue[14]).toMatchObject({
+    expect(queue[16]).toMatchObject({
       title: 'New Idea',
       action: 'Generate AI memory for this note'
     })
-    expect(queue[15]).toMatchObject({
+    expect(queue[17]).toMatchObject({
       title: 'Metadata Gap',
       action: 'Fill missing properties: status, summary'
     })
-    expect(queue[16]).toMatchObject({
+    expect(queue[18]).toMatchObject({
       title: 'Synthesis',
       detail: 'Folders: Projects, Research; tags: delivery, research'
     })
@@ -226,12 +243,18 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       { text: 'Later due:: 2026-05-30', done: false, filePath: 'A.md' },
       { text: 'Book due:: 2026-05-22', done: false, filePath: 'B.md' },
       { text: 'Renew license \uD83D\uDCC5 2026-05-23', done: false, filePath: 'B.md' },
+      { text: 'Escalate outage \uD83D\uDD3A', done: false, filePath: 'C.md' },
+      { text: 'Call vendor \u23EB', done: false, filePath: 'C.md' },
+      { text: 'Write summary [priority:: high]', done: false, filePath: 'D.md' },
+      { text: 'Ignored medium \uD83D\uDD3C', done: false, filePath: 'D.md' },
       { text: 'Done due:: 2026-05-19', done: true, filePath: 'A.md' },
+      { text: 'Done priority \u23EB', done: true, filePath: 'C.md' },
       { text: 'Review due: 2026-05-18', done: false, filePath: 'B.md' }
     ]
     const counts = getOverdueTaskCountByPath(tasks, '2026-05-21')
     const info = getOverdueTaskInfoByPath(tasks, '2026-05-21')
     const dueToday = getDueTodayTaskInfoByPath(tasks, '2026-05-21')
+    const highPriority = getHighPriorityTaskInfoByPath(tasks)
     const upcoming = getUpcomingTaskInfoByPath(tasks, '2026-05-21', 3)
 
     expect(counts).toEqual(new Map([
@@ -244,6 +267,10 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     ]))
     expect(dueToday).toEqual(new Map([
       ['A.md', { count: 1, earliestDue: '2026-05-21' }]
+    ]))
+    expect(highPriority).toEqual(new Map([
+      ['C.md', { count: 2, highestPriority: 'highest' }],
+      ['D.md', { count: 1, highestPriority: 'high' }]
     ]))
     expect(upcoming).toEqual(new Map([
       ['A.md', { count: 1, earliestDue: '2026-05-24' }],

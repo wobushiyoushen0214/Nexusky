@@ -18,7 +18,7 @@ export interface KnowledgeMaintenanceItem {
   detail: string
 }
 
-export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'review_upcoming_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
+export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'review_high_priority_tasks' | 'review_upcoming_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
 
 export interface KnowledgeMaintenanceTask {
   text: string
@@ -32,6 +32,11 @@ export interface DueTaskInfo {
 }
 
 export type OverdueTaskInfo = DueTaskInfo
+
+export interface HighPriorityTaskInfo {
+  count: number
+  highestPriority: 'highest' | 'high'
+}
 
 interface KnowledgeMaintenanceQueueOptions {
   notes: KnowledgeMaintenanceNote[]
@@ -48,6 +53,7 @@ interface KnowledgeMaintenanceQueueOptions {
   overdueTaskCountByPath?: Map<string, number>
   overdueTaskInfoByPath?: Map<string, DueTaskInfo>
   dueTodayTaskInfoByPath?: Map<string, DueTaskInfo>
+  highPriorityTaskInfoByPath?: Map<string, HighPriorityTaskInfo>
   upcomingTaskInfoByPath?: Map<string, DueTaskInfo>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
@@ -78,6 +84,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const overdueTaskCount = overdueTaskInfo?.count ?? options.overdueTaskCountByPath?.get(note.filePath) ?? 0
     const dueTodayTaskInfo = options.dueTodayTaskInfoByPath?.get(note.filePath)
     const dueTodayTaskCount = dueTodayTaskInfo?.count || 0
+    const highPriorityTaskInfo = options.highPriorityTaskInfoByPath?.get(note.filePath)
+    const highPriorityTaskCount = highPriorityTaskInfo?.count || 0
     const upcomingTaskInfo = options.upcomingTaskInfoByPath?.get(note.filePath)
     const upcomingTaskCount = upcomingTaskInfo?.count || 0
 
@@ -176,6 +184,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
+    if (highPriorityTaskCount > 0) {
+      items.push({
+        type: 'review_high_priority_tasks',
+        title: note.title,
+        filePath: note.filePath,
+        priority: highPriorityTaskInfo?.highestPriority === 'highest' ? 84 : 82,
+        action: `Review ${highPriorityTaskCount} high-priority task${highPriorityTaskCount === 1 ? '' : 's'} in this note`,
+        reason: 'High-priority tasks should not be buried in general note cleanup.',
+        detail: `High-priority tasks: ${highPriorityTaskCount}; highest priority: ${highPriorityTaskInfo?.highestPriority || ''}`
+      })
+    }
+
     if (upcomingTaskCount > 0) {
       items.push({
         type: 'review_upcoming_tasks',
@@ -188,9 +208,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
-    const scheduledTaskCount = overdueTaskCount + dueTodayTaskCount + upcomingTaskCount
-    if (openTaskCount > scheduledTaskCount) {
-      const remainingOpenTasks = openTaskCount - scheduledTaskCount
+    const elevatedTaskCount = overdueTaskCount + dueTodayTaskCount + highPriorityTaskCount + upcomingTaskCount
+    if (openTaskCount > elevatedTaskCount) {
+      const remainingOpenTasks = openTaskCount - elevatedTaskCount
       items.push({
         type: 'review_open_tasks',
         title: note.title,
@@ -198,7 +218,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         priority: 60 + Math.min(remainingOpenTasks, 10),
         action: `Review ${remainingOpenTasks} open task${remainingOpenTasks === 1 ? '' : 's'} in this note`,
         reason: 'Open tasks embedded in notes should feed the next-action workflow.',
-        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; upcoming: ${upcomingTaskCount}`
+        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; high priority: ${highPriorityTaskCount}; upcoming: ${upcomingTaskCount}`
       })
     }
 
@@ -292,6 +312,20 @@ export function getDueTodayTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], tod
   return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: todayIso }]))
 }
 
+export function getHighPriorityTaskInfoByPath(tasks: KnowledgeMaintenanceTask[]): Map<string, HighPriorityTaskInfo> {
+  const counts = new Map<string, number>()
+  const highestByPath = new Map<string, 'highest' | 'high'>()
+  for (const task of tasks) {
+    if (task.done) continue
+    const priority = extractHighTaskPriority(task.text)
+    if (!priority) continue
+    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
+    const highest = highestByPath.get(task.filePath)
+    if (!highest || priority === 'highest') highestByPath.set(task.filePath, priority)
+  }
+  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, highestPriority: highestByPath.get(filePath) || 'high' }]))
+}
+
 export function getUpcomingTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, days: number): Map<string, DueTaskInfo> {
   const maxIso = addDaysIso(todayIso, Math.max(1, Math.floor(days)))
   const counts = new Map<string, number>()
@@ -318,4 +352,11 @@ function extractTaskDueDate(text: string): string | null {
   if (inlineMatch) return inlineMatch[1]
   const tasksPluginMatch = text.match(/(?:^|\s)\uD83D\uDCC5\s*(\d{4}-\d{2}-\d{2})(?:$|\s)/)
   return tasksPluginMatch ? tasksPluginMatch[1] : null
+}
+
+function extractHighTaskPriority(text: string): 'highest' | 'high' | null {
+  if (/(?:^|\s)\uD83D\uDD3A(?:$|\s)/.test(text)) return 'highest'
+  if (/(?:^|\s)\u23EB(?:$|\s)/.test(text)) return 'high'
+  const match = text.match(/(?:^|\s|\[)priority::?\s*(highest|high)(?:\]|$|\s|,)/i)
+  return match ? match[1].toLowerCase() as 'highest' | 'high' : null
 }
