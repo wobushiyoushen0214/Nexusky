@@ -18,7 +18,7 @@ export interface KnowledgeMaintenanceItem {
   detail: string
 }
 
-export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'review_high_priority_tasks' | 'review_upcoming_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
+export type KnowledgeMaintenanceType = 'fix_unresolved_link' | 'review_overdue_tasks' | 'review_due_today_tasks' | 'review_high_priority_tasks' | 'review_scheduled_tasks' | 'review_upcoming_tasks' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
 
 export interface KnowledgeMaintenanceTask {
   text: string
@@ -55,6 +55,7 @@ interface KnowledgeMaintenanceQueueOptions {
   overdueTaskInfoByPath?: Map<string, DueTaskInfo>
   dueTodayTaskInfoByPath?: Map<string, DueTaskInfo>
   highPriorityTaskInfoByPath?: Map<string, HighPriorityTaskInfo>
+  scheduledTaskInfoByPath?: Map<string, DueTaskInfo>
   upcomingTaskInfoByPath?: Map<string, DueTaskInfo>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
@@ -88,6 +89,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const dueTodayTaskCount = dueTodayTaskInfo?.count || 0
     const highPriorityTaskInfo = options.highPriorityTaskInfoByPath?.get(note.filePath)
     const highPriorityTaskCount = highPriorityTaskInfo?.count || 0
+    const scheduledTaskInfo = options.scheduledTaskInfoByPath?.get(note.filePath)
+    const scheduledTaskCount = scheduledTaskInfo?.count || 0
     const upcomingTaskInfo = options.upcomingTaskInfoByPath?.get(note.filePath)
     const upcomingTaskCount = upcomingTaskInfo?.count || 0
 
@@ -198,6 +201,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
+    if (scheduledTaskCount > 0) {
+      items.push({
+        type: 'review_scheduled_tasks',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 79 + Math.min(scheduledTaskCount, 5),
+        action: `Review ${scheduledTaskCount} scheduled task${scheduledTaskCount === 1 ? '' : 's'} in this note`,
+        reason: 'Scheduled tasks are ready to work even when they do not have a due date.',
+        detail: `Scheduled tasks: ${scheduledTaskCount}; earliest scheduled: ${scheduledTaskInfo?.earliestDue || ''}`
+      })
+    }
+
     if (upcomingTaskCount > 0) {
       items.push({
         type: 'review_upcoming_tasks',
@@ -210,7 +225,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
       })
     }
 
-    const elevatedTaskCountFallback = overdueTaskCount + dueTodayTaskCount + highPriorityTaskCount + upcomingTaskCount
+    const elevatedTaskCountFallback = overdueTaskCount + dueTodayTaskCount + highPriorityTaskCount + scheduledTaskCount + upcomingTaskCount
     const elevatedOpenTaskCount = elevatedTaskCount ?? elevatedTaskCountFallback
     if (openTaskCount > elevatedOpenTaskCount) {
       const remainingOpenTasks = openTaskCount - elevatedOpenTaskCount
@@ -221,7 +236,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         priority: 60 + Math.min(remainingOpenTasks, 10),
         action: `Review ${remainingOpenTasks} open task${remainingOpenTasks === 1 ? '' : 's'} in this note`,
         reason: 'Open tasks embedded in notes should feed the next-action workflow.',
-        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; high priority: ${highPriorityTaskCount}; upcoming: ${upcomingTaskCount}`
+        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; high priority: ${highPriorityTaskCount}; scheduled: ${scheduledTaskCount}; upcoming: ${upcomingTaskCount}`
       })
     }
 
@@ -329,6 +344,21 @@ export function getHighPriorityTaskInfoByPath(tasks: KnowledgeMaintenanceTask[])
   return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, highestPriority: highestByPath.get(filePath) || 'high' }]))
 }
 
+export function getScheduledTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, DueTaskInfo> {
+  const counts = new Map<string, number>()
+  const earliestByPath = new Map<string, string>()
+  for (const task of tasks) {
+    if (task.done) continue
+    if (extractTaskDueDate(task.text)) continue
+    const scheduled = extractTaskScheduledDate(task.text)
+    if (!scheduled || scheduled > todayIso) continue
+    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
+    const earliest = earliestByPath.get(task.filePath)
+    if (!earliest || scheduled < earliest) earliestByPath.set(task.filePath, scheduled)
+  }
+  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliestByPath.get(filePath) || '' }]))
+}
+
 export function getElevatedTaskCountByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, upcomingDays: number): Map<string, number> {
   const counts = new Map<string, number>()
   const maxIso = addDaysIso(todayIso, Math.max(1, Math.floor(upcomingDays)))
@@ -336,7 +366,9 @@ export function getElevatedTaskCountByPath(tasks: KnowledgeMaintenanceTask[], to
     if (task.done) continue
     const due = extractTaskDueDate(task.text)
     const hasElevatedDue = Boolean(due && due <= maxIso)
-    if (!hasElevatedDue && !extractHighTaskPriority(task.text)) continue
+    const scheduled = due ? null : extractTaskScheduledDate(task.text)
+    const isScheduled = Boolean(scheduled && scheduled <= todayIso)
+    if (!hasElevatedDue && !isScheduled && !extractHighTaskPriority(task.text)) continue
     counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
   }
   return counts
@@ -367,6 +399,13 @@ function extractTaskDueDate(text: string): string | null {
   const inlineMatch = text.match(/(?:^|\s|\[)due::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
   if (inlineMatch) return inlineMatch[1]
   const tasksPluginMatch = text.match(/(?:^|\s)\uD83D\uDCC5\s*(\d{4}-\d{2}-\d{2})(?:$|\s)/)
+  return tasksPluginMatch ? tasksPluginMatch[1] : null
+}
+
+function extractTaskScheduledDate(text: string): string | null {
+  const inlineMatch = text.match(/(?:^|\s|\[)scheduled::?\s*(\d{4}-\d{2}-\d{2})(?:\]|$|\s)/i)
+  if (inlineMatch) return inlineMatch[1]
+  const tasksPluginMatch = text.match(/(?:^|\s)\u23F3\s*(\d{4}-\d{2}-\d{2})(?:$|\s)/)
   return tasksPluginMatch ? tasksPluginMatch[1] : null
 }
 
