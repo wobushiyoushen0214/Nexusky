@@ -11,6 +11,7 @@ import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
 import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
 import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
+import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate } from './batch-operation'
 import { stopPendingBatchPlanContent } from './batch-progress'
 import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-stream'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
@@ -152,6 +153,7 @@ export function ChatPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const restoringDraftRef = useRef(false)
   const batchCancelledRef = useRef(false)
+  const batchOperationIdRef = useRef(0)
   const activeBatchPlanMsgIdsRef = useRef<Set<string>>(new Set())
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [pendingBatchPlan, setPendingBatchPlan] = useState<PendingBatchPlan | null>(null)
@@ -436,6 +438,7 @@ export function ChatPanel() {
     }
 
     setIsStreaming(true)
+    batchOperationIdRef.current += 1
     batchCancelledRef.current = false
     pendingSourcesRef.current = []
     streamContentRef.current = ''
@@ -488,6 +491,7 @@ export function ChatPanel() {
 
     // Seed stream with partial content so continuation appends to it
     setIsStreaming(true)
+    batchOperationIdRef.current += 1
     batchCancelledRef.current = false
     pendingSourcesRef.current = []
     streamContentRef.current = msg.content
@@ -752,8 +756,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
   const executeBatchGenerate = async (
     instruction: string,
     targetDir: string,
-    options: { label?: string; silentSummary?: boolean; sharedPlan?: SharedBatchPlan; suppressResultMessage?: boolean; openFirstFile?: boolean } = {}
+    options: { label?: string; silentSummary?: boolean; sharedPlan?: SharedBatchPlan; suppressResultMessage?: boolean; openFirstFile?: boolean; operationId?: number } = {}
   ): Promise<{ success: boolean; error?: string; files: string[] }> => {
+    const operationId = options.operationId ?? ++batchOperationIdRef.current
+    const isCurrentOperation = () => isCurrentBatchOperation(batchOperationIdRef.current, operationId)
+    const shouldApplyOperationUpdate = () => shouldApplyBatchOperationUpdate(batchOperationIdRef.current, operationId, batchCancelledRef.current)
     setIsStreaming(true)
     streamContentRef.current = ''
     setStreamContent('')
@@ -780,13 +787,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     const cleanup = window.api.onAiNotesProgress((data) => {
+      if (!shouldApplyOperationUpdate()) {
+        if (isCurrentOperation()) setStreamContent('')
+        return
+      }
       if (data.stage === 'planning') {
         setStreamContent(options.label ? `正在规划「${options.label}」笔记结构...` : '正在规划笔记结构...')
       } else if (data.stage === 'planned' && data.plan) {
-        if (batchCancelledRef.current) {
-          setStreamContent('')
-          return
-        }
         planItems = data.plan.map((p) => ({ title: options.label ? `${options.label} / ${p.title}` : p.title, done: false }))
         if (options.sharedPlan) {
           const startIndex = options.sharedPlan.items.length
@@ -802,7 +809,6 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           setMessages((msgs) => [...msgs, { id: planMsgId, role: 'assistant', content: lines }])
         }
       } else if (data.stage === 'generating' && data.current) {
-        if (batchCancelledRef.current) return
         if (data.current > 1) {
           if (options.sharedPlan && planItemIndexes[data.current - 2] !== undefined) {
             const index = planItemIndexes[data.current - 2]
@@ -813,10 +819,6 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         }
         updatePlanMsg()
       } else if (data.stage === 'indexing') {
-        if (batchCancelledRef.current) {
-          setStreamContent('')
-          return
-        }
         if (options.sharedPlan && planItemIndexes.length > 0) {
           for (const index of planItemIndexes) {
             options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
@@ -841,6 +843,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       result = { success: false, error: friendlyError(getErrorMessage(e)), files: [] }
     } finally {
       cleanup()
+    }
+
+    if (!isCurrentOperation()) {
+      if (!options.sharedPlan) activeBatchPlanMsgIdsRef.current.delete(planMsgId)
+      return { success: false, error: '已取消', files: result.files }
     }
 
     if (result.success && !batchCancelledRef.current) {
@@ -891,6 +898,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     if (editTimerRef.current) clearInterval(editTimerRef.current)
     editTimerRef.current = null
     batchCancelledRef.current = false
+    const operationId = ++batchOperationIdRef.current
+    const isCurrentOperation = () => isCurrentBatchOperation(batchOperationIdRef.current, operationId)
+    const shouldContinueOperation = () => shouldApplyBatchOperationUpdate(batchOperationIdRef.current, operationId, batchCancelledRef.current)
 
     const sharedPlan: SharedBatchPlan = { id: Date.now().toString(), items: [] }
     activeBatchPlanMsgIdsRef.current.add(sharedPlan.id)
@@ -901,9 +911,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     let batchError: string | null = null
 
     for (const batch of batches) {
-      if (batchCancelledRef.current) break
+      if (!shouldContinueOperation()) break
       const perDirInstruction = `${batchInstruction}\n\n批量目录规划：本次只生成「${batch.topic}」主题，放到「${batch.dir}」目录下。请生成 ${batch.count} 篇独立 Markdown 笔记。`
-      const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true, sharedPlan, suppressResultMessage: true, openFirstFile: false })
+      const result = await executeBatchGenerate(perDirInstruction, `${vaultPath}/${batch.dir}`, { label: batch.dir, silentSummary: true, sharedPlan, suppressResultMessage: true, openFirstFile: false, operationId })
+      if (!isCurrentOperation()) {
+        activeBatchPlanMsgIdsRef.current.delete(sharedPlan.id)
+        return
+      }
       if (result.files.length > 0) {
         if (!firstGeneratedFile) firstGeneratedFile = result.files[0]
         completedBatches.push({ dir: batch.dir, count: result.files.length })
@@ -912,9 +926,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         batchError = result.error || '未知错误'
         break
       }
-      if (batchCancelledRef.current) break
+      if (!shouldContinueOperation()) break
     }
 
+    if (!isCurrentOperation()) {
+      activeBatchPlanMsgIdsRef.current.delete(sharedPlan.id)
+      return
+    }
     if (batchCancelledRef.current) {
       const totalFiles = completedBatches.reduce((sum, batch) => sum + batch.count, 0)
       appendAssistantMessage(totalFiles > 0 ? `已停止，已生成 ${totalFiles} 个文件。` : '已停止，未生成新文件。')
@@ -1126,6 +1144,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     const userContent = input.trim() || '请分析附件内容。'
+    batchOperationIdRef.current += 1
     batchCancelledRef.current = false
     setPendingBatchPlan(null)
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userContent, attachments: attachments.length > 0 ? attachments : undefined }
