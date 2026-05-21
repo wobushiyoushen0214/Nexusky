@@ -6,7 +6,7 @@ import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, type PublishWikilinkLookup } from '../services/publish'
+import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishWikilinkLookup } from '../services/publish'
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -173,7 +173,7 @@ ${markdownToHtml(params.content)}
       title: note.title,
       href: note.href,
       path: note.relPath,
-      text: toPlainText(note.body).slice(0, 4000)
+      text: toPublishSearchText(note.body).slice(0, 4000)
     }))
 
     for (const asset of assetFiles) {
@@ -245,17 +245,6 @@ async function collectPublishFiles(root: string, dir = root): Promise<string[]> 
 
 function extractMarkdownTitle(content: string, relPath: string): string {
   return content.match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(relPath, '.md')
-}
-
-function toPlainText(markdown: string): string {
-  return markdown
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, '$2 $1')
-    .replace(/[#>*_`~\-[\]()]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
 function renderPublishPage(title: string, bodyHtml: string, notes: { title: string; href: string }[], currentHref: string, searchIndex: { title: string; href: string; path: string; text: string }[]): string {

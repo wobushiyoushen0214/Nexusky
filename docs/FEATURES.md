@@ -19,7 +19,7 @@
 | 代码块语法高亮 | lowlight（highlight.js），支持常见语言 |
 | 代码块折叠 | 超过 5 行自动折叠，hover 显示展开按钮 |
 | Obsidian 高亮语法 | AI Markdown、HTML/PDF/分享和发布导出支持 `==高亮==` 渲染 |
-| Obsidian 注释语法 | 索引、AI Markdown、HTML/PDF/分享和发布导出会隐藏 `%%注释%%` 内容 |
+| Obsidian 注释语法 | 索引、AI Markdown、HTML/PDF/分享和发布导出会隐藏 `%%注释%%` 内容，发布站点搜索索引也不会收录注释文本 |
 | 数学公式 | KaTeX 渲染，`$行内$` 和 `$$块级$$` |
 | Mermaid 图表 | mermaid 代码块自动渲染为流程图/时序图 |
 | 嵌入式笔记 | `![[笔记名]]` 内联显示引用笔记内容 |

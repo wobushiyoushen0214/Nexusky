@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry } from '../packages/main/src/services/publish'
+import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
 
 describe('publish wikilink lookup', () => {
   it('resolves published wikilinks by title, filename, nested path, heading, and case variant', () => {
@@ -46,5 +46,22 @@ describe('publish wikilink lookup', () => {
     expect(shouldPublishVaultEntry('.obsidian')).toBe(false)
     expect(shouldPublishVaultEntry('.nexusky')).toBe(false)
     expect(shouldPublishVaultEntry('.git')).toBe(false)
+  })
+
+  it('keeps Obsidian comments out of published site search text', () => {
+    const text = toPublishSearchText([
+      '# Roadmap',
+      'Visible project note with ==important== context.',
+      '%%private launch keyword%%',
+      '```md',
+      '%%code sample%%',
+      '```'
+    ].join('\n'))
+
+    expect(text).toContain('Roadmap')
+    expect(text).toContain('Visible project note with important context')
+    expect(text).not.toContain('private launch keyword')
+    expect(text).not.toContain('code sample')
+    expect(text).not.toContain('==important==')
   })
 })

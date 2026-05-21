@@ -1,4 +1,5 @@
 import { basename } from 'path'
+import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
 
 export interface PublishWikilinkNote {
   title: string
@@ -69,6 +70,18 @@ export function normalizePublishAliases(frontmatter: Record<string, unknown>): s
     .flatMap((value) => String(value).split(','))
     .map((alias) => alias.trim())
     .filter(Boolean)))
+}
+
+export function toPublishSearchText(markdown: string): string {
+  return stripMarkdownComments(markdown)
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, '$2 $1')
+    .replace(/==(.+?)==/g, '$1')
+    .replace(/[#>*_`~=!\-[\]()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function normalizePublishWikilinkTarget(target: string): string {
