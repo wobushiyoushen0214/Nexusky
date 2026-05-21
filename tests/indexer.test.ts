@@ -113,6 +113,52 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should ignore Obsidian comments while indexing searchable structure', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getAllTags, getAllTasks, getOutgoingLinks, getPropertyRows } = await import('../packages/main/src/services/indexer')
+
+    const notePath = join(vaultPath, 'Visible.md')
+    const hiddenTargetPath = join(vaultPath, 'Hidden Target.md')
+    const visibleTargetPath = join(vaultPath, 'Visible Target.md')
+    writeFileSync(hiddenTargetPath, '# Hidden Target\n')
+    writeFileSync(visibleTargetPath, '# Visible Target\n')
+    writeFileSync(notePath, [
+      '# Visible Note',
+      '%%',
+      'title:: Hidden Title',
+      'alias:: Hidden Alias',
+      'tags:: #hidden-property',
+      '[[Hidden Target]]',
+      '#hidden-tag',
+      '- [ ] Hidden task',
+      '%%',
+      '[[Visible Target]]',
+      '#visible-tag',
+      '- [ ] Visible task',
+      'status:: active'
+    ].join('\n'))
+
+    indexNote(vaultPath, hiddenTargetPath)
+    indexNote(vaultPath, visibleTargetPath)
+    indexNote(vaultPath, notePath)
+
+    const note = getAllNotes(vaultPath).find((item) => item.filePath === 'Visible.md')
+    expect(note).toBeTruthy()
+    expect(note!.title).toBe('Visible Note')
+    expect(getOutgoingLinks(vaultPath, note!.id)).toEqual([
+      { targetTitle: 'Visible Target', targetPath: 'Visible Target.md', line: 10, context: '[[Visible Target]]', resolved: true }
+    ])
+    expect(getAllTags(vaultPath).map((tag) => tag.name).sort()).toEqual(['visible-tag'])
+    expect(getAllTasks(vaultPath).filter((task) => task.filePath === 'Visible.md')).toEqual([
+      { text: 'Visible task', done: false, noteTitle: 'Visible Note', filePath: 'Visible.md' }
+    ])
+    const row = getPropertyRows(vaultPath).find((item) => item.filePath === 'Visible.md')
+    expect(row?.properties).toMatchObject({ title: 'Visible Note', aliases: [], tags: ['visible-tag'], status: 'active' })
+    expect(row?.properties).not.toHaveProperty('alias')
+
+    closeDatabase()
+  })
+
   it('should skip re-indexing unchanged files', async () => {
     const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote } = await import('../packages/main/src/services/indexer')

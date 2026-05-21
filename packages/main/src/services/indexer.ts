@@ -5,6 +5,7 @@ import type Database from 'better-sqlite3'
 import { getDatabase } from './database'
 import matter from 'gray-matter'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
+import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
 import { invalidateVaultQueryCache } from './db-query-cache'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
@@ -84,10 +85,11 @@ export function indexNote(vaultPath: string, filePath: string): void {
   if (existing?.content_hash === hash) return
 
   const { data: frontmatter, content } = matter(rawContent)
-  const inlineProperties = extractDataviewInlineFields(content)
+  const visibleContent = stripMarkdownComments(content, { preserveLineBreaks: true })
+  const inlineProperties = extractDataviewInlineFields(visibleContent)
   const stat = statSync(filePath)
   const inlineTitle = normalizePropertyScalar(inlineProperties.title)
-  const title = (frontmatter.title as string) || (typeof inlineTitle === 'string' ? inlineTitle : undefined) || extractTitle(content, filePath)
+  const title = (frontmatter.title as string) || (typeof inlineTitle === 'string' ? inlineTitle : undefined) || extractTitle(visibleContent, filePath)
   const id = createHash('md5').update(relPath).digest('hex')
 
   const upsert = db.prepare(`
@@ -108,13 +110,13 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const deleteAliases = db.prepare('DELETE FROM note_aliases WHERE note_id = ?')
   const insertAlias = db.prepare('INSERT OR IGNORE INTO note_aliases (note_id, alias) VALUES (?, ?)')
 
-  const links = extractLinks(content)
+  const links = extractLinks(visibleContent)
   const aliases = Array.from(new Set([...extractAliases(frontmatter), ...extractInlineAliases(inlineProperties)]))
   const fmTags = normalizeTagNames(frontmatter.tags)
-  const inlineTags = extractTags(content)
+  const inlineTags = extractTags(visibleContent)
   const dataviewTags = normalizeTagNames(inlineProperties.tags)
   const tags = [...new Set([...fmTags, ...inlineTags, ...dataviewTags])]
-  const tasks = extractTasks(content)
+  const tasks = extractTasks(visibleContent)
 
   const upsertFtsMap = db.prepare('INSERT OR IGNORE INTO notes_fts_map (note_id) VALUES (?)')
   const getFtsRowid = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?')
@@ -148,7 +150,7 @@ export function indexNote(vaultPath: string, filePath: string): void {
     const ftsRow = getFtsRowid.get(id) as { rowid: number } | undefined
     if (ftsRow) {
       deleteFts.run(ftsRow.rowid)
-      insertFts.run(ftsRow.rowid, title, content)
+      insertFts.run(ftsRow.rowid, title, visibleContent)
     }
   })
 
@@ -208,7 +210,7 @@ export function getPropertyRows(vaultPath: string): PropertyTableRow[] {
       try {
         const parsed = matter(readFileSync(absolutePath, 'utf-8'))
         frontmatter = parsed.data
-        inlineProperties = extractDataviewInlineFields(parsed.content)
+        inlineProperties = extractDataviewInlineFields(stripMarkdownComments(parsed.content, { preserveLineBreaks: true }))
       } catch {
         frontmatter = {}
         inlineProperties = {}

@@ -19,6 +19,18 @@ describe('markdown comments', () => {
     expect(stripMarkdownComments(markdown)).toBe('Before\n\nAfter')
   })
 
+  it('can preserve line breaks for source line mapping', () => {
+    const markdown = [
+      'Before',
+      '%%',
+      'Hidden',
+      '%%',
+      'After'
+    ].join('\n')
+
+    expect(stripMarkdownComments(markdown, { preserveLineBreaks: true })).toBe('Before\n\n\n\nAfter')
+  })
+
   it('keeps comment markers inside inline code and fenced code', () => {
     const markdown = [
       'Use `%%literal%%` here.',

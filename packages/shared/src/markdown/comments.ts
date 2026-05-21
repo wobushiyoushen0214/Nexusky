@@ -1,4 +1,4 @@
-export function stripMarkdownComments(markdown: string): string {
+export function stripMarkdownComments(markdown: string, options: { preserveLineBreaks?: boolean } = {}): string {
   const lines = markdown.split(/(\r\n|\n|\r)/)
   const output: string[] = []
   let inFence = false
@@ -20,9 +20,12 @@ export function stripMarkdownComments(markdown: string): string {
       continue
     }
 
+    const wasInComment = inComment
     const stripped = stripLineComments(line, inComment)
     inComment = stripped.inComment
-    if (stripped.line || !inComment) output.push(stripped.line, ending)
+    if (options.preserveLineBreaks || stripped.line || !inComment) {
+      output.push(wasInComment && !stripped.line ? '' : stripped.line, ending)
+    }
   }
 
   return output.join('')
