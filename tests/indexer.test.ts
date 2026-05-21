@@ -307,6 +307,39 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should ignore markdown image alt text while finding unlinked mentions', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingUnlinkedMentions, getUnlinkedMentions } = await import('../packages/main/src/services/indexer')
+
+    const targetPath = join(vaultPath, 'Project.md')
+    const sourcePath = join(vaultPath, 'Image Mentions.md')
+    writeFileSync(targetPath, '# Project\n\nCanonical project note.')
+    writeFileSync(sourcePath, [
+      '# Image Mentions',
+      '',
+      '![Project architecture](diagram.png)',
+      '',
+      'Project visible mention.'
+    ].join('\n'))
+
+    indexNote(vaultPath, targetPath)
+    indexNote(vaultPath, sourcePath)
+
+    const project = getAllNotes(vaultPath).find((note) => note.title === 'Project')
+    const source = getAllNotes(vaultPath).find((note) => note.title === 'Image Mentions')
+    expect(project).toBeTruthy()
+    expect(source).toBeTruthy()
+
+    expect(getUnlinkedMentions(vaultPath, project!.id)).toEqual([
+      { sourceTitle: 'Image Mentions', sourcePath: 'Image Mentions.md', line: 5, context: 'Project visible mention.', mention: 'Project' }
+    ])
+    expect(getOutgoingUnlinkedMentions(vaultPath, source!.id)).toEqual([
+      { targetTitle: 'Project', targetPath: 'Project.md', line: 5, context: 'Project visible mention.', mention: 'Project' }
+    ])
+
+    closeDatabase()
+  })
+
   it('should return resolved and unresolved outgoing links', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')

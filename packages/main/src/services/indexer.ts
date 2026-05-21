@@ -647,7 +647,7 @@ function findPlainMention(content: string, aliases: string[]): { alias: string; 
         continue
       }
 
-      const searchableLine = stripInlineCode(line)
+      const searchableLine = stripMarkdownImageAltText(stripInlineCode(line))
       const lowerLine = searchableLine.toLowerCase()
       let index = lowerLine.indexOf(lowerAlias)
       while (index >= 0) {
