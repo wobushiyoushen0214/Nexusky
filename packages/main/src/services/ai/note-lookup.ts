@@ -22,9 +22,9 @@ export interface MarkdownBlockReference {
 
 function normalizeQuery(input: string): string {
   let value = input.trim()
-  const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
+  const wikiMatch = value.match(/^!?\[\[([\s\S]+)\]\]$/)
   if (wikiMatch) value = wikiMatch[1]
-  value = value.split('|')[0].split('#')[0].trim().replace(/\\/g, '/')
+  value = value.split('|')[0].split('#')[0].replace(/\^[A-Za-z0-9_-]+$/, '').trim().replace(/\\/g, '/')
   return value.replace(/\.md$/i, '')
 }
 
@@ -43,20 +43,29 @@ export function extractNoteReferenceHeading(input: string): string | null {
 
 export function extractNoteReferenceBlockId(input: string): string | null {
   const fragment = extractNoteReferenceFragment(input)
-  if (!fragment?.startsWith('^')) return null
-  const blockId = fragment.slice(1).trim()
+  const blockId = fragment?.startsWith('^') ? fragment.slice(1).trim() : extractTrailingBlockId(input)
   return blockId || null
 }
 
 function extractNoteReferenceFragment(input: string): string | null {
   let value = input.trim()
-  const wikiMatch = value.match(/^\[\[([\s\S]+)\]\]$/)
+  const wikiMatch = value.match(/^!?\[\[([\s\S]+)\]\]$/)
   if (wikiMatch) value = wikiMatch[1]
   const target = value.split('|')[0]
   const hashIndex = target.indexOf('#')
   if (hashIndex < 0) return null
   const fragment = target.slice(hashIndex + 1).trim()
   return fragment || null
+}
+
+function extractTrailingBlockId(input: string): string | null {
+  let value = input.trim()
+  const wikiMatch = value.match(/^!?\[\[([\s\S]+)\]\]$/)
+  if (wikiMatch) value = wikiMatch[1]
+  const target = value.split('|')[0]
+  if (target.includes('#')) return null
+  const match = target.match(/\^([A-Za-z0-9_-]+)$/)
+  return match?.[1] || null
 }
 
 function normalizeHeadingText(value: string): string {

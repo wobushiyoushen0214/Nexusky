@@ -41,6 +41,8 @@ describe('findNoteForAiTool', () => {
     expect(findNoteForAiTool(vaultPath, 'Folder/Target.md')?.filePath).toBe('Folder/Target.md')
     expect(findNoteForAiTool(vaultPath, filePath)?.filePath).toBe('Folder/Target.md')
     expect(findNoteForAiTool(vaultPath, '[[Folder/Target#Heading|label]]')?.filePath).toBe('Folder/Target.md')
+    expect(findNoteForAiTool(vaultPath, '![[Folder/Target#Heading|label]]')?.filePath).toBe('Folder/Target.md')
+    expect(findNoteForAiTool(vaultPath, 'Folder/Target^block-1')?.filePath).toBe('Folder/Target.md')
   })
 
   it('does not guess between duplicate filenames without a path', async () => {
@@ -67,9 +69,12 @@ describe('note reference headings', () => {
     const { extractNoteReferenceBlockId, extractNoteReferenceHeading } = await import('../packages/main/src/services/ai/note-lookup')
 
     expect(extractNoteReferenceHeading('[[Folder/Target#Details|label]]')).toBe('Details')
+    expect(extractNoteReferenceHeading('![[Folder/Target#Details|label]]')).toBe('Details')
     expect(extractNoteReferenceHeading('Folder/Target.md#Details')).toBe('Details')
     expect(extractNoteReferenceHeading('[[Folder/Target#^block-1]]')).toBeNull()
     expect(extractNoteReferenceBlockId('[[Folder/Target#^block-1]]')).toBe('block-1')
+    expect(extractNoteReferenceBlockId('![[Folder/Target#^block-1]]')).toBe('block-1')
+    expect(extractNoteReferenceBlockId('Folder/Target^block-1')).toBe('block-1')
     expect(extractNoteReferenceHeading('Folder/Target.md')).toBeNull()
   })
 
