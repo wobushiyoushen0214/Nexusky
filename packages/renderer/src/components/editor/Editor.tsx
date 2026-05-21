@@ -34,7 +34,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
-import { normalizeObsidianLinkTarget } from '../../utils/obsidian-link'
+import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, type ObsidianLinkReference } from '../../utils/obsidian-link'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
 function stripFrontmatter(content: string): string {
@@ -49,6 +49,7 @@ type EditorStateSnapshot = {
 }
 
 type EmbeddedNote = { title: string; content: string }
+type EmbeddedReference = ObsidianLinkReference & { raw: string }
 
 function isEmbeddedNote(note: EmbeddedNote | null): note is EmbeddedNote {
   return note !== null
@@ -851,21 +852,21 @@ function TransclusionBlocks({ content }: { content: string }) {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       const regex = /!\[\[([^\]]+)\]\]/g
-      const titles: string[] = []
+      const references: EmbeddedReference[] = []
       let match
       while ((match = regex.exec(content)) !== null) {
-        const target = normalizeObsidianLinkTarget(match[1])
-        if (target) titles.push(target)
+        const reference = parseObsidianLinkReference(match[1])
+        if (reference.target) references.push({ ...reference, raw: match[1] })
       }
-      if (titles.length === 0 || !vaultPath) { setEmbeds([]); return }
+      if (references.length === 0 || !vaultPath) { setEmbeds([]); return }
 
-      Promise.all(titles.map(async (title) => {
+      Promise.all(references.map(async (reference) => {
         try {
-          const results = await window.api.invoke('db:search-notes', { vaultPath, query: title })
-          const exact = findExactNoteMatch(results, title)
+          const results = await window.api.invoke('db:search-notes', { vaultPath, query: reference.target })
+          const exact = findExactNoteMatch(results, reference.target)
           if (exact) {
             const text = await window.api.invoke('file:read', { path: `${vaultPath}/${exact.filePath}` })
-            return { title, content: text }
+            return { title: reference.label || reference.raw, content: selectMarkdownReferenceContent(text, reference) }
           }
         } catch {}
         return null
