@@ -775,7 +775,8 @@ function extractTags(content: string): string[] {
 
     let match: RegExpExecArray | null
     TAG_REGEX.lastIndex = 0
-    while ((match = TAG_REGEX.exec(stripInlineCode(line))) !== null) {
+    const searchableLine = stripBareUrls(stripMarkdownLinkDestinations(stripInlineCode(line)))
+    while ((match = TAG_REGEX.exec(searchableLine)) !== null) {
       tags.add(match[1])
     }
   }
@@ -831,6 +832,14 @@ function isMarkdownFenceLine(trimmedLine: string): boolean {
 
 function stripInlineCode(line: string): string {
   return line.replace(/`+[^`]*`+/g, (match) => ' '.repeat(match.length))
+}
+
+function stripMarkdownLinkDestinations(line: string): string {
+  return line.replace(/(!?\[[^\]]*\])\([^)]+\)/g, (_match, label: string) => label)
+}
+
+function stripBareUrls(line: string): string {
+  return line.replace(/https?:\/\/\S+/gi, (match) => ' '.repeat(match.length))
 }
 
 export function getAllTasks(vaultPath: string): { text: string; done: boolean; noteTitle: string; filePath: string }[] {

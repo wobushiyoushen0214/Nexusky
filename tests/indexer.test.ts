@@ -104,11 +104,17 @@ describe('indexer', () => {
     const { indexNote, getAllTags } = await import('../packages/main/src/services/indexer')
 
     const filePath = join(vaultPath, 'nested-tags.md')
-    writeFileSync(filePath, '# Nested Tags\n\n#project/research #area/中文')
+    writeFileSync(filePath, [
+      '# Nested Tags',
+      '',
+      '#project/research #area/中文',
+      'See [docs](https://example.com/page#not-a-tag) and https://example.com/#skip-me.',
+      '[#linked-label](https://example.com/page)'
+    ].join('\n'))
 
     indexNote(vaultPath, filePath)
 
-    expect(getAllTags(vaultPath).map((tag) => tag.name).sort()).toEqual(['area/中文', 'project/research'])
+    expect(getAllTags(vaultPath).map((tag) => tag.name).sort()).toEqual(['area/中文', 'linked-label', 'project/research'])
 
     closeDatabase()
   })
