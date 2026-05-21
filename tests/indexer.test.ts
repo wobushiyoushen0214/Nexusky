@@ -618,7 +618,9 @@ describe('indexer', () => {
       'priority:: 2',
       'published:: true',
       'tags:: #research, active',
-      'cssclass:: wide-page'
+      'cssclass:: wide-page',
+      '+ [/] next:: Review draft',
+      '- [?] risk:: unclear scope'
     ].join('\n'))
     writeFileSync(sourcePath, '# Source\n\nSee [[Inline Alias]] for context.')
 
@@ -642,7 +644,9 @@ describe('indexer', () => {
         status: 'active',
         priority: 2,
         published: true,
-        cssclasses: ['wide-page']
+        cssclasses: ['wide-page'],
+        next: 'Review draft',
+        risk: 'unclear scope'
       }
     })
 

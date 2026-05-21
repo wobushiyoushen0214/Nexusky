@@ -11,7 +11,7 @@
 | TipTap 富文本编辑器 | 基于 ProseMirror，支持 Markdown 语法 |
 | Markdown 序列化 | 编辑器内容与 .md 文件双向转换 |
 | Properties 面板 | 编辑器状态栏打开右侧面板，可视化编辑当前笔记 frontmatter title / aliases / tags / cssclasses |
-| 属性数据库 | Bases-like 主视图按 frontmatter 与 Obsidian Dataview `key:: value` 内联属性浏览、搜索、标签筛选和排序笔记，支持自定义显示列、双击单元格直接编辑属性，保留数字/布尔属性类型；编辑已有 Dataview 内联字段时会原地写回，并内置使用说明 |
+| 属性数据库 | Bases-like 主视图按 frontmatter 与 Obsidian Dataview `key:: value` 内联属性浏览、搜索、标签筛选和排序笔记，支持任务列表中的 Dataview 字段、自定义显示列、双击单元格直接编辑属性，保留数字/布尔属性类型；编辑已有 Dataview 内联字段时会原地写回，并内置使用说明 |
 | 多标签页 / 多窗口 | 同时打开多个文件，拖拽排序，右键菜单；命令面板可打开独立新窗口并行查看不同视图 |
 | 分屏编辑 | 标签页右键"在右侧打开"，并排查看两个笔记 |
 | 编辑器工具栏 | 标题、加粗、斜体、删除线、代码、列表、引用、表格、任务列表、高亮、分割线 |

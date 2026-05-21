@@ -9,7 +9,7 @@ import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
 import { invalidateVaultQueryCache } from './db-query-cache'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
-const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*]\s+(?:\[[ xX]\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
+const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*+]\s+(?:\[[^\]\r\n]?\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
 const NOTE_FILE_TITLE_SQL = "REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '')"
 const NOTE_PATH_TARGET_SQL = "CASE WHEN lower(file_path) LIKE '%.md' THEN substr(file_path, 1, length(file_path) - 3) ELSE file_path END"
 const EXACT_LINK_TARGET_EXISTS_SQL = `
