@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent } from '../packages/renderer/src/utils/obsidian-link'
+import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, stripMarkdownFrontmatter } from '../packages/renderer/src/utils/obsidian-link'
 
 describe('Obsidian link utilities', () => {
   it('normalizes headings, block references, aliases, extensions, and separators', () => {
@@ -38,5 +38,22 @@ describe('Obsidian link utilities', () => {
 
     expect(selectMarkdownReferenceContent(markdown, { heading: 'Details' })).toBe('## Details\nUseful detail.\nStill detail.')
     expect(selectMarkdownReferenceContent(markdown, { blockId: 'block-1' })).toBe('Standalone block.')
+  })
+
+  it('hides frontmatter from preview and transclusion content', () => {
+    const markdown = [
+      '---',
+      'title: Private Metadata',
+      'tags:',
+      '  - hidden',
+      '---',
+      '# Visible Title',
+      '',
+      'Visible body.'
+    ].join('\n')
+
+    expect(stripMarkdownFrontmatter(markdown)).toBe('# Visible Title\n\nVisible body.')
+    expect(selectMarkdownReferenceContent(markdown, {})).toBe('# Visible Title\n\nVisible body.')
+    expect(selectMarkdownReferenceContent(markdown, { heading: 'Missing' })).toBe('# Visible Title\n\nVisible body.')
   })
 })

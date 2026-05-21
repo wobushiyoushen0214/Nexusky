@@ -33,9 +33,14 @@ export function parseObsidianLinkReference(value: string): ObsidianLinkReference
 }
 
 export function selectMarkdownReferenceContent(content: string, reference: Pick<ObsidianLinkReference, 'heading' | 'blockId'>): string {
-  if (reference.blockId) return extractMarkdownBlockReference(content, reference.blockId) || content
-  if (reference.heading) return extractMarkdownHeadingSection(content, reference.heading) || content
-  return content
+  const body = stripMarkdownFrontmatter(content)
+  if (reference.blockId) return extractMarkdownBlockReference(body, reference.blockId) || body
+  if (reference.heading) return extractMarkdownHeadingSection(body, reference.heading) || body
+  return body
+}
+
+export function stripMarkdownFrontmatter(content: string): string {
+  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
 }
 
 function extractMarkdownHeadingSection(content: string, heading: string): string | null {

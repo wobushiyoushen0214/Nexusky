@@ -34,11 +34,11 @@ import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
-import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, type ObsidianLinkReference } from '../../utils/obsidian-link'
+import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, stripMarkdownFrontmatter, type ObsidianLinkReference } from '../../utils/obsidian-link'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
 function stripFrontmatter(content: string): string {
-  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
+  return stripMarkdownFrontmatter(content)
 }
 
 type EditorStateSnapshot = {
