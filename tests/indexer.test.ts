@@ -357,8 +357,11 @@ describe('indexer', () => {
       '',
       '- [ ] Open item',
       '  - [ ] Nested open item',
+      '- [/] In progress item',
+      '- [-] Cancelled item',
+      '- [?] Question item',
       '\t+ [x] Nested done item',
-      '* [x] Done item'
+      '* [X] Done item'
     ].join('\n'))
 
     indexNote(vaultPath, filePath)
@@ -366,6 +369,9 @@ describe('indexer', () => {
     expect(getAllTasks(vaultPath)).toEqual([
       { text: 'Open item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
       { text: 'Nested open item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
+      { text: 'In progress item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
+      { text: 'Cancelled item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
+      { text: 'Question item', done: false, noteTitle: 'Tasks', filePath: 'Tasks.md' },
       { text: 'Nested done item', done: true, noteTitle: 'Tasks', filePath: 'Tasks.md' },
       { text: 'Done item', done: true, noteTitle: 'Tasks', filePath: 'Tasks.md' },
     ])

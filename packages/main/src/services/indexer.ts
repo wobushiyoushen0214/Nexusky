@@ -810,10 +810,10 @@ function extractTasks(content: string): { text: string; done: boolean }[] {
     }
     if (inFence) continue
 
-    const todoMatch = line.match(/^\s*[-*+]\s+\[\s?\]\s+(.+)/)
-    const doneMatch = line.match(/^\s*[-*+]\s+\[x\]\s+(.+)/i)
-    if (todoMatch) tasks.push({ text: todoMatch[1].trim(), done: false })
-    else if (doneMatch) tasks.push({ text: doneMatch[1].trim(), done: true })
+    const taskMatch = line.match(/^\s*[-*+]\s+\[([^\]\r\n]?)\]\s+(.+)/)
+    if (taskMatch) {
+      tasks.push({ text: taskMatch[2].trim(), done: taskMatch[1].toLowerCase() === 'x' })
+    }
   }
   return tasks
 }
