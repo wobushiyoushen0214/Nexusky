@@ -617,6 +617,25 @@ function routePath(points: RoutePoint[]): string {
   return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
 }
 
+function routeEndpoint(points: RoutePoint[], index: 0 | -1): RoutePoint | null {
+  if (points.length === 0) return null
+  return index === 0 ? points[0] : points[points.length - 1]
+}
+
+function pointNear(a: RoutePoint, b: RoutePoint, tolerance = 0.75): boolean {
+  return Math.abs(a.x - b.x) <= tolerance && Math.abs(a.y - b.y) <= tolerance
+}
+
+export function routeAnchorsCurrentCards(points: RoutePoint[], source: CanvasPosition, target: CanvasPosition, minX = 0, minY = 0): boolean {
+  const start = routeEndpoint(points, 0)
+  const end = routeEndpoint(points, -1)
+  if (!start || !end) return false
+
+  const sourcePorts = cardPorts(source, 0).map((port) => ({ x: port.edge.x - minX, y: port.edge.y - minY }))
+  const targetPorts = cardPorts(target, 0).map((port) => ({ x: port.edge.x - minX, y: port.edge.y - minY }))
+  return sourcePorts.some((point) => pointNear(start, point)) && targetPorts.some((point) => pointNear(end, point))
+}
+
 export function buildPropertyPositions(rows: PropertyTableRow[]): Record<string, CanvasPosition> {
   const tagRows = new Map<string, PropertyTableRow[]>()
   for (const row of rows) {
@@ -1115,7 +1134,21 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   }, [canvasAssociationSuggestions, canvasMetrics.minX, canvasMetrics.minY, filteredRows, graph, modePositions, visibleIds])
 
   const visibleCanvasEdges = useMemo<CanvasEdgeRoute[]>(() => {
-    if (!graph || !dragPreview) return canvasEdges
+    if (!graph) return canvasEdges
+    const ensureFreshRoute = (edge: CanvasEdgeRoute): CanvasEdgeRoute => {
+      const source = displayPositions[edge.source]
+      const target = displayPositions[edge.target]
+      if (!source || !target || routeAnchorsCurrentCards(edge.points, source, target, canvasMetrics.minX, canvasMetrics.minY)) return edge
+      return {
+        ...edge,
+        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
+          x: point.x - canvasMetrics.minX,
+          y: point.y - canvasMetrics.minY
+        }))
+      }
+    }
+    const currentEdges = canvasEdges.map(ensureFreshRoute)
+    if (!dragPreview) return currentEdges
     const rerouted = graph.edges
       .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
       .filter((edge) => edge.source === dragPreview.id || edge.target === dragPreview.id)
@@ -1134,15 +1167,28 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         }
       })
       .filter((edge): edge is CanvasEdgeRoute => edge !== null)
-    if (rerouted.length === 0) return canvasEdges
+    if (rerouted.length === 0) return currentEdges
     return [
-      ...canvasEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
+      ...currentEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
       ...rerouted
     ]
   }, [canvasEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows, graph, visibleIds])
 
   const visibleCanvasSuggestedEdges = useMemo<CanvasSuggestedEdgeRoute[]>(() => {
-    if (!dragPreview || canvasAssociationSuggestions.length === 0) return canvasSuggestedEdges
+    const ensureFreshRoute = (edge: CanvasSuggestedEdgeRoute): CanvasSuggestedEdgeRoute => {
+      const source = displayPositions[edge.source]
+      const target = displayPositions[edge.target]
+      if (!source || !target || routeAnchorsCurrentCards(edge.points, source, target, canvasMetrics.minX, canvasMetrics.minY)) return edge
+      return {
+        ...edge,
+        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
+          x: point.x - canvasMetrics.minX,
+          y: point.y - canvasMetrics.minY
+        }))
+      }
+    }
+    const currentEdges = canvasSuggestedEdges.map(ensureFreshRoute)
+    if (!dragPreview || canvasAssociationSuggestions.length === 0) return currentEdges
     const rerouted = canvasAssociationSuggestions
       .filter((edge) => edge.source === dragPreview.id || edge.target === dragPreview.id)
       .map((edge) => {
@@ -1162,9 +1208,9 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         }
       })
       .filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
-    if (rerouted.length === 0) return canvasSuggestedEdges
+    if (rerouted.length === 0) return currentEdges
     return [
-      ...canvasSuggestedEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
+      ...currentEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
       ...rerouted
     ]
   }, [canvasAssociationSuggestions, canvasSuggestedEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows])
@@ -1396,31 +1442,45 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                     <path d="M0,0 L8,4 L0,8 Z" fill="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" />
                   </marker>
                 </defs>
-                {visibleCanvasSuggestedEdges.map((edge) => (
-                  <path
-                    key={edge.key}
-                    className="knowledge-suggestion-line"
-                    d={routePath(edge.points)}
-                    fill="none"
-                    stroke="color-mix(in srgb, var(--text-tertiary) 40%, transparent)"
-                    strokeWidth="1"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    strokeDasharray="2 10"
-                    style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      setActiveSuggestionKey(edge.key)
-                    }}
-                  />
-                ))}
-                {visibleCanvasEdges.map((edge) => (
-                  <g key={edge.key}>
-                    <path d={routePath(edge.points)} fill="none" stroke="var(--editor-bg)" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.82" />
-                    <path d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-tertiary) 56%, transparent)" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" markerEnd="url(#canvas-arrow)" />
-                    <path className="knowledge-flow-line" d={routePath(edge.points)} fill="none" stroke="color-mix(in srgb, var(--text-secondary) 78%, transparent)" strokeWidth="1.45" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="3 18" />
-                  </g>
-                ))}
+                {visibleCanvasSuggestedEdges.map((edge) => {
+                  const d = routePath(edge.points)
+                  return (
+                    <g key={edge.key}>
+                      <path d={d} fill="none" stroke="var(--editor-bg)" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.78" vectorEffect="non-scaling-stroke" />
+                      <path d={d} fill="none" stroke="color-mix(in srgb, var(--text-tertiary) 34%, transparent)" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                      <path
+                        className="knowledge-suggestion-line"
+                        d={d}
+                        fill="none"
+                        stroke="color-mix(in srgb, var(--text-secondary) 62%, transparent)"
+                        strokeWidth="1.35"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                        strokeDasharray="2 10"
+                        vectorEffect="non-scaling-stroke"
+                        style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setActiveSuggestionKey(edge.key)
+                        }}
+                      />
+                    </g>
+                  )
+                })}
+                {visibleCanvasEdges.map((edge) => {
+                  const d = routePath(edge.points)
+                  const start = routeEndpoint(edge.points, 0)
+                  const end = routeEndpoint(edge.points, -1)
+                  return (
+                    <g key={edge.key}>
+                      <path d={d} fill="none" stroke="var(--editor-bg)" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" strokeOpacity="0.9" vectorEffect="non-scaling-stroke" />
+                      <path d={d} fill="none" stroke="color-mix(in srgb, var(--text-tertiary) 72%, transparent)" strokeWidth="1.65" strokeLinejoin="round" strokeLinecap="round" markerEnd="url(#canvas-arrow)" vectorEffect="non-scaling-stroke" />
+                      <path className="knowledge-flow-line" d={d} fill="none" stroke="color-mix(in srgb, var(--text-secondary) 62%, transparent)" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="3 18" vectorEffect="non-scaling-stroke" />
+                      {start && <circle cx={start.x} cy={start.y} r="2.25" fill="var(--editor-bg)" stroke="color-mix(in srgb, var(--text-tertiary) 70%, transparent)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />}
+                      {end && <circle cx={end.x} cy={end.y} r="2.25" fill="var(--editor-bg)" stroke="color-mix(in srgb, var(--text-tertiary) 70%, transparent)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />}
+                    </g>
+                  )
+                })}
               </svg>
               {canvasGroupLabels.map((label) => (
                 <div

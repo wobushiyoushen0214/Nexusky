@@ -88,11 +88,14 @@ describe('generated note writing prompts', () => {
     ].join('\n'))
   })
 
-  it('adds frontmatter metadata to generated notes', () => {
-    expect(ensureGeneratedNoteMetadata('# Hooks 入门\n\n内容', 'Hooks 入门', '基础 Hook')).toBe([
+  it('adds structured frontmatter metadata to generated notes', () => {
+    expect(ensureGeneratedNoteMetadata('# Hooks 入门\n\n内容', 'Hooks 入门', '基础 Hook', ['自定义 Hook', '状态管理', 'Hooks 入门', '自定义 Hook'])).toBe([
       '---',
       'title: "Hooks 入门"',
       'summary: "基础 Hook"',
+      'related:',
+      '  - "自定义 Hook"',
+      '  - "状态管理"',
       'tags:',
       '  - "ai-generated"',
       '  - "batch-note"',

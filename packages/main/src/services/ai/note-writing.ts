@@ -60,14 +60,16 @@ function serializeYamlList(values: string[]): string[] {
   return values.map((value) => `  - ${serializeYamlString(value)}`)
 }
 
-export function ensureGeneratedNoteMetadata(content: string, title: string, summary: string): string {
+export function ensureGeneratedNoteMetadata(content: string, title: string, summary: string, relatedTitles: string[] = []): string {
   const trimmed = content.trim()
   if (!trimmed || trimmed.startsWith('---\n') || trimmed.startsWith('---\r\n')) return trimmed
+  const related = Array.from(new Set(relatedTitles.map((item) => item.trim()).filter((item) => item && item !== title))).slice(0, 8)
 
   const frontmatter = [
     '---',
     `title: ${serializeYamlString(title)}`,
     ...(summary.trim() ? [`summary: ${serializeYamlString(summary.trim())}`] : []),
+    ...(related.length > 0 ? ['related:', ...serializeYamlList(related)] : []),
     'tags:',
     ...serializeYamlList(['ai-generated', 'batch-note']),
     'status: seed',

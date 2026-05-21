@@ -32,6 +32,26 @@ describe('normalizeGeneratedNotePlan', () => {
     expect(plan.map((item) => item.title)).toEqual(['Untitled 1', 'Untitled 2'])
   })
 
+  it('removes wikilink boundary characters from generated titles', () => {
+    const plan = normalizeGeneratedNotePlan([
+      { title: '[[Hooks]] 入门', brief: 'Basics' },
+      { title: 'C# 基础', brief: 'Language' },
+      { title: '[[Hooks|Hook 用法]]', brief: 'Alias' },
+      { title: '[[Hooks#依赖数组|依赖]]', brief: 'Heading' }
+    ])
+
+    expect(plan.map((item) => item.title)).toEqual(['Hooks 入门', 'C# 基础', 'Hooks', 'Hooks 2'])
+  })
+
+  it('strips target directories after normalizing generated wikilinks', () => {
+    const plan = normalizeGeneratedNotePlan([
+      { title: '[[React/Hooks]]', brief: 'Basics' },
+      { title: '![[React/Effects|Effect 示例]]', brief: 'Embeds' }
+    ], { dirName: 'React' })
+
+    expect(plan.map((item) => item.title)).toEqual(['Hooks', 'Effects'])
+  })
+
   it('sanitizes generated batch directories and keeps requested counts bounded', () => {
     const plan = normalizeGeneratedNoteBatchPlan([
       { dir: 'React/../Hooks', topic: 'React Hooks', count: 6 },

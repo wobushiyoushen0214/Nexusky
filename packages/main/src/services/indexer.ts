@@ -9,7 +9,31 @@ import { invalidateVaultQueryCache } from './db-query-cache'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*]\s+(?:\[[ xX]\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
+const NOTE_FILE_TITLE_SQL = "REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '')"
 const NOTE_PATH_TARGET_SQL = "CASE WHEN lower(file_path) LIKE '%.md' THEN substr(file_path, 1, length(file_path) - 3) ELSE file_path END"
+const EXACT_LINK_TARGET_EXISTS_SQL = `
+  SELECT id FROM notes WHERE title = links.target_title
+  UNION
+  SELECT id FROM notes WHERE ${NOTE_FILE_TITLE_SQL} = links.target_title
+  UNION
+  SELECT id FROM notes WHERE ${NOTE_PATH_TARGET_SQL} = links.target_title
+  UNION
+  SELECT note_id FROM note_aliases WHERE alias = links.target_title
+`
+const CASE_INSENSITIVE_LINK_TARGET_SQL = `
+  WITH candidates(id) AS (
+    SELECT id FROM notes WHERE lower(title) = lower(links.target_title)
+    UNION
+    SELECT id FROM notes WHERE lower(${NOTE_FILE_TITLE_SQL}) = lower(links.target_title)
+    UNION
+    SELECT id FROM notes WHERE lower(${NOTE_PATH_TARGET_SQL}) = lower(links.target_title)
+    UNION
+    SELECT note_id FROM note_aliases WHERE lower(alias) = lower(links.target_title)
+  )
+  SELECT id FROM candidates
+  WHERE (SELECT COUNT(*) FROM candidates) = 1
+  LIMIT 1
+`
 
 export interface NoteIndex {
   id: string
@@ -631,7 +655,7 @@ export function resolveAllLinks(vaultPath: string): void {
     UPDATE links SET target_note_id = (
       SELECT id FROM notes WHERE title = links.target_title
       UNION
-      SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
+      SELECT id FROM notes WHERE ${NOTE_FILE_TITLE_SQL} = links.target_title
       UNION
       SELECT id FROM notes WHERE ${NOTE_PATH_TARGET_SQL} = links.target_title
       UNION
@@ -639,6 +663,10 @@ export function resolveAllLinks(vaultPath: string): void {
       LIMIT 1
     )
     WHERE target_note_id IS NULL
+  `).run()
+  db.prepare(`
+    UPDATE links SET target_note_id = (${CASE_INSENSITIVE_LINK_TARGET_SQL})
+    WHERE NOT EXISTS (${EXACT_LINK_TARGET_EXISTS_SQL})
   `).run()
 }
 
@@ -651,15 +679,31 @@ function resolveLinks(db: Database.Database, noteId: string, noteTitle: string, 
   for (const alias of aliases) {
     db.prepare(`
       UPDATE links SET target_note_id = ?
-      WHERE target_title = ? AND target_note_id IS NULL
-    `).run(noteId, alias)
+      WHERE target_title = ?
+        AND (
+          target_note_id IS NULL OR target_note_id NOT IN (
+            SELECT id FROM notes WHERE title = ?
+            UNION
+            SELECT id FROM notes WHERE ${NOTE_FILE_TITLE_SQL} = ?
+            UNION
+            SELECT id FROM notes WHERE ${NOTE_PATH_TARGET_SQL} = ?
+            UNION
+            SELECT note_id FROM note_aliases WHERE alias = ?
+          )
+        )
+    `).run(noteId, alias, alias, alias, alias, alias)
   }
+
+  db.prepare(`
+    UPDATE links SET target_note_id = (${CASE_INSENSITIVE_LINK_TARGET_SQL})
+    WHERE NOT EXISTS (${EXACT_LINK_TARGET_EXISTS_SQL})
+  `).run()
 
   db.prepare(`
     UPDATE links SET target_note_id = (
       SELECT id FROM notes WHERE title = links.target_title
       UNION
-      SELECT id FROM notes WHERE REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '') = links.target_title
+      SELECT id FROM notes WHERE ${NOTE_FILE_TITLE_SQL} = links.target_title
       UNION
       SELECT id FROM notes WHERE ${NOTE_PATH_TARGET_SQL} = links.target_title
       UNION
@@ -667,6 +711,10 @@ function resolveLinks(db: Database.Database, noteId: string, noteTitle: string, 
       LIMIT 1
     )
     WHERE source_note_id = ? AND target_note_id IS NULL
+  `).run(noteId)
+  db.prepare(`
+    UPDATE links SET target_note_id = (${CASE_INSENSITIVE_LINK_TARGET_SQL})
+    WHERE source_note_id = ? AND NOT EXISTS (${EXACT_LINK_TARGET_EXISTS_SQL})
   `).run(noteId)
 }
 

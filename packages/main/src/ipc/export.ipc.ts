@@ -1,8 +1,10 @@
 import { ipcMain, dialog, BrowserWindow, clipboard, shell } from 'electron'
 import { copyFile, mkdir, readdir, readFile, writeFile } from 'fs/promises'
 import { basename, dirname, extname, join, relative, posix } from 'path'
+import matter from 'gray-matter'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
+import { buildPublishWikilinkLookup, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, type PublishWikilinkLookup } from '../services/publish'
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -152,11 +154,13 @@ ${markdownToHtml(params.content)}
     const assetFiles = files.filter((file) => !file.endsWith('.md'))
     const notes = await Promise.all(markdownFiles.map(async (relPath) => {
       const content = await readFile(join(params.vaultPath, relPath), 'utf-8')
-      const body = stripFrontmatter(content)
+      const parsed = matter(content)
+      const body = parsed.content
       return {
         relPath,
         href: relPath.replace(/\.md$/, '.html'),
         title: extractMarkdownTitle(body, relPath),
+        aliases: normalizePublishAliases(parsed.data),
         body
       }
     }))
@@ -167,12 +171,6 @@ ${markdownToHtml(params.content)}
       text: toPlainText(note.body).slice(0, 4000)
     }))
 
-    const lookup = new Map<string, string>()
-    for (const note of notes) {
-      lookup.set(note.title, note.href)
-      lookup.set(basename(note.relPath, '.md'), note.href)
-    }
-
     for (const asset of assetFiles) {
       const dest = join(outputPath, asset)
       await mkdir(dirname(dest), { recursive: true })
@@ -182,7 +180,12 @@ ${markdownToHtml(params.content)}
     for (const note of notes) {
       const dest = join(outputPath, note.href)
       await mkdir(dirname(dest), { recursive: true })
-      const pageLookup = new Map(Array.from(lookup.entries()).map(([key, href]) => [key, relativeHref(note.href, href)]))
+      const pageLookup = buildPublishWikilinkLookup(notes.map((item) => ({
+        title: item.title,
+        relPath: item.relPath,
+        aliases: item.aliases,
+        href: relativeHref(note.href, item.href)
+      })))
       await writeFile(dest, renderPublishPage(note.title, markdownToHtml(note.body, pageLookup), notes, note.href, searchIndex), 'utf-8')
     }
 
@@ -192,7 +195,7 @@ ${markdownToHtml(params.content)}
   })
 }
 
-function markdownToHtml(md: string, wikilinkLookup = new Map<string, string>()): string {
+function markdownToHtml(md: string, wikilinkLookup: PublishWikilinkLookup = buildPublishWikilinkLookup([])): string {
   let html = renderMarkdownCallouts(renderMarkdownFootnotes(md))
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -205,7 +208,7 @@ function markdownToHtml(md: string, wikilinkLookup = new Map<string, string>()):
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
     .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target, label) => {
-      const href = wikilinkLookup.get(String(target).trim()) || '#'
+      const href = resolvePublishWikilinkHref(wikilinkLookup, String(target))
       return `<a href="${href}">${label || target}</a>`
     })
     .replace(/^---$/gm, '<hr>')
@@ -224,7 +227,7 @@ async function collectPublishFiles(root: string, dir = root): Promise<string[]> 
   const entries = await readdir(dir, { withFileTypes: true })
   const result: string[] = []
   for (const entry of entries) {
-    if (entry.name.startsWith('.')) continue
+    if (!shouldPublishVaultEntry(entry.name)) continue
     const fullPath = join(dir, entry.name)
     if (entry.isDirectory()) {
       result.push(...await collectPublishFiles(root, fullPath))
@@ -233,10 +236,6 @@ async function collectPublishFiles(root: string, dir = root): Promise<string[]> 
     }
   }
   return result
-}
-
-function stripFrontmatter(content: string): string {
-  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
 }
 
 function extractMarkdownTitle(content: string, relPath: string): string {

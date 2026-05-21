@@ -244,6 +244,79 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should resolve wikilinks case-insensitively by title, path, and alias', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks, getGraphData } = await import('../packages/main/src/services/indexer')
+
+    mkdirSync(join(vaultPath, 'Folder'), { recursive: true })
+    const sourcePath = join(vaultPath, 'Source.md')
+    const titleTargetPath = join(vaultPath, 'Project.md')
+    const pathTargetPath = join(vaultPath, 'Folder', 'Target.md')
+    const aliasTargetPath = join(vaultPath, 'Canonical.md')
+
+    writeFileSync(sourcePath, '# Source\n\nSee [[project]], [[folder/target]], and [[alias name]].')
+    writeFileSync(titleTargetPath, '# Project\n\nTitle target.')
+    writeFileSync(pathTargetPath, '# Target\n\nPath target.')
+    writeFileSync(aliasTargetPath, '---\naliases:\n  - Alias Name\n---\n# Canonical\n\nAlias target.')
+
+    indexNote(vaultPath, sourcePath)
+    indexNote(vaultPath, titleTargetPath)
+    indexNote(vaultPath, pathTargetPath)
+    indexNote(vaultPath, aliasTargetPath)
+
+    const notes = getAllNotes(vaultPath)
+    const source = notes.find((note) => note.title === 'Source')
+    const project = notes.find((note) => note.filePath === 'Project.md')
+    const target = notes.find((note) => note.filePath === 'Folder/Target.md')
+    const canonical = notes.find((note) => note.filePath === 'Canonical.md')
+    expect(source).toBeTruthy()
+    expect(project).toBeTruthy()
+    expect(target).toBeTruthy()
+    expect(canonical).toBeTruthy()
+
+    const links = getOutgoingLinks(vaultPath, source!.id)
+    expect(links).toHaveLength(3)
+    expect(links.map((link) => link.targetPath).sort()).toEqual(['Canonical.md', 'Folder/Target.md', 'Project.md'])
+    expect(links.every((link) => link.resolved)).toBe(true)
+
+    const graph = getGraphData(vaultPath)
+    expect(graph.edges).toContainEqual({ source: source!.id, target: project!.id })
+    expect(graph.edges).toContainEqual({ source: source!.id, target: target!.id })
+    expect(graph.edges).toContainEqual({ source: source!.id, target: canonical!.id })
+
+    closeDatabase()
+  })
+
+  it('should not guess case-insensitive wikilinks when multiple notes match', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getOutgoingLinks, getGraphData } = await import('../packages/main/src/services/indexer')
+
+    const sourcePath = join(vaultPath, 'Source.md')
+    const upperTargetPath = join(vaultPath, 'Upper.md')
+    const lowerTargetPath = join(vaultPath, 'Lower.md')
+
+    writeFileSync(sourcePath, '# Source\n\nSee [[PROJECT]].')
+    writeFileSync(upperTargetPath, '# Project\n\nUpper title.')
+    writeFileSync(lowerTargetPath, '# project\n\nLower title.')
+
+    indexNote(vaultPath, sourcePath)
+    indexNote(vaultPath, upperTargetPath)
+    indexNote(vaultPath, lowerTargetPath)
+
+    const notes = getAllNotes(vaultPath)
+    const source = notes.find((note) => note.title === 'Source')
+    expect(source).toBeTruthy()
+
+    const links = getOutgoingLinks(vaultPath, source!.id)
+    expect(links).toHaveLength(1)
+    expect(links[0]).toMatchObject({ targetTitle: 'PROJECT', resolved: false })
+    expect(links[0].targetPath).toBeUndefined()
+
+    expect(getGraphData(vaultPath).edges.some((edge) => edge.source === source!.id)).toBe(false)
+
+    closeDatabase()
+  })
+
   it('should resolve wikilinks through frontmatter aliases', async () => {
     const { closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes, getBacklinks, getOutgoingLinks, getGraphData } = await import('../packages/main/src/services/indexer')

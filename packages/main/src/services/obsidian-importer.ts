@@ -8,6 +8,8 @@ export interface ObsidianImportResult {
   indexed: number
 }
 
+const SKIPPED_OBSIDIAN_ENTRIES = new Set(['.obsidian', '.trash', '.git', '.DS_Store'])
+
 export async function importObsidianVault(sourcePath: string, vaultPath: string): Promise<ObsidianImportResult> {
   const result: ObsidianImportResult = { imported: 0, converted: 0, indexed: 0 }
 
@@ -15,7 +17,7 @@ export async function importObsidianVault(sourcePath: string, vaultPath: string)
     await mkdir(dest, { recursive: true })
     const entries = await readdir(src, { withFileTypes: true })
     for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
+      if (SKIPPED_OBSIDIAN_ENTRIES.has(entry.name)) continue
       const srcPath = join(src, entry.name)
       const destPath = join(dest, entry.name)
       if (entry.isDirectory()) {

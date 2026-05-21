@@ -37,8 +37,16 @@ function stripDirectoryPrefix(title: string, dirName?: string): string {
   return /^[\s_\\/-]+/.test(rest) ? rest.replace(/^[\s_\\/-]+/, '') : title
 }
 
+function normalizeWikilinkSegments(title: string): string {
+  return title.replace(/!?\[\[([^\]]+)\]\]/g, (_match, rawTarget: string) => {
+    const [targetPart, aliasPart] = rawTarget.split('|')
+    const target = targetPart.split('#')[0].trim()
+    return target || aliasPart?.trim() || rawTarget.trim()
+  })
+}
+
 function sanitizeGeneratedNoteTitle(title: string): string {
-  return title.replace(INVALID_FILENAME_CHARS, ' ').replace(/\s+/g, ' ').trim()
+  return title.replace(INVALID_FILENAME_CHARS, ' ').replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 function sanitizeGeneratedDirectory(dir: string): string {
@@ -66,7 +74,8 @@ export function normalizeGeneratedNotePlan(
 
   return plan.map((item, index) => {
     const rawTitle = typeof item.title === 'string' ? item.title : ''
-    const baseTitle = sanitizeGeneratedNoteTitle(stripDirectoryPrefix(rawTitle, options.dirName)) || `Untitled ${index + 1}`
+    const normalizedTitle = normalizeWikilinkSegments(rawTitle)
+    const baseTitle = sanitizeGeneratedNoteTitle(stripDirectoryPrefix(normalizedTitle, options.dirName)) || `Untitled ${index + 1}`
     let title = baseTitle
     let suffix = 2
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasGroupLabels, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeBetweenCards, routeBetweenCardsDuringDrag, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasGroupLabels, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeAnchorsCurrentCards, routeBetweenCards, routeBetweenCardsDuringDrag, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -220,5 +220,15 @@ describe('canvas card placement', () => {
     expect(route[0]).toEqual({ x: 210, y: 56 })
     expect(route[route.length - 1]).toEqual({ x: 520, y: 216 })
     expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
+  })
+
+  it('detects stale routes that no longer touch current card positions', () => {
+    const source = { x: 0, y: 0 }
+    const target = { x: 520, y: 160 }
+    const route = routeBetweenCardsDuringDrag(source, target)
+
+    expect(routeAnchorsCurrentCards(route, source, target)).toBe(true)
+    expect(routeAnchorsCurrentCards(route, source, { x: 520, y: 360 })).toBe(false)
+    expect(routeAnchorsCurrentCards(route.map((point) => ({ x: point.x - 40, y: point.y - 80 })), source, target, 40, 80)).toBe(true)
   })
 })

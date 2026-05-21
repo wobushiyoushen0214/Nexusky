@@ -785,7 +785,7 @@ graph TD
         const filePath = join(targetDir, `${safeNames[i]}.md`)
         try {
           const linkedContent = ensureGeneratedNoteWikilinks(noteContent, safeNames[i], siblingTitles)
-          writeFileSync(filePath, ensureGeneratedNoteMetadata(linkedContent, safeNames[i], item.brief), 'utf-8')
+          writeFileSync(filePath, ensureGeneratedNoteMetadata(linkedContent, safeNames[i], item.brief, siblingTitles), 'utf-8')
           createdFiles.push(filePath)
         } catch {}
       }

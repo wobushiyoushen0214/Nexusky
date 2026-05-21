@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
@@ -67,5 +67,23 @@ describe('obsidian importer', () => {
         published: true
       }
     })
+  })
+
+  it('keeps hidden user content while skipping Obsidian internals', async () => {
+    const { importObsidianVault } = await import('../packages/main/src/services/obsidian-importer')
+    const { getAllNotes } = await import('../packages/main/src/services/indexer')
+
+    mkdirSync(join(sourcePath, '.attachments'), { recursive: true })
+    mkdirSync(join(sourcePath, '.obsidian'), { recursive: true })
+    writeFileSync(join(sourcePath, '.attachments', 'diagram.png'), 'image')
+    writeFileSync(join(sourcePath, '.hidden-note.md'), '# Hidden Note\n\nPrivate context.')
+    writeFileSync(join(sourcePath, '.obsidian', 'app.json'), '{}')
+
+    const result = await importObsidianVault(sourcePath, vaultPath)
+
+    expect(result).toMatchObject({ imported: 2, converted: 0, indexed: 1 })
+    expect(existsSync(join(vaultPath, '.attachments', 'diagram.png'))).toBe(true)
+    expect(existsSync(join(vaultPath, '.obsidian', 'app.json'))).toBe(false)
+    expect(getAllNotes(vaultPath).some((note) => note.filePath === '.hidden-note.md')).toBe(true)
   })
 })
