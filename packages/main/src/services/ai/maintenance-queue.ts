@@ -9,7 +9,7 @@ export interface KnowledgeMaintenanceNote {
 }
 
 export interface KnowledgeMaintenanceItem {
-  type: 'fix_unresolved_link' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
+  type: 'fix_unresolved_link' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'review_open_tasks' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
   title: string
   filePath: string
   priority: number
@@ -29,6 +29,7 @@ interface KnowledgeMaintenanceQueueOptions {
   emptyNotePaths?: Set<string>
   largeNoteCharactersByPath?: Map<string, number>
   missingPropertiesByPath?: Map<string, string[]>
+  openTaskCountByPath?: Map<string, number>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   limit?: number
@@ -51,6 +52,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const isEmpty = options.emptyNotePaths?.has(note.filePath) || false
     const largeCharacters = options.largeNoteCharactersByPath?.get(note.filePath) || 0
     const missingProperties = options.missingPropertiesByPath?.get(note.filePath) || []
+    const openTaskCount = options.openTaskCountByPath?.get(note.filePath) || 0
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -120,6 +122,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         action: `Convert ${unlinkedMentionCount} unlinked mention${unlinkedMentionCount === 1 ? '' : 's'} into wikilinks`,
         reason: 'Other notes mention this title without linking to it.',
         detail: `Unlinked mentions: ${unlinkedMentionCount}`
+      })
+    }
+
+    if (openTaskCount > 0) {
+      items.push({
+        type: 'review_open_tasks',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 60 + Math.min(openTaskCount, 10),
+        action: `Review ${openTaskCount} open task${openTaskCount === 1 ? '' : 's'} in this note`,
+        reason: 'Open tasks embedded in notes should feed the next-action workflow.',
+        detail: `Open tasks: ${openTaskCount}`
       })
     }
 

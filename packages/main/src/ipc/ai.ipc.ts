@@ -2931,6 +2931,11 @@ graph TD
         const propertyRows = getPropertyRows(vaultPath)
         const propertyRowsByPath = new Map(propertyRows.map((row) => [row.filePath, row.properties]))
         const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
+        const openTaskCountByPath = new Map<string, number>()
+        for (const task of getAllTasks(vaultPath)) {
+          if (task.done) continue
+          openTaskCountByPath.set(task.filePath, (openTaskCountByPath.get(task.filePath) || 0) + 1)
+        }
         const emptyNotePaths = new Set<string>()
         const largeNoteCharactersByPath = new Map<string, number>()
         for (const note of notes) {
@@ -2997,6 +3002,7 @@ graph TD
           emptyNotePaths,
           largeNoteCharactersByPath,
           missingPropertiesByPath,
+          openTaskCountByPath,
           bridges,
           query,
           limit

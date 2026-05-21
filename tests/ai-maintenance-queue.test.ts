@@ -3,7 +3,7 @@ import { buildKnowledgeMaintenanceQueue } from '../packages/main/src/services/ai
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
-  it('prioritizes broken links, isolated notes, empty notes, duplicates, unlinked mentions, long notes, memory refresh, missing properties, and bridge maintenance', () => {
+  it('prioritizes broken links, isolated notes, empty notes, duplicates, open tasks, unlinked mentions, long notes, memory refresh, missing properties, and bridge maintenance', () => {
     const queue = buildKnowledgeMaintenanceQueue({
       notes: [
         { id: 'broken', title: 'Broken Source', filePath: 'Broken.md', updatedAt: 1700000000000 },
@@ -12,6 +12,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         { id: 'dup-title-a', title: 'Project', filePath: 'A/Project.md', updatedAt: 1700000000001 },
         { id: 'dup-title-b', title: 'Project', filePath: 'B/Project.md', updatedAt: 1700000000001 },
         { id: 'dup-alias', title: 'Launch', filePath: 'Launch.md', updatedAt: 1700000000001 },
+        { id: 'tasks', title: 'Task Note', filePath: 'Task Note.md', updatedAt: 1700000000002 },
         { id: 'mentioned', title: 'Mentioned', filePath: 'Mentioned.md', updatedAt: 1700000000002 },
         { id: 'stale', title: 'Changed', filePath: 'Changed.md', updatedAt: 1700000000003 },
         { id: 'large', title: 'Long Research', filePath: 'Long.md', updatedAt: 1700000000003 },
@@ -33,6 +34,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['dup-title-a', 1],
         ['dup-title-b', 1],
         ['dup-alias', 1],
+        ['tasks', 1],
         ['mentioned', 1],
         ['stale', 1],
         ['large', 1],
@@ -61,10 +63,13 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       missingPropertiesByPath: new Map([
         ['Metadata Gap.md', ['status', 'summary']]
       ]),
+      openTaskCountByPath: new Map([
+        ['Task Note.md', 4]
+      ]),
       bridges: [
         { title: 'Synthesis', filePath: 'Synthesis.md', score: 8, connections: 2, folders: ['Projects', 'Research'], tags: ['delivery', 'research'] }
       ],
-      limit: 12
+      limit: 14
     })
 
     expect(queue.map((item) => item.type)).toEqual([
@@ -74,6 +79,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       'resolve_duplicate_title',
       'resolve_duplicate_title',
       'resolve_duplicate_alias',
+      'review_open_tasks',
       'link_unlinked_reference',
       'refresh_memory',
       'split_large_note',
@@ -97,23 +103,27 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       title: 'Launch',
       action: 'Make duplicate alias unique: Project'
     })
-    expect(queue[7]).toMatchObject({
+    expect(queue[6]).toMatchObject({
+      title: 'Task Note',
+      action: 'Review 4 open tasks in this note'
+    })
+    expect(queue[8]).toMatchObject({
       title: 'Changed',
       action: 'Regenerate this note memory from current content'
     })
-    expect(queue[8]).toMatchObject({
+    expect(queue[9]).toMatchObject({
       title: 'Long Research',
       action: 'Split this long note into focused linked notes or add a map-of-content section'
     })
-    expect(queue[9]).toMatchObject({
+    expect(queue[10]).toMatchObject({
       title: 'New Idea',
       action: 'Generate AI memory for this note'
     })
-    expect(queue[10]).toMatchObject({
+    expect(queue[11]).toMatchObject({
       title: 'Metadata Gap',
       action: 'Fill missing properties: status, summary'
     })
-    expect(queue[11]).toMatchObject({
+    expect(queue[12]).toMatchObject({
       title: 'Synthesis',
       detail: 'Folders: Projects, Research; tags: delivery, research'
     })
