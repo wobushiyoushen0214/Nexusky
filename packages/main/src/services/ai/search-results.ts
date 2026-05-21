@@ -177,6 +177,16 @@ export interface AiKnowledgeBridgeResult {
   tags: string[]
 }
 
+export interface AiKnowledgeMaintenanceItem {
+  type: string
+  title: string
+  filePath: string
+  priority: number
+  action: string
+  reason: string
+  detail: string
+}
+
 export interface AiSimilarNotePairResult {
   sourceTitle: string
   sourcePath: string
@@ -612,6 +622,19 @@ export function formatKnowledgeBridgesToolResult(notes: AiKnowledgeBridgeResult[
     `Neighbor Folders: ${note.folders.length > 0 ? note.folders.join(', ') : '(none)'}`,
     `Neighbor Tags: ${note.tags.length > 0 ? note.tags.join(', ') : '(none)'}`,
     'Suggested action: maintain this note as a synthesis point across clusters.'
+  ].join('\n')).join('\n\n')
+}
+
+export function formatKnowledgeMaintenanceQueueToolResult(items: AiKnowledgeMaintenanceItem[]): string {
+  if (items.length === 0) return 'No knowledge maintenance actions found.'
+  return items.map((item, index) => [
+    `${index + 1}. **${item.title}**`,
+    `Path: ${item.filePath}`,
+    `Type: ${item.type}`,
+    `Priority: ${item.priority}`,
+    `Action: ${item.action}`,
+    `Reason: ${item.reason}`,
+    `Detail: ${item.detail || '(none)'}`
   ].join('\n')).join('\n\n')
 }
 

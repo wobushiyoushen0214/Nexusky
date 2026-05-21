@@ -7,9 +7,10 @@ import { extractJsonFromText } from '../services/ai/json'
 import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../services/ai/note-plan'
 import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata, ensureGeneratedNoteWikilinks } from '../services/ai/note-writing'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../services/ai/note-lookup'
-import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
+import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { findKnowledgeBridgeNotes } from '../services/ai/graph-insights'
+import { buildKnowledgeMaintenanceQueue } from '../services/ai/maintenance-queue'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -1694,6 +1695,20 @@ graph TD
     {
       type: 'function',
       function: {
+        name: 'plan_knowledge_maintenance',
+        description: '生成下一步知识库维护队列，按断链、孤岛、未链接引用和知识桥梁等信号排序，适合回答“我接下来该整理什么”。',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: '按标题、路径、动作、原因或细节过滤，可选' },
+            limit: { type: 'number', description: '返回维护动作数量，1-10，默认 5' }
+          }
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
         name: 'list_untagged_notes',
         description: '列出没有任何标签的笔记，可按标题或路径过滤。',
         parameters: {
@@ -2893,6 +2908,36 @@ graph TD
             filePath: note.filePath,
             chunk: `Bridge score: ${note.score}; folders: ${note.folders.join(', ')}; tags: ${note.tags.join(', ')}`.slice(0, 100),
             score: note.score
+          }))
+        }
+      }
+      case 'plan_knowledge_maintenance': {
+        const query = getStringArg(args, 'query').trim().toLowerCase()
+        const limit = normalizeToolLimit(args.limit)
+        const notes = getAllNotes(vaultPath)
+        const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
+        const bridges = findKnowledgeBridgeNotes({
+          notes,
+          outgoingLinksByNoteId,
+          propertyRows: getPropertyRows(vaultPath),
+          limit: Math.max(limit, 10)
+        })
+        const items = buildKnowledgeMaintenanceQueue({
+          notes,
+          outgoingLinksByNoteId,
+          backlinkCountByNoteId: new Map(notes.map((note) => [note.id, getBacklinks(vaultPath, note.id).length])),
+          unlinkedMentionCountByNoteId: new Map(notes.map((note) => [note.id, getUnlinkedMentions(vaultPath, note.id).length])),
+          bridges,
+          query,
+          limit
+        })
+        return {
+          content: formatKnowledgeMaintenanceQueueToolResult(items),
+          sources: items.map((item) => ({
+            title: item.title,
+            filePath: item.filePath,
+            chunk: `${item.action}: ${item.reason}`.slice(0, 100),
+            score: item.priority
           }))
         }
       }
