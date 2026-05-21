@@ -159,6 +159,48 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should ignore markdown code while indexing searchable structure', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getAllNotes, getAllTags, getAllTasks, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
+
+    const notePath = join(vaultPath, 'Code.md')
+    const hiddenTargetPath = join(vaultPath, 'Hidden Code Target.md')
+    const visibleTargetPath = join(vaultPath, 'Visible Code Target.md')
+    writeFileSync(hiddenTargetPath, '# Hidden Code Target\n')
+    writeFileSync(visibleTargetPath, '# Visible Code Target\n')
+    writeFileSync(notePath, [
+      '# Code Note',
+      '',
+      '`[[Hidden Inline]] #hidden-inline`',
+      '',
+      '```',
+      '[[Hidden Code Target]]',
+      '#hidden-code',
+      '- [ ] Hidden code task',
+      '```',
+      '',
+      '[[Visible Code Target]]',
+      '#visible-code',
+      '- [ ] Visible code task'
+    ].join('\n'))
+
+    indexNote(vaultPath, hiddenTargetPath)
+    indexNote(vaultPath, visibleTargetPath)
+    indexNote(vaultPath, notePath)
+
+    const note = getAllNotes(vaultPath).find((item) => item.filePath === 'Code.md')
+    expect(note).toBeTruthy()
+    expect(getOutgoingLinks(vaultPath, note!.id)).toEqual([
+      { targetTitle: 'Visible Code Target', targetPath: 'Visible Code Target.md', line: 11, context: '[[Visible Code Target]]', resolved: true }
+    ])
+    expect(getAllTags(vaultPath).map((tag) => tag.name).sort()).toEqual(['visible-code'])
+    expect(getAllTasks(vaultPath).filter((task) => task.filePath === 'Code.md')).toEqual([
+      { text: 'Visible code task', done: false, noteTitle: 'Code Note', filePath: 'Code.md' }
+    ])
+
+    closeDatabase()
+  })
+
   it('should skip re-indexing unchanged files', async () => {
     const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote } = await import('../packages/main/src/services/indexer')

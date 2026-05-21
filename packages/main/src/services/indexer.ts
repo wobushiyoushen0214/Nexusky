@@ -452,11 +452,19 @@ function extractTitle(content: string, filePath: string): string {
 function extractLinks(content: string): { targetTitle: string; context: string; line: number }[] {
   const links: { targetTitle: string; context: string; line: number }[] = []
   const lines = content.split('\n')
+  let inFence = false
 
   for (const [index, line] of lines.entries()) {
+    const trimmed = line.trim()
+    if (isMarkdownFenceLine(trimmed)) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+
     let match: RegExpExecArray | null
     WIKILINK_REGEX.lastIndex = 0
-    while ((match = WIKILINK_REGEX.exec(line)) !== null) {
+    while ((match = WIKILINK_REGEX.exec(stripInlineCode(line))) !== null) {
       const targetTitle = normalizeWikiLinkTarget(match[1])
       if (!targetTitle) continue
       links.push({
@@ -726,10 +734,20 @@ const TAG_REGEX = /(?:^|[^&\w一-鿿])#([a-zA-Z一-鿿][\w一-鿿/-]*)/g
 
 function extractTags(content: string): string[] {
   const tags = new Set<string>()
-  let match: RegExpExecArray | null
-  TAG_REGEX.lastIndex = 0
-  while ((match = TAG_REGEX.exec(content)) !== null) {
-    tags.add(match[1])
+  let inFence = false
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+    if (isMarkdownFenceLine(trimmed)) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+
+    let match: RegExpExecArray | null
+    TAG_REGEX.lastIndex = 0
+    while ((match = TAG_REGEX.exec(stripInlineCode(line))) !== null) {
+      tags.add(match[1])
+    }
   }
   return Array.from(tags)
 }
@@ -760,13 +778,29 @@ export function getNotesByTag(vaultPath: string, tag: string): NoteIndex[] {
 function extractTasks(content: string): { text: string; done: boolean }[] {
   const tasks: { text: string; done: boolean }[] = []
   const lines = content.split('\n')
+  let inFence = false
   for (const line of lines) {
+    const trimmed = line.trim()
+    if (isMarkdownFenceLine(trimmed)) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+
     const todoMatch = line.match(/^[-*]\s+\[\s?\]\s+(.+)/)
     const doneMatch = line.match(/^[-*]\s+\[x\]\s+(.+)/i)
     if (todoMatch) tasks.push({ text: todoMatch[1].trim(), done: false })
     else if (doneMatch) tasks.push({ text: doneMatch[1].trim(), done: true })
   }
   return tasks
+}
+
+function isMarkdownFenceLine(trimmedLine: string): boolean {
+  return trimmedLine.startsWith('```') || trimmedLine.startsWith('~~~')
+}
+
+function stripInlineCode(line: string): string {
+  return line.replace(/`+[^`]*`+/g, (match) => ' '.repeat(match.length))
 }
 
 export function getAllTasks(vaultPath: string): { text: string; done: boolean; noteTitle: string; filePath: string }[] {
