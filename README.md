@@ -62,6 +62,7 @@ supabase/         → 云端 schema
 ## 文档
 
 - [用户使用指南](docs/GUIDE.md)
+- [项目全景文档](docs/PROJECT_OVERVIEW.md)
 - [功能清单](docs/FEATURES.md)
 - [设计系统](docs/DESIGN.md)
 - [产品定义](docs/PRODUCT.md)
