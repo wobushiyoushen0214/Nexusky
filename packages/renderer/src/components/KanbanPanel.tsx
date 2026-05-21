@@ -47,11 +47,6 @@ export function KanbanPanel() {
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) || null, [tasks, selectedTaskId])
   const totalTasks = tasks.length
-  const activeTasks = useMemo(() => {
-    const doneColumnIds = new Set(columns.filter((column) => column.name.includes('完成')).map((column) => column.id))
-    return tasks.filter((task) => !doneColumnIds.has(task.columnId)).length
-  }, [columns, tasks])
-  const sourcedTasks = useMemo(() => tasks.filter((task) => !!task.sourceFilePath).length, [tasks])
 
   const relatedTaskIds = useMemo(() => {
     const anchor = hoverTaskId || selectedTaskId
@@ -368,9 +363,9 @@ export function KanbanPanel() {
             <div style={{ minWidth: 0 }}>
               <div style={boardEyebrowStyle}>
                 <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent)', flexShrink: 0 }} />
-                <span>Flow Map</span>
+                <span>{totalTasks} 个任务</span>
               </div>
-              <div style={boardTitleStyle}>任务画布</div>
+              <div style={boardTitleStyle}>看板</div>
             </div>
             <div style={boardActionRowStyle}>
               {busy && (
@@ -395,12 +390,6 @@ export function KanbanPanel() {
                 <span>分析</span>
               </button>
             </div>
-          </div>
-
-          <div style={boardSignalStyle}>
-            <span style={signalItemStyle}>活跃 {activeTasks}</span>
-            <span style={signalItemStyle}>笔记来源 {sourcedTasks}</span>
-            <span style={signalItemStyle}>关联 {relations.length}</span>
           </div>
 
           <div style={quickCaptureStyle}>
@@ -436,7 +425,7 @@ export function KanbanPanel() {
         )}
 
         <div style={boardGridStyle}>
-          {columns.map((column, index) => {
+          {columns.map((column) => {
             const columnTasks = tasksByColumn(column.id)
             const isDropTarget = dropColumnId === column.id
             return (
@@ -450,7 +439,6 @@ export function KanbanPanel() {
                   borderColor: isDropTarget ? 'rgba(124, 110, 245, 0.5)' : 'transparent',
                   background: isDropTarget ? 'var(--accent-muted)' : laneStyle.background,
                   outline: isDropTarget ? '1px solid rgba(124, 110, 245, 0.24)' : 'none',
-                  marginTop: index % 2 === 1 ? 10 : 0,
                   overflow: 'hidden',
                   minHeight: 360
                 }}
@@ -460,10 +448,7 @@ export function KanbanPanel() {
                     <span style={columnDotStyle(column.name)} />
                     <span style={laneTitleStyle}>{column.name}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={laneIndexStyle}>{String(index + 1).padStart(2, '0')}</span>
-                    <span style={countPillStyle}>{columnTasks.length}</span>
-                  </div>
+                  <span style={countPillStyle}>{columnTasks.length}</span>
                 </div>
 
                 <div style={laneStackStyle(columnTasks.length > 0)}>
@@ -814,18 +799,14 @@ const boardShellStyle: React.CSSProperties = {
   position: 'relative',
   display: 'grid',
   gridTemplateRows: 'auto 1fr',
-  background: [
-    'radial-gradient(circle at 12% 6%, rgba(124, 110, 245, 0.13), transparent 30%)',
-    'radial-gradient(circle at 82% 18%, rgba(74, 222, 128, 0.07), transparent 26%)',
-    'linear-gradient(135deg, color-mix(in srgb, var(--editor-bg) 94%, var(--bg-base)), var(--editor-bg))'
-  ].join(', '),
+  background: 'var(--editor-bg)',
   overflow: 'hidden'
 }
 
 const boardHeaderStyle: React.CSSProperties = {
-  padding: '20px 22px 16px',
-  borderBottom: '1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent)',
-  background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-base) 52%, transparent), transparent)'
+  padding: '16px 18px 14px',
+  borderBottom: '1px solid var(--border-subtle)',
+  background: 'var(--editor-bg)'
 }
 
 const boardEyebrowStyle: React.CSSProperties = {
@@ -842,8 +823,8 @@ const boardEyebrowStyle: React.CSSProperties = {
 const boardTitleStyle: React.CSSProperties = {
   marginTop: 2,
   color: 'var(--text-primary)',
-  fontSize: 26,
-  fontWeight: 780,
+  fontSize: 20,
+  fontWeight: 760,
   lineHeight: 1.18,
   letterSpacing: 0
 }
@@ -858,15 +839,15 @@ const boardActionRowStyle: React.CSSProperties = {
 }
 
 const quickCaptureStyle: React.CSSProperties = {
-  height: 44,
+  height: 42,
   display: 'grid',
   gridTemplateColumns: 'auto minmax(0, 1fr) auto',
   alignItems: 'center',
   gap: 8,
   padding: '0 7px 0 12px',
   borderRadius: 8,
-  border: '1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent)',
-  background: 'linear-gradient(90deg, color-mix(in srgb, var(--bg-surface) 86%, transparent), color-mix(in srgb, var(--bg-base) 62%, transparent))',
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-base)',
   color: 'var(--text-tertiary)'
 }
 
@@ -884,7 +865,7 @@ const quickCaptureInputStyle: React.CSSProperties = {
 const boardContentStyle: React.CSSProperties = {
   minHeight: 0,
   overflow: 'auto',
-  padding: '18px 22px 26px'
+  padding: 18
 }
 
 const boardGridStyle: React.CSSProperties = {
@@ -896,12 +877,9 @@ const boardGridStyle: React.CSSProperties = {
 }
 
 const laneStyle: React.CSSProperties = {
-  borderRadius: 12,
+  borderRadius: 8,
   border: '1px solid transparent',
-  background: [
-    'linear-gradient(180deg, color-mix(in srgb, var(--bg-base) 78%, transparent), color-mix(in srgb, var(--editor-bg) 88%, transparent))',
-    'radial-gradient(circle at 50% 0%, rgba(124, 110, 245, 0.06), transparent 38%)'
-  ].join(', ')
+  background: 'var(--bg-base)'
 }
 
 const laneHeaderStyle: React.CSSProperties = {
@@ -919,33 +897,6 @@ const laneTitleStyle: React.CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap'
-}
-
-const boardSignalStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 7,
-  flexWrap: 'wrap'
-}
-
-const signalItemStyle: React.CSSProperties = {
-  height: 22,
-  padding: '0 8px',
-  display: 'inline-flex',
-  alignItems: 'center',
-  borderRadius: 999,
-  border: '1px solid color-mix(in srgb, var(--border-subtle) 62%, transparent)',
-  background: 'color-mix(in srgb, var(--bg-base) 52%, transparent)',
-  color: 'var(--text-tertiary)',
-  fontSize: 11,
-  fontWeight: 560
-}
-
-const laneIndexStyle: React.CSSProperties = {
-  color: 'color-mix(in srgb, var(--text-tertiary) 70%, transparent)',
-  fontSize: 10,
-  fontWeight: 700,
-  fontVariantNumeric: 'tabular-nums'
 }
 
 function laneStackStyle(hasTasks: boolean): React.CSSProperties {
@@ -1024,10 +975,7 @@ const aiWriteModalStyle: React.CSSProperties = {
   overflow: 'hidden',
   borderRadius: 12,
   border: '1px solid color-mix(in srgb, var(--border-default) 88%, transparent)',
-  background: [
-    'radial-gradient(circle at 18% 0%, rgba(124, 110, 245, 0.14), transparent 34%)',
-    'linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 86%, var(--bg-base)), var(--bg-base))'
-  ].join(', '),
+  background: 'var(--bg-elevated)',
   boxShadow: '0 24px 70px rgba(0, 0, 0, 0.42)'
 }
 
