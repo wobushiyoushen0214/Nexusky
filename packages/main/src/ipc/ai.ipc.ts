@@ -71,6 +71,15 @@ function normalizeMinCharacters(value: unknown): number {
   return Math.max(1000, Math.floor(number))
 }
 
+function normalizeMaintenanceProperties(value: unknown): string[] {
+  const rawValues = Array.isArray(value)
+    ? value.map((item) => String(item))
+    : typeof value === 'string'
+      ? value.split(/[\s,]+/)
+      : ['status', 'summary']
+  return Array.from(new Set(rawValues.map((item) => item.trim()).filter((item) => /^[A-Za-z0-9_-]+$/.test(item))))
+}
+
 function normalizeSimilarityThreshold(value: unknown): number {
   const number = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(number)) return 0.75
@@ -1702,6 +1711,7 @@ graph TD
           properties: {
             query: { type: 'string', description: '按标题、路径、动作、原因或细节过滤，可选' },
             minCharacters: { type: 'number', description: '超长笔记字符阈值，默认 8000' },
+            requiredProperties: { type: 'string', description: '需要检查的必填属性，逗号或空格分隔，默认 status,summary' },
             limit: { type: 'number', description: '返回维护动作数量，1-10，默认 5' }
           }
         }
@@ -2916,8 +2926,10 @@ graph TD
         const query = getStringArg(args, 'query').trim().toLowerCase()
         const limit = normalizeToolLimit(args.limit)
         const minCharacters = normalizeMinCharacters(args.minCharacters)
+        const requiredProperties = normalizeMaintenanceProperties(args.requiredProperties)
         const notes = getAllNotes(vaultPath)
         const propertyRows = getPropertyRows(vaultPath)
+        const propertyRowsByPath = new Map(propertyRows.map((row) => [row.filePath, row.properties]))
         const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
         const emptyNotePaths = new Set<string>()
         const largeNoteCharactersByPath = new Map<string, number>()
@@ -2955,6 +2967,14 @@ graph TD
           if (group.filePaths.length < 2) continue
           for (const filePath of group.filePaths) duplicateAliasesByPath.set(filePath, [...(duplicateAliasesByPath.get(filePath) || []), group.alias])
         }
+        const missingPropertiesByPath = new Map<string, string[]>()
+        if (requiredProperties.length > 0) {
+          for (const note of notes) {
+            const properties = propertyRowsByPath.get(note.filePath) || {}
+            const missing = requiredProperties.filter((key) => !hasNonEmptyProperty(properties, key))
+            if (missing.length > 0) missingPropertiesByPath.set(note.filePath, missing)
+          }
+        }
         const bridges = findKnowledgeBridgeNotes({
           notes,
           outgoingLinksByNoteId,
@@ -2976,6 +2996,7 @@ graph TD
           duplicateAliasesByPath,
           emptyNotePaths,
           largeNoteCharactersByPath,
+          missingPropertiesByPath,
           bridges,
           query,
           limit

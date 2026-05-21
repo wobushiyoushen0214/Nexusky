@@ -3,7 +3,7 @@ import { buildKnowledgeMaintenanceQueue } from '../packages/main/src/services/ai
 import type { OutgoingLinkIndex } from '../packages/main/src/services/indexer'
 
 describe('buildKnowledgeMaintenanceQueue', () => {
-  it('prioritizes broken links, isolated notes, empty notes, duplicates, unlinked mentions, long notes, memory refresh, and bridge maintenance', () => {
+  it('prioritizes broken links, isolated notes, empty notes, duplicates, unlinked mentions, long notes, memory refresh, missing properties, and bridge maintenance', () => {
     const queue = buildKnowledgeMaintenanceQueue({
       notes: [
         { id: 'broken', title: 'Broken Source', filePath: 'Broken.md', updatedAt: 1700000000000 },
@@ -16,6 +16,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         { id: 'stale', title: 'Changed', filePath: 'Changed.md', updatedAt: 1700000000003 },
         { id: 'large', title: 'Long Research', filePath: 'Long.md', updatedAt: 1700000000003 },
         { id: 'missing', title: 'New Idea', filePath: 'New Idea.md', updatedAt: 1700000000004 },
+        { id: 'missing-props', title: 'Metadata Gap', filePath: 'Metadata Gap.md', updatedAt: 1700000000004 },
         { id: 'bridge', title: 'Synthesis', filePath: 'Synthesis.md', updatedAt: 1700000000003 }
       ],
       outgoingLinksByNoteId: new Map<string, OutgoingLinkIndex[]>([
@@ -36,6 +37,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
         ['stale', 1],
         ['large', 1],
         ['missing', 1],
+        ['missing-props', 1],
         ['bridge', 2]
       ]),
       unlinkedMentionCountByNoteId: new Map([
@@ -56,6 +58,9 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       largeNoteCharactersByPath: new Map([
         ['Long.md', 12000]
       ]),
+      missingPropertiesByPath: new Map([
+        ['Metadata Gap.md', ['status', 'summary']]
+      ]),
       bridges: [
         { title: 'Synthesis', filePath: 'Synthesis.md', score: 8, connections: 2, folders: ['Projects', 'Research'], tags: ['delivery', 'research'] }
       ],
@@ -73,6 +78,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       'refresh_memory',
       'split_large_note',
       'refresh_memory',
+      'fill_missing_property',
       'maintain_bridge'
     ])
     expect(queue[0]).toMatchObject({
@@ -104,6 +110,10 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       action: 'Generate AI memory for this note'
     })
     expect(queue[10]).toMatchObject({
+      title: 'Metadata Gap',
+      action: 'Fill missing properties: status, summary'
+    })
+    expect(queue[11]).toMatchObject({
       title: 'Synthesis',
       detail: 'Folders: Projects, Research; tags: delivery, research'
     })

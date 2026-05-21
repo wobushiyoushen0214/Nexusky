@@ -9,7 +9,7 @@ export interface KnowledgeMaintenanceNote {
 }
 
 export interface KnowledgeMaintenanceItem {
-  type: 'fix_unresolved_link' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'maintain_bridge'
+  type: 'fix_unresolved_link' | 'connect_orphan' | 'fill_empty_note' | 'resolve_duplicate_title' | 'resolve_duplicate_alias' | 'link_unlinked_reference' | 'refresh_memory' | 'split_large_note' | 'fill_missing_property' | 'maintain_bridge'
   title: string
   filePath: string
   priority: number
@@ -28,6 +28,7 @@ interface KnowledgeMaintenanceQueueOptions {
   duplicateAliasesByPath?: Map<string, string[]>
   emptyNotePaths?: Set<string>
   largeNoteCharactersByPath?: Map<string, number>
+  missingPropertiesByPath?: Map<string, string[]>
   bridges: KnowledgeBridgeNoteResult[]
   query?: string
   limit?: number
@@ -49,6 +50,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
     const duplicateAliases = options.duplicateAliasesByPath?.get(note.filePath) || []
     const isEmpty = options.emptyNotePaths?.has(note.filePath) || false
     const largeCharacters = options.largeNoteCharactersByPath?.get(note.filePath) || 0
+    const missingProperties = options.missingPropertiesByPath?.get(note.filePath) || []
 
     for (const link of outgoing) {
       if (link.resolved) continue
@@ -142,6 +144,18 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         action: 'Split this long note into focused linked notes or add a map-of-content section',
         reason: 'Very long notes are harder to navigate, summarize, and connect precisely.',
         detail: `${largeCharacters} characters`
+      })
+    }
+
+    if (missingProperties.length > 0) {
+      items.push({
+        type: 'fill_missing_property',
+        title: note.title,
+        filePath: note.filePath,
+        priority: 50,
+        action: `Fill missing properties: ${missingProperties.join(', ')}`,
+        reason: 'Consistent metadata makes Bases, filters, and Agent planning more reliable.',
+        detail: `Missing properties: ${missingProperties.join(', ')}`
       })
     }
 
