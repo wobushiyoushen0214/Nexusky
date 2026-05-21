@@ -41,8 +41,10 @@ export function getDatabase(vaultPath: string): Database.Database {
   }
 
   currentVaultPath = vaultPath
+  repairExistingSchema(db)
   initSchema(db)
   runMigrations(db)
+  repairExistingSchema(db)
   ensureDefaultKanbanColumns(db)
   return db
 }
@@ -200,6 +202,79 @@ function initSchema(db: Database.Database): void {
 }
 
 type Migration = (db: Database.Database) => void
+
+function tableExists(db: Database.Database, tableName: string): boolean {
+  return Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type IN ('table', 'virtual table') AND name = ?").get(tableName))
+}
+
+function tableColumns(db: Database.Database, tableName: string): Set<string> {
+  if (!tableExists(db, tableName)) return new Set()
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as { name: string }[]
+  return new Set(rows.map((row) => row.name))
+}
+
+function ensureColumn(db: Database.Database, tableName: string, columnName: string, definition: string): void {
+  if (!tableExists(db, tableName)) return
+  if (tableColumns(db, tableName).has(columnName)) return
+  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`)
+}
+
+function repairExistingSchema(db: Database.Database): void {
+  ensureColumn(db, 'notes', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'notes', 'title', "title TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'notes', 'file_path', "file_path TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'notes', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'notes', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'notes', 'content_hash', "content_hash TEXT NOT NULL DEFAULT ''")
+
+  ensureColumn(db, 'links', 'source_note_id', "source_note_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'links', 'target_note_id', 'target_note_id TEXT')
+  ensureColumn(db, 'links', 'target_title', "target_title TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'links', 'context', 'context TEXT')
+  ensureColumn(db, 'links', 'line', 'line INTEGER NOT NULL DEFAULT 1')
+  ensureColumn(db, 'links', 'link_type', "link_type TEXT NOT NULL DEFAULT 'explicit'")
+
+  ensureColumn(db, 'tasks', 'note_id', "note_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'tasks', 'text', "text TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'tasks', 'done', 'done INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'chunks', 'note_id', "note_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'chunks', 'chunk_index', 'chunk_index INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'chunks', 'content', "content TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'chunks', 'heading_context', 'heading_context TEXT')
+  ensureColumn(db, 'chunks', 'token_count', 'token_count INTEGER')
+  ensureColumn(db, 'chunks', 'embedding', 'embedding BLOB')
+  ensureColumn(db, 'chunks', 'embedding_model', 'embedding_model TEXT')
+
+  ensureColumn(db, 'conversations', 'sources', 'sources TEXT')
+  ensureColumn(db, 'conversations', 'session_id', 'session_id TEXT DEFAULT NULL')
+
+  ensureColumn(db, 'chat_sessions', 'title', "title TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'chat_sessions', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'chat_sessions', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'kanban_columns', 'name', "name TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'kanban_columns', 'sort_order', 'sort_order INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'kanban_tasks', 'column_id', "column_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'kanban_tasks', 'title', "title TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'kanban_tasks', 'description', "description TEXT DEFAULT ''")
+  ensureColumn(db, 'kanban_tasks', 'sort_order', 'sort_order INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'kanban_tasks', 'priority', 'priority INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'kanban_tasks', 'due_date', 'due_date TEXT')
+  ensureColumn(db, 'kanban_tasks', 'source_note_id', 'source_note_id TEXT')
+  ensureColumn(db, 'kanban_tasks', 'source_file_path', 'source_file_path TEXT')
+  ensureColumn(db, 'kanban_tasks', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'kanban_tasks', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'kanban_task_relations', 'source_task_id', "source_task_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'kanban_task_relations', 'target_task_id', "target_task_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'kanban_task_relations', 'relation_type', "relation_type TEXT NOT NULL DEFAULT 'related'")
+
+  if (tableExists(db, 'links') && tableExists(db, 'notes') && tableColumns(db, 'links').has('source_note_id')) {
+    db.exec("DELETE FROM links WHERE source_note_id = '' OR source_note_id NOT IN (SELECT id FROM notes)")
+  }
+}
 
 const migrations: Migration[] = [
   () => {},

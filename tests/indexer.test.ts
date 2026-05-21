@@ -34,6 +34,55 @@ describe('indexer', () => {
     closeDatabase()
   })
 
+  it('should repair old database schemas even when schema_version is current', async () => {
+    const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
+    const dbPath = join(vaultPath, '.nexusky', 'index.db')
+    const oldDb = new Database(dbPath)
+    oldDb.exec(`
+      CREATE TABLE notes (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        file_path TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        content_hash TEXT NOT NULL
+      );
+      CREATE TABLE links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_title TEXT NOT NULL
+      );
+      INSERT INTO links (target_title) VALUES ('Legacy Target');
+      CREATE TABLE conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+      CREATE TABLE kanban_tasks (
+        id TEXT PRIMARY KEY,
+        column_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (8);
+    `)
+    oldDb.close()
+
+    const db = getDatabase(vaultPath)
+    const links = db.prepare('PRAGMA table_info(links)').all() as { name: string }[]
+    const conversations = db.prepare('PRAGMA table_info(conversations)').all() as { name: string }[]
+    const kanbanTasks = db.prepare('PRAGMA table_info(kanban_tasks)').all() as { name: string }[]
+
+    expect(links.map((column) => column.name)).toEqual(expect.arrayContaining(['context', 'line', 'link_type']))
+    expect(conversations.map((column) => column.name)).toEqual(expect.arrayContaining(['sources', 'session_id']))
+    expect(kanbanTasks.map((column) => column.name)).toEqual(expect.arrayContaining(['description', 'priority', 'due_date', 'source_note_id', 'source_file_path', 'created_at', 'updated_at']))
+    expect(db.prepare('SELECT COUNT(*) as count FROM links').get()).toEqual({ count: 0 })
+    expect(() => db.prepare("INSERT INTO links (source_note_id, target_title, context, line, link_type) VALUES ('n1', 'Target', 'ctx', 3, 'explicit')").run()).not.toThrow()
+
+    closeDatabase()
+  })
+
   it('should index a markdown file', async () => {
     const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
     const { indexNote, getAllNotes } = await import('../packages/main/src/services/indexer')
