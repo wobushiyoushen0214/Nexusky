@@ -5,6 +5,7 @@ import { createHash } from 'crypto'
 import { net, BrowserWindow } from 'electron'
 import { logger } from '../logger'
 import { store } from '../store'
+import { getErrorMessage } from '@shared/utils/errors'
 
 export interface OneDriveConfig {
   clientId: string
@@ -37,16 +38,6 @@ interface OneDriveChildrenResponse {
 }
 
 type GraphRequestBody = string | Buffer | Record<string, unknown>
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string') return message
-  }
-  return String(error)
-}
 
 function getConfig(): OneDriveConfig | null {
   const config = store.get('onedriveConfig') as OneDriveConfig | undefined

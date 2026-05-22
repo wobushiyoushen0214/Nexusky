@@ -23,16 +23,11 @@ import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-cont
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { join, basename } from 'path'
 import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
+import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { transcribeAudio, type TranscribeAudioParams } from '../services/ai/transcription'
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string') return message
-  }
-  return String(error)
+  return getErrorMessageShared(error)
 }
 
 function getStringArg(args: Record<string, unknown>, key: string): string {

@@ -14,6 +14,7 @@ import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIndexResult } from '../services/vault-indexer'
 import { getCachedVaultQuery } from '../services/db-query-cache'
 import { ensureBoundedString, ensureNonEmptyString, ensureOptionalBoundedString, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from './validators'
+import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { searchNotes } from '../services/note-search'
 import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
 import type Database from 'better-sqlite3'
@@ -35,13 +36,7 @@ function resolveNoteId(vaultPath: string, params: { noteId?: string; filePath?: 
 }
 
 function getErrorMessage(error: unknown, fallback = ''): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    if (typeof message === 'string') return message
-  }
-  return fallback
+  return getErrorMessageShared(error, fallback)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
