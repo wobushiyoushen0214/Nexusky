@@ -10,11 +10,29 @@ const invoke: InvokeFunction = (channel, params) => {
   return ipcRenderer.invoke(channel, params)
 }
 
+const SEND_ALLOWLIST: ReadonlySet<string> = new Set([
+  'window:minimize',
+  'window:maximize',
+  'window:close',
+  'window:new',
+  'theme:change',
+])
+
+const safeSend = (channel: string, ...args: unknown[]) => {
+  if (typeof channel !== 'string' || !SEND_ALLOWLIST.has(channel)) {
+    // Swallow disallowed channels silently in the renderer; the main
+    // process side does not even register handlers for them. This makes
+    // a hijacked renderer unable to reach arbitrary ipcMain.on listeners
+    // that may be added in the future.
+    console.warn('[preload] blocked send to disallowed channel', channel)
+    return
+  }
+  ipcRenderer.send(channel, ...args)
+}
+
 const api = {
   invoke,
-  send: (channel: string, ...args: unknown[]) => {
-    ipcRenderer.send(channel, ...args)
-  },
+  send: safeSend,
   onFileChanged: (callback: (path: string) => void) => {
     const handler = (_event: unknown, path: string) => callback(path)
     ipcRenderer.on('file:changed', handler)
