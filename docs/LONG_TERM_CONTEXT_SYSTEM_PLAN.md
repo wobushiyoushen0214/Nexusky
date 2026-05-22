@@ -317,10 +317,12 @@ export function recordContextEvent(input: ContextEventInput): void
 
 第一版接入点：
 
-- `db:index-file` 成功后记录 `note_updated`
+- `db:index-file` 成功后记录 `note_updated` 并排队后台关系发现
+- vault watcher 监听到 Markdown 新增 / 修改后记录 `note_created` / `note_updated` 并排队后台关系发现
+- vault 打开或全量索引完成后，后台抽样最近笔记做维护性关系发现
 - `kanban:create-task` 后记录 `task_created`
 - `kanban:update-task` 后记录 `task_updated`
-- `db:chat-history-append` 记录用户消息 `ai_question_asked`
+- `db:chat-history-append` 记录用户消息 `ai_question_asked` 并排队 chat -> note 关系发现
 
 ### 5.2 `relation-candidates.ts`
 
@@ -1308,12 +1310,15 @@ npm test -- long-context
 - [x] 长期上下文不会无来源注入。
 - [x] 低置信度关系不会被当作事实。
 - [x] 被用户否定的关系不会反复出现。
+- [x] 关系发现不依赖用户点击 refresh，笔记索引、文件监听、chat 记录和 vault 维护会进入后台队列。
+- [x] 后台队列会按阈值抽取长期主题，并按周期写入 `.nexusky/reviews/` 认知复盘记忆文件。
 
 最终验收记录：
 
 - 2026-05-22：MVP 闭环已覆盖 `long-context:get-suggestions` / `long-context:discover-relations` / `long-context:submit-feedback`、编辑器 Top 3 面板、来源打开、useful / not_related / wrong_reason / dismissed 反馈、排序刷新和持久化。
 - 2026-05-22：长期主题闭环已覆盖主题抽取、3 实体 + 7 天门槛、membership 追溯、`long-context:get-themes` / `long-context:run-theme-extraction`。
 - 2026-05-22：长期上下文闭环已覆盖 Hot / Warm / Cold context pack、来源与证据注入、低置信度 guard、否定关系隐藏和衰减归档治理、周期性 cognitive review。
+- 2026-05-22：补齐真正的后台主路径：新增 `relation-discovery.ts` 复用服务、`background.ts` 节流队列；`watcher`、`db:index-file`、`db:index-vault`、`db:chat-history-append` 会静默排队长期关系发现；后台会在关系积累后抽取长期主题，并在到期时写入 `.nexusky/reviews/YYYY-MM-DD-cognitive-review.md`。
 
 ---
 
@@ -1354,6 +1359,7 @@ not_related_rate <= 40%
 - 2026-05-22：新增 `context-events.ts`，用 `context_events` 记录 `suggestion_shown`、`suggestion_opened`、`relation_feedback_submitted`、`relation_created`、`relation_reinforced`、`theme_created`。
 - 2026-05-22：`long-context:get-suggestions` / `long-context:discover-relations` 会记录展示次数；编辑器相关上下文卡片打开来源时记录 `suggestion_opened`；反馈提交记录 feedback type；关系 upsert 记录 created / reinforced；主题抽取记录 theme created。
 - 2026-05-22：新增 `long-context:get-metrics`，返回 `suggestionShown`、`suggestionOpened`、`suggestionUseful`、`suggestionDismissed`、`suggestionNotRelated`、`relationCreated`、`relationReinforced`、`themeCreated` 以及 `usefulRate`、`openRate`、`notRelatedRate`。新增 `tests/long-context-metrics.test.ts`，验证通过：`npm test -- long-context-metrics long-context-ipc-types long-context-themes long-context-store`、`npm run typecheck`。
+- 2026-05-22：后台主路径新增 `note_created`、`note_updated`、`ai_question_asked`、`theme_extraction_run`、`cognitive_review_generated` 事件，便于区分静默输入层、主题抽取和记忆文件写入。
 
 ---
 

@@ -17,12 +17,12 @@ import { ensureBoundedString, ensureNonEmptyString, ensureOptionalBoundedString,
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { searchNotes } from '../services/note-search'
 import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
-import { findRelationCandidates } from '../services/long-context/relation-candidates'
-import { classifyRelation, shouldPersistRelationClassification } from '../services/long-context/relation-classifier'
-import { getContextSuggestions, refreshRelationScores, submitRelationFeedback, upsertRelation } from '../services/long-context/relation-store'
+import { getContextSuggestions, refreshRelationScores, submitRelationFeedback } from '../services/long-context/relation-store'
 import { extractLongTermThemes, getLongTermThemes } from '../services/long-context/theme-extractor'
 import { generateCognitiveReview } from '../services/long-context/cognitive-review'
 import { getLongContextMetrics, recordContextEvent } from '../services/long-context/context-events'
+import { discoverLongContextRelations } from '../services/long-context/relation-discovery'
+import { scheduleIndexedNoteLongContext, scheduleLongContextAnalysis, scheduleVaultLongContextMaintenance } from '../services/long-context/background'
 import type Database from 'better-sqlite3'
 import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextMetrics, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 
@@ -101,136 +101,6 @@ function ensureOptionalUnixSeconds(value: unknown, field: string): number | unde
     throw new Error(`Invalid IPC payload: ${field} must be a positive unix timestamp`)
   }
   return Math.floor(value)
-}
-
-interface LongContextEntitySnapshot {
-  title: string
-  path?: string
-  content: string
-}
-
-function getLongContextEntitySnapshot(
-  db: Database.Database,
-  entityType: LongContextEntityType,
-  entityId: string,
-  contentOverride?: string
-): LongContextEntitySnapshot | null {
-  if (entityType === 'note') {
-    const row = db.prepare(`
-      SELECT n.title, n.file_path as filePath, COALESCE(f.content, '') as content
-      FROM notes n
-      LEFT JOIN notes_fts_map m ON m.note_id = n.id
-      LEFT JOIN notes_fts f ON f.rowid = m.rowid
-      WHERE n.id = ?
-    `).get(entityId) as { title: string; filePath: string; content: string } | undefined
-    if (!row) return null
-    return {
-      title: row.title,
-      path: row.filePath,
-      content: contentOverride?.trim() || row.content || ''
-    }
-  }
-
-  if (entityType === 'task') {
-    const kanbanTask = db.prepare(`
-      SELECT title, description, source_file_path as filePath
-      FROM kanban_tasks
-      WHERE id = ?
-    `).get(entityId) as { title: string; description: string | null; filePath: string | null } | undefined
-    if (kanbanTask) {
-      return {
-        title: kanbanTask.title,
-        path: kanbanTask.filePath || undefined,
-        content: contentOverride?.trim() || kanbanTask.description || kanbanTask.title
-      }
-    }
-
-    const inlineTask = db.prepare(`
-      SELECT t.text, n.title as noteTitle, n.file_path as filePath
-      FROM tasks t
-      JOIN notes n ON n.id = t.note_id
-      WHERE CAST(t.id AS TEXT) = ?
-    `).get(entityId) as { text: string; noteTitle: string; filePath: string } | undefined
-    if (!inlineTask) return null
-    return {
-      title: inlineTask.text,
-      path: inlineTask.filePath,
-      content: contentOverride?.trim() || `${inlineTask.noteTitle}\n${inlineTask.text}`
-    }
-  }
-
-  return {
-    title: 'Chat context',
-    content: contentOverride?.trim() || ''
-  }
-}
-
-async function discoverLongContextRelations(params: {
-  vaultPath: string
-  entityType: LongContextEntityType
-  entityId: string
-  content?: string
-  limit?: number
-}): Promise<{ discovered: number; suggestions: LongContextSuggestion[] }> {
-  const db = getDatabase(params.vaultPath)
-  const limit = normalizeLongContextLimit(params.limit, 10)
-  const current = getLongContextEntitySnapshot(db, params.entityType, params.entityId, params.content)
-  if (!current) {
-    return { discovered: 0, suggestions: [] }
-  }
-
-  const candidates = findRelationCandidates({
-    vaultPath: params.vaultPath,
-    entityType: params.entityType,
-    entityId: params.entityId,
-    content: params.content,
-    limit
-  })
-
-  let discovered = 0
-  for (const candidate of candidates) {
-    const target = getLongContextEntitySnapshot(db, candidate.targetType, candidate.targetId)
-    if (!target) continue
-    const classification = await classifyRelation({
-      current: {
-        title: current.title,
-        content: current.content
-      },
-      candidate: {
-        title: target.title,
-        content: target.content
-      },
-      signals: candidate.signals
-    })
-    if (!shouldPersistRelationClassification(classification)) continue
-
-    upsertRelation(params.vaultPath, {
-      sourceType: params.entityType,
-      sourceId: params.entityId,
-      sourceTitle: current.title,
-      sourcePath: current.path,
-      targetType: candidate.targetType,
-      targetId: candidate.targetId,
-      targetTitle: candidate.targetTitle || target.title,
-      targetPath: candidate.targetPath || target.path,
-      relationType: classification.relationType,
-      confidence: classification.confidence,
-      localScore: candidate.localScore,
-      evidence: classification.evidence,
-      reason: classification.reason
-    })
-    discovered += 1
-  }
-
-  return {
-    discovered,
-    suggestions: getContextSuggestions({
-      vaultPath: params.vaultPath,
-      entityType: params.entityType,
-      entityId: params.entityId,
-      limit: Math.min(limit, 3)
-    }) as LongContextSuggestion[]
-  }
 }
 
 function recordSuggestionShownEvents(params: {
@@ -348,6 +218,7 @@ export function registerDbIPC(): void {
         ? await indexVault(params.vaultPath, onProgress)
         : await runIndexVaultWorker(params.vaultPath, onProgress)
       invalidateEmbeddingCache()
+      scheduleVaultLongContextMaintenance(params.vaultPath)
       return result
     } finally {
       closeDatabase()
@@ -356,6 +227,12 @@ export function registerDbIPC(): void {
 
   ipcMain.handle('db:index-file', async (_event, params: { vaultPath: string; filePath: string }) => {
     indexNote(params.vaultPath, params.filePath)
+    scheduleIndexedNoteLongContext({
+      vaultPath: params.vaultPath,
+      filePath: params.filePath,
+      eventType: 'note_updated',
+      trigger: 'db:index-file'
+    })
   })
 
   ipcMain.handle('db:remove-file', async (_event, params: { vaultPath: string; filePath: string }) => {
@@ -617,6 +494,14 @@ export function registerDbIPC(): void {
       INSERT INTO kanban_tasks (id, column_id, title, description, sort_order, priority, due_date, source_note_id, source_file_path)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(params.id, params.columnId, params.title.trim(), params.description || '', (maxOrder.m ?? -1) + 1, params.priority || 0, params.dueDate || null, params.sourceNoteId || null, params.sourceFilePath || null)
+    scheduleLongContextAnalysis({
+      vaultPath: params.vaultPath,
+      entityType: 'task',
+      entityId: params.id,
+      content: `${params.title.trim()}\n${params.description || ''}`.trim(),
+      eventType: 'task_created',
+      trigger: 'kanban:create-task'
+    })
   })
 
   ipcMain.handle('kanban:update-task', async (_event, params: { vaultPath: string; id: string; title?: string; description?: string; columnId?: string; sortOrder?: number; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }) => {
@@ -639,6 +524,17 @@ export function registerDbIPC(): void {
     sets.push('updated_at = unixepoch()')
     values.push(params.id)
     db.prepare(`UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = ?`).run(...values)
+    const task = db.prepare('SELECT title, description FROM kanban_tasks WHERE id = ?').get(params.id) as { title: string; description: string | null } | undefined
+    if (task) {
+      scheduleLongContextAnalysis({
+        vaultPath: params.vaultPath,
+        entityType: 'task',
+        entityId: params.id,
+        content: `${task.title}\n${task.description || ''}`.trim(),
+        eventType: 'task_updated',
+        trigger: 'kanban:update-task'
+      })
+    }
   })
 
   ipcMain.handle('kanban:delete-task', async (_event, params: { vaultPath: string; id: string }) => {
@@ -1100,11 +996,21 @@ export function registerDbIPC(): void {
 
   ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }) => {
     const db = getDatabase(params.vaultPath)
-    db.prepare(
+    const result = db.prepare(
       'INSERT INTO conversations (role, content, sources, session_id) VALUES (?, ?, ?, ?)'
     ).run(params.role, params.content, params.sources ? JSON.stringify(params.sources) : null, params.sessionId || null)
     if (params.sessionId) {
       db.prepare('UPDATE chat_sessions SET updated_at = unixepoch() WHERE id = ?').run(params.sessionId)
+    }
+    if (params.role === 'user') {
+      scheduleLongContextAnalysis({
+        vaultPath: params.vaultPath,
+        entityType: 'chat',
+        entityId: `chat-${String(result.lastInsertRowid)}`,
+        content: params.content,
+        eventType: 'ai_question_asked',
+        trigger: 'db:chat-history-append'
+      })
     }
   })
 

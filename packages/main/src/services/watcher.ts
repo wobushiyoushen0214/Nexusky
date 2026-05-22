@@ -7,6 +7,7 @@ import { indexNoteEmbeddings, invalidateNoteInCache } from './embedding'
 import { getDatabase } from './database'
 import { readFileSync } from 'fs'
 import { generateMemory, readMemory, deleteMemory } from './memory'
+import { cancelLongContextAnalysis, scheduleIndexedNoteLongContext, scheduleVaultLongContextMaintenance } from './long-context/background'
 
 let watcher: FSWatcher | null = null
 let currentVaultPath: string | null = null
@@ -16,6 +17,7 @@ const changeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
 export function startWatching(vaultPath: string): void {
   stopWatching()
   currentVaultPath = vaultPath
+  scheduleVaultLongContextMaintenance(vaultPath)
 
   watcher = chokidar.watch(vaultPath, {
     ignored: /(^|[\/\\])(\.|node_modules|\.history)/,
@@ -36,7 +38,7 @@ export function startWatching(vaultPath: string): void {
     }, 500)
   }
 
-  const indexAndNotify = (path: string) => {
+  const indexAndNotify = (path: string, eventType: 'note_created' | 'note_updated' = 'note_updated') => {
     const existing = changeTimers.get(path)
     if (existing) clearTimeout(existing)
     changeTimers.set(path, setTimeout(() => {
@@ -60,6 +62,12 @@ export function startWatching(vaultPath: string): void {
             generateMemory(vaultPath, noteId, note.title, note.file_path, content, contentHash).catch(() => {})
           }
         }
+        scheduleIndexedNoteLongContext({
+          vaultPath,
+          filePath: path,
+          eventType,
+          trigger: 'watcher'
+        })
       } catch {}
       const windows = BrowserWindow.getAllWindows()
       for (const win of windows) {
@@ -73,7 +81,7 @@ export function startWatching(vaultPath: string): void {
   watcher
     .on('add', (path) => {
       notifyStructureChange()
-      if (extname(path) === '.md') indexAndNotify(path)
+      if (extname(path) === '.md') indexAndNotify(path, 'note_created')
     })
     .on('unlink', (path) => {
       notifyStructureChange()
@@ -93,12 +101,13 @@ export function startWatching(vaultPath: string): void {
     .on('unlinkDir', notifyStructureChange)
     .on('change', (path) => {
       if (extname(path) === '.md') {
-        indexAndNotify(path)
+        indexAndNotify(path, 'note_updated')
       }
     })
 }
 
 export function stopWatching(): void {
+  if (currentVaultPath) cancelLongContextAnalysis(currentVaultPath)
   if (structureTimer) {
     clearTimeout(structureTimer)
     structureTimer = null

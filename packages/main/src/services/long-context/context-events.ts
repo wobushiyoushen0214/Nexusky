@@ -2,12 +2,19 @@ import { randomUUID } from 'crypto'
 import { getDatabase } from '../database'
 
 export type LongContextEventType =
+  | 'note_created'
+  | 'note_updated'
+  | 'task_created'
+  | 'task_updated'
+  | 'ai_question_asked'
   | 'suggestion_shown'
   | 'suggestion_opened'
   | 'relation_feedback_submitted'
   | 'relation_created'
   | 'relation_reinforced'
   | 'theme_created'
+  | 'theme_extraction_run'
+  | 'cognitive_review_generated'
 
 export interface RecordContextEventParams {
   vaultPath: string
