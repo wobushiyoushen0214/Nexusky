@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs'
 import { dirname, extname, join, relative } from 'path'
 import { store } from '../store'
+import { logger } from '../logger'
 import type { SyncFileInfo, SyncProvider, SyncResult } from './provider'
 
 export interface WebDavConfig {
@@ -9,6 +10,26 @@ export interface WebDavConfig {
   username?: string
   password?: string
   folder: string
+}
+
+const insecureWarned = new Set<string>()
+function warnIfInsecureWebDav(url: string): void {
+  if (!url) return
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return
+  }
+  const host = parsed.hostname
+  if (parsed.protocol !== 'http:') return
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return
+  const key = `${parsed.protocol}//${parsed.host}`
+  if (insecureWarned.has(key)) return
+  insecureWarned.add(key)
+  logger.warn('WebDAV endpoint uses plain HTTP. Credentials and notes will travel unencrypted.', {
+    host: parsed.host,
+  })
 }
 
 function getConfig(): WebDavConfig | null {
@@ -25,6 +46,7 @@ function getConfig(): WebDavConfig | null {
 export function normalizeWebDavConfig(config: Partial<WebDavConfig> | null | undefined): WebDavConfig {
   const url = (config?.url || '').trim().replace(/\/+$/, '')
   const folder = `/${(config?.folder || '/Nexusky').trim().replace(/^\/+|\/+$/g, '')}`
+  warnIfInsecureWebDav(url)
   return {
     url,
     username: config?.username || '',
