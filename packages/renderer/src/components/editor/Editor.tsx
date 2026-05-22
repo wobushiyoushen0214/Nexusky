@@ -34,6 +34,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
+import { RelatedContextPanel } from '../long-context/RelatedContextPanel'
 import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, stripMarkdownFrontmatter, type ObsidianLinkReference } from '../../utils/obsidian-link'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
@@ -706,6 +707,7 @@ export function Editor() {
             <EditorContent editor={editor} />
             <TransclusionBlocks content={content} />
             <MermaidBlocks content={content} />
+            <RelatedContextPanel currentFilePath={currentFilePath} content={content} />
           </div>
         </div>
         {splitPath && splitContent !== null && (

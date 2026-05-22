@@ -1009,7 +1009,7 @@ tests/long-context-ipc-types.test.ts
 
 下一步：
 
-- 从 Iteration 5 开始做最小编辑器 UI：先实现 `RelatedContextPanel` / `RelatedContextCard` / badge 和 feedback 调用，再接入当前笔记视图。
+- Iteration 5 已完成；下一步从 Iteration 6 的长期主题抽取开始。
 
 ### Iteration 5：编辑器 UI
 
@@ -1021,19 +1021,29 @@ tests/long-context-ipc-types.test.ts
 
 任务：
 
-- [ ] 新建 `RelatedContextPanel`。
-- [ ] 加载当前笔记 suggestions。
-- [ ] 展示 Top 3。
-- [ ] 支持打开源笔记。
-- [ ] 支持 useful / not_related / wrong_reason / dismissed。
-- [ ] 加载中、空状态、错误状态。
+- [x] 新建 `RelatedContextPanel`。
+- [x] 加载当前笔记 suggestions。
+- [x] 展示 Top 3。
+- [x] 支持打开源笔记。
+- [x] 支持 useful / not_related / wrong_reason / dismissed。
+- [x] 加载中、空状态、错误状态。
 
 验收：
 
-- 不阻塞编辑器输入。
-- 无建议时不显示大面积空面板。
-- 每条卡片都显示原因和证据。
-- 点击反馈后卡片状态立即更新。
+- [x] 不阻塞编辑器输入。
+- [x] 无建议时不显示大面积空面板。
+- [x] 每条卡片都显示原因和证据。
+- [x] 点击反馈后卡片状态立即更新。
+
+执行记录：
+
+- 2026-05-22：新增 `packages/renderer/src/components/long-context/RelatedContextPanel.tsx`、`RelatedContextCard.tsx`、`LongContextBadge.tsx`、`long-context.css`。面板通过当前文件路径解析 noteId，加载 `long-context:get-suggestions` Top 3；刷新按钮触发 `refresh` discover；空建议时只保留紧凑 header，不显示大面积空状态，加载和错误时显示轻量状态。
+- 2026-05-22：在 `packages/renderer/src/components/editor/Editor.tsx` 的主编辑器滚动区底部接入 `RelatedContextPanel`。卡片展示标题、关系类型、置信度、原因、证据、分数；支持打开源笔记和 `useful` / `not_related` / `wrong_reason` / `dismissed` 反馈。`not_related` / `dismissed` 立即移除卡片，`useful` / `wrong_reason` 立即标记按钮状态。
+- 2026-05-22：新增 `tests/long-context-ui.test.ts` 覆盖关系类型短标签。验证通过：`npm test -- long-context`、`npm run typecheck`、`npm run build`。未用 Browser 截图：当前目标是 Electron 界面，没有稳定 localhost 页面；用生产构建替代前端集成验证。
+
+下一步：
+
+- 从 Iteration 6 开始实现 `theme-extractor.ts`，先用高分关系聚合候选主题，再接 AI 标题/摘要/关键词生成和 `long_term_themes` / `theme_memberships` 写入。
 
 ### Iteration 6：长期主题抽取
 
@@ -1357,7 +1367,7 @@ Day 6
 Day 7
 - 复盘召回质量
 - 调整阈值
-- 准备前端面板
+- 准备前端面板（已完成，2026-05-22）
 ```
 
 第一周结束时必须能做到：
