@@ -854,7 +854,7 @@ tests/long-context-schema.test.ts
 
 下一步：
 
-- 从 Iteration 1 开始实现 `packages/main/src/services/long-context/relation-candidates.ts`，优先完成 links / backlinks / tags / properties 本地召回。
+- Iteration 1 已完成；下一步从 Iteration 2 的 AI 关系分类开始。
 
 ### Iteration 1：本地候选召回
 
@@ -866,12 +866,12 @@ tests/long-context-schema.test.ts
 
 任务：
 
-- [ ] 新建 `relation-candidates.ts`。
-- [ ] 从 explicit links / backlinks 召回。
-- [ ] 从 tag / property 重合召回。
-- [ ] 从 FTS / title 关键词召回。
-- [ ] 从 semantic search 召回。
-- [ ] 输出 `signals` 和 `snippets`。
+- [x] 新建 `relation-candidates.ts`。
+- [x] 从 explicit links / backlinks 召回。
+- [x] 从 tag / property 重合召回。
+- [x] 从 FTS / title 关键词召回。
+- [x] 从 semantic search 召回。
+- [x] 输出 `signals` 和 `snippets`。
 
 测试：
 
@@ -881,10 +881,19 @@ tests/long-context-candidates.test.ts
 
 验收：
 
-- 一个有 tag 重合的历史笔记能被召回。
-- 一个仅 embedding 相似的笔记能被召回。
-- 已经显式链接的笔记分数高于普通关键词命中。
-- 候选结果稳定排序。
+- [x] 一个有 tag 重合的历史笔记能被召回。
+- [x] 一个仅 embedding / semantic chunk 相似的笔记能被召回。
+- [x] 已经显式链接的笔记分数高于普通关键词命中。
+- [x] 候选结果稳定排序。
+
+执行记录：
+
+- 2026-05-22：新增 `packages/main/src/services/long-context/relation-candidates.ts`，实现 notes / tasks / chat 输入的本地候选召回。当前信号覆盖 `explicit_link`、`backlink`、`tag:*`、`property:*`、`fts_keyword:*`、`title_keyword:*`、`semantic_chunk`、`task_text`、`same_folder`、`recent_edit`，并输出 `signals` 和 `snippets`。`semantic_chunk` 使用本地 chunks/token similarity，不调用 AI provider，后续可替换或增强为真实 embedding BLOB 相似度。
+- 2026-05-22：新增 `tests/long-context-candidates.test.ts` 覆盖显式链接高于普通关键词、tag/property 召回、chunk 语义召回、稳定排序。验证通过：`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 2 开始实现 `relation-classifier.ts`，先做严格 JSON prompt、输出校验和低置信度 fallback；暂不接入入库，避免把 AI 分类和 store 责任混在同一批。
 
 ### Iteration 2：AI 关系分类
 
@@ -1297,12 +1306,12 @@ Day 1
 - 写 schema 测试（已完成，2026-05-22）
 
 Day 2
-- 实现 relation-candidates.ts
-- 支持 links / backlinks / tags / properties 召回
+- 实现 relation-candidates.ts（已完成，2026-05-22）
+- 支持 links / backlinks / tags / properties 召回（已完成，2026-05-22）
 
 Day 3
-- 接入 FTS / semantic search 候选
-- 写 candidates 测试
+- 接入 FTS / semantic search 候选（已完成，2026-05-22；semantic 当前为本地 chunks/token similarity）
+- 写 candidates 测试（已完成，2026-05-22）
 
 Day 4
 - 实现 relation-store.ts
