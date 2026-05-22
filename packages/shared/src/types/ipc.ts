@@ -313,6 +313,22 @@ export interface LongContextRelationRefreshResult {
   archived: number
 }
 
+export interface LongContextCognitiveReviewResult {
+  title: string
+  markdown: string
+  filePath?: string
+  generatedAt: number
+  since: number
+  until: number
+  stats: {
+    newRelations: number
+    themeChanges: number
+    repeatedQuestions: number
+    blockers: number
+    resurfacedContexts: number
+  }
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -437,6 +453,16 @@ export interface IPCChannelMap {
       limit?: number
     }
     result: LongContextRelationRefreshResult
+  }
+  'long-context:generate-cognitive-review': {
+    params: {
+      vaultPath: string
+      since?: number
+      until?: number
+      write?: boolean
+      outputPath?: string
+    }
+    result: LongContextCognitiveReviewResult
   }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
   'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }

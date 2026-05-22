@@ -1172,19 +1172,30 @@ Nexusky 能每周生成“认知观察”，而不是普通总结。
 
 任务：
 
-- [ ] 新建 `cognitive-review.ts`。
-- [ ] 聚合最近新增关系。
-- [ ] 聚合长期主题变化。
-- [ ] 聚合重复问题和阻塞项。
-- [ ] 生成周报 Markdown。
-- [ ] 可选写入 `.nexusky/reviews/` 或用户指定笔记。
+- [x] 新建 `cognitive-review.ts`。
+- [x] 聚合最近新增关系。
+- [x] 聚合长期主题变化。
+- [x] 聚合重复问题和阻塞项。
+- [x] 生成周报 Markdown。
+- [x] 可选写入 `.nexusky/reviews/` 或用户指定笔记。
 
 验收：
 
-- 周报包含新增关系。
-- 周报包含长期主题变化。
-- 周报包含被遗忘但重新相关的上下文。
-- 周报不把短期摘要伪装成长期洞察。
+- [x] 周报包含新增关系。
+- [x] 周报包含长期主题变化。
+- [x] 周报包含被遗忘但重新相关的上下文。
+- [x] 周报不把短期摘要伪装成长期洞察。
+
+执行记录：
+
+- 2026-05-22：新增 `cognitive-review.ts`，生成 evidence-backed cognitive review，而不是普通活动摘要；默认窗口为最近 7 天，支持自定义 `since` / `until`。
+- 2026-05-22：聚合 `ai_relations` 的新增关系、长期未见后重新出现的关系，聚合 `long_term_themes` 的主题变化，并从 `context_events` / `conversations` 提取重复 AI 问题。
+- 2026-05-22：从 inline tasks 和 kanban tasks 提取 blocked / waiting / stuck 信号，生成 Markdown 的 `New Relationships`、`Theme Changes`、`Repeated Questions and Blockers`、`Forgotten Context Resurfaced`、`Observation Boundary` 分区。
+- 2026-05-22：新增 `long-context:generate-cognitive-review` IPC，支持返回 Markdown 或写入 `.nexusky/reviews/YYYY-MM-DD-cognitive-review.md` / 用户指定 vault 内路径。新增 `tests/long-context-cognitive-review.test.ts` 并更新 IPC 类型测试。验证通过：`npm test -- long-context-cognitive-review long-context-ipc-types`、`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 进入最终验收：按 MVP、长期主题、长期上下文验收标准逐项核对已实现闭环，补齐必要的测试 / 文档缺口后再标记目标完成。
 
 ---
 

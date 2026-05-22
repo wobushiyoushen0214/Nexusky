@@ -65,6 +65,27 @@ describe('long-context IPC types', () => {
       vaultPath: '/tmp/vault',
       currentFilePath: '/tmp/vault/Current.md'
     }
+    const reviewParams: IPCChannelMap['long-context:generate-cognitive-review']['params'] = {
+      vaultPath: '/tmp/vault',
+      since: 1_799_000_000,
+      until: 1_800_000_000,
+      write: true
+    }
+    const reviewResult: IPCChannelMap['long-context:generate-cognitive-review']['result'] = {
+      title: 'Cognitive Review',
+      markdown: '# Cognitive Review',
+      filePath: '.nexusky/reviews/2027-01-15-cognitive-review.md',
+      generatedAt: 1_800_000_000,
+      since: 1_799_000_000,
+      until: 1_800_000_000,
+      stats: {
+        newRelations: 1,
+        themeChanges: 1,
+        repeatedQuestions: 1,
+        blockers: 1,
+        resurfacedContexts: 1
+      }
+    }
 
     expect(getParams.entityType).toBe('note')
     expect(discoverResult.suggestions[0].relationType).toBe('supports_goal')
@@ -74,5 +95,7 @@ describe('long-context IPC types', () => {
     expect(refreshParams.entityId).toBe('note-1')
     expect(refreshResult.archived).toBe(1)
     expect(chatParams.currentFilePath).toContain('Current.md')
+    expect(reviewParams.write).toBe(true)
+    expect(reviewResult.stats.resurfacedContexts).toBe(1)
   })
 })

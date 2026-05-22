@@ -13,7 +13,7 @@ import { collectDueFlashcardsFromNotes, getLocalDateFromStamp, getLocalDateStamp
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIndexResult } from '../services/vault-indexer'
 import { getCachedVaultQuery } from '../services/db-query-cache'
-import { ensureBoundedString, ensureNonEmptyString, ensureOptionalBoundedString, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from './validators'
+import { ensureBoundedString, ensureNonEmptyString, ensureOptionalBoundedString, MAX_DESCRIPTION_LENGTH, MAX_PATH_LENGTH, MAX_TITLE_LENGTH } from './validators'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { searchNotes } from '../services/note-search'
 import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
@@ -21,8 +21,9 @@ import { findRelationCandidates } from '../services/long-context/relation-candid
 import { classifyRelation, shouldPersistRelationClassification } from '../services/long-context/relation-classifier'
 import { getContextSuggestions, refreshRelationScores, submitRelationFeedback, upsertRelation } from '../services/long-context/relation-store'
 import { extractLongTermThemes, getLongTermThemes } from '../services/long-context/theme-extractor'
+import { generateCognitiveReview } from '../services/long-context/cognitive-review'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextEntityType, LongContextFeedbackType, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -91,6 +92,14 @@ function normalizeLongContextRefreshLimit(value: unknown): number {
   if (value === undefined || value === null) return 500
   if (typeof value !== 'number' || !Number.isFinite(value)) return 500
   return Math.max(1, Math.min(Math.floor(value), 2000))
+}
+
+function ensureOptionalUnixSeconds(value: unknown, field: string): number | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error(`Invalid IPC payload: ${field} must be a positive unix timestamp`)
+  }
+  return Math.floor(value)
 }
 
 interface LongContextEntitySnapshot {
@@ -854,6 +863,29 @@ export function registerDbIPC(): void {
       entityId,
       limit: normalizeLongContextRefreshLimit(params?.limit)
     }) as LongContextRelationRefreshResult
+  })
+
+  ipcMain.handle('long-context:generate-cognitive-review', async (_event, params: {
+    vaultPath: string
+    since?: number
+    until?: number
+    write?: boolean
+    outputPath?: string
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:generate-cognitive-review.vaultPath')
+    const since = ensureOptionalUnixSeconds(params?.since, 'long-context:generate-cognitive-review.since')
+    const until = ensureOptionalUnixSeconds(params?.until, 'long-context:generate-cognitive-review.until')
+    const outputPath = ensureOptionalBoundedString(params?.outputPath, 'long-context:generate-cognitive-review.outputPath', MAX_PATH_LENGTH)
+    if (since !== undefined && until !== undefined && since > until) {
+      throw new Error('Invalid IPC payload: long-context:generate-cognitive-review.since must be before until')
+    }
+    return generateCognitiveReview({
+      vaultPath: params.vaultPath,
+      since,
+      until,
+      write: Boolean(params?.write),
+      outputPath
+    }) as LongContextCognitiveReviewResult
   })
 
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {
