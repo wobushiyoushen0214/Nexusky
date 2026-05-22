@@ -10,7 +10,7 @@ import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractM
 import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../services/ai/search-results'
 import { findConnectionOpportunities } from '../services/ai/connection-opportunities'
 import { findKnowledgeBridgeNotes } from '../services/ai/graph-insights'
-import { buildKnowledgeMaintenanceQueue, getBlockedTaskInfoByPath, getDueTodayTaskInfoByPath, getElevatedTaskCountByPath, getHighPriorityTaskInfoByPath, getOverdueTaskInfoByPath, getRecurringTaskInfoByPath, getScheduledTaskInfoByPath, getStartedTaskInfoByPath, getUpcomingTaskInfoByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
+import { buildKnowledgeMaintenanceQueue, indexTasksByPath, type KnowledgeMaintenanceType } from '../services/ai/maintenance-queue'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
@@ -2977,21 +2977,18 @@ graph TD
         const propertyRowsByPath = new Map(propertyRows.map((row) => [row.filePath, row.properties]))
         const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
         const tasks = getAllTasks(vaultPath)
-        const openTaskCountByPath = new Map<string, number>()
-        for (const task of tasks) {
-          if (task.done) continue
-          openTaskCountByPath.set(task.filePath, (openTaskCountByPath.get(task.filePath) || 0) + 1)
-        }
         const todayIso = localDateIso()
-        const overdueTaskInfoByPath = getOverdueTaskInfoByPath(tasks, todayIso)
-        const dueTodayTaskInfoByPath = getDueTodayTaskInfoByPath(tasks, todayIso)
-        const highPriorityTaskInfoByPath = getHighPriorityTaskInfoByPath(tasks)
-        const scheduledTaskInfoByPath = getScheduledTaskInfoByPath(tasks, todayIso)
-        const startedTaskInfoByPath = getStartedTaskInfoByPath(tasks, todayIso)
-        const blockedTaskInfoByPath = getBlockedTaskInfoByPath(tasks)
-        const recurringTaskInfoByPath = getRecurringTaskInfoByPath(tasks)
-        const upcomingTaskInfoByPath = getUpcomingTaskInfoByPath(tasks, todayIso, upcomingDays)
-        const elevatedTaskCountByPath = getElevatedTaskCountByPath(tasks, todayIso, upcomingDays)
+        const taskIndex = indexTasksByPath(tasks, todayIso, upcomingDays)
+        const openTaskCountByPath = taskIndex.openTaskCountByPath
+        const overdueTaskInfoByPath = taskIndex.overdueTaskInfoByPath
+        const dueTodayTaskInfoByPath = taskIndex.dueTodayTaskInfoByPath
+        const highPriorityTaskInfoByPath = taskIndex.highPriorityTaskInfoByPath
+        const scheduledTaskInfoByPath = taskIndex.scheduledTaskInfoByPath
+        const startedTaskInfoByPath = taskIndex.startedTaskInfoByPath
+        const blockedTaskInfoByPath = taskIndex.blockedTaskInfoByPath
+        const recurringTaskInfoByPath = taskIndex.recurringTaskInfoByPath
+        const upcomingTaskInfoByPath = taskIndex.upcomingTaskInfoByPath
+        const elevatedTaskCountByPath = taskIndex.elevatedTaskCountByPath
         const emptyNotePaths = new Set<string>()
         const largeNoteCharactersByPath = new Map<string, number>()
         for (const note of notes) {

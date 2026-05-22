@@ -360,131 +360,192 @@ export function getOverdueTaskCountByPath(tasks: KnowledgeMaintenanceTask[], tod
   return new Map(Array.from(info.entries()).map(([filePath, item]) => [filePath, item.count]))
 }
 
-export function getOverdueTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, DueTaskInfo> {
-  const counts = new Map<string, number>()
-  const earliestByPath = new Map<string, string>()
+export interface TaskPathIndex {
+  openTaskCountByPath: Map<string, number>
+  overdueTaskInfoByPath: Map<string, DueTaskInfo>
+  dueTodayTaskInfoByPath: Map<string, DueTaskInfo>
+  highPriorityTaskInfoByPath: Map<string, HighPriorityTaskInfo>
+  scheduledTaskInfoByPath: Map<string, DueTaskInfo>
+  startedTaskInfoByPath: Map<string, DueTaskInfo>
+  blockedTaskInfoByPath: Map<string, BlockedTaskInfo>
+  recurringTaskInfoByPath: Map<string, RecurringTaskInfo>
+  upcomingTaskInfoByPath: Map<string, DueTaskInfo>
+  elevatedTaskCountByPath: Map<string, number>
+}
+
+/**
+ * Walks the task list exactly once and produces every per-path aggregate that
+ * buildKnowledgeMaintenanceQueue (and its callers) need. The legacy
+ * getXxxTaskInfoByPath helpers are retained as thin wrappers around this
+ * function for callers that only need one aggregate, but performance-sensitive
+ * code (notably ai.ipc.ts plan_knowledge_maintenance) should invoke
+ * indexTasksByPath directly to avoid the O(9·N) cost of recomputing the same
+ * regex matches nine times in a row.
+ */
+export function indexTasksByPath(
+  tasks: KnowledgeMaintenanceTask[],
+  todayIso: string,
+  upcomingDays = 7
+): TaskPathIndex {
+  const upcomingDaysSafe = Math.max(1, Math.floor(upcomingDays))
+  const maxUpcomingIso = addDaysIso(todayIso, upcomingDaysSafe)
+
+  const openTaskCountByPath = new Map<string, number>()
+
+  const overdueCount = new Map<string, number>()
+  const overdueEarliest = new Map<string, string>()
+
+  const dueTodayCount = new Map<string, number>()
+
+  const highPriorityCount = new Map<string, number>()
+  const highPriorityHighest = new Map<string, 'highest' | 'high'>()
+
+  const scheduledCount = new Map<string, number>()
+  const scheduledEarliest = new Map<string, string>()
+
+  const startedCount = new Map<string, number>()
+  const startedEarliest = new Map<string, string>()
+
+  const blockedCount = new Map<string, number>()
+  const blockedSignals = new Map<string, string>()
+
+  const recurringCount = new Map<string, number>()
+  const recurringSignals = new Map<string, string>()
+
+  const upcomingCount = new Map<string, number>()
+  const upcomingEarliest = new Map<string, string>()
+
+  const elevatedCount = new Map<string, number>()
+
   for (const task of tasks) {
     if (task.done) continue
+    const path = task.filePath
+
+    openTaskCountByPath.set(path, (openTaskCountByPath.get(path) || 0) + 1)
+
     const due = extractTaskDueDate(task.text)
-    if (!due || due >= todayIso) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-    const earliest = earliestByPath.get(task.filePath)
-    if (!earliest || due < earliest) earliestByPath.set(task.filePath, due)
+    const scheduled = !due ? extractTaskScheduledDate(task.text) : null
+    const start = !due && !scheduled ? extractTaskStartDate(task.text) : null
+    const priority = extractHighTaskPriority(task.text)
+    const recurringSignal = extractRecurringTaskSignal(task.text)
+    const blockedSignal = extractBlockedTaskSignal(task.text)
+
+    if (due) {
+      if (due < todayIso) {
+        overdueCount.set(path, (overdueCount.get(path) || 0) + 1)
+        const earliest = overdueEarliest.get(path)
+        if (!earliest || due < earliest) overdueEarliest.set(path, due)
+      } else if (due === todayIso) {
+        dueTodayCount.set(path, (dueTodayCount.get(path) || 0) + 1)
+      } else if (due <= maxUpcomingIso) {
+        upcomingCount.set(path, (upcomingCount.get(path) || 0) + 1)
+        const earliest = upcomingEarliest.get(path)
+        if (!earliest || due < earliest) upcomingEarliest.set(path, due)
+      }
+    }
+
+    if (scheduled && scheduled <= todayIso) {
+      scheduledCount.set(path, (scheduledCount.get(path) || 0) + 1)
+      const earliest = scheduledEarliest.get(path)
+      if (!earliest || scheduled < earliest) scheduledEarliest.set(path, scheduled)
+    }
+
+    if (start && start <= todayIso) {
+      startedCount.set(path, (startedCount.get(path) || 0) + 1)
+      const earliest = startedEarliest.get(path)
+      if (!earliest || start < earliest) startedEarliest.set(path, start)
+    }
+
+    if (priority) {
+      highPriorityCount.set(path, (highPriorityCount.get(path) || 0) + 1)
+      const highest = highPriorityHighest.get(path)
+      if (!highest || priority === 'highest') highPriorityHighest.set(path, priority)
+    }
+
+    if (blockedSignal) {
+      blockedCount.set(path, (blockedCount.get(path) || 0) + 1)
+      if (!blockedSignals.has(path)) blockedSignals.set(path, blockedSignal)
+    }
+
+    if (recurringSignal) {
+      recurringCount.set(path, (recurringCount.get(path) || 0) + 1)
+      if (!recurringSignals.has(path)) recurringSignals.set(path, recurringSignal)
+    }
+
+    const hasElevatedDue = Boolean(due && due <= maxUpcomingIso)
+    const isScheduled = Boolean(scheduled && scheduled <= todayIso)
+    const isStarted = Boolean(start && start <= todayIso)
+    if (hasElevatedDue || isScheduled || isStarted || recurringSignal || blockedSignal || priority) {
+      elevatedCount.set(path, (elevatedCount.get(path) || 0) + 1)
+    }
   }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliestByPath.get(filePath) || '' }]))
+
+  const buildDueInfo = (counts: Map<string, number>, earliest: Map<string, string>): Map<string, DueTaskInfo> =>
+    new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliest.get(filePath) || '' }]))
+
+  return {
+    openTaskCountByPath,
+    overdueTaskInfoByPath: buildDueInfo(overdueCount, overdueEarliest),
+    dueTodayTaskInfoByPath: new Map(Array.from(dueTodayCount.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: todayIso }])),
+    highPriorityTaskInfoByPath: new Map(
+      Array.from(highPriorityCount.entries()).map(([filePath, count]) => [
+        filePath,
+        { count, highestPriority: highPriorityHighest.get(filePath) || 'high' }
+      ])
+    ),
+    scheduledTaskInfoByPath: buildDueInfo(scheduledCount, scheduledEarliest),
+    startedTaskInfoByPath: buildDueInfo(startedCount, startedEarliest),
+    blockedTaskInfoByPath: new Map(
+      Array.from(blockedCount.entries()).map(([filePath, count]) => [
+        filePath,
+        { count, signal: blockedSignals.get(filePath) || '' }
+      ])
+    ),
+    recurringTaskInfoByPath: new Map(
+      Array.from(recurringCount.entries()).map(([filePath, count]) => [
+        filePath,
+        { count, signal: recurringSignals.get(filePath) || '' }
+      ])
+    ),
+    upcomingTaskInfoByPath: buildDueInfo(upcomingCount, upcomingEarliest),
+    elevatedTaskCountByPath: elevatedCount,
+  }
+}
+
+export function getOverdueTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, DueTaskInfo> {
+  return indexTasksByPath(tasks, todayIso).overdueTaskInfoByPath
 }
 
 export function getDueTodayTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, DueTaskInfo> {
-  const counts = new Map<string, number>()
-  for (const task of tasks) {
-    if (task.done) continue
-    const due = extractTaskDueDate(task.text)
-    if (due !== todayIso) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-  }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: todayIso }]))
+  return indexTasksByPath(tasks, todayIso).dueTodayTaskInfoByPath
 }
 
 export function getHighPriorityTaskInfoByPath(tasks: KnowledgeMaintenanceTask[]): Map<string, HighPriorityTaskInfo> {
-  const counts = new Map<string, number>()
-  const highestByPath = new Map<string, 'highest' | 'high'>()
-  for (const task of tasks) {
-    if (task.done) continue
-    const priority = extractHighTaskPriority(task.text)
-    if (!priority) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-    const highest = highestByPath.get(task.filePath)
-    if (!highest || priority === 'highest') highestByPath.set(task.filePath, priority)
-  }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, highestPriority: highestByPath.get(filePath) || 'high' }]))
+  return indexTasksByPath(tasks, '9999-12-31').highPriorityTaskInfoByPath
 }
 
 export function getScheduledTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, DueTaskInfo> {
-  const counts = new Map<string, number>()
-  const earliestByPath = new Map<string, string>()
-  for (const task of tasks) {
-    if (task.done) continue
-    if (extractTaskDueDate(task.text)) continue
-    const scheduled = extractTaskScheduledDate(task.text)
-    if (!scheduled || scheduled > todayIso) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-    const earliest = earliestByPath.get(task.filePath)
-    if (!earliest || scheduled < earliest) earliestByPath.set(task.filePath, scheduled)
-  }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliestByPath.get(filePath) || '' }]))
+  return indexTasksByPath(tasks, todayIso).scheduledTaskInfoByPath
 }
 
 export function getStartedTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string): Map<string, DueTaskInfo> {
-  const counts = new Map<string, number>()
-  const earliestByPath = new Map<string, string>()
-  for (const task of tasks) {
-    if (task.done) continue
-    if (extractTaskDueDate(task.text) || extractTaskScheduledDate(task.text)) continue
-    const start = extractTaskStartDate(task.text)
-    if (!start || start > todayIso) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-    const earliest = earliestByPath.get(task.filePath)
-    if (!earliest || start < earliest) earliestByPath.set(task.filePath, start)
-  }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliestByPath.get(filePath) || '' }]))
+  return indexTasksByPath(tasks, todayIso).startedTaskInfoByPath
 }
 
 export function getBlockedTaskInfoByPath(tasks: KnowledgeMaintenanceTask[]): Map<string, BlockedTaskInfo> {
-  const counts = new Map<string, number>()
-  const signalsByPath = new Map<string, string>()
-  for (const task of tasks) {
-    if (task.done) continue
-    const signal = extractBlockedTaskSignal(task.text)
-    if (!signal) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-    if (!signalsByPath.has(task.filePath)) signalsByPath.set(task.filePath, signal)
-  }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, signal: signalsByPath.get(filePath) || '' }]))
+  return indexTasksByPath(tasks, '9999-12-31').blockedTaskInfoByPath
 }
 
 export function getRecurringTaskInfoByPath(tasks: KnowledgeMaintenanceTask[]): Map<string, RecurringTaskInfo> {
-  const counts = new Map<string, number>()
-  const signalsByPath = new Map<string, string>()
-  for (const task of tasks) {
-    if (task.done) continue
-    const signal = extractRecurringTaskSignal(task.text)
-    if (!signal) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-    if (!signalsByPath.has(task.filePath)) signalsByPath.set(task.filePath, signal)
-  }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, signal: signalsByPath.get(filePath) || '' }]))
+  return indexTasksByPath(tasks, '9999-12-31').recurringTaskInfoByPath
 }
 
 export function getElevatedTaskCountByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, upcomingDays: number): Map<string, number> {
-  const counts = new Map<string, number>()
-  const maxIso = addDaysIso(todayIso, Math.max(1, Math.floor(upcomingDays)))
-  for (const task of tasks) {
-    if (task.done) continue
-    const due = extractTaskDueDate(task.text)
-    const hasElevatedDue = Boolean(due && due <= maxIso)
-    const scheduled = due ? null : extractTaskScheduledDate(task.text)
-    const isScheduled = Boolean(scheduled && scheduled <= todayIso)
-    const start = due || scheduled ? null : extractTaskStartDate(task.text)
-    const isStarted = Boolean(start && start <= todayIso)
-    if (!hasElevatedDue && !isScheduled && !isStarted && !extractRecurringTaskSignal(task.text) && !extractBlockedTaskSignal(task.text) && !extractHighTaskPriority(task.text)) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-  }
-  return counts
+  return indexTasksByPath(tasks, todayIso, upcomingDays).elevatedTaskCountByPath
 }
 
 export function getUpcomingTaskInfoByPath(tasks: KnowledgeMaintenanceTask[], todayIso: string, days: number): Map<string, DueTaskInfo> {
-  const maxIso = addDaysIso(todayIso, Math.max(1, Math.floor(days)))
-  const counts = new Map<string, number>()
-  const earliestByPath = new Map<string, string>()
-  for (const task of tasks) {
-    if (task.done) continue
-    const due = extractTaskDueDate(task.text)
-    if (!due || due <= todayIso || due > maxIso) continue
-    counts.set(task.filePath, (counts.get(task.filePath) || 0) + 1)
-    const earliest = earliestByPath.get(task.filePath)
-    if (!earliest || due < earliest) earliestByPath.set(task.filePath, due)
-  }
-  return new Map(Array.from(counts.entries()).map(([filePath, count]) => [filePath, { count, earliestDue: earliestByPath.get(filePath) || '' }]))
+  return indexTasksByPath(tasks, todayIso, days).upcomingTaskInfoByPath
 }
 
 function addDaysIso(dateIso: string, days: number): string {
