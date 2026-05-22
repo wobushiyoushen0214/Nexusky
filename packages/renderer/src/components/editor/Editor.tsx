@@ -139,7 +139,7 @@ export function Editor() {
       Mathematics,
       ImagePaste,
       Placeholder.configure({
-        placeholder: '开始写作...'
+        placeholder: t('common.editorPlaceholder')
       }),
       Markdown.configure({
         html: false,

@@ -46,8 +46,9 @@ type ActivePluginPanel = { plugin: LocalPlugin; panel: PluginPanel }
 const FILE_REQUIRED_RIGHT_PANELS = new Set(['outline', 'properties', 'tags', 'history'])
 
 function PluginPanelView({ active }: { active: ActivePluginPanel | null }) {
+  const { t } = useTranslation()
   if (!active) {
-    return <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>未选择插件面板</div>
+    return <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>{t('common.pluginPanelEmpty')}</div>
   }
   const { plugin, panel } = active
   return (
@@ -60,7 +61,7 @@ function PluginPanelView({ active }: { active: ActivePluginPanel | null }) {
       {panel.content ? (
         <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', color: 'var(--text-primary)' }}>{panel.content}</pre>
       ) : (
-        <div style={{ color: 'var(--text-tertiary)' }}>该插件面板没有声明内容。</div>
+        <div style={{ color: 'var(--text-tertiary)' }}>{t('common.pluginPanelNoContent')}</div>
       )}
     </div>
   )

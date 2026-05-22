@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
@@ -32,6 +33,7 @@ type PendingKanbanAiWrite =
   | { mode: 'indexed'; plan: KanbanAiPlan; columnId?: string }
 
 export function KanbanPanel() {
+  const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const currentContent = useEditorStore((s) => s.content)
@@ -208,7 +210,7 @@ export function KanbanPanel() {
       setAnalysis(result.summary)
     } catch (e: unknown) {
       if (aiStopRequestedRef.current || isCancellationError(e)) return
-      toast(getErrorMessage(e) || 'AI 分析失败', 'error')
+      toast(getErrorMessage(e) || t('common.kanbanAiAnalyzeFailed'), 'error')
     } finally {
       setBusy(null)
     }

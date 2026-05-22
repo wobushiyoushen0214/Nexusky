@@ -392,6 +392,10 @@
     "semanticFound": "发现 {{count}} 条语义关联，图谱已更新",
     "semanticDone": "语义分析完成",
     "semanticFailed": "AI 语义分析失败，图谱仅显示已有关系",
+    "pluginPanelEmpty": "未选择插件面板",
+    "pluginPanelNoContent": "该插件面板没有声明内容。",
+    "editorPlaceholder": "开始写作...",
+    "kanbanAiAnalyzeFailed": "AI 分析失败",
     "syncDone": "同步完成: ↑{{pushed}} ↓{{pulled}}",
     "syncError": "同步出错: {{error}}",
     "syncFailed": "同步失败: {{error}}"

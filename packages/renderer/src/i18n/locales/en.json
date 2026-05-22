@@ -392,6 +392,10 @@
     "semanticFound": "Found {{count}} semantic links, graph updated",
     "semanticDone": "Semantic analysis complete",
     "semanticFailed": "AI semantic analysis failed, showing existing relations only",
+    "pluginPanelEmpty": "No plugin panel selected",
+    "pluginPanelNoContent": "This plugin panel has no content to display.",
+    "editorPlaceholder": "Start writing...",
+    "kanbanAiAnalyzeFailed": "AI analysis failed",
     "syncDone": "Sync complete: ↑{{pushed}} ↓{{pulled}}",
     "syncError": "Sync error: {{error}}",
     "syncFailed": "Sync failed: {{error}}"
