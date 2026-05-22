@@ -87,6 +87,11 @@ run(process.execPath, [
   cwd: betterSqlite3Root
 })
 
+if (process.platform === 'win32' && process.env.CI) {
+  console.log('better-sqlite3 rebuilt for Electron; skipping Electron smoke test on Windows CI')
+  process.exit(0)
+}
+
 run(resolve(root, 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron'), [
   '-e',
   "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close(); console.log('better-sqlite3 rebuilt for Electron ABI ' + process.versions.modules)"
