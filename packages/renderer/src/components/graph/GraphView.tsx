@@ -120,10 +120,15 @@ export function GraphView() {
   }, [])
 
   const showLabelsRef = useRef(showLabels)
-  showLabelsRef.current = showLabels
-
   const showArrowsRef = useRef(showArrows)
-  showArrowsRef.current = showArrows
+
+  useEffect(() => {
+    showLabelsRef.current = showLabels
+  }, [showLabels])
+
+  useEffect(() => {
+    showArrowsRef.current = showArrows
+  }, [showArrows])
 
   const runGlobalInference = async () => {
     if (!vaultPath) return
