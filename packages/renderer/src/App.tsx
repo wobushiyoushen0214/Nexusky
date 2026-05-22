@@ -135,6 +135,12 @@ export default function App() {
   const [chatEverOpened, setChatEverOpened] = useState(false)
   const [activePluginPanel, setActivePluginPanel] = useState<ActivePluginPanel | null>(null)
 
+  // Track the latest translate function so global event handlers (which are
+  // registered once and survive language changes) always read the current
+  // i18n table instead of capturing whatever `t` was bound on mount.
+  const tRef = useRef(t)
+  useEffect(() => { tRef.current = t }, [t])
+
   useEffect(() => {
     if (rightPanel === 'chat') setChatEverOpened(true)
   }, [rightPanel])
@@ -165,12 +171,12 @@ export default function App() {
     const handler = async (e: Event) => {
       const { path, isDirectory } = (e as CustomEvent).detail || {}
       if (!path || !vaultPath) return
-      toast(t('common.indexing'), 'info')
+      toast(tRef.current('common.indexing'), 'info')
       let mdPaths: string[] = []
       if (isDirectory) {
         const files = await window.api.invoke('file:list', { dirPath: path })
         mdPaths = flatMdPaths(files)
-        if (mdPaths.length === 0) { toast(t('common.noMdFiles'), 'info'); return }
+        if (mdPaths.length === 0) { toast(tRef.current('common.noMdFiles'), 'info'); return }
         for (const fp of mdPaths) {
           await window.api.invoke('db:index-file', { vaultPath, filePath: fp })
         }
@@ -180,23 +186,23 @@ export default function App() {
       }
       // Open graph immediately with basic links, then enhance with AI
       setMainView('graph')
-      toast(t('common.aiAnalyzing'), 'info')
+      toast(tRef.current('common.aiAnalyzing'), 'info')
       try {
         const result = await window.api.invoke('ai:infer-links', { vaultPath, filePaths: mdPaths })
         if (result.success && (result.added ?? 0) > 0) {
-          toast(t('common.semanticFound', { count: result.added }), 'success')
+          toast(tRef.current('common.semanticFound', { count: result.added }), 'success')
           // Trigger graph refresh
           window.dispatchEvent(new CustomEvent('graph-data-updated'))
         } else {
-          toast(t('common.semanticDone'), 'success')
+          toast(tRef.current('common.semanticDone'), 'success')
         }
       } catch {
-        toast(t('common.semanticFailed'), 'info')
+        toast(tRef.current('common.semanticFailed'), 'info')
       }
     }
     window.addEventListener('index-and-show-graph', handler)
     return () => window.removeEventListener('index-and-show-graph', handler)
-  }, [vaultPath])
+  }, [vaultPath, setMainView])
 
   useEffect(() => {
     const handler = async (e: Event) => {
@@ -205,7 +211,7 @@ export default function App() {
       if (isDirectory) {
         const files = await window.api.invoke('file:list', { dirPath: path })
         const mdPaths = flatMdPaths(files)
-        if (mdPaths.length === 0) { toast(t('common.noMdFiles'), 'info'); return }
+        if (mdPaths.length === 0) { toast(tRef.current('common.noMdFiles'), 'info'); return }
         setGraphGenPaths(mdPaths)
       } else {
         setGraphGenPaths([path])
