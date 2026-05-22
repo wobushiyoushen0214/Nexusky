@@ -59,6 +59,11 @@ function run(command, args, options) {
     ...options
   })
 
+  if (result.error) {
+    console.error(result.error)
+    process.exit(1)
+  }
+
   if (result.status !== 0) {
     process.exit(result.status ?? 1)
   }
@@ -87,5 +92,6 @@ run(resolve(root, 'node_modules', '.bin', process.platform === 'win32' ? 'electr
   "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close(); console.log('better-sqlite3 rebuilt for Electron ABI ' + process.versions.modules)"
 ], {
   cwd: root,
-  env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+  env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+  shell: process.platform === 'win32'
 })
