@@ -17,8 +17,11 @@ import { ensureBoundedString, ensureNonEmptyString, ensureOptionalBoundedString,
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { searchNotes } from '../services/note-search'
 import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
+import { findRelationCandidates } from '../services/long-context/relation-candidates'
+import { classifyRelation, shouldPersistRelationClassification } from '../services/long-context/relation-classifier'
+import { getContextSuggestions, submitRelationFeedback, upsertRelation } from '../services/long-context/relation-store'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextEntityType, LongContextFeedbackType, LongContextSuggestion } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -63,6 +66,156 @@ function parseChatSources(raw: string | null): ChatSource[] | undefined {
   }
 }
 
+function ensureLongContextEntityType(value: unknown, field: string): LongContextEntityType {
+  if (!LONG_CONTEXT_ENTITY_TYPES.has(value as LongContextEntityType)) {
+    throw new Error(`Invalid IPC payload: ${field} must be one of note, task, chat`)
+  }
+  return value as LongContextEntityType
+}
+
+function ensureLongContextFeedbackType(value: unknown, field: string): LongContextFeedbackType {
+  if (!LONG_CONTEXT_FEEDBACK_TYPES.has(value as LongContextFeedbackType)) {
+    throw new Error(`Invalid IPC payload: ${field} must be a valid long-context feedback type`)
+  }
+  return value as LongContextFeedbackType
+}
+
+function normalizeLongContextLimit(value: unknown, fallback: number): number {
+  if (value === undefined || value === null) return fallback
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return Math.max(1, Math.min(Math.floor(value), 20))
+}
+
+interface LongContextEntitySnapshot {
+  title: string
+  path?: string
+  content: string
+}
+
+function getLongContextEntitySnapshot(
+  db: Database.Database,
+  entityType: LongContextEntityType,
+  entityId: string,
+  contentOverride?: string
+): LongContextEntitySnapshot | null {
+  if (entityType === 'note') {
+    const row = db.prepare(`
+      SELECT n.title, n.file_path as filePath, COALESCE(f.content, '') as content
+      FROM notes n
+      LEFT JOIN notes_fts_map m ON m.note_id = n.id
+      LEFT JOIN notes_fts f ON f.rowid = m.rowid
+      WHERE n.id = ?
+    `).get(entityId) as { title: string; filePath: string; content: string } | undefined
+    if (!row) return null
+    return {
+      title: row.title,
+      path: row.filePath,
+      content: contentOverride?.trim() || row.content || ''
+    }
+  }
+
+  if (entityType === 'task') {
+    const kanbanTask = db.prepare(`
+      SELECT title, description, source_file_path as filePath
+      FROM kanban_tasks
+      WHERE id = ?
+    `).get(entityId) as { title: string; description: string | null; filePath: string | null } | undefined
+    if (kanbanTask) {
+      return {
+        title: kanbanTask.title,
+        path: kanbanTask.filePath || undefined,
+        content: contentOverride?.trim() || kanbanTask.description || kanbanTask.title
+      }
+    }
+
+    const inlineTask = db.prepare(`
+      SELECT t.text, n.title as noteTitle, n.file_path as filePath
+      FROM tasks t
+      JOIN notes n ON n.id = t.note_id
+      WHERE CAST(t.id AS TEXT) = ?
+    `).get(entityId) as { text: string; noteTitle: string; filePath: string } | undefined
+    if (!inlineTask) return null
+    return {
+      title: inlineTask.text,
+      path: inlineTask.filePath,
+      content: contentOverride?.trim() || `${inlineTask.noteTitle}\n${inlineTask.text}`
+    }
+  }
+
+  return {
+    title: 'Chat context',
+    content: contentOverride?.trim() || ''
+  }
+}
+
+async function discoverLongContextRelations(params: {
+  vaultPath: string
+  entityType: LongContextEntityType
+  entityId: string
+  content?: string
+  limit?: number
+}): Promise<{ discovered: number; suggestions: LongContextSuggestion[] }> {
+  const db = getDatabase(params.vaultPath)
+  const limit = normalizeLongContextLimit(params.limit, 10)
+  const current = getLongContextEntitySnapshot(db, params.entityType, params.entityId, params.content)
+  if (!current) {
+    return { discovered: 0, suggestions: [] }
+  }
+
+  const candidates = findRelationCandidates({
+    vaultPath: params.vaultPath,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    content: params.content,
+    limit
+  })
+
+  let discovered = 0
+  for (const candidate of candidates) {
+    const target = getLongContextEntitySnapshot(db, candidate.targetType, candidate.targetId)
+    if (!target) continue
+    const classification = await classifyRelation({
+      current: {
+        title: current.title,
+        content: current.content
+      },
+      candidate: {
+        title: target.title,
+        content: target.content
+      },
+      signals: candidate.signals
+    })
+    if (!shouldPersistRelationClassification(classification)) continue
+
+    upsertRelation(params.vaultPath, {
+      sourceType: params.entityType,
+      sourceId: params.entityId,
+      sourceTitle: current.title,
+      sourcePath: current.path,
+      targetType: candidate.targetType,
+      targetId: candidate.targetId,
+      targetTitle: candidate.targetTitle || target.title,
+      targetPath: candidate.targetPath || target.path,
+      relationType: classification.relationType,
+      confidence: classification.confidence,
+      localScore: candidate.localScore,
+      evidence: classification.evidence,
+      reason: classification.reason
+    })
+    discovered += 1
+  }
+
+  return {
+    discovered,
+    suggestions: getContextSuggestions({
+      vaultPath: params.vaultPath,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      limit: Math.min(limit, 3)
+    }) as LongContextSuggestion[]
+  }
+}
+
 type EmbeddingJobStatus = {
   state: 'idle' | 'indexing' | 'done' | 'error'
   current: number
@@ -103,6 +256,8 @@ interface IndexedTaskRow {
 
 const RELATION_TYPES = new Set<KanbanRelationType>(['blocks', 'depends_on', 'related'])
 const FLASHCARD_RATINGS = new Set<FlashcardReviewRating>(['again', 'hard', 'good', 'easy'])
+const LONG_CONTEXT_ENTITY_TYPES = new Set<LongContextEntityType>(['note', 'task', 'chat'])
+const LONG_CONTEXT_FEEDBACK_TYPES = new Set<LongContextFeedbackType>(['useful', 'not_related', 'wrong_reason', 'dismissed'])
 const embeddingJobs = new Map<string, EmbeddingJobStatus>()
 
 function runIndexVaultWorker(vaultPath: string, onProgress: (progress: VaultIndexProgress) => void): Promise<VaultIndexResult> {
@@ -585,6 +740,74 @@ export function registerDbIPC(): void {
     const running = embeddingJobs.get(params.vaultPath)
     if (running?.state === 'indexing') return running
     return getEmbeddingStatus(params.vaultPath, running)
+  })
+
+  ipcMain.handle('long-context:get-suggestions', async (_event, params: {
+    vaultPath: string
+    entityType: LongContextEntityType
+    entityId: string
+    content?: string
+    limit?: number
+    refresh?: boolean
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:get-suggestions.vaultPath')
+    const entityType = ensureLongContextEntityType(params?.entityType, 'long-context:get-suggestions.entityType')
+    ensureNonEmptyString(params?.entityId, 'long-context:get-suggestions.entityId')
+    const content = ensureOptionalBoundedString(params?.content, 'long-context:get-suggestions.content', MAX_DESCRIPTION_LENGTH)
+    const limit = normalizeLongContextLimit(params?.limit, 3)
+    if (params?.refresh) {
+      return (await discoverLongContextRelations({
+        vaultPath: params.vaultPath,
+        entityType,
+        entityId: params.entityId,
+        content,
+        limit
+      })).suggestions
+    }
+    return getContextSuggestions({
+      vaultPath: params.vaultPath,
+      entityType,
+      entityId: params.entityId,
+      limit
+    }) as LongContextSuggestion[]
+  })
+
+  ipcMain.handle('long-context:discover-relations', async (_event, params: {
+    vaultPath: string
+    entityType: LongContextEntityType
+    entityId: string
+    content?: string
+    limit?: number
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:discover-relations.vaultPath')
+    const entityType = ensureLongContextEntityType(params?.entityType, 'long-context:discover-relations.entityType')
+    ensureNonEmptyString(params?.entityId, 'long-context:discover-relations.entityId')
+    const content = ensureOptionalBoundedString(params?.content, 'long-context:discover-relations.content', MAX_DESCRIPTION_LENGTH)
+    return discoverLongContextRelations({
+      vaultPath: params.vaultPath,
+      entityType,
+      entityId: params.entityId,
+      content,
+      limit: params.limit
+    })
+  })
+
+  ipcMain.handle('long-context:submit-feedback', async (_event, params: {
+    vaultPath: string
+    relationId: string
+    feedbackType: LongContextFeedbackType
+    note?: string
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:submit-feedback.vaultPath')
+    ensureNonEmptyString(params?.relationId, 'long-context:submit-feedback.relationId')
+    const feedbackType = ensureLongContextFeedbackType(params?.feedbackType, 'long-context:submit-feedback.feedbackType')
+    const note = ensureOptionalBoundedString(params?.note, 'long-context:submit-feedback.note', MAX_DESCRIPTION_LENGTH)
+    submitRelationFeedback({
+      vaultPath: params.vaultPath,
+      relationId: params.relationId,
+      feedbackType,
+      note
+    })
   })
 
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {

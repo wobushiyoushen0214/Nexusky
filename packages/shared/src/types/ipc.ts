@@ -269,6 +269,45 @@ export interface ExtractedDocumentText {
   method: 'text' | 'docx' | 'xlsx' | 'pdf' | 'binary'
 }
 
+export type LongContextEntityType = 'note' | 'task' | 'chat'
+
+export type LongContextRelationType =
+  | 'related_to'
+  | 'caused_by'
+  | 'evolved_from'
+  | 'blocked_by'
+  | 'inspired_by'
+  | 'repeated_pattern'
+  | 'supports_goal'
+  | 'conflicts_with'
+
+export type LongContextFeedbackType = 'useful' | 'not_related' | 'wrong_reason' | 'dismissed'
+
+export interface LongContextSuggestion {
+  relationId: string
+  targetType: LongContextEntityType
+  targetId: string
+  targetTitle: string
+  targetPath?: string
+  relationType: LongContextRelationType
+  confidence: number
+  score: number
+  reason: string
+  evidence: string[]
+  lastSeenAt: number
+}
+
+export interface LongTermTheme {
+  id: string
+  title: string
+  summary: string
+  keywords: string[]
+  strength: number
+  evidenceCount: number
+  firstSeenAt: number
+  lastSeenAt: number
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -336,6 +375,39 @@ export interface IPCChannelMap {
   'db:embed-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
   'db:embed-vault': { params: { vaultPath: string }; result: { embedded: number } }
   'db:embedding-status': { params: { vaultPath: string }; result: EmbeddingStatus }
+  'long-context:get-suggestions': {
+    params: {
+      vaultPath: string
+      entityType: LongContextEntityType
+      entityId: string
+      content?: string
+      limit?: number
+      refresh?: boolean
+    }
+    result: LongContextSuggestion[]
+  }
+  'long-context:discover-relations': {
+    params: {
+      vaultPath: string
+      entityType: LongContextEntityType
+      entityId: string
+      content?: string
+      limit?: number
+    }
+    result: {
+      discovered: number
+      suggestions: LongContextSuggestion[]
+    }
+  }
+  'long-context:submit-feedback': {
+    params: {
+      vaultPath: string
+      relationId: string
+      feedbackType: LongContextFeedbackType
+      note?: string
+    }
+    result: void
+  }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
   'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }
   'db:chat-history-clear': { params: { vaultPath: string; sessionId?: string }; result: void }

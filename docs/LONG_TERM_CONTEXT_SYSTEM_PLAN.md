@@ -983,11 +983,11 @@ renderer 可以调用长期上下文能力。
 
 任务：
 
-- [ ] 在 `IPCChannelMap` 增加 long-context 类型。
-- [ ] 在 `db.ipc.ts` 注册 handler。
-- [ ] 接入 `get-suggestions`。
-- [ ] 接入 `discover-relations`。
-- [ ] 接入 `submit-feedback`。
+- [x] 在 `IPCChannelMap` 增加 long-context 类型。
+- [x] 在 `db.ipc.ts` 注册 handler。
+- [x] 接入 `get-suggestions`。
+- [x] 接入 `discover-relations`。
+- [x] 接入 `submit-feedback`。
 
 测试：
 
@@ -997,9 +997,19 @@ tests/long-context-ipc-types.test.ts
 
 验收：
 
-- TypeScript 类型通过。
-- 缺少 vaultPath 时不执行危险写入。
-- relationId 不存在时返回明确错误。
+- [x] TypeScript 类型通过。
+- [x] 缺少 vaultPath 时不执行危险写入。
+- [x] relationId 不存在时返回明确错误。
+
+执行记录：
+
+- 2026-05-22：在 `packages/shared/src/types/ipc.ts` 增加 `LongContextEntityType`、`LongContextRelationType`、`LongContextFeedbackType`、`LongContextSuggestion`、`LongTermTheme`，并注册 `long-context:get-suggestions`、`long-context:discover-relations`、`long-context:submit-feedback` 三个 IPC channel 类型。
+- 2026-05-22：在 `packages/main/src/ipc/db.ipc.ts` 注册 long-context handlers。`get-suggestions` 支持 `refresh` 时触发 discover；`discover-relations` 串联本地候选、AI 分类、持久化门槛和 relation store；`submit-feedback` 复用 store 写入反馈。handler 入口使用 runtime guard 校验 `vaultPath`、`entityType`、`entityId`、`relationId`、`feedbackType` 和可选文本长度。
+- 2026-05-22：新增 `tests/long-context-ipc-types.test.ts` 覆盖 IPC 类型映射；`tests/long-context-store.test.ts` 已覆盖缺失 relationId 的明确错误。验证通过：`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 5 开始做最小编辑器 UI：先实现 `RelatedContextPanel` / `RelatedContextCard` / badge 和 feedback 调用，再接入当前笔记视图。
 
 ### Iteration 5：编辑器 UI
 
@@ -1341,8 +1351,8 @@ Day 5
 - 写 ranker / store 测试（已完成，2026-05-22）
 
 Day 6
-- 增加 IPC 类型和 handlers
-- 做最小 CLI 或单元测试验证闭环
+- 增加 IPC 类型和 handlers（已完成，2026-05-22）
+- 做最小 CLI 或单元测试验证闭环（已完成，2026-05-22；`tests/long-context-ipc-types.test.ts` + store tests）
 
 Day 7
 - 复盘召回质量
