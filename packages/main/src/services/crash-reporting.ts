@@ -3,6 +3,7 @@ import type { WebContents } from 'electron'
 import { appendFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { logger } from './logger'
+import { redact } from './redact'
 
 export interface CrashReport {
   type: string
@@ -43,12 +44,12 @@ export function buildCrashReport(
 ): CrashReport {
   return {
     type,
-    message,
-    stack: errorStack(error),
+    message: redact(message),
+    stack: redact(errorStack(error)),
     timestamp: timestamp.toISOString(),
     appVersion: typeof app?.getVersion === 'function' ? app.getVersion() : 'unknown',
     platform: `${process.platform}-${process.arch}`,
-    context
+    context: redact(context)
   }
 }
 

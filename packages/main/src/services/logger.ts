@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { randomUUID } from 'crypto'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { redact } from './redact'
 
 type LogLevel = 'error' | 'warn' | 'info'
 
@@ -59,13 +60,17 @@ async function flush() {
 }
 
 function report(level: LogLevel, message: string, extra?: { stack?: string; context?: Record<string, unknown> }) {
-  console.error(`[${level}]`, message, extra?.stack || '')
+  const safeMessage = redact(message)
+  const safeStack = extra?.stack ? redact(extra.stack) : undefined
+  const safeContext = extra?.context ? redact(extra.context) : undefined
+
+  console.error(`[${level}]`, safeMessage, safeStack || '')
 
   queue.push({
     level,
-    message,
-    stack: extra?.stack,
-    context: extra?.context,
+    message: safeMessage,
+    stack: safeStack,
+    context: safeContext,
   })
 
   flush()
