@@ -10,6 +10,7 @@ import { importNotionExport } from '../services/notion-importer'
 import { importPocketBookmarks, importReadwiseCsv } from '../services/reader-importer'
 import { extractDocumentTextFromBuffer } from '../services/document-text'
 import { isPathInsideVault, assertPathInsideVault } from './file-path'
+import { ensureNonEmptyString, ensureSafeFileName } from './validators'
 import { notifyVaultFilesChanged } from './events'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
@@ -88,6 +89,10 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:write', async (_event, params: { path: string; content: string; vaultPath?: string }) => {
+    ensureNonEmptyString(params?.path, 'file:write.path')
+    if (typeof params?.content !== 'string') {
+      throw new Error('Invalid IPC payload: file:write.content must be a string')
+    }
     if (params.vaultPath) {
       await assertPathInsideVault(params.path, params.vaultPath)
     }
@@ -116,6 +121,7 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:create', async (_event, params: { path: string; content?: string; vaultPath?: string }) => {
+    ensureNonEmptyString(params?.path, 'file:create.path')
     if (params.vaultPath) {
       await assertPathInsideVault(params.path, params.vaultPath)
     }
@@ -134,6 +140,7 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {
+    ensureNonEmptyString(params?.path, 'file:delete.path')
     if (params.vaultPath) {
       await assertPathInsideVault(params.path, params.vaultPath)
     }
@@ -154,6 +161,8 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string; vaultPath?: string }) => {
+    ensureNonEmptyString(params?.oldPath, 'file:rename.oldPath')
+    ensureNonEmptyString(params?.newPath, 'file:rename.newPath')
     if (params.vaultPath) {
       await assertPathInsideVault(params.oldPath, params.vaultPath)
       await assertPathInsideVault(params.newPath, params.vaultPath)
@@ -172,14 +181,19 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:save-image', async (_event, params: { vaultPath: string; imageData: string; fileName: string }) => {
+    ensureNonEmptyString(params?.vaultPath, 'file:save-image.vaultPath')
+    const safeName = ensureSafeFileName(params?.fileName, 'file:save-image.fileName')
+    if (typeof params?.imageData !== 'string' || params.imageData.length === 0) {
+      throw new Error('Invalid IPC payload: file:save-image.imageData must be a non-empty string')
+    }
     const assetsDir = join(params.vaultPath, 'assets')
     await mkdir(assetsDir, { recursive: true })
-    const filePath = join(assetsDir, params.fileName)
+    const filePath = join(assetsDir, safeName)
     if (!isPathInsideVault(filePath, assetsDir)) throw new Error('图片路径不在 assets 目录内')
     const base64Data = params.imageData.replace(/^data:image\/\w+;base64,/, '')
     await writeFile(filePath, Buffer.from(base64Data, 'base64'))
     notifyVaultFilesChanged([filePath])
-    return `assets/${params.fileName}`
+    return `assets/${safeName}`
   })
 
   ipcMain.handle('file:get-history', async (_event, params: { vaultPath: string; filePath: string }) => {

@@ -13,6 +13,7 @@ import { collectDueFlashcardsFromNotes, getLocalDateFromStamp, getLocalDateStamp
 import { finishAiTask, startAiTask } from '../services/ai-task-control'
 import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIndexResult } from '../services/vault-indexer'
 import { getCachedVaultQuery } from '../services/db-query-cache'
+import { ensureBoundedString, ensureNonEmptyString, ensureOptionalBoundedString, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from './validators'
 import { searchNotes } from '../services/note-search'
 import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
 import type Database from 'better-sqlite3'
@@ -340,12 +341,18 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('kanban:create-column', async (_event, params: { vaultPath: string; id: string; name: string }) => {
+    ensureNonEmptyString(params?.vaultPath, 'kanban:create-column.vaultPath')
+    ensureNonEmptyString(params?.id, 'kanban:create-column.id')
+    ensureNonEmptyString(params?.name, 'kanban:create-column.name', MAX_TITLE_LENGTH)
     const db = getDatabase(params.vaultPath)
     const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM kanban_columns').get() as { m: number | null }
     db.prepare('INSERT INTO kanban_columns (id, name, sort_order) VALUES (?, ?, ?)').run(params.id, params.name, (maxOrder.m ?? -1) + 1)
   })
 
   ipcMain.handle('kanban:rename-column', async (_event, params: { vaultPath: string; id: string; name: string }) => {
+    ensureNonEmptyString(params?.vaultPath, 'kanban:rename-column.vaultPath')
+    ensureNonEmptyString(params?.id, 'kanban:rename-column.id')
+    ensureNonEmptyString(params?.name, 'kanban:rename-column.name', MAX_TITLE_LENGTH)
     const db = getDatabase(params.vaultPath)
     db.prepare('UPDATE kanban_columns SET name = ? WHERE id = ?').run(params.name, params.id)
   })
@@ -404,6 +411,11 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('kanban:create-task', async (_event, params: { vaultPath: string; id: string; columnId: string; title: string; description?: string; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }) => {
+    ensureNonEmptyString(params?.vaultPath, 'kanban:create-task.vaultPath')
+    ensureNonEmptyString(params?.id, 'kanban:create-task.id')
+    ensureNonEmptyString(params?.columnId, 'kanban:create-task.columnId')
+    ensureNonEmptyString(params?.title, 'kanban:create-task.title', MAX_TITLE_LENGTH)
+    ensureOptionalBoundedString(params?.description, 'kanban:create-task.description', MAX_DESCRIPTION_LENGTH)
     const db = getDatabase(params.vaultPath)
     const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM kanban_tasks WHERE column_id = ?').get(params.columnId) as { m: number | null }
     db.prepare(`
@@ -413,6 +425,10 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('kanban:update-task', async (_event, params: { vaultPath: string; id: string; title?: string; description?: string; columnId?: string; sortOrder?: number; priority?: number; dueDate?: string | null; sourceNoteId?: string | null; sourceFilePath?: string | null }) => {
+    ensureNonEmptyString(params?.vaultPath, 'kanban:update-task.vaultPath')
+    ensureNonEmptyString(params?.id, 'kanban:update-task.id')
+    if (params.title !== undefined) ensureBoundedString(params.title, 'kanban:update-task.title', MAX_TITLE_LENGTH)
+    if (params.description !== undefined) ensureBoundedString(params.description, 'kanban:update-task.description', MAX_DESCRIPTION_LENGTH)
     const db = getDatabase(params.vaultPath)
     const sets: string[] = []
     const values: SqlValue[] = []
@@ -465,6 +481,10 @@ export function registerDbIPC(): void {
   })
 
   ipcMain.handle('kanban:create-relation', async (_event, params: { vaultPath: string; id: string; sourceTaskId: string; targetTaskId: string; relationType: KanbanRelationType }) => {
+    ensureNonEmptyString(params?.vaultPath, 'kanban:create-relation.vaultPath')
+    ensureNonEmptyString(params?.id, 'kanban:create-relation.id')
+    ensureNonEmptyString(params?.sourceTaskId, 'kanban:create-relation.sourceTaskId')
+    ensureNonEmptyString(params?.targetTaskId, 'kanban:create-relation.targetTaskId')
     const db = getDatabase(params.vaultPath)
     if (params.sourceTaskId === params.targetTaskId) throw new Error('任务不能关联自身')
     if (!RELATION_TYPES.has(params.relationType)) throw new Error('无效的任务关系类型')
