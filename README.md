@@ -65,8 +65,7 @@ supabase/         → 云端 schema
 - [项目全景文档](docs/PROJECT_OVERVIEW.md)
 - [功能清单](docs/FEATURES.md)
 - [设计系统](docs/DESIGN.md)
-- [产品定义](docs/PRODUCT.md)
-- [开发计划](docs/PLAN.md)
+- [长期上下文系统执行计划](docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md)
 
 ## License
 

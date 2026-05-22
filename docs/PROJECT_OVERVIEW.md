@@ -134,7 +134,6 @@ scripts/                开发/CLI 脚本（dev.mjs、rebuild-native.mjs、nexus
 supabase/               Supabase schema 和部署说明
 browser-extension/      Web Clipper 浏览器扩展（Chrome/Edge MV3）
 website/                品牌站点与发布日志页面（Next.js 子项目）
-src-tauri/              Tauri 移植试验骨架（与 Electron 主线并存，未默认构建）
 test-vault/             Vitest/手测用的样例 vault
 tests/                  Vitest 测试
 ```
@@ -621,6 +620,7 @@ pnpm test
 - `docs/WEB_CLIPPER.md`：浏览器剪藏功能说明。
 - `docs/OPTIMIZATION.md`：已完成的历史优化清单。
 - `docs/OPTIMIZATION_PLAN.md`：v0.4.0 审计后整理的新一轮优化与改进建议。
+- `docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md`：长期上下文系统的工程执行计划。
 - 本文：面向开发者和 AI 的代码/功能全景索引。
 
 ## 22. v0.4.0 及之后的增量索引
@@ -664,5 +664,5 @@ pnpm test
 ### 22.6 文档与配套
 
 - `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
-- `docs/FEATURES.md`、`docs/GUIDE.md`、`docs/PLAN.md` 在同一周期内同步更新。
+- `docs/FEATURES.md`、`docs/GUIDE.md` 在同一周期内同步更新。
 - `package.json` 版本号锁定到 `0.4.0`，对应 commit `059303a`。
