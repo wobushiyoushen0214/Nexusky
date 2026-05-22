@@ -50,11 +50,23 @@ describe('long-context IPC types', () => {
       created: 1,
       updated: 0
     }
+    const refreshParams: IPCChannelMap['long-context:refresh-relations']['params'] = {
+      vaultPath: '/tmp/vault',
+      entityType: 'note',
+      entityId: 'note-1',
+      limit: 100
+    }
+    const refreshResult: IPCChannelMap['long-context:refresh-relations']['result'] = {
+      refreshed: 4,
+      archived: 1
+    }
 
     expect(getParams.entityType).toBe('note')
     expect(discoverResult.suggestions[0].relationType).toBe('supports_goal')
     expect(feedbackParams.feedbackType).toBe('useful')
     expect(themesResult[0].evidenceCount).toBe(3)
     expect(extractionResult.created).toBe(1)
+    expect(refreshParams.entityId).toBe('note-1')
+    expect(refreshResult.archived).toBe(1)
   })
 })

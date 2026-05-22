@@ -1094,11 +1094,11 @@ tests/long-context-themes.test.ts
 
 任务：
 
-- [ ] 实现 decay score。
-- [ ] 实现 recurrence score。
-- [ ] 增加 relation refresh job。
-- [ ] 增加 dismissed / wrong 关系降权。
-- [ ] 增加长期未出现关系归档策略。
+- [x] 实现 decay score。
+- [x] 实现 recurrence score。
+- [x] 增加 relation refresh job。
+- [x] 增加 dismissed / wrong 关系降权。
+- [x] 增加长期未出现关系归档策略。
 
 测试：
 
@@ -1108,9 +1108,20 @@ tests/long-context-decay.test.ts
 
 验收：
 
-- 90 天未出现的普通关系分数明显降低。
-- 重复 3 次出现的关系分数提高。
-- 用户否定的关系不会反复出现。
+- [x] 90 天未出现的普通关系分数明显降低。
+- [x] 重复 3 次出现的关系分数提高。
+- [x] 用户否定的关系不会反复出现。
+
+执行记录：
+
+- 2026-05-22：在 `relation-store.ts` 增加 `refreshRelationScores`，按 relation `last_seen_at` 重新计算 decay，按 `strength` 重新计算 recurrence；`getContextSuggestions` 会先刷新当前实体相关关系，避免旧 score 长期占位。
+- 2026-05-22：`dismissed` / `wrong` 关系在 upsert 和 refresh 时保留状态并额外降权；`not_related` 后再次 rediscover 也不会重新出现在建议列表。
+- 2026-05-22：增加长期未出现关系归档策略：默认 180 天未出现且 refresh 后低于阈值的 active 关系转为 `archived`。新增 `long-context:refresh-relations` IPC，支持全 vault 或指定实体刷新。
+- 2026-05-22：新增 `tests/long-context-decay.test.ts` 覆盖 90 天衰减、3 次 recurrence 增强、stale weak relation 归档、用户否定后不反复出现；更新 IPC 类型测试。验证通过：`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 8 开始实现 AI Chat 长期上下文包，把 Hot / Warm / Cold memory 注入可选 chat context，并确保 prompt 明确“长期上下文是辅助，不可虚构用户事实”。
 
 ### Iteration 8：AI Chat 长期上下文包
 

@@ -308,6 +308,11 @@ export interface LongTermTheme {
   lastSeenAt: number
 }
 
+export interface LongContextRelationRefreshResult {
+  refreshed: number
+  archived: number
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -423,6 +428,15 @@ export interface IPCChannelMap {
       created: number
       updated: number
     }
+  }
+  'long-context:refresh-relations': {
+    params: {
+      vaultPath: string
+      entityType?: LongContextEntityType
+      entityId?: string
+      limit?: number
+    }
+    result: LongContextRelationRefreshResult
   }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
   'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }

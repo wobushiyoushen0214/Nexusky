@@ -39,11 +39,16 @@ export interface ContextSuggestion {
   lastSeenAt: number
 }
 
+export interface RelationRefreshResult {
+  refreshed: number
+  archived: number
+}
+
 export function upsertRelation(vaultPath: string, relation: UpsertRelationInput): string {
   const db = getDatabase(vaultPath)
   const now = Math.floor(Date.now() / 1000)
   const existing = db.prepare(`
-    SELECT id, strength
+    SELECT id, strength, status
     FROM ai_relations
     WHERE source_type = ? AND source_id = ?
       AND target_type = ? AND target_id = ?
@@ -54,13 +59,16 @@ export function upsertRelation(vaultPath: string, relation: UpsertRelationInput)
     relation.targetType,
     relation.targetId,
     relation.relationType
-  ) as { id: string; strength: number } | undefined
+  ) as { id: string; strength: number; status: RelationStatus } | undefined
 
   const id = existing?.id || randomUUID()
   const nextStrength = Math.max(1, (existing?.strength || 0) + 1)
   const feedback = existing ? getFeedbackCounts(db, existing.id) : {}
   const evidence = normalizeEvidence(relation.evidence)
-  const score = rankRelation({
+  const nextStatus = existing?.status === 'dismissed' || existing?.status === 'wrong'
+    ? existing.status
+    : relation.status || 'active'
+  const score = applyFeedbackAndStatusPenalty(rankRelation({
     localScore: relation.localScore ?? relation.confidence,
     aiConfidence: relation.confidence,
     recurrenceCount: nextStrength,
@@ -68,7 +76,7 @@ export function upsertRelation(vaultPath: string, relation: UpsertRelationInput)
     feedback,
     evidence,
     now
-  })
+  }), nextStatus, feedback)
 
   db.prepare(`
     INSERT INTO ai_relations (
@@ -126,7 +134,7 @@ export function upsertRelation(vaultPath: string, relation: UpsertRelationInput)
     score,
     JSON.stringify(evidence),
     relation.reason.trim(),
-    relation.status || 'active',
+    nextStatus,
     now,
     now,
     now,
@@ -142,6 +150,12 @@ export function getContextSuggestions(params: {
   entityId: string
   limit?: number
 }): ContextSuggestion[] {
+  refreshRelationScores({
+    vaultPath: params.vaultPath,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    limit: 100
+  })
   const db = getDatabase(params.vaultPath)
   const limit = Math.max(1, Math.min(params.limit ?? 3, 20))
   const rows = db.prepare(`
@@ -157,6 +171,74 @@ export function getContextSuggestions(params: {
   `).all(params.entityType, params.entityId, params.entityType, params.entityId, limit) as RelationRow[]
 
   return rows.map((row) => toSuggestion(row, params.entityType, params.entityId))
+}
+
+export function refreshRelationScores(params: {
+  vaultPath: string
+  entityType?: EntityType
+  entityId?: string
+  now?: number
+  limit?: number
+  archiveAfterDays?: number
+  archiveScoreThreshold?: number
+}): RelationRefreshResult {
+  const db = getDatabase(params.vaultPath)
+  const now = params.now ?? Math.floor(Date.now() / 1000)
+  const limit = Math.max(1, Math.min(params.limit ?? 500, 2000))
+  const archiveAfterDays = params.archiveAfterDays ?? 180
+  const archiveScoreThreshold = params.archiveScoreThreshold ?? 0.45
+  const entityFilter = params.entityType && params.entityId
+    ? `AND (
+        (source_type = ? AND source_id = ?)
+        OR (target_type = ? AND target_id = ?)
+      )`
+    : ''
+  const queryParams: (string | number)[] = params.entityType && params.entityId
+    ? [params.entityType, params.entityId, params.entityType, params.entityId, limit]
+    : [limit]
+  const rows = db.prepare(`
+    SELECT *
+    FROM ai_relations
+    WHERE status IN ('active', 'dismissed', 'wrong')
+      ${entityFilter}
+    ORDER BY updated_at ASC
+    LIMIT ?
+  `).all(...queryParams) as RelationRow[]
+
+  const update = db.prepare(`
+    UPDATE ai_relations
+    SET score = ?, status = ?, updated_at = ?
+    WHERE id = ?
+  `)
+  let refreshed = 0
+  let archived = 0
+
+  const tx = db.transaction(() => {
+    for (const row of rows) {
+      const feedback = getFeedbackCounts(db, row.id)
+      const evidence = parseEvidence(row.evidence_json)
+      const baseScore = rankRelation({
+        localScore: row.confidence,
+        aiConfidence: row.confidence,
+        recurrenceCount: row.strength,
+        lastSeenAt: row.last_seen_at,
+        feedback,
+        evidence,
+        now
+      })
+      const score = applyFeedbackAndStatusPenalty(baseScore, row.status, feedback)
+      const daysSinceSeen = Math.max(0, (now - row.last_seen_at) / 86_400)
+      const nextStatus = row.status === 'active' && daysSinceSeen >= archiveAfterDays && score <= archiveScoreThreshold
+        ? 'archived'
+        : row.status
+      if (nextStatus === 'archived' && row.status !== 'archived') archived += 1
+      refreshed += 1
+      update.run(score, nextStatus, now, row.id)
+    }
+  })
+  tx()
+
+  return { refreshed, archived }
 }
 
 export function submitRelationFeedback(params: {
@@ -270,6 +352,14 @@ function adjustScoreForFeedback(score: number, feedbackType: RelationFeedbackTyp
   if (feedbackType === 'not_related') return Number(clamp01(score - 0.5).toFixed(4))
   if (feedbackType === 'wrong_reason') return Number(clamp01(score - 0.25).toFixed(4))
   return score
+}
+
+function applyFeedbackAndStatusPenalty(score: number, status: RelationStatus, feedback: RelationFeedbackCounts): number {
+  let nextScore = score
+  if (status === 'dismissed' || feedback.dismissed) nextScore -= 0.15
+  if (status === 'wrong' || feedback.notRelated) nextScore -= 0.5
+  if (feedback.wrongReason) nextScore -= 0.25
+  return Number(clamp01(nextScore).toFixed(4))
 }
 
 function clamp01(value: number): number {

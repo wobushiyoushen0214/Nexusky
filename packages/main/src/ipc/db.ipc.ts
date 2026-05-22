@@ -19,10 +19,10 @@ import { searchNotes } from '../services/note-search'
 import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
 import { findRelationCandidates } from '../services/long-context/relation-candidates'
 import { classifyRelation, shouldPersistRelationClassification } from '../services/long-context/relation-classifier'
-import { getContextSuggestions, submitRelationFeedback, upsertRelation } from '../services/long-context/relation-store'
+import { getContextSuggestions, refreshRelationScores, submitRelationFeedback, upsertRelation } from '../services/long-context/relation-store'
 import { extractLongTermThemes, getLongTermThemes } from '../services/long-context/theme-extractor'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextEntityType, LongContextFeedbackType, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextEntityType, LongContextFeedbackType, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -85,6 +85,12 @@ function normalizeLongContextLimit(value: unknown, fallback: number): number {
   if (value === undefined || value === null) return fallback
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
   return Math.max(1, Math.min(Math.floor(value), 20))
+}
+
+function normalizeLongContextRefreshLimit(value: unknown): number {
+  if (value === undefined || value === null) return 500
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 500
+  return Math.max(1, Math.min(Math.floor(value), 2000))
 }
 
 interface LongContextEntitySnapshot {
@@ -824,6 +830,30 @@ export function registerDbIPC(): void {
   }) => {
     ensureNonEmptyString(params?.vaultPath, 'long-context:run-theme-extraction.vaultPath')
     return extractLongTermThemes({ vaultPath: params.vaultPath })
+  })
+
+  ipcMain.handle('long-context:refresh-relations', async (_event, params: {
+    vaultPath: string
+    entityType?: LongContextEntityType
+    entityId?: string
+    limit?: number
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:refresh-relations.vaultPath')
+    const entityType = params?.entityType === undefined
+      ? undefined
+      : ensureLongContextEntityType(params.entityType, 'long-context:refresh-relations.entityType')
+    const entityId = params?.entityId === undefined
+      ? undefined
+      : ensureNonEmptyString(params.entityId, 'long-context:refresh-relations.entityId', MAX_TITLE_LENGTH)
+    if ((entityType && !entityId) || (!entityType && entityId)) {
+      throw new Error('Invalid IPC payload: long-context:refresh-relations entityType and entityId must be provided together')
+    }
+    return refreshRelationScores({
+      vaultPath: params.vaultPath,
+      entityType,
+      entityId,
+      limit: normalizeLongContextRefreshLimit(params?.limit)
+    }) as LongContextRelationRefreshResult
   })
 
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {
