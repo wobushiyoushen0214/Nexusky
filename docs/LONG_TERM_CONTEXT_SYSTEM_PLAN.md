@@ -942,12 +942,12 @@ tests/long-context-classifier.test.ts
 
 任务：
 
-- [ ] 新建 `relation-store.ts`。
-- [ ] 新建 `relation-ranker.ts`。
-- [ ] 实现 upsert relation。
-- [ ] 实现 Top N 查询。
-- [ ] 实现 feedback 写入。
-- [ ] feedback 影响后续 score。
+- [x] 新建 `relation-store.ts`。
+- [x] 新建 `relation-ranker.ts`。
+- [x] 实现 upsert relation。
+- [x] 实现 Top N 查询。
+- [x] 实现 feedback 写入。
+- [x] feedback 影响后续 score。
 
 测试：
 
@@ -958,10 +958,20 @@ tests/long-context-store.test.ts
 
 验收：
 
-- 同一对实体不会重复插入多条同类型关系。
-- `useful` 反馈会提高排序。
-- `not_related` 会降低排序或隐藏。
-- 关系有 `first_seen_at` 和 `last_seen_at`。
+- [x] 同一对实体不会重复插入多条同类型关系。
+- [x] `useful` 反馈会提高排序。
+- [x] `not_related` 会降低排序或隐藏。
+- [x] 关系有 `first_seen_at` 和 `last_seen_at`。
+
+执行记录：
+
+- 2026-05-22：新增 `packages/main/src/services/long-context/relation-ranker.ts`，实现 `localScore`、AI confidence、recurrence、freshness、feedback、evidence 的合成分数，以及 `decay` / `recurrence` / `feedbackScore` helper。
+- 2026-05-22：新增 `packages/main/src/services/long-context/relation-store.ts`，实现 `upsertRelation`、`getContextSuggestions`、`submitRelationFeedback`。同一 source/target/relation_type 走唯一索引 upsert；`useful` 提升 score，`wrong_reason` 降低 score，`dismissed` / `not_related` 隐藏关系；Top N 查询会在当前实体位于 source 或 target 时返回另一端作为建议。
+- 2026-05-22：新增 `tests/long-context-ranker.test.ts` 和 `tests/long-context-store.test.ts`，覆盖 feedback 分数、decay/recurrence、重复 upsert、Top N、`useful` 排序提升、`not_related` 隐藏、缺失 relationId 错误。验证通过：`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 4 开始补齐 IPC 类型和 `db.ipc.ts` handlers，让 renderer 能调用 suggestions / discover / feedback。
 
 ### Iteration 4：IPC 闭环
 
@@ -1323,12 +1333,12 @@ Day 3
 - 写 candidates 测试（已完成，2026-05-22）
 
 Day 4
-- 实现 relation-store.ts
-- 实现 upsert / query / feedback
+- 实现 relation-store.ts（已完成，2026-05-22）
+- 实现 upsert / query / feedback（已完成，2026-05-22）
 
 Day 5
-- 实现 relation-ranker.ts
-- 写 ranker / store 测试
+- 实现 relation-ranker.ts（已完成，2026-05-22）
+- 写 ranker / store 测试（已完成，2026-05-22）
 
 Day 6
 - 增加 IPC 类型和 handlers
