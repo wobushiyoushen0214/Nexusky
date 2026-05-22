@@ -5,6 +5,7 @@ import { getDatabase } from '../database'
 import { aiManager } from '../ai'
 import type { ChatMessage, ChatOptions, ChatStreamEvent } from '../ai'
 import { extractJsonFromText } from '../ai/json'
+import { recordContextEvent } from './context-events'
 import type { EntityType } from './relation-candidates'
 
 export interface ThemeExtractionResult {
@@ -57,6 +58,12 @@ interface ThemeDraft {
   confidence: number
 }
 
+interface ThemeUpsertResult {
+  id: string
+  title: string
+  status: 'created' | 'updated'
+}
+
 const MIN_THEME_ENTITIES = 3
 const MIN_THEME_SPAN_DAYS = 7
 const MIN_AVERAGE_SCORE = 0.65
@@ -76,8 +83,24 @@ export async function extractLongTermThemes(params: ExtractLongTermThemesParams)
   for (const candidate of candidates) {
     const draft = await generateThemeDraft(candidate, params.provider)
     const result = upsertTheme(db, candidate, draft)
-    if (result === 'created') created += 1
-    else updated += 1
+    if (result.status === 'created') {
+      created += 1
+      recordContextEvent({
+        vaultPath: params.vaultPath,
+        eventType: 'theme_created',
+        entityType: 'theme',
+        entityId: result.id,
+        entityTitle: result.title,
+        metadata: {
+          keyword: candidate.keyword,
+          entityCount: candidate.entityMap.size,
+          relationCount: candidate.relations.length,
+          averageScore: candidate.averageScore
+        }
+      })
+    } else {
+      updated += 1
+    }
   }
 
   return { created, updated }
@@ -290,7 +313,7 @@ async function generateThemeDraft(candidate: ThemeCandidate, provider?: ThemeExt
   }
 }
 
-function upsertTheme(db: Database.Database, candidate: ThemeCandidate, draft: ThemeDraft): 'created' | 'updated' {
+function upsertTheme(db: Database.Database, candidate: ThemeCandidate, draft: ThemeDraft): ThemeUpsertResult {
   const title = draft.title || candidate.keyword
   const id = createThemeId(title)
   const existing = db.prepare('SELECT id FROM long_term_themes WHERE id = ?').get(id) as { id: string } | undefined
@@ -353,7 +376,7 @@ function upsertTheme(db: Database.Database, candidate: ThemeCandidate, draft: Th
     )
   }
 
-  return existing ? 'updated' : 'created'
+  return { id, title, status: existing ? 'updated' : 'created' }
 }
 
 function fallbackThemeDraft(candidate: ThemeCandidate): ThemeDraft {

@@ -82,8 +82,20 @@ export function RelatedContextPanel({ currentFilePath, content }: RelatedContext
 
   const openSuggestion = useCallback((suggestion: LongContextSuggestion) => {
     if (!vaultPath || !suggestion.targetPath) return
+    if (noteId) {
+      window.api.invoke('long-context:record-suggestion-opened', {
+        vaultPath,
+        entityType: 'note',
+        entityId: noteId,
+        relationId: suggestion.relationId,
+        targetType: suggestion.targetType,
+        targetId: suggestion.targetId,
+        targetTitle: suggestion.targetTitle,
+        targetPath: suggestion.targetPath
+      }).catch(() => {})
+    }
     useEditorStore.getState().openFile(`${vaultPath}/${suggestion.targetPath}`)
-  }, [vaultPath])
+  }, [vaultPath, noteId])
 
   const submitFeedback = useCallback(async (suggestion: LongContextSuggestion, feedbackType: LongContextFeedbackType) => {
     if (!vaultPath) return

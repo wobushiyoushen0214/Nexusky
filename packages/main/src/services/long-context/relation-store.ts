@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3'
 import { getDatabase } from '../database'
 import { rankRelation, type RelationFeedbackCounts } from './relation-ranker'
+import { recordContextEvent } from './context-events'
 import type { EntityType } from './relation-candidates'
 import type { RelationType } from './relation-classifier'
 
@@ -140,6 +141,24 @@ export function upsertRelation(vaultPath: string, relation: UpsertRelationInput)
     now,
     now
   )
+
+  recordContextEvent({
+    vaultPath,
+    eventType: existing ? 'relation_reinforced' : 'relation_created',
+    entityType: relation.sourceType,
+    entityId: relation.sourceId,
+    entityTitle: relation.sourceTitle,
+    entityPath: relation.sourcePath,
+    metadata: {
+      relationId: id,
+      targetType: relation.targetType,
+      targetId: relation.targetId,
+      relationType: relation.relationType,
+      score,
+      confidence: clamp01(relation.confidence)
+    },
+    createdAt: now
+  })
 
   return id
 }

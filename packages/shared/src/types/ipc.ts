@@ -339,6 +339,26 @@ export interface LongContextCognitiveReviewResult {
   }
 }
 
+export interface LongContextMetrics {
+  since?: number
+  until?: number
+  counts: {
+    suggestionShown: number
+    suggestionOpened: number
+    suggestionUseful: number
+    suggestionDismissed: number
+    suggestionNotRelated: number
+    relationCreated: number
+    relationReinforced: number
+    themeCreated: number
+  }
+  rates: {
+    usefulRate: number
+    openRate: number
+    notRelatedRate: number
+  }
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -473,6 +493,27 @@ export interface IPCChannelMap {
       outputPath?: string
     }
     result: LongContextCognitiveReviewResult
+  }
+  'long-context:record-suggestion-opened': {
+    params: {
+      vaultPath: string
+      entityType: LongContextEntityType
+      entityId: string
+      relationId: string
+      targetType: LongContextEntityType
+      targetId: string
+      targetTitle?: string
+      targetPath?: string
+    }
+    result: void
+  }
+  'long-context:get-metrics': {
+    params: {
+      vaultPath: string
+      since?: number
+      until?: number
+    }
+    result: LongContextMetrics
   }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
   'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }

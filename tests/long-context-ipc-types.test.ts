@@ -94,6 +94,35 @@ describe('long-context IPC types', () => {
         resurfacedContexts: 1
       }
     }
+    const openedParams: IPCChannelMap['long-context:record-suggestion-opened']['params'] = {
+      vaultPath: '/tmp/vault',
+      entityType: 'note',
+      entityId: 'note-1',
+      relationId: 'rel-1',
+      targetType: 'note',
+      targetId: 'note-2',
+      targetTitle: 'Historical Context',
+      targetPath: 'Historical Context.md'
+    }
+    const metricsResult: IPCChannelMap['long-context:get-metrics']['result'] = {
+      since: 1_799_000_000,
+      until: 1_800_000_000,
+      counts: {
+        suggestionShown: 10,
+        suggestionOpened: 4,
+        suggestionUseful: 3,
+        suggestionDismissed: 1,
+        suggestionNotRelated: 2,
+        relationCreated: 5,
+        relationReinforced: 6,
+        themeCreated: 1
+      },
+      rates: {
+        usefulRate: 0.3,
+        openRate: 0.4,
+        notRelatedRate: 0.2
+      }
+    }
 
     expect(getParams.entityType).toBe('note')
     expect(discoverResult.suggestions[0].relationType).toBe('supports_goal')
@@ -105,5 +134,7 @@ describe('long-context IPC types', () => {
     expect(chatParams.currentFilePath).toContain('Current.md')
     expect(reviewParams.write).toBe(true)
     expect(reviewResult.stats.resurfacedContexts).toBe(1)
+    expect(openedParams.relationId).toBe('rel-1')
+    expect(metricsResult.rates.usefulRate).toBe(0.3)
   })
 })

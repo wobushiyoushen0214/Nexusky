@@ -22,8 +22,9 @@ import { classifyRelation, shouldPersistRelationClassification } from '../servic
 import { getContextSuggestions, refreshRelationScores, submitRelationFeedback, upsertRelation } from '../services/long-context/relation-store'
 import { extractLongTermThemes, getLongTermThemes } from '../services/long-context/theme-extractor'
 import { generateCognitiveReview } from '../services/long-context/cognitive-review'
+import { getLongContextMetrics, recordContextEvent } from '../services/long-context/context-events'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextMetrics, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -229,6 +230,34 @@ async function discoverLongContextRelations(params: {
       entityId: params.entityId,
       limit: Math.min(limit, 3)
     }) as LongContextSuggestion[]
+  }
+}
+
+function recordSuggestionShownEvents(params: {
+  vaultPath: string
+  entityType: LongContextEntityType
+  entityId: string
+  suggestions: LongContextSuggestion[]
+}): void {
+  const now = Math.floor(Date.now() / 1000)
+  for (const suggestion of params.suggestions) {
+    recordContextEvent({
+      vaultPath: params.vaultPath,
+      eventType: 'suggestion_shown',
+      entityType: params.entityType,
+      entityId: params.entityId,
+      entityTitle: suggestion.targetTitle,
+      entityPath: suggestion.targetPath,
+      metadata: {
+        relationId: suggestion.relationId,
+        targetType: suggestion.targetType,
+        targetId: suggestion.targetId,
+        relationType: suggestion.relationType,
+        score: suggestion.score,
+        confidence: suggestion.confidence
+      },
+      createdAt: now
+    })
   }
 }
 
@@ -771,21 +800,30 @@ export function registerDbIPC(): void {
     ensureNonEmptyString(params?.entityId, 'long-context:get-suggestions.entityId')
     const content = ensureOptionalBoundedString(params?.content, 'long-context:get-suggestions.content', MAX_DESCRIPTION_LENGTH)
     const limit = normalizeLongContextLimit(params?.limit, 3)
+    let suggestions: LongContextSuggestion[]
     if (params?.refresh) {
-      return (await discoverLongContextRelations({
+      suggestions = (await discoverLongContextRelations({
         vaultPath: params.vaultPath,
         entityType,
         entityId: params.entityId,
         content,
         limit
       })).suggestions
+    } else {
+      suggestions = getContextSuggestions({
+        vaultPath: params.vaultPath,
+        entityType,
+        entityId: params.entityId,
+        limit
+      }) as LongContextSuggestion[]
     }
-    return getContextSuggestions({
+    recordSuggestionShownEvents({
       vaultPath: params.vaultPath,
       entityType,
       entityId: params.entityId,
-      limit
-    }) as LongContextSuggestion[]
+      suggestions
+    })
+    return suggestions
   })
 
   ipcMain.handle('long-context:discover-relations', async (_event, params: {
@@ -799,13 +837,20 @@ export function registerDbIPC(): void {
     const entityType = ensureLongContextEntityType(params?.entityType, 'long-context:discover-relations.entityType')
     ensureNonEmptyString(params?.entityId, 'long-context:discover-relations.entityId')
     const content = ensureOptionalBoundedString(params?.content, 'long-context:discover-relations.content', MAX_DESCRIPTION_LENGTH)
-    return discoverLongContextRelations({
+    const result = await discoverLongContextRelations({
       vaultPath: params.vaultPath,
       entityType,
       entityId: params.entityId,
       content,
       limit: params.limit
     })
+    recordSuggestionShownEvents({
+      vaultPath: params.vaultPath,
+      entityType,
+      entityId: params.entityId,
+      suggestions: result.suggestions
+    })
+    return result
   })
 
   ipcMain.handle('long-context:submit-feedback', async (_event, params: {
@@ -823,6 +868,14 @@ export function registerDbIPC(): void {
       relationId: params.relationId,
       feedbackType,
       note
+    })
+    recordContextEvent({
+      vaultPath: params.vaultPath,
+      eventType: 'relation_feedback_submitted',
+      entityType: 'relation',
+      entityId: params.relationId,
+      contentSnapshot: note,
+      metadata: { feedbackType }
     })
   })
 
@@ -886,6 +939,57 @@ export function registerDbIPC(): void {
       write: Boolean(params?.write),
       outputPath
     }) as LongContextCognitiveReviewResult
+  })
+
+  ipcMain.handle('long-context:record-suggestion-opened', async (_event, params: {
+    vaultPath: string
+    entityType: LongContextEntityType
+    entityId: string
+    relationId: string
+    targetType: LongContextEntityType
+    targetId: string
+    targetTitle?: string
+    targetPath?: string
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:record-suggestion-opened.vaultPath')
+    const entityType = ensureLongContextEntityType(params?.entityType, 'long-context:record-suggestion-opened.entityType')
+    ensureNonEmptyString(params?.entityId, 'long-context:record-suggestion-opened.entityId')
+    ensureNonEmptyString(params?.relationId, 'long-context:record-suggestion-opened.relationId')
+    const targetType = ensureLongContextEntityType(params?.targetType, 'long-context:record-suggestion-opened.targetType')
+    ensureNonEmptyString(params?.targetId, 'long-context:record-suggestion-opened.targetId')
+    const targetTitle = ensureOptionalBoundedString(params?.targetTitle, 'long-context:record-suggestion-opened.targetTitle', MAX_TITLE_LENGTH)
+    const targetPath = ensureOptionalBoundedString(params?.targetPath, 'long-context:record-suggestion-opened.targetPath', MAX_PATH_LENGTH)
+    recordContextEvent({
+      vaultPath: params.vaultPath,
+      eventType: 'suggestion_opened',
+      entityType,
+      entityId: params.entityId,
+      entityTitle: targetTitle,
+      entityPath: targetPath,
+      metadata: {
+        relationId: params.relationId,
+        targetType,
+        targetId: params.targetId
+      }
+    })
+  })
+
+  ipcMain.handle('long-context:get-metrics', async (_event, params: {
+    vaultPath: string
+    since?: number
+    until?: number
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:get-metrics.vaultPath')
+    const since = ensureOptionalUnixSeconds(params?.since, 'long-context:get-metrics.since')
+    const until = ensureOptionalUnixSeconds(params?.until, 'long-context:get-metrics.until')
+    if (since !== undefined && until !== undefined && since > until) {
+      throw new Error('Invalid IPC payload: long-context:get-metrics.since must be before until')
+    }
+    return getLongContextMetrics({
+      vaultPath: params.vaultPath,
+      since,
+      until
+    }) as LongContextMetrics
   })
 
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {

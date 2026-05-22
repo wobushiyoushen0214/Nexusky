@@ -1349,6 +1349,12 @@ not_related_rate <= 40%
 
 如果 `not_related_rate` 高于 40%，优先调低展示数量和置信度阈值，不要急着增加 AI prompt 复杂度。
 
+实现记录：
+
+- 2026-05-22：新增 `context-events.ts`，用 `context_events` 记录 `suggestion_shown`、`suggestion_opened`、`relation_feedback_submitted`、`relation_created`、`relation_reinforced`、`theme_created`。
+- 2026-05-22：`long-context:get-suggestions` / `long-context:discover-relations` 会记录展示次数；编辑器相关上下文卡片打开来源时记录 `suggestion_opened`；反馈提交记录 feedback type；关系 upsert 记录 created / reinforced；主题抽取记录 theme created。
+- 2026-05-22：新增 `long-context:get-metrics`，返回 `suggestionShown`、`suggestionOpened`、`suggestionUseful`、`suggestionDismissed`、`suggestionNotRelated`、`relationCreated`、`relationReinforced`、`themeCreated` 以及 `usefulRate`、`openRate`、`notRelatedRate`。新增 `tests/long-context-metrics.test.ts`，验证通过：`npm test -- long-context-metrics long-context-ipc-types long-context-themes long-context-store`、`npm run typecheck`。
+
 ---
 
 ## 14. 风险和处理
