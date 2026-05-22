@@ -3,24 +3,50 @@ import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypt
 
 const PREFIX_V1 = 'enc:v1:'
 const PREFIX_V2 = 'enc:v2:'
+const PREFIX_V3 = 'enc:v3:'
 
 function getPortableKey(): Buffer {
   return createHash('sha256').update('nexusky-note-secret-2024').digest()
+}
+
+function safeStorageAvailable(): boolean {
+  try {
+    return safeStorage.isEncryptionAvailable()
+  } catch {
+    return false
+  }
 }
 
 export function isAvailable(): boolean {
   return true
 }
 
+function encryptPortable(plain: string): string {
+  const key = getPortableKey()
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return PREFIX_V2 + Buffer.concat([iv, tag, encrypted]).toString('base64')
+}
+
+function encryptSafeStorage(plain: string): string {
+  const buf = safeStorage.encryptString(plain)
+  return PREFIX_V3 + buf.toString('base64')
+}
+
 export function encrypt(plain: string): string {
   if (!plain) return plain
+  if (safeStorageAvailable()) {
+    try {
+      return encryptSafeStorage(plain)
+    } catch {
+      // Fall through to portable fallback so the user never loses their secrets
+      // if safeStorage briefly fails (e.g. transient Keychain issues).
+    }
+  }
   try {
-    const key = getPortableKey()
-    const iv = randomBytes(12)
-    const cipher = createCipheriv('aes-256-gcm', key, iv)
-    const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()])
-    const tag = cipher.getAuthTag()
-    return PREFIX_V2 + Buffer.concat([iv, tag, encrypted]).toString('base64')
+    return encryptPortable(plain)
   } catch {
     return plain
   }
@@ -28,6 +54,16 @@ export function encrypt(plain: string): string {
 
 export function decrypt(value: string): string {
   if (typeof value !== 'string') return value
+
+  if (value.startsWith(PREFIX_V3)) {
+    try {
+      if (!safeStorageAvailable()) return ''
+      const buf = Buffer.from(value.slice(PREFIX_V3.length), 'base64')
+      return safeStorage.decryptString(buf)
+    } catch {
+      return ''
+    }
+  }
 
   if (value.startsWith(PREFIX_V2)) {
     try {
@@ -46,7 +82,7 @@ export function decrypt(value: string): string {
 
   if (value.startsWith(PREFIX_V1)) {
     try {
-      if (!safeStorage.isEncryptionAvailable()) return ''
+      if (!safeStorageAvailable()) return ''
       const buf = Buffer.from(value.slice(PREFIX_V1.length), 'base64')
       return safeStorage.decryptString(buf)
     } catch {
@@ -58,9 +94,21 @@ export function decrypt(value: string): string {
 }
 
 export function isEncrypted(value: unknown): boolean {
-  return typeof value === 'string' && (value.startsWith(PREFIX_V1) || value.startsWith(PREFIX_V2))
+  return typeof value === 'string' && (value.startsWith(PREFIX_V1) || value.startsWith(PREFIX_V2) || value.startsWith(PREFIX_V3))
 }
 
 export function isV1Encrypted(value: unknown): boolean {
   return typeof value === 'string' && value.startsWith(PREFIX_V1)
+}
+
+export function isV2Encrypted(value: unknown): boolean {
+  return typeof value === 'string' && value.startsWith(PREFIX_V2)
+}
+
+export function isV3Encrypted(value: unknown): boolean {
+  return typeof value === 'string' && value.startsWith(PREFIX_V3)
+}
+
+export function preferredEncryption(): 'v3' | 'v2' {
+  return safeStorageAvailable() ? 'v3' : 'v2'
 }

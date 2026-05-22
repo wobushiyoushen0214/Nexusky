@@ -464,7 +464,7 @@ Nexusky 支持 vault 级可扩展内容：
 
 - Markdown 文件默认保存在用户本地 vault。
 - SQLite 索引是本地派生数据。
-- API Key 等敏感配置通过 Electron safeStorage 加密存储。
+- API Key 等敏感配置优先通过 Electron safeStorage 加密存储（`enc:v3:`，由 Keychain / DPAPI / libsecret 接管）；若系统密钥库不可用，则回退到便携式 AES-256-GCM（`enc:v2:`）。`get()` 命中旧版本会自动透明升级到当前最强方案。
 - 渲染进程通过 preload 受控访问主进程能力。
 - AI 请求会发送用户输入、检索到的笔记片段或附件文本给用户配置的 Provider。
 - 云同步会把文件或索引上传到用户配置的后端。

@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { join, dirname } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
-import { encrypt, decrypt, isEncrypted, isV1Encrypted } from './secret'
+import { encrypt, decrypt, isEncrypted, isV1Encrypted, isV2Encrypted, preferredEncryption } from './secret'
 
 function getStorePath(): string {
   return join(app.getPath('userData'), 'config.json')
@@ -46,6 +46,18 @@ function decryptSecrets(value: unknown): unknown {
   return transformDeep(value, (s) => (isEncrypted(s) ? decrypt(s) : s))
 }
 
+function reencryptSecrets(value: unknown): unknown {
+  // Force-upgrade any encrypted secret to the currently preferred scheme.
+  // Plain values are encrypted; values that fail to decrypt are kept as-is
+  // to avoid replacing them with empty strings.
+  return transformDeep(value, (s) => {
+    if (!isEncrypted(s)) return encrypt(s)
+    const plain = decrypt(s)
+    if (!plain) return s
+    return encrypt(plain)
+  })
+}
+
 class Store {
   private data: Record<string, unknown> = {}
   private initialized = false
@@ -87,16 +99,20 @@ class Store {
     this.ensureLoaded()
     const raw = this.data[key]
     const decrypted = decryptSecrets(raw)
-    // 自动迁移：明文或 v1(safeStorage) → v2(portable)，仅在解密成功时
+    // 自动迁移：明文 → v2/v3；v1(safeStorage) → v2/v3；v2 → v3（safeStorage 可用时）
     if (this.needsMigration(raw, decrypted)) {
-      this.data[key] = encryptSecrets(decrypted)
+      this.data[key] = reencryptSecrets(raw)
       this.scheduleSave()
     }
     return decrypted
   }
 
   private needsMigration(raw: unknown, decrypted: unknown): boolean {
-    return this.hasPlainSecrets(raw) || this.hasSuccessfulV1Secrets(raw, decrypted)
+    return (
+      this.hasPlainSecrets(raw) ||
+      this.hasSuccessfulV1Secrets(raw, decrypted) ||
+      this.hasUpgradableV2Secrets(raw, decrypted)
+    )
   }
 
   private hasPlainSecrets(value: unknown): boolean {
@@ -124,6 +140,27 @@ class Store {
       }
       if (typeof v === 'object' && v !== null) {
         if (this.hasSuccessfulV1Secrets(v, decObj[k])) return true
+      }
+    }
+    return false
+  }
+
+  private hasUpgradableV2Secrets(raw: unknown, decrypted: unknown): boolean {
+    if (preferredEncryption() !== 'v3') return false
+    if (raw == null || typeof raw !== 'object') return false
+    if (decrypted == null || typeof decrypted !== 'object') return false
+    if (Array.isArray(raw)) {
+      return raw.some((v, i) => this.hasUpgradableV2Secrets(v, (decrypted as unknown[])[i]))
+    }
+    const rawObj = raw as Record<string, unknown>
+    const decObj = decrypted as Record<string, unknown>
+    for (const [k, v] of Object.entries(rawObj)) {
+      if (typeof v === 'string' && SECRET_FIELD_NAMES.has(k) && isV2Encrypted(v)) {
+        const dec = decObj[k]
+        if (typeof dec === 'string' && dec.length > 0) return true
+      }
+      if (typeof v === 'object' && v !== null) {
+        if (this.hasUpgradableV2Secrets(v, decObj[k])) return true
       }
     }
     return false
