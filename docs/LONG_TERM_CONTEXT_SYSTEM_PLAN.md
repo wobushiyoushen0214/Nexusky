@@ -893,7 +893,7 @@ tests/long-context-candidates.test.ts
 
 下一步：
 
-- 从 Iteration 2 开始实现 `relation-classifier.ts`，先做严格 JSON prompt、输出校验和低置信度 fallback；暂不接入入库，避免把 AI 分类和 store 责任混在同一批。
+- Iteration 2 已完成；下一步从 Iteration 3 的关系入库和排序开始。
 
 ### Iteration 2：AI 关系分类
 
@@ -905,11 +905,11 @@ AI 能把候选上下文转成可解释关系。
 
 任务：
 
-- [ ] 新建 `relation-classifier.ts`。
-- [ ] 编写严格 JSON prompt。
-- [ ] 使用 `extractJsonFromText` 解析。
-- [ ] 增加输出校验和 fallback。
-- [ ] 低置信度不入库。
+- [x] 新建 `relation-classifier.ts`。
+- [x] 编写严格 JSON prompt。
+- [x] 使用 `extractJsonFromText` 解析。
+- [x] 增加输出校验和 fallback。
+- [x] 低置信度不入库。
 
 测试：
 
@@ -919,9 +919,18 @@ tests/long-context-classifier.test.ts
 
 验收：
 
-- AI 输出非 JSON 时能恢复或失败为低置信度。
-- 没有证据的关系不会入库。
-- `supports_goal`、`evolved_from`、`blocked_by` 至少有样例覆盖。
+- [x] AI 输出非 JSON 时能恢复或失败为低置信度。
+- [x] 没有证据的关系不会入库。
+- [x] `supports_goal`、`evolved_from`、`blocked_by` 至少有样例覆盖。
+
+执行记录：
+
+- 2026-05-22：新增 `packages/main/src/services/long-context/relation-classifier.ts`，实现严格 JSON prompt、AI provider 流式响应拼接、`extractJsonFromText` 解析、输出字段校验、无证据/无原因降为低置信度，以及 `shouldPersistRelationClassification` 入库门槛（`confidence >= 0.65`、证据不少于 2 条、原因长度不少于 12）。
+- 2026-05-22：新增 `tests/long-context-classifier.test.ts` 覆盖 prompt 约束、带解释文本的 JSON 恢复、非 JSON fallback、无证据不入库、`supports_goal` / `evolved_from` / `blocked_by` 样例，以及 mock provider 流式输出解析。验证通过：`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 3 开始实现 `relation-store.ts` 和 `relation-ranker.ts`，把候选 + 分类结果持久化为 Top 3 建议，并让 feedback 影响排序。
 
 ### Iteration 3：关系入库和排序
 
