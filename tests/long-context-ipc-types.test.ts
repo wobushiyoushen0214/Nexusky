@@ -60,6 +60,11 @@ describe('long-context IPC types', () => {
       refreshed: 4,
       archived: 1
     }
+    const chatParams: IPCChannelMap['ai:chat']['params'] = {
+      messages: [{ role: 'user', content: 'Use long-term context' }],
+      vaultPath: '/tmp/vault',
+      currentFilePath: '/tmp/vault/Current.md'
+    }
 
     expect(getParams.entityType).toBe('note')
     expect(discoverResult.suggestions[0].relationType).toBe('supports_goal')
@@ -68,5 +73,6 @@ describe('long-context IPC types', () => {
     expect(extractionResult.created).toBe(1)
     expect(refreshParams.entityId).toBe('note-1')
     expect(refreshResult.archived).toBe(1)
+    expect(chatParams.currentFilePath).toContain('Current.md')
   })
 })

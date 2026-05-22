@@ -14,6 +14,7 @@ import { buildKnowledgeMaintenanceQueue, indexTasksByPath, type KnowledgeMainten
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { normalizeToolLimit } from '../services/ai/tool-limits'
 import { withMergedSystemContext } from '../services/ai/system-context'
+import { buildLongContextPack, mergeLongContextIntoSystemPrompt, type LongContextPack } from '../services/long-context/context-pack-builder'
 import { formatFlashcardsMarkdown, normalizeGeneratedFlashcards } from '../services/ai/flashcards'
 import { logger } from '../services/logger'
 import { getAllNotes, getAllTags, getAllTasks, getBacklinks, getNotesByTag, getOutgoingLinks, getOutgoingUnlinkedMentions, getPropertyRows, getUnlinkedMentions, indexNote, resolveAllLinks } from '../services/indexer'
@@ -25,9 +26,31 @@ import { join, basename } from 'path'
 import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { transcribeAudio, type TranscribeAudioParams } from '../services/ai/transcription'
+import type { ChatSource } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
+}
+
+function mergeChatSources(...groups: (ChatSource[] | undefined)[]): ChatSource[] {
+  const sources: ChatSource[] = []
+  for (const group of groups) {
+    for (const source of group || []) {
+      if (sources.some((item) => item.filePath === source.filePath && item.title === source.title)) continue
+      sources.push(source)
+    }
+  }
+  return sources
+}
+
+function buildLongContextPackSafely(vaultPath?: string, currentFilePath?: string | null): LongContextPack | null {
+  if (!vaultPath) return null
+  try {
+    return buildLongContextPack({ vaultPath, currentFilePath })
+  } catch (error) {
+    logger.warn('Failed to build long-context pack', { error: getErrorMessage(error) })
+    return null
+  }
 }
 
 function getStringArg(args: Record<string, unknown>, key: string): string {
@@ -219,7 +242,7 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
     return provider.validate()
   })
 
-  ipcMain.handle('ai:chat', async (event, params: { messages: ChatMessage[]; vaultPath?: string; systemPrompt?: string }) => {
+  ipcMain.handle('ai:chat', async (event, params: { messages: ChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return
 
@@ -227,6 +250,7 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
     const controller = startAiTask(windowId)
 
     let messages = [...params.messages]
+    const longContextPack = buildLongContextPackSafely(params.vaultPath, params.currentFilePath)
 
     if (params.vaultPath) {
       const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
@@ -262,16 +286,21 @@ ${context}
               ? `${params.systemPrompt}\n\n以下是相关笔记内容：\n---\n${context}\n---`
               : systemContent
           }
-          messages = withMergedSystemContext(String(systemMsg.content), messages)
+          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(String(systemMsg.content), longContextPack), messages)
 
-          window.webContents.send('ai:sources', results.map((r) => ({
+          const semanticSources = results.map((r) => ({
             title: r.title,
             filePath: r.filePath,
             chunk: r.chunk.slice(0, 100),
             score: r.score
-          })))
+          }))
+          window.webContents.send('ai:sources', mergeChatSources(longContextPack?.sources, semanticSources))
         } else if (params.systemPrompt) {
-          messages = withMergedSystemContext(params.systemPrompt, messages)
+          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(params.systemPrompt, longContextPack), messages)
+          if (longContextPack?.sources.length) window.webContents.send('ai:sources', longContextPack.sources)
+        } else if (longContextPack?.systemText) {
+          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt('You are the user\'s personal knowledge base assistant. Use the long-term context only when it helps answer the current question.', longContextPack), messages)
+          if (longContextPack.sources.length) window.webContents.send('ai:sources', longContextPack.sources)
         }
       }
     } else if (params.systemPrompt) {
@@ -3295,6 +3324,7 @@ graph TD
     const controller = startAiTask(windowId)
 
     const vaultPath = params.vaultPath || ''
+    const longContextPack = buildLongContextPackSafely(params.vaultPath, params.currentFilePath)
 
     try {
       // Build initial messages with system prompt
@@ -3305,7 +3335,7 @@ graph TD
 如果用户的问题可以通过搜索笔记来回答，请先搜索相关内容。
 如果用户想创建或修改笔记，请让用户切换到编辑模式，那里会先展示预览并等待确认。`
 
-      const systemContent = customPrompt || defaultSystemPrompt
+      const systemContent = mergeLongContextIntoSystemPrompt(customPrompt || defaultSystemPrompt, longContextPack)
       messages = withMergedSystemContext(systemContent, messages)
 
       // Context compaction
@@ -3314,7 +3344,8 @@ graph TD
       const MAX_TOOL_ITERATIONS = 5
       const MAX_CONTINUATIONS = 2
       let continuations = 0
-      const agentSources: { title: string; filePath: string; chunk: string; score: number }[] = []
+      const agentSources: ChatSource[] = longContextPack?.sources ? [...longContextPack.sources] : []
+      if (agentSources.length > 0) window.webContents.send('ai:sources', agentSources)
 
       for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
         if (window.isDestroyed() || controller.signal.aborted) break

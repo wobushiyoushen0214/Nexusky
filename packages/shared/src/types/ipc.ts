@@ -450,7 +450,7 @@ export interface IPCChannelMap {
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:get-active-provider': { params: undefined; result: string | null }
   'ai:validate': { params: { config: AIProviderConfig }; result: AIProviderValidationResult }
-  'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string }; result: void }
+  'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }; result: void }
   'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }; result: void }
   'ai:detect-intent': { params: { messages: IPCChatMessage[]; intents?: string[]; intentContext?: string }; result: { intent?: string } }
   'ai:stop': { params: undefined; result: void }

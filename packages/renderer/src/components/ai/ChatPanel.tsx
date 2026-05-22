@@ -450,7 +450,7 @@ export function ChatPanel() {
       if (agentMode && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath })
       }
     } catch (e: unknown) {
       if (isCancellationError(e) || batchCancelledRef.current) {
@@ -504,7 +504,7 @@ export function ChatPanel() {
       if (agentMode && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath })
       }
     } catch (e: unknown) {
       if (isCancellationError(e) || batchCancelledRef.current) {
@@ -1263,7 +1263,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         if (agentMode) {
           await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath, currentFilePath })
         } else {
-          await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath })
+          await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath, currentFilePath })
         }
       } catch (e: unknown) {
         if (isCancellationError(e) || batchCancelledRef.current) {
@@ -1323,7 +1323,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           if (editIntent === 'chat') {
             try {
               setToolStatus('正在生成回答...')
-              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath })
+              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath, currentFilePath })
             } catch (e: unknown) {
               if (isCancellationError(e) || batchCancelledRef.current) {
                 finishStoppedGeneration()
@@ -1513,7 +1513,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       if (agentMode && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined })
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath })
       }
     } catch (e: unknown) {
       if (isCancellationError(e) || batchCancelledRef.current) {

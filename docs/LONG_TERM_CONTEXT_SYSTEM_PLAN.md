@@ -1133,10 +1133,10 @@ AI 对话开始使用长期上下文，而不是只做当前检索。
 
 任务：
 
-- [ ] 新建 `context-pack-builder.ts`。
-- [ ] 构造 Hot / Warm / Cold Memory。
-- [ ] 在 `ai:chat` 或 `ai:chat-agent` 中接入可选上下文包。
-- [ ] 系统 prompt 中加入“长期上下文是辅助，不可虚构用户事实”。
+- [x] 新建 `context-pack-builder.ts`。
+- [x] 构造 Hot / Warm / Cold Memory。
+- [x] 在 `ai:chat` 或 `ai:chat-agent` 中接入可选上下文包。
+- [x] 系统 prompt 中加入“长期上下文是辅助，不可虚构用户事实”。
 
 测试：
 
@@ -1147,9 +1147,20 @@ tests/ai-system-context.test.ts
 
 验收：
 
-- context pack 有 token 预算。
-- 长期上下文有来源和证据。
-- AI 不把低置信度关系当作事实。
+- [x] context pack 有 token 预算。
+- [x] 长期上下文有来源和证据。
+- [x] AI 不把低置信度关系当作事实。
+
+执行记录：
+
+- 2026-05-22：新增 `context-pack-builder.ts`，基于当前笔记构造 Hot Memory（当前实体 Top 关系）、Warm Memory（长期主题）、Cold Memory（较旧但仍 active 的关系），按 token budget 贪心裁剪，并输出来源与证据。
+- 2026-05-22：`ai:chat` 与 `ai:chat-agent` 均接入长期上下文包；普通 chat 新增 `currentFilePath` 参数，renderer 会把当前打开笔记传入主进程，使长期上下文和当前笔记关联。
+- 2026-05-22：系统 prompt 注入 `<long_term_context>`，明确“长期上下文是辅助，不可虚构用户事实”，低置信度关系只能作为假设。长期上下文 sources 会与语义检索 / agent tool sources 合并去重。
+- 2026-05-22：新增 `tests/long-context-pack.test.ts`、`tests/ai-system-context.test.ts`；更新 IPC 类型测试。验证通过：`npm test -- long-context-pack ai-system-context long-context-ipc-types`、`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 9 开始实现周期性认知整理，聚合新增关系、主题变化、重复问题 / 阻塞项，并生成可落盘的认知观察 Markdown。
 
 ### Iteration 9：周期性认知整理
 

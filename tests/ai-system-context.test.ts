@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { chatContentToText, withMergedSystemContext } from '../packages/main/src/services/ai/system-context'
+import {
+  LONG_CONTEXT_SYSTEM_GUARD,
+  mergeLongContextIntoSystemPrompt,
+  type LongContextPack
+} from '../packages/main/src/services/long-context/context-pack-builder'
 
 describe('AI system context merging', () => {
   it('keeps renderer system context when main process installs its system prompt', () => {
@@ -36,5 +41,31 @@ describe('AI system context merging', () => {
     expect(messages.slice(1)).toEqual([
       { role: 'user', content: '从这篇笔记提取任务' },
     ])
+  })
+
+  it('adds the long-context guard without replacing client system context', () => {
+    const pack: LongContextPack = {
+      tokenBudget: 400,
+      estimatedTokens: 40,
+      hot: [],
+      warm: [],
+      cold: [],
+      sources: [],
+      systemText: 'Hot Memory\n- Historical Context (confidence: 82%): Related evidence.'
+    }
+
+    const mergedPrompt = mergeLongContextIntoSystemPrompt('Base system prompt.', pack)
+    const messages = withMergedSystemContext(mergedPrompt, [
+      { role: 'system', content: 'Client-provided context.' },
+      { role: 'user', content: 'What should I remember?' }
+    ])
+
+    expect(messages[0].content).toContain('Base system prompt.')
+    expect(messages[0].content).toContain('<long_term_context>')
+    expect(messages[0].content).toContain(LONG_CONTEXT_SYSTEM_GUARD)
+    expect(messages[0].content).toContain('长期上下文是辅助，不可虚构用户事实')
+    expect(messages[0].content).toContain('<client_context>')
+    expect(messages[0].content).toContain('Client-provided context.')
+    expect(messages[1]).toMatchObject({ role: 'user' })
   })
 })
