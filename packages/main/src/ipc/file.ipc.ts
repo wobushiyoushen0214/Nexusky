@@ -9,7 +9,7 @@ import { importObsidianVault } from '../services/obsidian-importer'
 import { importNotionExport } from '../services/notion-importer'
 import { importPocketBookmarks, importReadwiseCsv } from '../services/reader-importer'
 import { extractDocumentTextFromBuffer } from '../services/document-text'
-import { isPathInsideVault } from './file-path'
+import { isPathInsideVault, assertPathInsideVault } from './file-path'
 import { notifyVaultFilesChanged } from './events'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
@@ -88,8 +88,8 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:write', async (_event, params: { path: string; content: string; vaultPath?: string }) => {
-    if (params.vaultPath && !isPathInsideVault(params.path, params.vaultPath)) {
-      throw new Error('路径不在当前笔记空间内')
+    if (params.vaultPath) {
+      await assertPathInsideVault(params.path, params.vaultPath)
     }
     if (params.vaultPath && params.path.endsWith('.md')) {
       await saveSnapshot(params.path, params.vaultPath)
@@ -116,8 +116,8 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:create', async (_event, params: { path: string; content?: string; vaultPath?: string }) => {
-    if (params.vaultPath && !isPathInsideVault(params.path, params.vaultPath)) {
-      throw new Error('路径不在当前笔记空间内')
+    if (params.vaultPath) {
+      await assertPathInsideVault(params.path, params.vaultPath)
     }
     await mkdir(dirname(params.path), { recursive: true })
     await writeFile(params.path, params.content || '', 'utf-8')
@@ -134,8 +134,8 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {
-    if (params.vaultPath && !isPathInsideVault(params.path, params.vaultPath)) {
-      throw new Error('路径不在当前笔记空间内')
+    if (params.vaultPath) {
+      await assertPathInsideVault(params.path, params.vaultPath)
     }
     if (params.vaultPath) {
       const trashDir = join(params.vaultPath, '.trash')
@@ -154,8 +154,9 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string; vaultPath?: string }) => {
-    if (params.vaultPath && (!isPathInsideVault(params.oldPath, params.vaultPath) || !isPathInsideVault(params.newPath, params.vaultPath))) {
-      throw new Error('路径不在当前笔记空间内')
+    if (params.vaultPath) {
+      await assertPathInsideVault(params.oldPath, params.vaultPath)
+      await assertPathInsideVault(params.newPath, params.vaultPath)
     }
     await mkdir(dirname(params.newPath), { recursive: true })
     await rename(params.oldPath, params.newPath)
@@ -275,8 +276,8 @@ export function registerFileIPC(): void {
       if (metadata.originalPath) originalPath = metadata.originalPath
     } catch {}
     const destPath = join(params.vaultPath, originalPath)
-    if (!isPathInsideVault(params.trashPath, join(params.vaultPath, '.trash'))) throw new Error('回收站路径不在当前笔记空间内')
-    if (!isPathInsideVault(destPath, params.vaultPath)) throw new Error('恢复路径不在当前笔记空间内')
+    await assertPathInsideVault(params.trashPath, join(params.vaultPath, '.trash'))
+    await assertPathInsideVault(destPath, params.vaultPath)
     const uniqueDestPath = await getUniqueRestorePath(destPath)
     await mkdir(dirname(uniqueDestPath), { recursive: true })
     await rename(params.trashPath, uniqueDestPath)
