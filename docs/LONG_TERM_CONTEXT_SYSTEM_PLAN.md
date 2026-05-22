@@ -826,14 +826,14 @@ packages/renderer/src/components/long-context/long-context.css
 
 任务：
 
-- [ ] `database.ts` 升级 `SCHEMA_VERSION` 到 9。
-- [ ] 新增 `context_events`。
-- [ ] 新增 `ai_relations`。
-- [ ] 新增 `long_term_themes`。
-- [ ] 新增 `theme_memberships`。
-- [ ] 新增 `relation_feedback`。
-- [ ] 更新 `repairExistingSchema`。
-- [ ] 增加数据库 migration 测试。
+- [x] `database.ts` 升级 `SCHEMA_VERSION` 到 9。
+- [x] 新增 `context_events`。
+- [x] 新增 `ai_relations`。
+- [x] 新增 `long_term_themes`。
+- [x] 新增 `theme_memberships`。
+- [x] 新增 `relation_feedback`。
+- [x] 更新 `repairExistingSchema`。
+- [x] 增加数据库 migration 测试。
 
 测试：
 
@@ -843,10 +843,18 @@ tests/long-context-schema.test.ts
 
 验收：
 
-- 新 vault 自动创建新表。
-- 旧 vault 从 schema 8 迁移到 9。
-- 重复运行 migration 不报错。
-- foreign key / index 存在。
+- [x] 新 vault 自动创建新表。
+- [x] 旧 vault 从 schema 8 迁移到 9。
+- [x] 重复运行 migration 不报错。
+- [x] foreign key / index 存在。
+
+执行记录：
+
+- 2026-05-22：完成 `packages/main/src/services/database.ts` schema v9、long-context 表和索引、`repairExistingSchema` 修复逻辑；新增 `tests/long-context-schema.test.ts` 覆盖新 vault、schema 8 升级、重复打开幂等、外键和索引。验证通过：`npm test -- long-context-schema`、`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 1 开始实现 `packages/main/src/services/long-context/relation-candidates.ts`，优先完成 links / backlinks / tags / properties 本地召回。
 
 ### Iteration 1：本地候选召回
 
@@ -1284,9 +1292,9 @@ not_related_rate <= 40%
 
 ```text
 Day 1
-- 设计 schema v9
-- 写 migration
-- 写 schema 测试
+- 设计 schema v9（已完成，2026-05-22）
+- 写 migration（已完成，2026-05-22）
+- 写 schema 测试（已完成，2026-05-22）
 
 Day 2
 - 实现 relation-candidates.ts

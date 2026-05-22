@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 8
+const SCHEMA_VERSION = 9
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -199,6 +199,110 @@ function initSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated ON chat_sessions(updated_at DESC);
   `)
+  createLongContextSchema(db)
+}
+
+function createLongContextSchema(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS context_events (
+      id TEXT PRIMARY KEY,
+      event_type TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      entity_title TEXT,
+      entity_path TEXT,
+      content_snapshot TEXT,
+      metadata_json TEXT,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_context_events_entity
+      ON context_events(entity_type, entity_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_context_events_type
+      ON context_events(event_type, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS ai_relations (
+      id TEXT PRIMARY KEY,
+      source_type TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      source_title TEXT,
+      source_path TEXT,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      target_title TEXT,
+      target_path TEXT,
+      relation_type TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 0,
+      strength REAL NOT NULL DEFAULT 0,
+      score REAL NOT NULL DEFAULT 0,
+      evidence_json TEXT NOT NULL DEFAULT '[]',
+      reason TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active',
+      first_seen_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      last_seen_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_relations_pair_type
+      ON ai_relations(source_type, source_id, target_type, target_id, relation_type);
+
+    CREATE INDEX IF NOT EXISTS idx_ai_relations_source
+      ON ai_relations(source_type, source_id, score DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_ai_relations_target
+      ON ai_relations(target_type, target_id, score DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_ai_relations_type
+      ON ai_relations(relation_type, score DESC);
+
+    CREATE TABLE IF NOT EXISTS long_term_themes (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL DEFAULT '',
+      keywords_json TEXT NOT NULL DEFAULT '[]',
+      strength REAL NOT NULL DEFAULT 0,
+      evidence_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      first_seen_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      last_seen_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_long_term_themes_strength
+      ON long_term_themes(strength DESC, last_seen_at DESC);
+
+    CREATE TABLE IF NOT EXISTS theme_memberships (
+      id TEXT PRIMARY KEY,
+      theme_id TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      entity_title TEXT,
+      entity_path TEXT,
+      confidence REAL NOT NULL DEFAULT 0,
+      evidence_json TEXT NOT NULL DEFAULT '[]',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      FOREIGN KEY (theme_id) REFERENCES long_term_themes(id) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_theme_memberships_unique
+      ON theme_memberships(theme_id, entity_type, entity_id);
+
+    CREATE TABLE IF NOT EXISTS relation_feedback (
+      id TEXT PRIMARY KEY,
+      relation_id TEXT NOT NULL,
+      feedback_type TEXT NOT NULL,
+      note TEXT,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      FOREIGN KEY (relation_id) REFERENCES ai_relations(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_relation_feedback_relation
+      ON relation_feedback(relation_id, created_at DESC);
+  `)
 }
 
 type Migration = (db: Database.Database) => void
@@ -270,6 +374,66 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'kanban_task_relations', 'source_task_id', "source_task_id TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, 'kanban_task_relations', 'target_task_id', "target_task_id TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, 'kanban_task_relations', 'relation_type', "relation_type TEXT NOT NULL DEFAULT 'related'")
+
+  ensureColumn(db, 'context_events', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'context_events', 'event_type', "event_type TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'context_events', 'entity_type', "entity_type TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'context_events', 'entity_id', "entity_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'context_events', 'entity_title', 'entity_title TEXT')
+  ensureColumn(db, 'context_events', 'entity_path', 'entity_path TEXT')
+  ensureColumn(db, 'context_events', 'content_snapshot', 'content_snapshot TEXT')
+  ensureColumn(db, 'context_events', 'metadata_json', 'metadata_json TEXT')
+  ensureColumn(db, 'context_events', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'ai_relations', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'ai_relations', 'source_type', "source_type TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'ai_relations', 'source_id', "source_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'ai_relations', 'source_title', 'source_title TEXT')
+  ensureColumn(db, 'ai_relations', 'source_path', 'source_path TEXT')
+  ensureColumn(db, 'ai_relations', 'target_type', "target_type TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'ai_relations', 'target_id', "target_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'ai_relations', 'target_title', 'target_title TEXT')
+  ensureColumn(db, 'ai_relations', 'target_path', 'target_path TEXT')
+  ensureColumn(db, 'ai_relations', 'relation_type', "relation_type TEXT NOT NULL DEFAULT 'related_to'")
+  ensureColumn(db, 'ai_relations', 'confidence', 'confidence REAL NOT NULL DEFAULT 0')
+  ensureColumn(db, 'ai_relations', 'strength', 'strength REAL NOT NULL DEFAULT 0')
+  ensureColumn(db, 'ai_relations', 'score', 'score REAL NOT NULL DEFAULT 0')
+  ensureColumn(db, 'ai_relations', 'evidence_json', "evidence_json TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(db, 'ai_relations', 'reason', "reason TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'ai_relations', 'status', "status TEXT NOT NULL DEFAULT 'active'")
+  ensureColumn(db, 'ai_relations', 'first_seen_at', 'first_seen_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'ai_relations', 'last_seen_at', 'last_seen_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'ai_relations', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'ai_relations', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'long_term_themes', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'long_term_themes', 'title', "title TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'long_term_themes', 'summary', "summary TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'long_term_themes', 'keywords_json', "keywords_json TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(db, 'long_term_themes', 'strength', 'strength REAL NOT NULL DEFAULT 0')
+  ensureColumn(db, 'long_term_themes', 'evidence_count', 'evidence_count INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'long_term_themes', 'status', "status TEXT NOT NULL DEFAULT 'active'")
+  ensureColumn(db, 'long_term_themes', 'first_seen_at', 'first_seen_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'long_term_themes', 'last_seen_at', 'last_seen_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'long_term_themes', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'long_term_themes', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'theme_memberships', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'theme_memberships', 'theme_id', "theme_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'theme_memberships', 'entity_type', "entity_type TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'theme_memberships', 'entity_id', "entity_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'theme_memberships', 'entity_title', 'entity_title TEXT')
+  ensureColumn(db, 'theme_memberships', 'entity_path', 'entity_path TEXT')
+  ensureColumn(db, 'theme_memberships', 'confidence', 'confidence REAL NOT NULL DEFAULT 0')
+  ensureColumn(db, 'theme_memberships', 'evidence_json', "evidence_json TEXT NOT NULL DEFAULT '[]'")
+  ensureColumn(db, 'theme_memberships', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'theme_memberships', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
+  ensureColumn(db, 'relation_feedback', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'relation_feedback', 'relation_id', "relation_id TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'relation_feedback', 'feedback_type', "feedback_type TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'relation_feedback', 'note', 'note TEXT')
+  ensureColumn(db, 'relation_feedback', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
 
   if (tableExists(db, 'links') && tableExists(db, 'notes') && tableColumns(db, 'links').has('source_note_id')) {
     db.exec("DELETE FROM links WHERE source_note_id = '' OR source_note_id NOT IN (SELECT id FROM notes)")
@@ -395,6 +559,10 @@ const migrations: Migration[] = [
     if (!linkColumns.some((c) => c.name === 'line')) {
       db.exec('ALTER TABLE links ADD COLUMN line INTEGER NOT NULL DEFAULT 1')
     }
+  },
+  // Migration 9: long-term context system tables
+  (db) => {
+    createLongContextSchema(db)
   }
 ]
 
