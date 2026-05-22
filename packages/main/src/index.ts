@@ -13,6 +13,7 @@ import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
 import { startWebClipperServer, stopWebClipperServer } from './services/web-clipper'
 import { registerCrashReporting } from './services/crash-reporting'
+import { isExternalUrlAllowed, safeOpenExternal } from './services/external-url'
 
 registerCrashReporting()
 
@@ -88,6 +89,21 @@ function createWindow(): BrowserWindow {
 
   windows.add(window)
   mainWindow = window
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    void safeOpenExternal(url)
+    return { action: 'deny' }
+  })
+
+  window.webContents.on('will-navigate', (event, url) => {
+    const currentUrl = window.webContents.getURL()
+    if (url === currentUrl) return
+    if (process.env.ELECTRON_RENDERER_URL && url.startsWith(process.env.ELECTRON_RENDERER_URL)) return
+    event.preventDefault()
+    if (isExternalUrlAllowed(url)) {
+      void safeOpenExternal(url)
+    }
+  })
 
   window.on('focus', () => {
     mainWindow = window
