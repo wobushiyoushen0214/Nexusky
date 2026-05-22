@@ -20,8 +20,9 @@ import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTask
 import { findRelationCandidates } from '../services/long-context/relation-candidates'
 import { classifyRelation, shouldPersistRelationClassification } from '../services/long-context/relation-classifier'
 import { getContextSuggestions, submitRelationFeedback, upsertRelation } from '../services/long-context/relation-store'
+import { extractLongTermThemes, getLongTermThemes } from '../services/long-context/theme-extractor'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextEntityType, LongContextFeedbackType, LongContextSuggestion } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextEntityType, LongContextFeedbackType, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -808,6 +809,21 @@ export function registerDbIPC(): void {
       feedbackType,
       note
     })
+  })
+
+  ipcMain.handle('long-context:get-themes', async (_event, params: {
+    vaultPath: string
+    limit?: number
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:get-themes.vaultPath')
+    return getLongTermThemes(params.vaultPath, normalizeLongContextLimit(params?.limit, 20)) as LongTermTheme[]
+  })
+
+  ipcMain.handle('long-context:run-theme-extraction', async (_event, params: {
+    vaultPath: string
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:run-theme-extraction.vaultPath')
+    return extractLongTermThemes({ vaultPath: params.vaultPath })
   })
 
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {

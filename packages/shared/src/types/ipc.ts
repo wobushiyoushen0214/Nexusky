@@ -408,6 +408,22 @@ export interface IPCChannelMap {
     }
     result: void
   }
+  'long-context:get-themes': {
+    params: {
+      vaultPath: string
+      limit?: number
+    }
+    result: LongTermTheme[]
+  }
+  'long-context:run-theme-extraction': {
+    params: {
+      vaultPath: string
+    }
+    result: {
+      created: number
+      updated: number
+    }
+  }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
   'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }
   'db:chat-history-clear': { params: { vaultPath: string; sessionId?: string }; result: void }

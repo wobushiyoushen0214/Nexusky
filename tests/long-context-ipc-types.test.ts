@@ -36,9 +36,25 @@ describe('long-context IPC types', () => {
       feedbackType: 'useful',
       note: 'Good context'
     }
+    const themesResult: IPCChannelMap['long-context:get-themes']['result'] = [{
+      id: 'theme-1',
+      title: 'AI Automation',
+      summary: 'Recurring work on AI automation.',
+      keywords: ['AI', 'automation'],
+      strength: 0.8,
+      evidenceCount: 3,
+      firstSeenAt: 1_799_000_000,
+      lastSeenAt: 1_800_000_000
+    }]
+    const extractionResult: IPCChannelMap['long-context:run-theme-extraction']['result'] = {
+      created: 1,
+      updated: 0
+    }
 
     expect(getParams.entityType).toBe('note')
     expect(discoverResult.suggestions[0].relationType).toBe('supports_goal')
     expect(feedbackParams.feedbackType).toBe('useful')
+    expect(themesResult[0].evidenceCount).toBe(3)
+    expect(extractionResult.created).toBe(1)
   })
 })

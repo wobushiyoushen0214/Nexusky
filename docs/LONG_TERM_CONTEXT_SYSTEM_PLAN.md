@@ -1043,7 +1043,7 @@ tests/long-context-ipc-types.test.ts
 
 下一步：
 
-- 从 Iteration 6 开始实现 `theme-extractor.ts`，先用高分关系聚合候选主题，再接 AI 标题/摘要/关键词生成和 `long_term_themes` / `theme_memberships` 写入。
+- Iteration 6 已完成；下一步从 Iteration 7 的 decay / recurrence / 归档治理开始。
 
 ### Iteration 6：长期主题抽取
 
@@ -1055,12 +1055,12 @@ tests/long-context-ipc-types.test.ts
 
 任务：
 
-- [ ] 新建 `theme-extractor.ts`。
-- [ ] 从高分关系聚合候选主题。
-- [ ] AI 生成主题标题、摘要、关键词。
-- [ ] 写入 `long_term_themes`。
-- [ ] 写入 `theme_memberships`。
-- [ ] 增加 `get-themes` IPC。
+- [x] 新建 `theme-extractor.ts`。
+- [x] 从高分关系聚合候选主题。
+- [x] AI 生成主题标题、摘要、关键词。
+- [x] 写入 `long_term_themes`。
+- [x] 写入 `theme_memberships`。
+- [x] 增加 `get-themes` IPC。
 
 测试：
 
@@ -1070,9 +1070,19 @@ tests/long-context-themes.test.ts
 
 验收：
 
-- 少于 3 个证据实体不形成长期主题。
-- 时间跨度不足 7 天不形成长期主题。
-- 主题必须能追溯到实体和关系。
+- [x] 少于 3 个证据实体不形成长期主题。
+- [x] 时间跨度不足 7 天不形成长期主题。
+- [x] 主题必须能追溯到实体和关系。
+
+执行记录：
+
+- 2026-05-22：新增 `packages/main/src/services/long-context/theme-extractor.ts`，从 `ai_relations` 中筛选 `score >= 0.65` 且 `status = active` 的高分关系，按标题、reason、evidence 抽取关键词聚合候选主题；只有覆盖不少于 3 个实体、时间跨度不少于 7 天、平均分不少于 0.65 的候选才写入主题。
+- 2026-05-22：主题草稿优先调用 AI provider 输出严格 JSON（title / summary / keywords / confidence），无 provider 或解析失败时使用本地 fallback；写入 `long_term_themes`，并为每个证据实体 upsert `theme_memberships`，保留实体标题、路径、confidence 和 evidence。
+- 2026-05-22：在 `packages/shared/src/types/ipc.ts` 和 `packages/main/src/ipc/db.ipc.ts` 增加 `long-context:get-themes`、`long-context:run-theme-extraction`；更新 `tests/long-context-ipc-types.test.ts`。新增 `tests/long-context-themes.test.ts` 覆盖 3 实体 + 7 天形成主题、少于 3 实体不形成主题、时间跨度不足不形成主题。验证通过：`npm test -- long-context`、`npm run typecheck`。
+
+下一步：
+
+- 从 Iteration 7 开始把已有 ranker 的 `decay` / `recurrence` 规则落到刷新任务和归档策略上，确保被否定或长期未出现的关系不会反复占位。
 
 ### Iteration 7：时间权重和上下文腐烂治理
 
