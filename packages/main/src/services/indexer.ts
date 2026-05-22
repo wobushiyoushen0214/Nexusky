@@ -10,6 +10,59 @@ import { invalidateVaultQueryCache } from './db-query-cache'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*+]\s+(?:\[[^\]\r\n]?\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
+
+interface IndexerStatements {
+  selectHash: Database.Statement
+  upsertNote: Database.Statement
+  deleteLinks: Database.Statement
+  insertLink: Database.Statement
+  deleteTags: Database.Statement
+  findOrCreateTag: Database.Statement
+  getTagId: Database.Statement
+  insertNoteTag: Database.Statement
+  deleteAliases: Database.Statement
+  insertAlias: Database.Statement
+  upsertFtsMap: Database.Statement
+  getFtsRowid: Database.Statement
+  deleteFts: Database.Statement
+  insertFts: Database.Statement
+  deleteTasks: Database.Statement
+  insertTask: Database.Statement
+}
+
+const indexerStatementsCache = new WeakMap<Database.Database, IndexerStatements>()
+
+function getIndexerStatements(db: Database.Database): IndexerStatements {
+  const cached = indexerStatementsCache.get(db)
+  if (cached) return cached
+  const prepared: IndexerStatements = {
+    selectHash: db.prepare('SELECT content_hash FROM notes WHERE file_path = ?'),
+    upsertNote: db.prepare(`
+      INSERT INTO notes (id, title, file_path, created_at, updated_at, content_hash)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(file_path) DO UPDATE SET
+        title = excluded.title,
+        updated_at = excluded.updated_at,
+        content_hash = excluded.content_hash
+    `),
+    deleteLinks: db.prepare('DELETE FROM links WHERE source_note_id = ?'),
+    insertLink: db.prepare('INSERT INTO links (source_note_id, target_title, context, line) VALUES (?, ?, ?, ?)'),
+    deleteTags: db.prepare('DELETE FROM note_tags WHERE note_id = ?'),
+    findOrCreateTag: db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)'),
+    getTagId: db.prepare('SELECT id FROM tags WHERE name = ?'),
+    insertNoteTag: db.prepare('INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?)'),
+    deleteAliases: db.prepare('DELETE FROM note_aliases WHERE note_id = ?'),
+    insertAlias: db.prepare('INSERT OR IGNORE INTO note_aliases (note_id, alias) VALUES (?, ?)'),
+    upsertFtsMap: db.prepare('INSERT OR IGNORE INTO notes_fts_map (note_id) VALUES (?)'),
+    getFtsRowid: db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?'),
+    deleteFts: db.prepare('DELETE FROM notes_fts WHERE rowid = ?'),
+    insertFts: db.prepare('INSERT INTO notes_fts (rowid, title, content) VALUES (?, ?, ?)'),
+    deleteTasks: db.prepare('DELETE FROM tasks WHERE note_id = ?'),
+    insertTask: db.prepare('INSERT INTO tasks (note_id, text, done) VALUES (?, ?, ?)'),
+  }
+  indexerStatementsCache.set(db, prepared)
+  return prepared
+}
 const NOTE_FILE_TITLE_SQL = "REPLACE(REPLACE(file_path, RTRIM(file_path, REPLACE(file_path, '/', '')), ''), '.md', '')"
 const NOTE_PATH_TARGET_SQL = "CASE WHEN lower(file_path) LIKE '%.md' THEN substr(file_path, 1, length(file_path) - 3) ELSE file_path END"
 const EXACT_LINK_TARGET_EXISTS_SQL = `
@@ -81,7 +134,8 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const rawContent = readFileSync(filePath, 'utf-8')
   const hash = createHash('md5').update(rawContent).digest('hex')
 
-  const existing = db.prepare('SELECT content_hash FROM notes WHERE file_path = ?').get(relPath) as { content_hash: string } | undefined
+  const stmts = getIndexerStatements(db)
+  const existing = stmts.selectHash.get(relPath) as { content_hash: string } | undefined
   if (existing?.content_hash === hash) return
 
   const { data: frontmatter, content } = matter(rawContent)
@@ -92,24 +146,6 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const title = (frontmatter.title as string) || (typeof inlineTitle === 'string' ? inlineTitle : undefined) || extractTitle(visibleContent, filePath)
   const id = createHash('md5').update(relPath).digest('hex')
 
-  const upsert = db.prepare(`
-    INSERT INTO notes (id, title, file_path, created_at, updated_at, content_hash)
-    VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(file_path) DO UPDATE SET
-      title = excluded.title,
-      updated_at = excluded.updated_at,
-      content_hash = excluded.content_hash
-  `)
-
-  const deleteLinks = db.prepare('DELETE FROM links WHERE source_note_id = ?')
-  const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, line) VALUES (?, ?, ?, ?)')
-  const deleteTags = db.prepare('DELETE FROM note_tags WHERE note_id = ?')
-  const findOrCreateTag = db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)')
-  const getTagId = db.prepare('SELECT id FROM tags WHERE name = ?')
-  const insertNoteTag = db.prepare('INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?)')
-  const deleteAliases = db.prepare('DELETE FROM note_aliases WHERE note_id = ?')
-  const insertAlias = db.prepare('INSERT OR IGNORE INTO note_aliases (note_id, alias) VALUES (?, ?)')
-
   const links = extractLinks(visibleContent)
   const aliases = Array.from(new Set([...extractAliases(frontmatter), ...extractInlineAliases(inlineProperties)]))
   const fmTags = normalizeTagNames(frontmatter.tags)
@@ -118,39 +154,32 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const tags = [...new Set([...fmTags, ...inlineTags, ...dataviewTags])]
   const tasks = extractTasks(visibleContent)
 
-  const upsertFtsMap = db.prepare('INSERT OR IGNORE INTO notes_fts_map (note_id) VALUES (?)')
-  const getFtsRowid = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?')
-  const deleteFts = db.prepare('DELETE FROM notes_fts WHERE rowid = ?')
-  const insertFts = db.prepare('INSERT INTO notes_fts (rowid, title, content) VALUES (?, ?, ?)')
-  const deleteTasks = db.prepare('DELETE FROM tasks WHERE note_id = ?')
-  const insertTask = db.prepare('INSERT INTO tasks (note_id, text, done) VALUES (?, ?, ?)')
-
   const transaction = db.transaction(() => {
-    upsert.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash)
-    deleteLinks.run(id)
+    stmts.upsertNote.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash)
+    stmts.deleteLinks.run(id)
     for (const link of links) {
-      insertLink.run(id, link.targetTitle, link.context, link.line)
+      stmts.insertLink.run(id, link.targetTitle, link.context, link.line)
     }
-    deleteTags.run(id)
-    deleteAliases.run(id)
+    stmts.deleteTags.run(id)
+    stmts.deleteAliases.run(id)
     for (const alias of aliases) {
-      insertAlias.run(id, alias)
+      stmts.insertAlias.run(id, alias)
     }
     for (const tag of tags) {
-      findOrCreateTag.run(tag)
-      const row = getTagId.get(tag) as { id: number } | undefined
-      if (row) insertNoteTag.run(id, row.id)
+      stmts.findOrCreateTag.run(tag)
+      const row = stmts.getTagId.get(tag) as { id: number } | undefined
+      if (row) stmts.insertNoteTag.run(id, row.id)
     }
-    deleteTasks.run(id)
+    stmts.deleteTasks.run(id)
     for (const task of tasks) {
-      insertTask.run(id, task.text, task.done ? 1 : 0)
+      stmts.insertTask.run(id, task.text, task.done ? 1 : 0)
     }
 
-    upsertFtsMap.run(id)
-    const ftsRow = getFtsRowid.get(id) as { rowid: number } | undefined
+    stmts.upsertFtsMap.run(id)
+    const ftsRow = stmts.getFtsRowid.get(id) as { rowid: number } | undefined
     if (ftsRow) {
-      deleteFts.run(ftsRow.rowid)
-      insertFts.run(ftsRow.rowid, title, visibleContent)
+      stmts.deleteFts.run(ftsRow.rowid)
+      stmts.insertFts.run(ftsRow.rowid, title, visibleContent)
     }
   })
 
