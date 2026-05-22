@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
-import type { LongTermTheme } from '@shared/types/ipc'
+import type { LongTermTheme, LongTermThemeMembership } from '@shared/types/ipc'
 import { getDatabase } from '../database'
 import { aiManager } from '../ai'
 import type { ChatMessage, ChatOptions, ChatStreamEvent } from '../ai'
@@ -111,7 +111,39 @@ export function getLongTermThemes(vaultPath: string, limit = 20): LongTermTheme[
     strength: row.strength,
     evidenceCount: row.evidenceCount,
     firstSeenAt: row.firstSeenAt,
-    lastSeenAt: row.lastSeenAt
+    lastSeenAt: row.lastSeenAt,
+    memberships: getThemeMemberships(db, row.id)
+  }))
+}
+
+function getThemeMemberships(db: Database.Database, themeId: string): LongTermThemeMembership[] {
+  const rows = db.prepare(`
+    SELECT entity_type as entityType,
+           entity_id as entityId,
+           COALESCE(entity_title, entity_id) as entityTitle,
+           entity_path as entityPath,
+           confidence,
+           evidence_json as evidenceJson
+    FROM theme_memberships
+    WHERE theme_id = ?
+    ORDER BY confidence DESC, updated_at DESC, entity_title ASC
+    LIMIT 20
+  `).all(themeId) as {
+    entityType: LongTermThemeMembership['entityType']
+    entityId: string
+    entityTitle: string
+    entityPath: string | null
+    confidence: number
+    evidenceJson: string
+  }[]
+
+  return rows.map((row) => ({
+    entityType: row.entityType,
+    entityId: row.entityId,
+    entityTitle: row.entityTitle,
+    entityPath: row.entityPath || undefined,
+    confidence: row.confidence,
+    evidence: parseStringArray(row.evidenceJson)
   }))
 }
 

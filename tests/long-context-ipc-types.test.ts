@@ -44,7 +44,15 @@ describe('long-context IPC types', () => {
       strength: 0.8,
       evidenceCount: 3,
       firstSeenAt: 1_799_000_000,
-      lastSeenAt: 1_800_000_000
+      lastSeenAt: 1_800_000_000,
+      memberships: [{
+        entityType: 'note',
+        entityId: 'note-1',
+        entityTitle: 'Historical Context',
+        entityPath: 'Historical Context.md',
+        confidence: 0.82,
+        evidence: ['Theme evidence']
+      }]
     }]
     const extractionResult: IPCChannelMap['long-context:run-theme-extraction']['result'] = {
       created: 1,

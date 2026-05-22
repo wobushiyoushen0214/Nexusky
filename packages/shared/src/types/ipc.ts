@@ -306,6 +306,16 @@ export interface LongTermTheme {
   evidenceCount: number
   firstSeenAt: number
   lastSeenAt: number
+  memberships: LongTermThemeMembership[]
+}
+
+export interface LongTermThemeMembership {
+  entityType: LongContextEntityType
+  entityId: string
+  entityTitle: string
+  entityPath?: string
+  confidence: number
+  evidence: string[]
 }
 
 export interface LongContextRelationRefreshResult {

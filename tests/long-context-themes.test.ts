@@ -73,6 +73,7 @@ describe('long-context theme extractor', () => {
       title: 'AI Automation Workflows',
       evidenceCount: 3
     })
+    expect(themes[0].memberships.map((membership) => membership.entityId).sort()).toEqual(['n1', 'n2', 'n3'])
 
     const { getDatabase } = await import('../packages/main/src/services/database')
     const membershipCount = getDatabase(vaultPath).prepare('SELECT COUNT(*) as count FROM theme_memberships WHERE theme_id = ?').get(themes[0].id) as { count: number }

@@ -1079,6 +1079,7 @@ tests/long-context-themes.test.ts
 - 2026-05-22：新增 `packages/main/src/services/long-context/theme-extractor.ts`，从 `ai_relations` 中筛选 `score >= 0.65` 且 `status = active` 的高分关系，按标题、reason、evidence 抽取关键词聚合候选主题；只有覆盖不少于 3 个实体、时间跨度不少于 7 天、平均分不少于 0.65 的候选才写入主题。
 - 2026-05-22：主题草稿优先调用 AI provider 输出严格 JSON（title / summary / keywords / confidence），无 provider 或解析失败时使用本地 fallback；写入 `long_term_themes`，并为每个证据实体 upsert `theme_memberships`，保留实体标题、路径、confidence 和 evidence。
 - 2026-05-22：在 `packages/shared/src/types/ipc.ts` 和 `packages/main/src/ipc/db.ipc.ts` 增加 `long-context:get-themes`、`long-context:run-theme-extraction`；更新 `tests/long-context-ipc-types.test.ts`。新增 `tests/long-context-themes.test.ts` 覆盖 3 实体 + 7 天形成主题、少于 3 实体不形成主题、时间跨度不足不形成主题。验证通过：`npm test -- long-context`、`npm run typecheck`。
+- 2026-05-22：最终验收前补齐 `getLongTermThemes` 的 `memberships` 返回值，主题列表可直接看到关联实体的类型、id、标题、路径、confidence 和 evidence。验证通过：`npm test -- long-context-themes long-context-ipc-types`、`npm run typecheck`。
 
 下一步：
 
@@ -1286,27 +1287,33 @@ npm test -- long-context
 
 ### MVP 验收
 
-- [ ] 当前笔记可以获得 Top 3 历史上下文建议。
-- [ ] 每条建议都有关系类型。
-- [ ] 每条建议都有原因。
-- [ ] 每条建议都有证据。
-- [ ] 每条建议可以打开源内容。
-- [ ] 用户可以反馈有用或不相关。
-- [ ] 反馈会影响后续排序。
+- [x] 当前笔记可以获得 Top 3 历史上下文建议。
+- [x] 每条建议都有关系类型。
+- [x] 每条建议都有原因。
+- [x] 每条建议都有证据。
+- [x] 每条建议可以打开源内容。
+- [x] 用户可以反馈有用或不相关。
+- [x] 反馈会影响后续排序。
 
 ### 长期主题验收
 
-- [ ] 系统能生成长期主题。
-- [ ] 主题必须有至少 3 个证据实体。
-- [ ] 主题必须有时间跨度。
-- [ ] 用户可以看到主题关联了哪些笔记、任务或关系。
+- [x] 系统能生成长期主题。
+- [x] 主题必须有至少 3 个证据实体。
+- [x] 主题必须有时间跨度。
+- [x] 用户可以看到主题关联了哪些笔记、任务或关系。
 
 ### 长期上下文验收
 
-- [ ] AI chat 能读取 Hot / Warm / Cold context。
-- [ ] 长期上下文不会无来源注入。
-- [ ] 低置信度关系不会被当作事实。
-- [ ] 被用户否定的关系不会反复出现。
+- [x] AI chat 能读取 Hot / Warm / Cold context。
+- [x] 长期上下文不会无来源注入。
+- [x] 低置信度关系不会被当作事实。
+- [x] 被用户否定的关系不会反复出现。
+
+最终验收记录：
+
+- 2026-05-22：MVP 闭环已覆盖 `long-context:get-suggestions` / `long-context:discover-relations` / `long-context:submit-feedback`、编辑器 Top 3 面板、来源打开、useful / not_related / wrong_reason / dismissed 反馈、排序刷新和持久化。
+- 2026-05-22：长期主题闭环已覆盖主题抽取、3 实体 + 7 天门槛、membership 追溯、`long-context:get-themes` / `long-context:run-theme-extraction`。
+- 2026-05-22：长期上下文闭环已覆盖 Hot / Warm / Cold context pack、来源与证据注入、低置信度 guard、否定关系隐藏和衰减归档治理、周期性 cognitive review。
 
 ---
 
