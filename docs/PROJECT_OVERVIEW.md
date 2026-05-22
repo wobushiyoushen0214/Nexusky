@@ -2,7 +2,7 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：`09f55cb`
+最后核对版本：`5399436`（v0.4.0 及其后续 Windows CI / 原生模块修复）
 
 ## 1. 一句话理解
 
@@ -78,11 +78,21 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 - 整个 vault 发布为静态 HTML 站点。
 - 浏览器扩展 Web Clipper 把网页剪藏保存为 Markdown。
 
+### 3.6 任务管理、看板与知识维护
+
+围绕 vault 中的 Markdown 任务列表，Nexusky 提供任务级别的工作流：
+
+- 索引器抽取 Markdown 任务，识别状态（待办、已完成、Obsidian 自定义状态如 `/`、`x`、`-` 等）、嵌套层级、Dataview inline 字段、Tasks 插件的截止/计划/开始日期、优先级、循环规则和阻塞信号。
+- 看板视图（`KanbanPanel`）按列管理任务，可手动新建、拖拽、关联，也可从已索引的笔记任务批量导入或预览导入。
+- 看板的 AI 工作流：`kanban:ai-analyze`、`kanban:ai-breakdown-task`、`kanban:ai-from-note` 先生成可编辑 plan 预览，用户确认后再写入。
+- AI Agent 提供 `plan_knowledge_maintenance` 工具，把"未解析链接、空笔记、过期任务、今日到期、高优先级、计划/开始/阻塞/循环任务、即将到期、孤岛笔记、缺失属性、重复标题或别名、待复习笔记记忆、超长笔记、知识桥接"等问题统一汇总成可执行的维护队列。
+- `list_knowledge_bridges` 工具找出语义上的桥接笔记，配合 `suggest_note_links`、`connection-opportunities` 帮助补全跨主题链接。
+
 ## 4. 技术栈
 
 | 层 | 当前实现 |
 | --- | --- |
-| 桌面容器 | Electron 33 |
+| 桌面容器 | Electron 33（基于 Node 22 ABI） |
 | 构建 | electron-vite + Vite 6 |
 | 前端 | React 19、Zustand、i18next |
 | 编辑器 | TipTap / ProseMirror、tiptap-markdown |
@@ -120,10 +130,12 @@ packages/
     src/markdown/       Markdown 兼容渲染工具
 
 docs/                   项目文档
-scripts/                开发/CLI 脚本
+scripts/                开发/CLI 脚本（dev.mjs、rebuild-native.mjs、nexusky-cli.mjs、afterPack.js、vitest-electron.mjs）
 supabase/               Supabase schema 和部署说明
-browser-extension/      Web Clipper 浏览器扩展
-website/                项目相关网站/日志页面
+browser-extension/      Web Clipper 浏览器扩展（Chrome/Edge MV3）
+website/                品牌站点与发布日志页面（Next.js 子项目）
+src-tauri/              Tauri 移植试验骨架（与 Electron 主线并存，未默认构建）
+test-vault/             Vitest/手测用的样例 vault
 tests/                  Vitest 测试
 ```
 
@@ -187,7 +199,7 @@ main/services/*
 
 ### 7.2 SQLite 索引
 
-`packages/main/src/services/database.ts` 负责为每个 vault 创建和迁移 SQLite 数据库。
+`packages/main/src/services/database.ts` 负责为每个 vault 创建和迁移 SQLite 数据库。当前 `SCHEMA_VERSION = 8`。
 
 主要表：
 
@@ -197,10 +209,11 @@ main/services/*
 | `links` | wikilink 和 AI 推理链接，包含 source、target、context、line、link_type |
 | `tags` / `note_tags` | 标签与笔记关系 |
 | `note_aliases` | frontmatter alias / aliases |
+| `note_properties` | frontmatter / Dataview inline 属性键值索引 |
 | `notes_fts` / `notes_fts_map` | SQLite FTS5 全文搜索 |
 | `chunks` | 分块文本和 embedding 数据 |
-| `tasks` | Markdown task list 抽取结果 |
-| `kanban_columns` / `kanban_tasks` / `kanban_task_relations` | 看板数据 |
+| `tasks` | Markdown task list 抽取结果，含状态字符（含 Obsidian 自定义状态）、嵌套层级、Tasks 插件 due/scheduled/start 日期、Dataview 字段 |
+| `kanban_columns` / `kanban_tasks` / `kanban_task_relations` | 看板列、任务（含 priority、due_date、source_note_id、source_file_path、时间戳）和任务间关系（`related` / `blocks` / `depends_on` 等） |
 | `conversations` / `chat_sessions` | AI 对话历史与多会话 |
 | `schema_version` | 数据库迁移版本 |
 
@@ -238,7 +251,7 @@ main/services/*
 | `vault:*` | 选择、创建、读取、清空当前 vault 和最近 vault |
 | `db:*` | 索引、搜索、图谱、反链、属性、对话历史、embedding 状态 |
 | `flashcards:*` | 到期闪卡队列和评分写回 |
-| `kanban:*` | 看板列、任务、关系、AI 分析和拆解 |
+| `kanban:*` | 看板列、任务、关系、AI 分析、AI 任务拆解、AI 笔记转看板、按笔记任务批量导入和 AI plan 预览 |
 | `ai:*` | Provider、聊天、Agent、编辑、批量笔记、摘要、闪卡、标签、语音转写 |
 | `template:*` | 内置/市场/社区模板 |
 | `plugins:*` | 本地插件和插件市场 |
@@ -297,6 +310,13 @@ Provider 统一实现基础聊天/流式输出接口。错误会经 `provider-er
 
 这些工具输出由 `search-results.ts` 格式化，参数由 `tool-arguments.ts` 解析，limit 由 `tool-limits.ts` 归一化。
 
+新增的"主动维护"工具：
+
+- `plan_knowledge_maintenance`：调用 `services/ai/maintenance-queue.ts` 构造结构化维护队列，按 `KnowledgeMaintenanceType` 分类（未解析链接、过期/今日/高优先级/计划/开始/阻塞/循环/即将到期任务、孤岛笔记、空笔记、超长笔记、缺失属性、重复标题/别名、待复习记忆、桥接笔记等）。可通过 `type` 参数过滤单一类别，结果会与 elevated 任务做去重排序。
+- `list_knowledge_bridges`：通过 `findKnowledgeBridgeNotes` 找出连接多个语义主题的桥接笔记。
+- `suggest_note_links` + `findConnectionOpportunities`（`services/ai/connection-opportunities.ts`）：基于属性/标签共现给出可操作的链接建议。
+- 图谱洞察 `services/ai/graph-insights.ts`：为图谱视图和 Agent 提供节点中心度、孤岛检测等派生指标。
+
 ### 9.4 AI 编辑
 
 编辑模式会根据用户意图走不同路径：
@@ -311,8 +331,8 @@ Provider 统一实现基础聊天/流式输出接口。错误会经 `provider-er
 
 批量生成由两层计划组成：
 
-1. `ai:plan-note-batches`：理解用户语义，规划多个目录、主题和每个目录的篇数。
-2. `ai:generate-notes`：针对一个目标目录规划标题列表，再逐篇生成 Markdown 文件。
+1. `ai:plan-note-batches`：理解用户语义，规划多个目录、主题和每个目录的篇数。生成的 plan 可在前端预览面板里编辑、增删行、确认后再执行。
+2. `ai:generate-notes`：针对一个目标目录规划标题列表，再逐篇生成 Markdown 文件。生成的笔记会带上时间戳等 frontmatter metadata，并自动补全/合并跨笔记的 wikilink 关联章节。
 
 生成后会：
 
@@ -321,11 +341,11 @@ Provider 统一实现基础聊天/流式输出接口。错误会经 `provider-er
 - 解析链接。
 - 对生成文件做 AI 语义关系推断，并写入 `links` 的 inferred 关系。
 
-停止逻辑：
+停止与隔离逻辑：
 
 - 停止按钮调用 `ai:stop`。
-- 前端维护批量级取消标记。
-- 用户停止后，不再继续发送后续目录生成请求。
+- 前端维护批量级取消标记，进度事件按 `requestId` / `operationId` 严格归属，迟到事件不会污染新的批量任务。
+- 用户停止后，不再继续发送后续目录生成请求；queued planning、retry 流程也会被同步取消。
 - 取消后忽略迟到的进度事件，避免未完成进度被误标为完成。
 
 ### 9.6 文档、图片、语音和闪卡
@@ -394,7 +414,7 @@ Zustand stores 位于 `packages/renderer/src/stores/`。
 
 | 导入器 | 文件 | 说明 |
 | --- | --- | --- |
-| Obsidian | `obsidian-importer.ts` | 导入 vault，转换 callout，索引属性、别名和链接；保留 `.canvas` 原文件并生成可索引 Markdown 地图 |
+| Obsidian | `obsidian-importer.ts` | 导入 vault，转换 callout、CSS 类、Markdown 注释、`==高亮==`、Dataview inline 字段、Tasks 插件 due/scheduled/start 元数据、自定义任务状态、嵌套任务、heading/block 引用 `![[note#heading]]` / `![[note^block]]`、publish 模式的 transclusion；保留 `.canvas` 原文件并生成可索引 Markdown 地图 |
 | Notion | `notion-importer.ts` | Markdown/CSV/HTML 导出转 Markdown，转换本地页面链接 |
 | Readwise/Pocket | `reader-importer.ts` | 阅读材料转换为 Markdown 阅读笔记 |
 | Web Clipper | `web-clipper.ts` + `browser-extension/` | 本地服务接收浏览器扩展剪藏 |
@@ -472,8 +492,9 @@ pnpm dist
 
 - `pnpm dev` 启动 Electron + Vite 开发环境。
 - `pnpm typecheck` 依次检查 shared、main、renderer。
-- `pnpm test` 运行 Vitest 全量测试。
-- `pnpm run rebuild` 可在 Electron ABI 不匹配时重编译本地 SQLite 原生模块。不要使用 `pnpm rebuild better-sqlite3`，那会按系统 Node 编译，可能重新触发 `NODE_MODULE_VERSION` 不匹配。
+- `pnpm test` 通过 `scripts/vitest-electron.mjs` 在 Electron 运行时下跑 Vitest。
+- `pnpm run rebuild` 调用 `scripts/rebuild-native.mjs` 按 Electron（Node 22 ABI）重编译本地 SQLite 原生模块；`postinstall` 会自动跑一次。不要使用 `pnpm rebuild better-sqlite3`，那会按系统 Node 编译，可能重新触发 `NODE_MODULE_VERSION` 不匹配。
+- `pnpm cli` 调用 `scripts/nexusky-cli.mjs`，提供 vault 维护和批量索引等离线命令。
 
 ## 17. 新增功能时的代码导航
 
@@ -525,13 +546,27 @@ pnpm dist
 | `tests/indexer.test.ts` | Markdown 索引、链接、标签、属性、任务 |
 | `tests/ai-note-lookup.test.ts` | AI 工具定位笔记 |
 | `tests/ai-note-plan.test.ts` | AI 批量笔记规划清洗 |
+| `tests/ai-note-writing.test.ts` | 批量生成笔记的 wikilink/metadata 合并 |
+| `tests/ai-maintenance-queue.test.ts` | 知识维护队列分类、过滤、优先级排序 |
+| `tests/ai-connection-opportunities.test.ts` | 跨笔记链接建议 |
+| `tests/ai-graph-insights.test.ts` | 图谱派生指标 |
+| `tests/ai-system-context.test.ts` | 系统上下文拼装 |
 | `tests/ai-flashcards.test.ts` | 闪卡生成、解析和 SRS 写回 |
-| `tests/ai-tool-arguments.test.ts` | Agent 工具参数解析 |
+| `tests/ai-tool-arguments.test.ts` / `ai-tool-limits.test.ts` / `ai-tool-labels.test.ts` | Agent 工具参数/限制/前端标签 |
+| `tests/ai-transcription.test.ts` | 语音转写参数与错误归一 |
+| `tests/ai-provider-types.test.ts` / `provider-errors.test.ts` | Provider 类型与错误归一 |
+| `tests/ai-search-results.test.ts` / `ai-json.test.ts` | 检索结果和 JSON 解析 |
+| `tests/chat-panel.test.ts` / `chat-session-title.test.ts` / `chat-batch-*.test.ts` / `chat-edit-stream.test.ts` | ChatPanel、批量与编辑流隔离行为 |
 | `tests/embedding.test.ts` | 分块、相似度和语义搜索 fallback |
-| `tests/file-path.test.ts` | 路径安全 |
-| `tests/*importer.test.ts` | Obsidian、Notion、Reader 导入 |
-| `tests/chat-panel.test.ts` | ChatPanel 局部行为 |
-| `tests/vault-store.test.ts` / `tests/ui-store.test.ts` | Zustand store 行为 |
+| `tests/file-path.test.ts` / `file-tree-refresh.test.ts` | 路径安全与文件树刷新 |
+| `tests/markdown-comments.test.ts` / `markdown-highlights.test.ts` / `callouts.test.ts` / `footnotes.test.ts` / `frontmatter.test.ts` / `table-formulas.test.ts` | Markdown 兼容渲染特性 |
+| `tests/obsidian-importer.test.ts` / `obsidian-link.test.ts` / `notion-importer.test.ts` / `reader-importer.test.ts` | 各导入器 |
+| `tests/publish-wikilinks.test.ts` / `wikilink.test.ts` | wikilink 解析与发布 |
+| `tests/canvas-view.test.ts` | 知识空间画布 |
+| `tests/reader-inbox.test.ts` | 阅读收件箱 |
+| `tests/vault-store.test.ts` / `tests/ui-store.test.ts` / `activity-bar-registry.test.ts` | Zustand store 行为 |
+| `tests/s3-provider.test.ts` / `webdav-provider.test.ts` / `storage.test.ts` | 云同步 Provider |
+| `tests/web-clipper.test.ts` / `plugin-api.test.ts` / `nexusky-cli.test.ts` / `version.test.ts` / `crash-reporting.test.ts` / `db-query-cache.test.ts` / `document-text.test.ts` / `document-attachment.test.ts` / `vault-indexer.test.ts` / `note-search.test.ts` / `writing-style.test.ts` / `ai-task-control.test.ts` | 其他子系统 |
 
 合入前至少运行：
 
@@ -571,6 +606,10 @@ pnpm test
 | edit mode | AI 生成或修改 Markdown 文件的模式 |
 | batch generation | AI 根据主题规划目录并批量生成多篇笔记 |
 | memory | `.nexusky/memories` 下的笔记语义摘要和概念数据 |
+| maintenance queue | `plan_knowledge_maintenance` 工具生成的、按类型聚合的可执行维护项列表 |
+| bridge note | 连接多个语义主题、删除后会让图谱割裂的关键笔记 |
+| connection opportunity | 基于共同属性/标签等信号发现的、值得用 wikilink 显式串起来的潜在关联 |
+| kanban plan | 看板 AI 工作流先生成、用户可编辑、确认后才写入数据库的中间结果 |
 
 ## 21. 与其他文档的关系
 
@@ -580,4 +619,50 @@ pnpm test
 - `docs/DESIGN.md`：视觉和交互设计方向。
 - `docs/PLUGIN_COMMANDS.md`：插件命令格式。
 - `docs/WEB_CLIPPER.md`：浏览器剪藏功能说明。
+- `docs/OPTIMIZATION.md`：已完成的历史优化清单。
+- `docs/OPTIMIZATION_PLAN.md`：v0.4.0 审计后整理的新一轮优化与改进建议。
 - 本文：面向开发者和 AI 的代码/功能全景索引。
+
+## 22. v0.4.0 及之后的增量索引
+
+本节面向"已读过旧版 OVERVIEW（核对版本 `09f55cb`）"的读者，列出 `09f55cb..5399436` 之间引入的关键变化，便于增量更新心智模型。
+
+### 22.1 知识维护与 AI 主动建议
+
+- 新增 `services/ai/maintenance-queue.ts`：构造 `KnowledgeMaintenanceItem[]`，覆盖 19 种维护类型（链接、任务、孤岛、空/超长笔记、重复标识、缺失属性、待复习记忆、桥接等），同时导出大量按路径分组的辅助函数，被 `db.ipc.ts` 和 Agent 工具复用。
+- 新增 `services/ai/connection-opportunities.ts`：基于属性共现等信号给出 `suggest_note_links`。
+- 新增 `services/ai/graph-insights.ts`：图谱派生指标。
+- AI Agent 增加 `plan_knowledge_maintenance` 和 `list_knowledge_bridges` 两个工具，前端 `tool-labels.ts` 同步增加状态文案。
+
+### 22.2 Obsidian 兼容性大幅增强
+
+- 高亮 `==text==` 渲染与导入。
+- Markdown 注释 `%% ... %%`：渲染时隐藏、索引时跳过注释内部的链接/提及/属性、不参与 publish 搜索、不被当作 inline property。
+- Heading / block 引用：`[[note#heading]]`、`[[note^block]]` 解析、嵌入预览、嵌入展开和 publish 转载。
+- Dataview inline 字段：写入并索引，含自定义任务的字段。
+- Tasks 插件：识别 due/scheduled/start 日期、优先级、循环、阻塞，并由维护队列消费。
+- 自定义任务状态字符（`x`、`/`、`-` 等）的索引与渲染。
+- 嵌套任务索引。
+- 修复一系列细节：忽略 image alt 文本中的 wikilink 与未链接提及、忽略 URL 片段被识别为标签、忽略 code block 中的链接/提及、清理 Obsidian frontmatter 兼容问题。
+
+### 22.3 Kanban 工作流升级
+
+- 视觉与交互大改（卡片、列表、任务录入、画布样式）。
+- AI 工作流（分析、任务拆解、笔记转看板、按笔记任务批量导入）现在统一先生成 `KanbanAiPlan` 预览，前端可编辑、确认后再写入数据库；解析、类型与错误处理全面收紧。
+
+### 22.4 批量笔记生成稳定性
+
+- Plan 阶段：用户可编辑、增行、确认后再执行。
+- 生成笔记带 metadata、wikilink 自动补全 / 合并 related 段、避免重复段落。
+- 进度与停止：`requestId` / `operationId` 严格隔离过期请求；停止流可取消 retry、queued planning、stale edit stream、stale chat sources、stale chat requests，避免误报完成。
+
+### 22.5 兼容与运行时
+
+- Vault 旧库自我修复：`getDatabase` 在打开时双向修复历史缺列；脏 `links` 行被清理；切换或创建 vault 时关闭旧连接并清空查询缓存。
+- 升级到 Electron 33 + Node 22 ABI；新增 `scripts/rebuild-native.mjs` 与对应 `postinstall`，并修复 Windows 版本的原生模块重建与安装。CI 上 Windows 跳过原生 smoke test（见 `5399436`）。
+
+### 22.6 文档与配套
+
+- `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
+- `docs/FEATURES.md`、`docs/GUIDE.md`、`docs/PLAN.md` 在同一周期内同步更新。
+- `package.json` 版本号锁定到 `0.4.0`，对应 commit `059303a`。
