@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
@@ -97,8 +98,35 @@ function flatMdPaths(entries: FileEntry[]): string[] {
 
 export default function App() {
   const { t } = useTranslation()
-  const { vaultPath, loadVault } = useVaultStore()
-  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const loadVault = useVaultStore((s) => s.loadVault)
+  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore(
+    useShallow((s) => ({
+      rightPanel: s.rightPanel,
+      sidebarCollapsed: s.sidebarCollapsed,
+      sidebarWidth: s.sidebarWidth,
+      rightPanelWidth: s.rightPanelWidth,
+      focusMode: s.focusMode,
+      mainView: s.mainView,
+      quickSwitcherOpen: s.quickSwitcherOpen,
+      settingsOpen: s.settingsOpen,
+      searchOpen: s.searchOpen,
+      commandPaletteOpen: s.commandPaletteOpen,
+      toggleRightPanel: s.toggleRightPanel,
+      toggleSidebar: s.toggleSidebar,
+      toggleFocusMode: s.toggleFocusMode,
+      resizeSidebar: s.resizeSidebar,
+      resizeRightPanel: s.resizeRightPanel,
+      setQuickSwitcherOpen: s.setQuickSwitcherOpen,
+      setSettingsOpen: s.setSettingsOpen,
+      setSearchOpen: s.setSearchOpen,
+      setCommandPaletteOpen: s.setCommandPaletteOpen,
+      setMainView: s.setMainView,
+      setRightPanel: s.setRightPanel,
+      setWorkspaceScope: s.setWorkspaceScope,
+      setSidebarWidthScope: s.setSidebarWidthScope,
+    }))
+  )
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const [trashOpen, setTrashOpen] = useState(false)
   const [flashcardReviewOpen, setFlashcardReviewOpen] = useState(false)
