@@ -3,6 +3,7 @@ import { getDatabase } from '../database'
 import { findRelationCandidates, type EntityType } from './relation-candidates'
 import { classifyRelation, shouldPersistRelationClassification, type RelationClassifierProvider } from './relation-classifier'
 import { getContextSuggestions, upsertRelation, type ContextSuggestion } from './relation-store'
+import { getLongContextPrefs } from './long-context-prefs'
 
 export interface LongContextEntitySnapshot {
   title: string
@@ -43,6 +44,8 @@ export async function discoverLongContextRelations(
     limit
   })
 
+  const prefs = getLongContextPrefs()
+
   let discovered = 0
   for (const candidate of candidates) {
     if (params.signal?.aborted) break
@@ -62,7 +65,7 @@ export async function discoverLongContextRelations(
       provider: params.provider,
       signal: params.signal
     })
-    if (!shouldPersistRelationClassification(classification)) continue
+    if (!shouldPersistRelationClassification(classification, prefs.confidenceThreshold)) continue
 
     upsertRelation(params.vaultPath, {
       sourceType: params.entityType,

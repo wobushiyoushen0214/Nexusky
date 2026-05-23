@@ -23,10 +23,12 @@ import { generateCognitiveReview } from '../services/long-context/cognitive-revi
 import { getLongContextMetrics, recordContextEvent } from '../services/long-context/context-events'
 import { discoverLongContextRelations } from '../services/long-context/relation-discovery'
 import { scheduleIndexedNoteLongContext, scheduleLongContextAnalysis, scheduleVaultLongContextMaintenance } from '../services/long-context/background'
+import { getLongContextPrefs, setLongContextPrefs } from '../services/long-context/long-context-prefs'
+import { buildLongContextPack, type LongContextPackItem } from '../services/long-context/context-pack-builder'
 import { runProactiveCycle } from '../services/proactive/proactive-orchestrator'
 import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextMetrics, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextRelationRefreshResult, LongContextRelationType, LongContextSuggestion, LongContextUserPrefs, LongTermTheme } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -909,6 +911,46 @@ export function registerDbIPC(): void {
     }) as LongContextMetrics
   })
 
+  ipcMain.handle('long-context:get-prefs', async () => {
+    return getLongContextPrefs() as LongContextUserPrefs
+  })
+
+  ipcMain.handle('long-context:set-prefs', async (_event, params: { prefs: Partial<LongContextUserPrefs> }) => {
+    if (!params || typeof params.prefs !== 'object' || params.prefs === null) {
+      throw new Error('Invalid IPC payload: long-context:set-prefs.prefs must be an object')
+    }
+    return setLongContextPrefs(params.prefs) as LongContextUserPrefs
+  })
+
+  ipcMain.handle('long-context:inspect-pack', async (_event, params: {
+    vaultPath: string
+    currentFilePath?: string | null
+    tokenBudget?: number
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:inspect-pack.vaultPath')
+    const currentFilePath = ensureOptionalBoundedString(params?.currentFilePath ?? undefined, 'long-context:inspect-pack.currentFilePath', MAX_PATH_LENGTH)
+    const tokenBudget = typeof params?.tokenBudget === 'number' && Number.isFinite(params.tokenBudget)
+      ? Math.max(200, Math.min(Math.round(params.tokenBudget), 4000))
+      : undefined
+    const pack = buildLongContextPack({
+      vaultPath: params.vaultPath,
+      currentFilePath: currentFilePath ?? null,
+      tokenBudget
+    })
+    return {
+      pack: {
+        hot: pack.hot.map(toPackItemPayload),
+        warm: pack.warm.map(toPackItemPayload),
+        cold: pack.cold.map(toPackItemPayload),
+        estimatedTokens: pack.estimatedTokens,
+        tokenBudget: pack.tokenBudget,
+        droppedItems: pack.droppedItems.map(toPackItemPayload)
+      },
+      currentFilePath: currentFilePath || undefined,
+      generatedAt: Date.now()
+    } as LongContextInspection
+  })
+
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     const existingJob = embeddingJobs.get(params.vaultPath)
@@ -1285,4 +1327,19 @@ function createIndexedRelations(db: Database.Database, tasks: KanbanTaskRow[], r
 
 function toRelativePath(vaultPath: string, filePath: string): string {
   return filePath.replace(vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+}
+
+function toPackItemPayload(item: LongContextPackItem): LongContextPackItemPayload {
+  return {
+    tier: item.tier,
+    relationId: item.relationId,
+    title: item.title,
+    source: item.source,
+    relationType: item.relationType as LongContextRelationType | undefined,
+    confidence: item.confidence,
+    score: item.score,
+    reason: item.reason,
+    evidence: item.evidence,
+    droppedReason: item.droppedReason
+  }
 }

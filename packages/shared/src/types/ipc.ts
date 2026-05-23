@@ -359,6 +359,48 @@ export interface LongContextMetrics {
   }
 }
 
+export interface LongContextUserPrefs {
+  confidenceThreshold: number
+  tokenBudget: number
+  hotRatio: number
+  warmRatio: number
+  coldRatio: number
+  decayHalfLifeDays: number
+  topN: number
+  hotLimit: number
+  warmLimit: number
+  coldLimit: number
+  archiveAfterDays: number
+}
+
+export type LongContextMemoryTier = 'hot' | 'warm' | 'cold'
+
+export interface LongContextPackItemPayload {
+  tier: LongContextMemoryTier
+  relationId?: string
+  title: string
+  source?: string
+  relationType?: LongContextRelationType
+  confidence?: number
+  score?: number
+  reason: string
+  evidence: string[]
+  droppedReason?: 'exceeded_token_budget'
+}
+
+export interface LongContextInspection {
+  pack: {
+    hot: LongContextPackItemPayload[]
+    warm: LongContextPackItemPayload[]
+    cold: LongContextPackItemPayload[]
+    estimatedTokens: number
+    tokenBudget: number
+    droppedItems: LongContextPackItemPayload[]
+  }
+  currentFilePath?: string
+  generatedAt: number
+}
+
 export type ProactiveSuggestionKind = 'relation' | 'theme_link' | 'cognitive_review' | 'maintenance'
 export type ProactiveSuggestionStatus = 'pending' | 'shown' | 'opened' | 'snoozed' | 'dismissed' | 'expired'
 export type ProactiveCtaAction = 'open_note' | 'add_wikilink' | 'open_review' | 'open_queue'
@@ -611,6 +653,16 @@ export interface IPCChannelMap {
       until?: number
     }
     result: LongContextMetrics
+  }
+  'long-context:get-prefs': { params: undefined; result: LongContextUserPrefs }
+  'long-context:set-prefs': { params: { prefs: Partial<LongContextUserPrefs> }; result: LongContextUserPrefs }
+  'long-context:inspect-pack': {
+    params: {
+      vaultPath: string
+      currentFilePath?: string | null
+      tokenBudget?: number
+    }
+    result: LongContextInspection
   }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
   'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }

@@ -6,6 +6,7 @@ import { getLongTermThemes } from './theme-extractor'
 import { getContextSuggestions, type ContextSuggestion } from './relation-store'
 import type { EntityType } from './relation-candidates'
 import type { RelationType } from './relation-classifier'
+import { getLongContextPrefs } from './long-context-prefs'
 
 export type LongContextMemoryTier = 'hot' | 'warm' | 'cold'
 
@@ -19,6 +20,7 @@ export interface LongContextPackItem {
   score?: number
   reason: string
   evidence: string[]
+  droppedReason?: 'exceeded_token_budget'
 }
 
 export interface LongContextPack {
@@ -27,6 +29,7 @@ export interface LongContextPack {
   hot: LongContextPackItem[]
   warm: LongContextPackItem[]
   cold: LongContextPackItem[]
+  droppedItems: LongContextPackItem[]
   systemText: string
   sources: ChatSource[]
 }
@@ -72,7 +75,11 @@ export const LONG_CONTEXT_SYSTEM_GUARD = [
 
 export function buildLongContextPack(params: BuildLongContextPackParams): LongContextPack {
   const db = getDatabase(params.vaultPath)
-  const tokenBudget = Math.max(200, Math.min(params.tokenBudget ?? 1200, 4000))
+  const prefs = getLongContextPrefs()
+  const tokenBudget = Math.max(200, Math.min(params.tokenBudget ?? prefs.tokenBudget, 4000))
+  const hotLimit = Math.max(1, Math.min(params.hotLimit ?? prefs.hotLimit, 10))
+  const warmLimit = Math.max(1, Math.min(params.warmLimit ?? prefs.warmLimit, 10))
+  const coldLimit = Math.max(1, Math.min(params.coldLimit ?? prefs.coldLimit, 10))
   const currentNote = resolveCurrentNote(db, params.vaultPath, params.currentFilePath)
   const sources: ChatSource[] = []
 
@@ -81,19 +88,19 @@ export function buildLongContextPack(params: BuildLongContextPackParams): LongCo
       vaultPath: params.vaultPath,
       entityType: 'note',
       entityId: currentNote.id,
-      limit: params.hotLimit ?? 3
+      limit: hotLimit
     }).map((suggestion) => suggestionToPackItem(suggestion))
     : []
 
-  const warmCandidates = getLongTermThemes(params.vaultPath, params.warmLimit ?? 3)
+  const warmCandidates = getLongTermThemes(params.vaultPath, warmLimit)
     .map((theme) => themeToPackItem(db, theme.id, theme.title, theme.summary, theme.keywords, theme.strength, theme.evidenceCount))
 
   const hotRelationIds = new Set(hotCandidates.map((item) => item.relationId).filter(Boolean))
-  const coldCandidates = getColdRelations(db, currentNote, params.coldLimit ?? 3)
+  const coldCandidates = getColdRelations(db, currentNote, coldLimit)
     .filter((relation) => !hotRelationIds.has(relation.id))
     .map((relation) => relationRowToPackItem(relation, currentNote))
 
-  const picked = pickWithinBudget([...hotCandidates, ...warmCandidates, ...coldCandidates], tokenBudget)
+  const { picked, dropped } = pickWithinBudget([...hotCandidates, ...warmCandidates, ...coldCandidates], tokenBudget)
   for (const item of picked) addSource(sources, item)
 
   const pack: LongContextPack = {
@@ -102,6 +109,7 @@ export function buildLongContextPack(params: BuildLongContextPackParams): LongCo
     hot: picked.filter((item) => item.tier === 'hot'),
     warm: picked.filter((item) => item.tier === 'warm'),
     cold: picked.filter((item) => item.tier === 'cold'),
+    droppedItems: dropped,
     systemText: '',
     sources
   }
@@ -214,16 +222,20 @@ function relationRowToPackItem(row: RelationRow, currentNote: NoteRef | null): L
   }
 }
 
-function pickWithinBudget(items: LongContextPackItem[], tokenBudget: number): LongContextPackItem[] {
+function pickWithinBudget(items: LongContextPackItem[], tokenBudget: number): { picked: LongContextPackItem[]; dropped: LongContextPackItem[] } {
   const picked: LongContextPackItem[] = []
+  const dropped: LongContextPackItem[] = []
   let used = 0
   for (const item of items) {
     const itemTokens = estimateStringTokens(formatPackItem(item))
-    if (picked.length > 0 && used + itemTokens > tokenBudget) continue
+    if (picked.length > 0 && used + itemTokens > tokenBudget) {
+      dropped.push({ ...item, droppedReason: 'exceeded_token_budget' })
+      continue
+    }
     picked.push(item)
     used += itemTokens
   }
-  return picked
+  return { picked, dropped }
 }
 
 function formatPackText(items: LongContextPackItem[]): string {

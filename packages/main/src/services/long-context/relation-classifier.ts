@@ -128,8 +128,11 @@ export function parseRelationClassification(text: string): RelationClassificatio
   }
 }
 
-export function shouldPersistRelationClassification(classification: RelationClassification): boolean {
-  return classification.confidence >= MIN_PERSIST_CONFIDENCE
+export function shouldPersistRelationClassification(
+  classification: RelationClassification,
+  minConfidence: number = MIN_PERSIST_CONFIDENCE
+): boolean {
+  return classification.confidence >= minConfidence
     && classification.evidence.length >= MIN_PERSIST_EVIDENCE
     && classification.reason.trim().length >= MIN_REASON_LENGTH
 }

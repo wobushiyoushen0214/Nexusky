@@ -5,6 +5,7 @@ import { rankRelation, type RelationFeedbackCounts } from './relation-ranker'
 import { recordContextEvent } from './context-events'
 import type { EntityType } from './relation-candidates'
 import type { RelationType } from './relation-classifier'
+import { getLongContextPrefs } from './long-context-prefs'
 
 export type RelationStatus = 'active' | 'dismissed' | 'archived' | 'wrong'
 export type RelationFeedbackType = 'useful' | 'not_related' | 'wrong_reason' | 'dismissed'
@@ -76,7 +77,8 @@ export function upsertRelation(vaultPath: string, relation: UpsertRelationInput)
     lastSeenAt: now,
     feedback,
     evidence,
-    now
+    now,
+    halfLifeDays: getLongContextPrefs().decayHalfLifeDays
   }), nextStatus, feedback)
 
   db.prepare(`
@@ -204,7 +206,8 @@ export function refreshRelationScores(params: {
   const db = getDatabase(params.vaultPath)
   const now = params.now ?? Math.floor(Date.now() / 1000)
   const limit = Math.max(1, Math.min(params.limit ?? 500, 2000))
-  const archiveAfterDays = params.archiveAfterDays ?? 180
+  const prefs = getLongContextPrefs()
+  const archiveAfterDays = params.archiveAfterDays ?? prefs.archiveAfterDays
   const archiveScoreThreshold = params.archiveScoreThreshold ?? 0.45
   const entityFilter = params.entityType && params.entityId
     ? `AND (
@@ -243,7 +246,8 @@ export function refreshRelationScores(params: {
         lastSeenAt: row.last_seen_at,
         feedback,
         evidence,
-        now
+        now,
+        halfLifeDays: prefs.decayHalfLifeDays
       })
       const score = applyFeedbackAndStatusPenalty(baseScore, row.status, feedback)
       const daysSinceSeen = Math.max(0, (now - row.last_seen_at) / 86_400)
