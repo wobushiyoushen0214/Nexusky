@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 10
+const SCHEMA_VERSION = 11
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -201,6 +201,62 @@ function initSchema(db: Database.Database): void {
   `)
   createLongContextSchema(db)
   createProactiveSchema(db)
+  createAgentSchema(db)
+}
+
+function createAgentSchema(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agent_runs (
+      id TEXT PRIMARY KEY,
+      vault_path TEXT NOT NULL,
+      goal TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'pending',
+      plan_json TEXT NOT NULL DEFAULT '[]',
+      rationale TEXT NOT NULL DEFAULT '',
+      dry_run INTEGER NOT NULL DEFAULT 1,
+      current_step_index INTEGER NOT NULL DEFAULT 0,
+      total_steps INTEGER NOT NULL DEFAULT 0,
+      result_summary TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      started_at INTEGER,
+      completed_at INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_agent_runs_status_created
+      ON agent_runs(status, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS agent_steps (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      step_index INTEGER NOT NULL,
+      step_kind TEXT NOT NULL,
+      tool_name TEXT,
+      args_json TEXT NOT NULL DEFAULT '{}',
+      description TEXT NOT NULL DEFAULT '',
+      expected_effect TEXT NOT NULL DEFAULT '',
+      depends_on_json TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'pending',
+      preview TEXT,
+      result_content TEXT,
+      result_sources_json TEXT,
+      error TEXT,
+      rollback_data_json TEXT,
+      started_at INTEGER,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      FOREIGN KEY (run_id) REFERENCES agent_runs(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_agent_steps_run
+      ON agent_steps(run_id, step_index ASC);
+
+    CREATE INDEX IF NOT EXISTS idx_agent_steps_status
+      ON agent_steps(status, updated_at DESC);
+  `)
 }
 
 function createProactiveSchema(db: Database.Database): void {
@@ -619,6 +675,10 @@ const migrations: Migration[] = [
   // Migration 10: proactive AI suggestions table
   (db) => {
     createProactiveSchema(db)
+  },
+  // Migration 11: agent runs / steps tables
+  (db) => {
+    createAgentSchema(db)
   }
 ]
 
