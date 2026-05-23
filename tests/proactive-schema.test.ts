@@ -4,11 +4,11 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-describe('long-context schema', () => {
+describe('proactive schema', () => {
   let vaultPath: string
 
   beforeEach(() => {
-    vaultPath = mkdtempSync(join(tmpdir(), 'nexusky-long-context-schema-'))
+    vaultPath = mkdtempSync(join(tmpdir(), 'nexusky-proactive-schema-'))
     mkdirSync(join(vaultPath, '.nexusky'), { recursive: true })
   })
 
@@ -33,41 +33,45 @@ describe('long-context schema', () => {
     return rows.map((row) => row.name)
   }
 
-  it('creates long-context tables, indexes, and foreign keys for a new vault', async () => {
+  function uniqueIndexes(db: Database.Database, tableName: string): string[] {
+    const rows = db.prepare(`PRAGMA index_list(${tableName})`).all() as { name: string, unique: number }[]
+    return rows.filter((row) => row.unique === 1).map((row) => row.name)
+  }
+
+  it('creates the proactive_suggestions table, indexes, and unique signature constraint for a new vault', async () => {
     const { getDatabase } = await import('../packages/main/src/services/database')
     const db = getDatabase(vaultPath)
 
-    expect(tableNames(db)).toEqual(expect.arrayContaining([
-      'context_events',
-      'ai_relations',
-      'long_term_themes',
-      'theme_memberships',
-      'relation_feedback'
-    ]))
+    expect(tableNames(db)).toEqual(expect.arrayContaining(['proactive_suggestions']))
     expect(db.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 10 })
 
-    expect(indexNames(db, 'context_events')).toEqual(expect.arrayContaining([
-      'idx_context_events_entity',
-      'idx_context_events_type'
+    expect(columnNames(db, 'proactive_suggestions')).toEqual(expect.arrayContaining([
+      'id',
+      'kind',
+      'source_ref',
+      'entity_type',
+      'entity_id',
+      'title',
+      'body',
+      'cta_action',
+      'cta_payload_json',
+      'importance',
+      'status',
+      'snooze_until',
+      'shown_at',
+      'responded_at',
+      'signature',
+      'created_at',
+      'updated_at'
     ]))
-    expect(indexNames(db, 'ai_relations')).toEqual(expect.arrayContaining([
-      'idx_ai_relations_pair_type',
-      'idx_ai_relations_source',
-      'idx_ai_relations_target',
-      'idx_ai_relations_type'
-    ]))
-    expect(indexNames(db, 'long_term_themes')).toContain('idx_long_term_themes_strength')
-    expect(indexNames(db, 'theme_memberships')).toContain('idx_theme_memberships_unique')
-    expect(indexNames(db, 'relation_feedback')).toContain('idx_relation_feedback_relation')
 
-    const themeMembershipKeys = db.prepare('PRAGMA foreign_key_list(theme_memberships)').all() as { table: string, on_delete: string }[]
-    const feedbackKeys = db.prepare('PRAGMA foreign_key_list(relation_feedback)').all() as { table: string, on_delete: string }[]
-    expect(themeMembershipKeys).toEqual(expect.arrayContaining([
-      expect.objectContaining({ table: 'long_term_themes', on_delete: 'CASCADE' })
+    expect(indexNames(db, 'proactive_suggestions')).toEqual(expect.arrayContaining([
+      'idx_proactive_signature',
+      'idx_proactive_status_created',
+      'idx_proactive_entity'
     ]))
-    expect(feedbackKeys).toEqual(expect.arrayContaining([
-      expect.objectContaining({ table: 'ai_relations', on_delete: 'CASCADE' })
-    ]))
+
+    expect(uniqueIndexes(db, 'proactive_suggestions')).toContain('idx_proactive_signature')
   })
 
   it('migrates an existing schema 9 vault to schema 10 idempotently', async () => {
@@ -82,12 +86,11 @@ describe('long-context schema', () => {
 
     const migratedDb = getDatabase(vaultPath)
     expect(migratedDb.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 10 })
-    expect(tableNames(migratedDb)).toEqual(expect.arrayContaining([
-      'context_events',
-      'ai_relations',
-      'long_term_themes',
-      'theme_memberships',
-      'relation_feedback'
+    expect(tableNames(migratedDb)).toEqual(expect.arrayContaining(['proactive_suggestions']))
+    expect(indexNames(migratedDb, 'proactive_suggestions')).toEqual(expect.arrayContaining([
+      'idx_proactive_signature',
+      'idx_proactive_status_created',
+      'idx_proactive_entity'
     ]))
 
     closeDatabase()
@@ -95,12 +98,12 @@ describe('long-context schema', () => {
     expect(getDatabase(vaultPath).prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 10 })
   })
 
-  it('repairs partial long-context tables when schema_version is already current', async () => {
+  it('repairs missing proactive_suggestions columns when schema_version is already current', async () => {
     const { getDatabase } = await import('../packages/main/src/services/database')
     const dbPath = join(vaultPath, '.nexusky', 'index.db')
     const partialDb = new Database(dbPath)
     partialDb.exec(`
-      CREATE TABLE context_events (
+      CREATE TABLE proactive_suggestions (
         id TEXT PRIMARY KEY
       );
       CREATE TABLE schema_version (version INTEGER NOT NULL);
@@ -109,19 +112,27 @@ describe('long-context schema', () => {
     partialDb.close()
 
     const db = getDatabase(vaultPath)
-    expect(columnNames(db, 'context_events')).toEqual(expect.arrayContaining([
-      'event_type',
-      'entity_type',
-      'entity_id',
-      'entity_title',
-      'entity_path',
-      'content_snapshot',
-      'metadata_json',
-      'created_at'
+    expect(columnNames(db, 'proactive_suggestions')).toEqual(expect.arrayContaining([
+      'kind',
+      'source_ref',
+      'title',
+      'cta_action',
+      'importance',
+      'status',
+      'signature'
     ]))
-    expect(indexNames(db, 'context_events')).toEqual(expect.arrayContaining([
-      'idx_context_events_entity',
-      'idx_context_events_type'
-    ]))
+  })
+
+  it('enforces unique signature: inserting duplicate signature throws', async () => {
+    const { getDatabase } = await import('../packages/main/src/services/database')
+    const db = getDatabase(vaultPath)
+
+    const insert = db.prepare(`
+      INSERT INTO proactive_suggestions
+        (id, kind, source_ref, title, body, cta_action, signature)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `)
+    insert.run('a', 'relation', 'rel-1', 'Title A', 'Body A', 'open_note', 'relation|rel-1|note-1')
+    expect(() => insert.run('b', 'relation', 'rel-1', 'Title B', 'Body B', 'open_note', 'relation|rel-1|note-1')).toThrow()
   })
 })

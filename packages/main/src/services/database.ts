@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 9
+const SCHEMA_VERSION = 10
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -200,6 +200,40 @@ function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated ON chat_sessions(updated_at DESC);
   `)
   createLongContextSchema(db)
+  createProactiveSchema(db)
+}
+
+function createProactiveSchema(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS proactive_suggestions (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      source_ref TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id TEXT,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      cta_action TEXT NOT NULL,
+      cta_payload_json TEXT NOT NULL DEFAULT '{}',
+      importance INTEGER NOT NULL DEFAULT 50,
+      status TEXT NOT NULL DEFAULT 'pending',
+      snooze_until INTEGER,
+      shown_at INTEGER,
+      responded_at INTEGER,
+      signature TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_proactive_signature
+      ON proactive_suggestions(signature);
+
+    CREATE INDEX IF NOT EXISTS idx_proactive_status_created
+      ON proactive_suggestions(status, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_proactive_entity
+      ON proactive_suggestions(entity_type, entity_id, status);
+  `)
 }
 
 function createLongContextSchema(db: Database.Database): void {
@@ -435,6 +469,24 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'relation_feedback', 'note', 'note TEXT')
   ensureColumn(db, 'relation_feedback', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
 
+  ensureColumn(db, 'proactive_suggestions', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'proactive_suggestions', 'kind', "kind TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'proactive_suggestions', 'source_ref', "source_ref TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'proactive_suggestions', 'entity_type', 'entity_type TEXT')
+  ensureColumn(db, 'proactive_suggestions', 'entity_id', 'entity_id TEXT')
+  ensureColumn(db, 'proactive_suggestions', 'title', "title TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'proactive_suggestions', 'body', "body TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'proactive_suggestions', 'cta_action', "cta_action TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'proactive_suggestions', 'cta_payload_json', "cta_payload_json TEXT NOT NULL DEFAULT '{}'")
+  ensureColumn(db, 'proactive_suggestions', 'importance', 'importance INTEGER NOT NULL DEFAULT 50')
+  ensureColumn(db, 'proactive_suggestions', 'status', "status TEXT NOT NULL DEFAULT 'pending'")
+  ensureColumn(db, 'proactive_suggestions', 'snooze_until', 'snooze_until INTEGER')
+  ensureColumn(db, 'proactive_suggestions', 'shown_at', 'shown_at INTEGER')
+  ensureColumn(db, 'proactive_suggestions', 'responded_at', 'responded_at INTEGER')
+  ensureColumn(db, 'proactive_suggestions', 'signature', "signature TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'proactive_suggestions', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'proactive_suggestions', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
   if (tableExists(db, 'links') && tableExists(db, 'notes') && tableColumns(db, 'links').has('source_note_id')) {
     db.exec("DELETE FROM links WHERE source_note_id = '' OR source_note_id NOT IN (SELECT id FROM notes)")
   }
@@ -563,6 +615,10 @@ const migrations: Migration[] = [
   // Migration 9: long-term context system tables
   (db) => {
     createLongContextSchema(db)
+  },
+  // Migration 10: proactive AI suggestions table
+  (db) => {
+    createProactiveSchema(db)
   }
 ]
 
