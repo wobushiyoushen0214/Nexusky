@@ -23,6 +23,7 @@ export function ProactiveToast() {
   }, [focusMode])
 
   useEffect(() => {
+    if (typeof window.api?.onProactiveEmitted !== 'function') return
     const off = window.api.onProactiveEmitted((suggestion) => {
       if (focusModeRef.current) return
       if (suggestion.importance < IMPORTANCE_THRESHOLD) return

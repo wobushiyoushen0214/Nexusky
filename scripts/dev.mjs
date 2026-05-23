@@ -1,20 +1,32 @@
 import { spawn, spawnSync } from 'child_process'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { createRequire } from 'module'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
+const require = createRequire(resolve(root, 'package.json'))
 
 const env = { ...process.env }
 delete env.ELECTRON_RUN_AS_NODE
 
+function getElectronBinary() {
+  const electronModule = require('electron')
+  if (typeof electronModule !== 'string') {
+    throw new Error(`Unexpected 'electron' module export: ${typeof electronModule}`)
+  }
+  return electronModule
+}
+
 function runElectronNativeCheck() {
-  const electronBin = resolve(
-    root,
-    'node_modules',
-    '.bin',
-    process.platform === 'win32' ? 'electron.cmd' : 'electron'
-  )
+  let electronBin
+  try {
+    electronBin = getElectronBinary()
+  } catch (err) {
+    process.stderr.write(`Failed to locate electron binary: ${err.message}\n`)
+    process.exit(1)
+  }
+
   const checkEnv = { ...env, ELECTRON_RUN_AS_NODE: '1' }
   const checkArgs = ['-e', "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close();"]
 
@@ -25,6 +37,11 @@ function runElectronNativeCheck() {
   })
 
   if (check.status === 0) return
+
+  if (check.error) {
+    process.stderr.write(`Failed to spawn electron for the native ABI check: ${check.error.message}\n`)
+    process.exit(1)
+  }
 
   const output = `${check.stdout ?? ''}${check.stderr ?? ''}`
   const hasNativeAbiMismatch =
@@ -40,10 +57,12 @@ function runElectronNativeCheck() {
 
   console.warn('Native dependency ABI mismatch detected. Rebuilding for Electron...')
 
-  const rebuild = spawnSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'rebuild'], {
+  const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+  const rebuild = spawnSync(pnpmBin, ['run', 'rebuild'], {
     cwd: root,
     env,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    shell: process.platform === 'win32'
   })
 
   if (rebuild.status !== 0) {
@@ -62,13 +81,23 @@ function runElectronNativeCheck() {
   }
 }
 
+function locateElectronViteCli() {
+  const pkgPath = require.resolve('electron-vite/package.json')
+  const pkg = require(pkgPath)
+  const binEntry = pkg.bin && pkg.bin['electron-vite']
+  if (!binEntry) {
+    throw new Error('electron-vite package.json does not declare a bin entry')
+  }
+  return resolve(dirname(pkgPath), binEntry)
+}
+
 runElectronNativeCheck()
 
-const child = spawn('npx', ['electron-vite', 'dev'], {
+const electronViteCli = locateElectronViteCli()
+const child = spawn(process.execPath, [electronViteCli, 'dev'], {
   cwd: root,
   env,
-  stdio: 'inherit',
-  shell: true
+  stdio: 'inherit'
 })
 
 child.on('close', (code) => {

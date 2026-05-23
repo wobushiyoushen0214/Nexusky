@@ -27,6 +27,7 @@ export function NotificationCenter() {
   }, [vaultPath, refresh])
 
   useEffect(() => {
+    if (typeof window.api?.onProactiveEmitted !== 'function') return
     const off = window.api.onProactiveEmitted((suggestion) => {
       upsertSuggestion(suggestion)
     })
