@@ -196,6 +196,9 @@ export function GraphView() {
     const width = svgRef.current.clientWidth
     const height = svgRef.current.clientHeight
     const nodeCount = graphData.nodes.length
+    // Heavy graphs skip expensive SVG filters and per-link gradients so the
+    // initial render stays smooth. Behaviour & interactions are preserved.
+    const isHeavy = nodeCount > 120
     const isLarge = nodeCount > 200
 
     svg.selectAll('*').remove()
@@ -236,23 +239,33 @@ export function GraphView() {
       }
     })
 
+    // Pre-aggregate incoming folder colors per node in one O(E) pass instead
+    // of one O(E) scan per node (was O(N*E)).
+    const incomingColorsMap = new Map<string, Set<string>>()
+    graphData.edges.forEach((e: { source: string; target: string }) => {
+      if (e.source === e.target) return
+      const srcFolderId = folderIdSet.has(e.source) ? e.source : nodeToFolder.get(e.source)
+      if (!srcFolderId) return
+      const srcColor = groupColorMap.get(srcFolderId)
+      if (!srcColor) return
+      let set = incomingColorsMap.get(e.target)
+      if (!set) {
+        set = new Set<string>()
+        incomingColorsMap.set(e.target, set)
+      }
+      set.add(srcColor)
+    })
+
     const nodes: SimNode[] = filteredNodes.map((n: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }) => {
       const folderId = n.type === 'folder' ? n.id : nodeToFolder.get(n.id)
       const color = folderId ? groupColorMap.get(folderId) : undefined
 
-      const incomingColors = new Set<string>()
-      if (color) incomingColors.add(color)
-      graphData.edges.forEach((e: { source: string; target: string }) => {
-        if (e.target === n.id && e.source !== n.id) {
-          const srcFolderId = folderIdSet.has(e.source) ? e.source : nodeToFolder.get(e.source)
-          if (srcFolderId) {
-            const srcColor = groupColorMap.get(srcFolderId)
-            if (srcColor) incomingColors.add(srcColor)
-          }
-        }
-      })
+      const incomingColors = incomingColorsMap.get(n.id)
+      const colorSet = new Set<string>()
+      if (color) colorSet.add(color)
+      if (incomingColors) incomingColors.forEach((c) => colorSet.add(c))
 
-      const colorsArr = [...incomingColors]
+      const colorsArr = [...colorSet]
       return {
         ...n,
         linkCount: linkCountMap.get(n.id) || 0,
@@ -274,26 +287,34 @@ export function GraphView() {
       .force('x', forceX(width / 2).strength(centerStrength))
       .force('y', forceY(height / 2).strength(centerStrength))
 
+    // Heavy graphs converge faster + dampen velocity to avoid long jitter.
+    if (isHeavy) {
+      simulation.alphaDecay(0.05).velocityDecay(0.5)
+    }
+
     simulationRef.current = simulation
 
     const nodeMap = new Map<string, SimNode>()
     nodes.forEach((n) => nodeMap.set(n.id, n))
 
-    // Link gradients for bone-joint style connections
-    links.forEach((l, i) => {
-      const sId = typeof l.source === 'string' ? l.source : l.source.id
-      const tId = typeof l.target === 'string' ? l.target : l.target.id
-      const sNode = nodeMap.get(sId)
-      const tNode = nodeMap.get(tId)
-      const color = sNode?.color || tNode?.color || 'var(--text-tertiary)'
-      const grad = defs.append('linearGradient')
-        .attr('id', `link-grad-${i}`)
-        .attr('gradientUnits', 'userSpaceOnUse')
-      grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', '0.7')
-      grad.append('stop').attr('offset', '30%').attr('stop-color', color).attr('stop-opacity', '0.2')
-      grad.append('stop').attr('offset', '70%').attr('stop-color', color).attr('stop-opacity', '0.2')
-      grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', '0.7')
-    })
+    // Link gradients for bone-joint style connections (skipped on heavy graphs;
+    // we fall back to a plain stroke and avoid rewriting <stop> coords each tick).
+    if (!isHeavy) {
+      links.forEach((l, i) => {
+        const sId = typeof l.source === 'string' ? l.source : l.source.id
+        const tId = typeof l.target === 'string' ? l.target : l.target.id
+        const sNode = nodeMap.get(sId)
+        const tNode = nodeMap.get(tId)
+        const color = sNode?.color || tNode?.color || 'var(--text-tertiary)'
+        const grad = defs.append('linearGradient')
+          .attr('id', `link-grad-${i}`)
+          .attr('gradientUnits', 'userSpaceOnUse')
+        grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', '0.7')
+        grad.append('stop').attr('offset', '30%').attr('stop-color', color).attr('stop-opacity', '0.2')
+        grad.append('stop').attr('offset', '70%').attr('stop-color', color).attr('stop-opacity', '0.2')
+        grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', '0.7')
+      })
+    }
 
     const linkGroup = g.append('g').attr('class', 'graph-links')
     const link = linkGroup
@@ -301,7 +322,14 @@ export function GraphView() {
       .data(links)
       .join('path')
       .attr('class', 'graph-link')
-      .attr('stroke', (_l, i) => `url(#link-grad-${i})`)
+      .attr('stroke', (l, i) => {
+        if (!isHeavy) return `url(#link-grad-${i})`
+        const sId = typeof l.source === 'string' ? l.source : l.source.id
+        const tId = typeof l.target === 'string' ? l.target : l.target.id
+        const sNode = nodeMap.get(sId)
+        const tNode = nodeMap.get(tId)
+        return sNode?.color || tNode?.color || 'var(--text-tertiary)'
+      })
       .attr('stroke-width', 0.8)
       .attr('marker-end', showArrowsRef.current ? 'url(#arrowhead)' : null)
 
@@ -316,7 +344,8 @@ export function GraphView() {
     // Create gradients and multi-color filters for multi-group nodes
     const multiFilterIds = new Map<number, string>()
     const multiHoverFilterIds = new Map<number, string>()
-    nodes.forEach((n, i) => {
+    if (!isHeavy) {
+      nodes.forEach((n, i) => {
       if (n.colors && n.colors.length > 1) {
         const gradId = `node-grad-${i}`
         n.gradientId = gradId
@@ -407,10 +436,12 @@ export function GraphView() {
         n.colors.forEach((_c, ci) => { hMerge.append('feMergeNode').attr('in', `innerClip${ci}`) })
       }
     })
+    } // end if (!isHeavy) for multi-color filters
 
     // Create folder glow filters per color
     const folderFilterIds = new Map<string, string>()
-    groupColorMap.forEach((color, folderId) => {
+    if (!isHeavy) {
+      groupColorMap.forEach((color, folderId) => {
       const filterId = `folder-glow-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
       folderFilterIds.set(folderId, filterId)
       const filter = defs.append('filter')
@@ -441,11 +472,13 @@ export function GraphView() {
       merge.append('feMergeNode').attr('in', 'blurClipped')
       merge.append('feMergeNode').attr('in', 'innerGlow')
     })
+    } // end if (!isHeavy) for folder-glow filters
 
     // Small file node glow filter per color, with brightness levels based on linkCount
     // Level 0: linkCount 0 (dim), Level 1: 1-2, Level 2: 3-4, Level 3: 5-7, Level 4: 8+ (bright)
     const fileFilterIds = new Map<string, string>()
     const fileLevelFilterIds = new Map<string, Map<number, string>>()
+    if (!isHeavy) {
     const BRIGHTNESS_LEVELS = [
       { outerBlur: 2, outerOpacity: 0.12, innerOpacity: 0.15 },
       { outerBlur: 3, outerOpacity: 0.25, innerOpacity: 0.3 },
@@ -483,6 +516,7 @@ export function GraphView() {
       })
       fileLevelFilterIds.set(folderId, levelMap)
     })
+    } // end if (!isHeavy) for file-glow filters
 
     function getLinkLevel(linkCount: number): number {
       if (linkCount >= 8) return 4
@@ -547,7 +581,9 @@ export function GraphView() {
 
     // Hover filter variants (brighter glow for hover state)
     const folderHoverFilterIds = new Map<string, string>()
-    groupColorMap.forEach((color, folderId) => {
+    const fileHoverFilterIds = new Map<string, string>()
+    if (!isHeavy) {
+      groupColorMap.forEach((color, folderId) => {
       const filterId = `folder-hover-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
       folderHoverFilterIds.set(folderId, filterId)
       const filter = defs.append('filter')
@@ -575,7 +611,6 @@ export function GraphView() {
       merge.append('feMergeNode').attr('in', 'innerGlow')
     })
 
-    const fileHoverFilterIds = new Map<string, string>()
     groupColorMap.forEach((color, folderId) => {
       const filterId = `file-hover-${folderId.replace(/[^a-zA-Z0-9]/g, '_')}`
       fileHoverFilterIds.set(folderId, filterId)
@@ -600,6 +635,7 @@ export function GraphView() {
       merge.append('feMergeNode').attr('in', 'SourceGraphic')
       merge.append('feMergeNode').attr('in', 'innerGlow')
     })
+    } // end if (!isHeavy) for hover filters
 
     // Current node: use hover filter for stronger glow + pulse ring
     nodeGroup.filter(isCurrentNode).select('.node-core')
@@ -806,17 +842,19 @@ export function GraphView() {
           return `M${x1},${y1} L${x2},${y2}`
         })
 
-      // Update link gradient positions
-      link.each(function (d, i) {
-        const source = getLinkEndpoint(d.source, nodeMap)
-        const target = getLinkEndpoint(d.target, nodeMap)
-        if (!hasPosition(source) || !hasPosition(target)) return
-        const grad = select(defs.node()!).select(`#link-grad-${i}`)
-        if (!grad.empty()) {
-          grad.attr('x1', source.x).attr('y1', source.y)
-            .attr('x2', target.x).attr('y2', target.y)
-        }
-      })
+      // Update link gradient positions only when gradients exist (small graphs).
+      if (!isHeavy) {
+        link.each(function (d, i) {
+          const source = getLinkEndpoint(d.source, nodeMap)
+          const target = getLinkEndpoint(d.target, nodeMap)
+          if (!hasPosition(source) || !hasPosition(target)) return
+          const grad = select(defs.node()!).select(`#link-grad-${i}`)
+          if (!grad.empty()) {
+            grad.attr('x1', source.x).attr('y1', source.y)
+              .attr('x2', target.x).attr('y2', target.y)
+          }
+        })
+      }
 
       nodeGroup.attr('transform', (d) => `translate(${d.x},${d.y})`)
     })
