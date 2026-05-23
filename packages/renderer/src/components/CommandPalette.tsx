@@ -5,7 +5,8 @@ import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { safeSet } from '../utils/storage'
-import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
+import { toolSurfaceCategoryToCommandCategory } from './tool-surface/tool-surface-category'
+import type { LocalPlugin, PluginPanel, ToolSurfaceEntry } from '@shared/types/ipc'
 
 type CommandCategory = 'file' | 'search' | 'ai' | 'plugin' | 'graph' | 'sync' | 'export' | 'interface'
 
@@ -38,6 +39,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
+  const [toolSurfaceEntries, setToolSurfaceEntries] = useState<ToolSurfaceEntry[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout } = useUIStore()
   const { saveFile, currentFilePath, content } = useEditorStore()
@@ -271,7 +273,38 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       keywords: ['plugin', 'panel', plugin.id, panel.id],
       action: () => openPluginPanel(plugin, panel)
     }))),
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, t])
+    ...toolSurfaceEntries.map<Command>((entry) => ({
+      id: `tool:${entry.name}`,
+      category: toolSurfaceCategoryToCommandCategory(entry.category),
+      label: t(entry.labelKey, { defaultValue: entry.name }),
+      description: t(entry.labelKey.replace(/\.label$/, '.description'), { defaultValue: '' }) || undefined,
+      keywords: ['tool', ...entry.keywords],
+      action: async () => {
+        if (!vaultPath) {
+          toast(t('commandPalette.toasts.openVaultFirst', { defaultValue: 'Open a vault first.' }), 'info')
+          return
+        }
+        if (entry.requiresCurrentNote && !requireCurrentNote()) return
+        const result = await window.api.invoke('ai:run-tool', {
+          vaultPath,
+          toolName: entry.name,
+          currentFilePath: currentFilePath ?? null
+        })
+        if (result.ok) {
+          window.dispatchEvent(new CustomEvent('tool-surface-result', {
+            detail: {
+              toolName: entry.name,
+              labelKey: entry.labelKey,
+              content: result.content,
+              sources: result.sources ?? []
+            }
+          }))
+        } else {
+          toast(result.error, 'error')
+        }
+      }
+    })),
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, toolSurfaceEntries, t])
 
   const filtered = query.trim()
     ? commands.filter((c) => {
@@ -296,6 +329,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       if (vaultPath) {
         window.api.invoke('plugins:list', { vaultPath }).then(setPlugins).catch(() => setPlugins([]))
       }
+      window.api.invoke('ai:list-tool-surface', undefined)
+        .then((res) => setToolSurfaceEntries(res.entries))
+        .catch(() => setToolSurfaceEntries([]))
     }
   }, [open, vaultPath])
 
