@@ -431,7 +431,8 @@
       "ai": "AI Providers",
       "cloud": "Cloud Sync",
       "plugins": "Plugins",
-      "keys": "Hotkeys"
+      "keys": "Hotkeys",
+      "proactive": "Proactive"
     },
     "theme": {
       "title": "Theme",

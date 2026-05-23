@@ -431,7 +431,8 @@
       "ai": "AI 提供商",
       "cloud": "云端同步",
       "plugins": "插件",
-      "keys": "快捷键"
+      "keys": "快捷键",
+      "proactive": "主动建议"
     },
     "theme": {
       "title": "主题",
