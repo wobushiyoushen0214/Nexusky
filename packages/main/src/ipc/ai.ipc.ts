@@ -26,6 +26,7 @@ import { join, basename } from 'path'
 import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { transcribeAudio, type TranscribeAudioParams } from '../services/ai/transcription'
+import { setAgentToolRunner } from '../services/agent/tool-runner'
 import type { ChatSource } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
@@ -3484,5 +3485,9 @@ graph TD
     } catch (err) {
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) }
     }
+  })
+
+  setAgentToolRunner(async (toolName, args, vaultPath, currentFilePath) => {
+    return executeToolCall(toolName, args, vaultPath, currentFilePath)
   })
 }
