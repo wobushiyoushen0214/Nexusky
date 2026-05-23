@@ -359,6 +359,47 @@ export interface LongContextMetrics {
   }
 }
 
+export type ProactiveSuggestionKind = 'relation' | 'theme_link' | 'cognitive_review' | 'maintenance'
+export type ProactiveSuggestionStatus = 'pending' | 'shown' | 'opened' | 'snoozed' | 'dismissed' | 'expired'
+export type ProactiveCtaAction = 'open_note' | 'add_wikilink' | 'open_review' | 'open_queue'
+export type ProactiveEntityType = 'note' | 'task' | 'vault'
+export type ProactiveTriggerKind =
+  | 'long_context_high_score'
+  | 'theme_proximity'
+  | 'cognitive_review_ready'
+  | 'stale_island_note'
+  | 'overdue_task_burst'
+
+export interface ProactiveSuggestion {
+  id: string
+  kind: ProactiveSuggestionKind
+  sourceRef: string
+  entityType: ProactiveEntityType | null
+  entityId: string | null
+  title: string
+  body: string
+  ctaAction: ProactiveCtaAction
+  ctaPayload: Record<string, unknown>
+  importance: number
+  status: ProactiveSuggestionStatus
+  snoozeUntil: number | null
+  shownAt: number | null
+  respondedAt: number | null
+  signature: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ProactiveUserPrefs {
+  enabled: boolean
+  silentHoursStart?: string
+  silentHoursEnd?: string
+  defaultSnoozeDays: number
+  perKindEnabled: Record<ProactiveSuggestionKind, boolean>
+  maxPerDay: number
+  importanceFloor: number
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -602,6 +643,45 @@ export interface IPCChannelMap {
   'updater:install': { params: undefined; result: void }
   'app:get-version': { params: undefined; result: string }
   'app:open-external': { params: { url: string }; result: void }
+  'proactive:list': {
+    params: {
+      vaultPath: string
+      status?: ProactiveSuggestionStatus[]
+      entityType?: ProactiveEntityType | null
+      entityId?: string | null
+      limit?: number
+      sinceSeconds?: number
+    }
+    result: ProactiveSuggestion[]
+  }
+  'proactive:respond': {
+    params: {
+      vaultPath: string
+      id: string
+      status: 'shown' | 'opened' | 'snoozed' | 'dismissed'
+      snoozeUntil?: number | null
+    }
+    result: ProactiveSuggestion | null
+  }
+  'proactive:get-prefs': { params: undefined; result: ProactiveUserPrefs }
+  'proactive:set-prefs': { params: { prefs: Partial<ProactiveUserPrefs> }; result: ProactiveUserPrefs }
+  'proactive:debug-run-cycle': {
+    params: {
+      vaultPath: string
+      entityType: ProactiveEntityType
+      entityId: string
+      trigger: ProactiveTriggerKind
+      now?: number
+      context?: Record<string, unknown>
+      userPrefs?: Partial<ProactiveUserPrefs>
+    }
+    result: {
+      evaluated: number
+      emitted: number
+      suggestions: ProactiveSuggestion[]
+      skippedReasons: Record<string, number>
+    }
+  }
 }
 
 export type IPCChannel = keyof IPCChannelMap

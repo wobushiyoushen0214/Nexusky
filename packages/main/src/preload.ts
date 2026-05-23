@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AINotesProgress, AIStreamEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel } from '@shared/types/ipc'
+import type { AINotesProgress, AIStreamEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel, ProactiveSuggestion } from '@shared/types/ipc'
 
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
@@ -102,6 +102,11 @@ const api = {
     const handler = () => callback()
     ipcRenderer.on('quick-capture', handler)
     return () => { ipcRenderer.removeListener('quick-capture', handler) }
+  },
+  onProactiveEmitted: (callback: (suggestion: ProactiveSuggestion) => void) => {
+    const handler = (_event: unknown, data: ProactiveSuggestion) => callback(data)
+    ipcRenderer.on('proactive:emitted', handler)
+    return () => { ipcRenderer.removeListener('proactive:emitted', handler) }
   },
   platform: process.platform,
   windowControls: {

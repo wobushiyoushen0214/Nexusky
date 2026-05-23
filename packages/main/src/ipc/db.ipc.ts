@@ -23,6 +23,8 @@ import { generateCognitiveReview } from '../services/long-context/cognitive-revi
 import { getLongContextMetrics, recordContextEvent } from '../services/long-context/context-events'
 import { discoverLongContextRelations } from '../services/long-context/relation-discovery'
 import { scheduleIndexedNoteLongContext, scheduleLongContextAnalysis, scheduleVaultLongContextMaintenance } from '../services/long-context/background'
+import { runProactiveCycle } from '../services/proactive/proactive-orchestrator'
+import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
 import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextMetrics, LongContextRelationRefreshResult, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 
@@ -233,6 +235,25 @@ export function registerDbIPC(): void {
       eventType: 'note_updated',
       trigger: 'db:index-file'
     })
+
+    const relPath = relative(params.vaultPath, params.filePath).replace(/\\/g, '/')
+    const noteId = createHash('md5').update(relPath).digest('hex')
+    try {
+      runProactiveCycle({
+        vaultPath: params.vaultPath,
+        entityType: 'note',
+        entityId: noteId,
+        trigger: 'overdue_task_burst'
+      })
+      runProactiveCycle({
+        vaultPath: params.vaultPath,
+        entityType: 'note',
+        entityId: noteId,
+        trigger: 'stale_island_note'
+      })
+    } catch {
+      // Proactive evaluation must never break note indexing.
+    }
   })
 
   ipcMain.handle('db:remove-file', async (_event, params: { vaultPath: string; filePath: string }) => {

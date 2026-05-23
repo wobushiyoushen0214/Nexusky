@@ -45,3 +45,10 @@ export {
   resetProactivePrefs,
   mergeWithDefaults as mergeProactivePrefs
 } from './proactive-prefs'
+
+export {
+  subscribeProactiveEmitted,
+  broadcastProactiveEmitted,
+  clearProactiveEmittedListeners,
+  type ProactiveEmittedListener
+} from './proactive-broadcaster'

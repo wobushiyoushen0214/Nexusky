@@ -16,6 +16,7 @@ import {
   type ProactiveSuggestionRow
 } from './proactive-store'
 import { getProactivePrefs } from './proactive-prefs'
+import { broadcastProactiveEmitted } from './proactive-broadcaster'
 
 export interface RunProactiveCycleParams {
   vaultPath: string
@@ -89,6 +90,7 @@ export function runProactiveCycle(params: RunProactiveCycleParams): RunProactive
     suggestions.push(suggestion)
     evaluations.push({ candidate, decision, emitted: true, suggestion })
     emittedCount += 1
+    broadcastProactiveEmitted(suggestion)
   }
 
   return {

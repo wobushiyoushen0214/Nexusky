@@ -7,6 +7,7 @@ import type { ChatMessage, ChatOptions, ChatStreamEvent } from '../ai'
 import { extractJsonFromText } from '../ai/json'
 import { recordContextEvent } from './context-events'
 import type { EntityType } from './relation-candidates'
+import { runProactiveCycle } from '../proactive/proactive-orchestrator'
 
 export interface ThemeExtractionResult {
   created: number
@@ -103,7 +104,38 @@ export async function extractLongTermThemes(params: ExtractLongTermThemesParams)
     }
   }
 
+  if (created > 0 || updated > 0) {
+    runThemeProximityForRecentNotes(db, params.vaultPath)
+  }
+
   return { created, updated }
+}
+
+const PROACTIVE_PROXIMITY_NOTE_LIMIT = 5
+
+function runThemeProximityForRecentNotes(db: Database.Database, vaultPath: string): void {
+  const rows = db.prepare(`
+    SELECT n.id as id, n.title as title, COALESCE(f.content, '') as content
+    FROM notes n
+    LEFT JOIN notes_fts_map m ON m.note_id = n.id
+    LEFT JOIN notes_fts f ON f.rowid = m.rowid
+    ORDER BY n.updated_at DESC
+    LIMIT ?
+  `).all(PROACTIVE_PROXIMITY_NOTE_LIMIT) as { id: string; title: string; content: string }[]
+
+  for (const row of rows) {
+    try {
+      runProactiveCycle({
+        vaultPath,
+        entityType: 'note',
+        entityId: row.id,
+        trigger: 'theme_proximity',
+        context: { content: row.content }
+      })
+    } catch {
+      // Proactive evaluation must never break theme extraction.
+    }
+  }
 }
 
 export function getLongTermThemes(vaultPath: string, limit = 20): LongTermTheme[] {

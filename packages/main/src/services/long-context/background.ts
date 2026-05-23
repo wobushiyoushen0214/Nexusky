@@ -9,6 +9,7 @@ import { extractLongTermThemes, type ThemeExtractionResult, type ThemeExtractorP
 import { generateCognitiveReview, type CognitiveReviewResult } from './cognitive-review'
 import type { EntityType } from './relation-candidates'
 import type { RelationClassifierProvider } from './relation-classifier'
+import { runProactiveCycle } from '../proactive/proactive-orchestrator'
 
 export interface LongContextAnalysisJob {
   vaultPath: string
@@ -163,6 +164,21 @@ export async function runVaultLongContextMaintenance(
     minIntervalSeconds: REVIEW_INTERVAL_SECONDS
   })
 
+  if (review?.filePath) {
+    try {
+      runProactiveCycle({
+        vaultPath: params.vaultPath,
+        entityType: 'vault',
+        entityId: 'vault',
+        trigger: 'cognitive_review_ready',
+        now: params.now ?? unixNow(),
+        context: { reviewFilePath: review.filePath, reviewTitle: review.title }
+      })
+    } catch {
+      // ignore
+    }
+  }
+
   return { analyzed, review }
 }
 
@@ -222,6 +238,36 @@ export async function runLongContextBackgroundCycle(
     write: params.writeReview !== false,
     minIntervalSeconds: params.reviewMinIntervalSeconds ?? REVIEW_INTERVAL_SECONDS
   })
+
+  if (params.entityType === 'note' && discovery.discovered > 0) {
+    try {
+      runProactiveCycle({
+        vaultPath: params.vaultPath,
+        entityType: 'note',
+        entityId: params.entityId,
+        trigger: 'long_context_high_score',
+        now,
+        context: params.content ? { content: params.content } : undefined
+      })
+    } catch {
+      // Proactive evaluation must never break the background pipeline.
+    }
+  }
+
+  if (review?.filePath) {
+    try {
+      runProactiveCycle({
+        vaultPath: params.vaultPath,
+        entityType: 'vault',
+        entityId: 'vault',
+        trigger: 'cognitive_review_ready',
+        now,
+        context: { reviewFilePath: review.filePath, reviewTitle: review.title }
+      })
+    } catch {
+      // ignore
+    }
+  }
 
   return {
     eventRecorded,

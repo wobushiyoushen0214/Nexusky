@@ -9,6 +9,7 @@ import { registerTemplateIPC } from './ipc/template.ipc'
 import { registerCloudIPC } from './ipc/cloud.ipc'
 import { registerExportIPC } from './ipc/export.ipc'
 import { registerPluginIPC } from './ipc/plugin.ipc'
+import { registerProactiveIPC } from './ipc/proactive.ipc'
 import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
 import { startWebClipperServer, stopWebClipperServer } from './services/web-clipper'
@@ -146,6 +147,7 @@ app.whenReady().then(() => {
   registerCloudIPC()
   registerExportIPC()
   registerPluginIPC()
+  registerProactiveIPC()
   setupAutoUpdater()
   startWebClipperServer()
 
