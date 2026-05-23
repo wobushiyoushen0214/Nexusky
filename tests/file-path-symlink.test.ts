@@ -7,6 +7,26 @@ import { assertPathInsideVault } from '../packages/main/src/ipc/file-path'
 let vault = ''
 let outside = ''
 
+// On Windows, creating symlinks requires Developer Mode or Administrator
+// privileges. Probe once and conditionally skip those cases so the suite stays
+// portable.
+function canCreateSymlinks(): boolean {
+  const probeRoot = mkdtempSync(join(tmpdir(), 'nexusky-symlink-probe-'))
+  try {
+    const target = join(probeRoot, 'target')
+    writeFileSync(target, 'probe')
+    symlinkSync(target, join(probeRoot, 'link'))
+    return true
+  } catch {
+    return false
+  } finally {
+    try { rmSync(probeRoot, { recursive: true, force: true }) } catch {}
+  }
+}
+
+const symlinkSupported = canCreateSymlinks()
+const symlinkIt = symlinkSupported ? it : it.skip
+
 beforeEach(() => {
   const root = mkdtempSync(join(tmpdir(), 'nexusky-symlink-'))
   vault = join(root, 'vault')
@@ -32,13 +52,13 @@ describe('assertPathInsideVault', () => {
     await expect(assertPathInsideVault(join(vault, '..', 'outside', 'secret.md'), vault)).rejects.toThrow()
   })
 
-  it('rejects a symlink that points outside the vault', async () => {
+  symlinkIt('rejects a symlink that points outside the vault', async () => {
     const link = join(vault, 'escape.md')
     symlinkSync(join(outside, 'secret.md'), link)
     await expect(assertPathInsideVault(link, vault)).rejects.toThrow(/符号链接|笔记空间/)
   })
 
-  it('rejects writes through a symlinked directory', async () => {
+  symlinkIt('rejects writes through a symlinked directory', async () => {
     const dirLink = join(vault, 'shadow')
     symlinkSync(outside, dirLink)
     const target = join(dirLink, 'new.md')

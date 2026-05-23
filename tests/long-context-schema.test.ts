@@ -44,7 +44,7 @@ describe('long-context schema', () => {
       'theme_memberships',
       'relation_feedback'
     ]))
-    expect(db.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 10 })
+    expect(db.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
 
     expect(indexNames(db, 'context_events')).toEqual(expect.arrayContaining([
       'idx_context_events_entity',
@@ -70,7 +70,7 @@ describe('long-context schema', () => {
     ]))
   })
 
-  it('migrates an existing schema 9 vault to schema 10 idempotently', async () => {
+  it('migrates an existing schema 9 vault to schema 11 idempotently', async () => {
     const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
     const dbPath = join(vaultPath, '.nexusky', 'index.db')
     const oldDb = new Database(dbPath)
@@ -81,7 +81,7 @@ describe('long-context schema', () => {
     oldDb.close()
 
     const migratedDb = getDatabase(vaultPath)
-    expect(migratedDb.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 10 })
+    expect(migratedDb.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
     expect(tableNames(migratedDb)).toEqual(expect.arrayContaining([
       'context_events',
       'ai_relations',
@@ -92,7 +92,7 @@ describe('long-context schema', () => {
 
     closeDatabase()
     expect(() => getDatabase(vaultPath)).not.toThrow()
-    expect(getDatabase(vaultPath).prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 10 })
+    expect(getDatabase(vaultPath).prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
   })
 
   it('repairs partial long-context tables when schema_version is already current', async () => {
@@ -104,7 +104,7 @@ describe('long-context schema', () => {
         id TEXT PRIMARY KEY
       );
       CREATE TABLE schema_version (version INTEGER NOT NULL);
-      INSERT INTO schema_version (version) VALUES (10);
+      INSERT INTO schema_version (version) VALUES (11);
     `)
     partialDb.close()
 

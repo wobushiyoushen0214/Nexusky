@@ -1,10 +1,15 @@
 import { app } from 'electron'
+import { tmpdir } from 'os'
 import { join, dirname } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { encrypt, decrypt, isEncrypted, isV1Encrypted, isV2Encrypted, preferredEncryption } from './secret'
 
 function getStorePath(): string {
-  return join(app.getPath('userData'), 'config.json')
+  if (app && typeof app.getPath === 'function') {
+    return join(app.getPath('userData'), 'config.json')
+  }
+  const override = process.env.NEXUSKY_USER_DATA_DIR
+  return join(override ?? join(tmpdir(), 'nexusky-test-user-data'), 'config.json')
 }
 
 // 字段路径模式：用于判断 value 中哪些字符串字段需要加密

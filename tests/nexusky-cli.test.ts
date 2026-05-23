@@ -1,9 +1,19 @@
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
-const cli = await import('../scripts/nexusky-cli.mjs')
+interface CliModule {
+  createNote: (params: { vaultPath: string; title: string; content?: string; dir?: string }) => Promise<string>
+  searchNotes: (params: { vaultPath: string; query: string; limit?: number }) => Promise<{ path: string; line: number }[]>
+  parseArgs: (argv: string[]) => { command: string; flags: Record<string, string | boolean>; values: string[] }
+}
+
+let cli!: CliModule
+
+beforeAll(async () => {
+  cli = (await import('../scripts/nexusky-cli.mjs')) as unknown as CliModule
+})
 
 describe('Nexusky CLI', () => {
   async function tempVault() {
@@ -26,7 +36,7 @@ describe('Nexusky CLI', () => {
 
     const filePath = await cli.createNote({ vaultPath, title: 'Inbox Item', dir: 'Inbox/Capture' })
 
-    expect(filePath.endsWith('Inbox/Capture/Inbox Item.md')).toBe(true)
+    expect(filePath).toMatch(/Inbox[\\/]+Capture[\\/]+Inbox Item\.md$/)
     expect(await readFile(filePath, 'utf8')).toBe('# Inbox Item\n')
   })
 
