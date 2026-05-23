@@ -2,10 +2,19 @@
 
 .proactive-anchor {
   position: fixed;
-  top: 8px;
+  top: 4px;
   right: 12px;
   z-index: 9000;
   pointer-events: none;
+}
+
+.proactive-anchor[data-platform="win32"] {
+  /* Avoid the three 46px window controls (min / max / close) on Windows. */
+  right: 152px;
+}
+
+.proactive-anchor[data-platform="linux"] {
+  right: 152px;
 }
 
 .proactive-anchor > * {
@@ -52,7 +61,7 @@
 
 .proactive-drawer {
   position: fixed;
-  top: 56px;
+  top: 44px;
   right: 16px;
   z-index: 9000;
   width: 360px;
@@ -64,6 +73,11 @@
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   overflow: hidden;
+}
+
+.proactive-anchor[data-platform="win32"] .proactive-drawer,
+.proactive-anchor[data-platform="linux"] .proactive-drawer {
+  right: 140px;
 }
 
 .proactive-drawer__header {

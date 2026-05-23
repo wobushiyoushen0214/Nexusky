@@ -37,7 +37,7 @@ export function NotificationCenter() {
   const badge = useMemo(() => suggestions.length, [suggestions])
 
   return (
-    <div className="proactive-anchor">
+    <div className="proactive-anchor" data-platform={window.api?.platform ?? 'darwin'}>
       <button
         type="button"
         className="proactive-bell"
