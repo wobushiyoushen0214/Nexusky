@@ -9,6 +9,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { safeGet, safeSet } from '../../utils/storage'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCssSnippets, setEnabledSnippetNames } from '../../utils/css-snippets'
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
+import { ProactivePreferencesTab } from '../proactive/ProactivePreferences'
 import type { AIProviderConfig, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
@@ -64,7 +65,7 @@ interface SettingsProps {
   onClose: () => void
 }
 
-type Tab = 'appearance' | 'ai' | 'cloud' | 'plugins' | 'keys'
+type Tab = 'appearance' | 'ai' | 'cloud' | 'plugins' | 'keys' | 'proactive'
 const ACCENT_PRESETS = ['#7c6ef5', '#4facfe', '#4ec9a0', '#f0a050', '#e8577a', '#ffd60a', '#88c0d0', '#268bd2']
 
 const inputStyle: React.CSSProperties = {
@@ -217,7 +218,7 @@ export function Settings({ open, onClose }: SettingsProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', padding: '0 20px' }}>
-          {(['appearance', 'ai', 'cloud', 'plugins', 'keys'] as Tab[]).map((tabId) => (
+          {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive'] as Tab[]).map((tabId) => (
             <button
               key={tabId}
               onClick={() => setTab(tabId)}
@@ -349,6 +350,8 @@ export function Settings({ open, onClose }: SettingsProps) {
           {tab === 'plugins' && <PluginsTab />}
 
           {tab === 'keys' && <KeyBindingsTab />}
+
+          {tab === 'proactive' && <ProactivePreferencesTab />}
         </div>
       </div>
       {/* Provider edit modal */}
