@@ -247,6 +247,50 @@ describe('proactive-policy', () => {
     expect(decision.reason).toBe('rate_limit_entity')
   })
 
+  it('enforces global 5-minute cooldown across entities', async () => {
+    const { decideEmission } = await import('../packages/main/src/services/proactive/proactive-policy')
+    const { upsertSuggestion, updateStatus } = await import('../packages/main/src/services/proactive/proactive-store')
+    const now = Math.floor(Date.now() / 1000)
+
+    const row = upsertSuggestion(vaultPath, {
+      kind: 'relation', sourceRef: 'r-cold', entityType: 'note', entityId: 'note-cold-A',
+      title: 'A', ctaAction: 'open_note', signature: 'sig-cold-A', importance: 70
+    })
+    updateStatus(vaultPath, { id: row.id, status: 'shown' })
+
+    // Different entity, so per-entity 24h limit does not apply; only the global cooldown should fire.
+    const decision = decideEmission({
+      vaultPath,
+      now: now + 60, // 1 minute later, still inside the 5-minute cooldown
+      candidate: makeCandidate({ signature: 'sig-cold-B', entityId: 'note-cold-B' }),
+      userPrefs: makePrefs()
+    })
+    expect(decision.emit).toBe(false)
+    expect(decision.reason).toBe('rate_limit_global')
+    expect(decision.suppressUntil).toBeGreaterThan(now + 60)
+  })
+
+  it('clears global cooldown after 5 minutes elapse', async () => {
+    const { decideEmission } = await import('../packages/main/src/services/proactive/proactive-policy')
+    const { upsertSuggestion, updateStatus } = await import('../packages/main/src/services/proactive/proactive-store')
+    const now = Math.floor(Date.now() / 1000)
+
+    const row = upsertSuggestion(vaultPath, {
+      kind: 'relation', sourceRef: 'r-warm', entityType: 'note', entityId: 'note-warm-A',
+      title: 'A', ctaAction: 'open_note', signature: 'sig-warm-A', importance: 70
+    })
+    updateStatus(vaultPath, { id: row.id, status: 'shown' })
+
+    const decision = decideEmission({
+      vaultPath,
+      now: now + 6 * 60, // 6 minutes later
+      candidate: makeCandidate({ signature: 'sig-warm-B', entityId: 'note-warm-B' }),
+      userPrefs: makePrefs()
+    })
+    expect(decision.emit).toBe(true)
+    expect(decision.reason).toBe('ok')
+  })
+
   it('allows emission when all checks pass', async () => {
     const { decideEmission } = await import('../packages/main/src/services/proactive/proactive-policy')
     const decision = decideEmission({

@@ -32,6 +32,7 @@ export type ProactivePolicyReason =
   | 'duplicate_pending'
   | 'rate_limit_day'
   | 'rate_limit_entity'
+  | 'rate_limit_global'
   | 'snoozed'
   | 'silent_hours'
   | 'disabled'
@@ -53,6 +54,7 @@ export interface ProactivePolicyDecision {
 
 const PER_ENTITY_WINDOW_SECONDS = 24 * 60 * 60
 const PER_DAY_WINDOW_SECONDS = 24 * 60 * 60
+const GLOBAL_COOLDOWN_SECONDS = 5 * 60
 
 export function decideEmission(ctx: ProactivePolicyContext): ProactivePolicyDecision {
   const { userPrefs, candidate, now } = ctx
@@ -122,6 +124,19 @@ export function decideEmission(ctx: ProactivePolicyContext): ProactivePolicyDeci
     `).get(entityCutoff, candidate.entityType, candidate.entityId) as { c: number }
     if (entityRow.c >= 1) {
       return { emit: false, reason: 'rate_limit_entity' }
+    }
+  }
+
+  const recentRow = db.prepare(`
+    SELECT MAX(shown_at) AS last
+    FROM proactive_suggestions
+    WHERE shown_at IS NOT NULL
+  `).get() as { last: number | null }
+  if (recentRow.last !== null && now - recentRow.last < GLOBAL_COOLDOWN_SECONDS) {
+    return {
+      emit: false,
+      reason: 'rate_limit_global',
+      suppressUntil: recentRow.last + GLOBAL_COOLDOWN_SECONDS
     }
   }
 

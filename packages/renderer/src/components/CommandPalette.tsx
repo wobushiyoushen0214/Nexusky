@@ -312,7 +312,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const filtered = query.trim()
     ? commands.filter((c) => {
       const q = query.toLowerCase()
-      return [c.label, c.category, c.description, ...(c.keywords || [])].some((part) => part?.toLowerCase().includes(q))
+      return [c.label, c.category, c.description, c.id, ...(c.keywords || [])].some((part) => part?.toLowerCase().includes(q))
     })
     : commands
 
