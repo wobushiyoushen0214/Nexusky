@@ -293,6 +293,8 @@
       "properties": { "label": "打开笔记属性", "description": "编辑 title、aliases、tags、cssclasses" },
       "settings": { "label": "打开设置" },
       "viewContextPack": { "label": "查看上下文包", "description": "查看 Hot / Warm / Cold 三层记忆、token 占用与调参" },
+      "openAgent": { "label": "打开 Agent 任务面板", "description": "Plan-Execute-Reflect：让 AI 多步规划并由你审核执行" },
+      "openMaintenance": { "label": "打开知识维护队列", "description": "查看未解析链接、孤立笔记、未完任务等可一键修复项" },
       "newWindow": { "label": "打开新窗口", "description": "新建一个独立 Nexusky 窗口，可并行查看不同视图" },
       "sidebar": { "label": "切换侧边栏" },
       "resetWorkspace": { "label": "重置工作区布局", "description": "恢复编辑器、侧栏和右侧面板默认布局" },

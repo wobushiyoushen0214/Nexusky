@@ -293,6 +293,8 @@
       "properties": { "label": "Open note properties", "description": "Edit title, aliases, tags, and cssclasses" },
       "settings": { "label": "Open settings" },
       "viewContextPack": { "label": "View context pack", "description": "Inspect Hot / Warm / Cold memory tiers, token usage and tune parameters" },
+      "openAgent": { "label": "Open Agent panel", "description": "Plan-Execute-Reflect: let AI plan multi-step actions for you to review" },
+      "openMaintenance": { "label": "Open maintenance queue", "description": "Browse unresolved links, orphan notes, open tasks and one-click fixes" },
       "newWindow": { "label": "Open new window", "description": "Create an independent Nexusky window for viewing different areas in parallel" },
       "sidebar": { "label": "Toggle sidebar" },
       "resetWorkspace": { "label": "Reset workspace layout", "description": "Restore the editor, sidebar, and right panel default layout" },
