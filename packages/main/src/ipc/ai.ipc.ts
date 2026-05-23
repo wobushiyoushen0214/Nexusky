@@ -3446,4 +3446,43 @@ graph TD
       finishAiTask(windowId, controller)
     }
   })
+
+  ipcMain.handle('ai:list-tool-surface', async () => {
+    const { listToolSurfaceEntries } = await import('../services/tool-surface/registry')
+    const entries = listToolSurfaceEntries().map((entry) => ({
+      name: entry.name,
+      kind: entry.kind,
+      category: entry.category,
+      labelKey: entry.labelKey,
+      keywords: entry.keywords,
+      requiresCurrentNote: entry.requiresCurrentNote
+    }))
+    return { entries }
+  })
+
+  ipcMain.handle('ai:run-tool', async (_event, params: {
+    vaultPath: string
+    toolName: string
+    args?: Record<string, unknown>
+    currentFilePath?: string | null
+  }) => {
+    const { findToolSurfaceEntry } = await import('../services/tool-surface/registry')
+    const entry = findToolSurfaceEntry(params.toolName)
+    if (!entry) {
+      return { ok: false as const, error: `Tool not allowed in direct mode: ${params.toolName}` }
+    }
+    if (entry.kind === 'agent_only') {
+      return { ok: false as const, error: 'Tool requires agent context' }
+    }
+    if (entry.requiresCurrentNote && !params.currentFilePath) {
+      return { ok: false as const, error: 'Current note required' }
+    }
+    const merged = { ...(entry.defaultArgs ?? {}), ...(params.args ?? {}) }
+    try {
+      const result = await executeToolCall(entry.name, merged, params.vaultPath, params.currentFilePath)
+      return { ok: true as const, content: result.content, sources: result.sources }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 }

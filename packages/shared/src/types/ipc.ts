@@ -400,6 +400,22 @@ export interface ProactiveUserPrefs {
   importanceFloor: number
 }
 
+export type ToolSurfaceKind = 'read_only' | 'preview_write' | 'agent_only'
+export type ToolSurfaceCategory = 'note' | 'graph' | 'memory' | 'task' | 'maintenance'
+
+export interface ToolSurfaceEntry {
+  name: string
+  kind: ToolSurfaceKind
+  category: ToolSurfaceCategory
+  labelKey: string
+  keywords: string[]
+  requiresCurrentNote: boolean
+}
+
+export type ToolSurfaceRunResult =
+  | { ok: true; content: string; sources?: ChatSource[] }
+  | { ok: false; error: string }
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -681,6 +697,19 @@ export interface IPCChannelMap {
       suggestions: ProactiveSuggestion[]
       skippedReasons: Record<string, number>
     }
+  }
+  'ai:run-tool': {
+    params: {
+      vaultPath: string
+      toolName: string
+      args?: Record<string, unknown>
+      currentFilePath?: string | null
+    }
+    result: ToolSurfaceRunResult
+  }
+  'ai:list-tool-surface': {
+    params: undefined
+    result: { entries: ToolSurfaceEntry[] }
   }
 }
 
