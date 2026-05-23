@@ -29,6 +29,7 @@ import { EditorToolbar } from './EditorToolbar'
 import { BacklinksPanel } from './BacklinksPanel'
 import { AIWritingMenu } from './AIWritingMenu'
 import { ContextMenu } from '../ContextMenu'
+import { buildEditorToolMenuItems } from '../tool-surface/editor-tool-menu'
 import { useSyncStore } from '../../stores/sync-store'
 import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
@@ -92,6 +93,7 @@ export function Editor() {
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const setContent = useEditorStore((s) => s.setContent)
   const isDirty = useEditorStore((s) => s.isDirty)
+  const editorVaultPath = useVaultStore((s) => s.vaultPath)
   const tabs = useEditorStore((s) => s.tabs)
   const activeTabIndex = useEditorStore((s) => s.activeTabIndex)
   const closeTab = useEditorStore((s) => s.closeTab)
@@ -108,6 +110,7 @@ export function Editor() {
   const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
   const language = useUIStore((s) => s.language)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
+  const [editorContextMenu, setEditorContextMenu] = useState<{ x: number; y: number } | null>(null)
   const dragTabRef = useRef<number | null>(null)
   const [findReplaceOpen, setFindReplaceOpen] = useState(false)
   const [linkPreview, setLinkPreview] = useState<{ x: number; y: number; content: string } | null>(null)
@@ -664,6 +667,19 @@ export function Editor() {
         />
       )}
 
+      {editorContextMenu && (
+        <ContextMenu
+          x={editorContextMenu.x}
+          y={editorContextMenu.y}
+          items={buildEditorToolMenuItems({
+            t,
+            vaultPath: editorVaultPath,
+            currentFilePath
+          })}
+          onClose={() => setEditorContextMenu(null)}
+        />
+      )}
+
       {/* Breadcrumb */}
       {!focusMode && currentFilePath && (
         <div style={{ height: 24, padding: '0 16px', display: 'flex', alignItems: 'center', fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, gap: 4, overflow: 'hidden' }}>
@@ -703,7 +719,15 @@ export function Editor() {
               {linkPreview.content}
             </div>
           )}
-          <div ref={editorAreaRef} style={{ height: '100%', overflowY: 'auto', padding: focusMode ? '48px 64px' : '24px 32px' }}>
+          <div
+            ref={editorAreaRef}
+            style={{ height: '100%', overflowY: 'auto', padding: focusMode ? '48px 64px' : '24px 32px' }}
+            onContextMenu={(e) => {
+              if (e.shiftKey) return
+              e.preventDefault()
+              setEditorContextMenu({ x: e.clientX, y: e.clientY })
+            }}
+          >
             <EditorContent editor={editor} />
             <TransclusionBlocks content={content} />
             <MermaidBlocks content={content} />
