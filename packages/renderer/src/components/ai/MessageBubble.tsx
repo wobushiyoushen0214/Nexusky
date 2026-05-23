@@ -7,6 +7,7 @@ import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
 import type { ChatSource } from '@shared/types/ipc'
 import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
+import { ChatSourceRow } from '../observability/ChatSourceRow'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -101,9 +102,7 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, on
         {msg.sources && msg.sources.length > 0 && (
           <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {msg.sources.map((s, i) => (
-              <div key={i} style={{ padding: '3px 8px', borderRadius: 4, background: 'var(--accent-muted)', fontSize: 10, color: 'var(--accent-text)' }}>
-                [{i + 1}] {s.title}
-              </div>
+              <ChatSourceRow key={`${i}-${s.filePath || s.title}`} index={i} source={s} />
             ))}
           </div>
         )}

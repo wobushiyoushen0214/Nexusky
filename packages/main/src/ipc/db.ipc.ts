@@ -951,6 +951,105 @@ export function registerDbIPC(): void {
     } as LongContextInspection
   })
 
+  ipcMain.handle('long-context:lookup-citation', async (_event, params: {
+    vaultPath: string
+    sourceFilePath: string
+    sourceTitle: string
+  }) => {
+    ensureNonEmptyString(params?.vaultPath, 'long-context:lookup-citation.vaultPath')
+    ensureBoundedString(params?.sourceFilePath, 'long-context:lookup-citation.sourceFilePath', MAX_PATH_LENGTH)
+    ensureBoundedString(params?.sourceTitle, 'long-context:lookup-citation.sourceTitle', MAX_TITLE_LENGTH)
+    const db = getDatabase(params.vaultPath)
+    const normalizedPath = params.sourceFilePath.replace(/\\/g, '/').replace(/^\/+/, '')
+    const title = params.sourceTitle
+
+    const relationRows = db.prepare(`
+      SELECT id, source_type, source_id, source_title, source_path,
+             target_type, target_id, target_title, target_path,
+             relation_type, confidence, score, evidence_json, reason, last_seen_at
+      FROM ai_relations
+      WHERE status = 'active'
+        AND (
+          source_path = ? OR target_path = ?
+          OR source_title = ? OR target_title = ?
+        )
+      ORDER BY score DESC, last_seen_at DESC
+      LIMIT 20
+    `).all(normalizedPath, normalizedPath, title, title) as Array<{
+      id: string
+      source_type: LongContextEntityType
+      source_id: string
+      source_title: string | null
+      source_path: string | null
+      target_type: LongContextEntityType
+      target_id: string
+      target_title: string | null
+      target_path: string | null
+      relation_type: LongContextRelationType
+      confidence: number
+      score: number
+      evidence_json: string
+      reason: string
+      last_seen_at: number
+    }>
+
+    const relations: LongContextSuggestion[] = relationRows.map((row) => {
+      const matchesSource = row.source_path === normalizedPath || row.source_title === title
+      return {
+        relationId: row.id,
+        targetType: matchesSource ? row.target_type : row.source_type,
+        targetId: matchesSource ? row.target_id : row.source_id,
+        targetTitle: (matchesSource ? row.target_title : row.source_title) || 'Untitled',
+        targetPath: (matchesSource ? row.target_path : row.source_path) || undefined,
+        relationType: row.relation_type,
+        confidence: row.confidence,
+        score: row.score,
+        reason: row.reason,
+        evidence: safeParseStringArray(row.evidence_json),
+        lastSeenAt: row.last_seen_at
+      }
+    })
+
+    const themeRows = db.prepare(`
+      SELECT DISTINCT t.id, t.title, t.summary, t.keywords_json as keywordsJson,
+             t.strength, t.evidence_count as evidenceCount,
+             t.first_seen_at as firstSeenAt, t.last_seen_at as lastSeenAt
+      FROM long_term_themes t
+      INNER JOIN theme_memberships m ON m.theme_id = t.id
+      WHERE t.status = 'active'
+        AND (m.entity_path = ? OR m.entity_title = ?)
+      ORDER BY t.strength DESC, t.last_seen_at DESC
+      LIMIT 10
+    `).all(normalizedPath, title) as Array<{
+      id: string
+      title: string
+      summary: string
+      keywordsJson: string
+      strength: number
+      evidenceCount: number
+      firstSeenAt: number
+      lastSeenAt: number
+    }>
+
+    const themes: LongTermTheme[] = themeRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      keywords: safeParseStringArray(row.keywordsJson),
+      strength: row.strength,
+      evidenceCount: row.evidenceCount,
+      firstSeenAt: row.firstSeenAt,
+      lastSeenAt: row.lastSeenAt,
+      memberships: []
+    }))
+
+    return {
+      found: relations.length > 0 || themes.length > 0,
+      relations,
+      themes
+    }
+  })
+
   ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     const existingJob = embeddingJobs.get(params.vaultPath)
@@ -1341,5 +1440,16 @@ function toPackItemPayload(item: LongContextPackItem): LongContextPackItemPayloa
     reason: item.reason,
     evidence: item.evidence,
     droppedReason: item.droppedReason
+  }
+}
+
+function safeParseStringArray(value: string | null | undefined): string[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((item) => String(item).trim()).filter(Boolean)
+  } catch {
+    return []
   }
 }

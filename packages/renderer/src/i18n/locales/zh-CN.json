@@ -107,6 +107,14 @@
       "confirm": "确认"
     }
   },
+  "citationLookup": {
+    "why": "为什么引用此项？",
+    "loading": "加载中...",
+    "empty": "未找到关联记忆",
+    "relations": "关联",
+    "themes": "主题",
+    "openTarget": "打开关联笔记"
+  },
   "editor": {
     "properties": "属性",
     "openProperties": "打开当前笔记属性"

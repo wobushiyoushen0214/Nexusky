@@ -664,6 +664,18 @@ export interface IPCChannelMap {
     }
     result: LongContextInspection
   }
+  'long-context:lookup-citation': {
+    params: {
+      vaultPath: string
+      sourceFilePath: string
+      sourceTitle: string
+    }
+    result: {
+      found: boolean
+      relations: LongContextSuggestion[]
+      themes: LongTermTheme[]
+    }
+  }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
   'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }
   'db:chat-history-clear': { params: { vaultPath: string; sessionId?: string }; result: void }

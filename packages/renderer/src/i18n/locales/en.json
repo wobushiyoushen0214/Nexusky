@@ -107,6 +107,14 @@
       "confirm": "Confirm"
     }
   },
+  "citationLookup": {
+    "why": "Why was this cited?",
+    "loading": "Loading...",
+    "empty": "No long-context relation found",
+    "relations": "Relations",
+    "themes": "Themes",
+    "openTarget": "Open related note"
+  },
   "editor": {
     "properties": "Properties",
     "openProperties": "Open current note properties"
