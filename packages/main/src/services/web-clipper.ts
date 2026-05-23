@@ -176,7 +176,7 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 export function startWebClipperServer(): void {
   if (server) return
-  server = createServer(async (req, res) => {
+  const next = createServer(async (req, res) => {
     if (req.method === 'OPTIONS') {
       sendJson(res, 204, {})
       return
@@ -202,7 +202,17 @@ export function startWebClipperServer(): void {
       sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) })
     }
   })
-  server.listen(CLIPPER_PORT, '127.0.0.1')
+  next.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[web-clipper] port ${CLIPPER_PORT} already in use; web-clipper disabled for this session`)
+    } else {
+      console.warn('[web-clipper] server error:', err.message)
+    }
+    server = null
+  })
+  next.listen(CLIPPER_PORT, '127.0.0.1', () => {
+    server = next
+  })
 }
 
 export function stopWebClipperServer(): void {
