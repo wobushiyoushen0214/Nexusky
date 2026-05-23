@@ -40,6 +40,7 @@
     "calendar": "Calendar",
     "kanban": "Kanban",
     "dailyNote": "Daily Note",
+    "maintenance": "Knowledge Maintenance",
     "more": "More",
     "requiresCurrentFile": "Available after opening a note",
     "settings": "Settings"
@@ -51,7 +52,60 @@
     "kanban": "Kanban",
     "history": "History",
     "properties": "Properties",
-    "outline": "Outline"
+    "outline": "Outline",
+    "maintenance": "Knowledge Maintenance"
+  },
+  "maintenance": {
+    "title": "Knowledge Maintenance",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "empty": "Nothing to do",
+    "noVault": "Open a vault first",
+    "filters": {
+      "all": "All",
+      "fix_unresolved_link": "Unresolved Links",
+      "connect_orphan": "Orphans",
+      "fill_empty_note": "Empty Notes",
+      "refresh_memory": "Memory Refresh",
+      "review_overdue_tasks": "Overdue",
+      "review_open_tasks": "Open Tasks",
+      "link_unlinked_reference": "Unlinked Mentions",
+      "resolve_duplicate_title": "Duplicate Titles",
+      "resolve_duplicate_alias": "Duplicate Aliases"
+    },
+    "types": {
+      "fix_unresolved_link": "Unresolved Link",
+      "review_overdue_tasks": "Overdue Task",
+      "review_due_today_tasks": "Due Today",
+      "review_high_priority_tasks": "High Priority",
+      "review_scheduled_tasks": "Scheduled",
+      "review_started_tasks": "In Progress",
+      "review_blocked_tasks": "Blocked",
+      "review_recurring_tasks": "Recurring",
+      "review_upcoming_tasks": "Upcoming",
+      "connect_orphan": "Orphan Note",
+      "fill_empty_note": "Empty Note",
+      "resolve_duplicate_title": "Duplicate Title",
+      "resolve_duplicate_alias": "Duplicate Alias",
+      "review_open_tasks": "Open Task",
+      "link_unlinked_reference": "Unlinked Mention",
+      "refresh_memory": "Memory Refresh",
+      "split_large_note": "Large Note",
+      "fill_missing_property": "Missing Property",
+      "maintain_bridge": "Bridge Note"
+    },
+    "actions": {
+      "open_note": "Open",
+      "create_target": "Create Target",
+      "mark_done": "Mark Done",
+      "archive": "Archive",
+      "add_alias": "Add Alias"
+    },
+    "confirm": {
+      "markDoneTitle": "Mark as done?",
+      "markDoneMessage": "{{count}} task(s) will be marked as done.",
+      "confirm": "Confirm"
+    }
   },
   "editor": {
     "properties": "Properties",

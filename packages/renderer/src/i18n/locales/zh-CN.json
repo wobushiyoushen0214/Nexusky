@@ -40,6 +40,7 @@
     "calendar": "日历",
     "kanban": "看板",
     "dailyNote": "今日笔记",
+    "maintenance": "知识维护",
     "more": "更多",
     "requiresCurrentFile": "打开笔记后可用",
     "settings": "设置"
@@ -51,7 +52,60 @@
     "kanban": "看板",
     "history": "版本历史",
     "properties": "属性",
-    "outline": "大纲"
+    "outline": "大纲",
+    "maintenance": "知识维护"
+  },
+  "maintenance": {
+    "title": "知识维护",
+    "refresh": "刷新",
+    "refreshing": "刷新中...",
+    "empty": "暂无待办项",
+    "noVault": "请先打开一个 vault",
+    "filters": {
+      "all": "全部",
+      "fix_unresolved_link": "未解析链接",
+      "connect_orphan": "孤立笔记",
+      "fill_empty_note": "空笔记",
+      "refresh_memory": "待回顾",
+      "review_overdue_tasks": "逾期任务",
+      "review_open_tasks": "未完任务",
+      "link_unlinked_reference": "未引用提及",
+      "resolve_duplicate_title": "重复标题",
+      "resolve_duplicate_alias": "重复别名"
+    },
+    "types": {
+      "fix_unresolved_link": "未解析链接",
+      "review_overdue_tasks": "逾期任务",
+      "review_due_today_tasks": "今日到期",
+      "review_high_priority_tasks": "高优先级",
+      "review_scheduled_tasks": "已排程",
+      "review_started_tasks": "进行中",
+      "review_blocked_tasks": "已阻塞",
+      "review_recurring_tasks": "周期任务",
+      "review_upcoming_tasks": "即将到来",
+      "connect_orphan": "孤立笔记",
+      "fill_empty_note": "空笔记",
+      "resolve_duplicate_title": "重复标题",
+      "resolve_duplicate_alias": "重复别名",
+      "review_open_tasks": "未完任务",
+      "link_unlinked_reference": "未引用提及",
+      "refresh_memory": "待回顾",
+      "split_large_note": "笔记过长",
+      "fill_missing_property": "缺失属性",
+      "maintain_bridge": "枢纽笔记"
+    },
+    "actions": {
+      "open_note": "打开",
+      "create_target": "新建目标",
+      "mark_done": "标记完成",
+      "archive": "归档",
+      "add_alias": "添加别名"
+    },
+    "confirm": {
+      "markDoneTitle": "标记为完成？",
+      "markDoneMessage": "将把 {{count}} 项任务标记为完成。",
+      "confirm": "确认"
+    }
   },
   "editor": {
     "properties": "属性",

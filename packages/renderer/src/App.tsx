@@ -41,6 +41,7 @@ const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => 
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
 const FlashcardReviewPanel = lazy(() => import('./components/FlashcardReviewPanel').then((m) => ({ default: m.FlashcardReviewPanel })))
+const MaintenanceQueuePanel = lazy(() => import('./components/maintenance/MaintenanceQueuePanel').then((m) => ({ default: m.MaintenanceQueuePanel })))
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
@@ -484,7 +485,7 @@ export default function App() {
           <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
+                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'maintenance' ? t('panels.maintenance') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
@@ -504,6 +505,7 @@ export default function App() {
               {rightPanel === 'tags' && <TagsPanel />}
               {rightPanel === 'calendar' && <CalendarPanel />}
               {rightPanel === 'history' && <HistoryPanel />}
+              {rightPanel === 'maintenance' && <MaintenanceQueuePanel />}
               {rightPanel === 'plugin' && <PluginPanelView active={activePluginPanel} />}
               </Suspense>
               {chatEverOpened && (
