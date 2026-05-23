@@ -41,6 +41,7 @@
     "kanban": "看板",
     "dailyNote": "今日笔记",
     "maintenance": "知识维护",
+    "agent": "Agent 任务",
     "more": "更多",
     "requiresCurrentFile": "打开笔记后可用",
     "settings": "设置"
@@ -53,7 +54,8 @@
     "history": "版本历史",
     "properties": "属性",
     "outline": "大纲",
-    "maintenance": "知识维护"
+    "maintenance": "知识维护",
+    "agent": "Agent 任务"
   },
   "maintenance": {
     "title": "知识维护",
@@ -114,6 +116,62 @@
     "relations": "关联",
     "themes": "主题",
     "openTarget": "打开关联笔记"
+  },
+  "agent": {
+    "title": "Agent 任务",
+    "noVault": "请先打开一个 vault",
+    "idle": {
+      "start": "新建任务",
+      "hint": "输入一个目标，AI 会先生成可预览的多步 plan，再交给你执行。"
+    },
+    "fields": {
+      "goal": "目标",
+      "goalPlaceholder": "例：为缺失 memory 的笔记批量生成 memory",
+      "description": "补充说明（可选）",
+      "descriptionPlaceholder": "限制范围、特殊要求…",
+      "dryRun": "Dry Run（不落盘，只生成预览）"
+    },
+    "plan": {
+      "generate": "生成 Plan",
+      "generating": "生成中...",
+      "saved": "Plan 已保存",
+      "retry": "重新输入目标",
+      "title": "Plan（{{count}} 步）",
+      "delete": "删除",
+      "expectedPlaceholder": "预期产出 / 验收标准",
+      "execute": "执行 Plan",
+      "save": "保存 Plan",
+      "discard": "放弃",
+      "empty": "AI 未能生成 plan，请尝试细化目标或重试。"
+    },
+    "execute": {
+      "title": "步骤 {{current}} / {{total}}",
+      "retry": "重试",
+      "skip": "跳过",
+      "rollback": "回滚",
+      "pause": "暂停",
+      "resume": "继续",
+      "cancel": "取消",
+      "reflect": "评估结果",
+      "rollbackAll": "回滚整个 run",
+      "newRun": "新任务",
+      "rolledBack": "已回滚 {{count}} 步"
+    },
+    "history": {
+      "open": "历史",
+      "close": "关闭历史",
+      "empty": "暂无历史记录"
+    },
+    "statusBar": {
+      "status": "状态：{{status}}"
+    },
+    "reflect": {
+      "achieved": "目标已完成",
+      "partial": "成功 {{succeeded}} 步，失败 {{failed}} 步"
+    },
+    "errors": {
+      "goalRequired": "请填写任务目标"
+    }
   },
   "longContextDebug": {
     "inspector": "当前上下文包",

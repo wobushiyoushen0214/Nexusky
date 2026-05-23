@@ -41,6 +41,7 @@
     "kanban": "Kanban",
     "dailyNote": "Daily Note",
     "maintenance": "Knowledge Maintenance",
+    "agent": "Agent Runs",
     "more": "More",
     "requiresCurrentFile": "Available after opening a note",
     "settings": "Settings"
@@ -53,7 +54,8 @@
     "history": "History",
     "properties": "Properties",
     "outline": "Outline",
-    "maintenance": "Knowledge Maintenance"
+    "maintenance": "Knowledge Maintenance",
+    "agent": "Agent Runs"
   },
   "maintenance": {
     "title": "Knowledge Maintenance",
@@ -114,6 +116,62 @@
     "relations": "Relations",
     "themes": "Themes",
     "openTarget": "Open related note"
+  },
+  "agent": {
+    "title": "Agent Runs",
+    "noVault": "Open a vault first",
+    "idle": {
+      "start": "New run",
+      "hint": "Describe a goal. The AI plans multi-step actions, you preview, then execute."
+    },
+    "fields": {
+      "goal": "Goal",
+      "goalPlaceholder": "e.g. Bulk-generate memories for notes missing one",
+      "description": "Notes (optional)",
+      "descriptionPlaceholder": "Constraints, scope hints…",
+      "dryRun": "Dry run (preview only, do not write)"
+    },
+    "plan": {
+      "generate": "Generate plan",
+      "generating": "Planning…",
+      "saved": "Plan saved",
+      "retry": "Restart goal",
+      "title": "Plan ({{count}} steps)",
+      "delete": "Delete",
+      "expectedPlaceholder": "Expected effect / acceptance",
+      "execute": "Execute plan",
+      "save": "Save plan",
+      "discard": "Discard",
+      "empty": "AI could not produce a plan. Refine the goal and try again."
+    },
+    "execute": {
+      "title": "Step {{current}} / {{total}}",
+      "retry": "Retry",
+      "skip": "Skip",
+      "rollback": "Rollback",
+      "pause": "Pause",
+      "resume": "Resume",
+      "cancel": "Cancel",
+      "reflect": "Reflect",
+      "rollbackAll": "Rollback run",
+      "newRun": "New run",
+      "rolledBack": "Rolled back {{count}} step(s)"
+    },
+    "history": {
+      "open": "History",
+      "close": "Close history",
+      "empty": "No previous runs"
+    },
+    "statusBar": {
+      "status": "Status: {{status}}"
+    },
+    "reflect": {
+      "achieved": "Goal achieved",
+      "partial": "{{succeeded}} step(s) succeeded, {{failed}} failed"
+    },
+    "errors": {
+      "goalRequired": "Goal is required"
+    }
   },
   "longContextDebug": {
     "inspector": "Current context pack",
