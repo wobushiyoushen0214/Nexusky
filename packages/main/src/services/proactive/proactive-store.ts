@@ -134,10 +134,48 @@ export function upsertSuggestion(vaultPath: string, input: UpsertProactiveSugges
   const entityId = input.entityId ?? null
 
   const existing = db.prepare(
-    'SELECT id, status FROM proactive_suggestions WHERE signature = ?'
-  ).get(input.signature) as { id: string; status: string } | undefined
+    'SELECT id, status, snooze_until FROM proactive_suggestions WHERE signature = ?'
+  ).get(input.signature) as { id: string; status: string; snooze_until: number | null } | undefined
 
   if (existing) {
+    const reactivateFromSnooze =
+      existing.status === 'snoozed' &&
+      (existing.snooze_until == null || existing.snooze_until <= now)
+
+    if (reactivateFromSnooze) {
+      db.prepare(`
+        UPDATE proactive_suggestions
+        SET kind = ?,
+            source_ref = ?,
+            entity_type = ?,
+            entity_id = ?,
+            title = ?,
+            body = ?,
+            cta_action = ?,
+            cta_payload_json = ?,
+            importance = ?,
+            status = 'pending',
+            snooze_until = NULL,
+            shown_at = NULL,
+            responded_at = NULL,
+            updated_at = ?
+        WHERE id = ?
+      `).run(
+        input.kind,
+        input.sourceRef,
+        entityType,
+        entityId,
+        input.title,
+        body,
+        input.ctaAction,
+        payload,
+        importance,
+        now,
+        existing.id
+      )
+      return getById(db, existing.id)!
+    }
+
     db.prepare(`
       UPDATE proactive_suggestions
       SET kind = ?,
