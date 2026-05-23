@@ -167,7 +167,9 @@
     },
     "reflect": {
       "achieved": "目标已完成",
-      "partial": "成功 {{succeeded}} 步，失败 {{failed}} 步"
+      "partial": "成功 {{succeeded}} 步，失败 {{failed}} 步",
+      "unmet": "未达成的预期",
+      "suggestions": "建议"
     },
     "errors": {
       "goalRequired": "请填写任务目标"

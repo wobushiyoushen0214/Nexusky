@@ -167,7 +167,9 @@
     },
     "reflect": {
       "achieved": "Goal achieved",
-      "partial": "{{succeeded}} step(s) succeeded, {{failed}} failed"
+      "partial": "{{succeeded}} step(s) succeeded, {{failed}} failed",
+      "unmet": "Unmet expectations",
+      "suggestions": "Suggestions"
     },
     "errors": {
       "goalRequired": "Goal is required"

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentPlanStep,
+  AgentReflectResult,
   AgentRunSummary,
   AgentStepStatus,
   AgentStepSummary,
@@ -30,6 +31,7 @@ export function AgentRunPanel() {
   const [detail, setDetail] = useState<RunDetail | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [history, setHistory] = useState<AgentRunSummary[]>([])
+  const [reflectResult, setReflectResult] = useState<AgentReflectResult | null>(null)
 
   const refreshDetail = useCallback(async (id: string) => {
     if (!vaultPath) return
@@ -191,6 +193,7 @@ export function AgentRunPanel() {
   const reflect = useCallback(async () => {
     if (!vaultPath || !runId) return
     const result = await window.api.invoke('agent:reflect', { vaultPath, runId })
+    setReflectResult(result)
     toast(result.goalAchieved ? t('agent.reflect.achieved') : t('agent.reflect.partial', { succeeded: result.succeededSteps, failed: result.failedSteps }), result.goalAchieved ? 'success' : 'info')
   }, [vaultPath, runId, t])
 
@@ -205,6 +208,7 @@ export function AgentRunPanel() {
   const restart = useCallback(() => {
     setRunId(null)
     setDetail(null)
+    setReflectResult(null)
     setStage('goal')
     setGoal('')
     setDescription('')
@@ -308,6 +312,7 @@ export function AgentRunPanel() {
             onRetry={retryStep}
             onSkip={skipStep}
             onRollback={rollbackStep}
+            reflectResult={reflectResult}
             t={t}
           />
         )}
@@ -427,15 +432,39 @@ interface ExecuteViewProps {
   onRetry: (stepIndex: number) => void
   onSkip: (stepIndex: number) => void
   onRollback: (stepIndex: number) => void
+  reflectResult: AgentReflectResult | null
   t: ReturnType<typeof useTranslation>['t']
 }
 
-function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, t }: ExecuteViewProps) {
+function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectResult, t }: ExecuteViewProps) {
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
         <span className="agent-run-panel__label">{t('agent.execute.title', { current: detail.run.currentStepIndex + 1, total: detail.run.totalSteps })}</span>
       </div>
+      {reflectResult && (
+        <div className="agent-run-panel__rationale" style={{ borderLeftColor: reflectResult.goalAchieved ? 'rgb(85,193,107)' : 'rgb(220,180,80)' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            {reflectResult.goalAchieved ? t('agent.reflect.achieved') : t('agent.reflect.partial', { succeeded: reflectResult.succeededSteps, failed: reflectResult.failedSteps })}
+          </div>
+          {reflectResult.unmetExpectations.length > 0 && (
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', marginTop: 4 }}>{t('agent.reflect.unmet')}</div>
+              <ul style={{ margin: '2px 0 0 16px', padding: 0, fontSize: 11, color: 'var(--text-secondary)' }}>
+                {reflectResult.unmetExpectations.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+            </div>
+          )}
+          {reflectResult.suggestions.length > 0 && (
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', marginTop: 6 }}>{t('agent.reflect.suggestions')}</div>
+              <ul style={{ margin: '2px 0 0 16px', padding: 0, fontSize: 11, color: 'var(--text-secondary)' }}>
+                {reflectResult.suggestions.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
       {stepRows.map((step) => (
         <div key={step.id} className="agent-run-panel__exec-step">
           <div className="agent-run-panel__step-head">

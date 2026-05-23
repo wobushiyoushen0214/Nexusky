@@ -14,6 +14,7 @@ import {
 } from '../services/agent/agent-store'
 import { planAgentRun } from '../services/agent/planner'
 import { executeAgentStep, runAgentToFinish, rollbackAgentRun, rollbackAgentStep } from '../services/agent/executor'
+import { reflectAgentRun } from '../services/agent/reflector'
 import { ensureNonEmptyString, ensureBoundedString, MAX_DESCRIPTION_LENGTH } from './validators'
 import type {
   AgentPlanStep as SharedAgentPlanStep,
@@ -281,25 +282,8 @@ export function registerAgentIPC(): void {
   ipcMain.handle('agent:reflect', async (_event, params: { vaultPath: string; runId: string }) => {
     ensureNonEmptyString(params?.vaultPath, 'agent:reflect.vaultPath')
     ensureNonEmptyString(params?.runId, 'agent:reflect.runId')
-    const snapshot = getAgentRun(params.vaultPath, params.runId)
-    if (!snapshot) {
-      return { goalAchieved: false, succeededSteps: 0, failedSteps: 0, unmetExpectations: [], suggestions: [] } as AgentReflectResult
-    }
-    const succeededSteps = snapshot.steps.filter((s) => s.status === 'completed').length
-    const failedSteps = snapshot.steps.filter((s) => s.status === 'failed').length
-    const unmetExpectations = snapshot.steps
-      .filter((s) => s.status !== 'completed')
-      .map((s) => s.expectedEffect || s.description)
-      .filter(Boolean)
-    return {
-      goalAchieved: failedSteps === 0 && succeededSteps === snapshot.steps.length,
-      succeededSteps,
-      failedSteps,
-      unmetExpectations,
-      suggestions: failedSteps > 0
-        ? ['Retry failed steps with revised arguments or fall back to dryRun preview.']
-        : []
-    } as AgentReflectResult
+    const result = await reflectAgentRun({ vaultPath: params.vaultPath, runId: params.runId })
+    return result as AgentReflectResult
   })
 }
 
