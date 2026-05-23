@@ -115,6 +115,44 @@
     "themes": "Themes",
     "openTarget": "Open related note"
   },
+  "longContextDebug": {
+    "inspector": "Current context pack",
+    "metrics": "Effectiveness metrics",
+    "tuning": "Tuning",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "save": "Save",
+    "resetDefaults": "Reset to defaults",
+    "refresh": "Refresh",
+    "saveOk": "Saved. Will apply on next chat.",
+    "noVault": "Open a vault first",
+    "emptyTier": "Nothing in this tier",
+    "tokens": "{{used}} / {{budget}} tokens",
+    "tier": {
+      "hot": "Hot",
+      "warm": "Warm",
+      "cold": "Cold",
+      "dropped": "Dropped"
+    },
+    "droppedReason": {
+      "exceeded_token_budget": "exceeded token budget"
+    },
+    "metric": {
+      "usefulRate": "Useful rate",
+      "openRate": "Open rate",
+      "notRelatedRate": "Not related rate"
+    },
+    "pref": {
+      "confidenceThreshold": "Confidence threshold",
+      "tokenBudget": "Token budget",
+      "decayHalfLifeDays": "Decay half-life (days)",
+      "topN": "Editor Top-N",
+      "hotLimit": "Hot limit",
+      "warmLimit": "Warm limit",
+      "coldLimit": "Cold limit",
+      "archiveAfterDays": "Archive cooldown (days)"
+    }
+  },
   "editor": {
     "properties": "Properties",
     "openProperties": "Open current note properties"
@@ -194,6 +232,7 @@
       "outline": { "label": "Open document outline" },
       "properties": { "label": "Open note properties", "description": "Edit title, aliases, tags, and cssclasses" },
       "settings": { "label": "Open settings" },
+      "viewContextPack": { "label": "View context pack", "description": "Inspect Hot / Warm / Cold memory tiers, token usage and tune parameters" },
       "newWindow": { "label": "Open new window", "description": "Create an independent Nexusky window for viewing different areas in parallel" },
       "sidebar": { "label": "Toggle sidebar" },
       "resetWorkspace": { "label": "Reset workspace layout", "description": "Restore the editor, sidebar, and right panel default layout" },
@@ -521,7 +560,8 @@
       "cloud": "Cloud Sync",
       "plugins": "Plugins",
       "keys": "Hotkeys",
-      "proactive": "Proactive"
+      "proactive": "Proactive",
+      "long-context": "Long-Context"
     },
     "theme": {
       "title": "Theme",

@@ -115,6 +115,44 @@
     "themes": "主题",
     "openTarget": "打开关联笔记"
   },
+  "longContextDebug": {
+    "inspector": "当前上下文包",
+    "metrics": "效果指标",
+    "tuning": "参数调整",
+    "loading": "加载中...",
+    "saving": "保存中...",
+    "save": "保存",
+    "resetDefaults": "恢复默认",
+    "refresh": "刷新",
+    "saveOk": "已保存，下次 chat 生效",
+    "noVault": "请先打开一个 vault",
+    "emptyTier": "此层级暂无内容",
+    "tokens": "{{used}} / {{budget}} tokens",
+    "tier": {
+      "hot": "Hot",
+      "warm": "Warm",
+      "cold": "Cold",
+      "dropped": "Dropped"
+    },
+    "droppedReason": {
+      "exceeded_token_budget": "超出 token 预算"
+    },
+    "metric": {
+      "usefulRate": "有用率",
+      "openRate": "打开率",
+      "notRelatedRate": "不相关率"
+    },
+    "pref": {
+      "confidenceThreshold": "Confidence 阈值",
+      "tokenBudget": "Token 预算",
+      "decayHalfLifeDays": "衰减半衰期 (天)",
+      "topN": "编辑器相关项 Top N",
+      "hotLimit": "Hot 上限",
+      "warmLimit": "Warm 上限",
+      "coldLimit": "Cold 上限",
+      "archiveAfterDays": "归档冷却天数"
+    }
+  },
   "editor": {
     "properties": "属性",
     "openProperties": "打开当前笔记属性"
@@ -194,6 +232,7 @@
       "outline": { "label": "打开文档大纲" },
       "properties": { "label": "打开笔记属性", "description": "编辑 title、aliases、tags、cssclasses" },
       "settings": { "label": "打开设置" },
+      "viewContextPack": { "label": "查看上下文包", "description": "查看 Hot / Warm / Cold 三层记忆、token 占用与调参" },
       "newWindow": { "label": "打开新窗口", "description": "新建一个独立 Nexusky 窗口，可并行查看不同视图" },
       "sidebar": { "label": "切换侧边栏" },
       "resetWorkspace": { "label": "重置工作区布局", "description": "恢复编辑器、侧栏和右侧面板默认布局" },
@@ -521,7 +560,8 @@
       "cloud": "云端同步",
       "plugins": "插件",
       "keys": "快捷键",
-      "proactive": "主动建议"
+      "proactive": "主动建议",
+      "long-context": "长期上下文"
     },
     "theme": {
       "title": "主题",

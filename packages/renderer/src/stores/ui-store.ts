@@ -40,6 +40,7 @@ interface UIState {
   previewMode: boolean
   quickSwitcherOpen: boolean
   settingsOpen: boolean
+  settingsInitialTab: string | null
   searchOpen: boolean
   commandPaletteOpen: boolean
   theme: Theme
@@ -60,6 +61,7 @@ interface UIState {
   resizeRightPanel: (delta: number) => void
   setQuickSwitcherOpen: (open: boolean) => void
   setSettingsOpen: (open: boolean) => void
+  setSettingsInitialTab: (tab: string | null) => void
   setSearchOpen: (open: boolean) => void
   setTheme: (theme: Theme) => void
   setAccentColor: (color: string) => void
@@ -265,6 +267,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   previewMode: false,
   quickSwitcherOpen: false,
   settingsOpen: false,
+  settingsInitialTab: null,
   searchOpen: false,
   commandPaletteOpen: false,
   theme: initialTheme,
@@ -331,6 +334,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   setQuickSwitcherOpen: (open) => set({ quickSwitcherOpen: open }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setSettingsInitialTab: (tab) => set({ settingsInitialTab: tab }),
   setSearchOpen: (open) => set({ searchOpen: open }),
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setTheme: (theme) => { applyTheme(theme); set({ theme }) },

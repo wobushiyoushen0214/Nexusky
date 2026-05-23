@@ -10,6 +10,7 @@ import { safeGet, safeSet } from '../../utils/storage'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCssSnippets, setEnabledSnippetNames } from '../../utils/css-snippets'
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
 import { ProactivePreferencesTab } from '../proactive/ProactivePreferences'
+import { LongContextDebugPanel } from '../observability/LongContextDebugPanel'
 import type { AIProviderConfig, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
@@ -65,7 +66,7 @@ interface SettingsProps {
   onClose: () => void
 }
 
-type Tab = 'appearance' | 'ai' | 'cloud' | 'plugins' | 'keys' | 'proactive'
+type Tab = 'appearance' | 'ai' | 'cloud' | 'plugins' | 'keys' | 'proactive' | 'long-context'
 const ACCENT_PRESETS = ['#7c6ef5', '#4facfe', '#4ec9a0', '#f0a050', '#e8577a', '#ffd60a', '#88c0d0', '#268bd2']
 
 const inputStyle: React.CSSProperties = {
@@ -84,6 +85,8 @@ const inputStyle: React.CSSProperties = {
 export function Settings({ open, onClose }: SettingsProps) {
   const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('appearance')
+  const settingsInitialTab = useUIStore((s) => s.settingsInitialTab)
+  const setSettingsInitialTab = useUIStore((s) => s.setSettingsInitialTab)
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
   const [editing, setEditing] = useState<ProviderConfig | null>(null)
@@ -93,6 +96,13 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [detectConfirm, setDetectConfirm] = useState(false)
   const overlayPointerDownRef = useRef(false)
   const providerOverlayPointerDownRef = useRef(false)
+
+  useEffect(() => {
+    if (open && settingsInitialTab) {
+      setTab(settingsInitialTab as Tab)
+      setSettingsInitialTab(null)
+    }
+  }, [open, settingsInitialTab, setSettingsInitialTab])
 
   useEffect(() => {
     if (open) {
@@ -218,7 +228,7 @@ export function Settings({ open, onClose }: SettingsProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', padding: '0 20px' }}>
-          {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive'] as Tab[]).map((tabId) => (
+          {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive', 'long-context'] as Tab[]).map((tabId) => (
             <button
               key={tabId}
               onClick={() => setTab(tabId)}
@@ -352,6 +362,8 @@ export function Settings({ open, onClose }: SettingsProps) {
           {tab === 'keys' && <KeyBindingsTab />}
 
           {tab === 'proactive' && <ProactivePreferencesTab />}
+
+          {tab === 'long-context' && <LongContextDebugPanel />}
         </div>
       </div>
       {/* Provider edit modal */}
