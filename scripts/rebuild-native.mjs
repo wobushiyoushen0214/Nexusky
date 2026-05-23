@@ -69,34 +69,61 @@ function run(command, args, options) {
   }
 }
 
-const electronVersion = getElectronVersion()
-const nodeGyp = findNodeGyp()
-const betterSqlite3Root = getBetterSqlite3Root()
-const electronHeadersCache = resolve(root, 'node_modules', '.cache', 'electron-gyp')
+function trySpawn(command, args, options) {
+  const result = spawnSync(command, args, {
+    cwd: root,
+    env: process.env,
+    stdio: 'inherit',
+    ...options
+  })
+  return !result.error && result.status === 0
+}
 
-run(process.execPath, [
-  nodeGyp,
-  'rebuild',
-  '--release',
-  `--target=${electronVersion}`,
-  `--arch=${process.arch}`,
-  '--dist-url=https://www.electronjs.org/headers',
-  '--runtime=electron',
-  `--devdir=${electronHeadersCache}`
-], {
-  cwd: betterSqlite3Root
-})
+function tryPrebuildInstall(betterSqlite3Root, electronVersion) {
+  const npxBin = process.platform === 'win32' ? 'npx.cmd' : 'npx'
+  const args = [
+    'prebuild-install',
+    '--runtime=electron',
+    `--target=${electronVersion}`,
+    `--arch=${process.arch}`,
+    '--tag-prefix=v'
+  ]
+  console.log('Trying prebuild-install for better-sqlite3...')
+  return trySpawn(npxBin, args, { cwd: betterSqlite3Root, shell: process.platform === 'win32' })
+}
+
+const electronVersion = getElectronVersion()
+const betterSqlite3Root = getBetterSqlite3Root()
+
+if (!tryPrebuildInstall(betterSqlite3Root, electronVersion)) {
+  console.log('prebuild-install unavailable; falling back to node-gyp rebuild')
+  const nodeGyp = findNodeGyp()
+  const electronHeadersCache = resolve(root, 'node_modules', '.cache', 'electron-gyp')
+
+  run(process.execPath, [
+    nodeGyp,
+    'rebuild',
+    '--release',
+    `--target=${electronVersion}`,
+    `--arch=${process.arch}`,
+    '--dist-url=https://www.electronjs.org/headers',
+    '--runtime=electron',
+    `--devdir=${electronHeadersCache}`
+  ], {
+    cwd: betterSqlite3Root
+  })
+}
 
 if (process.platform === 'win32' && process.env.CI) {
   console.log('better-sqlite3 rebuilt for Electron; skipping Electron smoke test on Windows CI')
   process.exit(0)
 }
 
-run(resolve(root, 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron'), [
+const electronExe = require('electron')
+run(electronExe, [
   '-e',
   "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close(); console.log('better-sqlite3 rebuilt for Electron ABI ' + process.versions.modules)"
 ], {
   cwd: root,
-  env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-  shell: process.platform === 'win32'
+  env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
 })
