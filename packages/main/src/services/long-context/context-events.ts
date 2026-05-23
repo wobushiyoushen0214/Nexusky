@@ -28,6 +28,22 @@ export interface RecordContextEventParams {
   createdAt?: number
 }
 
+export interface LongContextMetricsBucket {
+  bucketStart: number
+  shown: number
+  opened: number
+  useful: number
+  notRelated: number
+  usefulRate: number
+  openRate: number
+  notRelatedRate: number
+}
+
+export interface LongContextMetricsSeries {
+  bucketSizeSec: number
+  buckets: LongContextMetricsBucket[]
+}
+
 export interface LongContextMetrics {
   since?: number
   until?: number
@@ -46,11 +62,13 @@ export interface LongContextMetrics {
     openRate: number
     notRelatedRate: number
   }
+  series: LongContextMetricsSeries
 }
 
 interface ContextEventRow {
   eventType: LongContextEventType
   metadataJson: string | null
+  createdAt: number
 }
 
 export function recordContextEvent(params: RecordContextEventParams): void {
@@ -75,6 +93,9 @@ export function recordContextEvent(params: RecordContextEventParams): void {
   )
 }
 
+const DAY_SECONDS = 86400
+const DEFAULT_SERIES_WINDOW_DAYS = 30
+
 export function getLongContextMetrics(params: {
   vaultPath: string
   since?: number
@@ -83,7 +104,7 @@ export function getLongContextMetrics(params: {
   const db = getDatabase(params.vaultPath)
   const { where, values } = buildWindowWhere(params.since, params.until)
   const rows = db.prepare(`
-    SELECT event_type as eventType, metadata_json as metadataJson
+    SELECT event_type as eventType, metadata_json as metadataJson, created_at as createdAt
     FROM context_events
     ${where}
   `).all(...values) as ContextEventRow[]
@@ -99,19 +120,46 @@ export function getLongContextMetrics(params: {
     themeCreated: 0
   }
 
+  const seriesRange = resolveSeriesRange(params.since, params.until)
+  const bucketMap = new Map<number, LongContextMetricsBucket>()
+  for (let t = seriesRange.start; t < seriesRange.end; t += DAY_SECONDS) {
+    bucketMap.set(t, emptyBucket(t))
+  }
+
   for (const row of rows) {
     if (row.eventType === 'suggestion_shown') counts.suggestionShown += 1
     if (row.eventType === 'suggestion_opened') counts.suggestionOpened += 1
     if (row.eventType === 'relation_created') counts.relationCreated += 1
     if (row.eventType === 'relation_reinforced') counts.relationReinforced += 1
     if (row.eventType === 'theme_created') counts.themeCreated += 1
+    let feedbackType: string | undefined
     if (row.eventType === 'relation_feedback_submitted') {
-      const feedbackType = getMetadataString(row.metadataJson, 'feedbackType')
+      feedbackType = getMetadataString(row.metadataJson, 'feedbackType')
       if (feedbackType === 'useful') counts.suggestionUseful += 1
       if (feedbackType === 'dismissed') counts.suggestionDismissed += 1
       if (feedbackType === 'not_related') counts.suggestionNotRelated += 1
     }
+
+    const bucketStart = Math.floor(row.createdAt / DAY_SECONDS) * DAY_SECONDS
+    if (bucketStart < seriesRange.start || bucketStart >= seriesRange.end) continue
+    const bucket = bucketMap.get(bucketStart)
+    if (!bucket) continue
+    if (row.eventType === 'suggestion_shown') bucket.shown += 1
+    if (row.eventType === 'suggestion_opened') bucket.opened += 1
+    if (row.eventType === 'relation_feedback_submitted') {
+      if (feedbackType === 'useful') bucket.useful += 1
+      if (feedbackType === 'not_related') bucket.notRelated += 1
+    }
   }
+
+  const buckets = Array.from(bucketMap.values())
+    .sort((a, b) => a.bucketStart - b.bucketStart)
+    .map((b) => ({
+      ...b,
+      usefulRate: ratio(b.useful, b.shown),
+      openRate: ratio(b.opened, b.shown),
+      notRelatedRate: ratio(b.notRelated, b.shown)
+    }))
 
   return {
     since: params.since,
@@ -121,8 +169,34 @@ export function getLongContextMetrics(params: {
       usefulRate: ratio(counts.suggestionUseful, counts.suggestionShown),
       openRate: ratio(counts.suggestionOpened, counts.suggestionShown),
       notRelatedRate: ratio(counts.suggestionNotRelated, counts.suggestionShown)
+    },
+    series: {
+      bucketSizeSec: DAY_SECONDS,
+      buckets
     }
   }
+}
+
+function emptyBucket(bucketStart: number): LongContextMetricsBucket {
+  return {
+    bucketStart,
+    shown: 0,
+    opened: 0,
+    useful: 0,
+    notRelated: 0,
+    usefulRate: 0,
+    openRate: 0,
+    notRelatedRate: 0
+  }
+}
+
+function resolveSeriesRange(since?: number, until?: number): { start: number; end: number } {
+  const nowSec = Math.floor(Date.now() / 1000)
+  const rawUntil = until ?? nowSec
+  const rawSince = since ?? rawUntil - DEFAULT_SERIES_WINDOW_DAYS * DAY_SECONDS
+  const start = Math.floor(rawSince / DAY_SECONDS) * DAY_SECONDS
+  const endAligned = Math.floor(rawUntil / DAY_SECONDS) * DAY_SECONDS + DAY_SECONDS
+  return { start, end: Math.max(endAligned, start + DAY_SECONDS) }
 }
 
 function buildWindowWhere(since?: number, until?: number): { where: string; values: number[] } {

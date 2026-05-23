@@ -339,6 +339,22 @@ export interface LongContextCognitiveReviewResult {
   }
 }
 
+export interface LongContextMetricsBucket {
+  bucketStart: number
+  shown: number
+  opened: number
+  useful: number
+  notRelated: number
+  usefulRate: number
+  openRate: number
+  notRelatedRate: number
+}
+
+export interface LongContextMetricsSeries {
+  bucketSizeSec: number
+  buckets: LongContextMetricsBucket[]
+}
+
 export interface LongContextMetrics {
   since?: number
   until?: number
@@ -357,6 +373,7 @@ export interface LongContextMetrics {
     openRate: number
     notRelatedRate: number
   }
+  series: LongContextMetricsSeries
 }
 
 export interface LongContextUserPrefs {

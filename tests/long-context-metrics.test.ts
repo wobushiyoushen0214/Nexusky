@@ -144,4 +144,53 @@ describe('long-context metrics', () => {
 
     expect(getLongContextMetrics({ vaultPath }).counts.themeCreated).toBe(1)
   })
+
+  it('groups events into per-day buckets with weighted rates over the window', () => {
+    const day = 86_400
+    const dayAStart = Math.floor((now - 2 * day) / day) * day
+    const dayBStart = Math.floor(now / day) * day
+
+    // Day A: 2 shown, 1 opened, 1 useful  ->  usefulRate 0.5, openRate 0.5
+    recordContextEvent({ vaultPath, eventType: 'suggestion_shown', entityType: 'note', entityId: 'a', metadata: { relationId: 'rA1' }, createdAt: dayAStart + 10 })
+    recordContextEvent({ vaultPath, eventType: 'suggestion_shown', entityType: 'note', entityId: 'a', metadata: { relationId: 'rA2' }, createdAt: dayAStart + 20 })
+    recordContextEvent({ vaultPath, eventType: 'suggestion_opened', entityType: 'note', entityId: 'a', metadata: { relationId: 'rA1' }, createdAt: dayAStart + 30 })
+    recordContextEvent({ vaultPath, eventType: 'relation_feedback_submitted', entityType: 'relation', entityId: 'rA1', metadata: { feedbackType: 'useful' }, createdAt: dayAStart + 40 })
+
+    // Day B: 1 shown, 1 not_related  ->  usefulRate 0, notRelatedRate 1
+    recordContextEvent({ vaultPath, eventType: 'suggestion_shown', entityType: 'note', entityId: 'b', metadata: { relationId: 'rB1' }, createdAt: dayBStart + 10 })
+    recordContextEvent({ vaultPath, eventType: 'relation_feedback_submitted', entityType: 'relation', entityId: 'rB1', metadata: { feedbackType: 'not_related' }, createdAt: dayBStart + 20 })
+
+    const metrics = getLongContextMetrics({ vaultPath, since: dayAStart, until: dayBStart + day - 1 })
+
+    expect(metrics.series.bucketSizeSec).toBe(day)
+    expect(metrics.series.buckets.length).toBeGreaterThanOrEqual(3)
+
+    const dayABucket = metrics.series.buckets.find((b) => b.bucketStart === dayAStart)
+    expect(dayABucket).toBeDefined()
+    expect(dayABucket!.shown).toBe(2)
+    expect(dayABucket!.opened).toBe(1)
+    expect(dayABucket!.useful).toBe(1)
+    expect(dayABucket!.notRelated).toBe(0)
+    expect(dayABucket!.usefulRate).toBe(0.5)
+    expect(dayABucket!.openRate).toBe(0.5)
+    expect(dayABucket!.notRelatedRate).toBe(0)
+
+    const dayBBucket = metrics.series.buckets.find((b) => b.bucketStart === dayBStart)
+    expect(dayBBucket).toBeDefined()
+    expect(dayBBucket!.shown).toBe(1)
+    expect(dayBBucket!.useful).toBe(0)
+    expect(dayBBucket!.notRelated).toBe(1)
+    expect(dayBBucket!.notRelatedRate).toBe(1)
+
+    // Empty middle day should still be present with zero rates
+    const middleBucket = metrics.series.buckets.find((b) => b.bucketStart === dayAStart + day)
+    expect(middleBucket).toBeDefined()
+    expect(middleBucket!.shown).toBe(0)
+    expect(middleBucket!.usefulRate).toBe(0)
+
+    // Buckets must be strictly ordered
+    for (let i = 1; i < metrics.series.buckets.length; i += 1) {
+      expect(metrics.series.buckets[i].bucketStart).toBeGreaterThan(metrics.series.buckets[i - 1].bucketStart)
+    }
+  })
 })

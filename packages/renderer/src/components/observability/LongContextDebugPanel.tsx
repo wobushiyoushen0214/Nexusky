@@ -4,7 +4,10 @@ import type { LongContextInspection, LongContextMetrics, LongContextPackItemPayl
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
+import { Sparkline } from './Sparkline'
 import './observability.css'
+
+type MetricPolarity = 'higherIsBetter' | 'lowerIsBetter'
 
 type PackTab = 'hot' | 'warm' | 'cold' | 'dropped'
 
@@ -122,11 +125,35 @@ export function LongContextDebugPanel() {
         {!metrics ? (
           <div className="long-context-debug-panel__empty">{t('longContextDebug.loading')}</div>
         ) : (
-          <div className="long-context-debug-panel__metrics-grid">
-            <MetricCard label={t('longContextDebug.metric.usefulRate')} value={metrics.rates.usefulRate} />
-            <MetricCard label={t('longContextDebug.metric.openRate')} value={metrics.rates.openRate} />
-            <MetricCard label={t('longContextDebug.metric.notRelatedRate')} value={metrics.rates.notRelatedRate} />
-          </div>
+          (() => {
+            const buckets = metrics.series.buckets
+            const shownSeries = buckets.map((b) => b.shown)
+            return (
+              <div className="long-context-debug-panel__metrics-grid">
+                <MetricCard
+                  label={t('longContextDebug.metric.usefulRate')}
+                  value={metrics.rates.usefulRate}
+                  rateSeries={buckets.map((b) => b.usefulRate)}
+                  shownSeries={shownSeries}
+                  polarity="higherIsBetter"
+                />
+                <MetricCard
+                  label={t('longContextDebug.metric.openRate')}
+                  value={metrics.rates.openRate}
+                  rateSeries={buckets.map((b) => b.openRate)}
+                  shownSeries={shownSeries}
+                  polarity="higherIsBetter"
+                />
+                <MetricCard
+                  label={t('longContextDebug.metric.notRelatedRate')}
+                  value={metrics.rates.notRelatedRate}
+                  rateSeries={buckets.map((b) => b.notRelatedRate)}
+                  shownSeries={shownSeries}
+                  polarity="lowerIsBetter"
+                />
+              </div>
+            )
+          })()
         )}
         {metrics && (
           <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text-tertiary)' }}>
@@ -188,14 +215,84 @@ function PackItemCard({ item }: { item: LongContextPackItemPayload }) {
   )
 }
 
-function MetricCard({ label, value }: { label: string; value: number }) {
+function MetricCard({
+  label,
+  value,
+  rateSeries,
+  shownSeries,
+  polarity
+}: {
+  label: string
+  value: number
+  rateSeries: number[]
+  shownSeries: number[]
+  polarity: MetricPolarity
+}) {
+  const { t } = useTranslation()
   const pct = Math.round((Number.isFinite(value) ? value : 0) * 100)
+  const trend = computeTrend(rateSeries, shownSeries, polarity)
+  const sparkTone: 'good' | 'warn' | 'neutral' = polarity === 'higherIsBetter' ? 'good' : 'warn'
+  const sparkLabel = t('longContextDebug.sparklineLabel', { label, days: rateSeries.length })
+
   return (
     <div className="long-context-debug-panel__metric">
-      <div className="long-context-debug-panel__metric-value">{pct}%</div>
+      <div className="long-context-debug-panel__metric-header">
+        <div className="long-context-debug-panel__metric-value">{pct}%</div>
+        {trend && (
+          <span
+            className={`long-context-debug-panel__metric-trend ${trend.className}`}
+            title={trend.title}
+            aria-label={trend.title}
+          >
+            {trend.text}
+          </span>
+        )}
+      </div>
       <div className="long-context-debug-panel__metric-label">{label}</div>
+      <div className="long-context-debug-panel__metric-spark">
+        <Sparkline points={rateSeries} tone={sparkTone} ariaLabel={sparkLabel} width={140} height={26} />
+      </div>
     </div>
   )
+}
+
+interface TrendInfo {
+  text: string
+  className: string
+  title: string
+}
+
+function computeTrend(rateSeries: number[], shownSeries: number[], polarity: MetricPolarity): TrendInfo | null {
+  if (rateSeries.length < 4 || rateSeries.length !== shownSeries.length) return null
+  const window = Math.min(7, Math.floor(rateSeries.length / 2))
+  if (window < 2) return null
+
+  const recentShown = shownSeries.slice(-window)
+  const olderShown = shownSeries.slice(-window * 2, -window)
+  const recentTotal = recentShown.reduce((a, b) => a + b, 0)
+  const olderTotal = olderShown.reduce((a, b) => a + b, 0)
+  if (recentTotal < 3 || olderTotal < 3) return null
+
+  const recentRates = rateSeries.slice(-window)
+  const olderRates = rateSeries.slice(-window * 2, -window)
+  const recentWeighted = recentRates.reduce((acc, r, i) => acc + r * recentShown[i], 0) / recentTotal
+  const olderWeighted = olderRates.reduce((acc, r, i) => acc + r * olderShown[i], 0) / olderTotal
+  const deltaPP = (recentWeighted - olderWeighted) * 100
+
+  if (Math.abs(deltaPP) < 0.5) {
+    return { text: '→', className: '', title: `±0pp · ${window}d vs prior ${window}d` }
+  }
+
+  const rising = deltaPP > 0
+  const isBetter = (polarity === 'higherIsBetter') === rising
+  const arrow = rising ? '↑' : '↓'
+  const text = `${arrow}${Math.abs(deltaPP).toFixed(1)}pp`
+  const title = `${arrow} ${Math.abs(deltaPP).toFixed(1)}pp · ${window}d vs prior ${window}d`
+  return {
+    text,
+    className: isBetter ? 'is-up' : 'is-down-bad',
+    title
+  }
 }
 
 interface SliderRowProps {

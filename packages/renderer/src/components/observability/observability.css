@@ -87,12 +87,41 @@
   padding: 10px 12px;
   border-radius: 6px;
   background: var(--bg-primary, rgba(255,255,255,0.02));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.long-context-debug-panel__metric-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .long-context-debug-panel__metric-value {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.long-context-debug-panel__metric-trend {
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  color: var(--text-tertiary);
+}
+
+.long-context-debug-panel__metric-trend.is-up {
+  color: var(--accent-success, #4ade80);
+}
+
+.long-context-debug-panel__metric-trend.is-down {
+  color: var(--accent-warning, #f59e0b);
+}
+
+.long-context-debug-panel__metric-trend.is-down-bad {
+  color: var(--accent-danger, #f87171);
 }
 
 .long-context-debug-panel__metric-label {
@@ -100,7 +129,45 @@
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-top: 4px;
+}
+
+.long-context-debug-panel__metric-spark {
+  display: block;
+  margin-top: 2px;
+}
+
+.sparkline {
+  display: block;
+  overflow: visible;
+  color: var(--accent, rgba(124, 110, 240, 0.95));
+}
+
+.sparkline--good { color: var(--accent-success, #4ade80); }
+.sparkline--warn { color: var(--accent-warning, #f59e0b); }
+.sparkline--neutral { color: var(--accent, rgba(124, 110, 240, 0.95)); }
+
+.sparkline--empty {
+  background: linear-gradient(to right, transparent 0, currentColor 50%, transparent 100%);
+  background-size: 100% 1px;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.25;
+}
+
+.sparkline__stroke {
+  stroke: currentColor;
+  stroke-width: 1.25;
+}
+
+.sparkline__fill {
+  fill: currentColor;
+  opacity: 0.12;
+}
+
+.sparkline__last {
+  fill: currentColor;
+  stroke: var(--bg-elevated, rgba(0,0,0,0.6));
+  stroke-width: 0.6;
 }
 
 .long-context-debug-panel__tuning-row {

@@ -202,6 +202,7 @@
       "openRate": "打开率",
       "notRelatedRate": "不相关率"
     },
+    "sparklineLabel": "{{label}} 最近 {{days}} 天趋势",
     "pref": {
       "confidenceThreshold": "Confidence 阈值",
       "tokenBudget": "Token 预算",
