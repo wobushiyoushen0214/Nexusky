@@ -416,6 +416,46 @@ export type ToolSurfaceRunResult =
   | { ok: true; content: string; sources?: ChatSource[] }
   | { ok: false; error: string }
 
+export type KnowledgeMaintenanceType =
+  | 'fix_unresolved_link'
+  | 'review_overdue_tasks'
+  | 'review_due_today_tasks'
+  | 'review_high_priority_tasks'
+  | 'review_scheduled_tasks'
+  | 'review_started_tasks'
+  | 'review_blocked_tasks'
+  | 'review_recurring_tasks'
+  | 'review_upcoming_tasks'
+  | 'connect_orphan'
+  | 'fill_empty_note'
+  | 'resolve_duplicate_title'
+  | 'resolve_duplicate_alias'
+  | 'review_open_tasks'
+  | 'link_unlinked_reference'
+  | 'refresh_memory'
+  | 'split_large_note'
+  | 'fill_missing_property'
+  | 'maintain_bridge'
+
+export interface KnowledgeMaintenanceItem {
+  type: KnowledgeMaintenanceType
+  title: string
+  filePath: string
+  priority: number
+  action: string
+  reason: string
+  detail: string
+}
+
+export type MaintenanceApplyAction = 'open_note' | 'create_target' | 'mark_done' | 'archive' | 'add_alias'
+
+export interface MaintenanceApplyResult {
+  ok: boolean
+  appliedAction: string
+  resultMessage: string
+  filePath?: string
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -710,6 +750,31 @@ export interface IPCChannelMap {
   'ai:list-tool-surface': {
     params: undefined
     result: { entries: ToolSurfaceEntry[] }
+  }
+  'maintenance:get-queue': {
+    params: {
+      vaultPath: string
+      type?: KnowledgeMaintenanceType
+      query?: string
+      limit?: number
+      minCharacters?: number
+      upcomingDays?: number
+      requiredProperties?: string[]
+    }
+    result: {
+      items: KnowledgeMaintenanceItem[]
+      total: number
+      counts: Record<KnowledgeMaintenanceType, number>
+    }
+  }
+  'maintenance:apply-fix': {
+    params: {
+      vaultPath: string
+      item: KnowledgeMaintenanceItem
+      action: MaintenanceApplyAction
+      payload?: Record<string, unknown>
+    }
+    result: MaintenanceApplyResult
   }
 }
 
