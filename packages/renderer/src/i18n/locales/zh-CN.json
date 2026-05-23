@@ -481,6 +481,43 @@
       "title": "语言",
       "zhCN": "简体中文",
       "en": "English"
+    },
+    "proactive": {
+      "title": "主动建议",
+      "description": "在后台分析笔记关系、长期主题和任务时主动给出值得关注的提示。",
+      "enabled": "启用主动建议",
+      "silentHoursStart": "静音开始（HH:mm）",
+      "silentHoursEnd": "静音结束（HH:mm）",
+      "maxPerDay": "每日最多展示",
+      "defaultSnoozeDays": "默认延后天数",
+      "importanceFloor": "最小优先级",
+      "perKind": "类型开关",
+      "kind": {
+        "relation": "关系发现",
+        "theme_link": "主题归并",
+        "cognitive_review": "认知回顾",
+        "maintenance": "维护提醒"
+      },
+      "debugRun": "立即跑一轮（调试）",
+      "resetPrefs": "恢复默认偏好"
+    }
+  },
+  "proactive": {
+    "bellTitle": "通知中心",
+    "open": "打开",
+    "snooze": "稍后提醒",
+    "snooze1d": "1 天后",
+    "snooze7d": "7 天后",
+    "snooze30d": "30 天后",
+    "dismiss": "忽略",
+    "empty": "暂无主动建议",
+    "newSuggestion": "新建议",
+    "viewAll": "查看全部",
+    "kind": {
+      "relation": "关系",
+      "theme_link": "主题",
+      "cognitive_review": "回顾",
+      "maintenance": "维护"
     }
   }
 }

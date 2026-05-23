@@ -1,0 +1,281 @@
+/* Proactive notification UI styles. Avoid logical properties per project policy. */
+
+.proactive-anchor {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  z-index: 9000;
+  pointer-events: none;
+}
+
+.proactive-anchor > * {
+  pointer-events: auto;
+}
+
+.proactive-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 140ms ease-out, color 140ms ease-out;
+}
+
+.proactive-bell:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.proactive-bell__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.proactive-drawer {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  z-index: 9000;
+  width: 360px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg, #1d1d20);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.proactive-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.proactive-drawer__close {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.proactive-drawer__close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.proactive-drawer__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.proactive-drawer__empty {
+  padding: 28px 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
+}
+
+.proactive-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-faint, rgba(255, 255, 255, 0.04));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proactive-item:last-child {
+  border-bottom: none;
+}
+
+.proactive-item__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.proactive-item__kind {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.proactive-item__title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.proactive-item__importance {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
+}
+
+.proactive-item__body {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.proactive-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.proactive-item__btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border 120ms;
+}
+
+.proactive-item__btn:hover {
+  background: var(--bg-hover-strong, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
+
+.proactive-item__btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.proactive-item__btn--primary:hover {
+  background: var(--accent-strong, var(--accent));
+  color: #fff;
+}
+
+.proactive-item__snooze {
+  position: relative;
+}
+
+.proactive-item__snooze-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 9001;
+  min-width: 110px;
+  background: var(--panel-bg, #1d1d20);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.proactive-item__snooze-option {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  text-align: left;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.proactive-item__snooze-option:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.proactive-toast-container {
+  position: fixed;
+  bottom: 92px;
+  right: 20px;
+  z-index: 9500;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 340px;
+  pointer-events: none;
+}
+
+.proactive-toast {
+  pointer-events: auto;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(124, 110, 240, 0.14);
+  border: 1px solid rgba(124, 110, 240, 0.35);
+  color: var(--text-primary);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 160ms ease-out;
+}
+
+.proactive-toast:hover {
+  transform: translateY(-2px);
+}
+
+.proactive-toast__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.proactive-toast__body {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.proactive-toast__close {
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+}

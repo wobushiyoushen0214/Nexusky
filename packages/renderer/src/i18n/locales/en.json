@@ -481,6 +481,43 @@
       "title": "Language",
       "zhCN": "简体中文",
       "en": "English"
+    },
+    "proactive": {
+      "title": "Proactive suggestions",
+      "description": "Surface noteworthy hints while the app analyzes relations, long-term themes, and tasks in the background.",
+      "enabled": "Enable proactive suggestions",
+      "silentHoursStart": "Silent hours start (HH:mm)",
+      "silentHoursEnd": "Silent hours end (HH:mm)",
+      "maxPerDay": "Max suggestions per day",
+      "defaultSnoozeDays": "Default snooze (days)",
+      "importanceFloor": "Importance floor",
+      "perKind": "Per kind",
+      "kind": {
+        "relation": "Relation",
+        "theme_link": "Theme link",
+        "cognitive_review": "Cognitive review",
+        "maintenance": "Maintenance"
+      },
+      "debugRun": "Run one cycle now (debug)",
+      "resetPrefs": "Reset to defaults"
+    }
+  },
+  "proactive": {
+    "bellTitle": "Notifications",
+    "open": "Open",
+    "snooze": "Snooze",
+    "snooze1d": "1 day",
+    "snooze7d": "7 days",
+    "snooze30d": "30 days",
+    "dismiss": "Dismiss",
+    "empty": "No suggestions",
+    "newSuggestion": "New suggestion",
+    "viewAll": "View all",
+    "kind": {
+      "relation": "Relation",
+      "theme_link": "Theme",
+      "cognitive_review": "Review",
+      "maintenance": "Maintenance"
     }
   }
 }

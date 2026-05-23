@@ -17,6 +17,8 @@ import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
 import { GraphGenerator } from './components/GraphGenerator'
+import { NotificationCenter } from './components/proactive/NotificationCenter'
+import { ProactiveToast } from './components/proactive/ProactiveToast'
 import { getErrorMessage } from './utils/errors'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED } from './utils/css-snippets'
 import { applyThemePackage, THEME_PACKAGES_UPDATED } from './utils/theme-packages'
@@ -524,6 +526,8 @@ export default function App() {
       </Suspense>
       <ToastContainer />
       <GraphGenerator open={graphGenPaths.length > 0} filePaths={graphGenPaths} onClose={() => setGraphGenPaths([])} />
+      <NotificationCenter />
+      <ProactiveToast />
         </>
       )}
     </div>
