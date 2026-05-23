@@ -840,6 +840,96 @@ export interface IPCChannelMap {
     }
     result: MaintenanceApplyResult
   }
+  'agent:plan': {
+    params: { vaultPath: string; goal: string; description?: string; context?: Record<string, unknown>; dryRun?: boolean }
+    result: { runId: string; plan: AgentPlanStep[]; rationale: string }
+  }
+  'agent:update-plan': {
+    params: { vaultPath: string; runId: string; plan: AgentPlanStep[] }
+    result: void
+  }
+  'agent:start': {
+    params: { vaultPath: string; runId: string; dryRun?: boolean }
+    result: void
+  }
+  'agent:pause': { params: { vaultPath: string; runId: string }; result: void }
+  'agent:resume': { params: { vaultPath: string; runId: string }; result: void }
+  'agent:cancel': { params: { vaultPath: string; runId: string }; result: void }
+  'agent:retry-step': { params: { vaultPath: string; runId: string; stepIndex: number; overrideContent?: string }; result: void }
+  'agent:skip-step': { params: { vaultPath: string; runId: string; stepIndex: number }; result: void }
+  'agent:rollback-step': { params: { vaultPath: string; runId: string; stepIndex: number }; result: { ok: boolean; error?: string } }
+  'agent:rollback-run': { params: { vaultPath: string; runId: string }; result: { ok: boolean; rolledBack: number; errors: string[] } }
+  'agent:get-run': { params: { vaultPath: string; runId: string }; result: { run: AgentRunSummary; steps: AgentStepSummary[] } | null }
+  'agent:list-runs': { params: { vaultPath: string; status?: AgentRunStatus[]; limit?: number }; result: AgentRunSummary[] }
+  'agent:reflect': { params: { vaultPath: string; runId: string }; result: AgentReflectResult }
 }
 
 export type IPCChannel = keyof IPCChannelMap
+
+export type AgentRunStatus = 'pending' | 'planning' | 'awaiting_user' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
+export type AgentStepKind = 'tool_call' | 'file_write' | 'file_create' | 'task_update' | 'note_edit'
+export type AgentStepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | 'rolled_back'
+
+export interface AgentPlanStep {
+  index: number
+  kind: AgentStepKind
+  toolName?: string
+  args: Record<string, unknown>
+  description: string
+  expectedEffect: string
+  dependsOn: number[]
+}
+
+export interface AgentRunSummary {
+  id: string
+  vaultPath: string
+  goal: string
+  description: string
+  status: AgentRunStatus
+  plan: AgentPlanStep[]
+  rationale: string
+  dryRun: boolean
+  currentStepIndex: number
+  totalSteps: number
+  resultSummary: string | null
+  error: string | null
+  createdAt: number
+  updatedAt: number
+  startedAt: number | null
+  completedAt: number | null
+}
+
+export interface AgentStepSummary {
+  id: string
+  runId: string
+  stepIndex: number
+  kind: AgentStepKind
+  toolName: string | null
+  args: Record<string, unknown>
+  description: string
+  expectedEffect: string
+  dependsOn: number[]
+  status: AgentStepStatus
+  preview: string | null
+  resultContent: string | null
+  error: string | null
+  hasRollback: boolean
+  startedAt: number | null
+  completedAt: number | null
+}
+
+export interface AgentStepUpdateEvent {
+  runId: string
+  stepIndex: number
+  status: AgentStepStatus
+  preview?: string | null
+  error?: string | null
+}
+
+export interface AgentReflectResult {
+  goalAchieved: boolean
+  succeededSteps: number
+  failedSteps: number
+  unmetExpectations: string[]
+  suggestions: string[]
+}

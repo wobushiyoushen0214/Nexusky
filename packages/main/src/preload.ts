@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AINotesProgress, AIStreamEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel, ProactiveSuggestion } from '@shared/types/ipc'
+import type { AINotesProgress, AIStreamEvent, AgentStepUpdateEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel, ProactiveSuggestion } from '@shared/types/ipc'
 
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
@@ -107,6 +107,11 @@ const api = {
     const handler = (_event: unknown, data: ProactiveSuggestion) => callback(data)
     ipcRenderer.on('proactive:emitted', handler)
     return () => { ipcRenderer.removeListener('proactive:emitted', handler) }
+  },
+  onAgentStepUpdate: (callback: (event: AgentStepUpdateEvent) => void) => {
+    const handler = (_event: unknown, data: AgentStepUpdateEvent) => callback(data)
+    ipcRenderer.on('agent:step-update', handler)
+    return () => { ipcRenderer.removeListener('agent:step-update', handler) }
   },
   platform: process.platform,
   windowControls: {
