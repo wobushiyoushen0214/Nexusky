@@ -6,17 +6,21 @@
 当前基础：Electron 33 + React 19 + better-sqlite3 (SCHEMA v9) + 长期上下文系统（13 个 long-context 测试、9 个 long-context IPC、后台节流主路径已上线）。
 新阶段核心：四个方向（A 主动 / B 日常 / C 自治 / D 透明）合力把"被动展示长期上下文"升级为"主动陪伴的认知伙伴"。
 
-## 实施状态（2026-05-23）
+## 实施状态（2026-05-24）
 
 | 方向 | 迭代 | 状态 | 关键 commit |
 | --- | --- | --- | --- |
 | A · Proactive AI | iter 0-4 | ✅ 全部完成 | 258d7e1 → 955e1ce |
+| A · 5 分钟全局 cooldown | 收尾 | ✅ 完成 | 7cae5e1 |
 | B · Tool Surface | iter 0-3 | ✅ 全部完成 | c6b76a1 → 96bd762 |
+| B · 命令面板按 tool 名搜 | 收尾 | ✅ 完成 | 7cae5e1 |
 | B · Tool Surface | iter 4 | ⚠️ 文案 + 类型已收尾；跨平台手测 / 5000-note 性能基线待真机 |  |
 | C · Plan-Execute-Reflect | iter 0-5 | ✅ 全部完成 | 3b1e9ff → d6657be |
 | D · Long-Context 可观测 | iter 0-3 | ✅ 全部完成 | d9e9f07 → 4ed357b |
+| D · Metrics sparkline 趋势 | 收尾 | ✅ 完成 | 524f167 |
+| 测试基线 | 12 个 pre-existing 失败 | ✅ 修复（v11/store fallback/symlink probe/.mjs shebang/Windows 路径） | b7eabfd |
 
-剩余非代码工作：跨平台 / 5000-note 性能手测，agent 测试集，metrics 看板的趋势图（sparkline）。
+剩余非代码工作：跨平台 (macOS / Windows) 验收手测，5000-note 性能基线。代码层 10 条断言全部覆盖。
 
 ---
 
