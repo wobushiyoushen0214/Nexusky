@@ -54,3 +54,5 @@
 | 23 | ai.ipc.ts text-tool handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/text-tools.ts` 收纳 3 个轻量文本 handler（`ai:summarize`、`ai:generate-flashcards`、`ai:suggest-tags`），共用 `consumeStream` + flashcards 工具；主文件再降 1185→1110 行 |
 | 24 | ai.ipc.ts edit handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/edit.ts` 收纳 `ai:edit`（含 writing-style prompt、token 估算、流式 edit-stream 推送、abort 处理）；主文件再降 1110→1024 行 |
 | 25 | ai.ipc.ts complete handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/complete.ts` 收纳 `ai:complete` + `ai:complete-abort`（续写 + 任务级 abort controller map + writing-style prompt）；主文件再降 1024→975 行 |
+| 29 | ai.ipc.ts graph handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/graph.ts` 收纳 `ai:generate-graph`（抽样笔记 → Mermaid graph TD 流式推送 ai:graph-progress/done）；主文件再降 975→900 行 |
+| 30 | ai.ipc.ts notes 域 5 个 handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/notes.ts` 收纳 `ai:plan-note-batches`/`generate-notes`/`infer-links`/`infer-global-links`/`generate-memories`（含笔记规划、流式生成、写入索引、语义链推断、记忆生成）；主文件再降 900→451 行（−449），相比阶段开始的 3492 行已削减 87%；12 个仅供 notes 使用的 import（fs/path/note-plan/note-writing/memory/embedding/database 等）随之删除 |
