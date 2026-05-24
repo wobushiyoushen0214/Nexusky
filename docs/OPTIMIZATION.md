@@ -31,6 +31,9 @@
 | 13 | 向量索引增量更新 | ✅ 已完成 | 对比 chunk content，只对变化的 chunk 调用 embedding API |
 | 14 | 崩溃/错误上报 | ✅ 已完成 | React ErrorBoundary + 主进程 uncaughtException/unhandledRejection |
 | 15 | Undo 历史持久化 | ✅ 已完成 | 切换标签时保存/恢复 ProseMirror EditorState（含 undo 历史） |
+| 26 | 任务看板 ↔ Agent 双向跳转 | ✅ 已完成 | Kanban 详情新增"交给 Agent"按钮（带任务标题/描述跳到 Agent goal 阶段）；Agent reflect 结果若 status≠fail 提供"发送到任务看板"按钮（带 reflect 摘要写回 kanban_task） |
+| 27 | 知识维护 → 属性图层定位 | ✅ 已完成 | MaintenanceItemCard 新增"在属性图层定位"按钮：跳到 Bases 视图、用 filename 设为查询、目标卡片 3s 高亮（背景色过渡） |
+| 28 | ui-store 跨功能跳转 selectors | ✅ 已完成 | `pendingAgentGoal/pendingKanbanTask/pendingBasesFocus` + `sendToAgent/sendToKanban/focusInBases/consume*` 三组 transient state，避免页面间紧耦合；附 3 项 ui-store 跨功能跳转测试 |
 
 ## 安全性
 
@@ -50,3 +53,4 @@
 | 22 | ai.ipc.ts provider/transcribe/local-config 等独立 handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/provider.ts` 收纳 10 个无 closure 依赖的 handler（`ai:get/save/set-providers`、`ai:get-active-provider`、`ai:validate`、`ai:transcribe`、`ai:detect-local-config`、`ai:list-ollama-models`、`ai:get/set-system-prompt`），主文件再降 1291→1185 行 |
 | 23 | ai.ipc.ts text-tool handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/text-tools.ts` 收纳 3 个轻量文本 handler（`ai:summarize`、`ai:generate-flashcards`、`ai:suggest-tags`），共用 `consumeStream` + flashcards 工具；主文件再降 1185→1110 行 |
 | 24 | ai.ipc.ts edit handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/edit.ts` 收纳 `ai:edit`（含 writing-style prompt、token 估算、流式 edit-stream 推送、abort 处理）；主文件再降 1110→1024 行 |
+| 25 | ai.ipc.ts complete handler 拎出 | ✅ 已完成 | `packages/main/src/ipc/ai/complete.ts` 收纳 `ai:complete` + `ai:complete-abort`（续写 + 任务级 abort controller map + writing-style prompt）；主文件再降 1024→975 行 |
