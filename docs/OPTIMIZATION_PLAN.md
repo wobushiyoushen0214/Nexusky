@@ -178,6 +178,7 @@ packages/main/src/ipc/ai/
 - `getErrorMessage` 在 `ai.ipc.ts` 与 `db.ipc.ts` 等多文件重复定义 → 提到 `packages/shared/src/utils/errors.ts`；
 - `if (window.isDestroyed() || controller.signal.aborted) break/skip` 在 `ai.ipc.ts` 出现约 20 次 → 封装 `shouldAbort(window, controller)`；
 - AI provider stream 消费在 `ai:chat / ai:edit / ai:generate-graph / ai:generate-notes` 4 处几乎相同结构 → 封装 `consumeStream(window, channel, requestId, asyncIterable)`。
+- **2026-05-24 进展**：`packages/main/src/ipc/streams/consume-stream.ts` 已落地，签名为 `consumeStream(iter, { signal?, window?, onChunk?, onText?, breakOnError? })`，返回 `{ text, aborted, errorChunk }`。`ai.ipc.ts` 14 处文本流模板（intent / ai:chat / ai:edit / ai:graph-generate / ai:complete / ai:summarize / ai:generate-flashcards / ai:suggest-tags / 批量笔记 plan-batches / plan-files / 单篇生成 / 关系推理 / generate-relations / compact summary）改用 helper；仍剩 1 处 `aiManager.chatWithTools` 流（处理 tool_call 事件，属 2.6 范围）。详见 OPTIMIZATION.md #20。
 
 ### 2.6 [P2] AI Agent tool 大 switch → registry
 

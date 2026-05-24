@@ -27,6 +27,7 @@ import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-s
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { transcribeAudio, type TranscribeAudioParams } from '../services/ai/transcription'
 import { setAgentToolRunner } from '../services/agent/tool-runner'
+import { consumeStream } from './streams/consume-stream'
 import type { ChatSource } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
@@ -217,13 +218,13 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
     try {
       const recentMessages = params.messages.filter((m) => m.role !== 'system').slice(-8)
       const clientContextMessages = params.messages.filter((m) => m.role === 'system')
-      for await (const chunk of aiManager.chat([
-        ...withMergedSystemContext(systemPrompt, [...clientContextMessages, ...recentMessages])
-      ], controller.signal)) {
-        if (controller.signal.aborted) throw new Error('已取消')
-        if (chunk.type === 'text') result += chunk.content
-        if (chunk.type === 'error') break
-      }
+      const { text } = await consumeStream(
+        aiManager.chat([
+          ...withMergedSystemContext(systemPrompt, [...clientContextMessages, ...recentMessages])
+        ], controller.signal),
+        { signal: controller.signal }
+      )
+      result = text
       if (controller.signal.aborted) throw new Error('已取消')
     } catch (err) {
       if (controller.signal.aborted) throw err
@@ -309,10 +310,15 @@ ${context}
     }
 
     try {
-      for await (const chunk of aiManager.chat(messages, controller.signal)) {
-        if (window.isDestroyed() || controller.signal.aborted) break
-        window.webContents.send('ai:stream', chunk)
-      }
+      await consumeStream(
+        aiManager.chat(messages, controller.signal),
+        {
+          signal: controller.signal,
+          window,
+          breakOnError: false,
+          onChunk: (chunk) => window.webContents.send('ai:stream', chunk)
+        }
+      )
     } catch (err: unknown) {
       if (!window.isDestroyed() && !controller.signal.aborted) {
         window.webContents.send('ai:stream', { type: 'error', content: getErrorMessage(err) })
@@ -369,19 +375,18 @@ ${context}
 
     try {
       const provider = aiManager.getProvider(config)
-      let result = ''
       const options = params.temperature !== undefined ? { temperature: params.temperature } : undefined
       const stylePrompt = params.styleSource ? formatWritingStylePrompt(analyzeWritingStyle(params.styleSource)) : ''
       const system = [params.system || '续写1-2句，只输出续写内容。', stylePrompt].filter(Boolean).join('\n\n')
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: system },
-        { role: 'user', content: params.text }
-      ], signal, options)) {
-        if (signal.aborted) return ''
-        if (chunk.type === 'text') result += chunk.content
-        if (chunk.type === 'error') return ''
-      }
-      return signal.aborted ? '' : (params.system ? result.trim() : result.trim().slice(0, 200))
+      const { text: result, aborted, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: system },
+          { role: 'user', content: params.text }
+        ], signal, options),
+        { signal }
+      )
+      if (aborted || errorChunk !== null) return ''
+      return params.system ? result.trim() : result.trim().slice(0, 200)
     } catch {
       return ''
     } finally {
@@ -463,14 +468,13 @@ ${context}
     if (aiManager.validateConfig(config)) return ''
     try {
       const provider = aiManager.getProvider(config)
-      let result = ''
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: '为以下笔记生成一段简洁的摘要（2-3句话）。只输出摘要内容，不要前缀。' },
-        { role: 'user', content: params.content.slice(0, 3000) }
-      ])) {
-        if (chunk.type === 'text') result += chunk.content
-        if (chunk.type === 'error') return ''
-      }
+      const { text: result, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: '为以下笔记生成一段简洁的摘要（2-3句话）。只输出摘要内容，不要前缀。' },
+          { role: 'user', content: params.content.slice(0, 3000) }
+        ])
+      )
+      if (errorChunk !== null) return ''
       return result.trim()
     } catch {
       return ''
@@ -485,11 +489,11 @@ ${context}
 
     try {
       const provider = aiManager.getProvider(config)
-      let result = ''
-      for await (const chunk of provider.chatStream([
-        {
-          role: 'system',
-          content: `You generate Anki-style flashcards from Markdown notes.
+      const { text: result, errorChunk } = await consumeStream(
+        provider.chatStream([
+          {
+            role: 'system',
+            content: `You generate Anki-style flashcards from Markdown notes.
 
 Return only JSON with this shape:
 {"cards":[{"type":"basic","front":"question","back":"answer","tags":["topic"]},{"type":"cloze","cloze":"A statement with {{c1::the hidden answer}}.","back":"why the answer matters","tags":["topic"]}]}
@@ -500,12 +504,11 @@ Rules:
 - Test durable concepts, definitions, distinctions, workflows, and gotchas.
 - Avoid trivia, duplicate cards, and cards that require missing context.
 - Keep each front/cloze under 80 words and each back under 120 words.`
-        },
-        { role: 'user', content: params.content.slice(0, 8000) }
-      ], undefined, { temperature: 0.2 })) {
-        if (chunk.type === 'text') result += chunk.content
-        if (chunk.type === 'error') return { success: false, cards: [], error: chunk.content || 'AI 生成闪卡失败' }
-      }
+          },
+          { role: 'user', content: params.content.slice(0, 8000) }
+        ], undefined, { temperature: 0.2 })
+      )
+      if (errorChunk !== null) return { success: false, cards: [], error: errorChunk || 'AI 生成闪卡失败' }
 
       const cards = normalizeGeneratedFlashcards(result, params.maxCards)
       if (cards.length === 0) return { success: false, cards: [], error: 'AI 未生成可用闪卡' }
@@ -522,14 +525,13 @@ Rules:
 
     try {
       const provider = aiManager.getProvider(config)
-      let result = ''
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: `你是一个标签建议助手。根据笔记内容建议 2-4 个标签。只输出标签，用逗号分隔，不要 # 前缀，不要解释。已有标签: ${params.existingTags.join(', ')}` },
-        { role: 'user', content: params.content.slice(0, 2000) }
-      ])) {
-        if (chunk.type === 'text') result += chunk.content
-        if (chunk.type === 'error') return []
-      }
+      const { text: result, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: `你是一个标签建议助手。根据笔记内容建议 2-4 个标签。只输出标签，用逗号分隔，不要 # 前缀，不要解释。已有标签: ${params.existingTags.join(', ')}` },
+          { role: 'user', content: params.content.slice(0, 2000) }
+        ])
+      )
+      if (errorChunk !== null) return []
       return result.trim().split(/[,，、\n]/).map((t) => t.trim()).filter((t) => t && t.length < 20)
     } catch {
       return []
@@ -597,21 +599,19 @@ Output the modified complete Markdown text directly. The first character of your
 
     try {
       const provider = aiManager.getProvider(config)
-      let result = ''
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: systemPrompt },
-        userMessage
-      ], controller.signal)) {
-        if (window.isDestroyed() || controller.signal.aborted) break
-        if (chunk.type === 'text') {
-          result += chunk.content
-          window.webContents.send('ai:edit-stream', { type: 'text', content: chunk.content })
+      const { text: result, aborted, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: systemPrompt },
+          userMessage
+        ], controller.signal),
+        {
+          signal: controller.signal,
+          window,
+          onText: (delta) => window.webContents.send('ai:edit-stream', { type: 'text', content: delta })
         }
-        if (chunk.type === 'error') {
-          return { success: false, error: chunk.content || 'AI 返回错误' }
-        }
-      }
-      if (controller.signal.aborted) return { success: false, error: '已取消' }
+      )
+      if (errorChunk !== null) return { success: false, error: errorChunk || 'AI 返回错误' }
+      if (aborted) return { success: false, error: '已取消' }
       const trimmed = result.trim()
       if (!trimmed) return { success: false, error: 'AI 未返回有效内容，请检查 API Key 配置' }
       return { success: true, content: trimmed }
@@ -676,23 +676,23 @@ graph TD
 </example>`
 
     const provider = aiManager.getProvider(config)
-    let result = ''
     const windowId = window.id
     const controller = startAiTask(windowId)
 
     try {
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Below are ${fileNames.length} notes. Analyze their relationships and generate a knowledge graph:\n\n${filesContent}` }
-      ], controller.signal)) {
-        if (window.isDestroyed() || controller.signal.aborted) break
-        if (chunk.type === 'text') {
-          result += chunk.content
-          window.webContents.send('ai:graph-progress', { content: chunk.content })
+      const { text: result, aborted, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Below are ${fileNames.length} notes. Analyze their relationships and generate a knowledge graph:\n\n${filesContent}` }
+        ], controller.signal),
+        {
+          signal: controller.signal,
+          window,
+          onText: (delta) => window.webContents.send('ai:graph-progress', { content: delta })
         }
-        if (chunk.type === 'error') return { success: false, error: chunk.content || 'AI 返回错误' }
-      }
-      if (controller.signal.aborted) return { success: false, error: '已取消' }
+      )
+      if (errorChunk !== null) return { success: false, error: errorChunk || 'AI 返回错误' }
+      if (aborted) return { success: false, error: '已取消' }
       window.webContents.send('ai:graph-done', {})
       return { success: true, content: result.trim() }
     } catch (err: unknown) {
@@ -719,8 +719,9 @@ graph TD
 
     let planResult = ''
     try {
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: `你是批量笔记创建前的语义规划助手。请先理解用户想生成哪些主题目录，而不是让用户手动选择目录。
+      const { text, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: `你是批量笔记创建前的语义规划助手。请先理解用户想生成哪些主题目录，而不是让用户手动选择目录。
 
 输出 JSON 数组，每项包含：
 - dir: 目录名，简短安全，不含文件名后缀；可复用 existingDirs 中语义匹配的目录名
@@ -734,14 +735,14 @@ graph TD
 4. 如果用户明确说放在不同目录中，不要返回单个总目录。
 5. 目录名应是主题本身，例如 React、Vue、Laravel、Django；不要使用“开发框架 1”这类占位名。
 6. 只输出 JSON，不要解释。` },
-        { role: 'user', content: `已有目录（可复用，不必强制使用）：\n${existingDirs.length > 0 ? existingDirs.map((dir) => `- ${dir}`).join('\n') : '(无)'}\n\n用户请求：\n${params.instruction}` }
-      ], controller.signal)) {
-        if (controller.signal.aborted) break
-        if (chunk.type === 'text') planResult += chunk.content
-        if (chunk.type === 'error') {
-          finishAiTask(windowId, controller)
-          return { success: false, error: chunk.content, batches: [] }
-        }
+          { role: 'user', content: `已有目录（可复用，不必强制使用）：\n${existingDirs.length > 0 ? existingDirs.map((dir) => `- ${dir}`).join('\n') : '(无)'}\n\n用户请求：\n${params.instruction}` }
+        ], controller.signal),
+        { signal: controller.signal }
+      )
+      planResult = text
+      if (errorChunk !== null) {
+        finishAiTask(windowId, controller)
+        return { success: false, error: errorChunk, batches: [] }
       }
     } catch (err: unknown) {
       finishAiTask(windowId, controller)
@@ -791,18 +792,19 @@ graph TD
 
     let planResult = ''
     try {
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: `你是一个笔记规划助手。用户会给你一个主题，请规划需要创建的笔记列表。
+      const { text, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: `你是一个笔记规划助手。用户会给你一个主题，请规划需要创建的笔记列表。
 输出格式为 JSON 数组，每项包含 title（文件标题）和 brief（一句话描述内容方向）。
 重要：title 是纯笔记标题，绝对不要包含目录名、路径前缀或分类前缀（例如不要写"react/Hooks入门"或"reactHooks入门"，直接写"Hooks入门"）。
 只输出 JSON，不要其他文字。示例：
 [{"title":"React Hooks 入门","brief":"介绍 useState、useEffect 等基础 Hook"},{"title":"自定义 Hook","brief":"如何封装可复用的自定义 Hook"}]` },
-        { role: 'user', content: params.instruction }
-      ], controller.signal)) {
-        if (controller.signal.aborted) break
-        if (chunk.type === 'text') planResult += chunk.content
-        if (chunk.type === 'error') { finishAiTask(windowId, controller); return { success: false, error: chunk.content, files: [] } }
-      }
+          { role: 'user', content: params.instruction }
+        ], controller.signal),
+        { signal: controller.signal }
+      )
+      planResult = text
+      if (errorChunk !== null) { finishAiTask(windowId, controller); return { success: false, error: errorChunk, files: [] } }
     } catch (err: unknown) {
       finishAiTask(windowId, controller)
       return { success: false, error: controller.signal.aborted ? '已取消' : getErrorMessage(err), files: [] }
@@ -849,14 +851,14 @@ graph TD
       let noteContent = ''
       const siblingTitles = safeNames.filter((_, j) => j !== i)
       try {
-        for await (const chunk of provider.chatStream([
-          { role: 'system', content: buildGeneratedNoteSystemPrompt() },
-          { role: 'user', content: buildGeneratedNoteUserPrompt(safeNames[i], item.brief, siblingTitles) }
-        ], controller.signal)) {
-          if (controller.signal.aborted) break
-          if (chunk.type === 'text') noteContent += chunk.content
-          if (chunk.type === 'error') break
-        }
+        const { text } = await consumeStream(
+          provider.chatStream([
+            { role: 'system', content: buildGeneratedNoteSystemPrompt() },
+            { role: 'user', content: buildGeneratedNoteUserPrompt(safeNames[i], item.brief, siblingTitles) }
+          ], controller.signal),
+          { signal: controller.signal }
+        )
+        noteContent = text
       } catch { continue }
 
       if (noteContent.trim() && !controller.signal.aborted) {
@@ -891,9 +893,9 @@ graph TD
             return `[${name}]\n${content.slice(0, 500)}`
           }).join('\n\n---\n\n')
 
-          let relResult = ''
-          for await (const chunk of provider.chatStream([
-            { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
+          const { text: relResult } = await consumeStream(
+            provider.chatStream([
+              { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
 
 输出格式为 JSON 数组，每项包含：
 - source: 源笔记标题（必须与给定标题完全一致）
@@ -905,11 +907,10 @@ graph TD
 2. 关系应基于概念相关性、因果关系、层级关系等语义理解
 3. 不要输出自引用（source 和 target 相同）
 4. 只输出 JSON，不要其他文字` },
-            { role: 'user', content: `以下是 ${createdFiles.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
-          ], controller.signal)) {
-            if (controller.signal.aborted) break
-            if (chunk.type === 'text') relResult += chunk.content
-          }
+              { role: 'user', content: `以下是 ${createdFiles.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
+            ], controller.signal),
+            { signal: controller.signal }
+          )
 
           if (relResult.trim()) {
             const relations = extractJsonFromText<{ source: string; target: string; reason: string }[]>(relResult, 'array')
@@ -973,11 +974,11 @@ graph TD
     if (!noteSummaries) return { success: false, error: '无法读取文件内容' }
 
     const provider = aiManager.getProvider(config)
-    let relResult = ''
 
     try {
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
+      const { text: relResult, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
 
 输出格式为 JSON 数组，每项包含：
 - source: 源笔记标题（必须与给定标题完全一致）
@@ -989,12 +990,11 @@ graph TD
 2. 关系应基于概念相关性、因果关系、层级关系、共同主题等语义理解
 3. 不要输出自引用（source 和 target 相同）
 4. 只输出 JSON，不要其他文字` },
-        { role: 'user', content: `以下是 ${filePaths.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
-      ])) {
-        if (window.isDestroyed()) break
-        if (chunk.type === 'text') relResult += chunk.content
-        if (chunk.type === 'error') return { success: false, error: chunk.content || 'AI 返回错误' }
-      }
+          { role: 'user', content: `以下是 ${filePaths.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
+        ]),
+        { window }
+      )
+      if (errorChunk !== null) return { success: false, error: errorChunk || 'AI 返回错误' }
 
       if (!relResult.trim()) return { success: false, error: 'AI 未返回结果' }
 
@@ -3295,14 +3295,13 @@ graph TD
       if (!config || aiManager.validateConfig(config)) return messages
 
       const provider = aiManager.getProvider(config)
-      let summary = ''
-      for await (const chunk of provider.chatStream([
-        { role: 'system', content: '将以下对话历史压缩为结构化摘要。格式：\n[对话摘要]\n主要讨论: ...\n关键信息: ...\n待处理: ...\n\n只输出摘要，不要其他内容。' },
-        { role: 'user', content: oldContent }
-      ])) {
-        if (chunk.type === 'text') summary += chunk.content
-        if (chunk.type === 'error') return messages
-      }
+      const { text: summary, errorChunk } = await consumeStream(
+        provider.chatStream([
+          { role: 'system', content: '将以下对话历史压缩为结构化摘要。格式：\n[对话摘要]\n主要讨论: ...\n关键信息: ...\n待处理: ...\n\n只输出摘要，不要其他内容。' },
+          { role: 'user', content: oldContent }
+        ])
+      )
+      if (errorChunk !== null) return messages
 
       if (!summary.trim()) return messages
 

@@ -44,4 +44,5 @@
 
 | # | 项目 | 状态 | 说明 |
 |---|------|------|------|
-| 19 | CI 质量门（typecheck + test） | ✅ 已完成 | `.github/workflows/ci.yml` 在 push/PR 时跑 `pnpm typecheck` + `pnpm test`（98 测试文件、570 用例），与 `build.yml` 的 tag-only 发版流水线解耦 |
+| 19 | CI 质量门（typecheck + test） | ✅ 已完成 | `.github/workflows/ci.yml` 在 push/PR 时跑 `pnpm typecheck` + `pnpm test`（99 测试文件、577 用例），与 `build.yml` 的 tag-only 发版流水线解耦 |
+| 20 | ai.ipc.ts 流处理模板抽取 | ✅ 已完成 | 新增 `packages/main/src/ipc/streams/consume-stream.ts`，封装 for-await + abort/destroyed check + text/error chunk 处理；14 处重复模板（intent/chat/edit/graph/complete/summarize/flashcards/tags/batch/compact 等）改为一行 `consumeStream(...)` 调用，附 7 个单元测试 |
