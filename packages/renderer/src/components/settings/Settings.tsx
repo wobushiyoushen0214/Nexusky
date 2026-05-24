@@ -210,7 +210,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     >
       <div
         className="animate-scale-in"
-        style={{ width: 760, maxWidth: 'calc(100vw - 40px)', maxHeight: '75vh', background: 'var(--bg-surface)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' } as React.CSSProperties}
+        style={{ width: 760, maxWidth: 'calc(100vw - 40px)', height: 600, maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-surface)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
