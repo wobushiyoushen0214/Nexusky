@@ -39,3 +39,9 @@
 | 16 | 本地配置读取确认 | ✅ 已完成 | 自动检测前弹出 ConfirmModal 告知用户将读取哪些文件 |
 | 17 | DOMPurify 配置加固 | ✅ 已完成 | 禁止 form/iframe/object/embed/script/style 等危险标签和事件属性 |
 | 18 | AI/同步错误边界类型化 | ✅ 已完成 | AI Provider、Agent 工具、Kanban AI、编辑器、图谱、云同步和 preload 显式 `any` 清零，统一 unknown → 用户可读错误消息 |
+
+## 工程基线
+
+| # | 项目 | 状态 | 说明 |
+|---|------|------|------|
+| 19 | CI 质量门（typecheck + test） | ✅ 已完成 | `.github/workflows/ci.yml` 在 push/PR 时跑 `pnpm typecheck` + `pnpm test`（98 测试文件、570 用例），与 `build.yml` 的 tag-only 发版流水线解耦 |

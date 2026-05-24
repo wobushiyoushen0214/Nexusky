@@ -341,6 +341,7 @@ components/ai/
 ### 6.1 [P1] `pnpm audit` 未在 CI
 
 - **建议**：`.github/workflows/build.yml` 增加一个 job 跑 `pnpm audit --prod`，失败仅 warn（不阻塞）；同时加 dependabot 周期更新。
+- **2026-05-24 进展**：质量门基线已在 `.github/workflows/ci.yml` 落地（push/PR 触发，跑 `typecheck` + `test`，详见 OPTIMIZATION.md #19）；`pnpm audit` 与 dependabot 仍待补。
 
 ### 6.2 [P1] electron-builder 未签名
 
