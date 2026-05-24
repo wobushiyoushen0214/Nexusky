@@ -152,7 +152,7 @@ packages/main/src/ipc/ai/
 
 **风险与节奏**：拆分时保持 `executeToolCall` 的 case 顺序不变、保留 stopped check 覆盖率。建议分两个 PR：第一个只提取 `streams/` + `tools/registry.ts`，第二个按域拆 handler。
 
-**2026-05-24 进展**：阶段 1（流模板抽取）见 2.5；阶段 2（`tools/registry.ts` 等价物）已落地——`packages/main/src/ipc/tools/agent-tools.ts` 收纳了 50 项静态 `AGENT_TOOLS` 定义（727 行），`packages/main/src/ipc/tools/execute-tool-call.ts` 收纳了 50+ case 的 `executeToolCall`（含 17 个 normalize/getArg helper 与 `KNOWLEDGE_MAINTENANCE_TYPES`，1484 行）。ai.ipc.ts 当前 1291 行（-63%），主体只剩 IPC 注册 + 流编排 + Agent 调度。`registerAiIPC` 函数中通过 `import { AGENT_TOOLS } from './tools/agent-tools'` 与 `import { executeToolCall } from './tools/execute-tool-call'` 复用。详见 OPTIMIZATION.md #21。剩余工作（按域拆 chat/edit/notes/links/memory/flashcards/provider 等 handler）属阶段 3。
+**2026-05-24 进展**：阶段 1（流模板抽取）见 2.5；阶段 2（`tools/registry.ts` 等价物）已落地——`packages/main/src/ipc/tools/agent-tools.ts` 收纳了 50 项静态 `AGENT_TOOLS` 定义（727 行），`packages/main/src/ipc/tools/execute-tool-call.ts` 收纳了 50+ case 的 `executeToolCall`（含 17 个 normalize/getArg helper 与 `KNOWLEDGE_MAINTENANCE_TYPES`，1484 行）。ai.ipc.ts 当前 1110 行（-68%），主体只剩 IPC 注册 + 流编排 + Agent 调度。`registerAiIPC` 函数中通过 `import { AGENT_TOOLS } from './tools/agent-tools'` 与 `import { executeToolCall } from './tools/execute-tool-call'` 复用。阶段 3 按域拆 handler 进行中：`ai/provider.ts`（10 个 handler）、`ai/text-tools.ts`（summarize/flashcards/suggest-tags 3 个）已落地。详见 OPTIMIZATION.md #21/#22/#23。剩余工作（edit / complete / notes/links/memory 等 handler）属阶段 3 后续步骤。
 
 ### 2.2 [P1] `db.ipc.ts` 941 行：四域混杂
 
