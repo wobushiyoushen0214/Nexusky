@@ -327,10 +327,12 @@ export function AgentRunPanel() {
             reflectResult={reflectResult}
             onSendToKanban={() => {
               const summary = reflectResult
-                ? `Agent run ${reflectResult.goalAchieved ? '已达成' : `部分完成: ${reflectResult.succeededSteps} 成功 / ${reflectResult.failedSteps} 失败`}${reflectResult.suggestions.length > 0 ? `\n\n后续建议:\n- ${reflectResult.suggestions.join('\n- ')}` : ''}`
-                : `来源：Agent 运行 ${detail.run.id}`
+                ? `${reflectResult.goalAchieved
+                    ? t('agent.reflect.kanbanSummaryAchieved')
+                    : t('agent.reflect.kanbanSummaryPartial', { succeeded: reflectResult.succeededSteps, failed: reflectResult.failedSteps })}${reflectResult.suggestions.length > 0 ? `\n\n${t('agent.reflect.kanbanSummarySuggestions')}:\n- ${reflectResult.suggestions.join('\n- ')}` : ''}`
+                : t('agent.reflect.kanbanFallback', { runId: detail.run.id })
               sendToKanban({ title: detail.run.goal, description: summary })
-              toast('已发送到任务看板', 'success')
+              toast(t('agent.reflect.sendToKanbanSuccess'), 'success')
             }}
             t={t}
           />
@@ -488,9 +490,9 @@ function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectRes
               type="button"
               className="agent-run-panel__step-btn"
               onClick={onSendToKanban}
-              title="把此次 Agent 运行的目标作为任务加入看板跟踪后续"
+              title={t('agent.reflect.sendToKanbanTitle')}
             >
-              加入看板跟踪
+              {t('agent.reflect.sendToKanban')}
             </button>
           </div>
         </div>

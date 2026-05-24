@@ -103,6 +103,10 @@
       "archive": "归档",
       "add_alias": "添加别名"
     },
+    "jumps": {
+      "focusInBases": "在属性图层定位",
+      "focusInBasesTitle": "在知识空间属性图层定位此笔记，便于编辑属性后再回来刷新"
+    },
     "confirm": {
       "markDoneTitle": "标记为完成？",
       "markDoneMessage": "将把 {{count}} 项任务标记为完成。",
@@ -169,7 +173,14 @@
       "achieved": "目标已完成",
       "partial": "成功 {{succeeded}} 步，失败 {{failed}} 步",
       "unmet": "未达成的预期",
-      "suggestions": "建议"
+      "suggestions": "建议",
+      "sendToKanban": "加入看板跟踪",
+      "sendToKanbanTitle": "把此次 Agent 运行的目标作为任务加入看板跟踪后续",
+      "sendToKanbanSuccess": "已发送到任务看板",
+      "kanbanSummaryAchieved": "Agent run 已达成",
+      "kanbanSummaryPartial": "Agent run 部分完成：{{succeeded}} 成功 / {{failed}} 失败",
+      "kanbanSummarySuggestions": "后续建议",
+      "kanbanFallback": "来源：Agent 运行 {{runId}}"
     },
     "errors": {
       "goalRequired": "请填写任务目标"

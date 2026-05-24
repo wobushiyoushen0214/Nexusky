@@ -218,3 +218,65 @@ describe('ui store workspace widths', () => {
     })
   })
 })
+
+describe('ui store cross-feature jumps', () => {
+  beforeEach(() => {
+    installLocalStorageMock()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('sendToAgent stashes pending goal and opens the agent panel', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setMainView('kanban')
+    store.sendToAgent({ goal: 'Refactor splash screen', description: 'priority: high' })
+
+    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().rightPanel).toBe('agent')
+    expect(useUIStore.getState().pendingAgentGoal).toEqual({
+      goal: 'Refactor splash screen',
+      description: 'priority: high'
+    })
+
+    const consumed = useUIStore.getState().consumePendingAgentGoal()
+    expect(consumed).toEqual({ goal: 'Refactor splash screen', description: 'priority: high' })
+    expect(useUIStore.getState().pendingAgentGoal).toBeNull()
+    expect(useUIStore.getState().consumePendingAgentGoal()).toBeNull()
+  })
+
+  it('sendToKanban stashes pending task and switches to kanban view', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.sendToKanban({ title: 'Polish onboarding', description: 'from agent reflect' })
+
+    expect(useUIStore.getState().mainView).toBe('kanban')
+    expect(useUIStore.getState().pendingKanbanTask).toEqual({
+      title: 'Polish onboarding',
+      description: 'from agent reflect'
+    })
+
+    const consumed = useUIStore.getState().consumePendingKanbanTask()
+    expect(consumed).toEqual({ title: 'Polish onboarding', description: 'from agent reflect' })
+    expect(useUIStore.getState().pendingKanbanTask).toBeNull()
+  })
+
+  it('focusInBases stashes file path and switches to bases view', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.focusInBases('Daily/2026/2026-05-24.md')
+
+    expect(useUIStore.getState().mainView).toBe('bases')
+    expect(useUIStore.getState().pendingBasesFocus).toEqual({ filePath: 'Daily/2026/2026-05-24.md' })
+
+    const consumed = useUIStore.getState().consumePendingBasesFocus()
+    expect(consumed).toEqual({ filePath: 'Daily/2026/2026-05-24.md' })
+    expect(useUIStore.getState().pendingBasesFocus).toBeNull()
+  })
+})

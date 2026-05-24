@@ -199,9 +199,9 @@ function MaintenanceItemCard({ item, onAction, onFocusInBases }: MaintenanceItem
           type="button"
           className="maintenance-card__btn"
           onClick={onFocusInBases}
-          title="在知识空间属性图层定位此笔记，便于编辑属性后再回来刷新"
+          title={t('maintenance.jumps.focusInBasesTitle')}
         >
-          在属性图层定位
+          {t('maintenance.jumps.focusInBases')}
         </button>
       </div>
     </div>

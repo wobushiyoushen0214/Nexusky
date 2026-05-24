@@ -103,6 +103,10 @@
       "archive": "Archive",
       "add_alias": "Add Alias"
     },
+    "jumps": {
+      "focusInBases": "Locate in Bases",
+      "focusInBasesTitle": "Open the Bases property layer focused on this note so you can edit properties, then come back to refresh."
+    },
     "confirm": {
       "markDoneTitle": "Mark as done?",
       "markDoneMessage": "{{count}} task(s) will be marked as done.",
@@ -169,7 +173,14 @@
       "achieved": "Goal achieved",
       "partial": "{{succeeded}} step(s) succeeded, {{failed}} failed",
       "unmet": "Unmet expectations",
-      "suggestions": "Suggestions"
+      "suggestions": "Suggestions",
+      "sendToKanban": "Send to Kanban",
+      "sendToKanbanTitle": "Track follow-up on this agent run by creating a Kanban task from its goal.",
+      "sendToKanbanSuccess": "Sent to Kanban",
+      "kanbanSummaryAchieved": "Agent run completed.",
+      "kanbanSummaryPartial": "Agent run partial: {{succeeded}} ok / {{failed}} failed",
+      "kanbanSummarySuggestions": "Follow-up suggestions",
+      "kanbanFallback": "Source: agent run {{runId}}"
     },
     "errors": {
       "goalRequired": "Goal is required"
