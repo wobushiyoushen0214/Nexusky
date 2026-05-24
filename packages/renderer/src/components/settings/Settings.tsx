@@ -210,7 +210,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     >
       <div
         className="animate-scale-in"
-        style={{ width: 520, maxHeight: '75vh', background: 'var(--bg-surface)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' } as React.CSSProperties}
+        style={{ width: 760, maxWidth: 'calc(100vw - 40px)', maxHeight: '75vh', background: 'var(--bg-surface)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -226,32 +226,44 @@ export function Settings({ open, onClose }: SettingsProps) {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', padding: '0 20px' }}>
-          {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive', 'long-context'] as Tab[]).map((tabId) => (
-            <button
-              key={tabId}
-              onClick={() => setTab(tabId)}
-              style={{
-                padding: '10px 16px',
-                fontSize: 13,
-                fontWeight: 500,
-                color: tab === tabId ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: tab === tabId ? '2px solid var(--accent)' : '2px solid transparent',
-                cursor: 'pointer',
-                marginBottom: -1,
-                transition: 'color 150ms',
-              }}
-            >
-              {t(`settings.tabs.${tabId}`)}
-            </button>
-          ))}
-        </div>
+        {/* Body: sidebar + content */}
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          {/* Sidebar */}
+          <nav style={{ width: 180, flexShrink: 0, padding: '12px 8px', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+            {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive', 'long-context'] as Tab[]).map((tabId) => {
+              const active = tab === tabId
+              return (
+                <button
+                  key={tabId}
+                  onClick={() => setTab(tabId)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    fontSize: 13,
+                    fontWeight: active ? 600 : 500,
+                    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    background: active ? 'var(--accent-muted, rgba(124,110,240,0.14))' : 'transparent',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    transition: 'background 120ms, color 120ms',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-elevated, rgba(255,255,255,0.04))'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                  }}
+                >
+                  {t(`settings.tabs.${tabId}`)}
+                </button>
+              )
+            })}
+          </nav>
 
-        {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 24px' }}>
+          {/* Content */}
+          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '20px 24px 24px' }}>
           {tab === 'appearance' && (
             <AppearanceTab />
           )}
@@ -364,6 +376,7 @@ export function Settings({ open, onClose }: SettingsProps) {
           {tab === 'proactive' && <ProactivePreferencesTab />}
 
           {tab === 'long-context' && <LongContextDebugPanel />}
+          </div>
         </div>
       </div>
       {/* Provider edit modal */}
