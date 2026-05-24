@@ -205,6 +205,20 @@
       "cold": "Cold",
       "dropped": "Dropped"
     },
+    "packItem": {
+      "confidence": "置信",
+      "score": "评分"
+    },
+    "counts": {
+      "shown": "展示",
+      "opened": "已打开",
+      "useful": "有用",
+      "relations": "关系",
+      "themes": "主题"
+    },
+    "trend": {
+      "vsPrior": "近 {{window}} 天 vs 前 {{window}} 天"
+    },
     "droppedReason": {
       "exceeded_token_budget": "超出 token 预算"
     },

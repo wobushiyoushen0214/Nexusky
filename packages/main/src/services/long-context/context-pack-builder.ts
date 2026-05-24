@@ -76,7 +76,7 @@ export const LONG_CONTEXT_SYSTEM_GUARD = [
 export function buildLongContextPack(params: BuildLongContextPackParams): LongContextPack {
   const db = getDatabase(params.vaultPath)
   const prefs = getLongContextPrefs()
-  const tokenBudget = Math.max(200, Math.min(params.tokenBudget ?? prefs.tokenBudget, 4000))
+  const tokenBudget = Math.max(200, Math.min(params.tokenBudget ?? prefs.tokenBudget, 8000))
   const hotLimit = Math.max(1, Math.min(params.hotLimit ?? prefs.hotLimit, 10))
   const warmLimit = Math.max(1, Math.min(params.warmLimit ?? prefs.warmLimit, 10))
   const coldLimit = Math.max(1, Math.min(params.coldLimit ?? prefs.coldLimit, 10))

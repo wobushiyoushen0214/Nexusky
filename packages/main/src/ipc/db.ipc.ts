@@ -930,7 +930,7 @@ export function registerDbIPC(): void {
     ensureNonEmptyString(params?.vaultPath, 'long-context:inspect-pack.vaultPath')
     const currentFilePath = ensureOptionalBoundedString(params?.currentFilePath ?? undefined, 'long-context:inspect-pack.currentFilePath', MAX_PATH_LENGTH)
     const tokenBudget = typeof params?.tokenBudget === 'number' && Number.isFinite(params.tokenBudget)
-      ? Math.max(200, Math.min(Math.round(params.tokenBudget), 4000))
+      ? Math.max(200, Math.min(Math.round(params.tokenBudget), 8000))
       : undefined
     const pack = buildLongContextPack({
       vaultPath: params.vaultPath,

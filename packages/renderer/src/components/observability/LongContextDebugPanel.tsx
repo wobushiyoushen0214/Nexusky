@@ -66,7 +66,7 @@ export function LongContextDebugPanel() {
     if (!prefs) return
     const defaults: LongContextUserPrefs = {
       confidenceThreshold: 0.65,
-      tokenBudget: 1200,
+      tokenBudget: 3000,
       hotRatio: 0.5,
       warmRatio: 0.3,
       coldRatio: 0.2,
@@ -157,7 +157,7 @@ export function LongContextDebugPanel() {
         )}
         {metrics && (
           <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text-tertiary)' }}>
-            shown {metrics.counts.suggestionShown} · opened {metrics.counts.suggestionOpened} · useful {metrics.counts.suggestionUseful} · relations {metrics.counts.relationCreated} · themes {metrics.counts.themeCreated}
+            {t('longContextDebug.counts.shown')} {metrics.counts.suggestionShown} · {t('longContextDebug.counts.opened')} {metrics.counts.suggestionOpened} · {t('longContextDebug.counts.useful')} {metrics.counts.suggestionUseful} · {t('longContextDebug.counts.relations')} {metrics.counts.relationCreated} · {t('longContextDebug.counts.themes')} {metrics.counts.themeCreated}
           </div>
         )}
       </div>
@@ -169,7 +169,7 @@ export function LongContextDebugPanel() {
         ) : (
           <>
             <SliderRow label={t('longContextDebug.pref.confidenceThreshold')} value={draftPrefs.confidenceThreshold} min={0} max={1} step={0.01} fixed={2} onChange={(v) => setDraftPrefs({ ...draftPrefs, confidenceThreshold: v })} />
-            <SliderRow label={t('longContextDebug.pref.tokenBudget')} value={draftPrefs.tokenBudget} min={200} max={4000} step={50} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, tokenBudget: v })} />
+            <SliderRow label={t('longContextDebug.pref.tokenBudget')} value={draftPrefs.tokenBudget} min={200} max={8000} step={100} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, tokenBudget: v })} />
             <SliderRow label={t('longContextDebug.pref.decayHalfLifeDays')} value={draftPrefs.decayHalfLifeDays} min={30} max={365} step={5} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, decayHalfLifeDays: v })} />
             <SliderRow label={t('longContextDebug.pref.topN')} value={draftPrefs.topN} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, topN: v })} />
             <SliderRow label={t('longContextDebug.pref.hotLimit')} value={draftPrefs.hotLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, hotLimit: v })} />
@@ -201,8 +201,8 @@ function PackItemCard({ item }: { item: LongContextPackItemPayload }) {
       <div className="long-context-debug-panel__pack-item-title">{item.title}</div>
       <div className="long-context-debug-panel__pack-item-meta">
         {item.relationType && <span>{item.relationType} · </span>}
-        {typeof item.confidence === 'number' && <span>conf {Math.round(item.confidence * 100)}% · </span>}
-        {typeof item.score === 'number' && <span>score {item.score.toFixed(2)}</span>}
+        {typeof item.confidence === 'number' && <span>{t('longContextDebug.packItem.confidence')} {Math.round(item.confidence * 100)}% · </span>}
+        {typeof item.score === 'number' && <span>{t('longContextDebug.packItem.score')} {item.score.toFixed(2)}</span>}
         {item.droppedReason && <span> · {t(`longContextDebug.droppedReason.${item.droppedReason}`)}</span>}
       </div>
       {item.reason && <div className="long-context-debug-panel__pack-item-reason">{item.reason}</div>}
@@ -238,15 +238,18 @@ function MetricCard({
     <div className="long-context-debug-panel__metric">
       <div className="long-context-debug-panel__metric-header">
         <div className="long-context-debug-panel__metric-value">{pct}%</div>
-        {trend && (
-          <span
-            className={`long-context-debug-panel__metric-trend ${trend.className}`}
-            title={trend.title}
-            aria-label={trend.title}
-          >
-            {trend.text}
-          </span>
-        )}
+        {trend && (() => {
+          const trendTitle = `${trend.deltaText} · ${t('longContextDebug.trend.vsPrior', { window: trend.window })}`
+          return (
+            <span
+              className={`long-context-debug-panel__metric-trend ${trend.className}`}
+              title={trendTitle}
+              aria-label={trendTitle}
+            >
+              {trend.text}
+            </span>
+          )
+        })()}
       </div>
       <div className="long-context-debug-panel__metric-label">{label}</div>
       <div className="long-context-debug-panel__metric-spark">
@@ -259,7 +262,8 @@ function MetricCard({
 interface TrendInfo {
   text: string
   className: string
-  title: string
+  window: number
+  deltaText: string
 }
 
 function computeTrend(rateSeries: number[], shownSeries: number[], polarity: MetricPolarity): TrendInfo | null {
@@ -280,18 +284,19 @@ function computeTrend(rateSeries: number[], shownSeries: number[], polarity: Met
   const deltaPP = (recentWeighted - olderWeighted) * 100
 
   if (Math.abs(deltaPP) < 0.5) {
-    return { text: '→', className: '', title: `±0pp · ${window}d vs prior ${window}d` }
+    return { text: '→', className: '', window, deltaText: '±0pp' }
   }
 
   const rising = deltaPP > 0
   const isBetter = (polarity === 'higherIsBetter') === rising
   const arrow = rising ? '↑' : '↓'
   const text = `${arrow}${Math.abs(deltaPP).toFixed(1)}pp`
-  const title = `${arrow} ${Math.abs(deltaPP).toFixed(1)}pp · ${window}d vs prior ${window}d`
+  const deltaText = `${arrow} ${Math.abs(deltaPP).toFixed(1)}pp`
   return {
     text,
     className: isBetter ? 'is-up' : 'is-down-bad',
-    title
+    window,
+    deltaText
   }
 }
 

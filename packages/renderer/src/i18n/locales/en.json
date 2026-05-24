@@ -205,6 +205,20 @@
       "cold": "Cold",
       "dropped": "Dropped"
     },
+    "packItem": {
+      "confidence": "conf",
+      "score": "score"
+    },
+    "counts": {
+      "shown": "shown",
+      "opened": "opened",
+      "useful": "useful",
+      "relations": "relations",
+      "themes": "themes"
+    },
+    "trend": {
+      "vsPrior": "{{window}}d vs prior {{window}}d"
+    },
     "droppedReason": {
       "exceeded_token_budget": "exceeded token budget"
     },

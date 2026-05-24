@@ -16,7 +16,7 @@ export interface LongContextUserPrefs {
 
 export const DEFAULT_LONG_CONTEXT_PREFS: LongContextUserPrefs = Object.freeze({
   confidenceThreshold: 0.65,
-  tokenBudget: 1200,
+  tokenBudget: 3000,
   hotRatio: 0.5,
   warmRatio: 0.3,
   coldRatio: 0.2,
@@ -32,7 +32,7 @@ const STORE_KEY = 'longContextUserPrefs'
 
 const CLAMPS: Record<keyof LongContextUserPrefs, { min: number; max: number; integer?: boolean }> = {
   confidenceThreshold: { min: 0, max: 1 },
-  tokenBudget: { min: 200, max: 4000, integer: true },
+  tokenBudget: { min: 200, max: 8000, integer: true },
   hotRatio: { min: 0, max: 1 },
   warmRatio: { min: 0, max: 1 },
   coldRatio: { min: 0, max: 1 },
