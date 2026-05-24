@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
 import type {
@@ -140,6 +141,7 @@ export function MaintenanceQueuePanel() {
               }
               void runFix(item, action)
             }}
+            onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
           />
         ))}
       </div>
@@ -167,9 +169,10 @@ export function MaintenanceQueuePanel() {
 interface MaintenanceItemCardProps {
   item: KnowledgeMaintenanceItem
   onAction: (action: MaintenanceApplyAction) => void
+  onFocusInBases: () => void
 }
 
-function MaintenanceItemCard({ item, onAction }: MaintenanceItemCardProps) {
+function MaintenanceItemCard({ item, onAction, onFocusInBases }: MaintenanceItemCardProps) {
   const { t } = useTranslation()
   const actions = ACTIONS_BY_TYPE[item.type] || ['open_note']
   return (
@@ -192,6 +195,14 @@ function MaintenanceItemCard({ item, onAction }: MaintenanceItemCardProps) {
             {t(`maintenance.actions.${action}`)}
           </button>
         ))}
+        <button
+          type="button"
+          className="maintenance-card__btn"
+          onClick={onFocusInBases}
+          title="在知识空间属性图层定位此笔记，便于编辑属性后再回来刷新"
+        >
+          在属性图层定位
+        </button>
       </div>
     </div>
   )

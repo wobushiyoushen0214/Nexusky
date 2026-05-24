@@ -48,6 +48,7 @@ interface UIState {
   language: Language
   pendingAgentGoal: { goal: string; description?: string } | null
   pendingKanbanTask: { title: string; description?: string } | null
+  pendingBasesFocus: { filePath: string } | null
   setRightPanel: (panel: Panel) => void
   toggleRightPanel: (panel: Panel) => void
   setMainView: (view: MainView) => void
@@ -75,6 +76,8 @@ interface UIState {
   consumePendingAgentGoal: () => { goal: string; description?: string } | null
   sendToKanban: (payload: { title: string; description?: string }) => void
   consumePendingKanbanTask: () => { title: string; description?: string } | null
+  focusInBases: (filePath: string) => void
+  consumePendingBasesFocus: () => { filePath: string } | null
 }
 
 function getInitialTheme(): Theme {
@@ -281,6 +284,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
   pendingAgentGoal: null,
   pendingKanbanTask: null,
+  pendingBasesFocus: null,
 
   setRightPanel: (panel) => {
     if (!isRightPanelAvailable(get().mainView, panel)) return
@@ -417,6 +421,19 @@ export const useUIStore = create<UIState>((set, get) => ({
   consumePendingKanbanTask: () => {
     const pending = get().pendingKanbanTask
     if (pending) set({ pendingKanbanTask: null })
+    return pending
+  },
+  focusInBases: (filePath) => {
+    const layout = saveWorkspaceLayout(get().workspaceScope, { mainView: 'bases' })
+    set({
+      pendingBasesFocus: { filePath },
+      mainView: layout.mainView,
+      rightPanel: layout.rightPanel
+    })
+  },
+  consumePendingBasesFocus: () => {
+    const pending = get().pendingBasesFocus
+    if (pending) set({ pendingBasesFocus: null })
     return pending
   },
 }))

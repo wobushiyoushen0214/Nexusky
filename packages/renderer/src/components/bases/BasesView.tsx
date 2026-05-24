@@ -48,8 +48,10 @@ export function BasesView() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const setMainView = useUIStore((s) => s.setMainView)
+  const consumePendingBasesFocus = useUIStore((s) => s.consumePendingBasesFocus)
   const [rows, setRows] = useState<PropertyTableRow[]>([])
   const [query, setQuery] = useState('')
+  const [highlightedFilePath, setHighlightedFilePath] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt')
   const [selectedTag, setSelectedTag] = useState('')
   const [loading, setLoading] = useState(false)
@@ -89,6 +91,17 @@ export function BasesView() {
     const validSaved = Array.isArray(saved.keys) ? saved.keys.filter((key) => allPropertyKeys.includes(key)) : null
     setSelectedPropertyKeys(validSaved ?? allPropertyKeys.slice(0, 8))
   }, [vaultPath, allPropertyKeys.join('\n')])
+
+  useEffect(() => {
+    if (rows.length === 0) return
+    const pending = consumePendingBasesFocus()
+    if (!pending) return
+    const filename = pending.filePath.split('/').pop()?.replace(/\.md$/, '') || pending.filePath
+    setQuery(filename)
+    setHighlightedFilePath(pending.filePath)
+    const tid = setTimeout(() => setHighlightedFilePath(null), 3000)
+    return () => clearTimeout(tid)
+  }, [rows.length, consumePendingBasesFocus])
 
   const propertyKeys = useMemo(() => {
     const selected = new Set(selectedPropertyKeys)
@@ -289,6 +302,7 @@ export function BasesView() {
                   propertyKeys={propertyKeys}
                   editHint={t('bases.editHint')}
                   editing={editing}
+                  highlighted={highlightedFilePath === row.filePath}
                   onOpen={() => void openRow(row)}
                   onEdit={(key, list) => startEdit(row, key, list)}
                   onChange={(value) => setEditing(editing ? { ...editing, value } : editing)}
@@ -318,6 +332,7 @@ function PropertyNoteCard({
   propertyKeys,
   editHint,
   editing,
+  highlighted,
   onOpen,
   onEdit,
   onChange,
@@ -328,6 +343,7 @@ function PropertyNoteCard({
   propertyKeys: string[]
   editHint: string
   editing: EditState
+  highlighted: boolean
   onOpen: () => void
   onEdit: (key: string, list: boolean) => void
   onChange: (value: string) => void
@@ -340,7 +356,18 @@ function PropertyNoteCard({
     .slice(0, 6)
 
   return (
-    <article style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(240px, 0.75fr)', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+    <article
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.25fr) minmax(240px, 0.75fr)',
+        gap: 16,
+        padding: '14px 0',
+        borderBottom: '1px solid var(--border-subtle)',
+        background: highlighted ? 'color-mix(in srgb, var(--accent-muted) 35%, transparent)' : 'transparent',
+        transition: 'background 0.3s ease',
+        borderRadius: highlighted ? 6 : 0
+      }}
+    >
       <div style={{ minWidth: 0 }}>
         <button onClick={onOpen} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontSize: 15, lineHeight: 1.35, fontWeight: 720, cursor: 'pointer', textAlign: 'left', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {row.title}
