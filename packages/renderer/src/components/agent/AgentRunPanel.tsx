@@ -9,6 +9,7 @@ import type {
   AgentStepUpdateEvent
 } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
+import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import './agent.css'
 
@@ -22,6 +23,8 @@ type Stage = 'idle' | 'goal' | 'plan' | 'execute'
 export function AgentRunPanel() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const consumePendingAgentGoal = useUIStore((s) => s.consumePendingAgentGoal)
+  const sendToKanban = useUIStore((s) => s.sendToKanban)
   const [stage, setStage] = useState<Stage>('idle')
   const [goal, setGoal] = useState('')
   const [description, setDescription] = useState('')
@@ -49,6 +52,15 @@ export function AgentRunPanel() {
     if (!vaultPath) return
     void refreshHistory()
   }, [vaultPath, refreshHistory])
+
+  useEffect(() => {
+    if (stage !== 'idle') return
+    const pending = consumePendingAgentGoal()
+    if (!pending) return
+    setGoal(pending.goal)
+    setDescription(pending.description || '')
+    setStage('goal')
+  }, [stage, consumePendingAgentGoal])
 
   useEffect(() => {
     if (!runId) return
@@ -313,6 +325,13 @@ export function AgentRunPanel() {
             onSkip={skipStep}
             onRollback={rollbackStep}
             reflectResult={reflectResult}
+            onSendToKanban={() => {
+              const summary = reflectResult
+                ? `Agent run ${reflectResult.goalAchieved ? '已达成' : `部分完成: ${reflectResult.succeededSteps} 成功 / ${reflectResult.failedSteps} 失败`}${reflectResult.suggestions.length > 0 ? `\n\n后续建议:\n- ${reflectResult.suggestions.join('\n- ')}` : ''}`
+                : `来源：Agent 运行 ${detail.run.id}`
+              sendToKanban({ title: detail.run.goal, description: summary })
+              toast('已发送到任务看板', 'success')
+            }}
             t={t}
           />
         )}
@@ -433,10 +452,11 @@ interface ExecuteViewProps {
   onSkip: (stepIndex: number) => void
   onRollback: (stepIndex: number) => void
   reflectResult: AgentReflectResult | null
+  onSendToKanban: () => void
   t: ReturnType<typeof useTranslation>['t']
 }
 
-function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectResult, t }: ExecuteViewProps) {
+function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectResult, onSendToKanban, t }: ExecuteViewProps) {
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
@@ -463,6 +483,16 @@ function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectRes
               </ul>
             </div>
           )}
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              className="agent-run-panel__step-btn"
+              onClick={onSendToKanban}
+              title="把此次 Agent 运行的目标作为任务加入看板跟踪后续"
+            >
+              加入看板跟踪
+            </button>
+          </div>
         </div>
       )}
       {stepRows.map((step) => (

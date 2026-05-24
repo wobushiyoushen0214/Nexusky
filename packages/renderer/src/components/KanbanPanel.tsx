@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
+import { useUIStore } from '../stores/ui-store'
 import { toast } from '../stores/toast-store'
 import { getErrorMessage, isCancellationError } from '../utils/errors'
 import type { KanbanAiPlan, KanbanColumn, KanbanRelation, KanbanTask } from '@shared/types/ipc'
@@ -38,6 +39,8 @@ export function KanbanPanel() {
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const currentContent = useEditorStore((s) => s.content)
   const openFile = useEditorStore((s) => s.openFile)
+  const sendToAgent = useUIStore((s) => s.sendToAgent)
+  const consumePendingKanbanTask = useUIStore((s) => s.consumePendingKanbanTask)
   const [columns, setColumns] = useState<KanbanColumn[]>([])
   const [tasks, setTasks] = useState<KanbanTask[]>([])
   const [relations, setRelations] = useState<KanbanRelation[]>([])
@@ -91,6 +94,31 @@ export function KanbanPanel() {
       setNewTaskColumnId(columns[0].id)
     }
   }, [columns, newTaskColumnId])
+
+  useEffect(() => {
+    if (!vaultPath || columns.length === 0) return
+    const pending = consumePendingKanbanTask()
+    if (!pending) return
+    const targetColumnId = columns[0].id
+    const id = crypto.randomUUID()
+    void (async () => {
+      try {
+        await window.api.invoke('kanban:create-task', {
+          vaultPath,
+          id,
+          columnId: targetColumnId,
+          title: pending.title,
+          description: pending.description,
+          priority: 1
+        })
+        await loadBoard()
+        setSelectedTaskId(id)
+        toast('已加入看板跟踪', 'success')
+      } catch (err) {
+        toast(getErrorMessage(err), 'error')
+      }
+    })()
+  }, [vaultPath, columns, consumePendingKanbanTask])
 
   const loadBoard = async (showSkeleton = false) => {
     if (!vaultPath) return
@@ -601,6 +629,19 @@ export function KanbanPanel() {
             <div style={detailActionRowStyle}>
               <button onClick={handleSaveDetail} style={primaryButtonStyle}>保存</button>
               <button onClick={handleBreakdown} disabled={busy === 'breakdown'} style={toolbarButtonStyle}>{busy === 'breakdown' ? '拆解中' : 'AI 拆解'}</button>
+              <button
+                onClick={() => {
+                  sendToAgent({
+                    goal: selectedTask.title,
+                    description: selectedTask.description || undefined
+                  })
+                  toast('已将任务发送到 Agent', 'info')
+                }}
+                style={toolbarButtonStyle}
+                title="把此任务作为目标交给 Agent 规划并执行"
+              >
+                交给 Agent
+              </button>
               {!selectedTask.sourceFilePath && <button onClick={handleDeleteTask} style={dangerButtonStyle}>删除</button>}
             </div>
 

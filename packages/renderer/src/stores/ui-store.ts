@@ -46,6 +46,8 @@ interface UIState {
   theme: Theme
   accentColor: string | null
   language: Language
+  pendingAgentGoal: { goal: string; description?: string } | null
+  pendingKanbanTask: { title: string; description?: string } | null
   setRightPanel: (panel: Panel) => void
   toggleRightPanel: (panel: Panel) => void
   setMainView: (view: MainView) => void
@@ -69,6 +71,10 @@ interface UIState {
   toggleTheme: () => void
   setLanguage: (lang: Language) => void
   resetWorkspaceLayout: () => void
+  sendToAgent: (payload: { goal: string; description?: string }) => void
+  consumePendingAgentGoal: () => { goal: string; description?: string } | null
+  sendToKanban: (payload: { title: string; description?: string }) => void
+  consumePendingKanbanTask: () => { title: string; description?: string } | null
 }
 
 function getInitialTheme(): Theme {
@@ -273,6 +279,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   theme: initialTheme,
   accentColor: initialAccentColor,
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
+  pendingAgentGoal: null,
+  pendingKanbanTask: null,
 
   setRightPanel: (panel) => {
     if (!isRightPanelAvailable(get().mainView, panel)) return
@@ -379,5 +387,36 @@ export const useUIStore = create<UIState>((set, get) => ({
       rightPanelWidth: 360,
       focusMode: false
     })
+  },
+  sendToAgent: (payload) => {
+    const view = get().mainView
+    const layout = saveWorkspaceLayout(get().workspaceScope, {
+      mainView: view === 'kanban' ? 'editor' : view,
+      rightPanel: 'agent'
+    })
+    set({
+      pendingAgentGoal: { goal: payload.goal, description: payload.description },
+      mainView: layout.mainView,
+      rightPanel: layout.rightPanel,
+      rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel)
+    })
+  },
+  consumePendingAgentGoal: () => {
+    const pending = get().pendingAgentGoal
+    if (pending) set({ pendingAgentGoal: null })
+    return pending
+  },
+  sendToKanban: (payload) => {
+    const layout = saveWorkspaceLayout(get().workspaceScope, { mainView: 'kanban' })
+    set({
+      pendingKanbanTask: { title: payload.title, description: payload.description },
+      mainView: layout.mainView,
+      rightPanel: layout.rightPanel
+    })
+  },
+  consumePendingKanbanTask: () => {
+    const pending = get().pendingKanbanTask
+    if (pending) set({ pendingKanbanTask: null })
+    return pending
   },
 }))
