@@ -44,13 +44,13 @@ describe('tool-surface registry', () => {
   it('every tool name is a case in executeToolCall', async () => {
     const fs = await import('fs')
     const path = await import('path')
-    const aiIpcSource = fs.readFileSync(
-      path.join(process.cwd(), 'packages/main/src/ipc/ai.ipc.ts'),
+    const source = fs.readFileSync(
+      path.join(process.cwd(), 'packages/main/src/ipc/tools/execute-tool-call.ts'),
       'utf-8'
     )
     for (const entry of TOOL_SURFACE_REGISTRY) {
       const needle = `case '${entry.name}':`
-      expect(aiIpcSource.includes(needle), `${entry.name} missing from executeToolCall`).toBe(true)
+      expect(source.includes(needle), `${entry.name} missing from executeToolCall`).toBe(true)
     }
   })
 
