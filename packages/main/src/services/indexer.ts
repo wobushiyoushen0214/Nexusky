@@ -4,7 +4,7 @@ import { basename, join, relative } from 'path'
 import type Database from 'better-sqlite3'
 import { getDatabase } from './database'
 import matter from 'gray-matter'
-import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
+import type { GraphData, GraphEdge, GraphEdgeLinkType, GraphMode, GraphNode, PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
 import { invalidateVaultQueryCache } from './db-query-cache'
 
@@ -385,14 +385,13 @@ export function getOutgoingUnlinkedMentions(vaultPath: string, noteId: string): 
   return mentions
 }
 
-export function getGraphData(vaultPath: string): { nodes: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }[]; edges: { source: string; target: string }[] } {
+export function getGraphData(vaultPath: string, mode: GraphMode = 'folder'): GraphData {
   const db = getDatabase(vaultPath)
   const notes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
   const aliases = db.prepare('SELECT note_id, alias FROM note_aliases').all() as { note_id: string; alias: string }[]
 
   const noteIds = new Set(notes.map((n) => n.id))
 
-  // Build titleToId with collision detection — ambiguous titles are excluded
   const titleToId = new Map<string, string>()
   const ambiguousTitles = new Set<string>()
   for (const n of notes) {
@@ -423,21 +422,40 @@ export function getGraphData(vaultPath: string): { nodes: { id: string; title: s
   }
   for (const t of ambiguousTitles) titleToId.delete(t)
 
-  // Prefer resolved target_note_id; fall back to titleToId only for unresolved links
-  const links = db.prepare('SELECT source_note_id, target_note_id, target_title FROM links').all() as { source_note_id: string; target_note_id: string | null; target_title: string }[]
+  // semantic / folder modes consume both explicit and inferred links; connection drops inferred.
+  const includeInferred = mode === 'semantic'
+  const linkRows = (includeInferred
+    ? db.prepare('SELECT source_note_id, target_note_id, target_title, link_type FROM links')
+    : db.prepare("SELECT source_note_id, target_note_id, target_title, link_type FROM links WHERE link_type = 'explicit'")
+  ).all() as { source_note_id: string; target_note_id: string | null; target_title: string; link_type: string }[]
+
   const edgeSet = new Set<string>()
-  const edges: { source: string; target: string }[] = []
-  for (const l of links) {
+  const edges: GraphEdge[] = []
+  const noteEdgeNodeIds = new Set<string>()
+  for (const l of linkRows) {
     const targetId = (l.target_note_id && noteIds.has(l.target_note_id)) ? l.target_note_id : titleToId.get(l.target_title)
-    if (targetId && targetId !== l.source_note_id) {
-      const key = `${l.source_note_id}->${targetId}`
-      if (!edgeSet.has(key)) {
-        edgeSet.add(key)
-        edges.push({ source: l.source_note_id, target: targetId })
-      }
-    }
+    if (!targetId || targetId === l.source_note_id) continue
+    const key = `${l.source_note_id}->${targetId}->${l.link_type}`
+    if (edgeSet.has(key)) continue
+    edgeSet.add(key)
+    const linkType: GraphEdgeLinkType = l.link_type === 'inferred' ? 'inferred' : 'explicit'
+    edges.push({ source: l.source_note_id, target: targetId, linkType })
+    noteEdgeNodeIds.add(l.source_note_id)
+    noteEdgeNodeIds.add(targetId)
   }
 
+  if (mode === 'connection') {
+    const connectedNotes = notes.filter((n) => noteEdgeNodeIds.has(n.id))
+    const fileNodes: GraphNode[] = connectedNotes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path, type: 'file' }))
+    return { nodes: fileNodes, edges }
+  }
+
+  if (mode === 'semantic') {
+    const fileNodes: GraphNode[] = notes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path, type: 'file' }))
+    return { nodes: fileNodes, edges }
+  }
+
+  // folder mode: include folder nodes + folder→file edges
   const folderMap = new Map<string, string>()
   for (const n of notes) {
     const parts = n.file_path.split('/')
@@ -449,11 +467,11 @@ export function getGraphData(vaultPath: string): { nodes: { id: string; title: s
     }
   }
 
-  const folderNodes = Array.from(folderMap.entries()).map(([path, id]) => ({
+  const folderNodes: GraphNode[] = Array.from(folderMap.entries()).map(([path, id]) => ({
     id,
     title: path.split('/').pop() || path,
     filePath: path,
-    type: 'folder' as const,
+    type: 'folder',
   }))
 
   for (const n of notes) {
@@ -462,12 +480,12 @@ export function getGraphData(vaultPath: string): { nodes: { id: string; title: s
       const folder = parts.slice(0, -1).join('/')
       const folderId = folderMap.get(folder)
       if (folderId) {
-        edges.push({ source: folderId, target: n.id })
+        edges.push({ source: folderId, target: n.id, linkType: 'folder' })
       }
     }
   }
 
-  const fileNodes = notes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path, type: 'file' as const }))
+  const fileNodes: GraphNode[] = notes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path, type: 'file' }))
 
   return { nodes: [...folderNodes, ...fileNodes], edges }
 }

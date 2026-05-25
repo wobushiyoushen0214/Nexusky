@@ -15,6 +15,7 @@ import { collectMarkdownFiles, indexVault, type VaultIndexProgress, type VaultIn
 import { getCachedVaultQuery } from '../services/db-query-cache'
 import { ensureBoundedString, ensureNonEmptyString, ensureOptionalBoundedString, MAX_DESCRIPTION_LENGTH, MAX_PATH_LENGTH, MAX_TITLE_LENGTH } from './validators'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
+import type { GraphMode } from '@shared/types/ipc'
 import { searchNotes } from '../services/note-search'
 import { extractBlockedTaskSignal, extractHighTaskPriority, extractRecurringTaskSignal, extractTaskDueDate, extractTaskScheduledDate, extractTaskStartDate } from '../services/ai/maintenance-queue'
 import { getContextSuggestions, refreshRelationScores, submitRelationFeedback } from '../services/long-context/relation-store'
@@ -305,8 +306,9 @@ export function registerDbIPC(): void {
     return noteId ? getCachedVaultQuery(params.vaultPath, `unlinked:${noteId}`, () => getUnlinkedMentions(params.vaultPath, noteId)) : []
   })
 
-  ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string }) => {
-    return getCachedVaultQuery(params.vaultPath, 'graph', () => getGraphData(params.vaultPath))
+  ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string; mode?: GraphMode }) => {
+    const mode: GraphMode = params.mode ?? 'folder'
+    return getCachedVaultQuery(params.vaultPath, `graph:${mode}`, () => getGraphData(params.vaultPath, mode), 60_000)
   })
 
   ipcMain.handle('db:search-notes', async (_event, params: { vaultPath: string; query: string }) => {

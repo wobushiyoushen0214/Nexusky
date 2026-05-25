@@ -513,7 +513,7 @@ describe('indexer', () => {
     expect(links.every((link) => link.targetPath === 'Folder/Target.md' && link.resolved)).toBe(true)
 
     const graph = getGraphData(vaultPath)
-    expect(graph.edges).toContainEqual({ source: source!.id, target: target!.id })
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: source!.id, target: target!.id, linkType: 'explicit' }))
 
     closeDatabase()
   })
@@ -554,9 +554,9 @@ describe('indexer', () => {
     expect(links.every((link) => link.resolved)).toBe(true)
 
     const graph = getGraphData(vaultPath)
-    expect(graph.edges).toContainEqual({ source: source!.id, target: project!.id })
-    expect(graph.edges).toContainEqual({ source: source!.id, target: target!.id })
-    expect(graph.edges).toContainEqual({ source: source!.id, target: canonical!.id })
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: source!.id, target: project!.id, linkType: 'explicit' }))
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: source!.id, target: target!.id, linkType: 'explicit' }))
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: source!.id, target: canonical!.id, linkType: 'explicit' }))
 
     closeDatabase()
   })
@@ -619,7 +619,7 @@ describe('indexer', () => {
     expect(backlinks[0].line).toBe(3)
 
     const graph = getGraphData(vaultPath)
-    expect(graph.edges).toContainEqual({ source: source!.id, target: canonical!.id })
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: source!.id, target: canonical!.id, linkType: 'explicit' }))
 
     closeDatabase()
   })

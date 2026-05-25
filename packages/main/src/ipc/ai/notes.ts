@@ -10,6 +10,7 @@ import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../
 import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata, ensureGeneratedNoteWikilinks } from '../../services/ai/note-writing'
 import { indexNote, resolveAllLinks } from '../../services/indexer'
 import { getDatabase } from '../../services/database'
+import { invalidateVaultQueryCache } from '../../services/db-query-cache'
 import { generateMemory, readMemory, findRelatedByMemory } from '../../services/memory'
 import { findSimilarNotes } from '../../services/embedding'
 import { logger } from '../../services/logger'
@@ -396,6 +397,7 @@ ipcMain.handle('ai:infer-global-links', async (event, params: { vaultPath: strin
     replaceInferredLinks()
 
     try { resolveAllLinks(params.vaultPath) } catch {}
+    invalidateVaultQueryCache(params.vaultPath)
     return { success: true, added: inferredLinks.length }
   } finally {
     finishAiTask(window.id, controller)

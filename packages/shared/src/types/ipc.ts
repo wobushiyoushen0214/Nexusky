@@ -122,6 +122,10 @@ export interface UnlinkedMentionResult {
   mention: string
 }
 
+export type GraphMode = 'semantic' | 'connection' | 'folder'
+
+export type GraphEdgeLinkType = 'explicit' | 'inferred' | 'folder'
+
 export interface GraphNode {
   id: string
   title: string
@@ -129,9 +133,15 @@ export interface GraphNode {
   type: 'file' | 'folder'
 }
 
+export interface GraphEdge {
+  source: string
+  target: string
+  linkType: GraphEdgeLinkType
+}
+
 export interface GraphData {
   nodes: GraphNode[]
-  edges: { source: string; target: string }[]
+  edges: GraphEdge[]
 }
 
 export interface KanbanColumn {
@@ -553,7 +563,7 @@ export interface IPCChannelMap {
   'db:get-outgoing-links': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: OutgoingLinkResult[] }
   'db:get-backlinks': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: BacklinkResult[] }
   'db:get-unlinked-mentions': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: UnlinkedMentionResult[] }
-  'db:get-graph': { params: { vaultPath: string }; result: GraphData }
+  'db:get-graph': { params: { vaultPath: string; mode?: GraphMode }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
   'db:semantic-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }
   'db:fulltext-search': { params: { vaultPath: string; query: string; regex?: boolean }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }

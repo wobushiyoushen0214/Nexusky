@@ -9,7 +9,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
-import type { GraphData, GraphNode } from '@shared/types/ipc'
+import type { GraphData, GraphEdge, GraphEdgeLinkType, GraphMode, GraphNode } from '@shared/types/ipc'
 import './GraphView.css'
 
 const GROUP_COLORS = [
@@ -37,6 +37,7 @@ interface SimLink {
   source: string | SimNode
   target: string | SimNode
   weight?: number
+  linkType: GraphEdgeLinkType
 }
 
 function getLinkEndpointId(endpoint: string | SimNode): string {
@@ -71,12 +72,16 @@ export function GraphView() {
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const setMainView = useUIStore((s) => s.setMainView)
   const [graphData, setGraphData] = useState<GraphData | null>(null)
+  const [graphMode, setGraphMode] = useState<GraphMode>('folder')
   const [searchQuery, setSearchQuery] = useState('')
   const [minLinks, setMinLinks] = useState(0)
   const [showLabels, setShowLabels] = useState(true)
   const [showOrphans, setShowOrphans] = useState(true)
   const [showArrows, setShowArrows] = useState(false)
   const [showFolders, setShowFolders] = useState(true)
+  const [showExplicitEdges, setShowExplicitEdges] = useState(true)
+  const [showInferredEdges, setShowInferredEdges] = useState(true)
+  const [showFolderEdges, setShowFolderEdges] = useState(true)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [indexStatus, setIndexStatus] = useState<string | null>(null)
   const [chargeStrength, setChargeStrength] = useState(-350)
@@ -96,18 +101,18 @@ export function GraphView() {
 
   useEffect(() => {
     if (!vaultPath) return
-    window.api.invoke('db:get-graph', { vaultPath }).then(setGraphData)
-  }, [vaultPath])
+    window.api.invoke('db:get-graph', { vaultPath, mode: graphMode }).then(setGraphData)
+  }, [vaultPath, graphMode])
 
   useEffect(() => {
     if (!vaultPath) return
     const refresh = () => {
-      window.api.invoke('db:get-graph', { vaultPath }).then(setGraphData)
+      window.api.invoke('db:get-graph', { vaultPath, mode: graphMode }).then(setGraphData)
     }
     const cleanup = window.api.onVaultChanged(refresh)
     window.addEventListener('graph-data-updated', refresh)
     return () => { cleanup(); window.removeEventListener('graph-data-updated', refresh) }
-  }, [vaultPath])
+  }, [vaultPath, graphMode])
 
   useEffect(() => {
     const cleanup = window.api.onAiMemoryProgress((data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => {
@@ -276,8 +281,8 @@ export function GraphView() {
     })
     const nodeIds = new Set(nodes.map((n: SimNode) => n.id))
     const links: SimLink[] = graphData.edges
-      .filter((e: { source: string; target: string }) => nodeIds.has(e.source) && nodeIds.has(e.target))
-      .map((e: { source: string; target: string }) => ({ source: e.source, target: e.target }))
+      .filter((e: GraphEdge) => nodeIds.has(e.source) && nodeIds.has(e.target))
+      .map((e: GraphEdge) => ({ source: e.source, target: e.target, linkType: e.linkType }))
 
     const simulation = forceSimulation(nodes)
       .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(isLarge ? 50 : linkDistance).strength(0.4))
@@ -321,7 +326,7 @@ export function GraphView() {
       .selectAll<SVGPathElement, SimLink>('path')
       .data(links)
       .join('path')
-      .attr('class', 'graph-link')
+      .attr('class', (l) => `graph-link link-${l.linkType}`)
       .attr('stroke', (l, i) => {
         if (!isHeavy) return `url(#link-grad-${i})`
         const sId = typeof l.source === 'string' ? l.source : l.source.id
@@ -904,6 +909,18 @@ export function GraphView() {
     svg.selectAll<SVGGElement, SimNode>('g.graph-node .node-label').classed('hidden', !showLabels)
   }, [showLabels])
 
+  useEffect(() => {
+    if (!svgRef.current) return
+    const svg = select(svgRef.current)
+    svg.selectAll<SVGPathElement, SimLink>('path.graph-link')
+      .classed('hidden-type', (l) => {
+        if (l.linkType === 'explicit') return !showExplicitEdges
+        if (l.linkType === 'inferred') return !showInferredEdges
+        if (l.linkType === 'folder') return !showFolderEdges
+        return false
+      })
+  }, [showExplicitEdges, showInferredEdges, showFolderEdges, graphData])
+
   if (!graphData || graphData.nodes.length === 0) {
     return (
       <div className="graph-empty">
@@ -942,6 +959,39 @@ export function GraphView() {
 
         {!panelCollapsed && (
           <>
+            <div className="graph-panel-section">
+              <div className="graph-panel-section-title">{t('graph.mode').toUpperCase()}</div>
+              <div className="graph-mode-switcher" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={graphMode === 'semantic'}
+                  className={`graph-mode-tab${graphMode === 'semantic' ? ' active' : ''}`}
+                  onClick={() => setGraphMode('semantic')}
+                  title={t('graph.modeSemanticHint')}
+                >
+                  {t('graph.modeSemantic')}
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={graphMode === 'connection'}
+                  className={`graph-mode-tab${graphMode === 'connection' ? ' active' : ''}`}
+                  onClick={() => setGraphMode('connection')}
+                  title={t('graph.modeConnectionHint')}
+                >
+                  {t('graph.modeConnection')}
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={graphMode === 'folder'}
+                  className={`graph-mode-tab${graphMode === 'folder' ? ' active' : ''}`}
+                  onClick={() => setGraphMode('folder')}
+                  title={t('graph.modeFolderHint')}
+                >
+                  {t('graph.modeFolder')}
+                </button>
+              </div>
+            </div>
+
             <div className="graph-panel-section">
               <div className="graph-panel-section-title">{t('graph.filters').toUpperCase()}</div>
               <input
@@ -998,11 +1048,45 @@ export function GraphView() {
                 <input type="checkbox" checked={showArrows} onChange={(e) => setShowArrows(e.target.checked)} />
                 <span className="graph-toggle-slider" />
               </label>
+              {graphMode === 'folder' && (
+                <label className="graph-toggle">
+                  <span>{t('graph.folders')}</span>
+                  <input type="checkbox" checked={showFolders} onChange={(e) => setShowFolders(e.target.checked)} />
+                  <span className="graph-toggle-slider" />
+                </label>
+              )}
+            </div>
+
+            <div className="graph-panel-section">
+              <div className="graph-panel-section-title">{t('graph.edgeTypes').toUpperCase()}</div>
               <label className="graph-toggle">
-                <span>{t('graph.folders')}</span>
-                <input type="checkbox" checked={showFolders} onChange={(e) => setShowFolders(e.target.checked)} />
+                <span className="graph-edge-legend">
+                  <span className="graph-edge-swatch swatch-explicit" />
+                  {t('graph.explicit')}
+                </span>
+                <input type="checkbox" checked={showExplicitEdges} onChange={(e) => setShowExplicitEdges(e.target.checked)} />
                 <span className="graph-toggle-slider" />
               </label>
+              {graphMode === 'semantic' && (
+                <label className="graph-toggle">
+                  <span className="graph-edge-legend">
+                    <span className="graph-edge-swatch swatch-inferred" />
+                    {t('graph.inferred')}
+                  </span>
+                  <input type="checkbox" checked={showInferredEdges} onChange={(e) => setShowInferredEdges(e.target.checked)} />
+                  <span className="graph-toggle-slider" />
+                </label>
+              )}
+              {graphMode === 'folder' && (
+                <label className="graph-toggle">
+                  <span className="graph-edge-legend">
+                    <span className="graph-edge-swatch swatch-folder" />
+                    {t('graph.folderEdges')}
+                  </span>
+                  <input type="checkbox" checked={showFolderEdges} onChange={(e) => setShowFolderEdges(e.target.checked)} />
+                  <span className="graph-toggle-slider" />
+                </label>
+              )}
             </div>
 
             <div className="graph-panel-section">
