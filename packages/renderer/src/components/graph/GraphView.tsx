@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
 import { select } from 'd3-selection'
 import { zoom, zoomIdentity } from 'd3-zoom'
 import { drag } from 'd3-drag'
@@ -64,7 +63,11 @@ function getRadius(d: SimNode) {
 export function GraphView() {
   const { t } = useTranslation()
   const svgRef = useRef<SVGSVGElement>(null)
-  const simulationRef = useRef<ReturnType<typeof forceSimulation<SimNode>> | null>(null)
+  const workerRef = useRef<Worker | null>(null)
+  const nodeMapRef = useRef<Map<string, SimNode>>(new Map())
+  const tickHandlerRef = useRef<(() => void) | null>(null)
+  const endHandlerRef = useRef<(() => void) | null>(null)
+  const draggingIdRef = useRef<string | null>(null)
   const graphBuiltForRef = useRef<string | null>(null)
   const aiStopRequestedRef = useRef(false)
   const autoInferAttemptedRef = useRef<string | null>(null)
@@ -220,10 +223,13 @@ export function GraphView() {
     if (!graphData || !svgRef.current) return
     if (graphData.nodes.length === 0) return
 
-    if (simulationRef.current) {
-      simulationRef.current.stop()
-      simulationRef.current = null
+    if (workerRef.current) {
+      workerRef.current.postMessage({ type: 'stop' })
+      workerRef.current.terminate()
+      workerRef.current = null
     }
+    tickHandlerRef.current = null
+    endHandlerRef.current = null
 
     const svg = select(svgRef.current)
     const width = svgRef.current.clientWidth
@@ -231,7 +237,7 @@ export function GraphView() {
     const nodeCount = graphData.nodes.length
     // Heavy graphs skip expensive SVG filters and per-link gradients so the
     // initial render stays smooth. Behaviour & interactions are preserved.
-    const isHeavy = nodeCount > 120
+    const isHeavy = nodeCount > 80
     const isLarge = nodeCount > 200
 
     svg.selectAll('*').remove()
@@ -255,7 +261,7 @@ export function GraphView() {
     const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
 
     const linkCountMap = new Map<string, number>()
-    graphData.edges.forEach((e: { source: string; target: string }) => {
+    graphData.edges.forEach((e: GraphEdge) => {
       linkCountMap.set(e.source, (linkCountMap.get(e.source) || 0) + 1)
       linkCountMap.set(e.target, (linkCountMap.get(e.target) || 0) + 1)
     })
@@ -266,7 +272,7 @@ export function GraphView() {
 
     const folderIdSet = new Set(graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((n: GraphNode) => n.id))
     const nodeToFolder = new Map<string, string>()
-    graphData.edges.forEach((e: { source: string; target: string }) => {
+    graphData.edges.forEach((e: GraphEdge) => {
       if (folderIdSet.has(e.source) && !folderIdSet.has(e.target)) {
         nodeToFolder.set(e.target, e.source)
       }
@@ -275,7 +281,7 @@ export function GraphView() {
     // Pre-aggregate incoming folder colors per node in one O(E) pass instead
     // of one O(E) scan per node (was O(N*E)).
     const incomingColorsMap = new Map<string, Set<string>>()
-    graphData.edges.forEach((e: { source: string; target: string }) => {
+    graphData.edges.forEach((e: GraphEdge) => {
       if (e.source === e.target) return
       const srcFolderId = folderIdSet.has(e.source) ? e.source : nodeToFolder.get(e.source)
       if (!srcFolderId) return
@@ -312,23 +318,9 @@ export function GraphView() {
       .filter((e: GraphEdge) => nodeIds.has(e.source) && nodeIds.has(e.target))
       .map((e: GraphEdge) => ({ source: e.source, target: e.target, linkType: e.linkType }))
 
-    const simulation = forceSimulation(nodes)
-      .force('link', forceLink<SimNode, SimLink>(links).id((d) => d.id).distance(isLarge ? 50 : linkDistance).strength(0.4))
-      .force('charge', forceManyBody().strength(isLarge ? -150 : chargeStrength).distanceMax(isLarge ? 300 : 500))
-      .force('center', forceCenter(width / 2, height / 2))
-      .force('collide', forceCollide<SimNode>((d) => getRadius(d) + (isLarge ? 8 : 16)))
-      .force('x', forceX(width / 2).strength(centerStrength))
-      .force('y', forceY(height / 2).strength(centerStrength))
-
-    // Heavy graphs converge faster + dampen velocity to avoid long jitter.
-    if (isHeavy) {
-      simulation.alphaDecay(0.05).velocityDecay(0.5)
-    }
-
-    simulationRef.current = simulation
-
     const nodeMap = new Map<string, SimNode>()
     nodes.forEach((n) => nodeMap.set(n.id, n))
+    nodeMapRef.current = nodeMap
 
     // Link gradients for bone-joint style connections (skipped on heavy graphs;
     // we fall back to a plain stroke and avoid rewriting <stop> coords each tick).
@@ -806,16 +798,25 @@ export function GraphView() {
 
     const dragBehavior = drag<SVGGElement, SimNode>()
       .on('start', (event, d) => {
-        if (!event.active) simulation.alphaTarget(0.3).restart()
+        if (!event.active && workerRef.current) {
+          draggingIdRef.current = d.id
+          workerRef.current.postMessage({ type: 'drag-start', id: d.id, x: d.x ?? 0, y: d.y ?? 0 })
+        }
         d.fx = d.x
         d.fy = d.y
       })
       .on('drag', (event, d) => {
         d.fx = event.x
         d.fy = event.y
+        if (workerRef.current) {
+          workerRef.current.postMessage({ type: 'drag-move', id: d.id, x: event.x, y: event.y })
+        }
       })
       .on('end', (event, d) => {
-        if (!event.active) simulation.alphaTarget(0)
+        if (!event.active && workerRef.current) {
+          workerRef.current.postMessage({ type: 'drag-end', id: d.id })
+        }
+        draggingIdRef.current = null
         d.fx = null
         d.fy = null
       })
@@ -841,19 +842,7 @@ export function GraphView() {
 
     svg.call(zoomBehavior)
 
-    simulation.on('end', () => {
-      const currentNode = nodes.find((n) => n.filePath === currentRelPath)
-      if (currentNode && currentNode.x != null && currentNode.y != null) {
-        const { x, y } = currentNode
-        const transform = { k: 1.2, x: width / 2 - x * 1.2, y: height / 2 - y * 1.2 }
-        svg.transition().duration(800).call(
-          zoomBehavior.transform,
-          zoomIdentity.translate(transform.x, transform.y).scale(transform.k)
-        )
-      }
-    })
-
-    simulation.on('tick', () => {
+    const renderTick = () => {
       link
         .attr('d', (d) => {
           const source = getLinkEndpoint(d.source, nodeMap)
@@ -890,11 +879,62 @@ export function GraphView() {
       }
 
       nodeGroup.attr('transform', (d) => `translate(${d.x},${d.y})`)
+    }
+
+    let pendingFrame = false
+    const onEnd = () => {
+      const currentNode = nodes.find((n) => n.filePath === currentRelPath)
+      if (currentNode && currentNode.x != null && currentNode.y != null) {
+        const { x, y } = currentNode
+        const transform = { k: 1.2, x: width / 2 - x * 1.2, y: height / 2 - y * 1.2 }
+        svg.transition().duration(800).call(
+          zoomBehavior.transform,
+          zoomIdentity.translate(transform.x, transform.y).scale(transform.k)
+        )
+      }
+    }
+    endHandlerRef.current = onEnd
+
+    const onTick = (positions: Array<string | number>) => {
+      for (let i = 0; i < positions.length; i += 3) {
+        const id = positions[i] as string
+        const node = nodeMap.get(id)
+        if (!node) continue
+        node.x = positions[i + 1] as number
+        node.y = positions[i + 2] as number
+      }
+      if (pendingFrame) return
+      pendingFrame = true
+      requestAnimationFrame(() => {
+        pendingFrame = false
+        renderTick()
+      })
+    }
+    tickHandlerRef.current = () => renderTick()
+
+    const worker = new Worker(new URL('../../workers/graph-force-worker.ts', import.meta.url), { type: 'module' })
+    workerRef.current = worker
+    worker.onmessage = (event: MessageEvent<{ type: 'tick'; payload: Array<string | number>; alpha: number } | { type: 'end' }>) => {
+      const data = event.data
+      if (data.type === 'tick') onTick(data.payload)
+      else if (data.type === 'end') onEnd()
+    }
+    worker.postMessage({
+      type: 'start',
+      nodes: nodes.map((n) => ({ id: n.id, linkCount: n.linkCount, type: n.type })),
+      links: links.map((l) => ({ source: typeof l.source === 'string' ? l.source : l.source.id, target: typeof l.target === 'string' ? l.target : l.target.id })),
+      width,
+      height,
+      params: { chargeStrength, linkDistance, centerStrength, isLarge, isHeavy }
     })
 
     graphBuiltForRef.current = JSON.stringify(graphData)
 
-    return () => { simulation.stop() }
+    return () => {
+      worker.postMessage({ type: 'stop' })
+      worker.terminate()
+      if (workerRef.current === worker) workerRef.current = null
+    }
   }, [graphData, groupColorMap])
 
   useEffect(() => {
@@ -904,19 +944,15 @@ export function GraphView() {
   }, [showArrows])
 
   useEffect(() => {
-    if (!simulationRef.current) return
-    const sim = simulationRef.current
+    if (!workerRef.current) return
     const nodeCount = graphData?.nodes.length || 0
     const isLarge = nodeCount > 200
-    const linkForce = sim.force('link') as ReturnType<typeof forceLink<SimNode, SimLink>> | null
-    if (linkForce) {
-      linkForce.distance(isLarge ? 50 : linkDistance)
-    }
-    sim.force('charge', forceManyBody().strength(isLarge ? -150 : chargeStrength).distanceMax(isLarge ? 300 : 500))
-    sim.force('x', forceX().strength(centerStrength))
-    sim.force('y', forceY().strength(centerStrength))
-    sim.alpha(0.3).restart()
-  }, [chargeStrength, linkDistance, centerStrength])
+    const isHeavy = nodeCount > 80
+    workerRef.current.postMessage({
+      type: 'update-params',
+      params: { chargeStrength, linkDistance, centerStrength, isLarge, isHeavy }
+    })
+  }, [chargeStrength, linkDistance, centerStrength, graphData])
 
   useEffect(() => {
     if (!svgRef.current || !graphData) return
