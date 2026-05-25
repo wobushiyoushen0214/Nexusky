@@ -29,7 +29,7 @@ interface SimInternalNode extends WorkerNode {
 }
 
 type InMsg =
-  | { type: 'start'; nodes: WorkerNode[]; links: WorkerLink[]; width: number; height: number; params: ForceParams }
+  | { type: 'start'; nodes: WorkerNode[]; links: WorkerLink[]; width: number; height: number; params: ForceParams; startAlpha?: number }
   | { type: 'stop' }
   | { type: 'drag-start'; id: string; x: number; y: number }
   | { type: 'drag-move'; id: string; x: number; y: number }
@@ -76,7 +76,7 @@ function postTick(): void {
   })
 }
 
-function buildSimulation(width: number, height: number, params: ForceParams): void {
+function buildSimulation(width: number, height: number, params: ForceParams, startAlpha?: number): void {
   if (simulation) simulation.stop()
   currentParams = params
   simulation = forceSimulation(currentNodes)
@@ -91,6 +91,10 @@ function buildSimulation(width: number, height: number, params: ForceParams): vo
     simulation.alphaDecay(0.05).velocityDecay(0.5)
   }
 
+  if (typeof startAlpha === 'number') {
+    simulation.alpha(startAlpha)
+  }
+
   simulation.on('tick', postTick)
   simulation.on('end', () => {
     const msg: OutMsg = { type: 'end' }
@@ -103,7 +107,7 @@ self.onmessage = (event: MessageEvent<InMsg>): void => {
   if (msg.type === 'start') {
     currentNodes = msg.nodes.map((n) => ({ ...n }))
     currentLinks = msg.links.map((l) => ({ ...l }))
-    buildSimulation(msg.width, msg.height, msg.params)
+    buildSimulation(msg.width, msg.height, msg.params, msg.startAlpha)
     return
   }
   if (msg.type === 'stop') {

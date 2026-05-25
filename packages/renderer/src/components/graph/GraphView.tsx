@@ -68,6 +68,7 @@ export function GraphView() {
   const tickHandlerRef = useRef<(() => void) | null>(null)
   const endHandlerRef = useRef<(() => void) | null>(null)
   const draggingIdRef = useRef<string | null>(null)
+  const layoutCacheRef = useRef<Map<string, Map<string, [number, number]>>>(new Map())
   const graphBuiltForRef = useRef<string | null>(null)
   const aiStopRequestedRef = useRef(false)
   const autoInferAttemptedRef = useRef<string | null>(null)
@@ -321,6 +322,26 @@ export function GraphView() {
     const nodeMap = new Map<string, SimNode>()
     nodes.forEach((n) => nodeMap.set(n.id, n))
     nodeMapRef.current = nodeMap
+
+    // Layout cache: when the same vault + mode is opened again, seed node
+    // positions from the last simulation end so the graph doesn't fly
+    // around. High hit rate also lets us start at a low alpha so the
+    // worker barely needs to move anything.
+    const layoutCacheKey = `${vaultPath ?? ''}::${graphMode}`
+    const cachedPositions = layoutCacheRef.current.get(layoutCacheKey)
+    let cacheHits = 0
+    if (cachedPositions) {
+      for (const n of nodes) {
+        const p = cachedPositions.get(n.id)
+        if (p) {
+          n.x = p[0]
+          n.y = p[1]
+          cacheHits++
+        }
+      }
+    }
+    const cacheHitRate = nodes.length === 0 ? 0 : cacheHits / nodes.length
+    const layoutStartAlpha = cacheHitRate >= 0.8 ? 0.08 : undefined
 
     // Link gradients for bone-joint style connections (skipped on heavy graphs;
     // we fall back to a plain stroke and avoid rewriting <stop> coords each tick).
@@ -883,6 +904,17 @@ export function GraphView() {
 
     let pendingFrame = false
     const onEnd = () => {
+      const positionsToCache = new Map<string, [number, number]>()
+      for (const n of nodes) {
+        if (n.x != null && n.y != null) positionsToCache.set(n.id, [n.x, n.y])
+      }
+      if (positionsToCache.size > 0) {
+        layoutCacheRef.current.set(layoutCacheKey, positionsToCache)
+      }
+
+      // Skip the auto-zoom on cache-hit reruns; the graph is already in
+      // the user's expected layout and snapping the camera feels jarring.
+      if (cacheHitRate >= 0.8) return
       const currentNode = nodes.find((n) => n.filePath === currentRelPath)
       if (currentNode && currentNode.x != null && currentNode.y != null) {
         const { x, y } = currentNode
@@ -912,6 +944,11 @@ export function GraphView() {
     }
     tickHandlerRef.current = () => renderTick()
 
+    // Initial paint from cached positions so the SVG isn't blank while
+    // we wait for the first worker tick. Especially matters on cache hits
+    // where the worker barely moves anything.
+    if (cacheHits > 0) renderTick()
+
     const worker = new Worker(new URL('../../workers/graph-force-worker.ts', import.meta.url), { type: 'module' })
     workerRef.current = worker
     worker.onmessage = (event: MessageEvent<{ type: 'tick'; payload: Array<string | number>; alpha: number } | { type: 'end' }>) => {
@@ -921,11 +958,12 @@ export function GraphView() {
     }
     worker.postMessage({
       type: 'start',
-      nodes: nodes.map((n) => ({ id: n.id, linkCount: n.linkCount, type: n.type })),
+      nodes: nodes.map((n) => ({ id: n.id, linkCount: n.linkCount, type: n.type, x: n.x, y: n.y })),
       links: links.map((l) => ({ source: typeof l.source === 'string' ? l.source : l.source.id, target: typeof l.target === 'string' ? l.target : l.target.id })),
       width,
       height,
-      params: { chargeStrength, linkDistance, centerStrength, isLarge, isHeavy }
+      params: { chargeStrength, linkDistance, centerStrength, isLarge, isHeavy },
+      startAlpha: layoutStartAlpha
     })
 
     graphBuiltForRef.current = JSON.stringify(graphData)
