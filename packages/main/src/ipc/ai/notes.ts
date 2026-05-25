@@ -335,6 +335,47 @@ ipcMain.handle('ai:infer-links', async (event, params: { vaultPath: string; file
   }
 })
 
+// --- TF-IDF only inference (no AI calls, cheap, used for auto-fill on entering semantic mode) ---
+ipcMain.handle('db:auto-infer-tfidf-links', async (_event, params: { vaultPath: string; force?: boolean }) => {
+  try {
+    const db = getDatabase(params.vaultPath)
+    if (!params.force) {
+      const existing = db.prepare("SELECT COUNT(*) as count FROM links WHERE link_type = 'inferred'").get() as { count: number }
+      if (existing.count > 0) return { success: true, added: 0, skipped: true }
+    }
+
+    const pairs = findSimilarNotes(params.vaultPath, 3, 0.75)
+    if (pairs.length === 0) return { success: true, added: 0 }
+
+    const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
+    const anyLinkExists = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?')
+    const pendingKeys = new Set<string>()
+    let added = 0
+
+    const writeAll = db.transaction(() => {
+      if (params.force) {
+        db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
+      }
+      for (const p of pairs) {
+        if (!params.force && anyLinkExists.get(p.sourceId, p.targetTitle)) continue
+        const key = `${p.sourceId} ${p.targetTitle}`
+        const reverseKey = `${p.targetId} ${p.sourceTitle}`
+        if (pendingKeys.has(key) || pendingKeys.has(reverseKey)) continue
+        pendingKeys.add(key)
+        insertLink.run(p.sourceId, p.targetTitle, `相似度: ${(p.score * 100).toFixed(0)}%`, 'inferred')
+        added++
+      }
+    })
+    writeAll()
+
+    try { resolveAllLinks(params.vaultPath) } catch {}
+    invalidateVaultQueryCache(params.vaultPath)
+    return { success: true, added }
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) }
+  }
+})
+
 // --- Global cross-group semantic link inference ---
 ipcMain.handle('ai:infer-global-links', async (event, params: { vaultPath: string }) => {
   const window = BrowserWindow.fromWebContents(event.sender)

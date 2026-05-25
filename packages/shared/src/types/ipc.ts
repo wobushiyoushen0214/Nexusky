@@ -726,6 +726,7 @@ export interface IPCChannelMap {
   'ai:set-system-prompt': { params: { prompt: string }; result: void }
   'ai:infer-links': { params: { vaultPath: string; filePaths: string[] }; result: { success: boolean; added?: number; error?: string } }
   'ai:infer-global-links': { params: { vaultPath: string }; result: { success: boolean; added?: number; error?: string } }
+  'db:auto-infer-tfidf-links': { params: { vaultPath: string; force?: boolean }; result: { success: boolean; added?: number; skipped?: boolean; error?: string } }
   'ai:generate-memories': { params: { vaultPath: string }; result: { success: boolean; generated: number; skipped: number; failed: number; total: number; totalNotes?: number; limited?: boolean; error?: string } }
   'ai:list-ollama-models': { params: { baseUrl?: string }; result: string[] }
   'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }

@@ -67,12 +67,14 @@ export function GraphView() {
   const simulationRef = useRef<ReturnType<typeof forceSimulation<SimNode>> | null>(null)
   const graphBuiltForRef = useRef<string | null>(null)
   const aiStopRequestedRef = useRef(false)
+  const autoInferAttemptedRef = useRef<string | null>(null)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const setMainView = useUIStore((s) => s.setMainView)
+  const graphMode = useUIStore((s) => s.graphMode)
+  const setGraphMode = useUIStore((s) => s.setGraphMode)
   const [graphData, setGraphData] = useState<GraphData | null>(null)
-  const [graphMode, setGraphMode] = useState<GraphMode>('folder')
   const [searchQuery, setSearchQuery] = useState('')
   const [minLinks, setMinLinks] = useState(0)
   const [showLabels, setShowLabels] = useState(true)
@@ -113,6 +115,32 @@ export function GraphView() {
     window.addEventListener('graph-data-updated', refresh)
     return () => { cleanup(); window.removeEventListener('graph-data-updated', refresh) }
   }, [vaultPath, graphMode])
+
+  useEffect(() => {
+    if (!vaultPath || !graphData) return
+    if (graphMode !== 'semantic') return
+    if (autoInferAttemptedRef.current === vaultPath) return
+
+    const hasInferred = graphData.edges.some((e) => e.linkType === 'inferred')
+    if (hasInferred) {
+      autoInferAttemptedRef.current = vaultPath
+      return
+    }
+
+    autoInferAttemptedRef.current = vaultPath
+    let cancelled = false
+    ;(async () => {
+      try {
+        const result = await window.api.invoke('db:auto-infer-tfidf-links', { vaultPath })
+        if (cancelled) return
+        if (result.success && (result.added ?? 0) > 0) {
+          window.dispatchEvent(new CustomEvent('graph-data-updated'))
+        }
+      } catch {}
+    })()
+
+    return () => { cancelled = true }
+  }, [vaultPath, graphMode, graphData])
 
   useEffect(() => {
     const cleanup = window.api.onAiMemoryProgress((data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => {

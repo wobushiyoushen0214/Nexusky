@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import i18n from '../i18n'
 import { safeGet, safeGetJSON, safeRemove, safeSet, safeSetJSON } from '../utils/storage'
+import type { GraphMode } from '@shared/types/ipc'
 
 type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'history' | 'graph' | 'plugin' | 'maintenance' | 'agent'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
+const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
+const GRAPH_MODE_IDS: GraphMode[] = ['semantic', 'connection', 'folder']
 
 export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader' | 'kanban'
@@ -46,6 +49,7 @@ interface UIState {
   theme: Theme
   accentColor: string | null
   language: Language
+  graphMode: GraphMode
   pendingAgentGoal: { goal: string; description?: string } | null
   pendingKanbanTask: { title: string; description?: string } | null
   pendingBasesFocus: { filePath: string } | null
@@ -71,6 +75,7 @@ interface UIState {
   resetAccentColor: () => void
   toggleTheme: () => void
   setLanguage: (lang: Language) => void
+  setGraphMode: (mode: GraphMode) => void
   resetWorkspaceLayout: () => void
   sendToAgent: (payload: { goal: string; description?: string }) => void
   consumePendingAgentGoal: () => { goal: string; description?: string } | null
@@ -84,6 +89,12 @@ function getInitialTheme(): Theme {
   const saved = safeGet('nexusky-theme')
   if (saved && (THEME_IDS as readonly string[]).includes(saved)) return saved as Theme
   return 'dark'
+}
+
+function getInitialGraphMode(): GraphMode {
+  const saved = safeGet(GRAPH_MODE_STORAGE_KEY)
+  if (saved && (GRAPH_MODE_IDS as readonly string[]).includes(saved)) return saved as GraphMode
+  return 'semantic'
 }
 
 function applyTheme(theme: Theme) {
@@ -282,6 +293,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   theme: initialTheme,
   accentColor: initialAccentColor,
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
+  graphMode: getInitialGraphMode(),
   pendingAgentGoal: null,
   pendingKanbanTask: null,
   pendingBasesFocus: null,
@@ -372,6 +384,10 @@ export const useUIStore = create<UIState>((set, get) => ({
     i18n.changeLanguage(lang)
     safeSet('nexusky-language', lang)
     set({ language: lang })
+  },
+  setGraphMode: (mode) => {
+    safeSet(GRAPH_MODE_STORAGE_KEY, mode)
+    set({ graphMode: mode })
   },
   resetWorkspaceLayout: () => {
     const { workspaceScope, sidebarWidthScope } = get()
