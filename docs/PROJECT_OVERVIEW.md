@@ -97,7 +97,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 | 前端 | React 19、Zustand、i18next |
 | 编辑器 | TipTap / ProseMirror、tiptap-markdown |
 | Markdown 渲染 | marked、DOMPurify、KaTeX、Mermaid、lowlight |
-| 图谱/知识空间 | D3 force / drag / zoom |
+| 图谱/知识空间 | D3 force / drag / zoom；GraphView 力仿真在 renderer Web Worker 中运行 |
 | 本地数据库 | better-sqlite3，WAL 模式，FTS5 |
 | AI SDK | OpenAI、Anthropic、Ollama 兼容接口、Codex CLI |
 | 同步 | Supabase、iCloud、OneDrive、WebDAV、S3 |
@@ -369,7 +369,7 @@ AI 面板还支持：
 | 文件树 | `components/sidebar/FileTree.tsx` / `VirtualFileTree.tsx` | 文件导航、拖拽、右键菜单、虚拟滚动 |
 | 命令面板 | `components/CommandPalette.tsx` | 功能命令、AI 快捷任务、导入/导出入口 |
 | 搜索 | `components/SearchPanel.tsx` | 全文/语义搜索、embedding 进度 |
-| 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱 |
+| 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；三种模式（Semantic / Connection / Folder）和 linkType 视觉区分；力仿真在 `workers/graph-force-worker.ts` 中跑 |
 | 知识空间 | `components/canvas/CanvasView.tsx` | 无限画布、图层、节点布局 |
 | 看板 | `components/KanbanPanel.tsx` | 任务列、拖拽、AI 分析 |
 | 阅读收件箱 | `components/reader/ReaderInboxView.tsx` | 外部阅读材料 triage |

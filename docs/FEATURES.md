@@ -58,6 +58,11 @@
 | Markdown 脚注渲染 | 兼容 Obsidian `[^id]` 脚注定义，AI Markdown 与 HTML/PDF/发布站点导出会生成可跳转脚注列表 |
 | Obsidian Callout 渲染 | 兼容 `> [!note]` / `> [!warning]` 等 callout 块，AI Markdown 与 HTML/PDF/发布站点导出会保留标题和内容层级 |
 | 知识图谱 | D3 力导向图，节点大小按链接数缩放，hover 高亮相邻节点 |
+| 图谱模式切换 | 工具栏顶部三段式切换：Semantic（默认，所有笔记+显式链接+AI 推断）/ Connection（仅显式链接的笔记）/ Folder（含目录节点和目录归属边）；选择按 vault 持久化 |
+| 自动语义关系 | 进入 Semantic 模式时若无 inferred 边，后台静默跑 TF-IDF（不烧 token）自动生成跨目录关联，结果带 dashed 样式区分；用户也可手动点"推断跨目录关联"调 AI memory 做深度推断 |
+| linkType 视觉区分 | explicit 边实线、inferred 边 dashed、folder 归属边极细，工具栏可按类型独立 toggle 显示 |
+| 物理仿真 Web Worker | d3-force simulation 在 renderer worker 中跑，主线程只负责 d3-selection/zoom/drag 和 SVG 渲染，大 vault 切换不再阻塞 IPC 和交互 |
+| 图谱布局缓存 | 同 vault 同 mode 切回时复用上次仿真结束位置，worker 以 alpha=0.08 起跑几乎不动节点，节点位置在用户视觉中保持稳定 |
 | 全屏图谱 | Ctrl+Shift+G 切换图谱为主视图 |
 | 知识空间 | 无限延展主视图将笔记作为可拖拽知识节点整理，支持空间、属性和时间图层，位置按 vault 持久化，自动叠加带数据流动效且绕开卡片的 wikilink 连接线，按来源/状态/标签/日期显示分组标签，识别隐式关联建议并提供审阅队列，可将建议写回 `## Connections` wikilink，支持在所有图层拖拽、按当前图层重排、在当前视图中心附近新建未命名节点并避开遮挡、拖拽空白处平移、按钮缩放、Ctrl/Cmd + 滚轮或触控板捏合缩放、适应视图和内置使用说明 |
 | 当前笔记高亮 | 图谱中当前打开的笔记有特殊高亮 |
@@ -680,6 +685,10 @@
 
 | Git 记录 | 文档回写内容 |
 |----------|--------------|
+| `f47b175 feat(graph): introduce GraphMode + link_type visuals + mode switcher` | 知识图谱引入 Semantic / Connection / Folder 三模式选择器；后端 `getGraphData(vaultPath, mode)` 按模式返回不同节点边集合；边带 `linkType` 字段并在前端按 explicit / inferred / folder 视觉区分；db 查询缓存 TTL 调整为 60s 并由 onVaultChanged 主动失效 |
+| `ada1963 feat(graph): auto TF-IDF on semantic mode + persist mode selection` | 新增 `db:auto-infer-tfidf-links` IPC，进入 Semantic 模式时若无 inferred 边则后台静默跑 TF-IDF；图谱模式选择持久化到 ui-store；默认模式由 folder 切到 semantic |
+| `78ead52 perf(graph): move d3-force simulation to a Web Worker` | d3-force 仿真移至 `packages/renderer/src/workers/graph-force-worker.ts`，主线程仅保留 d3-selection/zoom/drag 与 SVG；isHeavy 阈值 120→80；tick 以 rAF 聚合，drag/参数变化通过 worker postMessage 协议同步 |
+| `3c2a309 perf(graph): reuse last layout when re-entering the same vault+mode` | 引入 `layoutCacheRef` 缓存 `<vault>::<mode>` → 节点坐标；命中时立即预渲染、worker 以 alpha=0.08 起跑并跳过自动 zoom；切回图谱节点不再重新飞散 |
 | `7d2096e feat: add canvas group labels` | 知识空间按当前图层生成来源、状态、标签或日期分组标签，并补充英中 i18n 与 `canvas-view` 回归测试 |
 | `80e04d4 Refine knowledge space node cards` / `e0ebac4 Consolidate knowledge space entry labels` | 知识空间入口文案和节点卡片信息层级收敛，减少图层视图中的噪声 |
 | `4bebfbf Improve knowledge space edge routing` | 知识空间连接线改为绕开卡片的折线路由，降低节点密集时的遮挡 |
