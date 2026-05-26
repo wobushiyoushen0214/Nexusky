@@ -370,9 +370,9 @@ components/ai/
 
 建议建立 **"文档对照表"**：把 OVERVIEW 中每个事实断言（"X 走 Y"）映射到测试用例。任何代码改动若让断言失效，CI 失败。
 
-### 7.2 [P2] `FEATURES.md` 已超 57 KB
+### 7.2 [P2] 旧功能清单文档已超 57 KB
 
-可读性下降。建议拆 `FEATURES/00-editor.md`、`FEATURES/01-ai.md`、`FEATURES/02-graph.md` …，按子系统索引。
+可读性下降。后续已删除独立功能清单文档，功能入口收敛到 `README.md`、`docs/PROJECT_OVERVIEW.md` 和 `docs/GUIDE.md`，避免维护多份重复清单。
 
 ### 7.3 [P2] AGENT 阅读路径
 

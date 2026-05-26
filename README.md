@@ -1,71 +1,105 @@
 # Nexusky
 
-AI 驱动的本地知识库笔记应用。双向链接 + 语义搜索 + 知识图谱，本地优先，隐私安全。
+Nexusky 是一个本地优先的 AI 知识库桌面应用。它把普通 Markdown 文件夹作为真实数据源，用 SQLite 建立索引，用 Electron + React 提供编辑、搜索、图谱、任务和 AI 工作流。
 
-## 特性
+核心目标很直接：让你的笔记可以长期保存在自己控制的文件系统里，同时让 AI 能在需要时读取、连接、维护和解释这些知识。
 
-- **Markdown 编辑器** — 基于 TipTap，支持表格、任务列表、高亮、图片粘贴
-- **双向链接** — `[[wikilink]]` 语法，自动反向链接，知识图谱可视化
-- **知识空间** — 无限画布整理笔记节点，支持空间/属性/时间图层、分组标签、连接线绕行和隐式关联审阅
-- **AI 对话** — 接入 OpenAI / Claude / 自定义中转站，RAG 问答带来源引用
-- **AI 写作辅助** — 行内补全、选中文本总结/扩展/改写/翻译
-- **语义搜索** — 向量嵌入 + 相似度检索
-- **阅读收件箱** — 聚合 Notion / Readwise / Pocket 导入内容，支持连续 triage、选中条目 AI 消化和摘要生成
-- **云端同步** — 支持 Supabase、iCloud Drive、OneDrive 三种后端
-- **本地优先** — 数据存储在本地文件系统，SQLite 索引，无需联网即可使用
+## 当前能力
 
-## 快速开始
-
-```bash
-# 安装依赖
-pnpm install
-
-# 启动开发模式
-pnpm run dev
-
-# 构建安装包
-pnpm run dist
-```
-
-启动后选择「创建笔记空间」或「打开已有文件夹」即可开始使用。
+- **本地 Markdown vault**：笔记、附件和私有元数据都在本地文件夹中，SQLite 只做索引和派生状态。
+- **编辑器与 Obsidian 兼容**：TipTap 富文本编辑，支持 wikilink、frontmatter、Dataview inline 字段、Tasks 插件日期、callout、脚注、嵌入、KaTeX 和 Mermaid。
+- **知识网络**：反链、出链、未链接提及、知识图谱、知识空间和属性数据库围绕同一个 vault 运转。
+- **AI 工作台**：支持 OpenAI、Claude、Ollama、自定义 OpenAI 兼容接口和 Codex CLI；提供 RAG 问答、AI 编辑、批量笔记生成、闪卡和 Agent 工具。
+- **长期上下文**：系统会沉淀关系、主题和认知复盘，把 Hot / Warm / Cold context 注入 AI 对话，并解释来源。
+- **主动建议与维护队列**：基于长期上下文、任务、孤岛笔记、断链和重复标题等信号，生成可处理的维护建议。
+- **任务与看板**：从 Markdown task list 抽取任务，也支持独立看板、任务关系和 AI 预览式写入。
+- **导入、剪藏、同步与发布**：支持 Obsidian、Notion、Readwise、Pocket、Web Clipper、Supabase、iCloud、OneDrive、WebDAV、S3、HTML/PDF 导出和静态站点发布。
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 桌面框架 | Electron 33 |
-| 构建工具 | electron-vite + Vite 6 |
-| 前端 | React 19 + Zustand |
-| 编辑器 | TipTap 2 (ProseMirror) |
-| 样式 | Tailwind CSS 4 |
-| 数据库 | better-sqlite3 (WAL) |
-| AI | openai + @anthropic-ai/sdk |
-| 云端 | Supabase / iCloud / OneDrive |
+| 层 | 当前实现 |
+| --- | --- |
+| 桌面 | Electron 39，原生模块按 Electron 运行时重建 |
+| 构建 | electron-vite + Vite 6 |
+| 前端 | React 19、Zustand、i18next、Tailwind CSS 4 |
+| 编辑器 | TipTap / ProseMirror、tiptap-markdown |
+| Markdown | marked、DOMPurify、KaTeX、Mermaid、lowlight |
+| 数据 | better-sqlite3，WAL，FTS5 |
+| AI | OpenAI、Anthropic、Ollama、自定义 OpenAI 兼容接口、Codex CLI |
+| 测试 | Vitest，在 Electron 运行时执行 |
 
-## 项目结构
+## 仓库结构
 
-```
+```text
 packages/
-  main/           → Electron 主进程
-    src/
-      ipc/        → IPC 通信
-      services/   → 业务逻辑（数据库、索引、AI、云端同步）
-  renderer/       → React 渲染进程
-    src/
-      components/ → UI 组件（编辑器、侧边栏、图谱、AI、设置）
-      stores/     → Zustand 状态管理
-  shared/         → 共享类型定义
-docs/             → 项目文档
-supabase/         → 云端 schema
+  main/                 Electron 主进程、IPC、数据库、索引、AI、同步服务
+  renderer/             React 渲染进程、编辑器、图谱、AI 面板、设置和状态
+  shared/               IPC 类型、Markdown 工具和共享类型
+
+browser-extension/      Chromium Web Clipper 扩展
+docs/                   项目全景、指南、设计、优化和规划文档
+image/                  产品截图和文档图片
+resources/              应用图标等资源
+scripts/                开发、重建原生模块、CLI、打包辅助脚本
+supabase/               Supabase schema 与配置说明
+tests/                  Vitest 测试
+website/                Next.js 官网和日志后台
 ```
 
-## 文档
+## 开发
 
-- [用户使用指南](docs/GUIDE.md)
-- [项目全景文档](docs/PROJECT_OVERVIEW.md)
-- [功能清单](docs/FEATURES.md)
-- [设计系统](docs/DESIGN.md)
-- [长期上下文系统执行计划](docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md)
+要求：
+
+- Node.js 22
+- pnpm 10
+- 当前平台可编译 `better-sqlite3` 原生模块
+
+常用命令：
+
+```bash
+pnpm install
+pnpm dev
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm dist
+```
+
+说明：
+
+- `pnpm dev` 启动 Electron + Vite 开发环境。
+- `pnpm test` 通过 `scripts/vitest-electron.mjs` 在 Electron 运行时跑测试。
+- `pnpm rebuild` 会调用 `scripts/rebuild-native.mjs`，按 Electron ABI 重建 `better-sqlite3`。
+- 不要用普通 `pnpm rebuild better-sqlite3` 替代项目脚本，否则可能按系统 Node ABI 编译。
+
+官网子项目：
+
+```bash
+pnpm -C website install
+pnpm -C website run dev
+pnpm -C website run lint
+pnpm -C website run build
+```
+
+## 文档入口
+
+- [项目全景文档](docs/PROJECT_OVERVIEW.md)：给维护者和 AI agent 的代码导航与系统说明。
+- [使用指南](docs/GUIDE.md)：面向用户的启动、编辑、链接、AI、同步和外观说明。
+- [设计系统](docs/DESIGN.md)：颜色、排版、间距、动效和组件方向。
+- [Web Clipper](docs/WEB_CLIPPER.md)：浏览器剪藏扩展和本地接口说明。
+- [本地插件 API](docs/PLUGIN_COMMANDS.md)：声明式插件命令、面板和编辑器扩展格式。
+- [长期上下文计划](docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md)：长期关系、主题和认知复盘系统的工程记录。
+- [认知伙伴计划](docs/COGNITIVE_PARTNER_PLAN.md)：主动建议、Tool Surface、Agent Run 和可观测性的路线。
+- [提分优化计划](docs/PROJECT_SCORE_OPTIMIZATION_PLAN.md)：当前安全、工程、性能和发布成熟度 backlog。
+
+## 安全边界
+
+- Markdown 文件是主数据，SQLite 是本地索引。
+- 渲染进程通过 preload 暴露的受控 IPC 访问主进程。
+- 文件写入必须限制在当前 vault 内，并处理 symlink 逃逸风险。
+- API Key 等敏感数据优先使用 Electron `safeStorage` 加密。
+- AI 请求会把用户输入、检索片段或附件文本发送给用户配置的 Provider。
+- 云同步只会上传到用户显式配置的后端。
 
 ## License
 

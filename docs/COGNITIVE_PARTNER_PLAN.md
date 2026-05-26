@@ -3,7 +3,7 @@
 > 目标：把 Nexusky 从“AI-native 长期上下文系统”进化为“AI-native Cognitive Partner（认知伙伴）”。本文不是愿景稿，而是可直接拆任务、写代码、跑测试、出 PR 的工程执行文档。
 
 适用版本：`v0.4.0` 之后，紧接 `docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md` 落地后的下一阶段。
-当前基础：Electron 33 + React 19 + better-sqlite3 (SCHEMA v9) + 长期上下文系统（13 个 long-context 测试、9 个 long-context IPC、后台节流主路径已上线）。
+当前基础：Electron 39 + React 19 + better-sqlite3 (SCHEMA v11) + 长期上下文系统、主动建议、Tool Surface、Agent Run 和可观测面板主路径已上线。
 新阶段核心：四个方向（A 主动 / B 日常 / C 自治 / D 透明）合力把"被动展示长期上下文"升级为"主动陪伴的认知伙伴"。
 
 ## 实施状态（2026-05-24）
@@ -2019,7 +2019,7 @@ B: 命令面板有 20+ 工具直调，右键有 5-8 个上下文工具，
 
 - `docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md` — 直接前置依赖。本文复用其 schema、IPC 命名、后台主路径模式。
 - `docs/PROJECT_OVERVIEW.md` — 8/9/10 节描述的 IPC / AI / 前端模块图是本文落点的基础。
-- `docs/FEATURES.md` — 完成各方向后需要在此追加用户特性条目。
+- `README.md` / `docs/GUIDE.md` — 完成各方向后需要补充用户可见能力和使用入口。
 - `docs/GUIDE.md` — 完成 A / B 后追加"主动提醒"和"快捷工具"使用章节。
 - `docs/OPTIMIZATION_PLAN.md` — 与本文并行，本文聚焦升级，OPTIMIZATION_PLAN 聚焦稳定性 / 性能。
 

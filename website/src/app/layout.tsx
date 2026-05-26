@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nexusky — AI 驱动的知识库笔记应用",
-  description: "本地优先、双向链接、AI 语义搜索、知识图谱可视化的桌面笔记应用",
+  title: "Nexusky — Local-first AI knowledge base",
+  description:
+    "A local-first desktop knowledge base for Markdown vaults, long-context AI, graphs, Agent runs and maintenance workflows.",
 };
 
 export default function RootLayout({

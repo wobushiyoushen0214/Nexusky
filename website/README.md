@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nexusky Website
 
-## Getting Started
+Next.js 官网和日志后台。首页用于展示 Nexusky 桌面应用，`/login` 和 `/logs` 用于查看桌面端上报的错误日志。
 
-First, run the development server:
+## 运行
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm run dev
+pnpm run lint
+pnpm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+本地开发地址默认是 `http://localhost:3000`。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 环境变量
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+复制 `.env.local.example` 为 `.env.local`：
 
-## Learn More
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ADMIN_PASSWORD=your-admin-password
+AUTH_SECRET=your-random-secret-string
+```
 
-To learn more about Next.js, take a look at the following resources:
+说明：
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `NEXT_PUBLIC_SUPABASE_URL`：Supabase 项目 URL。
+- `SUPABASE_SERVICE_ROLE_KEY`：网站后端读取日志用的 service role key，不要暴露到客户端。
+- `ADMIN_PASSWORD`：`/login` 管理入口密码。
+- `AUTH_SECRET`：JWT 签名密钥，生产环境必须使用随机强密钥。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 日志后台
 
-## Deploy on Vercel
+Supabase 表结构在 `supabase-schema.sql`。部署前在 Supabase SQL Editor 执行该文件。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+路由：
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/logs`：桌面端错误上报入口。
+- `GET /api/logs`：日志列表，要求管理员 cookie。
+- `/login`：管理员登录页。
+- `/logs`：日志浏览、筛选和分页页面。
+
+当前日志入口仍应按根项目 `docs/PROJECT_SCORE_OPTIMIZATION_PLAN.md` 的 P0-4 加固：生产环境需要 ingestion token 或 HMAC、限流、服务端脱敏和更严格 CORS。
+
+## 首页资产
+
+首页使用 `public/product/` 下的应用图标：
+
+- `icon.png`
+
+该文件来自仓库根部 `resources/` 目录。首页不再引用旧 guide 截图；若以后加入产品截图，应使用当前版本重新截取的图片。
+
+## 部署
+
+建议部署到 Vercel 或任意支持 Next.js 16 的 Node 环境。
+
+部署检查：
+
+```bash
+pnpm run lint
+pnpm run build
+```
+
+生产环境不要使用 `.env.local.example` 中的示例密钥。

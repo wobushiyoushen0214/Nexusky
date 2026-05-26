@@ -672,7 +672,6 @@ pnpm test
 ## 21. 与其他文档的关系
 
 - `README.md`：项目入口、快速开始和高层介绍。
-- `docs/FEATURES.md`：详细功能清单和版本演进记录。
 - `docs/GUIDE.md`：面向用户的使用指南。
 - `docs/DESIGN.md`：视觉和交互设计方向。
 - `docs/PLUGIN_COMMANDS.md`：插件命令格式。
@@ -755,5 +754,5 @@ pnpm test
 ### 22.10 文档与配套
 
 - `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
-- `docs/FEATURES.md`、`docs/GUIDE.md`、`docs/OPTIMIZATION.md`、`docs/OPTIMIZATION_PLAN.md` 在同一周期内同步更新。
+- `README.md`、`docs/GUIDE.md`、`docs/OPTIMIZATION.md`、`docs/OPTIMIZATION_PLAN.md` 在同一周期内同步更新。
 - 新增 `docs/COGNITIVE_PARTNER_PLAN.md`、`docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md` 和 `docs/PROJECT_SCORE_OPTIMIZATION_PLAN.md` 作为长期上下文、认知伙伴和项目评分优化的规划材料。

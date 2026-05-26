@@ -1,156 +1,304 @@
 import {
-  Download,
+  ArrowRight,
+  Bot,
+  Boxes,
   Brain,
+  Check,
+  Code2,
+  Download,
+  Files,
+  GitBranch,
+  HardDrive,
+  LockKeyhole,
   Network,
+  PanelRight,
   Search,
-  Shield,
-  Monitor,
+  Sparkles,
 } from "lucide-react";
+import Image from "next/image";
 
-const features = [
-  {
-    icon: Brain,
-    title: "AI 驱动",
-    desc: "多模型支持（OpenAI / Claude / Ollama / 国产模型），AI 编辑、语义搜索、自动标签",
-  },
-  {
-    icon: Network,
-    title: "知识图谱",
-    desc: "D3 力导向图可视化笔记关联，毛玻璃节点、涟漪动画、语义关联推断",
-  },
-  {
-    icon: Search,
-    title: "语义搜索",
-    desc: "TF-IDF + AI rerank，中文 bigram 分词，毫秒级响应",
-  },
-  {
-    icon: Shield,
-    title: "本地优先",
-    desc: "数据存储在本地 SQLite，API Key 加密存储，笔记可单独加密",
-  },
-  {
-    icon: Monitor,
-    title: "跨平台",
-    desc: "Windows / macOS / Linux 全平台支持，Electron 原生体验",
-  },
-  {
-    icon: Download,
-    title: "多端同步",
-    desc: "Supabase / iCloud / OneDrive 多后端，离线队列自动恢复",
-  },
-];
-
-const currentVersion = "0.4.0";
+const currentVersion = "0.5.0";
 const githubRepo = "wobushiyoushen0214/Nexusky";
+const releaseBase = `https://github.com/${githubRepo}/releases/latest/download`;
 
 const downloads = [
   {
     platform: "Windows",
     file: `Nexusky-Setup-${currentVersion}.exe`,
-    desc: "Windows 10+ (x64)",
+    detail: "Windows 10+ x64 installer",
   },
   {
-    platform: "macOS (Apple Silicon)",
+    platform: "macOS Apple Silicon",
     file: `Nexusky-${currentVersion}-arm64.dmg`,
-    desc: "macOS 12+ (M1/M2/M3)",
+    detail: "macOS 12+ for M-series Macs",
   },
   {
-    platform: "macOS (Intel)",
+    platform: "macOS Intel",
     file: `Nexusky-${currentVersion}-x64.dmg`,
-    desc: "macOS 12+ (Intel)",
+    detail: "macOS 12+ for Intel Macs",
   },
   {
     platform: "Linux",
     file: `Nexusky-${currentVersion}.AppImage`,
-    desc: "AppImage 便携版",
+    detail: "Portable AppImage package",
   },
+];
+
+const pillars = [
+  {
+    icon: HardDrive,
+    title: "Local-first vault",
+    text: "Markdown files stay in your folder. SQLite indexes links, tasks, properties and search state without replacing your notes.",
+  },
+  {
+    icon: Brain,
+    title: "Long-term context",
+    text: "Hot, warm and cold context packs bring old work back into AI chat with relation types, evidence and feedback.",
+  },
+  {
+    icon: Bot,
+    title: "AI tools with boundaries",
+    text: "Chat, edit, batch writing, maintenance tools and Agent runs operate through typed IPC and preview-first workflows.",
+  },
+  {
+    icon: Network,
+    title: "Readable knowledge graph",
+    text: "Explicit links, inferred relations and folder structure are separated so the graph stays useful on real vaults.",
+  },
+];
+
+const workflows = [
+  "Write Markdown with TipTap, wikilinks, frontmatter, callouts, math and Mermaid.",
+  "Ask AI across the vault with source citations and long-context explanations.",
+  "Find orphan notes, unresolved links, stale tasks and bridge notes from the maintenance queue.",
+  "Sync or publish with Supabase, iCloud, OneDrive, WebDAV, S3, HTML and PDF.",
+];
+
+const stack = [
+  "Electron 39",
+  "React 19",
+  "TipTap",
+  "better-sqlite3",
+  "FTS5",
+  "Vitest",
 ];
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Hero */}
-      <section className="flex flex-col items-center justify-center px-6 pt-32 pb-20">
-        <h1 className="text-5xl font-bold tracking-tight text-center animate-fade-in">
-          Nexusky
-        </h1>
-        <p className="mt-4 text-xl text-[var(--text-muted)] text-center max-w-xl animate-fade-in">
-          AI 驱动的知识库笔记应用 — 本地优先、双向链接、语义搜索、知识图谱
+    <main className="site-shell">
+      <nav className="topbar" aria-label="Primary navigation">
+        <a className="brand" href="#top" aria-label="Nexusky home">
+          <Image
+            src="/product/icon.png"
+            alt=""
+            className="brand-mark"
+            width={1024}
+            height={1024}
+            priority
+          />
+          <span>Nexusky</span>
+        </a>
+        <div className="nav-links">
+          <a href="#workflows">Workflows</a>
+          <a href="#download">Download</a>
+          <a href={`https://github.com/${githubRepo}`}>GitHub</a>
+        </div>
+      </nav>
+
+      <section id="top" className="hero" aria-labelledby="hero-title">
+        <div className="hero-veil" aria-hidden="true" />
+        <div className="hero-copy">
+          <p className="eyebrow">Local Markdown. Long memory. Inspectable AI.</p>
+          <h1 id="hero-title">Nexusky</h1>
+          <p className="hero-lede">
+            A desktop knowledge base where your Markdown vault remains the source of truth, while AI
+            helps search, connect, maintain and explain the thinking inside it.
+          </p>
+          <div className="hero-actions" aria-label="Primary actions">
+            <a className="button primary" href="#download">
+              <Download aria-hidden="true" />
+              Download v{currentVersion}
+            </a>
+            <a className="button secondary" href={`https://github.com/${githubRepo}`}>
+              <Code2 aria-hidden="true" />
+              View source
+            </a>
+          </div>
+        </div>
+        <div className="hero-strip" aria-label="Product highlights">
+          <span>Markdown vault</span>
+          <span>SQLite index</span>
+          <span>Agent runs</span>
+          <span>Long-context graph</span>
+        </div>
+      </section>
+
+      <section className="section intro" aria-label="Product focus">
+        <div>
+          <p className="section-kicker">Built for serious personal knowledge work</p>
+          <h2>Your notes stay portable. The AI gets context.</h2>
+        </div>
+        <p>
+          Nexusky is not a cloud notebook and not a chat window bolted onto files. It treats the
+          filesystem as the durable layer, then builds fast local indexes, structured AI tools,
+          proactive suggestions and visible evidence around it.
         </p>
-        <div className="mt-8 flex gap-4 animate-fade-in">
-          <a
-            href="#download"
-            className="px-6 py-3 rounded-lg bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] transition-colors"
-          >
-            下载
-          </a>
-          <a
-            href={`https://github.com/${githubRepo}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-3 rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text-muted)] transition-colors"
-          >
-            GitHub
-          </a>
+      </section>
+
+      <section className="pillar-grid" aria-label="Core pillars">
+        {pillars.map((pillar) => (
+          <article className="pillar-card" key={pillar.title}>
+            <pillar.icon aria-hidden="true" />
+            <h3>{pillar.title}</h3>
+            <p>{pillar.text}</p>
+          </article>
+        ))}
+      </section>
+
+      <section id="workflows" className="section product-band">
+        <div className="product-copy">
+          <p className="section-kicker">Daily surface</p>
+          <h2>One workspace for notes, graph, AI and maintenance.</h2>
+          <ul className="check-list">
+            {workflows.map((item) => (
+              <li key={item}>
+                <Check aria-hidden="true" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <aside className="workflow-panel" aria-label="Nexusky workflow map">
+          <div className="workflow-node primary">
+            <span>01</span>
+            <strong>Vault</strong>
+            <small>Markdown files stay portable on disk.</small>
+          </div>
+          <div className="workflow-node">
+            <span>02</span>
+            <strong>Index</strong>
+            <small>SQLite tracks links, properties, tasks and FTS.</small>
+          </div>
+          <div className="workflow-node">
+            <span>03</span>
+            <strong>Context</strong>
+            <small>Relations and themes become AI context packs.</small>
+          </div>
+          <div className="workflow-node">
+            <span>04</span>
+            <strong>Action</strong>
+            <small>Tools, Agent runs and maintenance queues stay reviewable.</small>
+          </div>
+        </aside>
+      </section>
+
+      <section className="system-grid" aria-label="System capabilities">
+        <article>
+          <PanelRight aria-hidden="true" />
+          <h3>Tool Surface</h3>
+          <p>Direct commands expose high-value Agent tools without spending tokens or entering chat.</p>
+        </article>
+        <article>
+          <GitBranch aria-hidden="true" />
+          <h3>Plan-Execute-Reflect</h3>
+          <p>Agent runs keep plans, steps, status, evidence and rollback data in local SQLite tables.</p>
+        </article>
+        <article>
+          <Search aria-hidden="true" />
+          <h3>Semantic search</h3>
+          <p>FTS and local semantic ranking keep weak matches discoverable while avoiding cloud lock-in.</p>
+        </article>
+        <article>
+          <LockKeyhole aria-hidden="true" />
+          <h3>Private by default</h3>
+          <p>Secrets use Electron safeStorage when available; AI and sync only talk to providers you configure.</p>
+        </article>
+      </section>
+
+      <section className="section graph-band">
+        <div className="context-panel" aria-label="Long-context evidence flow">
+          <div className="context-layer hot">
+            <span>Hot</span>
+            <strong>Recent notes, tasks and chat</strong>
+          </div>
+          <div className="context-layer warm">
+            <span>Warm</span>
+            <strong>Recurring themes and active relations</strong>
+          </div>
+          <div className="context-layer cold">
+            <span>Cold</span>
+            <strong>Long-running goals and resurfaced context</strong>
+          </div>
+          <div className="context-evidence">
+            <span>Reason</span>
+            <span>Confidence</span>
+            <span>Evidence</span>
+            <span>Feedback</span>
+          </div>
+        </div>
+        <div className="product-copy">
+          <p className="section-kicker">Cognitive partner direction</p>
+          <h2>Designed to show why AI brought something back.</h2>
+          <p>
+            Long-context relations carry reason, confidence, evidence and feedback. Proactive suggestions
+            can be opened, snoozed or dismissed, and the observability panel shows what entered the context pack.
+          </p>
+          <div className="signal-row">
+            <span>
+              <Sparkles aria-hidden="true" />
+              Proactive suggestions
+            </span>
+            <span>
+              <Boxes aria-hidden="true" />
+              Maintenance queue
+            </span>
+            <span>
+              <Files aria-hidden="true" />
+              Portable Markdown
+            </span>
+          </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="px-6 py-20 max-w-5xl mx-auto w-full">
-        <h2 className="text-2xl font-semibold text-center mb-12">核心特性</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f) => (
-            <div
-              key={f.title}
-              className="p-6 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
-            >
-              <f.icon className="w-8 h-8 text-[var(--accent)] mb-3" />
-              <h3 className="text-lg font-medium mb-2">{f.title}</h3>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                {f.desc}
-              </p>
-            </div>
-          ))}
-        </div>
+      <section className="stack-strip" aria-label="Technology stack">
+        {stack.map((item) => (
+          <span key={item}>{item}</span>
+        ))}
       </section>
 
-      {/* Download */}
-      <section id="download" className="px-6 py-20 max-w-3xl mx-auto w-full">
-        <h2 className="text-2xl font-semibold text-center mb-12">下载安装</h2>
-        <div className="grid gap-4">
-          {downloads.map((d) => (
+      <section id="download" className="download-section" aria-labelledby="download-title">
+        <div className="download-head">
+          <p className="section-kicker">Install</p>
+          <h2 id="download-title">Download the desktop app.</h2>
+          <p>
+            Packages are published through GitHub Releases. For development builds, clone the repository
+            and run the Electron app locally with pnpm.
+          </p>
+        </div>
+        <div className="download-list">
+          {downloads.map((download) => (
             <a
-              key={d.platform}
-              href={`https://github.com/${githubRepo}/releases/latest/download/${d.file}`}
-              className="flex items-center justify-between p-5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] hover:border-[var(--accent)] transition-colors group"
+              key={download.platform}
+              className="download-row"
+              href={`${releaseBase}/${download.file}`}
+              aria-label={`Download Nexusky for ${download.platform}`}
             >
-              <div>
-                <div className="font-medium group-hover:text-[var(--accent)] transition-colors">
-                  {d.platform}
-                </div>
-                <div className="text-sm text-[var(--text-muted)] mt-1">
-                  {d.desc}
-                </div>
-              </div>
-              <Download className="w-5 h-5 text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors" />
+              <span>
+                <strong>{download.platform}</strong>
+                <small>{download.detail}</small>
+              </span>
+              <Download aria-hidden="true" />
             </a>
           ))}
         </div>
-        <p className="text-center text-sm text-[var(--text-muted)] mt-6">
-          当前版本 v{currentVersion} ·{" "}
-          <a
-            href={`https://github.com/${githubRepo}/releases`}
-            className="underline hover:text-[var(--text)]"
-          >
-            查看所有版本
-          </a>
-        </p>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-auto py-8 text-center text-sm text-[var(--text-muted)] border-t border-[var(--border)]">
-        Nexusky &copy; {new Date().getFullYear()}
+      <footer className="footer">
+        <span>Nexusky v{currentVersion}</span>
+        <a href={`https://github.com/${githubRepo}/releases`}>
+          Releases <ArrowRight aria-hidden="true" />
+        </a>
       </footer>
-    </div>
+    </main>
   );
 }

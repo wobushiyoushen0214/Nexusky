@@ -53,7 +53,7 @@
 | P1-5 | P1 | 可维护性 | 拆分 `db.ipc.ts` 多领域处理器，收敛 IPC 入参校验 | +7 | M |
 | P1-6 | P1 | 可维护性 | 拆分超大前端组件，抽 hooks/service 层，降低回归成本 | +6 | L |
 | P1-7 | P1 | 发布 | 启用 macOS notarize / Windows signing，补发布 smoke test | +7 | M-L |
-| P2-1 | P2 | 文档 | 更新 README / OVERVIEW / FEATURES 中过期技术栈与版本说明 | +3 | S |
+| P2-1 | P2 | 文档 | 更新 README / OVERVIEW / GUIDE 中过期技术栈与版本说明 | +3 | S |
 | P2-2 | P2 | 官网 | 替换 create-next-app 默认 README，补部署与日志后台说明 | +2 | S |
 | P2-3 | P2 | 质量度量 | 增加覆盖率、bundle size、audit 报告归档 | +4 | S-M |
 
@@ -398,14 +398,13 @@ Electron 已启用 sandbox 和 contextIsolation，这是好基线。但一旦渲
 
 **证据**
 
-- `README.md` 写 Electron 33：`README.md:36`。
-- `docs/PROJECT_OVERVIEW.md` 仍标记核对版本 `v0.4.0`：`docs/PROJECT_OVERVIEW.md:5`。
-- `docs/PROJECT_OVERVIEW.md` 技术栈仍写 Electron 33：`docs/PROJECT_OVERVIEW.md:95`。
+- 审计时 README 与部分文档仍使用旧运行时和旧版本描述。
 - 当前 `package.json` devDependency 是 Electron 39：`package.json:86`。
+- `docs/PROJECT_OVERVIEW.md` 已更新到 v0.5.0 后视角，README 已重写为当前入口。
 
 **计划**
 
-1. README、FEATURES、PROJECT_OVERVIEW 统一更新到当前版本。
+1. README、GUIDE、PROJECT_OVERVIEW 统一更新到当前版本。
 2. 在文档头部增加“最后验证命令”和“最后核对日期”。
 3. 把已完成的老优化项从待办文档中归档，避免 AI agent 误读。
 

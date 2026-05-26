@@ -5,7 +5,7 @@ const secret = new TextEncoder().encode(
   process.env.AUTH_SECRET || "nexusky-default-secret-change-me"
 );
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/logs")) {
     const token = req.cookies.get("auth_token")?.value;
     if (!token) {
