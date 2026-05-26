@@ -194,13 +194,13 @@ export default function App() {
       setMainView('graph')
       toast(tRef.current('common.aiAnalyzing'), 'info')
       try {
-        const result = await window.api.invoke('ai:infer-links', { vaultPath, filePaths: mdPaths })
-        if (result.success && (result.added ?? 0) > 0) {
-          toast(tRef.current('common.semanticFound', { count: result.added }), 'success')
-          // Trigger graph refresh
+        await window.api.invoke('ai:generate-memories', { vaultPath })
+        const result = await window.api.invoke('ai:infer-global-links', { vaultPath })
+        if (result.success) {
+          toast((result.added ?? 0) > 0 ? tRef.current('common.semanticFound', { count: result.added }) : tRef.current('common.semanticDone'), 'success')
           window.dispatchEvent(new CustomEvent('graph-data-updated'))
         } else {
-          toast(tRef.current('common.semanticDone'), 'success')
+          toast(result.error || tRef.current('common.semanticFailed'), 'info')
         }
       } catch {
         toast(tRef.current('common.semanticFailed'), 'info')

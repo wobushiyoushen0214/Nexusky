@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'
-import { join, basename } from 'path'
+import { join, relative } from 'path'
 import { aiManager } from '../../services/ai'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { startAiTask, finishAiTask } from '../../services/ai-task-control'
@@ -10,9 +10,8 @@ import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../
 import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata, ensureGeneratedNoteWikilinks } from '../../services/ai/note-writing'
 import { indexNote, resolveAllLinks } from '../../services/indexer'
 import { getDatabase } from '../../services/database'
-import { invalidateVaultQueryCache } from '../../services/db-query-cache'
-import { generateMemory, readMemory, findRelatedByMemory } from '../../services/memory'
-import { findSimilarNotes } from '../../services/embedding'
+import { refreshInferredLinksFromMemory } from '../../services/memory-links'
+import { generateMemory, readMemory } from '../../services/memory'
 import { logger } from '../../services/logger'
 
 function getErrorMessage(error: unknown): string {
@@ -198,56 +197,27 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
     }
     try { resolveAllLinks(params.vaultPath) } catch {}
 
-    // Step 4: AI-powered semantic link inference
-    if (createdFiles.length >= 2 && !controller.signal.aborted) {
-      sendProgress({ stage: 'indexing', message: '正在分析笔记语义关系...' })
+    // Step 4: Store AI note memories, then derive semantic graph links from memory.
+    if (createdFiles.length > 0 && !controller.signal.aborted) {
+      sendProgress({ stage: 'indexing', message: '正在生成笔记记忆...' })
       try {
-        const noteSummaries = createdFiles.map((fp) => {
+        const db = getDatabase(params.vaultPath)
+        const findNoteByPath = db.prepare('SELECT id, title, file_path, content_hash FROM notes WHERE file_path = ?')
+        for (const fp of createdFiles) {
+          if (controller.signal.aborted) break
+          const relPath = relative(params.vaultPath, fp).replace(/\\/g, '/')
+          const note = findNoteByPath.get(relPath) as { id: string; title: string; file_path: string; content_hash: string } | undefined
+          if (!note) continue
           const content = readFileSync(fp, 'utf-8')
-          const name = basename(fp, '.md')
-          return `[${name}]\n${content.slice(0, 500)}`
-        }).join('\n\n---\n\n')
+          await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, controller.signal)
+        }
 
-        const { text: relResult } = await consumeStream(
-          provider.chatStream([
-            { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
-
-输出格式为 JSON 数组，每项包含：
-- source: 源笔记标题（必须与给定标题完全一致）
-- target: 目标笔记标题（必须与给定标题完全一致）
-- reason: 一句话说明关系原因
-
-规则：
-1. 只输出真正有内容关联的关系，不要为了凑数而强行关联
-2. 关系应基于概念相关性、因果关系、层级关系等语义理解
-3. 不要输出自引用（source 和 target 相同）
-4. 只输出 JSON，不要其他文字` },
-            { role: 'user', content: `以下是 ${createdFiles.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
-          ], controller.signal),
-          { signal: controller.signal }
-        )
-
-        if (relResult.trim()) {
-          const relations = extractJsonFromText<{ source: string; target: string; reason: string }[]>(relResult, 'array')
-          if (Array.isArray(relations)) {
-            const db = getDatabase(params.vaultPath)
-            const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
-            const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
-
-            for (const rel of relations) {
-              const sourceNote = findNote.get(rel.source) as { id: string } | undefined
-              if (sourceNote && rel.target && rel.source !== rel.target) {
-                const existing = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?').get(sourceNote.id, rel.target)
-                if (!existing) {
-                  insertLink.run(sourceNote.id, rel.target, rel.reason || '', 'inferred')
-                }
-              }
-            }
-            try { resolveAllLinks(params.vaultPath) } catch {}
-          }
+        if (!controller.signal.aborted) {
+          sendProgress({ stage: 'indexing', message: '正在读取记忆分析关系...' })
+          refreshInferredLinksFromMemory(params.vaultPath, { signal: controller.signal })
         }
       } catch (e) {
-        logger.error('semantic-links failed', e)
+        logger.error('memory-links failed', e)
       }
     }
 
@@ -272,105 +242,32 @@ ipcMain.handle('ai:infer-links', async (event, params: { vaultPath: string; file
   const configError = aiManager.validateConfig(config)
   if (configError) return { success: false, error: configError }
 
-  const filePaths = params.filePaths.slice(0, 50)
-  const db = getDatabase(params.vaultPath)
-
-  const noteSummaries = filePaths.map((fp) => {
-    try {
-      const content = readFileSync(fp, 'utf-8')
-      const name = basename(fp, '.md')
-      return `[${name}]\n${content.slice(0, 600)}`
-    } catch { return null }
-  }).filter(Boolean).join('\n\n---\n\n')
-
-  if (!noteSummaries) return { success: false, error: '无法读取文件内容' }
-
-  const provider = aiManager.getProvider(config)
-
   try {
-    const { text: relResult, errorChunk } = await consumeStream(
-      provider.chatStream([
-        { role: 'system', content: `你是一个知识图谱分析助手。分析以下笔记的内容，找出它们之间的语义关系。
-
-输出格式为 JSON 数组，每项包含：
-- source: 源笔记标题（必须与给定标题完全一致）
-- target: 目标笔记标题（必须与给定标题完全一致）
-- reason: 一句话说明关系原因（如"都涉及状态管理"、"A是B的前置知识"等）
-
-规则：
-1. 只输出真正有内容关联的关系，不要为了凑数而强行关联
-2. 关系应基于概念相关性、因果关系、层级关系、共同主题等语义理解
-3. 不要输出自引用（source 和 target 相同）
-4. 只输出 JSON，不要其他文字` },
-        { role: 'user', content: `以下是 ${filePaths.length} 篇笔记，请分析它们之间的语义关系：\n\n${noteSummaries}` }
-      ]),
-      { window }
-    )
-    if (errorChunk !== null) return { success: false, error: errorChunk || 'AI 返回错误' }
-
-    if (!relResult.trim()) return { success: false, error: 'AI 未返回结果' }
-
-    const relations = extractJsonFromText<{ source: string; target: string; reason: string }[]>(relResult, 'array')
-    if (!Array.isArray(relations)) return { success: false, error: '解析失败' }
-
-    const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
-    const findNote = db.prepare('SELECT id FROM notes WHERE title = ?')
-    let added = 0
-
-    for (const rel of relations) {
-      const sourceNote = findNote.get(rel.source) as { id: string } | undefined
-      if (sourceNote && rel.target && rel.source !== rel.target) {
-        const existing = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?').get(sourceNote.id, rel.target)
-        if (!existing) {
-          insertLink.run(sourceNote.id, rel.target, rel.reason || '', 'inferred')
-          added++
-        }
-      }
+    const db = getDatabase(params.vaultPath)
+    const findNoteByPath = db.prepare('SELECT id, title, file_path, content_hash FROM notes WHERE file_path = ?')
+    for (const fp of params.filePaths.slice(0, 50)) {
+      const relPath = relative(params.vaultPath, fp).replace(/\\/g, '/')
+      const note = findNoteByPath.get(relPath) as { id: string; title: string; file_path: string; content_hash: string } | undefined
+      if (!note) continue
+      const existing = readMemory(params.vaultPath, note.id)
+      if (existing && existing.contentHash === note.content_hash) continue
+      const content = readFileSync(fp, 'utf-8')
+      await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash)
     }
-    try { resolveAllLinks(params.vaultPath) } catch {}
 
-    return { success: true, added }
+    const result = refreshInferredLinksFromMemory(params.vaultPath)
+    return { success: true, added: result.added }
   } catch (err: unknown) {
     return { success: false, error: getErrorMessage(err) }
   }
 })
 
-// --- TF-IDF only inference (no AI calls, cheap, used for auto-fill on entering semantic mode) ---
+// Kept for backward compatibility with older renderer builds. Current graph
+// inference is memory-backed, not TF-IDF-backed.
 ipcMain.handle('db:auto-infer-tfidf-links', async (_event, params: { vaultPath: string; force?: boolean }) => {
   try {
-    const db = getDatabase(params.vaultPath)
-    if (!params.force) {
-      const existing = db.prepare("SELECT COUNT(*) as count FROM links WHERE link_type = 'inferred'").get() as { count: number }
-      if (existing.count > 0) return { success: true, added: 0, skipped: true }
-    }
-
-    const pairs = findSimilarNotes(params.vaultPath, 3, 0.75)
-    if (pairs.length === 0) return { success: true, added: 0 }
-
-    const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
-    const anyLinkExists = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?')
-    const pendingKeys = new Set<string>()
-    let added = 0
-
-    const writeAll = db.transaction(() => {
-      if (params.force) {
-        db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
-      }
-      for (const p of pairs) {
-        if (!params.force && anyLinkExists.get(p.sourceId, p.targetTitle)) continue
-        const key = `${p.sourceId} ${p.targetTitle}`
-        const reverseKey = `${p.targetId} ${p.sourceTitle}`
-        if (pendingKeys.has(key) || pendingKeys.has(reverseKey)) continue
-        pendingKeys.add(key)
-        insertLink.run(p.sourceId, p.targetTitle, `相似度: ${(p.score * 100).toFixed(0)}%`, 'inferred')
-        added++
-      }
-    })
-    writeAll()
-
-    try { resolveAllLinks(params.vaultPath) } catch {}
-    invalidateVaultQueryCache(params.vaultPath)
-    return { success: true, added }
+    const result = refreshInferredLinksFromMemory(params.vaultPath)
+    return { success: true, added: result.added, skipped: result.considered === 0 }
   } catch (err: unknown) {
     return { success: false, error: getErrorMessage(err) }
   }
@@ -382,64 +279,12 @@ ipcMain.handle('ai:infer-global-links', async (event, params: { vaultPath: strin
   if (!window) return { success: false, error: '窗口不存在' }
 
   const controller = startAiTask(window.id)
-  const db = getDatabase(params.vaultPath)
-  const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
-  const explicitLinkExists = db.prepare("SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ? AND link_type = 'explicit'")
-  const anyLinkExists = db.prepare('SELECT 1 FROM links WHERE source_note_id = ? AND target_title = ?')
-  const inferredLinks: { sourceId: string; targetId?: string; targetTitle: string; sourceTitle?: string; context: string }[] = []
-  const pendingKeys = new Set<string>()
-
-  const queueInferredLink = (pair: { sourceId: string; targetId?: string; sourceTitle?: string; targetTitle: string; context: string }, checkAnyLink: boolean) => {
-    const exists = checkAnyLink ? anyLinkExists : explicitLinkExists
-    if (exists.get(pair.sourceId, pair.targetTitle)) return
-    if (pair.targetId && pair.sourceTitle && exists.get(pair.targetId, pair.sourceTitle)) return
-
-    const key = `${pair.sourceId}\u0000${pair.targetTitle}`
-    const reverseKey = pair.targetId && pair.sourceTitle ? `${pair.targetId}\u0000${pair.sourceTitle}` : ''
-    if (pendingKeys.has(key) || (reverseKey && pendingKeys.has(reverseKey))) return
-
-    pendingKeys.add(key)
-    inferredLinks.push(pair)
-  }
-
   try {
-    // Phase 1: Memory-based relation (preferred — uses pre-generated memory files)
-    const memoryPairs = findRelatedByMemory(params.vaultPath, 3)
-    for (const pair of memoryPairs) {
-      if (controller.signal.aborted) return { success: false, error: '已取消' }
-      queueInferredLink({
-        sourceId: pair.sourceId,
-        targetId: pair.targetId,
-        sourceTitle: pair.sourceTitle,
-        targetTitle: pair.targetTitle,
-        context: pair.reason
-      }, false)
-    }
-
-    // Phase 2: TF-IDF fallback (for notes without memory files)
-    const similarPairs = findSimilarNotes(params.vaultPath, 3, 0.75)
-    for (const pair of similarPairs) {
-      if (controller.signal.aborted) return { success: false, error: '已取消' }
-      queueInferredLink({
-        sourceId: pair.sourceId,
-        targetId: pair.targetId,
-        sourceTitle: pair.sourceTitle,
-        targetTitle: pair.targetTitle,
-        context: `相似度: ${(pair.score * 100).toFixed(0)}%`
-      }, true)
-    }
-
-    const replaceInferredLinks = db.transaction(() => {
-      db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
-      for (const link of inferredLinks) {
-        insertLink.run(link.sourceId, link.targetTitle, link.context, 'inferred')
-      }
-    })
-    replaceInferredLinks()
-
-    try { resolveAllLinks(params.vaultPath) } catch {}
-    invalidateVaultQueryCache(params.vaultPath)
-    return { success: true, added: inferredLinks.length }
+    const result = refreshInferredLinksFromMemory(params.vaultPath, { signal: controller.signal })
+    if (result.aborted) return { success: false, error: '已取消' }
+    return { success: true, added: result.added }
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) }
   } finally {
     finishAiTask(window.id, controller)
   }
@@ -448,6 +293,10 @@ ipcMain.handle('ai:infer-global-links', async (event, params: { vaultPath: strin
 ipcMain.handle('ai:generate-memories', async (event, params: { vaultPath: string }) => {
   const window = BrowserWindow.fromWebContents(event.sender)
   if (!window) return { success: false, error: '窗口不存在' }
+  const config = aiManager.getActiveConfig()
+  if (!config) return { success: false, error: '未配置 AI 提供商', generated: 0, skipped: 0, failed: 0, total: 0 }
+  const configError = aiManager.validateConfig(config)
+  if (configError) return { success: false, error: configError, generated: 0, skipped: 0, failed: 0, total: 0 }
   const controller = startAiTask(window.id)
   const db = getDatabase(params.vaultPath)
   const totalRow = db.prepare('SELECT COUNT(*) as count FROM notes').get() as { count: number }
@@ -493,6 +342,9 @@ ipcMain.handle('ai:generate-memories', async (event, params: { vaultPath: string
       sendProgress(i + 1, note.title)
     }
 
+    if (!controller.signal.aborted) {
+      try { refreshInferredLinksFromMemory(params.vaultPath, { signal: controller.signal }) } catch {}
+    }
     sendProgress(notes.length, undefined, 'done')
     return { success: true, generated, skipped, failed, total: notes.length, totalNotes, limited: totalNotes > notes.length }
   } finally {

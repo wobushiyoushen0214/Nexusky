@@ -209,7 +209,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       const { toast } = await import('../stores/toast-store')
       toast(t('commandPalette.toasts.generatingMemories'), 'info')
       const result = await window.api.invoke('ai:generate-memories', { vaultPath })
-      if (result.success) toast(t('commandPalette.toasts.memoriesDone', { generated: result.generated, skipped: result.skipped, failed: result.failed }), 'success')
+      if (result.success) {
+        toast(t('commandPalette.toasts.memoriesDone', { generated: result.generated, skipped: result.skipped, failed: result.failed }), 'success')
+        window.dispatchEvent(new CustomEvent('graph-data-updated'))
+      }
       else toast(result.error || t('commandPalette.toasts.memoriesFailed'), 'error')
     }},
     { id: 'sync', category: 'sync', label: t('commandPalette.commands.sync.label'), shortcut: 'Ctrl+Shift+S', keywords: ['sync'], action: async () => {

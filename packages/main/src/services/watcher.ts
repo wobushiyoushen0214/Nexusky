@@ -7,6 +7,7 @@ import { indexNoteEmbeddings, invalidateNoteInCache } from './embedding'
 import { getDatabase } from './database'
 import { readFileSync } from 'fs'
 import { generateMemory, readMemory, deleteMemory } from './memory'
+import { refreshInferredLinksFromMemory } from './memory-links'
 import { cancelLongContextAnalysis, scheduleIndexedNoteLongContext, scheduleVaultLongContextMaintenance } from './long-context/background'
 
 let watcher: FSWatcher | null = null
@@ -38,6 +39,15 @@ export function startWatching(vaultPath: string): void {
     }, 500)
   }
 
+  const notifyGraphRefresh = () => {
+    const windows = BrowserWindow.getAllWindows()
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('vault:files-changed')
+      }
+    }
+  }
+
   const indexAndNotify = (path: string, eventType: 'note_created' | 'note_updated' = 'note_updated') => {
     const existing = changeTimers.get(path)
     if (existing) clearTimeout(existing)
@@ -59,7 +69,13 @@ export function startWatching(vaultPath: string): void {
           const db = getDatabase(vaultPath)
           const note = db.prepare('SELECT title, file_path FROM notes WHERE id = ?').get(noteId) as { title: string; file_path: string } | undefined
           if (note) {
-            generateMemory(vaultPath, noteId, note.title, note.file_path, content, contentHash).catch(() => {})
+            generateMemory(vaultPath, noteId, note.title, note.file_path, content, contentHash)
+              .then((memory) => {
+                if (!memory) return
+                refreshInferredLinksFromMemory(vaultPath)
+                notifyGraphRefresh()
+              })
+              .catch(() => {})
           }
         }
         scheduleIndexedNoteLongContext({

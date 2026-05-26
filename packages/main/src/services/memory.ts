@@ -139,8 +139,6 @@ export function findRelatedByMemory(
 
     for (let j = i + 1; j < memories.length; j++) {
       const b = memories[j]
-      if (a.folder === b.folder) continue
-
       const bConceptsLower = b.concepts.map(c => c.toLowerCase())
       const bTopicsLower = b.topics.map(t => t.toLowerCase())
       const sharedConcepts = a.concepts.filter(c => bConceptsLower.includes(c.toLowerCase()))

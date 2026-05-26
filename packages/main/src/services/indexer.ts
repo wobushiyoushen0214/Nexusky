@@ -422,8 +422,8 @@ export function getGraphData(vaultPath: string, mode: GraphMode = 'folder'): Gra
   }
   for (const t of ambiguousTitles) titleToId.delete(t)
 
-  // semantic / folder modes consume both explicit and inferred links; connection drops inferred.
-  const includeInferred = mode === 'semantic'
+  // Folder and semantic views consume memory-backed inferred links; connection drops inferred.
+  const includeInferred = mode !== 'connection'
   const linkRows = (includeInferred
     ? db.prepare('SELECT source_note_id, target_note_id, target_title, link_type FROM links')
     : db.prepare("SELECT source_note_id, target_note_id, target_title, link_type FROM links WHERE link_type = 'explicit'")

@@ -83,7 +83,7 @@ function buildSimulation(width: number, height: number, params: ForceParams, sta
     .force('link', forceLink<SimInternalNode, WorkerLink>(currentLinks).id((d) => d.id).distance(params.isLarge ? 50 : params.linkDistance).strength(0.4))
     .force('charge', forceManyBody().strength(params.isLarge ? -150 : params.chargeStrength).distanceMax(params.isLarge ? 300 : 500))
     .force('center', forceCenter(width / 2, height / 2))
-    .force('collide', forceCollide<SimInternalNode>((d) => radiusFor(d) + (params.isLarge ? 8 : 16)))
+    .force('collide', forceCollide<SimInternalNode>((d) => radiusFor(d) + (params.isLarge ? 10 : 18)).iterations(params.isLarge ? 1 : 2))
     .force('x', forceX(width / 2).strength(params.centerStrength))
     .force('y', forceY(height / 2).strength(params.centerStrength))
 
@@ -93,6 +93,9 @@ function buildSimulation(width: number, height: number, params: ForceParams, sta
 
   if (typeof startAlpha === 'number') {
     simulation.alpha(startAlpha)
+  } else {
+    simulation.tick(params.isHeavy ? 60 : 120)
+    postTick()
   }
 
   simulation.on('tick', postTick)
@@ -143,6 +146,8 @@ self.onmessage = (event: MessageEvent<InMsg>): void => {
     if (linkForce) linkForce.distance(params.isLarge ? 50 : params.linkDistance)
     const chargeForce = simulation.force('charge') as ReturnType<typeof forceManyBody> | undefined
     if (chargeForce) chargeForce.strength(params.isLarge ? -150 : params.chargeStrength).distanceMax(params.isLarge ? 300 : 500)
+    const collideForce = simulation.force('collide') as ReturnType<typeof forceCollide<SimInternalNode>> | undefined
+    if (collideForce) collideForce.radius((d) => radiusFor(d) + (params.isLarge ? 10 : 18)).iterations(params.isLarge ? 1 : 2)
     const xForce = simulation.force('x') as ReturnType<typeof forceX> | undefined
     if (xForce) xForce.strength(params.centerStrength)
     const yForce = simulation.force('y') as ReturnType<typeof forceY> | undefined

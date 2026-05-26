@@ -47,7 +47,7 @@ describe('getGraphData modes', () => {
     return { closeDatabase, byTitle }
   }
 
-  it('folder mode returns folder nodes + folder→file edges + explicit edges', async () => {
+  it('folder mode returns folder nodes + folder→file edges + explicit and inferred edges', async () => {
     const { getGraphData } = await import('../packages/main/src/services/indexer')
     const { closeDatabase, byTitle } = await setupVault()
 
@@ -56,7 +56,7 @@ describe('getGraphData modes', () => {
     expect(graph.nodes.some((n) => n.type === 'folder' && n.filePath === 'Folder')).toBe(true)
     expect(graph.edges).toContainEqual(expect.objectContaining({ linkType: 'folder' }))
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('B').id, linkType: 'explicit' }))
-    expect(graph.edges.every((e) => e.linkType !== 'inferred')).toBe(true)
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('D').id, linkType: 'inferred' }))
 
     closeDatabase()
   })

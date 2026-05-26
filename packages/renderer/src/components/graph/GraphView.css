@@ -116,38 +116,6 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.graph-mode-switcher {
-  display: flex;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  padding: 2px;
-  gap: 2px;
-}
-
-.graph-mode-tab {
-  flex: 1;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  padding: 5px 6px;
-  cursor: pointer;
-  transition: background 150ms, color 150ms;
-}
-
-.graph-mode-tab:hover:not(.active) {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
-}
-
-.graph-mode-tab.active {
-  background: var(--accent);
-  color: white;
-  font-weight: 600;
-}
-
 .graph-panel-section-title {
   font-size: 10px;
   font-weight: 600;
@@ -271,7 +239,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
+  padding: 4px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.graph-group-item.muted {
+  opacity: 0.48;
 }
 
 .graph-group-dot {
@@ -287,6 +261,33 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+}
+
+.graph-group-item input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.graph-group-switch {
+  width: 24px;
+  height: 12px;
+  border-radius: 6px;
+}
+
+.graph-group-switch::after {
+  width: 8px;
+  height: 8px;
+}
+
+.graph-group-item input:checked + .graph-group-switch {
+  background: var(--accent);
+}
+
+.graph-group-item input:checked + .graph-group-switch::after {
+  transform: translateX(12px);
 }
 
 /* Slider */
@@ -402,6 +403,10 @@
   display: none;
 }
 
+.graph-link.group-hidden {
+  display: none;
+}
+
 .graph-link.highlighted {
   stroke-opacity: 0.8;
   stroke-width: 1.5px !important;
@@ -453,6 +458,10 @@
 
 .graph-node.dimmed {
   opacity: 0.06;
+}
+
+.graph-node.group-hidden {
+  display: none;
 }
 
 /* Outer glow - removed */

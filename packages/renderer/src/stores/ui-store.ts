@@ -7,7 +7,7 @@ type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
 const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
-const GRAPH_MODE_IDS: GraphMode[] = ['semantic', 'connection', 'folder']
+const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader' | 'kanban'
@@ -94,7 +94,7 @@ function getInitialTheme(): Theme {
 function getInitialGraphMode(): GraphMode {
   const saved = safeGet(GRAPH_MODE_STORAGE_KEY)
   if (saved && (GRAPH_MODE_IDS as readonly string[]).includes(saved)) return saved as GraphMode
-  return 'semantic'
+  return 'folder'
 }
 
 function applyTheme(theme: Theme) {
@@ -386,8 +386,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ language: lang })
   },
   setGraphMode: (mode) => {
-    safeSet(GRAPH_MODE_STORAGE_KEY, mode)
-    set({ graphMode: mode })
+    const next: GraphMode = GRAPH_MODE_IDS.includes(mode) ? mode : 'folder'
+    safeSet(GRAPH_MODE_STORAGE_KEY, next)
+    set({ graphMode: next })
   },
   resetWorkspaceLayout: () => {
     const { workspaceScope, sidebarWidthScope } = get()
