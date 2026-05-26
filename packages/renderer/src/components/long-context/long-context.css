@@ -9,11 +9,15 @@
 }
 
 .related-context-panel--top {
-  width: auto;
-  max-height: 188px;
-  margin: 8px 32px 10px;
+  width: min(720px, 100%);
+  margin: 0 auto 18px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 88%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
   flex-shrink: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .related-context-panel__header {
@@ -41,7 +45,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.related-context-panel__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
 .related-context-panel__refresh,
+.related-context-panel__nav,
 .related-context-card__icon-button {
   width: 24px;
   height: 24px;
@@ -58,6 +70,7 @@
 }
 
 .related-context-panel__refresh:hover,
+.related-context-panel__nav:hover,
 .related-context-card__icon-button:hover {
   background: var(--bg-hover);
   color: var(--text-secondary);
@@ -72,6 +85,25 @@
 .related-context-panel__list {
   display: grid;
   gap: 0;
+}
+
+.related-context-panel__list--carousel {
+  display: block;
+}
+
+.related-context-panel__list--carousel .related-context-card {
+  border-bottom: none;
+}
+
+.related-context-panel__list--carousel .related-context-card__reason {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.related-context-panel__list--carousel .related-context-card__evidence {
+  display: none;
 }
 
 .related-context-card {
@@ -245,8 +277,7 @@
   }
 
   .related-context-panel--top {
-    max-height: 152px;
-    margin: 8px 16px 10px;
+    margin: 0 auto 16px;
   }
 
   .related-context-card__header {

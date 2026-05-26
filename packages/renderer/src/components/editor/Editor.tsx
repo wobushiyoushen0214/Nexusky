@@ -700,10 +700,6 @@ export function Editor() {
       {/* Toolbar */}
       {!focusMode && editor && <EditorToolbar editor={editor} />}
 
-      {!focusMode && currentFilePath && (
-        <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement="top" />
-      )}
-
       {/* Editor area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -732,6 +728,9 @@ export function Editor() {
               setEditorContextMenu({ x: e.clientX, y: e.clientY })
             }}
           >
+            {!focusMode && currentFilePath && (
+              <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement="top" />
+            )}
             <EditorContent editor={editor} />
             <TransclusionBlocks content={content} />
             <MermaidBlocks content={content} />

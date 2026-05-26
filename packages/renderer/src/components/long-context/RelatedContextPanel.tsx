@@ -15,9 +15,15 @@ interface RelatedContextPanelProps {
 
 type LoadState = 'idle' | 'loading' | 'error'
 type RelatedContextPanelPlacement = 'inline' | 'top'
+type RelatedContextDirection = -1 | 1
 
 export function getRelatedContextPanelClassName(placement: RelatedContextPanelPlacement = 'inline'): string {
   return `related-context-panel${placement === 'top' ? ' related-context-panel--top' : ''}`
+}
+
+export function getRelatedContextCarouselIndex(currentIndex: number, total: number, direction: RelatedContextDirection): number {
+  if (total <= 0) return 0
+  return (currentIndex + direction + total) % total
 }
 
 export function RelatedContextPanel({ currentFilePath, content, placement = 'inline' }: RelatedContextPanelProps) {
@@ -27,6 +33,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
   const [feedbackByRelation, setFeedbackByRelation] = useState<Record<string, LongContextFeedbackType>>({})
   const [state, setState] = useState<LoadState>('idle')
   const [error, setError] = useState('')
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0)
   const contentRef = useRef(content)
 
   useEffect(() => {
@@ -38,6 +45,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
     setNoteId(null)
     setSuggestions([])
     setFeedbackByRelation({})
+    setActiveSuggestionIndex(0)
     if (!vaultPath || !currentFilePath) return
 
     const relativePath = currentFilePath
@@ -86,6 +94,13 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
     loadSuggestions(false)
   }, [noteId, loadSuggestions])
 
+  useEffect(() => {
+    setActiveSuggestionIndex((current) => {
+      if (suggestions.length === 0) return 0
+      return Math.min(current, suggestions.length - 1)
+    })
+  }, [suggestions.length])
+
   const openSuggestion = useCallback((suggestion: LongContextSuggestion) => {
     if (!vaultPath || !suggestion.targetPath) return
     if (noteId) {
@@ -122,28 +137,68 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
 
   if (!noteId) return null
 
+  const activeIndex = suggestions.length > 0 ? Math.min(activeSuggestionIndex, suggestions.length - 1) : 0
+  const visibleSuggestions = placement === 'top' && suggestions.length > 0
+    ? [suggestions[activeIndex]]
+    : suggestions
+  const countText = suggestions.length > 0
+    ? placement === 'top' ? `${activeIndex + 1}/${suggestions.length}` : `${suggestions.length} 条`
+    : state === 'loading' ? '读取中' : state === 'error' ? '出错' : '0 条'
+  const showCarouselControls = placement === 'top' && suggestions.length > 1
+  const moveCarousel = (direction: RelatedContextDirection) => {
+    setActiveSuggestionIndex((current) => getRelatedContextCarouselIndex(current, suggestions.length, direction))
+  }
+
   return (
     <section className={getRelatedContextPanelClassName(placement)} aria-label="相关上下文">
       <div className="related-context-panel__header">
         <div>
           <div className="related-context-panel__eyebrow">相关上下文</div>
-          <div className="related-context-panel__count">{suggestions.length > 0 ? `${suggestions.length} 条` : state === 'loading' ? '读取中' : state === 'error' ? '出错' : '0 条'}</div>
+          <div className="related-context-panel__count">{countText}</div>
         </div>
-        <button
-          type="button"
-          className="related-context-panel__refresh"
-          onClick={() => loadSuggestions(true)}
-          disabled={state === 'loading'}
-          title="刷新"
-          aria-label="刷新"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 12a9 9 0 0 1-15 6.7" />
-            <path d="M3 12a9 9 0 0 1 15-6.7" />
-            <path d="M18 3v5h-5" />
-            <path d="M6 21v-5h5" />
-          </svg>
-        </button>
+        <div className="related-context-panel__actions">
+          {showCarouselControls && (
+            <>
+              <button
+                type="button"
+                className="related-context-panel__nav"
+                onClick={() => moveCarousel(-1)}
+                title="上一条"
+                aria-label="上一条"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="related-context-panel__nav"
+                onClick={() => moveCarousel(1)}
+                title="下一条"
+                aria-label="下一条"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="related-context-panel__refresh"
+            onClick={() => loadSuggestions(true)}
+            disabled={state === 'loading'}
+            title="刷新"
+            aria-label="刷新"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 0 1-15 6.7" />
+              <path d="M3 12a9 9 0 0 1 15-6.7" />
+              <path d="M18 3v5h-5" />
+              <path d="M6 21v-5h5" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {state === 'loading' && suggestions.length === 0 && (
@@ -162,8 +217,8 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       )}
 
       {suggestions.length > 0 && (
-        <div className="related-context-panel__list">
-          {suggestions.map((suggestion) => (
+        <div className={`related-context-panel__list${placement === 'top' ? ' related-context-panel__list--carousel' : ''}`}>
+          {visibleSuggestions.map((suggestion) => (
             <RelatedContextCard
               key={suggestion.relationId}
               suggestion={suggestion}
