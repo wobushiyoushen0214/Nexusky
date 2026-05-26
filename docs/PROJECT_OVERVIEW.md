@@ -2,11 +2,11 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：`5399436`（v0.4.0 及其后续 Windows CI / 原生模块修复）
+最后核对版本：`ac7dee4`（v0.5.0 后，含通知中心批量操作与图谱降噪改动）
 
 ## 1. 一句话理解
 
-Nexusky 是一个 Electron 桌面端、本地优先的 Markdown 知识库笔记应用。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、编辑、批量生成、语义搜索、知识图谱、看板、闪卡和阅读收件箱等工作流中接入多种 AI Provider。
+Nexusky 是一个 Electron 桌面端、本地优先的 Markdown 知识库笔记应用。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、Agent、编辑、批量生成、长期上下文、语义搜索、知识图谱、看板、闪卡、阅读收件箱和主动建议等工作流中接入多种 AI Provider。
 
 ## 2. 产品定位
 
@@ -44,6 +44,8 @@ Nexusky 的核心目标是让用户在本地文件夹中长期维护知识资产
 - 当前笔记底部可看出链、反链和未链接提及。
 - 未链接提及可转为 wikilink。
 - D3 知识图谱和知识空间会基于索引展示节点关系。
+- 知识图谱支持 folder / semantic / connection 三种数据模式，边会区分显式链接、AI 推断链接和目录归属。
+- 图谱默认以显式关系为主，隐藏 AI 推断边、目录归属边、孤立节点和普通节点标签，保留开关供用户临时查看低信号关联。
 
 ### 3.3 AI 对话与 AI 编辑
 
@@ -78,7 +80,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 - 整个 vault 发布为静态 HTML 站点。
 - 浏览器扩展 Web Clipper 把网页剪藏保存为 Markdown。
 
-### 3.6 任务管理、看板与知识维护
+### 3.6 任务管理、看板、知识维护与主动建议
 
 围绕 vault 中的 Markdown 任务列表，Nexusky 提供任务级别的工作流：
 
@@ -87,17 +89,19 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 - 看板的 AI 工作流：`kanban:ai-analyze`、`kanban:ai-breakdown-task`、`kanban:ai-from-note` 先生成可编辑 plan 预览，用户确认后再写入。
 - AI Agent 提供 `plan_knowledge_maintenance` 工具，把"未解析链接、空笔记、过期任务、今日到期、高优先级、计划/开始/阻塞/循环任务、即将到期、孤岛笔记、缺失属性、重复标题或别名、待复习笔记记忆、超长笔记、知识桥接"等问题统一汇总成可执行的维护队列。
 - `list_knowledge_bridges` 工具找出语义上的桥接笔记，配合 `suggest_note_links`、`connection-opportunities` 帮助补全跨主题链接。
+- 知识维护面板通过 `maintenance:*` IPC 获取队列并应用部分自动修复。
+- 主动建议系统会基于长期上下文、主题接近、认知回顾和维护信号生成通知；通知中心支持单条打开/稍后/忽略，也支持一次性全部已读或全部删除。
 
 ## 4. 技术栈
 
 | 层 | 当前实现 |
 | --- | --- |
-| 桌面容器 | Electron 33（基于 Node 22 ABI） |
+| 桌面容器 | Electron 39；原生模块通过 `scripts/rebuild-native.mjs` 按 Electron 运行时重建 |
 | 构建 | electron-vite + Vite 6 |
 | 前端 | React 19、Zustand、i18next |
 | 编辑器 | TipTap / ProseMirror、tiptap-markdown |
 | Markdown 渲染 | marked、DOMPurify、KaTeX、Mermaid、lowlight |
-| 图谱/知识空间 | D3 force / drag / zoom；GraphView 力仿真在 renderer Web Worker 中运行 |
+| 图谱/知识空间 | D3 force / drag / zoom；`db:get-graph` 支持 `GraphMode`，GraphView 展示 folder 模式、linkType 视觉区分、布局缓存和 renderer Web Worker 力仿真 |
 | 本地数据库 | better-sqlite3，WAL 模式，FTS5 |
 | AI SDK | OpenAI、Anthropic、Ollama 兼容接口、Codex CLI |
 | 同步 | Supabase、iCloud、OneDrive、WebDAV、S3 |
@@ -157,7 +161,7 @@ main/services/*
 主进程入口是 `packages/main/src/index.ts`。它负责：
 
 - 创建无边框 Electron 窗口，恢复窗口大小和位置。
-- 注册 `file`、`vault`、`db`、`ai`、`template`、`cloud`、`export`、`plugin` IPC。
+- 注册 `file`、`vault`、`db`、`ai`、`agent`、`maintenance`、`proactive`、`template`、`cloud`、`export`、`plugin` IPC。
 - 初始化自动更新。
 - 启动 Web Clipper 本地服务。
 - 注册全局快捷键 `CommandOrControl+Shift+N`。
@@ -170,7 +174,7 @@ main/services/*
 关键点：
 
 - `invoke` 使用 `IPCChannelMap` 做类型约束。
-- 事件订阅包括文件变化、vault 变化、AI stream、AI sources、AI edit stream、图谱进度、笔记生成进度、记忆生成进度、embedding 进度、更新器事件等。
+- 事件订阅包括文件变化、vault 变化、AI stream、AI sources、AI edit stream、图谱进度、笔记生成进度、记忆生成进度、embedding 进度、主动建议、Agent step update、更新器事件等。
 - 窗口控制通过 `window:minimize`、`window:maximize`、`window:close`、`window:new` 发送给主进程。
 
 ### 6.3 渲染进程
@@ -198,7 +202,7 @@ main/services/*
 
 ### 7.2 SQLite 索引
 
-`packages/main/src/services/database.ts` 负责为每个 vault 创建和迁移 SQLite 数据库。当前 `SCHEMA_VERSION = 8`。
+`packages/main/src/services/database.ts` 负责为每个 vault 创建和迁移 SQLite 数据库。当前 `SCHEMA_VERSION = 11`。
 
 主要表：
 
@@ -214,6 +218,9 @@ main/services/*
 | `tasks` | Markdown task list 抽取结果，含状态字符（含 Obsidian 自定义状态）、嵌套层级、Tasks 插件 due/scheduled/start 日期、Dataview 字段 |
 | `kanban_columns` / `kanban_tasks` / `kanban_task_relations` | 看板列、任务（含 priority、due_date、source_note_id、source_file_path、时间戳）和任务间关系（`related` / `blocks` / `depends_on` 等） |
 | `conversations` / `chat_sessions` | AI 对话历史与多会话 |
+| `context_events` / `ai_relations` / `long_term_themes` / `theme_memberships` / `relation_feedback` | 长期上下文事件、AI 关系、长期主题、主题成员和关系反馈 |
+| `proactive_suggestions` | 主动建议通知，含类型、来源、实体、CTA、重要度、状态、稍后提醒和响应时间 |
+| `agent_runs` / `agent_steps` | Agent 任务运行记录、计划步骤、执行状态、结果、回滚数据 |
 | `schema_version` | 数据库迁移版本 |
 
 旧 vault 兼容策略：
@@ -251,7 +258,10 @@ main/services/*
 | `db:*` | 索引、搜索、图谱、反链、属性、对话历史、embedding 状态 |
 | `flashcards:*` | 到期闪卡队列和评分写回 |
 | `kanban:*` | 看板列、任务、关系、AI 分析、AI 任务拆解、AI 笔记转看板、按笔记任务批量导入和 AI plan 预览 |
-| `ai:*` | Provider、聊天、Agent、编辑、批量笔记、摘要、闪卡、标签、语音转写 |
+| `ai:*` | Provider、聊天、Agent 工具执行、工具面板 surface、编辑、批量笔记、摘要、闪卡、标签、语音转写 |
+| `maintenance:*` | 知识维护队列查询和自动修复应用 |
+| `proactive:*` | 主动建议列表、单条响应、批量已读/删除、偏好设置和调试运行 |
+| `agent:*` | Agent 规划、运行控制、步骤重试/跳过/回滚、运行列表和反思 |
 | `template:*` | 内置/市场/社区模板 |
 | `plugins:*` | 本地插件和插件市场 |
 | `cloud:*` | 云配置、登录、同步、各 Provider 配置、索引同步 |
@@ -356,6 +366,35 @@ AI 面板还支持：
 - 语音转写：`ai:transcribe`。
 - 闪卡生成：`ai:generate-flashcards` 生成 Basic/Cloze 卡片，并由 `flashcards:*` 管理复习。
 
+### 9.7 Agent 运行面板
+
+除 ChatPanel 内的工具调用外，Nexusky 还有独立的 Agent run 工作流：
+
+- `packages/main/src/services/agent/planner.ts` 生成结构化步骤计划。
+- `agent-store.ts` 持久化 `agent_runs` / `agent_steps`。
+- `executor.ts` 执行步骤，支持 dry run、暂停/恢复、取消、重试、跳过和回滚。
+- `reflector.ts` 对运行结果生成反思摘要。
+- `packages/main/src/ipc/agent.ipc.ts` 注册 `agent:*` IPC，并通过 `agent:step-update` 事件推送步骤进度。
+- 前端 `AgentRunPanel` 展示运行列表、步骤状态、回滚与反思入口。
+
+### 9.8 长期上下文与主动建议
+
+长期上下文系统位于 `packages/main/src/services/long-context/`，用于把用户的编辑、搜索、AI 对话和图谱关系沉淀为可复用的上下文：
+
+- `context_events` 记录长期事件。
+- `relation-candidates` / `relation-classifier` / `relation-ranker` 发现、分类和排序 AI 关系。
+- `theme-extractor` 聚合长期主题，`context-pack-builder` 构造聊天可用的 hot/warm/cold 上下文包。
+- `background.ts` 负责后台分析，`long-context-prefs.ts` 负责偏好设置，`cognitive-review.ts` 生成认知回顾。
+- `RelatedContextPanel`、`LongContextDebugPanel` 和 `ChatSourceRow` 让用户查看相关上下文、调试 pack，并解释聊天来源为什么被引用。
+
+主动建议系统位于 `packages/main/src/services/proactive/`：
+
+- `proactive-triggers.ts` 从长期关系、主题接近、认知回顾和维护信号生成候选。
+- `proactive-policy.ts` 根据用户偏好、静默时段、每日上限、重要度阈值、冷却和去重决定是否发出。
+- `proactive-store.ts` 写入 `proactive_suggestions`，支持 pending / shown / opened / snoozed / dismissed / expired 状态。
+- `proactive-orchestrator.ts` 统一评估、upsert 和广播；`proactive-broadcaster.ts` 把新建议推给渲染进程。
+- `NotificationCenter` 读取 pending/shown 列表，支持单条响应和 `proactive:respond-all` 批量已读/删除。
+
 ## 10. 主要前端模块
 
 | 模块 | 路径 | 责任 |
@@ -369,10 +408,16 @@ AI 面板还支持：
 | 文件树 | `components/sidebar/FileTree.tsx` / `VirtualFileTree.tsx` | 文件导航、拖拽、右键菜单、虚拟滚动 |
 | 命令面板 | `components/CommandPalette.tsx` | 功能命令、AI 快捷任务、导入/导出入口 |
 | 搜索 | `components/SearchPanel.tsx` | 全文/语义搜索、embedding 进度 |
-| 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；三种模式（Semantic / Connection / Folder）和 linkType 视觉区分；力仿真在 `workers/graph-force-worker.ts` 中跑 |
+| 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 folder 模式，底层 `db:get-graph` 支持 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
 | 知识空间 | `components/canvas/CanvasView.tsx` | 无限画布、图层、节点布局 |
 | 看板 | `components/KanbanPanel.tsx` | 任务列、拖拽、AI 分析 |
 | 阅读收件箱 | `components/reader/ReaderInboxView.tsx` | 外部阅读材料 triage |
+| 长期上下文面板 | `components/long-context/*` | 当前笔记相关上下文、关系卡片和长期上下文徽标 |
+| 维护队列 | `components/maintenance/MaintenanceQueuePanel.tsx` | 知识维护项列表、筛选和修复入口 |
+| Agent 运行面板 | `components/agent/AgentRunPanel.tsx` | Agent 计划、步骤执行、回滚、重试和反思入口 |
+| 主动建议 | `components/proactive/NotificationCenter.tsx` / `ProactiveToast.tsx` / `ProactivePreferences.tsx` | 通知中心、toast、偏好设置和批量响应 |
+| 工具结果面板 | `components/tool-surface/ToolResultPanel.tsx` | 命令面板或编辑器工具调用后的结构化结果展示 |
+| 观测面板 | `components/observability/LongContextDebugPanel.tsx` | 长期上下文 pack、指标和趋势调试 |
 | 设置 | `components/settings/Settings.tsx` | AI、同步、主题、快捷键、插件等设置 |
 
 ## 11. 状态管理
@@ -388,6 +433,7 @@ Zustand stores 位于 `packages/renderer/src/stores/`。
 | `toast-store.ts` | toast 队列 |
 | `activity-bar-store.ts` | 左侧活动栏条目 |
 | `keybinding-store.ts` | 快捷键配置 |
+| `proactive-store.ts` | 主动建议列表、抽屉状态、单条/批量响应 |
 
 设计原则：
 
@@ -513,10 +559,10 @@ pnpm dist
 
 ### 17.3 新增一个 AI 工具
 
-1. 在 `ai.ipc.ts` 的 Agent tool 定义中加工具 schema。
-2. 在工具执行分支中调用 indexer/search/memory 等服务。
-3. 用 `search-results.ts` 格式化输出。
-4. 在 `tool-labels.ts` 增加前端状态文案。
+1. 在 `packages/main/src/ipc/tools/agent-tools.ts` 增加工具 schema。
+2. 在 `packages/main/src/ipc/tools/execute-tool-call.ts` 或对应 service 中实现执行逻辑。
+3. 用 `search-results.ts` 等 formatter 保持工具输出稳定。
+4. 在 `tool-labels.ts` 或 tool-surface 文案中增加前端状态文案。
 5. 为参数解析、输出格式或边界情况加测试。
 
 ### 17.4 新增一个数据库字段或表
@@ -547,6 +593,7 @@ pnpm dist
 | `tests/ai-note-plan.test.ts` | AI 批量笔记规划清洗 |
 | `tests/ai-note-writing.test.ts` | 批量生成笔记的 wikilink/metadata 合并 |
 | `tests/ai-maintenance-queue.test.ts` | 知识维护队列分类、过滤、优先级排序 |
+| `tests/maintenance-apply-fix.test.ts` / `maintenance-queue-ipc.test.ts` | 维护队列 IPC 与自动修复 |
 | `tests/ai-connection-opportunities.test.ts` | 跨笔记链接建议 |
 | `tests/ai-graph-insights.test.ts` | 图谱派生指标 |
 | `tests/ai-system-context.test.ts` | 系统上下文拼装 |
@@ -556,14 +603,19 @@ pnpm dist
 | `tests/ai-provider-types.test.ts` / `provider-errors.test.ts` | Provider 类型与错误归一 |
 | `tests/ai-search-results.test.ts` / `ai-json.test.ts` | 检索结果和 JSON 解析 |
 | `tests/chat-panel.test.ts` / `chat-session-title.test.ts` / `chat-batch-*.test.ts` / `chat-edit-stream.test.ts` | ChatPanel、批量与编辑流隔离行为 |
+| `tests/agent-*.test.ts` | Agent planner、store、executor、IPC 类型 |
+| `tests/proactive-*.test.ts` | 主动建议 schema、store、触发器、策略、orchestrator、偏好、通知中心和 IPC 类型 |
+| `tests/long-context-*.test.ts` | 长期上下文 schema、候选、分类、ranker、store、pack、后台任务、认知回顾、偏好、指标和 UI helper |
 | `tests/embedding.test.ts` | 分块、相似度和语义搜索 fallback |
 | `tests/file-path.test.ts` / `file-tree-refresh.test.ts` | 路径安全与文件树刷新 |
 | `tests/markdown-comments.test.ts` / `markdown-highlights.test.ts` / `callouts.test.ts` / `footnotes.test.ts` / `frontmatter.test.ts` / `table-formulas.test.ts` | Markdown 兼容渲染特性 |
 | `tests/obsidian-importer.test.ts` / `obsidian-link.test.ts` / `notion-importer.test.ts` / `reader-importer.test.ts` | 各导入器 |
 | `tests/publish-wikilinks.test.ts` / `wikilink.test.ts` | wikilink 解析与发布 |
 | `tests/canvas-view.test.ts` | 知识空间画布 |
+| `tests/graph-modes.test.ts` / `graph-ui.test.ts` | 图谱数据模式、布局缓存、默认降噪和过滤 helper |
 | `tests/reader-inbox.test.ts` | 阅读收件箱 |
 | `tests/vault-store.test.ts` / `tests/ui-store.test.ts` / `activity-bar-registry.test.ts` | Zustand store 行为 |
+| `tests/tool-surface-*.test.ts` | 工具 surface 注册、命令面板入口、编辑器上下文菜单和 IPC 类型 |
 | `tests/s3-provider.test.ts` / `webdav-provider.test.ts` / `storage.test.ts` | 云同步 Provider |
 | `tests/web-clipper.test.ts` / `plugin-api.test.ts` / `nexusky-cli.test.ts` / `version.test.ts` / `crash-reporting.test.ts` / `db-query-cache.test.ts` / `document-text.test.ts` / `document-attachment.test.ts` / `vault-indexer.test.ts` / `note-search.test.ts` / `writing-style.test.ts` / `ai-task-control.test.ts` | 其他子系统 |
 
@@ -584,6 +636,9 @@ pnpm test
 - 前端入口是 `packages/renderer/src/App.tsx`。
 - AI 面板核心是 `packages/renderer/src/components/ai/ChatPanel.tsx`。
 - AI 后端核心是 `packages/main/src/ipc/ai.ipc.ts` 和 `packages/main/src/services/ai/`。
+- Agent run 后端核心是 `packages/main/src/services/agent/` 和 `packages/main/src/ipc/agent.ipc.ts`。
+- 主动建议后端核心是 `packages/main/src/services/proactive/` 和 `packages/main/src/ipc/proactive.ipc.ts`。
+- 长期上下文后端核心是 `packages/main/src/services/long-context/`。
 - 索引核心是 `packages/main/src/services/indexer.ts` 和 `database.ts`。
 - 文件写入要走 IPC，并保持 vault 路径安全。
 - 修改用户笔记的 workflow 要特别注意未保存内容、取消状态和重复写入。
@@ -602,13 +657,17 @@ pnpm test
 | chunk | 为语义搜索拆出的笔记片段 |
 | provider | OpenAI/Claude/Ollama/自定义等 AI 服务配置 |
 | Agent | 可调用工具读取和分析 vault 的 AI 对话模式 |
+| Agent run | 独立 Agent 任务运行记录，包含计划、步骤状态、结果和回滚数据 |
 | edit mode | AI 生成或修改 Markdown 文件的模式 |
 | batch generation | AI 根据主题规划目录并批量生成多篇笔记 |
 | memory | `.nexusky/memories` 下的笔记语义摘要和概念数据 |
 | maintenance queue | `plan_knowledge_maintenance` 工具生成的、按类型聚合的可执行维护项列表 |
+| proactive suggestion | 基于长期上下文或维护信号生成的主动建议通知 |
 | bridge note | 连接多个语义主题、删除后会让图谱割裂的关键笔记 |
 | connection opportunity | 基于共同属性/标签等信号发现的、值得用 wikilink 显式串起来的潜在关联 |
 | kanban plan | 看板 AI 工作流先生成、用户可编辑、确认后才写入数据库的中间结果 |
+| GraphMode | `db:get-graph` 的数据模式：`folder`、`semantic`、`connection` |
+| tool surface | 命令面板、编辑器上下文菜单等可触发结构化 AI 工具的前端入口 |
 
 ## 21. 与其他文档的关系
 
@@ -625,7 +684,7 @@ pnpm test
 
 ## 22. v0.4.0 及之后的增量索引
 
-本节面向"已读过旧版 OVERVIEW（核对版本 `09f55cb`）"的读者，列出 `09f55cb..5399436` 之间引入的关键变化，便于增量更新心智模型。
+本节面向"已读过旧版 OVERVIEW（核对版本 `09f55cb`）"的读者，列出 `09f55cb..ac7dee4` 之间引入的关键变化，便于增量更新心智模型。
 
 ### 22.1 知识维护与 AI 主动建议
 
@@ -633,6 +692,8 @@ pnpm test
 - 新增 `services/ai/connection-opportunities.ts`：基于属性共现等信号给出 `suggest_note_links`。
 - 新增 `services/ai/graph-insights.ts`：图谱派生指标。
 - AI Agent 增加 `plan_knowledge_maintenance` 和 `list_knowledge_bridges` 两个工具，前端 `tool-labels.ts` 同步增加状态文案。
+- 新增 `maintenance:*` IPC 与 `MaintenanceQueuePanel`，把维护队列从 Agent 工具扩展为可直接浏览和应用修复的主视图。
+- 新增主动建议系统：schema v10、触发器、策略、orchestrator、偏好页、toast、通知中心和 `proactive:*` IPC。通知中心后来补上了 `proactive:respond-all`，支持全部已读和全部删除。
 
 ### 22.2 Obsidian 兼容性大幅增强
 
@@ -659,10 +720,40 @@ pnpm test
 ### 22.5 兼容与运行时
 
 - Vault 旧库自我修复：`getDatabase` 在打开时双向修复历史缺列；脏 `links` 行被清理；切换或创建 vault 时关闭旧连接并清空查询缓存。
-- 升级到 Electron 33 + Node 22 ABI；新增 `scripts/rebuild-native.mjs` 与对应 `postinstall`，并修复 Windows 版本的原生模块重建与安装。CI 上 Windows 跳过原生 smoke test（见 `5399436`）。
+- 升级到 Electron 39；新增 `scripts/rebuild-native.mjs` 与对应 `postinstall`，并修复 Windows 版本的原生模块重建与安装。CI 上 Windows 跳过原生 smoke test（见 `5399436`）。
 
-### 22.6 文档与配套
+### 22.6 长期上下文系统
+
+- 新增 schema v9：`context_events`、`ai_relations`、`long_term_themes`、`theme_memberships`、`relation_feedback`。
+- 新增本地关系候选、关系分类、关系评分衰减、长期主题抽取、认知回顾、上下文包构建和后台分析。
+- 前端增加 `RelatedContextPanel`、`RelatedContextCard`、`LongContextBadge`、`LongContextDebugPanel`、`ChatSourceRow` 和趋势 sparkline。
+- 聊天上下文包默认 token 预算提高到 3000，并增加偏好设置、inspect-pack IPC、来源 Why? popover 和长期上下文指标。
+
+### 22.7 Agent Run 与工具 surface
+
+- 新增 schema v11：`agent_runs` / `agent_steps`。
+- 新增 Agent planner、store、executor、reflector、tool-runner 和 `agent:*` IPC。
+- 前端新增 `AgentRunPanel` 与 activity bar 入口，支持两向跳转到看板、维护项等上下文。
+- AI IPC 被拆分为 provider、transcribe、complete、edit、text-tools、notes、graph 等模块；stream/abort 公共逻辑抽到 `ipc/streams/consume-stream.ts`。
+- Agent tool 定义和执行从 `ai.ipc.ts` 抽到 `ipc/tools/agent-tools.ts` 和 `ipc/tools/execute-tool-call.ts`。
+- 新增 tool surface registry、`ai:run-tool` / `ai:list-tool-surface`、命令面板工具入口、编辑器上下文菜单和结构化结果抽屉。
+
+### 22.8 图谱性能与默认视图
+
+- `db:get-graph` 增加 `GraphMode`：`folder`、`semantic`、`connection`，默认保持 folder 兼容。
+- `links.link_type` 区分 explicit / inferred / folder，图谱用不同样式展示边类型。
+- D3 force simulation 移到 renderer Web Worker，重进同一 vault/mode 时复用布局缓存，重图谱跳过昂贵 SVG filter 和渐变。
+- GraphView 默认降噪：隐藏普通标签、孤立节点、AI 推断边和目录归属边；目录归属不再计入关系连接数，只用于分组与着色。
+- 自动 TF-IDF / memory-backed 图谱相关改动让语义模式和记忆关系能参与图谱数据，但当前主 UI 仍以 folder 模式作为入口。
+
+### 22.9 安全、质量门禁与发布
+
+- 安全边界增强：BrowserWindow sandbox、safeStorage `enc:v3:`、外链 scheme allowlist、日志/崩溃上报脱敏、preload send allowlist、vault symlink escape 防护、高风险 IPC payload 校验、HTTP WebDAV 警告。
+- 新增 `.github/workflows/ci.yml`，在 push/PR 上跑 typecheck 与 test 质量门禁。
+- 版本号推进到 `0.5.0`。
+
+### 22.10 文档与配套
 
 - `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
-- `docs/FEATURES.md`、`docs/GUIDE.md` 在同一周期内同步更新。
-- `package.json` 版本号锁定到 `0.4.0`，对应 commit `059303a`。
+- `docs/FEATURES.md`、`docs/GUIDE.md`、`docs/OPTIMIZATION.md`、`docs/OPTIMIZATION_PLAN.md` 在同一周期内同步更新。
+- 新增 `docs/COGNITIVE_PARTNER_PLAN.md`、`docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md` 和 `docs/PROJECT_SCORE_OPTIMIZATION_PLAN.md` 作为长期上下文、认知伙伴和项目评分优化的规划材料。
