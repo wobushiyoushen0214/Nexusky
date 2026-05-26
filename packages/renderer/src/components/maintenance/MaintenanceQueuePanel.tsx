@@ -5,6 +5,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
+import { RelatedContextPanel } from '../long-context/RelatedContextPanel'
 import type {
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
@@ -50,6 +51,10 @@ const ACTIONS_BY_TYPE: Record<KnowledgeMaintenanceType, MaintenanceApplyAction[]
 export function MaintenanceQueuePanel() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const currentFilePath = useEditorStore((s) => s.currentFilePath)
+  const content = useEditorStore((s) => s.content)
+  const maintenancePanelSection = useUIStore((s) => s.maintenancePanelSection)
+  const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
   const [items, setItems] = useState<KnowledgeMaintenanceItem[]>([])
   const [counts, setCounts] = useState<Partial<Record<KnowledgeMaintenanceType, number>>>({})
   const [loading, setLoading] = useState(false)
@@ -75,8 +80,9 @@ export function MaintenanceQueuePanel() {
   }, [vaultPath, activeFilter])
 
   useEffect(() => {
+    if (maintenancePanelSection !== 'queue') return
     void refresh()
-  }, [refresh])
+  }, [refresh, maintenancePanelSection])
 
   const runFix = useCallback(async (item: KnowledgeMaintenanceItem, action: MaintenanceApplyAction, payload?: Record<string, unknown>) => {
     if (!vaultPath) return
@@ -97,54 +103,81 @@ export function MaintenanceQueuePanel() {
   return (
     <div className="maintenance-panel">
       <div className="maintenance-panel__header">
-        <span className="maintenance-panel__title">{t('maintenance.title')}</span>
-        <button
-          type="button"
-          className="maintenance-panel__refresh"
-          onClick={() => void refresh()}
-          disabled={loading || !vaultPath}
-        >
-          {loading ? t('maintenance.refreshing') : t('maintenance.refresh')}
-        </button>
-      </div>
-      <div className="maintenance-panel__filters">
-        {TYPE_FILTERS.map((filter) => {
-          const count = filter.value === 'all'
-            ? items.length
-            : counts[filter.value as KnowledgeMaintenanceType] ?? 0
-          return (
-            <button
-              key={filter.value}
-              type="button"
-              className={`maintenance-panel__filter${activeFilter === filter.value ? ' is-active' : ''}`}
-              onClick={() => setActiveFilter(filter.value)}
-            >
-              {t(`maintenance.filters.${filter.key}`)}
-              <span className="maintenance-panel__filter-count">{count}</span>
-            </button>
-          )
-        })}
-      </div>
-      <div className="maintenance-panel__body">
-        {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
-        {vaultPath && grouped.length === 0 && !loading && (
-          <div className="maintenance-panel__empty">{t('maintenance.empty')}</div>
+        <div className="maintenance-panel__tabs">
+          <button
+            type="button"
+            className={`maintenance-panel__tab${maintenancePanelSection === 'context' ? ' is-active' : ''}`}
+            onClick={() => setMaintenancePanelSection('context')}
+          >
+            {t('maintenance.tabs.context')}
+          </button>
+          <button
+            type="button"
+            className={`maintenance-panel__tab${maintenancePanelSection === 'queue' ? ' is-active' : ''}`}
+            onClick={() => setMaintenancePanelSection('queue')}
+          >
+            {t('maintenance.tabs.queue')}
+          </button>
+        </div>
+        {maintenancePanelSection === 'queue' && (
+          <button
+            type="button"
+            className="maintenance-panel__refresh"
+            onClick={() => void refresh()}
+            disabled={loading || !vaultPath}
+          >
+            {loading ? t('maintenance.refreshing') : t('maintenance.refresh')}
+          </button>
         )}
-        {grouped.map((item, idx) => (
-          <MaintenanceItemCard
-            key={`${item.filePath}-${item.type}-${idx}`}
-            item={item}
-            onAction={(action) => {
-              if (action === 'mark_done') {
-                setPendingBatch({ targets: [item], action })
-                return
-              }
-              void runFix(item, action)
-            }}
-            onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
-          />
-        ))}
       </div>
+      {maintenancePanelSection === 'context' ? (
+        currentFilePath ? (
+          <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement="side" />
+        ) : (
+          <div className="maintenance-panel__empty">{t('maintenance.contextEmpty')}</div>
+        )
+      ) : (
+        <>
+          <div className="maintenance-panel__filters">
+            {TYPE_FILTERS.map((filter) => {
+              const count = filter.value === 'all'
+                ? items.length
+                : counts[filter.value as KnowledgeMaintenanceType] ?? 0
+              return (
+                <button
+                  key={filter.value}
+                  type="button"
+                  className={`maintenance-panel__filter${activeFilter === filter.value ? ' is-active' : ''}`}
+                  onClick={() => setActiveFilter(filter.value)}
+                >
+                  {t(`maintenance.filters.${filter.key}`)}
+                  <span className="maintenance-panel__filter-count">{count}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="maintenance-panel__body">
+            {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
+            {vaultPath && grouped.length === 0 && !loading && (
+              <div className="maintenance-panel__empty">{t('maintenance.empty')}</div>
+            )}
+            {grouped.map((item, idx) => (
+              <MaintenanceItemCard
+                key={`${item.filePath}-${item.type}-${idx}`}
+                item={item}
+                onAction={(action) => {
+                  if (action === 'mark_done') {
+                    setPendingBatch({ targets: [item], action })
+                    return
+                  }
+                  void runFix(item, action)
+                }}
+                onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
+              />
+            ))}
+          </div>
+        </>
+      )}
       {pendingBatch && (
         <ConfirmModal
           open={Boolean(pendingBatch)}

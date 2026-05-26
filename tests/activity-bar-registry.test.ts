@@ -25,6 +25,12 @@ describe('activity bar registry', () => {
     expect(isActivityBarItemAvailable(item('chat'), { mainView: 'canvas', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('canvas'), { mainView: 'timeline', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('reader'), { mainView: 'reader', currentFilePath: null })).toBe(true)
+    expect(isActivityBarItemAvailable(item('maintenance'), { mainView: 'graph', currentFilePath: null })).toBe(true)
+  })
+
+  it('keeps related context merged under knowledge maintenance instead of a separate activity item', () => {
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'context')).toBe(false)
+    expect(item('maintenance').defaultVisible).toBe(true)
   })
 
   it('keeps property and time layers under the single knowledge space activity entry', () => {

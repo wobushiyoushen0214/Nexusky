@@ -11,16 +11,40 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
 }
 
-.maintenance-panel__title {
-  font-size: 12px;
-  font-weight: 600;
+.maintenance-panel__tabs {
+  display: inline-flex;
+  min-width: 0;
+  padding: 2px;
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-surface) 68%, transparent);
+}
+
+.maintenance-panel__tab {
+  height: 24px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.maintenance-panel__tab:hover {
   color: var(--text-secondary);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  background: var(--bg-hover);
+}
+
+.maintenance-panel__tab.is-active {
+  color: var(--accent-text);
+  background: var(--accent-muted);
 }
 
 .maintenance-panel__refresh {

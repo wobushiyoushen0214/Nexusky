@@ -68,9 +68,14 @@
   },
   "maintenance": {
     "title": "Knowledge Maintenance",
+    "tabs": {
+      "context": "Current Context",
+      "queue": "Maintenance Queue"
+    },
     "refresh": "Refresh",
     "refreshing": "Refreshing...",
     "empty": "Nothing to do",
+    "contextEmpty": "Open a note to view related context.",
     "noVault": "Open a vault first",
     "filters": {
       "all": "All",
@@ -250,7 +255,9 @@
   },
   "editor": {
     "properties": "Properties",
-    "openProperties": "Open current note properties"
+    "relatedContext": "Context",
+    "openProperties": "Open current note properties",
+    "openRelatedContext": "Open related context for the current note"
   },
   "propertiesPanel": {
     "empty": "Open a note to edit its properties.",

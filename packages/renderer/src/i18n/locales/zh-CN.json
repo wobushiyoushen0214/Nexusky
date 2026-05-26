@@ -68,9 +68,14 @@
   },
   "maintenance": {
     "title": "知识维护",
+    "tabs": {
+      "context": "当前上下文",
+      "queue": "维护队列"
+    },
     "refresh": "刷新",
     "refreshing": "刷新中...",
     "empty": "暂无待办项",
+    "contextEmpty": "打开一篇笔记后查看相关上下文。",
     "noVault": "请先打开一个 vault",
     "filters": {
       "all": "全部",
@@ -250,7 +255,9 @@
   },
   "editor": {
     "properties": "属性",
-    "openProperties": "打开当前笔记属性"
+    "relatedContext": "上下文",
+    "openProperties": "打开当前笔记属性",
+    "openRelatedContext": "打开当前笔记相关上下文"
   },
   "propertiesPanel": {
     "empty": "打开一篇笔记后编辑属性。",

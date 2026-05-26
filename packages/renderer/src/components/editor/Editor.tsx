@@ -35,7 +35,6 @@ import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
-import { RelatedContextPanel } from '../long-context/RelatedContextPanel'
 import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, stripMarkdownFrontmatter, type ObsidianLinkReference } from '../../utils/obsidian-link'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
@@ -107,6 +106,9 @@ export function Editor() {
   const focusMode = useUIStore((s) => s.focusMode)
   const previewMode = useUIStore((s) => s.previewMode)
   const rightPanel = useUIStore((s) => s.rightPanel)
+  const maintenancePanelSection = useUIStore((s) => s.maintenancePanelSection)
+  const setRightPanel = useUIStore((s) => s.setRightPanel)
+  const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
   const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
   const language = useUIStore((s) => s.language)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
@@ -728,9 +730,6 @@ export function Editor() {
               setEditorContextMenu({ x: e.clientX, y: e.clientY })
             }}
           >
-            {!focusMode && currentFilePath && (
-              <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement="top" />
-            )}
             <EditorContent editor={editor} />
             <TransclusionBlocks content={content} />
             <MermaidBlocks content={content} />
@@ -769,6 +768,28 @@ export function Editor() {
           <span>~{stats.readTime} 分钟阅读</span>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              const contextOpen = rightPanel === 'maintenance' && maintenancePanelSection === 'context'
+              setMaintenancePanelSection('context')
+              setRightPanel(contextOpen ? 'none' : 'maintenance')
+            }}
+            title={t('editor.openRelatedContext')}
+            disabled={!currentFilePath}
+            style={{
+              height: 18,
+              padding: '0 7px',
+              borderRadius: 5,
+              border: rightPanel === 'maintenance' && maintenancePanelSection === 'context' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              background: rightPanel === 'maintenance' && maintenancePanelSection === 'context' ? 'var(--accent-muted)' : 'transparent',
+              color: rightPanel === 'maintenance' && maintenancePanelSection === 'context' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              fontSize: 10,
+              cursor: currentFilePath ? 'pointer' : 'default',
+              opacity: currentFilePath ? 1 : 0.5
+            }}
+          >
+            {t('editor.relatedContext')}
+          </button>
           <button
             onClick={() => toggleRightPanel('properties')}
             title={t('editor.openProperties')}

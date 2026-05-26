@@ -26,7 +26,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export function ActivityBar() {
   const { t } = useTranslation()
-  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar } = useUIStore()
+  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar, setMaintenancePanelSection } = useUIStore()
   const { vaultPath, refreshFiles } = useVaultStore()
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -98,7 +98,10 @@ export function ActivityBar() {
       const p = await window.api.invoke('template:daily-note', { vaultPath })
       if (p) { await refreshFiles(); await openFile(p) }
     },
-    maintenance: () => toggleRightPanel('maintenance'),
+    maintenance: () => {
+      setMaintenancePanelSection('queue')
+      toggleRightPanel('maintenance')
+    },
     agent: () => toggleRightPanel('agent'),
   }
 
@@ -120,6 +123,7 @@ export function ActivityBar() {
     if (rightPanel === 'properties') return 'properties'
     if (rightPanel === 'tags') return 'tags'
     if (rightPanel === 'calendar') return 'calendar'
+    if (rightPanel === 'maintenance') return 'maintenance'
     return ''
   }
 

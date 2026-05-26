@@ -14,16 +14,20 @@ interface RelatedContextPanelProps {
 }
 
 type LoadState = 'idle' | 'loading' | 'error'
-type RelatedContextPanelPlacement = 'inline' | 'top'
+type RelatedContextPanelPlacement = 'inline' | 'top' | 'side'
 type RelatedContextDirection = -1 | 1
 
 export function getRelatedContextPanelClassName(placement: RelatedContextPanelPlacement = 'inline'): string {
-  return `related-context-panel${placement === 'top' ? ' related-context-panel--top' : ''}`
+  return `related-context-panel${placement === 'inline' ? '' : ` related-context-panel--${placement}`}`
 }
 
 export function getRelatedContextCarouselIndex(currentIndex: number, total: number, direction: RelatedContextDirection): number {
   if (total <= 0) return 0
   return (currentIndex + direction + total) % total
+}
+
+function isCarouselPlacement(placement: RelatedContextPanelPlacement): boolean {
+  return placement === 'top' || placement === 'side'
 }
 
 export function RelatedContextPanel({ currentFilePath, content, placement = 'inline' }: RelatedContextPanelProps) {
@@ -137,14 +141,15 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
 
   if (!noteId) return null
 
+  const usesCarousel = isCarouselPlacement(placement)
   const activeIndex = suggestions.length > 0 ? Math.min(activeSuggestionIndex, suggestions.length - 1) : 0
-  const visibleSuggestions = placement === 'top' && suggestions.length > 0
+  const visibleSuggestions = usesCarousel && suggestions.length > 0
     ? [suggestions[activeIndex]]
     : suggestions
   const countText = suggestions.length > 0
-    ? placement === 'top' ? `${activeIndex + 1}/${suggestions.length}` : `${suggestions.length} 条`
+    ? usesCarousel ? `${activeIndex + 1}/${suggestions.length}` : `${suggestions.length} 条`
     : state === 'loading' ? '读取中' : state === 'error' ? '出错' : '0 条'
-  const showCarouselControls = placement === 'top' && suggestions.length > 1
+  const showCarouselControls = usesCarousel && suggestions.length > 1
   const moveCarousel = (direction: RelatedContextDirection) => {
     setActiveSuggestionIndex((current) => getRelatedContextCarouselIndex(current, suggestions.length, direction))
   }
@@ -217,7 +222,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       )}
 
       {suggestions.length > 0 && (
-        <div className={`related-context-panel__list${placement === 'top' ? ' related-context-panel__list--carousel' : ''}`}>
+        <div className={`related-context-panel__list${usesCarousel ? ' related-context-panel__list--carousel' : ''}`}>
           {visibleSuggestions.map((suggestion) => (
             <RelatedContextCard
               key={suggestion.relationId}

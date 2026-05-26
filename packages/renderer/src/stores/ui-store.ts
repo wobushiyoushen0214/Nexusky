@@ -12,6 +12,7 @@ const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader' | 'kanban'
 type Language = 'zh-CN' | 'en'
+type MaintenancePanelSection = 'context' | 'queue'
 type WorkspaceLayout = {
   mainView: MainView
   rightPanel: Panel
@@ -50,6 +51,7 @@ interface UIState {
   accentColor: string | null
   language: Language
   graphMode: GraphMode
+  maintenancePanelSection: MaintenancePanelSection
   pendingAgentGoal: { goal: string; description?: string } | null
   pendingKanbanTask: { title: string; description?: string } | null
   pendingBasesFocus: { filePath: string } | null
@@ -76,6 +78,7 @@ interface UIState {
   toggleTheme: () => void
   setLanguage: (lang: Language) => void
   setGraphMode: (mode: GraphMode) => void
+  setMaintenancePanelSection: (section: MaintenancePanelSection) => void
   resetWorkspaceLayout: () => void
   sendToAgent: (payload: { goal: string; description?: string }) => void
   consumePendingAgentGoal: () => { goal: string; description?: string } | null
@@ -215,6 +218,7 @@ function getInitialMainView(): MainView {
 
 function getInitialRightPanel(): Panel {
   const saved = safeGet(WORKSPACE_KEYS.rightPanel)
+  if (saved === 'context') return 'maintenance'
   return saved && PANEL_IDS.includes(saved as Panel) ? saved as Panel : 'none'
 }
 
@@ -228,8 +232,10 @@ function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
 
 function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scoped = getSavedWorkspaceLayouts()[scope]
-  if (scoped && MAIN_VIEW_IDS.includes(scoped.mainView) && PANEL_IDS.includes(scoped.rightPanel) && typeof scoped.sidebarCollapsed === 'boolean') {
-    return { ...scoped, rightPanel: getAvailableRightPanel(scoped.mainView, scoped.rightPanel) }
+  const savedRightPanel = scoped?.rightPanel as string | undefined
+  const scopedRightPanel = savedRightPanel === 'context' ? 'maintenance' : savedRightPanel
+  if (scoped && MAIN_VIEW_IDS.includes(scoped.mainView) && PANEL_IDS.includes(scopedRightPanel as Panel) && typeof scoped.sidebarCollapsed === 'boolean') {
+    return { ...scoped, rightPanel: getAvailableRightPanel(scoped.mainView, scopedRightPanel as Panel) }
   }
   return {
     mainView: getInitialMainView(),
@@ -294,6 +300,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   accentColor: initialAccentColor,
   language: (safeGet('nexusky-language') || 'zh-CN') as Language,
   graphMode: getInitialGraphMode(),
+  maintenancePanelSection: 'queue',
   pendingAgentGoal: null,
   pendingKanbanTask: null,
   pendingBasesFocus: null,
@@ -390,6 +397,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     safeSet(GRAPH_MODE_STORAGE_KEY, next)
     set({ graphMode: next })
   },
+  setMaintenancePanelSection: (section) => set({ maintenancePanelSection: section }),
   resetWorkspaceLayout: () => {
     const { workspaceScope, sidebarWidthScope } = get()
     removeWorkspaceLayout(workspaceScope)

@@ -6,6 +6,10 @@ describe('RelatedContextPanel layout', () => {
     expect(getRelatedContextPanelClassName('top')).toBe('related-context-panel related-context-panel--top')
   })
 
+  it('uses a side placement class when the panel is shown in the right sidebar', () => {
+    expect(getRelatedContextPanelClassName('side')).toBe('related-context-panel related-context-panel--side')
+  })
+
   it('keeps the legacy inline class available for embedded placement', () => {
     expect(getRelatedContextPanelClassName()).toBe('related-context-panel')
   })
