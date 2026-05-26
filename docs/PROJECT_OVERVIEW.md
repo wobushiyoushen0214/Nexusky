@@ -2,7 +2,7 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：`ac7dee4`（v0.5.0 后，含通知中心批量操作与图谱降噪改动）
+最后核对版本：`cb6a1f3`（v0.5.0 后，含分组图谱钻取、相关上下文侧栏整合、知识空间路由显示和官网首页重做）
 
 ## 1. 一句话理解
 
@@ -44,8 +44,10 @@ Nexusky 的核心目标是让用户在本地文件夹中长期维护知识资产
 - 当前笔记底部可看出链、反链和未链接提及。
 - 未链接提及可转为 wikilink。
 - D3 知识图谱和知识空间会基于索引展示节点关系。
-- 知识图谱支持 folder / semantic / connection 三种数据模式，边会区分显式链接、AI 推断链接和目录归属。
+- 知识图谱底层支持 folder / semantic / connection / group / folder-scope 数据模式，边会区分显式链接、AI 推断链接和目录归属。
+- 当前图谱 UI 先展示顶层分组总览，可点击目录节点钻入单层目录视图；深层笔记会通过子目录节点聚合，跨目录推断关系以聚合边呈现。
 - 图谱默认以显式关系为主，隐藏 AI 推断边、目录归属边、孤立节点和普通节点标签，保留开关供用户临时查看低信号关联。
+- 编辑器底部链接概览默认折叠，避免出链/反链/未链接提及在普通写作时长期占用正文空间。
 
 ### 3.3 AI 对话与 AI 编辑
 
@@ -89,7 +91,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 - 看板的 AI 工作流：`kanban:ai-analyze`、`kanban:ai-breakdown-task`、`kanban:ai-from-note` 先生成可编辑 plan 预览，用户确认后再写入。
 - AI Agent 提供 `plan_knowledge_maintenance` 工具，把"未解析链接、空笔记、过期任务、今日到期、高优先级、计划/开始/阻塞/循环任务、即将到期、孤岛笔记、缺失属性、重复标题或别名、待复习笔记记忆、超长笔记、知识桥接"等问题统一汇总成可执行的维护队列。
 - `list_knowledge_bridges` 工具找出语义上的桥接笔记，配合 `suggest_note_links`、`connection-opportunities` 帮助补全跨主题链接。
-- 知识维护面板通过 `maintenance:*` IPC 获取队列并应用部分自动修复。
+- 知识维护面板通过 `maintenance:*` IPC 获取队列并应用部分自动修复；同一右侧面板也整合了"相关上下文"页签，编辑器状态栏可一键打开当前笔记的长期上下文轮播。
 - 主动建议系统会基于长期上下文、主题接近、认知回顾和维护信号生成通知；通知中心支持单条打开/稍后/忽略，也支持一次性全部已读或全部删除。
 
 ## 4. 技术栈
@@ -101,7 +103,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 | 前端 | React 19、Zustand、i18next |
 | 编辑器 | TipTap / ProseMirror、tiptap-markdown |
 | Markdown 渲染 | marked、DOMPurify、KaTeX、Mermaid、lowlight |
-| 图谱/知识空间 | D3 force / drag / zoom；`db:get-graph` 支持 `GraphMode`，GraphView 展示 folder 模式、linkType 视觉区分、布局缓存和 renderer Web Worker 力仿真 |
+| 图谱/知识空间 | D3 force / drag / zoom；`db:get-graph` 支持 `GraphMode`（semantic / connection / folder / group / folder-scope），GraphView 默认展示分组总览并支持目录钻取、linkType 视觉区分、布局缓存和 renderer Web Worker 力仿真；知识空间连接线默认显示并由路由 worker 绕开卡片 |
 | 本地数据库 | better-sqlite3，WAL 模式，FTS5 |
 | AI SDK | OpenAI、Anthropic、Ollama 兼容接口、Codex CLI |
 | 同步 | Supabase、iCloud、OneDrive、WebDAV、S3 |
@@ -137,7 +139,7 @@ docs/                   项目文档
 scripts/                开发/CLI 脚本（dev.mjs、rebuild-native.mjs、nexusky-cli.mjs、afterPack.js、vitest-electron.mjs）
 supabase/               Supabase schema 和部署说明
 browser-extension/      Web Clipper 浏览器扩展（Chrome/Edge MV3）
-website/                品牌站点与发布日志页面（Next.js 子项目）
+website/                官网首页、下载入口与发布日志后台（Next.js 子项目）
 test-vault/             Vitest/手测用的样例 vault
 tests/                  Vitest 测试
 ```
@@ -385,7 +387,7 @@ AI 面板还支持：
 - `relation-candidates` / `relation-classifier` / `relation-ranker` 发现、分类和排序 AI 关系。
 - `theme-extractor` 聚合长期主题，`context-pack-builder` 构造聊天可用的 hot/warm/cold 上下文包。
 - `background.ts` 负责后台分析，`long-context-prefs.ts` 负责偏好设置，`cognitive-review.ts` 生成认知回顾。
-- `RelatedContextPanel`、`LongContextDebugPanel` 和 `ChatSourceRow` 让用户查看相关上下文、调试 pack，并解释聊天来源为什么被引用。
+- `RelatedContextPanel`、`LongContextDebugPanel` 和 `ChatSourceRow` 让用户查看相关上下文、调试 pack，并解释聊天来源为什么被引用；相关上下文面板支持 inline / top / side 布局，当前侧栏入口复用维护面板的 context 页签。
 
 主动建议系统位于 `packages/main/src/services/proactive/`：
 
@@ -400,7 +402,7 @@ AI 面板还支持：
 | 模块 | 路径 | 责任 |
 | --- | --- | --- |
 | 应用壳 | `packages/renderer/src/App.tsx` | 布局、全局事件、视图切换、懒加载 |
-| 编辑器 | `components/editor/Editor.tsx` | TipTap 编辑、保存、渲染增强、状态栏 |
+| 编辑器 | `components/editor/Editor.tsx` | TipTap 编辑、保存、渲染增强、状态栏和相关上下文侧栏入口 |
 | 工具栏 | `components/editor/EditorToolbar.tsx` | 格式操作、预览、导出、语音等入口 |
 | 属性面板 | `components/editor/PropertiesPanel.tsx` | frontmatter 可视化编辑 |
 | AI 面板 | `components/ai/ChatPanel.tsx` | 对话、编辑、批量生成、附件、session |
@@ -408,12 +410,12 @@ AI 面板还支持：
 | 文件树 | `components/sidebar/FileTree.tsx` / `VirtualFileTree.tsx` | 文件导航、拖拽、右键菜单、虚拟滚动 |
 | 命令面板 | `components/CommandPalette.tsx` | 功能命令、AI 快捷任务、导入/导出入口 |
 | 搜索 | `components/SearchPanel.tsx` | 全文/语义搜索、embedding 进度 |
-| 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 folder 模式，底层 `db:get-graph` 支持 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
-| 知识空间 | `components/canvas/CanvasView.tsx` | 无限画布、图层、节点布局 |
+| 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 group 总览 + folder-scope 目录钻取，底层 `db:get-graph` 兼容 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
+| 知识空间 | `components/canvas/CanvasView.tsx` | 无限画布、图层、节点布局和默认可见的正交连接线路由 |
 | 看板 | `components/KanbanPanel.tsx` | 任务列、拖拽、AI 分析 |
 | 阅读收件箱 | `components/reader/ReaderInboxView.tsx` | 外部阅读材料 triage |
-| 长期上下文面板 | `components/long-context/*` | 当前笔记相关上下文、关系卡片和长期上下文徽标 |
-| 维护队列 | `components/maintenance/MaintenanceQueuePanel.tsx` | 知识维护项列表、筛选和修复入口 |
+| 长期上下文面板 | `components/long-context/*` | 当前笔记相关上下文、关系卡片、轮播布局和长期上下文徽标 |
+| 维护队列 | `components/maintenance/MaintenanceQueuePanel.tsx` | 知识维护项列表、筛选、修复入口，以及当前笔记相关上下文页签 |
 | Agent 运行面板 | `components/agent/AgentRunPanel.tsx` | Agent 计划、步骤执行、回滚、重试和反思入口 |
 | 主动建议 | `components/proactive/NotificationCenter.tsx` / `ProactiveToast.tsx` / `ProactivePreferences.tsx` | 通知中心、toast、偏好设置和批量响应 |
 | 工具结果面板 | `components/tool-surface/ToolResultPanel.tsx` | 命令面板或编辑器工具调用后的结构化结果展示 |
@@ -428,7 +430,7 @@ Zustand stores 位于 `packages/renderer/src/stores/`。
 | --- | --- |
 | `vault-store.ts` | 当前 vault、最近 vault、文件树刷新 |
 | `editor-store.ts` | 当前文件、打开标签、内容、保存状态 |
-| `ui-store.ts` | 主视图、侧栏/右栏、面板宽度、命令面板、搜索、设置 |
+| `ui-store.ts` | 主视图、侧栏/右栏、面板宽度、命令面板、搜索、设置和维护面板子页签 |
 | `sync-store.ts` | 同步状态、最后同步时间、错误 |
 | `toast-store.ts` | toast 队列 |
 | `activity-bar-store.ts` | 左侧活动栏条目 |
@@ -611,8 +613,9 @@ pnpm dist
 | `tests/markdown-comments.test.ts` / `markdown-highlights.test.ts` / `callouts.test.ts` / `footnotes.test.ts` / `frontmatter.test.ts` / `table-formulas.test.ts` | Markdown 兼容渲染特性 |
 | `tests/obsidian-importer.test.ts` / `obsidian-link.test.ts` / `notion-importer.test.ts` / `reader-importer.test.ts` | 各导入器 |
 | `tests/publish-wikilinks.test.ts` / `wikilink.test.ts` | wikilink 解析与发布 |
-| `tests/canvas-view.test.ts` | 知识空间画布 |
-| `tests/graph-modes.test.ts` / `graph-ui.test.ts` | 图谱数据模式、布局缓存、默认降噪和过滤 helper |
+| `tests/backlinks-panel.test.ts` / `related-context-panel.test.ts` | 链接概览默认折叠、相关上下文布局和轮播 helper |
+| `tests/canvas-view.test.ts` | 知识空间画布、连接线路由和拖拽时轻量路由 |
+| `tests/graph-modes.test.ts` / `graph-ui.test.ts` | 图谱数据模式、group/folder-scope 钻取、布局缓存、默认降噪和过滤 helper |
 | `tests/reader-inbox.test.ts` | 阅读收件箱 |
 | `tests/vault-store.test.ts` / `tests/ui-store.test.ts` / `activity-bar-registry.test.ts` | Zustand store 行为 |
 | `tests/tool-surface-*.test.ts` | 工具 surface 注册、命令面板入口、编辑器上下文菜单和 IPC 类型 |
@@ -666,7 +669,7 @@ pnpm test
 | bridge note | 连接多个语义主题、删除后会让图谱割裂的关键笔记 |
 | connection opportunity | 基于共同属性/标签等信号发现的、值得用 wikilink 显式串起来的潜在关联 |
 | kanban plan | 看板 AI 工作流先生成、用户可编辑、确认后才写入数据库的中间结果 |
-| GraphMode | `db:get-graph` 的数据模式：`folder`、`semantic`、`connection` |
+| GraphMode | `db:get-graph` 的数据模式：`folder`、`semantic`、`connection`、`group`、`folder-scope` |
 | tool surface | 命令面板、编辑器上下文菜单等可触发结构化 AI 工具的前端入口 |
 
 ## 21. 与其他文档的关系
@@ -683,7 +686,7 @@ pnpm test
 
 ## 22. v0.4.0 及之后的增量索引
 
-本节面向"已读过旧版 OVERVIEW（核对版本 `09f55cb`）"的读者，列出 `09f55cb..ac7dee4` 之间引入的关键变化，便于增量更新心智模型。
+本节面向"已读过旧版 OVERVIEW（核对版本 `09f55cb`）"的读者，列出 `09f55cb..cb6a1f3` 之间引入的关键变化，便于增量更新心智模型。
 
 ### 22.1 知识维护与 AI 主动建议
 
@@ -739,11 +742,11 @@ pnpm test
 
 ### 22.8 图谱性能与默认视图
 
-- `db:get-graph` 增加 `GraphMode`：`folder`、`semantic`、`connection`，默认保持 folder 兼容。
+- `db:get-graph` 增加 `GraphMode`：先加入 `folder`、`semantic`、`connection` 并默认保持 folder 兼容，后续又加入 `group`、`folder-scope` 支持分组总览和目录钻取。
 - `links.link_type` 区分 explicit / inferred / folder，图谱用不同样式展示边类型。
 - D3 force simulation 移到 renderer Web Worker，重进同一 vault/mode 时复用布局缓存，重图谱跳过昂贵 SVG filter 和渐变。
 - GraphView 默认降噪：隐藏普通标签、孤立节点、AI 推断边和目录归属边；目录归属不再计入关系连接数，只用于分组与着色。
-- 自动 TF-IDF / memory-backed 图谱相关改动让语义模式和记忆关系能参与图谱数据，但当前主 UI 仍以 folder 模式作为入口。
+- 自动 TF-IDF / memory-backed 图谱相关改动让语义模式和记忆关系能参与图谱数据；当前主 UI 已切换为 group 总览 + folder-scope 目录钻取，见 22.11。
 
 ### 22.9 安全、质量门禁与发布
 
@@ -756,3 +759,13 @@ pnpm test
 - `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
 - `README.md`、`docs/GUIDE.md`、`docs/OPTIMIZATION.md`、`docs/OPTIMIZATION_PLAN.md` 在同一周期内同步更新。
 - 新增 `docs/COGNITIVE_PARTNER_PLAN.md`、`docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md` 和 `docs/PROJECT_SCORE_OPTIMIZATION_PLAN.md` 作为长期上下文、认知伙伴和项目评分优化的规划材料。
+
+### 22.11 `ac7dee4..cb6a1f3` 最新回写
+
+- 图谱新增 `group` 与 `folder-scope` 两种数据模式。当前 `GraphView` 默认打开顶层分组总览，点击目录节点后按 `rootPath` 懒加载一层目录；深层子目录以 folder 节点聚合，跨可见节点的 explicit / inferred 关系会按可见 owner 聚合成边。`db:get-graph` 的缓存 key 同步纳入 `mode` 和 `rootPath`。
+- 知识空间连接线体验修复：进入画布时会先种下所有可见边和关联建议的轻量正交路由，再交给 `canvas-route-worker.ts` 做绕卡片的精细路由；拖拽时用轻量路线保持反馈，完成后再刷新 worker 路由，避免连接线默认不可见或使用过期锚点。
+- 当前笔记相关上下文从正文上方的内联区域调整为右侧维护面板的 `context` 页签，编辑器状态栏提供"相关上下文"入口；`RelatedContextPanel` 支持 top / side 轮播布局，维护队列和相关上下文共享同一个 `maintenance` 右侧面板。
+- 编辑器底部的链接概览默认折叠，每次切换当前文件都会恢复折叠状态，只在用户主动展开时显示出链、反链和未链接提及。
+- 左侧活动栏将维护入口设为默认可见，命令面板、activity bar registry、`ui-store` 和中英文 i18n 同步适配维护面板子页签。
+- README 被压缩为当前能力、技术栈、开发命令、文档入口和安全边界的高层入口；旧 `docs/FEATURES.md` 已移除，overview 和 README 不再引用它。
+- `website/` 首页重做为 Nexusky v0.5.0 官网与下载入口，使用 `public/product/icon.png`，展示本地 Markdown、长期上下文、AI 工具、图谱和下载链接；Next.js 中间件文件迁移为 `proxy.ts`，`website/README.md` 同步说明日志后台、环境变量和首页资产。
