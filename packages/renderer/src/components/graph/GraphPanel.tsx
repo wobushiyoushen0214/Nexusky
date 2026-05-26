@@ -9,6 +9,9 @@ interface GraphPanelProps {
   graphData: GraphData
   groupColorMap: Map<string, string>
   vaultPath: string | null
+  activeFolderPath: string | null
+  onOpenOverview: () => void
+  onOpenParentFolder: () => void
 
   hiddenGroupIds: Set<string>
   onToggleGroup: (groupId: string) => void
@@ -54,6 +57,7 @@ export function GraphPanel(props: GraphPanelProps) {
   const {
     collapsed, onToggleCollapsed,
     graphData, groupColorMap, vaultPath,
+    activeFolderPath, onOpenOverview, onOpenParentFolder,
     hiddenGroupIds, onToggleGroup,
     searchQuery, setSearchQuery, minLinks, setMinLinks,
     showLabels, setShowLabels, showOrphans, setShowOrphans,
@@ -131,6 +135,25 @@ export function GraphPanel(props: GraphPanelProps) {
 
         {!collapsed && (
           <>
+            <div className="graph-scope-strip">
+              <button
+                className={`graph-scope-pill${activeFolderPath == null ? ' active' : ''}`}
+                onClick={onOpenOverview}
+              >
+                {t('graph.overview')}
+              </button>
+              {activeFolderPath != null && (
+                <>
+                  <span className="graph-scope-current" title={activeFolderPath || t('graph.rootGroup')}>
+                    {activeFolderPath || t('graph.rootGroup')}
+                  </span>
+                  <button className="graph-scope-nav" onClick={onOpenParentFolder}>
+                    {t('graph.parent')}
+                  </button>
+                </>
+              )}
+            </div>
+
             <div className="graph-panel-section">
               <div className="graph-panel-section-title">{t('graph.filters').toUpperCase()}</div>
               <input

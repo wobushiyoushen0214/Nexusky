@@ -306,9 +306,10 @@ export function registerDbIPC(): void {
     return noteId ? getCachedVaultQuery(params.vaultPath, `unlinked:${noteId}`, () => getUnlinkedMentions(params.vaultPath, noteId)) : []
   })
 
-  ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string; mode?: GraphMode }) => {
+  ipcMain.handle('db:get-graph', async (_event, params: { vaultPath: string; mode?: GraphMode; rootPath?: string }) => {
     const mode: GraphMode = params.mode ?? 'folder'
-    return getCachedVaultQuery(params.vaultPath, `graph:${mode}`, () => getGraphData(params.vaultPath, mode), 60_000)
+    const rootPath = params.rootPath ?? ''
+    return getCachedVaultQuery(params.vaultPath, `graph:${mode}:${rootPath}`, () => getGraphData(params.vaultPath, mode, rootPath), 60_000)
   })
 
   ipcMain.handle('db:search-notes', async (_event, params: { vaultPath: string; query: string }) => {

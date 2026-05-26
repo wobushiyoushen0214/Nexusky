@@ -24,13 +24,19 @@ describe('getGraphData modes', () => {
     const bPath = join(vaultPath, 'B.md')
     const cPath = join(vaultPath, 'Folder', 'C.md')
     const dPath = join(vaultPath, 'D.md')
+    mkdirSync(join(vaultPath, 'Folder', 'Sub'), { recursive: true })
+    mkdirSync(join(vaultPath, 'Other'), { recursive: true })
+    const ePath = join(vaultPath, 'Folder', 'Sub', 'E.md')
+    const fPath = join(vaultPath, 'Other', 'F.md')
 
     writeFileSync(aPath, '# A\n\nLinks to [[B]].')
     writeFileSync(bPath, '# B\n\nLinks to [[Folder/C]].')
     writeFileSync(cPath, '# C\n\nNo outgoing links.')
     writeFileSync(dPath, '# D\n\nIsolated note with no wikilinks.')
+    writeFileSync(ePath, '# E\n\nNested note.')
+    writeFileSync(fPath, '# F\n\nOther group note.')
 
-    for (const p of [aPath, bPath, cPath, dPath]) indexNote(vaultPath, p)
+    for (const p of [aPath, bPath, cPath, dPath, ePath, fPath]) indexNote(vaultPath, p)
 
     const db = getDatabase(vaultPath)
     const all = getAllNotes(vaultPath)
@@ -40,6 +46,16 @@ describe('getGraphData modes', () => {
       byTitle('A').id,
       'D',
       'similarity: 80%',
+    )
+    db.prepare("INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, 'inferred')").run(
+      byTitle('C').id,
+      'E',
+      'similarity: 90%',
+    )
+    db.prepare("INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, 'inferred')").run(
+      byTitle('C').id,
+      'F',
+      'similarity: 85%',
     )
     const { resolveAllLinks } = await import('../packages/main/src/services/indexer')
     resolveAllLinks(vaultPath)
@@ -71,6 +87,47 @@ describe('getGraphData modes', () => {
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('B').id, linkType: 'explicit' }))
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('D').id, linkType: 'inferred' }))
     expect(graph.edges.every((e) => e.linkType !== 'folder')).toBe(true)
+
+    closeDatabase()
+  })
+
+  it('group mode returns top-level groups without child file nodes and aggregates cross-group AI edges', async () => {
+    const { getGraphData } = await import('../packages/main/src/services/indexer')
+    const { closeDatabase } = await setupVault()
+
+    const graph = getGraphData(vaultPath, 'group')
+
+    expect(graph.nodes.every((n) => n.type === 'folder')).toBe(true)
+    expect(graph.nodes.map((n) => n.id)).toEqual(expect.arrayContaining(['folder:.', 'folder:Folder', 'folder:Other']))
+    expect(graph.nodes.some((n) => n.type === 'file')).toBe(false)
+    expect(graph.edges.every((e) => e.linkType === 'inferred')).toBe(true)
+    expect(graph.edges).toContainEqual(expect.objectContaining({
+      source: 'folder:Folder',
+      target: 'folder:Other',
+      linkType: 'inferred',
+      weight: 1,
+    }))
+
+    closeDatabase()
+  })
+
+  it('folder-scope mode lazy-loads one directory level and aggregates deep file connections through child folders', async () => {
+    const { getGraphData } = await import('../packages/main/src/services/indexer')
+    const { closeDatabase, byTitle } = await setupVault()
+
+    const graph = getGraphData(vaultPath, 'folder-scope', 'Folder')
+
+    expect(graph.nodes).toContainEqual(expect.objectContaining({ id: byTitle('C').id, type: 'file', filePath: 'Folder/C.md' }))
+    expect(graph.nodes).toContainEqual(expect.objectContaining({ id: 'folder:Folder/Sub', type: 'folder', filePath: 'Folder/Sub', noteCount: 1 }))
+    expect(graph.nodes.some((n) => n.id === byTitle('E').id)).toBe(false)
+    expect(graph.nodes.some((n) => n.id === byTitle('F').id)).toBe(false)
+    expect(graph.edges).toContainEqual(expect.objectContaining({
+      source: byTitle('C').id,
+      target: 'folder:Folder/Sub',
+      linkType: 'inferred',
+      weight: 1,
+    }))
+    expect(graph.edges.some((e) => e.source === 'folder:Other' || e.target === 'folder:Other')).toBe(false)
 
     closeDatabase()
   })

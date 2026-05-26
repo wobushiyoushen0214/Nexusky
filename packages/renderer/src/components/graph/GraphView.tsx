@@ -10,8 +10,8 @@ import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
 import { GraphPanel } from './GraphPanel'
 import { setupGraphFilters } from './graph-filters'
-import { DEFAULT_GRAPH_DISPLAY_STATE, buildGraphRelationLinkCountMap, getLinkLevel, getNodeRadius, isGraphLabelHidden, isGraphNodeHiddenByDisplay, isGraphNodeHiddenByGroup, seedNodePositionsFromCaches, shouldSkipGraphAutoZoom, type SimLink, type SimNode } from './graph-types'
-import type { GraphData, GraphEdge, GraphNode } from '@shared/types/ipc'
+import { DEFAULT_GRAPH_DISPLAY_STATE, buildGraphRelationLinkCountMap, getGraphFolderNodeId, getGraphNodeGroupId, getLinkLevel, getNodeRadius, getStableGraphGroupIndex, isGraphLabelHidden, isGraphNodeHiddenByDisplay, isGraphNodeHiddenByGroup, seedNodePositionsFromCaches, shouldSkipGraphAutoZoom, type SimLink, type SimNode } from './graph-types'
+import type { GraphData, GraphEdge, GraphMode, GraphNode } from '@shared/types/ipc'
 import './GraphView.css'
 
 const GROUP_COLORS = [
@@ -31,6 +31,16 @@ function hasPosition(node: SimNode | null): node is SimNode & { x: number; y: nu
   return !!node && node.x != null && node.y != null
 }
 
+function getGraphGroupColor(path: string): string {
+  return GROUP_COLORS[getStableGraphGroupIndex(path || '.', GROUP_COLORS.length)]
+}
+
+function getGraphNodeFill(node: { type: 'file' | 'folder'; color?: string }): string {
+  if (!node.color) return 'var(--bg-base)'
+  const mix = node.type === 'folder' ? 28 : 18
+  return `color-mix(in srgb, ${node.color} ${mix}%, var(--bg-base))`
+}
+
 const getRadius = getNodeRadius
 
 export function GraphView() {
@@ -45,6 +55,7 @@ export function GraphView() {
   const lastKnownNodePositionsRef = useRef<Map<string, [number, number]>>(new Map())
   const layoutCacheRef = useRef<Map<string, Map<string, [number, number]>>>(new Map())
   const graphBuiltForRef = useRef<string | null>(null)
+  const graphRequestIdRef = useRef(0)
   const aiStopRequestedRef = useRef(false)
   const autoInferAttemptedRef = useRef<string | null>(null)
   const silentMemoryRefreshRef = useRef(false)
@@ -69,32 +80,49 @@ export function GraphView() {
   const [centerStrength, setCenterStrength] = useState(0.02)
   const [confirmInferOpen, setConfirmInferOpen] = useState(false)
   const [hiddenGroupIds, setHiddenGroupIds] = useState<Set<string>>(() => new Set())
+  const [activeFolderPath, setActiveFolderPath] = useState<string | null>(null)
+  const activeGraphMode: GraphMode = activeFolderPath == null ? 'group' : 'folder-scope'
+  const graphScopeKey = activeFolderPath == null ? 'groups' : `folder:${activeFolderPath || '.'}`
 
   const groupColorMap = useMemo(() => {
-    if (!graphData) return new Map<string, string>()
-    const folders = graphData.nodes.filter((n: GraphNode) => n.type === 'folder')
     const map = new Map<string, string>()
-    folders.forEach((f: GraphNode, i: number) => {
-      map.set(f.id, GROUP_COLORS[i % GROUP_COLORS.length])
+    if (activeFolderPath != null) {
+      map.set(getGraphFolderNodeId(activeFolderPath), getGraphGroupColor(activeFolderPath || '.'))
+    }
+    if (!graphData) return map
+    const folders = graphData.nodes.filter((n: GraphNode) => n.type === 'folder')
+    folders.forEach((f: GraphNode) => {
+      map.set(f.id, getGraphGroupColor(f.filePath || f.id))
     })
     return map
-  }, [graphData])
+  }, [activeFolderPath, graphData])
+
+  const loadGraph = useCallback(() => {
+    if (!vaultPath) return
+    const requestId = ++graphRequestIdRef.current
+    window.api.invoke('db:get-graph', { vaultPath, mode: activeGraphMode, rootPath: activeFolderPath ?? '' }).then((data) => {
+      if (requestId === graphRequestIdRef.current) setGraphData(data)
+    })
+  }, [activeFolderPath, activeGraphMode, vaultPath])
 
   useEffect(() => {
-    if (!vaultPath) return
-    window.api.invoke('db:get-graph', { vaultPath, mode: 'folder' }).then(setGraphData)
+    graphRequestIdRef.current += 1
+    setGraphData(null)
+    setActiveFolderPath(null)
   }, [vaultPath])
 
   useEffect(() => {
+    loadGraph()
+  }, [loadGraph])
+
+  useEffect(() => {
     if (!vaultPath) return
-    const refresh = () => {
-      window.api.invoke('db:get-graph', { vaultPath, mode: 'folder' }).then(setGraphData)
-    }
+    const refresh = () => loadGraph()
     const cleanup = window.api.onVaultChanged(refresh)
     const cleanupFile = window.api.onFileChanged(refresh)
     window.addEventListener('graph-data-updated', refresh)
     return () => { cleanup(); cleanupFile(); window.removeEventListener('graph-data-updated', refresh) }
-  }, [vaultPath])
+  }, [loadGraph, vaultPath])
 
   useEffect(() => {
     if (!vaultPath || !graphData) return
@@ -146,6 +174,30 @@ export function GraphView() {
       return next
     })
   }, [])
+
+  const openGraphFolder = useCallback((folderPath: string) => {
+    graphRequestIdRef.current += 1
+    setGraphData(null)
+    setHiddenGroupIds(new Set())
+    setActiveFolderPath(folderPath)
+  }, [])
+
+  const openGraphOverview = useCallback(() => {
+    graphRequestIdRef.current += 1
+    setGraphData(null)
+    setHiddenGroupIds(new Set())
+    setActiveFolderPath(null)
+  }, [])
+
+  const openParentGraphFolder = useCallback(() => {
+    if (activeFolderPath == null || activeFolderPath === '') {
+      openGraphOverview()
+      return
+    }
+    const index = activeFolderPath.lastIndexOf('/')
+    if (index < 0) openGraphOverview()
+    else openGraphFolder(activeFolderPath.slice(0, index))
+  }, [activeFolderPath, openGraphFolder, openGraphOverview])
 
   const applyGroupVisibility = useCallback((hiddenGroups: ReadonlySet<string>) => {
     if (!svgRef.current) return
@@ -223,7 +275,7 @@ export function GraphView() {
 
       group.select('.node-core')
         .attr('r', r)
-        .attr('fill', 'var(--bg-base)')
+        .attr('fill', getGraphNodeFill(d))
         .attr('opacity', 1)
 
       group.select('.node-pulse')
@@ -255,16 +307,17 @@ export function GraphView() {
     tickHandlerRef.current = null
     endHandlerRef.current = null
 
-    const graphDataKey = JSON.stringify(graphData)
+    const graphDataKey = `${graphScopeKey}:${JSON.stringify(graphData)}`
     const isVisibilityOnlyRerender = graphBuiltForRef.current === graphDataKey
     const svg = select(svgRef.current)
     const preservedTransform = zoomTransform(svgRef.current)
     const width = svgRef.current.clientWidth
     const height = svgRef.current.clientHeight
     const nodeCount = graphData.nodes.length
-    // Heavy graphs skip expensive SVG filters and per-link gradients so the
-    // initial render stays smooth. Behaviour & interactions are preserved.
+    // Very dense graphs skip expensive SVG filters and per-link gradients so
+    // initial render stays smooth. Medium-sized graphs keep the visual style.
     const isHeavy = nodeCount > 80
+    const skipVisualEffects = nodeCount > 220
     const isLarge = nodeCount > 200
 
     svg.selectAll('*').remove()
@@ -319,7 +372,7 @@ export function GraphView() {
     })
 
     const nodes: SimNode[] = nodesForLayout.map((n: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }) => {
-      const folderId = n.type === 'folder' ? n.id : nodeToFolder.get(n.id)
+      const folderId = getGraphNodeGroupId(n, nodeToFolder, activeFolderPath)
       const color = folderId ? groupColorMap.get(folderId) : undefined
 
       const incomingColors = incomingColorsMap.get(n.id)
@@ -339,7 +392,7 @@ export function GraphView() {
     const nodeIds = new Set(nodes.map((n: SimNode) => n.id))
     const links: SimLink[] = graphData.edges
       .filter((e: GraphEdge) => nodeIds.has(e.source) && nodeIds.has(e.target))
-      .map((e: GraphEdge) => ({ source: e.source, target: e.target, linkType: e.linkType }))
+      .map((e: GraphEdge) => ({ source: e.source, target: e.target, linkType: e.linkType, weight: e.weight }))
 
     const nodeMap = new Map<string, SimNode>()
     nodes.forEach((n) => nodeMap.set(n.id, n))
@@ -349,7 +402,7 @@ export function GraphView() {
     // positions from the last simulation end so the graph doesn't fly
     // around. High hit rate also lets us start at a low alpha so the
     // worker barely needs to move anything.
-    const layoutCacheKey = `${vaultPath ?? ''}::folder`
+    const layoutCacheKey = `${vaultPath ?? ''}::${graphScopeKey}`
     const cachedPositions = layoutCacheRef.current.get(layoutCacheKey)
     const { hits: positionSeedHits, hitRate: positionSeedHitRate } = seedNodePositionsFromCaches(
       nodes,
@@ -358,9 +411,10 @@ export function GraphView() {
     )
     const layoutStartAlpha = positionSeedHitRate >= 0.8 ? 0.08 : undefined
 
-    // Link gradients for bone-joint style connections (skipped on heavy graphs;
-    // we fall back to a plain stroke and avoid rewriting <stop> coords each tick).
-    if (!isHeavy) {
+    // Link gradients for bone-joint style connections (skipped on very dense
+    // graphs; we fall back to a plain stroke and avoid rewriting <stop> coords
+    // each tick).
+    if (!skipVisualEffects) {
       links.forEach((l, i) => {
         const sId = typeof l.source === 'string' ? l.source : l.source.id
         const tId = typeof l.target === 'string' ? l.target : l.target.id
@@ -384,14 +438,14 @@ export function GraphView() {
       .join('path')
       .attr('class', (l) => `graph-link link-${l.linkType}`)
       .attr('stroke', (l, i) => {
-        if (!isHeavy) return `url(#link-grad-${i})`
+        if (!skipVisualEffects) return `url(#link-grad-${i})`
         const sId = typeof l.source === 'string' ? l.source : l.source.id
         const tId = typeof l.target === 'string' ? l.target : l.target.id
         const sNode = nodeMap.get(sId)
         const tNode = nodeMap.get(tId)
         return sNode?.color || tNode?.color || 'var(--text-tertiary)'
       })
-      .attr('stroke-width', 0.8)
+      .attr('stroke-width', (l) => Math.min(2.4, 0.8 + ((l.weight ?? 1) - 1) * 0.25))
       .attr('marker-end', showArrowsRef.current ? 'url(#arrowhead)' : null)
 
     const nodeGroup = g.append('g').attr('class', 'graph-nodes')
@@ -405,7 +459,7 @@ export function GraphView() {
 
     // Build all <defs> filters (multi-color, folder glow, file glow at 5
     // brightness levels, plus their hover variants) in one helper call.
-    // When isHeavy we get empty maps and the renderer falls through to
+    // When visual effects are skipped we get empty maps and fall through to
     // plain strokes.
     const {
       multiFilterIds,
@@ -414,11 +468,7 @@ export function GraphView() {
       folderHoverFilterIds,
       fileHoverFilterIds,
       fileLevelFilterIds,
-    } = setupGraphFilters(defs, nodes, groupColorMap, isHeavy)
-
-    const getNodeFill = (d: SimNode, idx: number) => {
-      return 'var(--bg-base)'
-    }
+    } = setupGraphFilters(defs, nodes, groupColorMap, skipVisualEffects)
 
     const nodeIndexMap = new Map<string, number>()
     nodes.forEach((n, i) => nodeIndexMap.set(n.id, i))
@@ -426,7 +476,7 @@ export function GraphView() {
     nodeGroup.append('circle')
       .attr('class', 'node-core')
       .attr('r', (d) => getRadius(d))
-      .attr('fill', (d, i) => getNodeFill(d, i))
+      .attr('fill', (d) => getGraphNodeFill(d))
       .attr('opacity', 1)
       .attr('stroke', (d) => {
         if (d.gradientId) return `url(#${d.gradientId})`
@@ -574,7 +624,7 @@ export function GraphView() {
           const r = getRadius(d)
           group.select('.node-core')
             .attr('r', r)
-            .attr('fill', 'var(--bg-base)')
+            .attr('fill', getGraphNodeFill(d))
             .attr('opacity', 1)
             .attr('stroke-opacity', d.type === 'folder' ? 0.8 : 0.35 + getLinkLevel(d.linkCount) * 0.15)
             .attr('filter', () => {
@@ -632,7 +682,10 @@ export function GraphView() {
 
     nodeGroup.on('click', (_event, d) => {
       if (!vaultPath) return
-      if (d.type === 'folder') return
+      if (d.type === 'folder') {
+        openGraphFolder(d.filePath ?? '')
+        return
+      }
       if (d.filePath) {
         setMainView('editor')
         requestAnimationFrame(() => {
@@ -672,8 +725,8 @@ export function GraphView() {
           return `M${x1},${y1} L${x2},${y2}`
         })
 
-      // Update link gradient positions only when gradients exist (small graphs).
-      if (!isHeavy) {
+      // Update link gradient positions only when gradients exist.
+      if (!skipVisualEffects) {
         link.each(function (d, i) {
           const source = getLinkEndpoint(d.source, nodeMap)
           const target = getLinkEndpoint(d.target, nodeMap)
@@ -766,7 +819,7 @@ export function GraphView() {
       worker.terminate()
       if (workerRef.current === worker) workerRef.current = null
     }
-  }, [applyGroupVisibility, graphData, groupColorMap])
+  }, [activeFolderPath, applyGroupVisibility, graphData, graphScopeKey, groupColorMap, openGraphFolder])
 
   useEffect(() => {
     if (!svgRef.current) return
@@ -847,6 +900,9 @@ export function GraphView() {
         graphData={graphData}
         groupColorMap={groupColorMap}
         vaultPath={vaultPath}
+        activeFolderPath={activeFolderPath}
+        onOpenOverview={openGraphOverview}
+        onOpenParentFolder={openParentGraphFolder}
         hiddenGroupIds={hiddenGroupIds}
         onToggleGroup={toggleGroupVisibility}
         searchQuery={searchQuery}

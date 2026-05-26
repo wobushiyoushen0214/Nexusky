@@ -44,13 +44,13 @@ export interface GraphDisplayState {
 }
 
 export const DEFAULT_GRAPH_DISPLAY_STATE: GraphDisplayState = {
-  showLabels: false,
-  showOrphans: false,
+  showLabels: true,
+  showOrphans: true,
   showArrows: false,
   showFolders: true,
   showExplicitEdges: true,
-  showInferredEdges: false,
-  showFolderEdges: false,
+  showInferredEdges: true,
+  showFolderEdges: true,
 }
 
 export const FILE_BRIGHTNESS_LEVELS = [
@@ -88,6 +88,29 @@ export function buildGraphRelationLinkCountMap(
     linkCountMap.set(edge.target, (linkCountMap.get(edge.target) || 0) + 1)
   })
   return linkCountMap
+}
+
+export function getGraphFolderNodeId(path: string): string {
+  const normalized = path.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  return `folder:${normalized || '.'}`
+}
+
+export function getGraphNodeGroupId(
+  node: { id: string; type: 'file' | 'folder' },
+  nodeToFolder: ReadonlyMap<string, string>,
+  activeFolderPath?: string | null,
+): string | undefined {
+  if (node.type === 'folder') return node.id
+  return nodeToFolder.get(node.id) ?? (activeFolderPath != null ? getGraphFolderNodeId(activeFolderPath) : undefined)
+}
+
+export function getStableGraphGroupIndex(value: string, paletteSize: number): number {
+  if (paletteSize <= 0) return 0
+  let hash = 0
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash) % paletteSize
 }
 
 export type GraphNodePosition = [number, number]
@@ -133,7 +156,7 @@ export function isGraphNodeHiddenByDisplay(
   node: { type: 'file' | 'folder'; linkCount: number },
   options: Pick<GraphDisplayState, 'showFolders' | 'showOrphans'> & { minLinks: number },
 ): boolean {
-  if (!options.showFolders && node.type === 'folder') return true
+  if (node.type === 'folder') return !options.showFolders
   if (!options.showOrphans && node.linkCount === 0) return true
   if (options.minLinks > 0 && node.linkCount < options.minLinks) return true
   return false

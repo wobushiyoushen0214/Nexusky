@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_GRAPH_DISPLAY_STATE,
   buildGraphRelationLinkCountMap,
+  getGraphFolderNodeId,
+  getGraphNodeGroupId,
+  getStableGraphGroupIndex,
   isGraphLabelHidden,
   isGraphNodeHiddenByDisplay,
   isGraphNodeHiddenByGroup,
@@ -49,11 +52,43 @@ describe('graph UI layout helpers', () => {
     expect(isGraphNodeHiddenByGroup({ id: 'note-c', type: 'file' }, hiddenGroups)).toBe(false)
   })
 
-  it('defaults to a decluttered graph view that keeps AI inferred edges optional', () => {
+  it('defaults to the full graph view on initial load', () => {
     expect(DEFAULT_GRAPH_DISPLAY_STATE).toMatchObject({
-      showLabels: false,
-      showOrphans: false,
+      showLabels: true,
+      showOrphans: true,
       showFolders: true,
+      showExplicitEdges: true,
+      showInferredEdges: true,
+      showFolderEdges: true
+    })
+  })
+
+  it('keeps folder groups visible when hiding file orphans', () => {
+    expect(isGraphNodeHiddenByDisplay({ type: 'folder', linkCount: 0 }, {
+      showFolders: true,
+      showOrphans: false,
+      minLinks: 0
+    })).toBe(false)
+    expect(isGraphNodeHiddenByDisplay({ type: 'folder', linkCount: 0 }, {
+      showFolders: true,
+      showOrphans: true,
+      minLinks: 5
+    })).toBe(false)
+    expect(isGraphNodeHiddenByDisplay({ type: 'folder', linkCount: 0 }, {
+      showFolders: false,
+      showOrphans: true,
+      minLinks: 0
+    })).toBe(true)
+  })
+
+  it('can hide labels and optional edge types after the initial render', () => {
+    expect({
+      ...DEFAULT_GRAPH_DISPLAY_STATE,
+      showLabels: false,
+      showInferredEdges: false,
+      showFolderEdges: false,
+    }).toMatchObject({
+      showLabels: false,
       showExplicitEdges: true,
       showInferredEdges: false,
       showFolderEdges: false
@@ -101,5 +136,18 @@ describe('graph UI layout helpers', () => {
     expect(counts.get('note-a')).toBe(1)
     expect(counts.get('note-b')).toBe(2)
     expect(counts.get('note-c')).toBe(1)
+  })
+
+  it('assigns direct file nodes to the active folder scope when scoped graphs omit folder edges', () => {
+    const nodeToFolder = new Map<string, string>()
+
+    expect(getGraphFolderNodeId('Projects/AI')).toBe('folder:Projects/AI')
+    expect(getGraphNodeGroupId({ id: 'note-a', type: 'file' }, nodeToFolder, 'Projects/AI')).toBe('folder:Projects/AI')
+    expect(getGraphNodeGroupId({ id: 'folder:Projects/AI/Sub', type: 'folder' }, nodeToFolder, 'Projects/AI')).toBe('folder:Projects/AI/Sub')
+  })
+
+  it('uses stable group palette indexes for the same folder across graph scopes', () => {
+    expect(getStableGraphGroupIndex('Projects/AI', 10)).toBe(getStableGraphGroupIndex('Projects/AI', 10))
+    expect(getStableGraphGroupIndex('Projects/AI', 0)).toBe(0)
   })
 })

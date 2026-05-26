@@ -122,7 +122,7 @@ export interface UnlinkedMentionResult {
   mention: string
 }
 
-export type GraphMode = 'semantic' | 'connection' | 'folder'
+export type GraphMode = 'semantic' | 'connection' | 'folder' | 'group' | 'folder-scope'
 
 export type GraphEdgeLinkType = 'explicit' | 'inferred' | 'folder'
 
@@ -131,12 +131,16 @@ export interface GraphNode {
   title: string
   filePath?: string
   type: 'file' | 'folder'
+  noteCount?: number
+  directNoteCount?: number
+  childFolderCount?: number
 }
 
 export interface GraphEdge {
   source: string
   target: string
   linkType: GraphEdgeLinkType
+  weight?: number
 }
 
 export interface GraphData {
@@ -563,7 +567,7 @@ export interface IPCChannelMap {
   'db:get-outgoing-links': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: OutgoingLinkResult[] }
   'db:get-backlinks': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: BacklinkResult[] }
   'db:get-unlinked-mentions': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: UnlinkedMentionResult[] }
-  'db:get-graph': { params: { vaultPath: string; mode?: GraphMode }; result: GraphData }
+  'db:get-graph': { params: { vaultPath: string; mode?: GraphMode; rootPath?: string }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
   'db:semantic-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }
   'db:fulltext-search': { params: { vaultPath: string; query: string; regex?: boolean }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }

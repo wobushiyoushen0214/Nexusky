@@ -385,9 +385,161 @@ export function getOutgoingUnlinkedMentions(vaultPath: string, noteId: string): 
   return mentions
 }
 
-export function getGraphData(vaultPath: string, mode: GraphMode = 'folder'): GraphData {
+interface GraphNoteRow {
+  id: string
+  title: string
+  file_path: string
+}
+
+interface AggregatedGraphEdge {
+  source: string
+  target: string
+  linkType: GraphEdgeLinkType
+  weight: number
+}
+
+function normalizeGraphFolderPath(path: string): string {
+  return path.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+}
+
+function getGraphFolderId(path: string): string {
+  return `folder:${path || '.'}`
+}
+
+function getGraphFolderTitle(path: string): string {
+  if (!path) return '/'
+  const parts = path.split('/')
+  return parts[parts.length - 1] || path
+}
+
+function getTopLevelGraphFolderPath(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/')
+  const index = normalized.indexOf('/')
+  return index >= 0 ? normalized.slice(0, index) : ''
+}
+
+function getNotePathWithinGraphFolder(filePath: string, folderPath: string): string | null {
+  const normalized = filePath.replace(/\\/g, '/')
+  if (!folderPath) return normalized
+  const prefix = `${folderPath}/`
+  return normalized.startsWith(prefix) ? normalized.slice(prefix.length) : null
+}
+
+function createFolderGraphNode(path: string, stats?: { noteCount?: number; directNoteCount?: number; childFolderCount?: number }): GraphNode {
+  return {
+    id: getGraphFolderId(path),
+    title: getGraphFolderTitle(path),
+    filePath: path,
+    type: 'folder',
+    ...stats,
+  }
+}
+
+function addAggregatedGraphEdge(
+  edges: Map<string, AggregatedGraphEdge>,
+  source: string,
+  target: string,
+  linkType: GraphEdgeLinkType,
+  undirected = false,
+): void {
+  if (source === target) return
+  let edgeSource = source
+  let edgeTarget = target
+  if (undirected && edgeTarget < edgeSource) {
+    edgeSource = target
+    edgeTarget = source
+  }
+  const key = `${edgeSource}->${edgeTarget}->${linkType}`
+  const existing = edges.get(key)
+  if (existing) {
+    existing.weight += 1
+    return
+  }
+  edges.set(key, { source: edgeSource, target: edgeTarget, linkType, weight: 1 })
+}
+
+function buildGroupGraphData(notes: GraphNoteRow[], edges: GraphEdge[]): GraphData {
+  const noteCountByFolder = new Map<string, number>()
+  const folderPathByNoteId = new Map<string, string>()
+
+  for (const note of notes) {
+    const folderPath = getTopLevelGraphFolderPath(note.file_path)
+    folderPathByNoteId.set(note.id, folderPath)
+    noteCountByFolder.set(folderPath, (noteCountByFolder.get(folderPath) || 0) + 1)
+  }
+
+  const nodes = Array.from(noteCountByFolder.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([path, noteCount]) => createFolderGraphNode(path, { noteCount }))
+
+  const aggregatedEdges = new Map<string, AggregatedGraphEdge>()
+  for (const edge of edges) {
+    if (edge.linkType !== 'inferred') continue
+    const sourceFolder = folderPathByNoteId.get(edge.source)
+    const targetFolder = folderPathByNoteId.get(edge.target)
+    if (sourceFolder == null || targetFolder == null || sourceFolder === targetFolder) continue
+    addAggregatedGraphEdge(
+      aggregatedEdges,
+      getGraphFolderId(sourceFolder),
+      getGraphFolderId(targetFolder),
+      'inferred',
+      true,
+    )
+  }
+
+  return { nodes, edges: Array.from(aggregatedEdges.values()) }
+}
+
+function buildFolderScopeGraphData(notes: GraphNoteRow[], edges: GraphEdge[], rootPath: string): GraphData {
+  const normalizedRootPath = normalizeGraphFolderPath(rootPath)
+  const folderStats = new Map<string, { noteCount: number; directNoteCount: number; childFolders: Set<string> }>()
+  const directFileNodes: GraphNode[] = []
+  const visibleOwnerByNoteId = new Map<string, string>()
+
+  for (const note of notes) {
+    const remainder = getNotePathWithinGraphFolder(note.file_path, normalizedRootPath)
+    if (remainder == null || !remainder) continue
+
+    const parts = remainder.split('/').filter(Boolean)
+    if (parts.length === 1) {
+      directFileNodes.push({ id: note.id, title: note.title, filePath: note.file_path, type: 'file' })
+      visibleOwnerByNoteId.set(note.id, note.id)
+      continue
+    }
+
+    const childFolderPath = normalizedRootPath ? `${normalizedRootPath}/${parts[0]}` : parts[0]
+    const stats = folderStats.get(childFolderPath) || { noteCount: 0, directNoteCount: 0, childFolders: new Set<string>() }
+    stats.noteCount += 1
+    if (parts.length === 2) stats.directNoteCount += 1
+    else stats.childFolders.add(parts[1])
+    folderStats.set(childFolderPath, stats)
+    visibleOwnerByNoteId.set(note.id, getGraphFolderId(childFolderPath))
+  }
+
+  const folderNodes = Array.from(folderStats.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([path, stats]) => createFolderGraphNode(path, {
+      noteCount: stats.noteCount,
+      directNoteCount: stats.directNoteCount,
+      childFolderCount: stats.childFolders.size,
+    }))
+
+  const aggregatedEdges = new Map<string, AggregatedGraphEdge>()
+  for (const edge of edges) {
+    const sourceOwner = visibleOwnerByNoteId.get(edge.source)
+    const targetOwner = visibleOwnerByNoteId.get(edge.target)
+    if (!sourceOwner || !targetOwner || sourceOwner === targetOwner) continue
+    addAggregatedGraphEdge(aggregatedEdges, sourceOwner, targetOwner, edge.linkType)
+  }
+
+  directFileNodes.sort((a, b) => a.title.localeCompare(b.title))
+
+  return { nodes: [...folderNodes, ...directFileNodes], edges: Array.from(aggregatedEdges.values()) }
+}
+
+export function getGraphData(vaultPath: string, mode: GraphMode = 'folder', rootPath = ''): GraphData {
   const db = getDatabase(vaultPath)
-  const notes = db.prepare('SELECT id, title, file_path FROM notes').all() as { id: string; title: string; file_path: string }[]
+  const notes = db.prepare('SELECT id, title, file_path FROM notes').all() as GraphNoteRow[]
   const aliases = db.prepare('SELECT note_id, alias FROM note_aliases').all() as { note_id: string; alias: string }[]
 
   const noteIds = new Set(notes.map((n) => n.id))
@@ -442,6 +594,14 @@ export function getGraphData(vaultPath: string, mode: GraphMode = 'folder'): Gra
     edges.push({ source: l.source_note_id, target: targetId, linkType })
     noteEdgeNodeIds.add(l.source_note_id)
     noteEdgeNodeIds.add(targetId)
+  }
+
+  if (mode === 'group') {
+    return buildGroupGraphData(notes, edges)
+  }
+
+  if (mode === 'folder-scope') {
+    return buildFolderScopeGraphData(notes, edges, rootPath)
   }
 
   if (mode === 'connection') {
