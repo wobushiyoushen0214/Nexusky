@@ -51,7 +51,7 @@
   padding: 0 4px;
   border-radius: 7px;
   background: var(--accent);
-  color: #fff;
+  color: oklch(0.96 0.005 270);
   font-size: 9px;
   font-weight: 600;
   line-height: 14px;
@@ -84,13 +84,67 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
   border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.proactive-drawer__title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.proactive-drawer__count {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.proactive-drawer__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.proactive-drawer__action {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 5px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out, opacity 140ms ease-out;
+}
+
+.proactive-drawer__action:hover:not(:disabled) {
+  background: var(--bg-hover-strong, rgba(255, 255, 255, 0.08));
+  border-color: var(--border-default, rgba(255, 255, 255, 0.14));
+  color: var(--text-primary);
+}
+
+.proactive-drawer__action--danger:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.42);
+  color: var(--danger, oklch(0.65 0.15 25));
+}
+
+.proactive-drawer__action:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .proactive-drawer__close {
@@ -198,12 +252,12 @@
 
 .proactive-item__btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: oklch(0.96 0.005 270);
 }
 
 .proactive-item__btn--primary:hover {
   background: var(--accent-strong, var(--accent));
-  color: #fff;
+  color: oklch(0.96 0.005 270);
 }
 
 .proactive-item__snooze {

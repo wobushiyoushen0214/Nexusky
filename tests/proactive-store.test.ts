@@ -152,6 +152,39 @@ describe('proactive-store', () => {
     expect(updateStatus(vaultPath, { id: 'no-such-id', status: 'shown' })).toBeNull()
   })
 
+  it('updateStatuses marks all active suggestions as responded and leaves inactive rows alone', async () => {
+    const { upsertSuggestion, updateStatus, updateStatuses, listSuggestions } = await import(
+      '../packages/main/src/services/proactive/proactive-store'
+    )
+
+    const pending = upsertSuggestion(vaultPath, {
+      kind: 'relation', sourceRef: 'bulk-pending', title: 'Pending',
+      ctaAction: 'open_note', signature: 'sig-bulk-pending'
+    })
+    const shown = upsertSuggestion(vaultPath, {
+      kind: 'relation', sourceRef: 'bulk-shown', title: 'Shown',
+      ctaAction: 'open_note', signature: 'sig-bulk-shown'
+    })
+    updateStatus(vaultPath, { id: shown.id, status: 'shown' })
+    const snoozed = upsertSuggestion(vaultPath, {
+      kind: 'relation', sourceRef: 'bulk-snoozed', title: 'Snoozed',
+      ctaAction: 'open_note', signature: 'sig-bulk-snoozed'
+    })
+    updateStatus(vaultPath, { id: snoozed.id, status: 'snoozed', snoozeUntil: 1_900_000_000 })
+
+    const changed = updateStatuses(vaultPath, { status: 'dismissed' })
+
+    expect(changed).toBe(2)
+    expect(listSuggestions(vaultPath, { status: ['pending', 'shown'] })).toEqual([])
+
+    const dismissed = listSuggestions(vaultPath, { status: ['dismissed'] })
+    expect(dismissed.map((row) => row.id).sort()).toEqual([pending.id, shown.id].sort())
+    expect(dismissed.every((row) => row.respondedAt && row.respondedAt > 0)).toBe(true)
+
+    const stillSnoozed = listSuggestions(vaultPath, { status: ['snoozed'] })
+    expect(stillSnoozed.map((row) => row.id)).toEqual([snoozed.id])
+  })
+
   it('pruneExpired marks old pending/shown rows as expired and leaves others alone', async () => {
     const { upsertSuggestion, pruneExpired, listSuggestions, updateStatus } = await import(
       '../packages/main/src/services/proactive/proactive-store'

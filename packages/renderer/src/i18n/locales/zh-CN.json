@@ -728,6 +728,9 @@
   },
   "proactive": {
     "bellTitle": "通知中心",
+    "count": "{{count}} 条",
+    "markAllRead": "全部已读",
+    "deleteAll": "全部删除",
     "open": "打开",
     "snooze": "稍后提醒",
     "snooze1d": "1 天后",

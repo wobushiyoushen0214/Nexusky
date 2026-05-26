@@ -728,6 +728,9 @@
   },
   "proactive": {
     "bellTitle": "Notifications",
+    "count": "{{count}} items",
+    "markAllRead": "Mark all read",
+    "deleteAll": "Delete all",
     "open": "Open",
     "snooze": "Snooze",
     "snooze1d": "1 day",

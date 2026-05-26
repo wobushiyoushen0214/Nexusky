@@ -33,6 +33,26 @@ export interface GraphFilterMaps {
   fileLevelFilterIds: Map<string, Map<number, string>>
 }
 
+export interface GraphDisplayState {
+  showLabels: boolean
+  showOrphans: boolean
+  showArrows: boolean
+  showFolders: boolean
+  showExplicitEdges: boolean
+  showInferredEdges: boolean
+  showFolderEdges: boolean
+}
+
+export const DEFAULT_GRAPH_DISPLAY_STATE: GraphDisplayState = {
+  showLabels: false,
+  showOrphans: false,
+  showArrows: false,
+  showFolders: true,
+  showExplicitEdges: true,
+  showInferredEdges: false,
+  showFolderEdges: false,
+}
+
 export const FILE_BRIGHTNESS_LEVELS = [
   { outerBlur: 2, outerOpacity: 0.12, innerOpacity: 0.15 },
   { outerBlur: 3, outerOpacity: 0.25, innerOpacity: 0.3 },
@@ -56,6 +76,18 @@ export function getNodeRadius(d: { type: 'file' | 'folder'; linkCount: number })
   if (d.linkCount >= 3) return 7
   if (d.linkCount >= 1) return 5
   return 3
+}
+
+export function buildGraphRelationLinkCountMap(
+  edges: Array<{ source: string; target: string; linkType: GraphEdgeLinkType }>,
+): Map<string, number> {
+  const linkCountMap = new Map<string, number>()
+  edges.forEach((edge) => {
+    if (edge.linkType === 'folder') return
+    linkCountMap.set(edge.source, (linkCountMap.get(edge.source) || 0) + 1)
+    linkCountMap.set(edge.target, (linkCountMap.get(edge.target) || 0) + 1)
+  })
+  return linkCountMap
 }
 
 export type GraphNodePosition = [number, number]
@@ -87,4 +119,22 @@ export function isGraphNodeHiddenByGroup(
   if (!node) return false
   const groupId = node.group ?? (node.type === 'folder' ? node.id : undefined)
   return !!groupId && hiddenGroupIds.has(groupId)
+}
+
+export function isGraphLabelHidden(
+  node: { type: 'file' | 'folder' },
+  showLabels: boolean,
+  isCurrentNode: boolean,
+): boolean {
+  return !showLabels && !isCurrentNode && node.type !== 'folder'
+}
+
+export function isGraphNodeHiddenByDisplay(
+  node: { type: 'file' | 'folder'; linkCount: number },
+  options: Pick<GraphDisplayState, 'showFolders' | 'showOrphans'> & { minLinks: number },
+): boolean {
+  if (!options.showFolders && node.type === 'folder') return true
+  if (!options.showOrphans && node.linkCount === 0) return true
+  if (options.minLinks > 0 && node.linkCount < options.minLinks) return true
+  return false
 }

@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import {
   listSuggestions,
+  updateStatuses,
   updateStatus,
   type ProactiveSuggestionRow
 } from '../services/proactive/proactive-store'
@@ -74,6 +75,17 @@ export function registerProactiveIPC(): void {
       snoozeUntil: params.snoozeUntil
     })
     return row ? toIpc(row) : null
+  })
+
+  ipcMain.handle('proactive:respond-all', async (_event, params: {
+    vaultPath: string
+    status: 'opened' | 'dismissed'
+  }) => {
+    const changed = updateStatuses(params.vaultPath, {
+      status: params.status,
+      fromStatuses: ['pending', 'shown']
+    })
+    return { changed }
   })
 
   ipcMain.handle('proactive:get-prefs', async () => {

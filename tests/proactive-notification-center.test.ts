@@ -124,6 +124,27 @@ describe('proactive renderer store', () => {
     })
   })
 
+  it('respondAll clears active suggestions through the bulk IPC channel', async () => {
+    const first = makeSuggestion({ id: 'bulk-a' })
+    const second = makeSuggestion({ id: 'bulk-b' })
+    const invoke = vi.fn()
+      .mockResolvedValueOnce([first, second])
+      .mockResolvedValueOnce({ changed: 2 })
+    installApi(invoke)
+
+    const { useProactiveStore } = await import('../packages/renderer/src/stores/proactive-store')
+
+    await useProactiveStore.getState().refresh('/tmp/vault')
+    const changed = await useProactiveStore.getState().respondAll('/tmp/vault', 'opened')
+
+    expect(changed).toBe(2)
+    expect(useProactiveStore.getState().suggestions).toEqual([])
+    expect(invoke).toHaveBeenLastCalledWith('proactive:respond-all', {
+      vaultPath: '/tmp/vault',
+      status: 'opened'
+    })
+  })
+
   it('setDrawerOpen toggles drawer visibility', async () => {
     installApi(vi.fn())
     const { useProactiveStore } = await import('../packages/renderer/src/stores/proactive-store')

@@ -10,7 +10,7 @@ import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
 import { GraphPanel } from './GraphPanel'
 import { setupGraphFilters } from './graph-filters'
-import { getLinkLevel, getNodeRadius, isGraphNodeHiddenByGroup, seedNodePositionsFromCaches, shouldSkipGraphAutoZoom, type SimLink, type SimNode } from './graph-types'
+import { DEFAULT_GRAPH_DISPLAY_STATE, buildGraphRelationLinkCountMap, getLinkLevel, getNodeRadius, isGraphLabelHidden, isGraphNodeHiddenByDisplay, isGraphNodeHiddenByGroup, seedNodePositionsFromCaches, shouldSkipGraphAutoZoom, type SimLink, type SimNode } from './graph-types'
 import type { GraphData, GraphEdge, GraphNode } from '@shared/types/ipc'
 import './GraphView.css'
 
@@ -55,13 +55,13 @@ export function GraphView() {
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [minLinks, setMinLinks] = useState(0)
-  const [showLabels, setShowLabels] = useState(true)
-  const [showOrphans, setShowOrphans] = useState(true)
-  const [showArrows, setShowArrows] = useState(false)
-  const [showFolders, setShowFolders] = useState(true)
-  const [showExplicitEdges, setShowExplicitEdges] = useState(true)
-  const [showInferredEdges, setShowInferredEdges] = useState(true)
-  const [showFolderEdges, setShowFolderEdges] = useState(true)
+  const [showLabels, setShowLabels] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showLabels)
+  const [showOrphans, setShowOrphans] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showOrphans)
+  const [showArrows, setShowArrows] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showArrows)
+  const [showFolders, setShowFolders] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showFolders)
+  const [showExplicitEdges, setShowExplicitEdges] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showExplicitEdges)
+  const [showInferredEdges, setShowInferredEdges] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showInferredEdges)
+  const [showFolderEdges, setShowFolderEdges] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showFolderEdges)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [indexStatus, setIndexStatus] = useState<string | null>(null)
   const [chargeStrength, setChargeStrength] = useState(-350)
@@ -232,7 +232,7 @@ export function GraphView() {
       group.select('.node-label')
         .classed('active', isCurrent)
         .classed('hub-label', isFolder)
-        .classed('hidden', !showLabelsRef.current)
+        .classed('hidden', isGraphLabelHidden(d, showLabelsRef.current, isCurrent))
     })
   }, [])
 
@@ -287,11 +287,7 @@ export function GraphView() {
 
     const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
 
-    const linkCountMap = new Map<string, number>()
-    graphData.edges.forEach((e: GraphEdge) => {
-      linkCountMap.set(e.source, (linkCountMap.get(e.source) || 0) + 1)
-      linkCountMap.set(e.target, (linkCountMap.get(e.target) || 0) + 1)
-    })
+    const linkCountMap = buildGraphRelationLinkCountMap(graphData.edges)
 
     const folderIdSet = new Set(graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((n: GraphNode) => n.id))
     const nodeToFolder = new Map<string, string>()
@@ -302,7 +298,7 @@ export function GraphView() {
     })
 
     const nodesForLayout = isLarge && nodeCount > 500
-      ? graphData.nodes.filter((n: { id: string }) => (linkCountMap.get(n.id) || 0) > 0)
+      ? graphData.nodes.filter((n: GraphNode) => n.type === 'folder' || (linkCountMap.get(n.id) || 0) > 0)
       : graphData.nodes
 
     // Pre-aggregate incoming folder colors per node in one O(E) pass instead
@@ -466,7 +462,7 @@ export function GraphView() {
     // Label — show for folder nodes or current node
     nodeGroup.append('text')
       .text((d) => d.title)
-      .attr('class', (d) => `node-label${isCurrentNode(d) ? ' active' : d.type === 'folder' ? ' hub-label' : ''}${!showLabelsRef.current ? ' hidden' : ''}`)
+      .attr('class', (d) => `node-label${isCurrentNode(d) ? ' active' : d.type === 'folder' ? ' hub-label' : ''}${isGraphLabelHidden(d, showLabelsRef.current, isCurrentNode(d)) ? ' hidden' : ''}`)
       .attr('text-anchor', 'middle')
       .attr('y', (d) => {
         const r = getRadius(d)
@@ -601,7 +597,7 @@ export function GraphView() {
               return null
             })
           group.select('.node-label')
-            .classed('hidden', !showLabelsRef.current)
+            .classed('hidden', isGraphLabelHidden(d, showLabelsRef.current, isCurrent))
             .attr('opacity', isCurrent ? 1 : 0.75)
             .style('fill', isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)')
         })
@@ -793,20 +789,32 @@ export function GraphView() {
     if (!svgRef.current || !graphData) return
     const svg = select(svgRef.current)
     const q = searchQuery.trim().toLowerCase()
-    svg.selectAll<SVGGElement, SimNode>('g.graph-node').classed('dimmed', (d) => {
-      if (!showFolders && d.type === 'folder') return true
-      if (!showOrphans && d.linkCount === 0) return true
-      if (minLinks > 0 && d.linkCount < minLinks) return true
-      if (q && !d.title.toLowerCase().includes(q)) return true
-      return false
+    const hiddenNodeIds = new Set<string>()
+
+    svg.selectAll<SVGGElement, SimNode>('g.graph-node').each((d) => {
+      if (isGraphNodeHiddenByDisplay(d, { showFolders, showOrphans, minLinks })) {
+        hiddenNodeIds.add(d.id)
+      }
+    }).classed('filtered', (d) => hiddenNodeIds.has(d.id))
+      .classed('dimmed', (d) => {
+        if (hiddenNodeIds.has(d.id)) return false
+        return !!q && !d.title.toLowerCase().includes(q)
+      })
+
+    svg.selectAll<SVGPathElement, SimLink>('path.graph-link').classed('filtered', (l) => {
+      const sourceId = getLinkEndpointId(l.source)
+      const targetId = getLinkEndpointId(l.target)
+      return hiddenNodeIds.has(sourceId) || hiddenNodeIds.has(targetId)
     })
   }, [searchQuery, minLinks, showOrphans, showFolders, graphData])
 
   useEffect(() => {
-    if (!svgRef.current) return
+    if (!svgRef.current || !graphData) return
     const svg = select(svgRef.current)
-    svg.selectAll<SVGGElement, SimNode>('g.graph-node .node-label').classed('hidden', !showLabels)
-  }, [showLabels])
+    const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
+    svg.selectAll<SVGTextElement, SimNode>('g.graph-node .node-label')
+      .classed('hidden', (d) => isGraphLabelHidden(d, showLabels, d.filePath === currentRelPath))
+  }, [showLabels, currentFilePath, vaultPath, graphData])
 
   useEffect(() => {
     if (!svgRef.current) return

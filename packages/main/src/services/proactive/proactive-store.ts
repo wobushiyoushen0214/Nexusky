@@ -56,6 +56,11 @@ export interface UpdateProactiveStatusInput {
   respondedAt?: number | null
 }
 
+export interface UpdateProactiveStatusesInput {
+  status: 'opened' | 'dismissed'
+  fromStatuses?: ProactiveSuggestionStatus[]
+}
+
 const PRUNE_AGE_SECONDS = 30 * 24 * 60 * 60
 
 function clampImportance(value: number | undefined): number {
@@ -315,6 +320,26 @@ export function updateStatus(vaultPath: string, input: UpdateProactiveStatusInpu
 
   db.prepare(`UPDATE proactive_suggestions SET ${sets.join(', ')} WHERE id = ?`).run(...args, input.id)
   return getById(db, input.id)
+}
+
+export function updateStatuses(vaultPath: string, input: UpdateProactiveStatusesInput): number {
+  const db = getDatabase(vaultPath)
+  const now = Math.floor(Date.now() / 1000)
+  const fromStatuses = input.fromStatuses && input.fromStatuses.length > 0
+    ? input.fromStatuses
+    : (['pending', 'shown'] satisfies ProactiveSuggestionStatus[])
+  const placeholders = fromStatuses.map(() => '?').join(',')
+
+  const result = db.prepare(`
+    UPDATE proactive_suggestions
+    SET status = ?,
+        updated_at = ?,
+        responded_at = ?,
+        snooze_until = NULL
+    WHERE status IN (${placeholders})
+  `).run(input.status, now, now, ...fromStatuses)
+
+  return result.changes ?? 0
 }
 
 export interface PruneExpiredParams {

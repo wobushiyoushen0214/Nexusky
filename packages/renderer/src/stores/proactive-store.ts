@@ -15,6 +15,7 @@ interface ProactiveStoreState {
   removeSuggestion: (id: string) => void
   refresh: (vaultPath: string) => Promise<void>
   respond: (vaultPath: string, id: string, status: 'opened' | 'snoozed' | 'dismissed' | 'shown', snoozeUntil?: number | null) => Promise<void>
+  respondAll: (vaultPath: string, status: 'opened' | 'dismissed') => Promise<number>
 }
 
 const ACTIVE_STATUSES: ProactiveSuggestionStatus[] = ['pending', 'shown']
@@ -79,6 +80,19 @@ export const useProactiveStore = create<ProactiveStoreState>((set, get) => ({
       }
     } catch {
       // Network errors should not crash the UI; the next refresh will reconcile.
+    }
+  },
+
+  respondAll: async (vaultPath, status) => {
+    try {
+      const result = await window.api.invoke('proactive:respond-all', {
+        vaultPath,
+        status
+      })
+      set({ suggestions: [] })
+      return result.changed
+    } catch {
+      return 0
     }
   }
 }))

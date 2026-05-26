@@ -403,6 +403,10 @@
   display: none;
 }
 
+.graph-link.filtered {
+  display: none;
+}
+
 .graph-link.group-hidden {
   display: none;
 }
@@ -458,6 +462,10 @@
 
 .graph-node.dimmed {
   opacity: 0.06;
+}
+
+.graph-node.filtered {
+  display: none;
 }
 
 .graph-node.group-hidden {

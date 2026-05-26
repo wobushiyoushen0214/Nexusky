@@ -44,6 +44,11 @@ describe('proactive IPC types', () => {
       snoozeUntil: 1_800_604_800
     }
     const respondResult: IPCChannelMap['proactive:respond']['result'] = suggestion
+    const respondAllParams: IPCChannelMap['proactive:respond-all']['params'] = {
+      vaultPath: '/tmp/vault',
+      status: 'opened'
+    }
+    const respondAllResult: IPCChannelMap['proactive:respond-all']['result'] = { changed: 3 }
 
     const prefs: ProactiveUserPrefs = {
       enabled: true,
@@ -82,6 +87,8 @@ describe('proactive IPC types', () => {
     expect(listResult[0].kind).toBe('relation')
     expect(respondParams.status).toBe('snoozed')
     expect(respondResult?.signature).toBe('relation|rel-1|note-1')
+    expect(respondAllParams.status).toBe('opened')
+    expect(respondAllResult.changed).toBe(3)
     expect(getPrefsResult.maxPerDay).toBe(5)
     expect(setPrefsParams.prefs.maxPerDay).toBe(3)
     expect(setPrefsResult.enabled).toBe(true)

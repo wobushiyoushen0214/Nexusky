@@ -19,7 +19,9 @@ export function NotificationCenter() {
   const setDrawerOpen = useProactiveStore((s) => s.setDrawerOpen)
   const refresh = useProactiveStore((s) => s.refresh)
   const respond = useProactiveStore((s) => s.respond)
+  const respondAll = useProactiveStore((s) => s.respondAll)
   const upsertSuggestion = useProactiveStore((s) => s.upsertSuggestion)
+  const [bulkStatus, setBulkStatus] = useState<'opened' | 'dismissed' | null>(null)
 
   useEffect(() => {
     if (!vaultPath) return
@@ -35,6 +37,18 @@ export function NotificationCenter() {
   }, [upsertSuggestion])
 
   const badge = useMemo(() => suggestions.length, [suggestions])
+  const hasSuggestions = suggestions.length > 0
+  const bulkDisabled = !vaultPath || !hasSuggestions || bulkStatus !== null
+
+  const handleRespondAll = async (status: 'opened' | 'dismissed') => {
+    if (!vaultPath || bulkStatus !== null) return
+    setBulkStatus(status)
+    try {
+      await respondAll(vaultPath, status)
+    } finally {
+      setBulkStatus(null)
+    }
+  }
 
   return (
     <div className="proactive-anchor" data-platform={window.api?.platform ?? 'darwin'}>
@@ -56,18 +70,47 @@ export function NotificationCenter() {
       {drawerOpen && (
         <div className="proactive-drawer" role="dialog" aria-label={t('proactive.bellTitle')}>
           <div className="proactive-drawer__header">
-            <span>{t('proactive.bellTitle')}</span>
-            <button
-              type="button"
-              className="proactive-drawer__close"
-              onClick={() => setDrawerOpen(false)}
-              aria-label="close"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            <div className="proactive-drawer__title">
+              <span>{t('proactive.bellTitle')}</span>
+              {hasSuggestions && (
+                <span className="proactive-drawer__count">{t('proactive.count', { count: suggestions.length })}</span>
+              )}
+            </div>
+            <div className="proactive-drawer__tools">
+              {hasSuggestions && (
+                <>
+                  <button
+                    type="button"
+                    className="proactive-drawer__action"
+                    onClick={() => void handleRespondAll('opened')}
+                    disabled={bulkDisabled}
+                    aria-label={t('proactive.markAllRead')}
+                  >
+                    {t('proactive.markAllRead')}
+                  </button>
+                  <button
+                    type="button"
+                    className="proactive-drawer__action proactive-drawer__action--danger"
+                    onClick={() => void handleRespondAll('dismissed')}
+                    disabled={bulkDisabled}
+                    aria-label={t('proactive.deleteAll')}
+                  >
+                    {t('proactive.deleteAll')}
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className="proactive-drawer__close"
+                onClick={() => setDrawerOpen(false)}
+                aria-label={t('common.close')}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="proactive-drawer__list">
             {suggestions.length === 0 ? (

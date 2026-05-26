@@ -811,6 +811,13 @@ export interface IPCChannelMap {
     }
     result: ProactiveSuggestion | null
   }
+  'proactive:respond-all': {
+    params: {
+      vaultPath: string
+      status: 'opened' | 'dismissed'
+    }
+    result: { changed: number }
+  }
   'proactive:get-prefs': { params: undefined; result: ProactiveUserPrefs }
   'proactive:set-prefs': { params: { prefs: Partial<ProactiveUserPrefs> }; result: ProactiveUserPrefs }
   'proactive:debug-run-cycle': {
