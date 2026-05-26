@@ -8,6 +8,14 @@
   overflow: hidden;
 }
 
+.related-context-panel--top {
+  width: auto;
+  max-height: 188px;
+  margin: 8px 32px 10px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
 .related-context-panel__header {
   min-height: 42px;
   padding: 9px 12px 8px;
@@ -234,6 +242,11 @@
 @media (max-width: 760px) {
   .related-context-panel {
     margin-top: 22px;
+  }
+
+  .related-context-panel--top {
+    max-height: 152px;
+    margin: 8px 16px 10px;
   }
 
   .related-context-card__header {

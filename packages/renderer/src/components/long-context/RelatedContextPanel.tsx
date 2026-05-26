@@ -10,11 +10,17 @@ import './long-context.css'
 interface RelatedContextPanelProps {
   currentFilePath: string
   content: string
+  placement?: RelatedContextPanelPlacement
 }
 
 type LoadState = 'idle' | 'loading' | 'error'
+type RelatedContextPanelPlacement = 'inline' | 'top'
 
-export function RelatedContextPanel({ currentFilePath, content }: RelatedContextPanelProps) {
+export function getRelatedContextPanelClassName(placement: RelatedContextPanelPlacement = 'inline'): string {
+  return `related-context-panel${placement === 'top' ? ' related-context-panel--top' : ''}`
+}
+
+export function RelatedContextPanel({ currentFilePath, content, placement = 'inline' }: RelatedContextPanelProps) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const [noteId, setNoteId] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<LongContextSuggestion[]>([])
@@ -117,7 +123,7 @@ export function RelatedContextPanel({ currentFilePath, content }: RelatedContext
   if (!noteId) return null
 
   return (
-    <section className="related-context-panel" aria-label="相关上下文">
+    <section className={getRelatedContextPanelClassName(placement)} aria-label="相关上下文">
       <div className="related-context-panel__header">
         <div>
           <div className="related-context-panel__eyebrow">相关上下文</div>
