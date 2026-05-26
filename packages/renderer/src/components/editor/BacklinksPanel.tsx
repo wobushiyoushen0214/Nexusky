@@ -5,6 +5,8 @@ import { toast } from '../../stores/toast-store'
 import { linkPlainMentionAtLine, linkPlainMentionsAtLines } from '../../utils/wikilink'
 import type { BacklinkResult, OutgoingLinkResult, UnlinkedMentionResult } from '@shared/types/ipc'
 
+export const DEFAULT_BACKLINKS_PANEL_COLLAPSED = true
+
 export function BacklinksPanel() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
@@ -13,7 +15,7 @@ export function BacklinksPanel() {
   const [outgoingLinks, setOutgoingLinks] = useState<OutgoingLinkResult[]>([])
   const [backlinks, setBacklinks] = useState<BacklinkResult[]>([])
   const [unlinkedMentions, setUnlinkedMentions] = useState<UnlinkedMentionResult[]>([])
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(DEFAULT_BACKLINKS_PANEL_COLLAPSED)
   const [linkingAll, setLinkingAll] = useState(false)
 
   const loadLinks = useCallback(async () => {
@@ -42,6 +44,10 @@ export function BacklinksPanel() {
   useEffect(() => {
     void loadLinks()
   }, [loadLinks])
+
+  useEffect(() => {
+    setCollapsed(DEFAULT_BACKLINKS_PANEL_COLLAPSED)
+  }, [currentFilePath])
 
   const handleLinkMention = useCallback(async (item: UnlinkedMentionResult) => {
     if (!vaultPath) return
