@@ -27,7 +27,7 @@ interface RouteWorkerMessage {
 }
 
 const CARD_WIDTH = 210
-const CARD_HEIGHT = 112
+const CARD_HEIGHT = 132
 const CARD_GAP = 32
 const ROUTE_CLEARANCE = 52
 const ROUTE_CARD_PADDING = 26

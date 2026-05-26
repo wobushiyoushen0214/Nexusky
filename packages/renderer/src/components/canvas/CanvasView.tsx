@@ -8,7 +8,7 @@ import { safeGetJSON, safeRemove, safeSetJSON } from '../../utils/storage'
 import './KnowledgeSpace.css'
 import type { GraphData, PropertyTableRow } from '@shared/types/ipc'
 
-interface CanvasPosition {
+export interface CanvasPosition {
   x: number
   y: number
 }
@@ -66,16 +66,16 @@ interface CanvasViewportBox {
 }
 
 type CanvasMode = 'space' | 'properties' | 'time'
-type RoutePoint = { x: number; y: number }
+export type RoutePoint = { x: number; y: number }
 type RouteSide = 'left' | 'right' | 'top' | 'bottom'
 type RoutePort = { side: RouteSide; edge: RoutePoint; clear: RoutePoint }
-type CanvasEdgeRoute = { key: string; source: string; target: string; points: RoutePoint[] }
+export type CanvasEdgeRoute = { key: string; source: string; target: string; points: RoutePoint[] }
 type CanvasGroupLabelKind = 'source' | 'status' | 'tag' | 'date' | 'unknown'
 type CanvasGroupLabel = { key: string; kind: CanvasGroupLabelKind; value: string; count: number; x: number; y: number }
 type CanvasAssociationReason = 'tag' | 'source' | 'title'
-type CanvasSuggestedEdgeRoute = CanvasAssociationSuggestion & CanvasEdgeRoute
+export type CanvasSuggestedEdgeRoute = CanvasAssociationSuggestion & CanvasEdgeRoute
 
-interface CanvasAssociationSuggestion {
+export interface CanvasAssociationSuggestion {
   source: string
   target: string
   reason: CanvasAssociationReason
@@ -603,6 +603,67 @@ export function routeBetweenCardsDuringDrag(source: CanvasPosition, target: Canv
   return compactRoute([sourceEdge, { x: sourceEdge.x, y: midY }, { x: targetEdge.x, y: midY }, targetEdge])
 }
 
+function toViewportRoutePoints(source: CanvasPosition, target: CanvasPosition, metrics: Pick<CanvasMetrics, 'minX' | 'minY'>): RoutePoint[] {
+  return routeBetweenCardsDuringDrag(source, target).map((point) => ({
+    x: point.x - metrics.minX,
+    y: point.y - metrics.minY
+  }))
+}
+
+export function buildLightweightCanvasEdgeRoutes(
+  edges: Array<Pick<CanvasEdgeRoute, 'source' | 'target'>>,
+  positions: Record<string, CanvasPosition>,
+  metrics: Pick<CanvasMetrics, 'minX' | 'minY'>
+): CanvasEdgeRoute[] {
+  return edges
+    .map((edge) => {
+      const source = positions[edge.source]
+      const target = positions[edge.target]
+      if (!source || !target) return null
+      return {
+        key: `${edge.source}->${edge.target}`,
+        source: edge.source,
+        target: edge.target,
+        points: toViewportRoutePoints(source, target, metrics)
+      }
+    })
+    .filter((edge): edge is CanvasEdgeRoute => edge !== null)
+}
+
+export function buildLightweightCanvasSuggestedEdgeRoutes(
+  edges: CanvasAssociationSuggestion[],
+  positions: Record<string, CanvasPosition>,
+  metrics: Pick<CanvasMetrics, 'minX' | 'minY'>
+): CanvasSuggestedEdgeRoute[] {
+  return edges
+    .map((edge) => {
+      const source = positions[edge.source]
+      const target = positions[edge.target]
+      if (!source || !target) return null
+      return {
+        key: `${edge.source}~${edge.target}:${edge.reason}`,
+        source: edge.source,
+        target: edge.target,
+        reason: edge.reason,
+        score: edge.score,
+        points: toViewportRoutePoints(source, target, metrics)
+      }
+    })
+    .filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
+}
+
+export function mergeCanvasRouteUpdates<T extends { key: string }>(
+  current: T[],
+  updates: T[],
+  validKeys = new Set([...current, ...updates].map((edge) => edge.key)),
+  touchedKeys = new Set(updates.map((edge) => edge.key))
+): T[] {
+  return [
+    ...current.filter((edge) => validKeys.has(edge.key) && !touchedKeys.has(edge.key)),
+    ...updates
+  ]
+}
+
 function compactRoute(points: RoutePoint[]): RoutePoint[] {
   const deduped = points.filter((point, index) => index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y)
   return deduped.filter((point, index) => {
@@ -979,51 +1040,15 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
 
   const applyLightweightRoutesForCard = (cardId: string, nextPositions: Record<string, CanvasPosition>) => {
     if (!graph) return
-    const mergeRoutes = <T extends CanvasEdgeRoute>(current: T[], updates: T[]): T[] => {
-      const touched = new Set(updates.map((edge) => edge.key))
-      return [...current.filter((edge) => !touched.has(edge.key)), ...updates]
-    }
-    const routeEdge = (edge: Pick<CanvasEdgeRoute, 'source' | 'target'>): CanvasEdgeRoute | null => {
-      const source = nextPositions[edge.source]
-      const target = nextPositions[edge.target]
-      if (!source || !target) return null
-      return {
-        key: `${edge.source}->${edge.target}`,
-        source: edge.source,
-        target: edge.target,
-        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
-          x: point.x - canvasMetrics.minX,
-          y: point.y - canvasMetrics.minY
-        }))
-      }
-    }
-    const routeSuggestion = (edge: CanvasAssociationSuggestion): CanvasSuggestedEdgeRoute | null => {
-      const source = nextPositions[edge.source]
-      const target = nextPositions[edge.target]
-      if (!source || !target) return null
-      return {
-        key: `${edge.source}~${edge.target}:${edge.reason}`,
-        source: edge.source,
-        target: edge.target,
-        reason: edge.reason,
-        score: edge.score,
-        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
-          x: point.x - canvasMetrics.minX,
-          y: point.y - canvasMetrics.minY
-        }))
-      }
-    }
+    const routeMetrics = { minX: canvasMetrics.minX, minY: canvasMetrics.minY }
     const edgeUpdates = graph.edges
       .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
       .filter((edge) => edge.source === cardId || edge.target === cardId)
-      .map(routeEdge)
-      .filter((edge): edge is CanvasEdgeRoute => edge !== null)
-    const suggestionUpdates = canvasAssociationSuggestions
-      .filter((edge) => edge.source === cardId || edge.target === cardId)
-      .map(routeSuggestion)
-      .filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
-    if (edgeUpdates.length > 0) setCanvasEdges((current) => mergeRoutes(current, edgeUpdates))
-    if (suggestionUpdates.length > 0) setCanvasSuggestedEdges((current) => mergeRoutes(current, suggestionUpdates))
+    const suggestionUpdates = canvasAssociationSuggestions.filter((edge) => edge.source === cardId || edge.target === cardId)
+    const nextEdges = buildLightweightCanvasEdgeRoutes(edgeUpdates, nextPositions, routeMetrics)
+    const nextSuggestions = buildLightweightCanvasSuggestedEdgeRoutes(suggestionUpdates, nextPositions, routeMetrics)
+    if (nextEdges.length > 0) setCanvasEdges((current) => mergeCanvasRouteUpdates(current, nextEdges))
+    if (nextSuggestions.length > 0) setCanvasSuggestedEdges((current) => mergeCanvasRouteUpdates(current, nextSuggestions))
   }
 
   useEffect(() => {
@@ -1051,55 +1076,33 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     const visibleGraphEdges = graph.edges.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
     const focusId = routeFocusRef.current
     routeFocusRef.current = null
-    const fastEdge = (edge: Pick<CanvasEdgeRoute, 'source' | 'target'>): CanvasEdgeRoute | null => {
-      const source = modePositions[edge.source]
-      const target = modePositions[edge.target]
-      if (!source || !target) return null
-      return {
-        key: `${edge.source}->${edge.target}`,
-        source: edge.source,
-        target: edge.target,
-        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
-          x: point.x - canvasMetrics.minX,
-          y: point.y - canvasMetrics.minY
-        }))
-      }
-    }
-    const fastSuggestion = (edge: CanvasAssociationSuggestion): CanvasSuggestedEdgeRoute | null => {
-      const source = modePositions[edge.source]
-      const target = modePositions[edge.target]
-      if (!source || !target) return null
-      return {
-        key: `${edge.source}~${edge.target}:${edge.reason}`,
-        source: edge.source,
-        target: edge.target,
-        reason: edge.reason,
-        score: edge.score,
-        points: routeBetweenCardsDuringDrag(source, target).map((point) => ({
-          x: point.x - canvasMetrics.minX,
-          y: point.y - canvasMetrics.minY
-        }))
-      }
-    }
-    const mergeRoutes = <T extends CanvasEdgeRoute>(current: T[], updates: T[], validKeys: Set<string>, touchedKeys: Set<string>): T[] => [
-      ...current.filter((edge) => validKeys.has(edge.key) && !touchedKeys.has(edge.key)),
-      ...updates
-    ]
-
     const pendingEdges = [...visibleGraphEdges]
     const pendingSuggestions = [...canvasAssociationSuggestions]
     const validEdgeKeys = new Set(visibleGraphEdges.map((edge) => `${edge.source}->${edge.target}`))
     const validSuggestionKeys = new Set(canvasAssociationSuggestions.map((edge) => `${edge.source}~${edge.target}:${edge.reason}`))
+    const routeMetrics = { minX: canvasMetrics.minX, minY: canvasMetrics.minY }
     if (focusId) {
-      const immediateEdges = visibleGraphEdges.filter((edge) => edge.source === focusId || edge.target === focusId).map(fastEdge).filter((edge): edge is CanvasEdgeRoute => edge !== null)
-      const immediateSuggestions = canvasAssociationSuggestions.filter((edge) => edge.source === focusId || edge.target === focusId).map(fastSuggestion).filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
+      const immediateEdges = buildLightweightCanvasEdgeRoutes(
+        visibleGraphEdges.filter((edge) => edge.source === focusId || edge.target === focusId),
+        modePositions,
+        routeMetrics
+      )
+      const immediateSuggestions = buildLightweightCanvasSuggestedEdgeRoutes(
+        canvasAssociationSuggestions.filter((edge) => edge.source === focusId || edge.target === focusId),
+        modePositions,
+        routeMetrics
+      )
       const touchedEdges = new Set(immediateEdges.map((edge) => edge.key))
       const touchedSuggestions = new Set(immediateSuggestions.map((edge) => edge.key))
-      if (immediateEdges.length > 0) setCanvasEdges((current) => mergeRoutes(current, immediateEdges, validEdgeKeys, touchedEdges))
-      if (immediateSuggestions.length > 0) setCanvasSuggestedEdges((current) => mergeRoutes(current, immediateSuggestions, validSuggestionKeys, touchedSuggestions))
+      if (immediateEdges.length > 0) setCanvasEdges((current) => mergeCanvasRouteUpdates(current, immediateEdges, validEdgeKeys, touchedEdges))
+      if (immediateSuggestions.length > 0) setCanvasSuggestedEdges((current) => mergeCanvasRouteUpdates(current, immediateSuggestions, validSuggestionKeys, touchedSuggestions))
     } else {
-      setCanvasEdges((current) => current.filter((edge) => validEdgeKeys.has(edge.key)))
-      setCanvasSuggestedEdges((current) => current.filter((edge) => validSuggestionKeys.has(edge.key)))
+      const immediateEdges = buildLightweightCanvasEdgeRoutes(visibleGraphEdges, modePositions, routeMetrics)
+      const immediateSuggestions = buildLightweightCanvasSuggestedEdgeRoutes(canvasAssociationSuggestions, modePositions, routeMetrics)
+      const touchedEdges = new Set(immediateEdges.map((edge) => edge.key))
+      const touchedSuggestions = new Set(immediateSuggestions.map((edge) => edge.key))
+      setCanvasEdges((current) => mergeCanvasRouteUpdates(current, immediateEdges, validEdgeKeys, touchedEdges))
+      setCanvasSuggestedEdges((current) => mergeCanvasRouteUpdates(current, immediateSuggestions, validSuggestionKeys, touchedSuggestions))
     }
 
     const worker = new Worker(new URL('./canvas-route-worker.ts', import.meta.url), { type: 'module' })
@@ -1110,8 +1113,8 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
       const suggestionUpdates = event.data.suggestedEdges
       const touchedEdges = new Set(edgeUpdates.map((edge) => edge.key))
       const touchedSuggestions = new Set(suggestionUpdates.map((edge) => edge.key))
-      setCanvasEdges((current) => mergeRoutes(current, edgeUpdates, validEdgeKeys, touchedEdges))
-      setCanvasSuggestedEdges((current) => mergeRoutes(current, suggestionUpdates, validSuggestionKeys, touchedSuggestions))
+      setCanvasEdges((current) => mergeCanvasRouteUpdates(current, edgeUpdates, validEdgeKeys, touchedEdges))
+      setCanvasSuggestedEdges((current) => mergeCanvasRouteUpdates(current, suggestionUpdates, validSuggestionKeys, touchedSuggestions))
       worker.terminate()
       if (routeWorkerRef.current === worker) routeWorkerRef.current = null
     }

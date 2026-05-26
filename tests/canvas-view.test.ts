@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasGroupLabels, buildCanvasModePositions, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, routeAnchorsCurrentCards, routeBetweenCards, routeBetweenCardsDuringDrag, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
+import { appendCanvasAssociationLink, applyCanvasModeOverrides, buildArchivePositions, buildCanvasAssociationSuggestions, buildCanvasGroupLabels, buildCanvasModePositions, buildLightweightCanvasEdgeRoutes, buildLightweightCanvasSuggestedEdgeRoutes, findAvailablePosition, getCanvasAssociationWikilink, getCanvasInitialScrollKey, getNextCanvasAssociationKey, getViewportCenteredCardOrigin, mergeCanvasRouteUpdates, routeAnchorsCurrentCards, routeBetweenCards, routeBetweenCardsDuringDrag, routeCrossesCards } from '../packages/renderer/src/components/canvas/CanvasView'
 import type { PropertyTableRow } from '../packages/shared/src/types/ipc'
 
 function row(id: string, properties: PropertyTableRow['properties'], updatedAt = 1): PropertyTableRow {
@@ -220,6 +220,38 @@ describe('canvas card placement', () => {
     expect(route[0]).toEqual({ x: 210, y: 66 })
     expect(route[route.length - 1]).toEqual({ x: 520, y: 226 })
     expect(route.every((point, index) => index === 0 || point.x === route[index - 1].x || point.y === route[index - 1].y)).toBe(true)
+  })
+
+  it('seeds all visible canvas routes before worker refinement', () => {
+    const positions = {
+      a: { x: 0, y: 0 },
+      b: { x: 520, y: 0 },
+      c: { x: 0, y: 240 }
+    }
+
+    const edges = buildLightweightCanvasEdgeRoutes([
+      { source: 'a', target: 'b' },
+      { source: 'a', target: 'c' },
+      { source: 'missing', target: 'b' }
+    ], positions, { minX: -40, minY: -80 })
+    const suggestions = buildLightweightCanvasSuggestedEdgeRoutes([
+      { source: 'b', target: 'c', reason: 'tag', score: 4 }
+    ], positions, { minX: -40, minY: -80 })
+
+    expect(edges.map((edge) => edge.key)).toEqual(['a->b', 'a->c'])
+    expect(edges[0].points[0]).toEqual({ x: 250, y: 146 })
+    expect(suggestions.map((edge) => edge.key)).toEqual(['b~c:tag'])
+    expect(mergeCanvasRouteUpdates([], edges, new Set(edges.map((edge) => edge.key)))).toEqual(edges)
+  })
+
+  it('removes stale canvas routes while replacing touched route keys', () => {
+    const current = [
+      { key: 'stale', value: 1 },
+      { key: 'a->b', value: 1 }
+    ]
+    const updates = [{ key: 'a->b', value: 2 }]
+
+    expect(mergeCanvasRouteUpdates(current, updates, new Set(['a->b']), new Set(['a->b']))).toEqual(updates)
   })
 
   it('detects stale routes that no longer touch current card positions', () => {
