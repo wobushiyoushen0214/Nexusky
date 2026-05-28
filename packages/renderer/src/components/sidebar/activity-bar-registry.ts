@@ -26,7 +26,6 @@ export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
   { id: 'kanban', labelKey: 'activityBar.kanban', defaultVisible: false, defaultOrder: 11 },
   { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 12 },
   { id: 'maintenance', labelKey: 'activityBar.maintenance', defaultVisible: true, defaultOrder: 13 },
-  { id: 'agent', labelKey: 'activityBar.agent', defaultVisible: false, defaultOrder: 14 },
 ]
 
 export function isActivityBarItemAvailable(item: ActivityBarItemDef, context: ActivityBarAvailabilityContext): boolean {

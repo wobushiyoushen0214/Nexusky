@@ -40,3 +40,8 @@ Records of weight changes between primary navigation, command-only access, and r
 
 Kanban moved from `defaultVisible: true` to `defaultVisible: false` in the ActivityBar registry. Reason: most vaults don't run task workflows day-to-day, so the icon was occupying a slot that knowledge-first surfaces should keep. The Kanban view itself, IPC, and `mainView === 'kanban'` route are untouched — the panel is still reachable through the Command Palette (`Open task kanban`), the "Send to kanban" actions from Agent / Chat, and right-click "show item" on the ActivityBar. Existing users who had Kanban pinned keep it.
 
+### 2026-05-28 — Agent removed from ActivityBar registry
+
+The Agent right-panel entry is no longer enumerated in the ActivityBar registry, removing it from the "More" menu and the right-click customization list. Reason: the panel is a niche, multi-step Plan→Execute→Reflect surface that doesn't justify a primary-navigation slot when ChatPanel's `agentMode` already handles the common conversational case. Reach Agent through the Command Palette (`Open Agent panel`), Kanban's "Send to Agent" action, or Chat's "Send to Agent" reflection. The panel itself, `rightPanel === 'agent'` rendering, IPC, and engine in `packages/main/src/services/agent/*` remain unchanged; only the discovery icon is gone.
+
+

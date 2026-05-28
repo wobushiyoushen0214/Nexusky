@@ -50,7 +50,6 @@
     "kanban": "Kanban",
     "dailyNote": "Daily Note",
     "maintenance": "Knowledge Maintenance",
-    "agent": "Agent Runs",
     "more": "More",
     "requiresCurrentFile": "Available after opening a note",
     "settings": "Settings"
