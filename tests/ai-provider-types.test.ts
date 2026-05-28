@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import type { AIProviderValidationResult, ChatMessage, ToolDefinition } from '../packages/main/src/services/ai/base-provider'
+import type { IPCChannelMap } from '../packages/shared/src/types/ipc'
 
 describe('AI provider shared types', () => {
   it('keeps tool definitions typed for provider adapters', () => {
@@ -43,5 +44,15 @@ describe('AI provider shared types', () => {
     expectTypeOf(result).toMatchTypeOf<AIProviderValidationResult>()
     expect(result.ok).toBe(false)
     expect(result.error).toBe('invalid key')
+  })
+
+  it('exposes ai:probe-question with a discriminated union result', () => {
+    type ProbeResult = IPCChannelMap['ai:probe-question']['result']
+    const ok: ProbeResult = { ok: true, answer: 'hi', latencyMs: 120, model: 'gpt-4o-mini' }
+    const fail: ProbeResult = { ok: false, error: 'no provider' }
+    expect(ok.ok).toBe(true)
+    expect(fail.ok).toBe(false)
+    if (ok.ok) expect(ok.model).toBe('gpt-4o-mini')
+    if (!fail.ok) expect(fail.error).toBe('no provider')
   })
 })

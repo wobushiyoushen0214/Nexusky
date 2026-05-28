@@ -91,6 +91,8 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
   const [editing, setEditing] = useState<ProviderConfig | null>(null)
   const [testingProvider, setTestingProvider] = useState(false)
+  const [probing, setProbing] = useState(false)
+  const [probeResult, setProbeResult] = useState<{ ok: boolean; text: string; latencyMs?: number } | null>(null)
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
   const [cloudUser, setCloudUser] = useState<CloudUser>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
@@ -184,6 +186,24 @@ export function Settings({ open, onClose }: SettingsProps) {
       toast(`AI 连接测试失败: ${getErrorMessage(e, '未知错误')}`, 'error')
     } finally {
       setTestingProvider(false)
+    }
+  }
+
+  const handleProbeQuestion = async () => {
+    if (!editing) return
+    setProbing(true)
+    setProbeResult(null)
+    try {
+      const result = await window.api.invoke('ai:probe-question', { config: editing })
+      if (result.ok) {
+        setProbeResult({ ok: true, text: result.answer, latencyMs: result.latencyMs })
+      } else {
+        setProbeResult({ ok: false, text: result.error })
+      }
+    } catch (e: unknown) {
+      setProbeResult({ ok: false, text: getErrorMessage(e, '未知错误') })
+    } finally {
+      setProbing(false)
     }
   }
 
@@ -495,10 +515,23 @@ export function Settings({ open, onClose }: SettingsProps) {
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button onClick={handleProbeQuestion} disabled={probing || testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: probing ? 'wait' : 'pointer', opacity: probing ? 0.6 : 1 }}>{probing ? '提问中...' : '测试问题'}</button>
                 <button onClick={handleValidateEditing} disabled={testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: testingProvider ? 'wait' : 'pointer', opacity: testingProvider ? 0.6 : 1 }}>{testingProvider ? '测试中...' : '测试连接'}</button>
                 <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>取消</button>
                 <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
               </div>
+              {probeResult && (
+                <div style={{ marginTop: 10, padding: 10, borderRadius: 6, background: 'var(--bg-elevated)', border: `1px solid ${probeResult.ok ? 'var(--border-subtle)' : '#f8717155'}` }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                    {probeResult.ok
+                      ? `回答（${probeResult.latencyMs} ms）`
+                      : '调用失败'}
+                  </div>
+                  <div style={{ fontSize: 12, color: probeResult.ok ? 'var(--text-primary)' : '#f87171', whiteSpace: 'pre-wrap' }}>
+                    {probeResult.text}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -30,6 +30,44 @@ export function registerAiProviderHandlers(): void {
     return provider.validate()
   })
 
+  ipcMain.handle('ai:probe-question', async (_event, params: { config?: AIProviderConfig; question?: string }) => {
+    const config = params.config ?? aiManager.getActiveConfig()
+    if (!config) return { ok: false as const, error: '未配置 AI 提供商' }
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { ok: false as const, error: configError }
+    const provider = aiManager.getProvider(config)
+    const prompt = (params.question ?? '').trim() ||
+      '用一句话介绍你自己，并解释你能在 Nexusky 中帮助知识管理者做什么。'
+    const started = Date.now()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30_000)
+    try {
+      let answer = ''
+      for await (const event of provider.chatStream(
+        [
+          { role: 'system', content: '你是 Nexusky 内置的 AI 助手，回答简洁友好。' },
+          { role: 'user', content: prompt }
+        ],
+        controller.signal,
+        { temperature: 0.2 }
+      )) {
+        if (event.type === 'text') answer += event.content
+        if (event.type === 'error') {
+          return { ok: false as const, error: event.content || 'AI 调用失败' }
+        }
+        if (event.type === 'done') break
+      }
+      const latencyMs = Date.now() - started
+      const trimmed = answer.trim()
+      if (!trimmed) return { ok: false as const, error: '提供商返回了空回答' }
+      return { ok: true as const, answer: trimmed, latencyMs, model: config.model }
+    } catch (e) {
+      return { ok: false as const, error: e instanceof Error ? e.message : String(e) }
+    } finally {
+      clearTimeout(timeout)
+    }
+  })
+
   ipcMain.handle('ai:transcribe', async (_event, params: TranscribeAudioParams) => {
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商' }

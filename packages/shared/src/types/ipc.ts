@@ -743,6 +743,12 @@ export interface IPCChannelMap {
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:get-active-provider': { params: undefined; result: string | null }
   'ai:validate': { params: { config: AIProviderConfig }; result: AIProviderValidationResult }
+  'ai:probe-question': {
+    params: { config?: AIProviderConfig; question?: string }
+    result:
+      | { ok: true; answer: string; latencyMs: number; model: string }
+      | { ok: false; error: string }
+  }
   'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }; result: void }
   'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }; result: void }
   'ai:detect-intent': { params: { messages: IPCChatMessage[]; intents?: string[]; intentContext?: string }; result: { intent?: string } }
