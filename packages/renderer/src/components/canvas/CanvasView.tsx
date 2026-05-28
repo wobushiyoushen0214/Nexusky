@@ -1,4 +1,4 @@
-import { type PointerEvent as ReactPointerEvent, type WheelEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -1250,13 +1250,20 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     scheduleViewportSave()
   }
 
-  const handleCanvasWheel = (event: WheelEvent<HTMLDivElement>) => {
+  const handleCanvasWheel = (event: WheelEvent) => {
     if (!event.ctrlKey && !event.metaKey) return
     event.preventDefault()
     const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
     const nextZoom = zoomRef.current * Math.exp(-delta * 0.002)
     zoomAtViewportPoint(nextZoom, event.clientX, event.clientY)
   }
+
+  useEffect(() => {
+    const viewport = canvasRef.current
+    if (!viewport) return
+    viewport.addEventListener('wheel', handleCanvasWheel, { passive: false })
+    return () => viewport.removeEventListener('wheel', handleCanvasWheel)
+  }, [])
 
   const handleCanvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement
@@ -1379,7 +1386,6 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
         <div
           ref={canvasRef}
           onScroll={scheduleViewportSave}
-          onWheel={handleCanvasWheel}
           onPointerDown={handleCanvasPointerDown}
           style={{
             height: '100%',
