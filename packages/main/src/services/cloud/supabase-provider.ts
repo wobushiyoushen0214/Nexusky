@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSy
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { logger } from '../logger'
+import { decideSyncSide } from './conflict-detection'
 
 interface NoteSyncRow {
   file_path: string
@@ -171,12 +172,22 @@ export class SupabaseSyncProvider implements SyncProvider {
           if (ok) result.pushed++
           else result.errors.push(`push failed: ${relPath}`)
         })
-      } else if (remote.hash !== localHash) {
-        const localMtime = statSync(filePath).mtime
-        const remoteMtime = new Date(remote.updatedAt)
-        if (remoteMtime > localMtime) {
+      } else {
+        const side = decideSyncSide({
+          localHash,
+          remoteHash: remote.hash,
+          localMtimeMs: statSync(filePath).mtimeMs,
+          remoteMtimeMs: new Date(remote.updatedAt).getTime()
+        })
+        if (side === 'conflict') {
           result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
-        } else {
+        } else if (side === 'pull') {
+          pushTasks.push(async () => {
+            const ok = await this.pullFile(vaultPath, relPath)
+            if (ok) result.pulled++
+            else result.errors.push(`pull failed: ${relPath}`)
+          })
+        } else if (side === 'push') {
           pushTasks.push(async () => {
             const ok = await this.pushFile(vaultPath, filePath)
             if (ok) result.pushed++

@@ -4,6 +4,7 @@ import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { homedir } from 'os'
 import { store } from '../store'
+import { decideSyncSide } from './conflict-detection'
 
 const ICLOUD_CONTAINER = 'iCloud~com~nexusky~notes'
 
@@ -123,17 +124,33 @@ export class ICloudSyncProvider implements SyncProvider {
       const localHash = createHash('md5').update(content).digest('hex')
       const remote = remoteMap.get(relPath)
 
-      if (!remote || remote.hash !== localHash) {
-        const localStat = statSync(filePath)
-        if (remote && new Date(remote.updatedAt) > localStat.mtime) {
-          const ok = await this.pullFile(vaultPath, relPath)
-          if (ok) result.pulled++
-          else result.errors.push(`pull failed: ${relPath}`)
-        } else {
-          const ok = await this.pushFile(vaultPath, filePath)
-          if (ok) result.pushed++
-          else result.errors.push(`push failed: ${relPath}`)
-        }
+      if (!remote) {
+        const ok = await this.pushFile(vaultPath, filePath)
+        if (ok) result.pushed++
+        else result.errors.push(`push failed: ${relPath}`)
+        remoteMap.delete(relPath)
+        continue
+      }
+
+      const localMtimeMs = statSync(filePath).mtimeMs
+      const remoteMtimeMs = new Date(remote.updatedAt).getTime()
+      const side = decideSyncSide({
+        localHash,
+        remoteHash: remote.hash,
+        localMtimeMs,
+        remoteMtimeMs
+      })
+
+      if (side === 'conflict') {
+        result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
+      } else if (side === 'pull') {
+        const ok = await this.pullFile(vaultPath, relPath)
+        if (ok) result.pulled++
+        else result.errors.push(`pull failed: ${relPath}`)
+      } else if (side === 'push') {
+        const ok = await this.pushFile(vaultPath, filePath)
+        if (ok) result.pushed++
+        else result.errors.push(`push failed: ${relPath}`)
       }
       remoteMap.delete(relPath)
     }

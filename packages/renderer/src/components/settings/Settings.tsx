@@ -578,6 +578,8 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
   const [providers, setProviders] = useState<{ type: string; name: string; configured: boolean }[]>([])
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
+  const [conflicts, setConflicts] = useState<Array<{ path: string; localHash: string; remoteHash: string; remoteUpdatedAt: string }>>([])
+  const [resolvingPath, setResolvingPath] = useState<string | null>(null)
   const [onedriveConfig, setOnedriveConfig] = useState({ clientId: '', folder: '/Nexusky' })
   const [webdavConfig, setWebdavConfig] = useState({ url: '', username: '', password: '', folder: '/Nexusky' })
   const [s3Config, setS3Config] = useState({ endpoint: '', region: 'us-east-1', bucket: '', accessKeyId: '', secretAccessKey: '', prefix: 'Nexusky' })
@@ -602,17 +604,35 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
   const handleSync = async () => {
     setSyncing(true)
     setSyncMsg('')
+    setConflicts([])
     const vaultPath = await window.api.invoke('vault:get', undefined)
     if (!vaultPath) { setSyncing(false); return }
     const result = await window.api.invoke('cloud:sync', { vaultPath })
     if (result.errors.length === 0 && result.conflicts.length === 0) {
       setSyncMsg(`同步完成: ${result.total} 个文件, 推送 ${result.pushed}, 拉取 ${result.pulled}`)
     } else if (result.conflicts.length > 0) {
-      setSyncMsg(`同步完成，但有 ${result.conflicts.length} 个冲突文件（远端更新）: ${result.conflicts.map((c) => c.path).join(', ')}`)
+      setConflicts(result.conflicts)
+      setSyncMsg(`同步完成（推送 ${result.pushed}, 拉取 ${result.pulled}），${result.conflicts.length} 个文件需要手动解决冲突`)
     } else {
       setSyncMsg(`有 ${result.errors.length} 个错误: ${result.errors[0]}`)
     }
     setSyncing(false)
+  }
+
+  const handleResolveConflict = async (path: string, resolution: 'local' | 'remote') => {
+    const vaultPath = await window.api.invoke('vault:get', undefined)
+    if (!vaultPath) return
+    setResolvingPath(path)
+    try {
+      const ok = await window.api.invoke('cloud:resolve-conflict', { vaultPath, path, resolution })
+      if (ok) {
+        setConflicts((prev) => prev.filter((c) => c.path !== path))
+      } else {
+        setSyncMsg(`解决冲突失败: ${path}`)
+      }
+    } finally {
+      setResolvingPath(null)
+    }
   }
 
   const handlePull = async () => {
@@ -978,6 +998,37 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           <p style={{ marginTop: 10, fontSize: 11, color: syncMsg.includes('错误') ? '#f87171' : 'var(--text-tertiary)', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-base)' }}>
             {syncMsg}
           </p>
+        )}
+        {conflicts.length > 0 && (
+          <div style={{ marginTop: 12, padding: 10, borderRadius: 6, background: 'var(--bg-base)', border: '1px solid #f59e0b66' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 8 }}>
+              {conflicts.length} 个文件需要解决冲突
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10 }}>
+              本地和远端在 5 秒抖动内同时被修改，无法判断哪一边是较新版本。请逐个选择保留本地或拉取远端。
+            </div>
+            {conflicts.map((c) => (
+              <div key={c.path} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border-soft)' }}>
+                <span style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.path}>
+                  {c.path}
+                </span>
+                <button
+                  onClick={() => handleResolveConflict(c.path, 'local')}
+                  disabled={resolvingPath === c.path}
+                  style={{ height: 24, padding: '0 8px', fontSize: 11, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: 4, cursor: resolvingPath === c.path ? 'wait' : 'pointer', opacity: resolvingPath === c.path ? 0.6 : 1 }}
+                >
+                  保留本地
+                </button>
+                <button
+                  onClick={() => handleResolveConflict(c.path, 'remote')}
+                  disabled={resolvingPath === c.path}
+                  style={{ height: 24, padding: '0 8px', fontSize: 11, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 4, cursor: resolvingPath === c.path ? 'wait' : 'pointer', opacity: resolvingPath === c.path ? 0.6 : 1 }}
+                >
+                  拉取远端
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

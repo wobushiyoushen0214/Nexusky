@@ -170,7 +170,7 @@ P2（演进期）：
 
 - [x] Web Clipper token + origin allowlist *(2026-05-28: origin 白名单仅允许 chrome/moz/safari/edge-extension://，并要求自定义 X-Nexusky-Clipper 头；恶意网页 fetch 会被浏览器在 preflight 阶段拒绝)*
 - [x] Agent file_create rollback → unlink *(2026-05-28: executor.ts rollback 改成 unlinkSync + removeNoteIndex；以前是 writeFileSync('')，会留下空文件 + 脏索引)*
-- [ ] 同步加 content hash 冲突检测
+- [x] 同步加 content hash 冲突检测 *(2026-05-28: 新增 cloud/conflict-detection.ts，规则统一为「hash 相同 → noop；hash 不同 + mtime 在 5s 抖动内 → conflict；否则 mtime 新的一侧赢」；5 个 provider 全部接入；syncIndex 增加 hash 比较；Settings UI 展示冲突列表 + 保留本地/拉取远端按钮，复用已有 cloud:resolve-conflict IPC)*
 - [ ] WelcomeScreen → Vault Health Scan
 - [ ] AI Provider 配置后加测试问题
 

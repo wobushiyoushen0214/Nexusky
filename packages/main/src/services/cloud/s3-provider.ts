@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, extname, join, relative } from 'path'
 import { store } from '../store'
 import type { SyncFileInfo, SyncProvider, SyncResult } from './provider'
+import { decideSyncSide } from './conflict-detection'
 
 export interface S3Config {
   endpoint: string
@@ -220,12 +221,22 @@ export class S3SyncProvider implements SyncProvider {
       if (!remote) {
         if (await this.pushFile(vaultPath, filePath)) result.pushed++
         else result.errors.push(`push failed: ${relPath}`)
-      } else if (remote.hash !== localHash) {
-        const localMtime = statSync(filePath).mtime
-        const remoteMtime = new Date(remote.updatedAt)
-        if (remoteMtime > localMtime) result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
-        else if (await this.pushFile(vaultPath, filePath)) result.pushed++
-        else result.errors.push(`push failed: ${relPath}`)
+      } else {
+        const side = decideSyncSide({
+          localHash,
+          remoteHash: remote.hash,
+          localMtimeMs: statSync(filePath).mtimeMs,
+          remoteMtimeMs: new Date(remote.updatedAt).getTime()
+        })
+        if (side === 'conflict') {
+          result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
+        } else if (side === 'pull') {
+          if (await this.pullFile(vaultPath, relPath)) result.pulled++
+          else result.errors.push(`pull failed: ${relPath}`)
+        } else if (side === 'push') {
+          if (await this.pushFile(vaultPath, filePath)) result.pushed++
+          else result.errors.push(`push failed: ${relPath}`)
+        }
       }
       remoteMap.delete(relPath)
     }

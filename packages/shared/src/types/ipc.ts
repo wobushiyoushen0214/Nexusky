@@ -796,7 +796,8 @@ export interface IPCChannelMap {
   'cloud:set-icloud-path': { params: { path: string }; result: void }
   'cloud:push-index': { params: { vaultPath: string }; result: boolean }
   'cloud:pull-index': { params: { vaultPath: string }; result: boolean }
-  'cloud:sync-index': { params: { vaultPath: string }; result: { pushed: boolean; pulled: boolean } }
+  'cloud:sync-index': { params: { vaultPath: string }; result: { pushed: boolean; pulled: boolean; conflict: boolean } }
+  'cloud:resolve-conflict': { params: { vaultPath: string; path: string; resolution: 'local' | 'remote' }; result: boolean }
   'cloud:get-sync-exclude': { params: undefined; result: string[] }
   'cloud:set-sync-exclude': { params: { paths: string[] }; result: void }
   'cloud:set-online': { params: { online: boolean }; result: void }

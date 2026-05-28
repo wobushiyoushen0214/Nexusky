@@ -6,8 +6,9 @@ import { WebDavSyncProvider } from './webdav-provider'
 import { S3SyncProvider } from './s3-provider'
 import { store } from '../store'
 import { join } from 'path'
-import { existsSync, statSync } from 'fs'
+import { existsSync, readFileSync, statSync } from 'fs'
 import { closeDatabase } from '../database'
+import { decideSyncSide, md5 } from './conflict-detection'
 
 const offlineQueue: { vaultPath: string; filePath: string }[] =
   (store.get('offlineQueue') as { vaultPath: string; filePath: string }[] | undefined) || []
@@ -143,13 +144,14 @@ export async function pullIndex(vaultPath: string): Promise<boolean> {
   return provider.pullFile(vaultPath, relPath)
 }
 
-export async function syncIndex(vaultPath: string): Promise<{ pushed: boolean; pulled: boolean }> {
+export async function syncIndex(vaultPath: string): Promise<{ pushed: boolean; pulled: boolean; conflict: boolean }> {
   const provider = getActiveProvider()
-  if (!provider) return { pushed: false, pulled: false }
+  if (!provider) return { pushed: false, pulled: false, conflict: false }
 
   const localDbPath = join(vaultPath, '.nexusky', 'index.db')
   const localExists = existsSync(localDbPath)
   const localMtime = localExists ? statSync(localDbPath).mtimeMs : 0
+  const localHash = localExists ? md5(readFileSync(localDbPath)) : ''
 
   const remoteFiles = await provider.listRemoteFiles()
   const remoteDb = remoteFiles.find((f) => f.path === '.nexusky/index.db')
@@ -157,27 +159,34 @@ export async function syncIndex(vaultPath: string): Promise<{ pushed: boolean; p
   if (!remoteDb && localExists) {
     closeDatabase()
     const ok = await provider.pushFile(vaultPath, localDbPath)
-    return { pushed: ok, pulled: false }
+    return { pushed: ok, pulled: false, conflict: false }
   }
 
   if (remoteDb && !localExists) {
     closeDatabase()
     const ok = await provider.pullFile(vaultPath, '.nexusky/index.db')
-    return { pushed: false, pulled: ok }
+    return { pushed: false, pulled: ok, conflict: false }
   }
 
   if (remoteDb && localExists) {
     const remoteMtime = new Date(remoteDb.updatedAt).getTime()
-    if (remoteMtime > localMtime) {
+    const side = decideSyncSide({
+      localHash,
+      remoteHash: remoteDb.hash,
+      localMtimeMs: localMtime,
+      remoteMtimeMs: remoteMtime
+    })
+    if (side === 'noop') return { pushed: false, pulled: false, conflict: false }
+    if (side === 'conflict') return { pushed: false, pulled: false, conflict: true }
+    if (side === 'pull') {
       closeDatabase()
       const ok = await provider.pullFile(vaultPath, '.nexusky/index.db')
-      return { pushed: false, pulled: ok }
-    } else if (localMtime > remoteMtime + 5000) {
-      closeDatabase()
-      const ok = await provider.pushFile(vaultPath, localDbPath)
-      return { pushed: ok, pulled: false }
+      return { pushed: false, pulled: ok, conflict: false }
     }
+    closeDatabase()
+    const ok = await provider.pushFile(vaultPath, localDbPath)
+    return { pushed: ok, pulled: false, conflict: false }
   }
 
-  return { pushed: false, pulled: false }
+  return { pushed: false, pulled: false, conflict: false }
 }

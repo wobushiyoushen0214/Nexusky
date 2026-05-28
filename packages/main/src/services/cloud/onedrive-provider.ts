@@ -1,11 +1,12 @@
 import { SyncProvider, SyncFileInfo, SyncResult } from './provider'
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync } from 'fs'
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { net, BrowserWindow } from 'electron'
 import { logger } from '../logger'
 import { store } from '../store'
 import { getErrorMessage } from '@shared/utils/errors'
+import { decideSyncSide } from './conflict-detection'
 
 export interface OneDriveConfig {
   clientId: string
@@ -287,7 +288,30 @@ export class OneDriveSyncProvider implements SyncProvider {
       const localHash = createHash('md5').update(content).digest('hex')
       const remote = remoteMap.get(relPath)
 
-      if (!remote || remote.hash !== localHash) {
+      if (!remote) {
+        const ok = await this.pushFile(vaultPath, filePath)
+        if (ok) result.pushed++
+        else result.errors.push(`push failed: ${relPath}`)
+        remoteMap.delete(relPath)
+        continue
+      }
+
+      const localMtimeMs = statSync(filePath).mtimeMs
+      const remoteMtimeMs = new Date(remote.updatedAt).getTime()
+      const side = decideSyncSide({
+        localHash,
+        remoteHash: remote.hash,
+        localMtimeMs,
+        remoteMtimeMs
+      })
+
+      if (side === 'conflict') {
+        result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
+      } else if (side === 'pull') {
+        const ok = await this.pullFile(vaultPath, relPath)
+        if (ok) result.pulled++
+        else result.errors.push(`pull failed: ${relPath}`)
+      } else if (side === 'push') {
         const ok = await this.pushFile(vaultPath, filePath)
         if (ok) result.pushed++
         else result.errors.push(`push failed: ${relPath}`)
