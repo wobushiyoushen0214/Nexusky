@@ -464,6 +464,14 @@ export interface ProactiveSuggestion {
   updatedAt: number
 }
 
+export interface ProactiveTriggerThresholds {
+  highScoreThreshold: number
+  highScoreRecentHours: number
+  staleIslandDays: number
+  themeKeywordOverlapMin: number
+  overdueTaskMin: number
+}
+
 export interface ProactiveUserPrefs {
   enabled: boolean
   silentHoursStart?: string
@@ -472,6 +480,7 @@ export interface ProactiveUserPrefs {
   perKindEnabled: Record<ProactiveSuggestionKind, boolean>
   maxPerDay: number
   importanceFloor: number
+  triggerThresholds: ProactiveTriggerThresholds
 }
 
 export type ToolSurfaceKind = 'read_only' | 'preview_write' | 'agent_only'

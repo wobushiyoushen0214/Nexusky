@@ -285,4 +285,85 @@ describe('proactive-triggers', () => {
 
     expect(candidates.length).toBe(0)
   })
+
+  it('thresholds override loosens the high-score relation cutoff', async () => {
+    const { evaluateTriggers } = await import('../packages/main/src/services/proactive/proactive-triggers')
+    const { DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS } = await import(
+      '../packages/main/src/services/proactive/proactive-policy'
+    )
+    const { getDatabase } = await import('../packages/main/src/services/database')
+
+    await setupNote('n-30', 'A')
+    await setupNote('n-31', 'B')
+
+    const db = getDatabase(vaultPath)
+    const now = Math.floor(Date.now() / 1000)
+    db.prepare(`
+      INSERT INTO ai_relations (
+        id, source_type, source_id, source_title, source_path,
+        target_type, target_id, target_title, target_path,
+        relation_type, confidence, strength, score, evidence_json, reason, status,
+        first_seen_at, last_seen_at, created_at, updated_at
+      ) VALUES (?, 'note', 'n-30', 'A', '/n-30.md',
+                'note', 'n-31', 'B', '/n-31.md',
+                'topical', 0.6, 0.6, 0.6, '[]', 'Medium overlap', 'active',
+                ?, ?, ?, ?)
+    `).run('rel-mid', now, now, now, now)
+
+    const withDefaultThresholds = evaluateTriggers({
+      vaultPath,
+      entityType: 'note',
+      entityId: 'n-30',
+      trigger: 'long_context_high_score',
+      now
+    })
+    expect(withDefaultThresholds.length).toBe(0)
+
+    const withLowered = evaluateTriggers({
+      vaultPath,
+      entityType: 'note',
+      entityId: 'n-30',
+      trigger: 'long_context_high_score',
+      now,
+      thresholds: {
+        ...DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS,
+        highScoreThreshold: 0.5
+      }
+    })
+    expect(withLowered.length).toBe(1)
+    expect(withLowered[0].sourceRef).toBe('rel-mid')
+  })
+
+  it('thresholds override raises the overdue task burst floor', async () => {
+    const { evaluateTriggers } = await import('../packages/main/src/services/proactive/proactive-triggers')
+    const { DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS } = await import(
+      '../packages/main/src/services/proactive/proactive-policy'
+    )
+    const { getDatabase } = await import('../packages/main/src/services/database')
+
+    await setupNote('n-40', 'Task Hub 2')
+
+    const db = getDatabase(vaultPath)
+    const insert = db.prepare('INSERT INTO tasks (note_id, text, done) VALUES (?, ?, 0)')
+    insert.run('n-40', '[ ] One 📅 2026-01-01')
+    insert.run('n-40', '[ ] Two 📅 2026-02-01')
+    insert.run('n-40', '[ ] Three 📅 2026-03-01')
+
+    const baseline = evaluateTriggers({
+      vaultPath,
+      entityType: 'note',
+      entityId: 'n-40',
+      trigger: 'overdue_task_burst'
+    })
+    expect(baseline.length).toBe(1)
+
+    const raised = evaluateTriggers({
+      vaultPath,
+      entityType: 'note',
+      entityId: 'n-40',
+      trigger: 'overdue_task_burst',
+      thresholds: { ...DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS, overdueTaskMin: 10 }
+    })
+    expect(raised.length).toBe(0)
+  })
 })

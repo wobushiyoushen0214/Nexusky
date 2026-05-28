@@ -722,6 +722,12 @@
       "maxPerDay": "Max suggestions per day",
       "defaultSnoozeDays": "Default snooze (days)",
       "importanceFloor": "Importance floor",
+      "triggerThresholds": "Trigger thresholds",
+      "highScoreThreshold": "High-score relation cutoff",
+      "highScoreRecentHours": "High-score window",
+      "staleIslandDays": "Stale island age",
+      "themeKeywordOverlapMin": "Theme keyword overlap",
+      "overdueTaskMin": "Overdue task burst",
       "perKind": "Per kind",
       "kind": {
         "relation": "Relation",

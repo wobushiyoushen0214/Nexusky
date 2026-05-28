@@ -722,6 +722,12 @@
       "maxPerDay": "每日最多展示",
       "defaultSnoozeDays": "默认延后天数",
       "importanceFloor": "最小优先级",
+      "triggerThresholds": "触发阈值",
+      "highScoreThreshold": "高分关系阈值",
+      "highScoreRecentHours": "高分关系窗口",
+      "staleIslandDays": "孤岛笔记天数",
+      "themeKeywordOverlapMin": "主题关键词最少重合",
+      "overdueTaskMin": "逾期任务最少数量",
       "perKind": "类型开关",
       "kind": {
         "relation": "关系发现",

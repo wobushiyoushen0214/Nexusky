@@ -12,9 +12,11 @@ export {
   decideEmission,
   isWithinSilentHours,
   DEFAULT_PROACTIVE_PREFS,
+  DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS,
   type ProactivePolicyContext,
   type ProactivePolicyDecision,
   type ProactivePolicyReason,
+  type ProactiveTriggerThresholds,
   type ProactiveUserPrefs
 } from './proactive-policy'
 

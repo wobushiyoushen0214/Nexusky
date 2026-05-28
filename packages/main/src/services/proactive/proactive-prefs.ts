@@ -19,6 +19,10 @@ export function setProactivePrefs(input: Partial<ProactiveUserPrefs>): Proactive
     perKindEnabled: {
       ...current.perKindEnabled,
       ...(input.perKindEnabled || {})
+    },
+    triggerThresholds: {
+      ...current.triggerThresholds,
+      ...(input.triggerThresholds || {})
     }
   }
   store.set(STORE_KEY, next)
@@ -40,6 +44,10 @@ export function mergeWithDefaults(
     perKindEnabled: {
       ...DEFAULT_PROACTIVE_PREFS.perKindEnabled,
       ...(raw.perKindEnabled || {})
+    },
+    triggerThresholds: {
+      ...DEFAULT_PROACTIVE_PREFS.triggerThresholds,
+      ...(raw.triggerThresholds || {})
     }
   }
 }

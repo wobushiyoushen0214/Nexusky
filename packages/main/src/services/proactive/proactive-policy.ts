@@ -1,6 +1,22 @@
 import { getDatabase } from '../database'
 import type { ProactiveCandidate, ProactiveCandidateKind } from './proactive-triggers'
 
+export interface ProactiveTriggerThresholds {
+  highScoreThreshold: number
+  highScoreRecentHours: number
+  staleIslandDays: number
+  themeKeywordOverlapMin: number
+  overdueTaskMin: number
+}
+
+export const DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS: ProactiveTriggerThresholds = {
+  highScoreThreshold: 0.75,
+  highScoreRecentHours: 24,
+  staleIslandDays: 30,
+  themeKeywordOverlapMin: 3,
+  overdueTaskMin: 3
+}
+
 export interface ProactiveUserPrefs {
   enabled: boolean
   silentHoursStart?: string
@@ -9,6 +25,7 @@ export interface ProactiveUserPrefs {
   perKindEnabled: Record<ProactiveCandidateKind, boolean>
   maxPerDay: number
   importanceFloor: number
+  triggerThresholds: ProactiveTriggerThresholds
 }
 
 export const DEFAULT_PROACTIVE_PREFS: ProactiveUserPrefs = {
@@ -23,7 +40,8 @@ export const DEFAULT_PROACTIVE_PREFS: ProactiveUserPrefs = {
     maintenance: true
   },
   maxPerDay: 5,
-  importanceFloor: 30
+  importanceFloor: 30,
+  triggerThresholds: DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS
 }
 
 export type ProactivePolicyReason =

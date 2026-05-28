@@ -181,7 +181,7 @@ P2（演进期）：
 - [ ] db.ipc.ts 按域拆分
 - [ ] Memory Ledger + Context Pack 用户化
 - [ ] Why this? 来源解释
-- [ ] 主动建议阈值可配置
+- [x] 主动建议阈值可配置 *(2026-05-28: `proactive-policy.ts` 新增 `ProactiveTriggerThresholds`，`evaluateTriggers` 接受可注入阈值；prefs 持久化 + ProactivePreferences 暴露 5 个阈值滑块；旧 prefs 自动 backfill 默认值)*
 
 ### P2（3-6 个月）
 

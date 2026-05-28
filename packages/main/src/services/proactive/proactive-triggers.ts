@@ -1,6 +1,10 @@
 import { getDatabase } from '../database'
 import { getLongTermThemes } from '../long-context/theme-extractor'
 import { extractTaskDueDate } from '../ai/maintenance-queue'
+import {
+  DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS,
+  type ProactiveTriggerThresholds
+} from './proactive-policy'
 import type {
   ProactiveCtaAction,
   ProactiveEntityType,
@@ -24,6 +28,7 @@ export interface ProactiveTriggerInput {
   trigger: ProactiveTriggerKind
   now?: number
   context?: Record<string, unknown>
+  thresholds?: ProactiveTriggerThresholds
 }
 
 export interface ProactiveCandidate {
@@ -39,27 +44,43 @@ export interface ProactiveCandidate {
   signature: string
 }
 
-const HIGH_SCORE_THRESHOLD = 0.75
-const HIGH_SCORE_RECENT_SECONDS = 24 * 60 * 60
-const STALE_ISLAND_AGE_SECONDS = 30 * 24 * 60 * 60
-const THEME_KEYWORD_OVERLAP_MIN = 3
-const OVERDUE_TASK_MIN = 3
-
 export function evaluateTriggers(input: ProactiveTriggerInput): ProactiveCandidate[] {
+  const thresholds = resolveThresholds(input.thresholds)
   switch (input.trigger) {
     case 'long_context_high_score':
-      return evaluateLongContextHighScore(input)
+      return evaluateLongContextHighScore(input, thresholds)
     case 'theme_proximity':
-      return evaluateThemeProximity(input)
+      return evaluateThemeProximity(input, thresholds)
     case 'cognitive_review_ready':
       return evaluateCognitiveReviewReady(input)
     case 'stale_island_note':
-      return evaluateStaleIslandNote(input)
+      return evaluateStaleIslandNote(input, thresholds)
     case 'overdue_task_burst':
-      return evaluateOverdueTaskBurst(input)
+      return evaluateOverdueTaskBurst(input, thresholds)
     default:
       return []
   }
+}
+
+function resolveThresholds(input?: ProactiveTriggerThresholds): ProactiveTriggerThresholds {
+  if (!input) return DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS
+  return {
+    highScoreThreshold: clamp(input.highScoreThreshold, 0, 1, DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS.highScoreThreshold),
+    highScoreRecentHours: clampInt(input.highScoreRecentHours, 1, 24 * 30, DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS.highScoreRecentHours),
+    staleIslandDays: clampInt(input.staleIslandDays, 1, 365, DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS.staleIslandDays),
+    themeKeywordOverlapMin: clampInt(input.themeKeywordOverlapMin, 1, 20, DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS.themeKeywordOverlapMin),
+    overdueTaskMin: clampInt(input.overdueTaskMin, 1, 50, DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS.overdueTaskMin)
+  }
+}
+
+function clamp(value: number, min: number, max: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback
+  return Math.min(max, Math.max(min, value))
+}
+
+function clampInt(value: number, min: number, max: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback
+  return Math.min(max, Math.max(min, Math.round(value)))
 }
 
 interface AiRelationRow {
@@ -84,11 +105,14 @@ function unixNow(now?: number): number {
   return now ?? Math.floor(Date.now() / 1000)
 }
 
-function evaluateLongContextHighScore(input: ProactiveTriggerInput): ProactiveCandidate[] {
+function evaluateLongContextHighScore(
+  input: ProactiveTriggerInput,
+  thresholds: ProactiveTriggerThresholds
+): ProactiveCandidate[] {
   if (input.entityType !== 'note') return []
   const db = getDatabase(input.vaultPath)
   const now = unixNow(input.now)
-  const since = now - HIGH_SCORE_RECENT_SECONDS
+  const since = now - thresholds.highScoreRecentHours * 60 * 60
 
   const rows = db.prepare(`
     SELECT id, source_type, source_id, source_title, source_path,
@@ -105,7 +129,7 @@ function evaluateLongContextHighScore(input: ProactiveTriggerInput): ProactiveCa
     ORDER BY score DESC, created_at DESC
     LIMIT 5
   `).all(
-    HIGH_SCORE_THRESHOLD,
+    thresholds.highScoreThreshold,
     since,
     input.entityType,
     input.entityId,
@@ -145,7 +169,10 @@ function evaluateLongContextHighScore(input: ProactiveTriggerInput): ProactiveCa
   return candidates
 }
 
-function evaluateThemeProximity(input: ProactiveTriggerInput): ProactiveCandidate[] {
+function evaluateThemeProximity(
+  input: ProactiveTriggerInput,
+  thresholds: ProactiveTriggerThresholds
+): ProactiveCandidate[] {
   if (input.entityType !== 'note') return []
   const db = getDatabase(input.vaultPath)
 
@@ -174,7 +201,7 @@ function evaluateThemeProximity(input: ProactiveTriggerInput): ProactiveCandidat
       if (k.length < 2) return false
       return haystack.includes(k)
     })
-    if (overlap.length < THEME_KEYWORD_OVERLAP_MIN) continue
+    if (overlap.length < thresholds.themeKeywordOverlapMin) continue
 
     candidates.push({
       kind: 'theme_link',
@@ -221,11 +248,14 @@ function evaluateCognitiveReviewReady(input: ProactiveTriggerInput): ProactiveCa
   }]
 }
 
-function evaluateStaleIslandNote(input: ProactiveTriggerInput): ProactiveCandidate[] {
+function evaluateStaleIslandNote(
+  input: ProactiveTriggerInput,
+  thresholds: ProactiveTriggerThresholds
+): ProactiveCandidate[] {
   if (input.entityType !== 'note') return []
   const db = getDatabase(input.vaultPath)
   const now = unixNow(input.now)
-  const cutoff = now - STALE_ISLAND_AGE_SECONDS
+  const cutoff = now - thresholds.staleIslandDays * 24 * 60 * 60
 
   const noteRow = db.prepare(
     'SELECT title, file_path, updated_at FROM notes WHERE id = ?'
@@ -248,7 +278,7 @@ function evaluateStaleIslandNote(input: ProactiveTriggerInput): ProactiveCandida
     entityType: 'note',
     entityId: input.entityId,
     title: `Stale island: ${noteRow.title}`,
-    body: `Last updated more than 30 days ago and has no incoming or outgoing links.`,
+    body: `Last updated more than ${thresholds.staleIslandDays} days ago and has no incoming or outgoing links.`,
     ctaAction: 'open_note',
     ctaPayload: { filePath: noteRow.file_path, title: noteRow.title },
     importance: 55,
@@ -256,7 +286,10 @@ function evaluateStaleIslandNote(input: ProactiveTriggerInput): ProactiveCandida
   }]
 }
 
-function evaluateOverdueTaskBurst(input: ProactiveTriggerInput): ProactiveCandidate[] {
+function evaluateOverdueTaskBurst(
+  input: ProactiveTriggerInput,
+  thresholds: ProactiveTriggerThresholds
+): ProactiveCandidate[] {
   if (input.entityType !== 'note') return []
   const db = getDatabase(input.vaultPath)
 
@@ -281,7 +314,7 @@ function evaluateOverdueTaskBurst(input: ProactiveTriggerInput): ProactiveCandid
       if (!earliestDue || due < earliestDue) earliestDue = due
     }
   }
-  if (overdue < OVERDUE_TASK_MIN) return []
+  if (overdue < thresholds.overdueTaskMin) return []
 
   return [{
     kind: 'maintenance',

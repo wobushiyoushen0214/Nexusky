@@ -70,4 +70,51 @@ describe('proactive prefs persistence', () => {
 
     expect(mergeWithDefaults(undefined)).toEqual(DEFAULT_PROACTIVE_PREFS)
   })
+
+  it('setProactivePrefs deep-merges triggerThresholds with current prefs', async () => {
+    const { setProactivePrefs, resetProactivePrefs, getProactivePrefs } = await import(
+      '../packages/main/src/services/proactive/proactive-prefs'
+    )
+    const { DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS } = await import(
+      '../packages/main/src/services/proactive/proactive-policy'
+    )
+
+    resetProactivePrefs()
+    const partial = setProactivePrefs({
+      triggerThresholds: {
+        ...DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS,
+        highScoreThreshold: 0.6,
+        staleIslandDays: 45
+      }
+    })
+    expect(partial.triggerThresholds.highScoreThreshold).toBeCloseTo(0.6)
+    expect(partial.triggerThresholds.staleIslandDays).toBe(45)
+    expect(partial.triggerThresholds.overdueTaskMin).toBe(DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS.overdueTaskMin)
+
+    const reloaded = getProactivePrefs()
+    expect(reloaded.triggerThresholds.highScoreThreshold).toBeCloseTo(0.6)
+    expect(reloaded.triggerThresholds.staleIslandDays).toBe(45)
+  })
+
+  it('mergeWithDefaults backfills triggerThresholds for legacy stored prefs', async () => {
+    const { mergeWithDefaults } = await import('../packages/main/src/services/proactive/proactive-prefs')
+    const { DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS } = await import(
+      '../packages/main/src/services/proactive/proactive-policy'
+    )
+
+    const legacy = {
+      enabled: true,
+      defaultSnoozeDays: 7,
+      perKindEnabled: {
+        relation: true,
+        theme_link: true,
+        cognitive_review: true,
+        maintenance: true
+      },
+      maxPerDay: 5,
+      importanceFloor: 30
+    }
+    const merged = mergeWithDefaults(legacy as never)
+    expect(merged.triggerThresholds).toEqual(DEFAULT_PROACTIVE_TRIGGER_THRESHOLDS)
+  })
 })

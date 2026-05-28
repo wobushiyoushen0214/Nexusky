@@ -52,7 +52,8 @@ export function runProactiveCycle(params: RunProactiveCycleParams): RunProactive
     entityId: params.entityId,
     trigger: params.trigger,
     now,
-    context: params.context
+    context: params.context,
+    thresholds: userPrefs.triggerThresholds
   })
 
   const evaluations: ProactiveCycleEvaluation[] = []
@@ -111,6 +112,10 @@ function mergePrefs(override?: Partial<ProactiveUserPrefs>): ProactiveUserPrefs 
     perKindEnabled: {
       ...base.perKindEnabled,
       ...(override.perKindEnabled || {})
+    },
+    triggerThresholds: {
+      ...base.triggerThresholds,
+      ...(override.triggerThresholds || {})
     }
   }
 }

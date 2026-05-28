@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
-import type { ProactiveUserPrefs, ProactiveSuggestionKind } from '@shared/types/ipc'
+import type { ProactiveUserPrefs, ProactiveSuggestionKind, ProactiveTriggerThresholds } from '@shared/types/ipc'
 
 const KIND_ORDER: ProactiveSuggestionKind[] = [
   'relation',
@@ -9,6 +9,14 @@ const KIND_ORDER: ProactiveSuggestionKind[] = [
   'cognitive_review',
   'maintenance'
 ]
+
+const DEFAULT_TRIGGER_THRESHOLDS: ProactiveTriggerThresholds = {
+  highScoreThreshold: 0.75,
+  highScoreRecentHours: 24,
+  staleIslandDays: 30,
+  themeKeywordOverlapMin: 3,
+  overdueTaskMin: 3
+}
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
@@ -177,6 +185,53 @@ export function ProactivePreferencesTab() {
         />
       </div>
 
+      <div style={{ borderTop: '1px solid var(--border-soft, rgba(255,255,255,0.06))', paddingTop: 12, marginTop: 8 }}>
+        <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600 }}>{t('settings.proactive.triggerThresholds')}</div>
+        {renderThresholdSlider(
+          t('settings.proactive.highScoreThreshold'),
+          prefs.triggerThresholds.highScoreThreshold,
+          0,
+          1,
+          0.05,
+          (v) => save({ ...prefs, triggerThresholds: { ...prefs.triggerThresholds, highScoreThreshold: v } }),
+          (v) => v.toFixed(2)
+        )}
+        {renderThresholdSlider(
+          t('settings.proactive.highScoreRecentHours'),
+          prefs.triggerThresholds.highScoreRecentHours,
+          1,
+          168,
+          1,
+          (v) => save({ ...prefs, triggerThresholds: { ...prefs.triggerThresholds, highScoreRecentHours: v } }),
+          (v) => `${v} h`
+        )}
+        {renderThresholdSlider(
+          t('settings.proactive.staleIslandDays'),
+          prefs.triggerThresholds.staleIslandDays,
+          7,
+          180,
+          1,
+          (v) => save({ ...prefs, triggerThresholds: { ...prefs.triggerThresholds, staleIslandDays: v } }),
+          (v) => `${v} d`
+        )}
+        {renderThresholdSlider(
+          t('settings.proactive.themeKeywordOverlapMin'),
+          prefs.triggerThresholds.themeKeywordOverlapMin,
+          1,
+          10,
+          1,
+          (v) => save({ ...prefs, triggerThresholds: { ...prefs.triggerThresholds, themeKeywordOverlapMin: v } })
+        )}
+        {renderThresholdSlider(
+          t('settings.proactive.overdueTaskMin'),
+          prefs.triggerThresholds.overdueTaskMin,
+          1,
+          20,
+          1,
+          (v) => save({ ...prefs, triggerThresholds: { ...prefs.triggerThresholds, overdueTaskMin: v } })
+        )}
+      </div>
+
       <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
         <button
           type="button"
@@ -207,7 +262,8 @@ export function ProactivePreferencesTab() {
               defaultSnoozeDays: 7,
               perKindEnabled: { relation: true, theme_link: true, cognitive_review: true, maintenance: true },
               maxPerDay: 5,
-              importanceFloor: 30
+              importanceFloor: 30,
+              triggerThresholds: DEFAULT_TRIGGER_THRESHOLDS
             } })
             setPrefs(defaults)
           }}
@@ -216,6 +272,33 @@ export function ProactivePreferencesTab() {
         </button>
       </div>
       {debugResult && <div style={debugResultStyle}>{debugResult}</div>}
+    </div>
+  )
+}
+
+function renderThresholdSlider(
+  label: string,
+  value: number,
+  min: number,
+  max: number,
+  step: number,
+  onChange: (next: number) => void,
+  format: (v: number) => string = (v) => String(v)
+) {
+  return (
+    <div style={{ marginBottom: 10 }} key={label}>
+      <label style={labelStyle}>
+        {label}: <span style={{ color: 'var(--text-primary)' }}>{format(value)}</span>
+      </label>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ width: '100%' }}
+      />
     </div>
   )
 }
