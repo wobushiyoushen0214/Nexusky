@@ -322,6 +322,7 @@
       "canvas": { "label": "Open knowledge space", "description": "Explore notes as spatial, property, or time layers" },
       "timeline": { "label": "Open Knowledge Space time layer", "description": "Review note activity by creation or update time inside Knowledge Space" },
       "readerInbox": { "label": "Open reader inbox", "description": "Browse imported Notion, Readwise, and Pocket knowledge in one place" },
+      "openKanban": { "label": "Open task kanban", "description": "Manage task columns and dependencies; hidden from the activity bar by default — re-add via right-click" },
       "graphCurrent": { "label": "Generate AI graph for current note", "description": "Infer concept relationships from the current note" },
       "inferLinks": { "label": "Infer vault-wide semantic links", "description": "Fill implicit relationships and refresh the knowledge graph" },
       "memoryIndex": { "label": "Generate AI memory index", "description": "Create note-level memories for long-term knowledge linking" },

@@ -31,3 +31,12 @@ Avoid marketing-page decoration inside task surfaces, one-note dark SaaS styling
 ## Accessibility & Inclusion
 
 Use readable contrast in the dark theme, avoid relying on color alone for edge types, support reduced motion where practical, keep labels legible at normal zoom levels, and prefer standard keyboard and pointer affordances.
+
+## Surface Decisions
+
+Records of weight changes between primary navigation, command-only access, and removed surfaces. Each entry names the affected surface, the new home, and the reason. Keep edits append-only when the rationale is still load-bearing.
+
+### 2026-05-28 — Kanban demoted from default ActivityBar
+
+Kanban moved from `defaultVisible: true` to `defaultVisible: false` in the ActivityBar registry. Reason: most vaults don't run task workflows day-to-day, so the icon was occupying a slot that knowledge-first surfaces should keep. The Kanban view itself, IPC, and `mainView === 'kanban'` route are untouched — the panel is still reachable through the Command Palette (`Open task kanban`), the "Send to kanban" actions from Agent / Chat, and right-click "show item" on the ActivityBar. Existing users who had Kanban pinned keep it.
+
