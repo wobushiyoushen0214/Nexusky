@@ -64,6 +64,29 @@ describe('agent executor', () => {
     expect(step.hasRollback).toBe(true)
   })
 
+  it('file_create rollback deletes the created file and clears its index', async () => {
+    const runId = createAgentRun({
+      vaultPath,
+      goal: 'g',
+      plan: planWithRead([{ index: 0, kind: 'file_create', args: { filePath: 'rollback.md', content: '# title\n\nbody' }, description: 'create', expectedEffect: 'rollback.md', dependsOn: [0] }]),
+      rationale: ''
+    })
+    const { updateAgentStep } = await import('../packages/main/src/services/agent/agent-store')
+    updateAgentStep(vaultPath, runId, 0, { status: 'completed' })
+
+    await executeAgentStep({ vaultPath, runId, stepIndex: 1, dryRun: false })
+    expect(existsSync(join(vaultPath, 'rollback.md'))).toBe(true)
+    const { getAllNotes } = await import('../packages/main/src/services/indexer')
+    expect(getAllNotes(vaultPath).some((n) => n.filePath === 'rollback.md')).toBe(true)
+
+    const rollback = rollbackAgentStep(vaultPath, runId, 1)
+    expect(rollback.ok).toBe(true)
+    expect(existsSync(join(vaultPath, 'rollback.md'))).toBe(false)
+    expect(getAllNotes(vaultPath).some((n) => n.filePath === 'rollback.md')).toBe(false)
+    const step = getAgentStep(vaultPath, runId, 1)!
+    expect(step.status).toBe('rolled_back')
+  })
+
   it('file_write dryRun emits a diff preview without modifying the file', async () => {
     writeFileSync(join(vaultPath, 'A.md'), 'original\n', 'utf-8')
     const runId = createAgentRun({

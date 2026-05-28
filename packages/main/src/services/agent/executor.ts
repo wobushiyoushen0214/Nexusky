@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'path'
-import { indexNote } from '../indexer'
+import { indexNote, removeNoteIndex } from '../indexer'
 import { runAgentTool } from './tool-runner'
 import { isAllowedAgentTool, isWriteStepKind, type AgentStepKind } from './step-kinds'
 import {
@@ -261,7 +261,8 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
   if (!targetPath) return { ok: false, error: 'invalid_target_path' }
   try {
     if (kind === 'file_create') {
-      if (existsSync(targetPath)) writeFileSync(targetPath, '', 'utf-8')
+      if (existsSync(targetPath)) unlinkSync(targetPath)
+      removeNoteIndex(vaultPath, targetPath)
     } else if (kind === 'file_write' || kind === 'note_edit') {
       const prev = typeof data.previousContent === 'string' ? data.previousContent : ''
       writeFileSync(targetPath, prev, 'utf-8')
@@ -282,7 +283,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
   updateAgentStep(vaultPath, runId, stepIndex, { status: 'rolled_back', completedAt: nowSeconds() })
-  safeIndex(vaultPath, targetPath)
+  if (kind !== 'file_create') safeIndex(vaultPath, targetPath)
   return { ok: true }
 }
 

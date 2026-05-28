@@ -169,7 +169,7 @@ P2（演进期）：
 ### P0（2 周内）
 
 - [x] Web Clipper token + origin allowlist *(2026-05-28: origin 白名单仅允许 chrome/moz/safari/edge-extension://，并要求自定义 X-Nexusky-Clipper 头；恶意网页 fetch 会被浏览器在 preflight 阶段拒绝)*
-- [ ] Agent file_create rollback → unlink
+- [x] Agent file_create rollback → unlink *(2026-05-28: executor.ts rollback 改成 unlinkSync + removeNoteIndex；以前是 writeFileSync('')，会留下空文件 + 脏索引)*
 - [ ] 同步加 content hash 冲突检测
 - [ ] WelcomeScreen → Vault Health Scan
 - [ ] AI Provider 配置后加测试问题
