@@ -318,7 +318,7 @@
       "pluginMarketplacePack": { "label": "Install featured plugin pack", "description": "Install research, meeting, and evergreen-note workflow plugins" },
       "graphFull": { "label": "Open full-screen knowledge graph" },
       "bases": { "label": "Open Knowledge Space property layer", "description": "Browse, filter, and organize notes by properties inside Knowledge Space" },
-      "canvas": { "label": "Open knowledge space", "description": "Explore notes as spatial, property, or time layers" },
+      "canvas": { "label": "Open knowledge space", "description": "Explore notes as property or time layers" },
       "timeline": { "label": "Open Knowledge Space time layer", "description": "Review note activity by creation or update time inside Knowledge Space" },
       "readerInbox": { "label": "Open reader inbox", "description": "Browse imported Notion, Readwise, and Pocket knowledge in one place" },
       "openKanban": { "label": "Open task kanban", "description": "Manage task columns and dependencies; hidden from the activity bar by default — re-add via right-click" },
@@ -451,7 +451,6 @@
     "loading": "Loading...",
     "reset": "Reset",
     "resetBasis": {
-      "space": "Re-archive by source, status, and primary tag",
       "properties": "Re-archive by primary tag",
       "time": "Re-archive by updated date"
     },
@@ -462,7 +461,6 @@
       "date": "Date",
       "unknown": "Group"
     },
-    "modeSpace": "Space",
     "modeProperties": "Properties",
     "modeTime": "Time",
     "guide": "How to use",

@@ -108,8 +108,8 @@ describe('canvas card placement', () => {
       row('vue-a', { tags: ['vue'], source: 'pocket' }, Date.parse('2026-05-19T08:00:00Z'))
     ]
 
-    const labels = buildCanvasGroupLabels(rows, buildCanvasModePositions(rows, 'space'), 'space')
-    expect(labels).toContainEqual(expect.objectContaining({ kind: 'source', value: 'readwise', count: 2 }))
+    const labels = buildCanvasGroupLabels(rows, buildCanvasModePositions(rows, 'properties'), 'properties')
+    expect(labels).toContainEqual(expect.objectContaining({ kind: 'tag', value: 'react', count: 2 }))
 
     const propertyLabels = buildCanvasGroupLabels(rows, buildCanvasModePositions(rows, 'properties'), 'properties')
     expect(propertyLabels).toContainEqual(expect.objectContaining({ kind: 'tag', value: 'react', count: 2 }))

@@ -71,7 +71,7 @@ export function ActivityBar() {
       }
     },
     canvas: () => {
-      setMainView('canvas')
+      setMainView('bases')
       if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
     },
     reader: () => {

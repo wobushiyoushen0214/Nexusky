@@ -4,7 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
-import { safeGetJSON, safeRemove, safeSetJSON } from '../../utils/storage'
+import { safeGetJSON, safeRemove, safeSet, safeSetJSON } from '../../utils/storage'
 import './KnowledgeSpace.css'
 import type { GraphData, PropertyTableRow } from '@shared/types/ipc'
 
@@ -29,11 +29,6 @@ interface PanState {
   startY: number
   scrollLeft: number
   scrollTop: number
-}
-
-interface PreferredPosition {
-  filePath: string
-  position: CanvasPosition
 }
 
 type CanvasPositionOverrides = Partial<Record<CanvasMode, Record<string, CanvasPosition>>>
@@ -65,7 +60,7 @@ interface CanvasViewportBox {
   clientHeight: number
 }
 
-type CanvasMode = 'space' | 'properties' | 'time'
+type CanvasMode = 'properties' | 'time'
 export type RoutePoint = { x: number; y: number }
 type RouteSide = 'left' | 'right' | 'top' | 'bottom'
 type RoutePort = { side: RouteSide; edge: RoutePoint; clear: RoutePoint }
@@ -112,7 +107,7 @@ function getCanvasStorageKey(vaultPath: string): string {
 }
 
 function getCanvasModeStorageKey(vaultPath: string, mode: CanvasMode): string {
-  return mode === 'space' ? getCanvasStorageKey(vaultPath) : `${getCanvasStorageKey(vaultPath)}:${mode}`
+  return `${getCanvasStorageKey(vaultPath)}:${mode}`
 }
 
 function getCanvasViewportStorageKey(vaultPath: string): string {
@@ -122,7 +117,7 @@ function getCanvasViewportStorageKey(vaultPath: string): string {
 function getPendingCanvasFocus(): PendingCanvasFocus | null {
   const pending = safeGetJSON<Partial<PendingCanvasFocus> | null>(PENDING_CANVAS_FOCUS_KEY, null)
   if (!pending || typeof pending.filePath !== 'string' || !pending.filePath.trim()) return null
-  const mode = pending.mode === 'space' || pending.mode === 'properties' || pending.mode === 'time' ? pending.mode : undefined
+  const mode = pending.mode === 'properties' || pending.mode === 'time' ? pending.mode : undefined
   return { filePath: pending.filePath, mode }
 }
 
@@ -710,8 +705,7 @@ export function buildPropertyPositions(rows: PropertyTableRow[]): Record<string,
 
 export function buildCanvasModePositions(rows: PropertyTableRow[], mode: CanvasMode): Record<string, CanvasPosition> {
   if (mode === 'time') return buildTimePositions(rows)
-  if (mode === 'properties') return buildPropertyPositions(rows)
-  return buildArchivePositions(rows)
+  return buildPropertyPositions(rows)
 }
 
 function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, CanvasPosition>): CanvasMetrics {
@@ -747,14 +741,13 @@ function getCanvasMetrics(rows: PropertyTableRow[], positions: Record<string, Ca
   }
 }
 
-export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode }) {
+export function CanvasView({ initialMode = 'properties' }: { initialMode?: CanvasMode }) {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const setMainView = useUIStore((s) => s.setMainView)
   const [rows, setRows] = useState<PropertyTableRow[]>([])
   const [graph, setGraph] = useState<GraphData | null>(null)
-  const [positions, setPositions] = useState<Record<string, CanvasPosition>>({})
   const [modePositionOverrides, setModePositionOverrides] = useState<CanvasPositionOverrides>({})
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -770,7 +763,6 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   const [canvasEdges, setCanvasEdges] = useState<CanvasEdgeRoute[]>([])
   const [canvasSuggestedEdges, setCanvasSuggestedEdges] = useState<CanvasSuggestedEdgeRoute[]>([])
   const canvasRef = useRef<HTMLDivElement>(null)
-  const positionsRef = useRef<Record<string, CanvasPosition>>({})
   const modePositionOverridesRef = useRef<CanvasPositionOverrides>({})
   const metricsRef = useRef(getCanvasMetrics([], {}))
   const previousMetricsRef = useRef(metricsRef.current)
@@ -785,10 +777,6 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   const routeFocusRef = useRef<string | null>(null)
   const routePausedRef = useRef(false)
   const routeWorkerRef = useRef<Worker | null>(null)
-
-  useEffect(() => {
-    positionsRef.current = positions
-  }, [positions])
 
   useEffect(() => {
     modePositionOverridesRef.current = modePositionOverrides
@@ -813,16 +801,15 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   }, [rows, query])
 
   const modePositions = useMemo(() => {
-    if (canvasMode === 'space') return positions
     return applyCanvasModeOverrides(buildCanvasModePositions(filteredRows, canvasMode), modePositionOverrides[canvasMode])
-  }, [canvasMode, filteredRows, modePositionOverrides.properties, modePositionOverrides.time, positions])
+  }, [canvasMode, filteredRows, modePositionOverrides.properties, modePositionOverrides.time])
   const displayPositions = useMemo(() => {
     if (!dragPreview) return modePositions
     return { ...modePositions, [dragPreview.id]: dragPreview.position }
   }, [dragPreview, modePositions])
   const canvasGroupLabels = useMemo(() => buildCanvasGroupLabels(filteredRows, modePositions, canvasMode), [canvasMode, filteredRows, modePositions])
 
-  const layoutRows = canvasMode === 'space' ? rows : filteredRows
+  const layoutRows = filteredRows
   const canvasMetrics = useMemo(() => getCanvasMetrics(layoutRows, modePositions), [layoutRows, modePositions])
 
   useLayoutEffect(() => {
@@ -849,7 +836,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     if (dy !== 0) viewport.scrollTop += dy
   }, [canvasMetrics, zoom])
 
-  const loadRows = async (preferred?: PreferredPosition) => {
+  const loadRows = async () => {
     if (!vaultPath) return
     setLoading(true)
     try {
@@ -857,20 +844,18 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
       const graphData = await window.api.invoke('db:get-graph', { vaultPath })
       setRows(result)
       setGraph(graphData)
-      const saved = safeGetJSON<Record<string, CanvasPosition>>(getCanvasModeStorageKey(vaultPath, 'space'), {})
       const savedProperties = safeGetJSON<Record<string, CanvasPosition>>(getCanvasModeStorageKey(vaultPath, 'properties'), {})
       const savedTime = safeGetJSON<Record<string, CanvasPosition>>(getCanvasModeStorageKey(vaultPath, 'time'), {})
-      const archived = buildArchivePositions(result)
-      const merged: Record<string, CanvasPosition> = {}
-      result.forEach((row, index) => {
-        merged[row.id] = row.filePath === preferred?.filePath ? preferred.position : saved[row.id] || archived[row.id] || defaultPosition(index)
-      })
-      if (preferred) safeSetJSON(getCanvasStorageKey(vaultPath), merged)
       const pendingFocus = getPendingCanvasFocus()
       const focusRow = pendingFocus ? result.find((row) => row.filePath === pendingFocus.filePath) : null
       if (pendingFocus) safeRemove(PENDING_CANVAS_FOCUS_KEY)
+      const initialMode: CanvasMode = pendingFocus?.mode ?? canvasMode
       if (focusRow) {
-        const position = merged[focusRow.id]
+        const initialPositions = applyCanvasModeOverrides(
+          buildCanvasModePositions(result, initialMode),
+          initialMode === 'properties' ? savedProperties : savedTime
+        )
+        const position = initialPositions[focusRow.id]
         if (position) {
           pendingScrollRef.current = {
             focusX: position.x + CARD_WIDTH / 2,
@@ -881,7 +866,6 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         if (pendingFocus?.mode) setCanvasMode(pendingFocus.mode)
         if (query.trim()) setQuery('')
       }
-      setPositions(merged)
       setModePositionOverrides({ properties: savedProperties, time: savedTime })
     } finally {
       setLoading(false)
@@ -895,21 +879,15 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
   useEffect(() => {
     if (!dragging || !vaultPath) return
     const applyPosition = (position: CanvasPosition) => {
-      if (canvasMode === 'space') {
-        const next = { ...positionsRef.current, [dragging.id]: position }
-        positionsRef.current = next
-        setPositions(next)
-      } else {
-        const next = {
-          ...modePositionOverridesRef.current,
-          [canvasMode]: {
-            ...(modePositionOverridesRef.current[canvasMode] || {}),
-            [dragging.id]: position
-          }
+      const next = {
+        ...modePositionOverridesRef.current,
+        [canvasMode]: {
+          ...(modePositionOverridesRef.current[canvasMode] || {}),
+          [dragging.id]: position
         }
-        modePositionOverridesRef.current = next
-        setModePositionOverrides(next)
       }
+      modePositionOverridesRef.current = next
+      setModePositionOverrides(next)
     }
     const applyDragPosition = () => {
       dragFrameRef.current = null
@@ -942,11 +920,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         applyLightweightRoutesForCard(dragging.id, { ...modePositions, [dragging.id]: finalPosition })
         applyPosition(finalPosition)
       }
-      if (canvasMode === 'space') {
-        safeSetJSON(getCanvasModeStorageKey(vaultPath, 'space'), positionsRef.current)
-      } else {
-        safeSetJSON(getCanvasModeStorageKey(vaultPath, canvasMode), modePositionOverridesRef.current[canvasMode] || {})
-      }
+      safeSetJSON(getCanvasModeStorageKey(vaultPath, canvasMode), modePositionOverridesRef.current[canvasMode] || {})
       dragPositionRef.current = null
       setDragPreview(null)
       setDragging(null)
@@ -1232,17 +1206,12 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
 
   const resetLayout = () => {
     const next = buildCanvasModePositions(rows, canvasMode)
-    if (canvasMode === 'space') {
-      setPositions(next)
-      if (vaultPath) safeSetJSON(getCanvasModeStorageKey(vaultPath, 'space'), next)
-    } else {
-      setModePositionOverrides((current) => {
-        const updated = { ...current, [canvasMode]: next }
-        modePositionOverridesRef.current = updated
-        return updated
-      })
-      if (vaultPath) safeSetJSON(getCanvasModeStorageKey(vaultPath, canvasMode), next)
-    }
+    setModePositionOverrides((current) => {
+      const updated = { ...current, [canvasMode]: next }
+      modePositionOverridesRef.current = updated
+      return updated
+    })
+    if (vaultPath) safeSetJSON(getCanvasModeStorageKey(vaultPath, canvasMode), next)
     requestAnimationFrame(() => {
       const viewport = canvasRef.current
       if (!viewport) return
@@ -1348,20 +1317,10 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
     }
     await window.api.invoke('file:create', { path, vaultPath, content: `# ${title}\n\n` })
     await window.api.invoke('db:index-file', { vaultPath, filePath: path })
-    const viewport = canvasRef.current
-    const metrics = metricsRef.current
-    const origin = getViewportCenteredCardOrigin(viewport, metrics, zoomRef.current, rows.length)
-    const existingPositions = rows.map((row, index) => positionsRef.current[row.id] || defaultPosition(index))
-    const position = findAvailablePosition(origin, existingPositions)
-    if (viewport) {
-      pendingScrollRef.current = {
-        focusX: position.x + CARD_WIDTH / 2,
-        focusY: position.y + CARD_HEIGHT / 2
-      }
-      initialScrollKeyRef.current = getCanvasInitialScrollKey(vaultPath)
-    }
+    const filePath = path.slice(vaultPath.length + 1)
+    safeSet(PENDING_CANVAS_FOCUS_KEY, JSON.stringify({ filePath, mode: canvasMode }))
     if (query.trim()) setQuery('')
-    await loadRows({ filePath: path.slice(vaultPath.length + 1), position })
+    await loadRows()
     toast(t('canvas.created'), 'success')
   }
 
@@ -1604,7 +1563,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
         >
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('canvas.searchPlaceholder')} style={controlStyle} />
           <div style={floatingGroupStyle}>
-            {(['space', 'properties', 'time'] as CanvasMode[]).map((mode) => (
+            {(['properties', 'time'] as CanvasMode[]).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -1620,7 +1579,7 @@ export function CanvasView({ initialMode = 'space' }: { initialMode?: CanvasMode
                   cursor: 'pointer'
                 }}
               >
-                {mode === 'space' ? t('canvas.modeSpace') : mode === 'properties' ? t('canvas.modeProperties') : t('canvas.modeTime')}
+                {mode === 'properties' ? t('canvas.modeProperties') : t('canvas.modeTime')}
               </button>
             ))}
           </div>

@@ -44,4 +44,13 @@ Kanban moved from `defaultVisible: true` to `defaultVisible: false` in the Activ
 
 The Agent right-panel entry is no longer enumerated in the ActivityBar registry, removing it from the "More" menu and the right-click customization list. Reason: the panel is a niche, multi-step Plan→Execute→Reflect surface that doesn't justify a primary-navigation slot when ChatPanel's `agentMode` already handles the common conversational case. Reach Agent through the Command Palette (`Open Agent panel`), Kanban's "Send to Agent" action, or Chat's "Send to Agent" reflection. The panel itself, `rightPanel === 'agent'` rendering, IPC, and engine in `packages/main/src/services/agent/*` remain unchanged; only the discovery icon is gone.
 
+### 2026-05-28 — Canvas "space" layer dropped, keep properties + time
+
+The Canvas (知识空间) view used to expose three layers — `space` (free-form spatial board with auto-routed edges), `properties` (group-by-tag), and `time` (group-by-updated-at). The `space` layer overlapped almost entirely with the dedicated knowledge graph view: both rendered nodes + relationship edges in a free-form layout. The graph is now the single canonical surface for that interaction, so the `space` layer is removed.
+
+What stays: `properties` and `time` layers, including drag overrides, group labels, association suggestions, and the storage keys `:properties` / `:time`. The Canvas main entry (`ActivityBar`, `Ctrl+Shift+C`, Command Palette `Open knowledge space`) now opens the `properties` layer by default; the legacy `mainView === 'canvas'` value still loads (renders as `properties`) so saved workspace layouts don't regress. The `space`-only persisted positions are no longer read — users with legacy data will see notes laid out by the current layer instead of their old free-form spatial drag positions. The `buildArchivePositions` helper stays exported for tests.
+
+Reason: avoid maintaining two view families that visually answer the same question ("how do my notes relate?") with the graph being the more capable one (better-tuned forces, color-by-folder, relation type filters, density controls). Properties / time stay because they answer different questions (group-by-attribute, group-by-recency) that the graph doesn't.
+
+
 

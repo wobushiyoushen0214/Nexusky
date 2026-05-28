@@ -559,8 +559,8 @@ export function ReaderInboxView() {
   }
 
   const openRowInKnowledgeSpace = (row: PropertyTableRow) => {
-    safeSet(PENDING_CANVAS_FOCUS_KEY, JSON.stringify({ filePath: row.filePath, mode: 'space' }))
-    setMainView('canvas')
+    safeSet(PENDING_CANVAS_FOCUS_KEY, JSON.stringify({ filePath: row.filePath, mode: 'properties' }))
+    setMainView('bases')
   }
 
   const importSource = async (target: Exclude<ReaderSource, 'all'>) => {

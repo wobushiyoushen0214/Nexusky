@@ -318,7 +318,7 @@
       "pluginMarketplacePack": { "label": "安装精选插件包", "description": "安装研究、会议和常青笔记工作流插件" },
       "graphFull": { "label": "打开全屏知识图谱" },
       "bases": { "label": "打开知识空间属性图层", "description": "在知识空间内按属性浏览、筛选和整理笔记" },
-      "canvas": { "label": "打开知识空间", "description": "以空间、属性或时间图层探索笔记" },
+      "canvas": { "label": "打开知识空间", "description": "以属性或时间图层探索笔记" },
       "timeline": { "label": "打开知识空间时间图层", "description": "在知识空间内按创建或更新时间回看笔记活动" },
       "readerInbox": { "label": "打开阅读收件箱", "description": "集中浏览 Notion、Readwise 和 Pocket 导入内容" },
       "openKanban": { "label": "打开任务看板", "description": "以列管理任务和依赖；默认从主导航隐藏，可在 ActivityBar 右键找回" },
@@ -451,7 +451,6 @@
     "loading": "加载中...",
     "reset": "重排",
     "resetBasis": {
-      "space": "按来源、状态和主标签重新归档",
       "properties": "按主标签重新归档",
       "time": "按更新时间重新归档"
     },
@@ -462,7 +461,6 @@
       "date": "日期",
       "unknown": "分组"
     },
-    "modeSpace": "空间",
     "modeProperties": "属性",
     "modeTime": "时间",
     "guide": "如何使用",
