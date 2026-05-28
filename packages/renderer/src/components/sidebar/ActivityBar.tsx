@@ -18,7 +18,6 @@ const iconMap: Record<string, React.ReactNode> = {
   properties: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z" /><path d="M8 8h8" /><path d="M8 12h5" /><path d="M8 16h8" /></svg>,
   tags: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>,
   calendar: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>,
-  kanban: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="18" rx="1" /><rect x="10" y="3" width="5" height="12" rx="1" /><rect x="17" y="3" width="5" height="15" rx="1" /></svg>,
   'daily-note': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>,
   maintenance: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
 }
@@ -82,16 +81,6 @@ export function ActivityBar() {
     properties: () => toggleRightPanel('properties'),
     tags: () => toggleRightPanel('tags'),
     calendar: () => toggleRightPanel('calendar'),
-    kanban: () => {
-      const state = useUIStore.getState()
-      if (state.mainView === 'kanban') {
-        setMainView('editor')
-        if (state.sidebarCollapsed) toggleSidebar()
-      } else {
-        setMainView('kanban')
-        if (!state.sidebarCollapsed) toggleSidebar()
-      }
-    },
     'daily-note': async () => {
       if (!vaultPath) return
       const p = await window.api.invoke('template:daily-note', { vaultPath })
@@ -114,7 +103,6 @@ export function ActivityBar() {
     if (useUIStore.getState().mainView === 'graph') return 'graph'
     if (['bases', 'canvas', 'timeline'].includes(useUIStore.getState().mainView)) return 'canvas'
     if (useUIStore.getState().mainView === 'reader') return 'reader'
-    if (useUIStore.getState().mainView === 'kanban') return 'kanban'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
     if (rightPanel === 'outline') return 'outline'
