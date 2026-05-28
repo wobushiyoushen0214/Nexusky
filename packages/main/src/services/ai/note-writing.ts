@@ -3,10 +3,10 @@ export function buildGeneratedNoteSystemPrompt(): string {
 
 规则：
 1. 第一行必须是 # 标题，标题必须和给定的标题完全一致
-2. 必须使用 [[双向链接]] 连接同批次中最相关的 2-4 篇笔记，只能链接给定的其他笔记标题
-3. 双向链接要自然放在正文语境中，也可以在文末添加“## 相关笔记”小节
-4. 内容包含分节、要点，结构清晰
-5. 不要编造未给出的笔记标题作为 wikilink
+2. 如果正文自然涉及同批次的其他笔记主题，可以用 [[标题]] 引用；如果没有自然关联，不要为了加链接而加
+3. 链接必须使用给定的笔记标题，不要编造未给出的标题作为 wikilink
+4. 不要在末尾追加“相关笔记”“延伸阅读”这类罗列链接的小节
+5. 内容包含分节、要点，结构清晰
 6. 只输出 Markdown 内容，不要其他解释`
 }
 
@@ -18,38 +18,8 @@ export function buildGeneratedNoteUserPrompt(title: string, brief: string, sibli
   return `标题: ${title}
 描述: ${brief}
 
-同批次可链接的其他笔记标题（需要从中选择 2-4 个自然写成 [[标题]]）:
+同批次的其他笔记标题（仅在正文自然涉及时引用为 [[标题]]，否则忽略）:
 ${siblingList}`
-}
-
-function hasWikilinkToTitle(content: string, title: string): boolean {
-  return content.includes(`[[${title}]]`) || content.includes(`[[${title}|`)
-}
-
-function isRelatedNotesHeading(line: string): boolean {
-  return /^##\s+(相关笔记|相关链接|延伸阅读|Related Notes|Related Links)\s*$/i.test(line.trim())
-}
-
-function appendMissingRelatedLinks(content: string, missingLinks: string[]): string {
-  const linkLines = missingLinks.map((title) => `- [[${title}]]`)
-  const lines = content.split('\n')
-  const headingIndex = lines.findIndex(isRelatedNotesHeading)
-
-  if (headingIndex < 0) {
-    return `${content}\n\n## 相关笔记\n\n${linkLines.join('\n')}`
-  }
-
-  const nextHeadingIndex = lines.findIndex((line, index) => index > headingIndex && /^#{1,6}\s+/.test(line.trim()))
-  const insertIndex = nextHeadingIndex < 0 ? lines.length : nextHeadingIndex
-  const before = lines.slice(0, insertIndex)
-  const after = lines.slice(insertIndex)
-
-  while (before.length > headingIndex + 1 && before[before.length - 1].trim() === '') before.pop()
-  const lastLine = before[before.length - 1]?.trim() || ''
-  const spacer = isRelatedNotesHeading(lastLine) || (lastLine && !/^[-*]\s+/.test(lastLine)) ? [''] : []
-  const tailSpacer = after.length > 0 && after[0].trim() !== '' ? [''] : []
-
-  return [...before, ...spacer, ...linkLines, ...tailSpacer, ...after].join('\n').trim()
 }
 
 function serializeYamlString(value: string): string {
@@ -78,18 +48,4 @@ export function ensureGeneratedNoteMetadata(content: string, title: string, summ
   ]
 
   return `${frontmatter.join('\n')}\n${trimmed}`
-}
-
-export function ensureGeneratedNoteWikilinks(content: string, currentTitle: string, siblingTitles: string[], maxLinks = 4): string {
-  const trimmed = content.trim()
-  if (!trimmed) return trimmed
-
-  const candidates = siblingTitles
-    .filter((title) => title && title !== currentTitle)
-    .slice(0, maxLinks)
-  const missingLinks = candidates.filter((title) => !hasWikilinkToTitle(trimmed, title))
-
-  if (missingLinks.length === 0) return trimmed
-
-  return appendMissingRelatedLinks(trimmed, missingLinks)
 }

@@ -32,6 +32,7 @@ Output the modified complete Markdown text directly. The first character of your
 <constraints>
 - Only modify what the instruction asks for; leave everything else unchanged
 - Match the original list marker style: if the original uses -, keep -; if it uses *, keep *
+- Do NOT introduce new [[wikilinks]] unless the user explicitly asks. Preserve existing wikilinks as-is. Never invent wikilink targets.
 - NEVER wrap output in \`\`\`markdown or any code fence
 - NEVER prepend or append explanations, confirmations, or extra blank lines
 </constraints>${stylePrompt ? `\n\n<writing_style>\n${stylePrompt}\n</writing_style>` : ''}`

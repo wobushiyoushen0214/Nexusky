@@ -7,7 +7,7 @@ import { startAiTask, finishAiTask } from '../../services/ai-task-control'
 import { consumeStream } from '../streams/consume-stream'
 import { extractJsonFromText } from '../../services/ai/json'
 import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../../services/ai/note-plan'
-import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata, ensureGeneratedNoteWikilinks } from '../../services/ai/note-writing'
+import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata } from '../../services/ai/note-writing'
 import { indexNote, resolveAllLinks } from '../../services/indexer'
 import { getDatabase } from '../../services/database'
 import { refreshInferredLinksFromMemory } from '../../services/memory-links'
@@ -178,8 +178,7 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
     if (noteContent.trim() && !controller.signal.aborted) {
       const filePath = join(targetDir, `${safeNames[i]}.md`)
       try {
-        const linkedContent = ensureGeneratedNoteWikilinks(noteContent, safeNames[i], siblingTitles)
-        writeFileSync(filePath, ensureGeneratedNoteMetadata(linkedContent, safeNames[i], item.brief, siblingTitles), 'utf-8')
+        writeFileSync(filePath, ensureGeneratedNoteMetadata(noteContent, safeNames[i], item.brief, siblingTitles), 'utf-8')
         createdFiles.push(filePath)
       } catch {}
     }
