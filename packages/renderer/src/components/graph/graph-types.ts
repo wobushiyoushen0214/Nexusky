@@ -11,8 +11,6 @@ export interface SimNode {
   gradientId?: string
   x?: number
   y?: number
-  anchorX?: number
-  anchorY?: number
   fx?: number | null
   fy?: number | null
   linkCount: number
@@ -70,31 +68,7 @@ export interface GraphCanvasWorld {
   height: number
 }
 
-export interface GroupedGraphLayoutNode {
-  id: string
-  title?: string
-  type: 'file' | 'folder'
-  group?: string
-  linkCount?: number
-  x?: number
-  y?: number
-}
-
-export interface GraphAnchoredLayoutNode extends GroupedGraphLayoutNode {
-  anchorX?: number
-  anchorY?: number
-}
-
-interface GraphLayoutGroup<T extends GroupedGraphLayoutNode> {
-  id: string
-  title: string
-  folder?: T
-  files: T[]
-  radius: number
-}
-
 const GRAPH_CANVAS_BASE_PADDING = 2400
-const UNGROUPED_GRAPH_GROUP_ID = '__ungrouped__'
 
 export function getGraphCanvasWorld(
   viewportWidth: number,
@@ -129,166 +103,6 @@ export function seedGraphNodeFallbackPositions<T extends { x?: number; y?: numbe
     node.x = centerX + Math.cos(angle) * radius
     node.y = centerY + Math.sin(angle) * radius
   })
-}
-
-function getGroupedLayoutRadius(fileCount: number, hasFolder: boolean): number {
-  if (fileCount <= 0) return hasFolder ? 84 : 44
-
-  const baseRadius = hasFolder ? 92 : 48
-  let remaining = fileCount
-  let ringIndex = 0
-  let radius = baseRadius
-
-  while (remaining > 0) {
-    const capacity = ringIndex === 0
-      ? Math.min(fileCount <= 8 ? fileCount : 8, remaining)
-      : Math.min(10 + ringIndex * 4, remaining)
-    radius = baseRadius + ringIndex * 58
-    remaining -= Math.max(1, capacity)
-    ringIndex += 1
-  }
-
-  return radius + (hasFolder ? 50 : 34)
-}
-
-function compareGraphLayoutNodes(a: GroupedGraphLayoutNode, b: GroupedGraphLayoutNode): number {
-  const linkDelta = (b.linkCount ?? 0) - (a.linkCount ?? 0)
-  if (linkDelta !== 0) return linkDelta
-  return (a.title || a.id).localeCompare(b.title || b.id)
-}
-
-export function layoutGraphNodesByGroup<T extends GroupedGraphLayoutNode>(
-  nodes: T[],
-  viewportWidth: number,
-  viewportHeight: number,
-): void {
-  const groups = new Map<string, GraphLayoutGroup<T>>()
-
-  for (const node of nodes) {
-    if (node.type !== 'folder') continue
-    groups.set(node.id, {
-      id: node.id,
-      title: node.title || node.id,
-      folder: node,
-      files: [],
-      radius: 0,
-    })
-  }
-
-  for (const node of nodes) {
-    if (node.type === 'folder') continue
-    const groupId = node.group || UNGROUPED_GRAPH_GROUP_ID
-    const group = groups.get(groupId) ?? {
-      id: groupId,
-      title: groupId,
-      files: [],
-      radius: 0,
-    }
-    group.files.push(node)
-    groups.set(groupId, group)
-  }
-
-  const orderedGroups = [...groups.values()]
-    .map((group) => ({
-      ...group,
-      files: [...group.files].sort(compareGraphLayoutNodes),
-      radius: getGroupedLayoutRadius(group.files.length, !!group.folder),
-    }))
-    .sort((a, b) => {
-      if (a.id === UNGROUPED_GRAPH_GROUP_ID) return 1
-      if (b.id === UNGROUPED_GRAPH_GROUP_ID) return -1
-      return a.title.localeCompare(b.title)
-    })
-
-  if (orderedGroups.length === 0) return
-
-  const width = Math.max(1, viewportWidth)
-  const height = Math.max(1, viewportHeight)
-  const maxRadius = Math.max(...orderedGroups.map((group) => group.radius))
-  const aspect = Math.max(0.8, Math.min(1.8, width / Math.max(height, 1)))
-  const columns = Math.max(1, Math.ceil(Math.sqrt(orderedGroups.length * aspect)))
-  const rows = Math.ceil(orderedGroups.length / columns)
-  const cellWidth = Math.max(320, maxRadius * 2 + 112)
-  const cellHeight = Math.max(260, maxRadius * 2 + 96)
-  const startX = width / 2 - ((columns - 1) * cellWidth) / 2
-  const startY = height / 2 - ((rows - 1) * cellHeight) / 2
-
-  orderedGroups.forEach((group, groupIndex) => {
-    const col = groupIndex % columns
-    const row = Math.floor(groupIndex / columns)
-    const centerX = startX + col * cellWidth
-    const centerY = startY + row * cellHeight
-    const files = group.files
-
-    if (group.folder) {
-      group.folder.x = centerX
-      group.folder.y = centerY
-    } else if (files.length === 1) {
-      files[0].x = centerX
-      files[0].y = centerY
-      return
-    }
-
-    const baseRadius = group.folder ? 92 : 48
-    let nodeIndex = 0
-    let ringIndex = 0
-
-    while (nodeIndex < files.length) {
-      const remaining = files.length - nodeIndex
-      const ringCount = ringIndex === 0
-        ? Math.min(files.length <= 8 ? files.length : 8, remaining)
-        : Math.min(10 + ringIndex * 4, remaining)
-      const ringRadius = baseRadius + ringIndex * 58
-      const angleOffset = ringIndex % 2 === 0 ? 0 : Math.PI / Math.max(1, ringCount)
-
-      for (let indexInRing = 0; indexInRing < ringCount; indexInRing += 1) {
-        const node = files[nodeIndex + indexInRing]
-        if (!node) continue
-        const angle = ringCount === 1
-          ? -Math.PI / 2
-          : -Math.PI / 2 + angleOffset + (indexInRing / ringCount) * Math.PI * 2
-        node.x = centerX + Math.cos(angle) * ringRadius
-        node.y = centerY + Math.sin(angle) * ringRadius
-      }
-
-      nodeIndex += ringCount
-      ringIndex += 1
-    }
-  })
-}
-
-export function assignGraphClusterAnchors<T extends GraphAnchoredLayoutNode>(nodes: T[]): void {
-  const folderAnchors = new Map<string, { x: number; y: number }>()
-  const groupSums = new Map<string, { x: number; y: number; count: number }>()
-
-  for (const node of nodes) {
-    if (node.x == null || node.y == null) continue
-    const groupId = node.type === 'folder' ? node.id : node.group
-    if (!groupId) continue
-    const current = groupSums.get(groupId) ?? { x: 0, y: 0, count: 0 }
-    current.x += node.x
-    current.y += node.y
-    current.count += 1
-    groupSums.set(groupId, current)
-    if (node.type === 'folder') {
-      folderAnchors.set(node.id, { x: node.x, y: node.y })
-    }
-  }
-
-  for (const node of nodes) {
-    if (node.x == null || node.y == null) continue
-    const groupId = node.type === 'folder' ? node.id : node.group
-    const groupSum = groupId ? groupSums.get(groupId) : undefined
-    const anchor = groupId
-      ? folderAnchors.get(groupId) ?? (groupSum ? { x: groupSum.x / groupSum.count, y: groupSum.y / groupSum.count } : undefined)
-      : undefined
-    node.anchorX = anchor?.x ?? node.x
-    node.anchorY = anchor?.y ?? node.y
-  }
-}
-
-export function getGraphForceLayoutLinks(links: SimLink[]): SimLink[] {
-  return links.filter((link) => link.linkType !== 'folder')
 }
 
 export function getLinkLevel(linkCount: number): number {
@@ -326,11 +140,12 @@ export function getGraphFolderNodeId(path: string): string {
 }
 
 export function getGraphNodeGroupId(
-  node: { id: string; type: 'file' | 'folder' },
+  node: { id: string; type: 'file' | 'folder'; folder?: string },
   nodeToFolder: ReadonlyMap<string, string>,
   activeFolderPath?: string | null,
 ): string | undefined {
   if (node.type === 'folder') return node.id
+  if (node.folder != null) return getGraphFolderNodeId(node.folder)
   return nodeToFolder.get(node.id) ?? (activeFolderPath != null ? getGraphFolderNodeId(activeFolderPath) : undefined)
 }
 

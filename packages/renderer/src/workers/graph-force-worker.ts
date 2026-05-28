@@ -6,8 +6,6 @@ interface WorkerNode {
   type: 'file' | 'folder'
   x?: number
   y?: number
-  anchorX?: number
-  anchorY?: number
   fx?: number | null
   fy?: number | null
 }
@@ -21,7 +19,6 @@ interface ForceParams {
   chargeStrength: number
   linkDistance: number
   centerStrength: number
-  clusterStrength: number
   isLarge: boolean
   isHeavy: boolean
 }
@@ -63,11 +60,6 @@ function radiusFor(d: SimInternalNode): number {
   return 3
 }
 
-function clusterStrengthFor(d: SimInternalNode, params: ForceParams): number {
-  if (d.anchorX == null || d.anchorY == null) return params.centerStrength
-  return d.type === 'folder' ? params.clusterStrength * 1.45 : params.clusterStrength
-}
-
 function postTick(): void {
   if (!simulation || tickPending) return
   tickPending = true
@@ -88,14 +80,12 @@ function buildSimulation(width: number, height: number, params: ForceParams, sta
   if (simulation) simulation.stop()
   currentParams = params
   simulation = forceSimulation(currentNodes)
-    .force('link', forceLink<SimInternalNode, WorkerLink>(currentLinks).id((d) => d.id).distance(params.isLarge ? 50 : params.linkDistance).strength(0.4))
-    .force('charge', forceManyBody().strength(params.isLarge ? -150 : params.chargeStrength).distanceMax(params.isLarge ? 300 : 500))
+    .force('link', forceLink<SimInternalNode, WorkerLink>(currentLinks).id((d) => d.id).distance(params.isLarge ? 60 : params.linkDistance).strength(0.35))
+    .force('charge', forceManyBody().strength(params.isLarge ? -220 : params.chargeStrength).distanceMax(params.isLarge ? 320 : 520))
     .force('center', forceCenter(width / 2, height / 2))
-    .force('collide', forceCollide<SimInternalNode>((d) => radiusFor(d) + (params.isLarge ? 10 : 18)).iterations(params.isLarge ? 1 : 2))
+    .force('collide', forceCollide<SimInternalNode>((d) => radiusFor(d) + (params.isLarge ? 12 : 22)).iterations(params.isLarge ? 1 : 2))
     .force('x', forceX(width / 2).strength(params.centerStrength))
     .force('y', forceY(height / 2).strength(params.centerStrength))
-    .force('cluster-x', forceX<SimInternalNode>((d) => d.anchorX ?? width / 2).strength((d) => clusterStrengthFor(d, params)))
-    .force('cluster-y', forceY<SimInternalNode>((d) => d.anchorY ?? height / 2).strength((d) => clusterStrengthFor(d, params)))
 
   if (params.isHeavy) {
     simulation.alphaDecay(0.05).velocityDecay(0.5)
@@ -153,19 +143,15 @@ self.onmessage = (event: MessageEvent<InMsg>): void => {
     const params = msg.params
     currentParams = params
     const linkForce = simulation.force('link') as ReturnType<typeof forceLink<SimInternalNode, WorkerLink>> | undefined
-    if (linkForce) linkForce.distance(params.isLarge ? 50 : params.linkDistance)
+    if (linkForce) linkForce.distance(params.isLarge ? 60 : params.linkDistance)
     const chargeForce = simulation.force('charge') as ReturnType<typeof forceManyBody> | undefined
-    if (chargeForce) chargeForce.strength(params.isLarge ? -150 : params.chargeStrength).distanceMax(params.isLarge ? 300 : 500)
+    if (chargeForce) chargeForce.strength(params.isLarge ? -220 : params.chargeStrength).distanceMax(params.isLarge ? 320 : 520)
     const collideForce = simulation.force('collide') as ReturnType<typeof forceCollide<SimInternalNode>> | undefined
-    if (collideForce) collideForce.radius((d) => radiusFor(d) + (params.isLarge ? 10 : 18)).iterations(params.isLarge ? 1 : 2)
+    if (collideForce) collideForce.radius((d) => radiusFor(d) + (params.isLarge ? 12 : 22)).iterations(params.isLarge ? 1 : 2)
     const xForce = simulation.force('x') as ReturnType<typeof forceX> | undefined
     if (xForce) xForce.strength(params.centerStrength)
     const yForce = simulation.force('y') as ReturnType<typeof forceY> | undefined
     if (yForce) yForce.strength(params.centerStrength)
-    const clusterXForce = simulation.force('cluster-x') as ReturnType<typeof forceX<SimInternalNode>> | undefined
-    if (clusterXForce) clusterXForce.strength((d) => clusterStrengthFor(d, params))
-    const clusterYForce = simulation.force('cluster-y') as ReturnType<typeof forceY<SimInternalNode>> | undefined
-    if (clusterYForce) clusterYForce.strength((d) => clusterStrengthFor(d, params))
     simulation.alpha(0.3).restart()
     return
   }

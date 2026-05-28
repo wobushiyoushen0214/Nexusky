@@ -131,6 +131,7 @@ export interface GraphNode {
   title: string
   filePath?: string
   type: 'file' | 'folder'
+  folder?: string
   noteCount?: number
   directNoteCount?: number
   childFolderCount?: number

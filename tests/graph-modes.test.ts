@@ -63,17 +63,17 @@ describe('getGraphData modes', () => {
     return { closeDatabase, byTitle }
   }
 
-  it('folder mode returns a flat folder/file graph with ownership edges plus explicit and inferred relation edges', async () => {
+  it('folder mode returns a flat file-only graph carrying folder metadata plus explicit and inferred relation edges', async () => {
     const { getGraphData } = await import('../packages/main/src/services/indexer')
     const { closeDatabase, byTitle } = await setupVault()
 
     const graph = getGraphData(vaultPath, 'folder')
 
-    expect(graph.nodes.some((n) => n.type === 'folder' && n.filePath === 'Folder')).toBe(true)
-    expect(graph.nodes.some((n) => n.type === 'folder' && n.filePath === 'Folder/Sub')).toBe(true)
-    expect(graph.nodes.some((n) => n.id === byTitle('E').id && n.filePath === 'Folder/Sub/E.md')).toBe(true)
-    expect(graph.edges).toContainEqual(expect.objectContaining({ source: 'folder:Folder', target: 'folder:Folder/Sub', linkType: 'folder' }))
-    expect(graph.edges).toContainEqual(expect.objectContaining({ source: 'folder:Folder/Sub', target: byTitle('E').id, linkType: 'folder' }))
+    expect(graph.nodes.every((n) => n.type === 'file')).toBe(true)
+    expect(graph.nodes.some((n) => n.id === byTitle('A').id && n.folder === '')).toBe(true)
+    expect(graph.nodes.some((n) => n.id === byTitle('C').id && n.folder === 'Folder')).toBe(true)
+    expect(graph.nodes.some((n) => n.id === byTitle('E').id && n.folder === 'Folder/Sub')).toBe(true)
+    expect(graph.edges.every((e) => e.linkType !== 'folder')).toBe(true)
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('B').id, linkType: 'explicit' }))
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('B').id, target: byTitle('C').id, linkType: 'explicit' }))
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('D').id, linkType: 'inferred' }))
@@ -163,7 +163,8 @@ describe('getGraphData modes', () => {
     const { closeDatabase } = await setupVault()
 
     const graph = getGraphData(vaultPath)
-    expect(graph.nodes.some((n) => n.type === 'folder')).toBe(true)
+    expect(graph.nodes.every((n) => n.type === 'file')).toBe(true)
+    expect(graph.nodes.some((n) => typeof n.folder === 'string')).toBe(true)
 
     closeDatabase()
   })

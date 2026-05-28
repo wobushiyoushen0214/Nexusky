@@ -10,17 +10,16 @@ import { GraphPanel } from './GraphPanel'
 import { buildGraphGroupColorMap } from './graph-colors'
 import {
   DEFAULT_GRAPH_DISPLAY_STATE,
-  assignGraphClusterAnchors,
   buildGraphRelationLinkCountMap,
   getGraphCanvasWorld,
-  getGraphForceLayoutLinks,
+  getGraphFolderNodeId,
   getGraphNodeGroupId,
   getNodeRadius,
   isGraphCrossClusterRelation,
   isGraphLabelHidden,
   isGraphNodeHiddenByDisplay,
   isGraphNodeHiddenByGroup,
-  layoutGraphNodesByGroup,
+  seedGraphNodeFallbackPositions,
   type GraphCanvasWorld,
   type SimLink,
   type SimNode
@@ -157,8 +156,13 @@ function buildGraphCanvasData(
   const linkCountMap = buildGraphRelationLinkCountMap(graphData.edges)
   const folderIdSet = new Set(graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((n: GraphNode) => n.id))
   const nodeToFolder = new Map<string, string>()
+  graphData.nodes.forEach((node: GraphNode) => {
+    if (node.type === 'file' && node.folder != null) {
+      nodeToFolder.set(node.id, getGraphFolderNodeId(node.folder))
+    }
+  })
   graphData.edges.forEach((edge: GraphEdge) => {
-    if (folderIdSet.has(edge.source) && !folderIdSet.has(edge.target)) {
+    if (folderIdSet.has(edge.source) && !folderIdSet.has(edge.target) && !nodeToFolder.has(edge.target)) {
       nodeToFolder.set(edge.target, edge.source)
     }
   })
@@ -171,6 +175,7 @@ function buildGraphCanvasData(
   const incomingColorsMap = new Map<string, Set<string>>()
   graphData.edges.forEach((edge: GraphEdge) => {
     if (edge.source === edge.target) return
+    if (edge.linkType === 'folder') return
     const sourceFolderId = folderIdSet.has(edge.source) ? edge.source : nodeToFolder.get(edge.source)
     if (!sourceFolderId) return
     const sourceColor = groupColorMap.get(sourceFolderId)
@@ -297,13 +302,20 @@ export function GraphView() {
 
   const groupColorMap = useMemo(() => {
     if (!graphData) return new Map<string, string>()
-    const folders = graphData.nodes
-      .filter((node: GraphNode) => node.type === 'folder')
-      .map((folder: GraphNode) => ({
-        id: folder.id,
-        seed: folder.filePath || folder.id,
-      }))
-    return buildGraphGroupColorMap(folders)
+    const seeds = new Map<string, { id: string; seed: string }>()
+    graphData.nodes.forEach((node: GraphNode) => {
+      if (node.type === 'folder') {
+        seeds.set(node.id, { id: node.id, seed: node.filePath || node.id })
+        return
+      }
+      if (node.folder != null) {
+        const folderId = getGraphFolderNodeId(node.folder)
+        if (!seeds.has(folderId)) {
+          seeds.set(folderId, { id: folderId, seed: node.folder || '.' })
+        }
+      }
+    })
+    return buildGraphGroupColorMap([...seeds.values()])
   }, [graphData])
 
   const loadGraph = useCallback(() => {
@@ -363,17 +375,20 @@ export function GraphView() {
 
   useEffect(() => {
     if (!graphData) return
-    const folderIds = new Set(graphData.nodes.filter((node: GraphNode) => node.type === 'folder').map((node: GraphNode) => node.id))
+    const knownGroupIds = new Set<string>(groupColorMap.keys())
+    graphData.nodes.forEach((node: GraphNode) => {
+      if (node.type === 'folder') knownGroupIds.add(node.id)
+    })
     setHiddenGroupIds((current) => {
       let changed = false
       const next = new Set<string>()
       for (const groupId of current) {
-        if (folderIds.has(groupId)) next.add(groupId)
+        if (knownGroupIds.has(groupId)) next.add(groupId)
         else changed = true
       }
       return changed ? next : current
     })
-  }, [graphData])
+  }, [graphData, groupColorMap])
 
   const toggleGroupVisibility = useCallback((groupId: string) => {
     setHiddenGroupIds((current) => {
@@ -493,8 +508,7 @@ export function GraphView() {
     const height = viewport?.clientHeight || 800
 
     const { nodes, links } = buildGraphCanvasData(graphData, groupColorMap, activeFolderPath)
-    layoutGraphNodesByGroup(nodes, width, height)
-    assignGraphClusterAnchors(nodes)
+    seedGraphNodeFallbackPositions(nodes, width, height)
 
     const nodeMap = new Map<string, GraphCanvasNode>()
     nodes.forEach((node) => {
@@ -548,8 +562,7 @@ export function GraphView() {
 
       const isLarge = nodes.length > 220
       const isHeavy = nodes.length > 90
-      const forceLinks = getGraphForceLayoutLinks(links)
-      const relationLinkCount = forceLinks.length
+      const relationLinkCount = links.length
       worker.postMessage({
         type: 'start',
         nodes: nodes.map((node) => ({
@@ -558,20 +571,17 @@ export function GraphView() {
           type: node.type,
           x: node.x,
           y: node.y,
-          anchorX: node.anchorX,
-          anchorY: node.anchorY,
         })),
-        links: forceLinks.map((link) => ({
+        links: links.map((link) => ({
           source: typeof link.source === 'string' ? link.source : link.source.id,
           target: typeof link.target === 'string' ? link.target : link.target.id,
         })),
         width,
         height,
         params: {
-          chargeStrength: isLarge ? -180 : -280,
-          linkDistance: relationLinkCount > nodes.length ? 72 : 96,
-          centerStrength: isLarge ? 0.004 : 0.008,
-          clusterStrength: isLarge ? 0.045 : 0.07,
+          chargeStrength: isLarge ? -220 : -380,
+          linkDistance: relationLinkCount > nodes.length ? 80 : 110,
+          centerStrength: isLarge ? 0.005 : 0.01,
           isLarge,
           isHeavy,
         },

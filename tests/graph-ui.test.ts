@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_GRAPH_DISPLAY_STATE,
-  assignGraphClusterAnchors,
   buildGraphRelationLinkCountMap,
   getGraphCanvasWorld,
-  getGraphForceLayoutLinks,
   getGraphFolderNodeId,
   getGraphNodeGroupId,
   getStableGraphGroupIndex,
@@ -12,7 +10,6 @@ import {
   isGraphLabelHidden,
   isGraphNodeHiddenByDisplay,
   isGraphNodeHiddenByGroup,
-  layoutGraphNodesByGroup,
   seedGraphNodeFallbackPositions,
   seedNodePositionsFromCaches,
   shouldSkipGraphAutoZoom
@@ -164,6 +161,13 @@ describe('graph UI layout helpers', () => {
     expect(getGraphNodeGroupId({ id: 'folder:Projects/AI/Sub', type: 'folder' }, nodeToFolder, 'Projects/AI')).toBe('folder:Projects/AI/Sub')
   })
 
+  it('derives a file node group from its own folder field even without ownership edges', () => {
+    const nodeToFolder = new Map<string, string>()
+
+    expect(getGraphNodeGroupId({ id: 'note-a', type: 'file', folder: 'Projects/AI' }, nodeToFolder)).toBe('folder:Projects/AI')
+    expect(getGraphNodeGroupId({ id: 'note-b', type: 'file', folder: '' }, nodeToFolder)).toBe('folder:.')
+  })
+
   it('uses stable group palette indexes for the same folder across graph scopes', () => {
     expect(getStableGraphGroupIndex('Projects/AI', 10)).toBe(getStableGraphGroupIndex('Projects/AI', 10))
     expect(getStableGraphGroupIndex('Projects/AI', 0)).toBe(0)
@@ -203,61 +207,6 @@ describe('graph UI layout helpers', () => {
     expect(nodes[0]).toMatchObject({ x: 12, y: 34 })
     expect(nodes[1].x).toEqual(expect.any(Number))
     expect(nodes[1].y).toEqual(expect.any(Number))
-  })
-
-  it('seeds graph nodes into stable folder groups before force layout takes over', () => {
-    const nodes = [
-      { id: 'folder-a', title: 'A', type: 'folder' as const, linkCount: 0 },
-      { id: 'folder-b', title: 'B', type: 'folder' as const, linkCount: 0 },
-      { id: 'a1', title: 'A1', type: 'file' as const, group: 'folder-a', linkCount: 4 },
-      { id: 'a2', title: 'A2', type: 'file' as const, group: 'folder-a', linkCount: 1 },
-      { id: 'b1', title: 'B1', type: 'file' as const, group: 'folder-b', linkCount: 2 },
-    ]
-
-    layoutGraphNodesByGroup(nodes, 900, 600)
-
-    const folderA = nodes.find((node) => node.id === 'folder-a')!
-    const folderB = nodes.find((node) => node.id === 'folder-b')!
-    const aFiles = nodes.filter((node) => node.group === 'folder-a')
-    const bFiles = nodes.filter((node) => node.group === 'folder-b')
-
-    expect(folderA.x).toEqual(expect.any(Number))
-    expect(folderA.y).toEqual(expect.any(Number))
-    expect(folderB.x).toEqual(expect.any(Number))
-    expect(folderB.y).toEqual(expect.any(Number))
-    expect(Math.abs((folderA.x ?? 0) - (folderB.x ?? 0)) + Math.abs((folderA.y ?? 0) - (folderB.y ?? 0))).toBeGreaterThan(240)
-    expect(aFiles.every((node) => node.x != null && node.y != null)).toBe(true)
-    expect(bFiles.every((node) => node.x != null && node.y != null)).toBe(true)
-  })
-
-  it('anchors graph force layout to folder clusters instead of folder ownership edges', () => {
-    const nodes = [
-      { id: 'folder-a', title: 'A', type: 'folder' as const, linkCount: 0, x: 100, y: 120 },
-      { id: 'folder-b', title: 'B', type: 'folder' as const, linkCount: 0, x: 520, y: 120 },
-      { id: 'a1', title: 'A1', type: 'file' as const, group: 'folder-a', linkCount: 1, x: 140, y: 160 },
-      { id: 'b1', title: 'B1', type: 'file' as const, group: 'folder-b', linkCount: 1, x: 560, y: 160 },
-      { id: 'loose', title: 'Loose', type: 'file' as const, linkCount: 0, x: 300, y: 420 },
-    ]
-
-    assignGraphClusterAnchors(nodes)
-
-    expect(nodes[0]).toMatchObject({ anchorX: 100, anchorY: 120 })
-    expect(nodes[2]).toMatchObject({ anchorX: 100, anchorY: 120 })
-    expect(nodes[3]).toMatchObject({ anchorX: 520, anchorY: 120 })
-    expect(nodes[4]).toMatchObject({ anchorX: 300, anchorY: 420 })
-  })
-
-  it('keeps folder ownership edges out of force layout links to reduce hairball pull', () => {
-    const forceLinks = getGraphForceLayoutLinks([
-      { source: 'folder-a', target: 'a1', linkType: 'folder' },
-      { source: 'a1', target: 'b1', linkType: 'explicit' },
-      { source: 'a2', target: 'b2', linkType: 'inferred' },
-    ])
-
-    expect(forceLinks).toEqual([
-      { source: 'a1', target: 'b1', linkType: 'explicit' },
-      { source: 'a2', target: 'b2', linkType: 'inferred' },
-    ])
   })
 
   it('hides low-signal labels earlier on dense graphs while keeping hubs visible', () => {

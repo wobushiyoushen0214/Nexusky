@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCancellationError, getErrorMessage } from '../../utils/errors'
 import type { GraphData, GraphNode } from '@shared/types/ipc'
@@ -61,7 +62,28 @@ export function GraphPanel(props: GraphPanelProps) {
     indexStatus, setIndexStatus,
     onOpenInferConfirm, onStartAi, onStopAi, onBackToEditor
   } = props
-  const folderNodes = graphData.nodes.filter((n: GraphNode) => n.type === 'folder')
+  const folderTitleById = useMemo(() => {
+    const map = new Map<string, string>()
+    graphData.nodes.forEach((node: GraphNode) => {
+      if (node.type === 'folder') map.set(node.id, node.title)
+    })
+    return map
+  }, [graphData.nodes])
+
+  const groupLegend = useMemo(() => {
+    const items: Array<{ id: string; title: string; color: string }> = []
+    groupColorMap.forEach((color, id) => {
+      const explicit = folderTitleById.get(id)
+      let title = explicit
+      if (!title) {
+        const path = id.startsWith('folder:') ? id.slice('folder:'.length) : id
+        if (!path || path === '.') title = t('graph.rootGroup')
+        else title = path.split('/').pop() || path
+      }
+      items.push({ id, title, color })
+    })
+    return items.sort((a, b) => a.title.localeCompare(b.title))
+  }, [folderTitleById, groupColorMap, t])
 
   const handleReindex = async () => {
     if (!vaultPath) return
@@ -171,26 +193,26 @@ export function GraphPanel(props: GraphPanelProps) {
             <div className="graph-panel-section">
               <div className="graph-panel-section-title">{t('graph.groups').toUpperCase()}</div>
               <div className="graph-groups-list">
-                {folderNodes.map((folder: GraphNode) => {
-                  const visible = !hiddenGroupIds.has(folder.id)
+                {groupLegend.map((group) => {
+                  const visible = !hiddenGroupIds.has(group.id)
                   return (
                     <label
-                      key={folder.id}
+                      key={group.id}
                       className={`graph-group-item${visible ? '' : ' muted'}`}
                       title={visible ? t('graph.hideGroup') : t('graph.showGroup')}
                     >
-                      <span className="graph-group-dot" style={{ background: groupColorMap.get(folder.id) }} />
-                      <span className="graph-group-name">{folder.title}</span>
+                      <span className="graph-group-dot" style={{ background: group.color }} />
+                      <span className="graph-group-name">{group.title}</span>
                       <input
                         type="checkbox"
                         checked={visible}
-                        onChange={() => onToggleGroup(folder.id)}
+                        onChange={() => onToggleGroup(group.id)}
                       />
                       <span className="graph-toggle-slider graph-group-switch" />
                     </label>
                   )
                 })}
-                {folderNodes.length === 0 && (
+                {groupLegend.length === 0 && (
                   <div className="graph-panel-info">{t('graph.noFolderGroups')}</div>
                 )}
               </div>

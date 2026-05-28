@@ -435,6 +435,23 @@ function createFolderGraphNode(path: string, stats?: { noteCount?: number; direc
   }
 }
 
+function getNoteFolderPath(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, '/')
+  const index = normalized.lastIndexOf('/')
+  return index > 0 ? normalized.slice(0, index) : ''
+}
+
+function buildOverviewGraphData(notes: GraphNoteRow[], edges: GraphEdge[]): GraphData {
+  const fileNodes: GraphNode[] = notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    filePath: note.file_path,
+    type: 'file',
+    folder: getNoteFolderPath(note.file_path),
+  }))
+  return { nodes: fileNodes, edges }
+}
+
 function addAggregatedGraphEdge(
   edges: Map<string, AggregatedGraphEdge>,
   source: string,
@@ -678,7 +695,7 @@ export function getGraphData(vaultPath: string, mode: GraphMode = 'folder', root
     return { nodes: fileNodes, edges }
   }
 
-  return buildFlatFolderGraphData(notes, edges)
+  return buildOverviewGraphData(notes, edges)
 }
 
 function extractTitle(content: string, filePath: string): string {
