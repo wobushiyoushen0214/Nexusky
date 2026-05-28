@@ -6,6 +6,7 @@ import { startWatching } from '../services/watcher'
 import { syncIndex } from '../services/cloud/manager'
 import { closeDatabase } from '../services/database'
 import { invalidateVaultQueryCache } from '../services/db-query-cache'
+import { scanVaultHealth } from '../services/vault-health'
 
 function addToRecentVaults(vaultPath: string): void {
   const recent = (store.get('recentVaults') as string[]) || []
@@ -79,5 +80,22 @@ export function registerVaultIPC(): void {
   ipcMain.handle('vault:clear-current', () => {
     resetVaultRuntimeState()
     store.set('vaultPath', null)
+  })
+
+  ipcMain.handle('vault:health-scan', async (_event, params: { vaultPath: string }) => {
+    return scanVaultHealth(params.vaultPath)
+  })
+
+  ipcMain.handle('vault:health-shown', async (_event, params: { vaultPath: string }) => {
+    const key = `vaultHealthShown:${params.vaultPath}`
+    const ts = (store.get(key) as number | undefined) ?? 0
+    return { lastShownAt: ts }
+  })
+
+  ipcMain.handle('vault:health-mark-shown', async (_event, params: { vaultPath: string; at?: number }) => {
+    const key = `vaultHealthShown:${params.vaultPath}`
+    const ts = params.at ?? Math.floor(Date.now() / 1000)
+    store.set(key, ts)
+    return { lastShownAt: ts }
   })
 }

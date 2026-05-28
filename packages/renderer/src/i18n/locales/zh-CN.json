@@ -1,4 +1,35 @@
 {
+  "vaultHealth": {
+    "title": "Vault 健康扫描",
+    "subtitle": "在开始工作之前先看看笔记空间的整体状态。",
+    "skip": "暂时跳过",
+    "scanning": "正在扫描…",
+    "nextSteps": "下一步建议",
+    "metric": {
+      "notes": "笔记",
+      "links": "链接",
+      "unresolvedLinks": "未解析链接",
+      "orphans": "孤立笔记",
+      "openTasks": "未完成任务",
+      "duplicateTitles": "重复标题",
+      "missingMemory": "无记忆笔记",
+      "staleNotes": "60 天未动笔记"
+    },
+    "action": {
+      "askAi": {
+        "title": "问 AI 一个关于 vault 的问题",
+        "desc": "打开聊天面板，让助手带你回顾笔记空间。"
+      },
+      "fixLinks": {
+        "title": "修复 {{count}} 个未解析链接",
+        "desc": "打开维护队列，集中处理失效的 wikilink。"
+      },
+      "browseGraph": {
+        "title": "浏览知识图谱",
+        "desc": "一眼看清聚类、桥接节点和孤岛笔记。"
+      }
+    }
+  },
   "graph": {
     "title": "图谱",
     "emptyTitle": "暂无图谱数据",

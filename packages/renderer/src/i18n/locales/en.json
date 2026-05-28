@@ -1,4 +1,35 @@
 {
+  "vaultHealth": {
+    "title": "Vault Health",
+    "subtitle": "A quick snapshot of your vault before you dive in.",
+    "skip": "Skip for now",
+    "scanning": "Scanning vault…",
+    "nextSteps": "Suggested next steps",
+    "metric": {
+      "notes": "Notes",
+      "links": "Links",
+      "unresolvedLinks": "Unresolved links",
+      "orphans": "Isolated notes",
+      "openTasks": "Open tasks",
+      "duplicateTitles": "Duplicate titles",
+      "missingMemory": "Notes without memory",
+      "staleNotes": "Notes untouched >60d"
+    },
+    "action": {
+      "askAi": {
+        "title": "Ask AI about your vault",
+        "desc": "Open the chat panel and let the assistant tour what's inside."
+      },
+      "fixLinks": {
+        "title": "Resolve {{count}} unresolved links",
+        "desc": "Open the maintenance queue and clean up broken wikilinks."
+      },
+      "browseGraph": {
+        "title": "Browse the knowledge graph",
+        "desc": "See clusters, bridges, and isolated notes at a glance."
+      }
+    }
+  },
   "graph": {
     "title": "Graph",
     "emptyTitle": "No graph data yet",

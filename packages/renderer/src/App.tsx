@@ -16,6 +16,7 @@ import { QuickSwitcher } from './components/QuickSwitcher'
 import { ResizeHandle } from './components/ResizeHandle'
 import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
+import { VaultHealthScreen } from './components/VaultHealthScreen'
 import { GraphGenerator } from './components/GraphGenerator'
 import { NotificationCenter } from './components/proactive/NotificationCenter'
 import { ProactiveToast } from './components/proactive/ProactiveToast'
@@ -140,6 +141,28 @@ export default function App() {
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
   const [chatEverOpened, setChatEverOpened] = useState(false)
   const [activePluginPanel, setActivePluginPanel] = useState<ActivePluginPanel | null>(null)
+  const [showVaultHealth, setShowVaultHealth] = useState(false)
+
+  useEffect(() => {
+    if (!vaultPath || showOnboarding) {
+      setShowVaultHealth(false)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { lastShownAt } = await window.api.invoke('vault:health-shown', { vaultPath })
+        if (cancelled) return
+        const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60
+        if (lastShownAt < sevenDaysAgo) setShowVaultHealth(true)
+      } catch {
+        // best effort — failing to read the marker just means we skip the panel
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [vaultPath, showOnboarding])
 
   // Track the latest translate function so global event handlers (which are
   // registered once and survive language changes) always read the current
@@ -445,6 +468,9 @@ export default function App() {
         <>
           {!focusMode && <TitleBar />}
           {vaultPath ? (
+            showVaultHealth ? (
+              <VaultHealthScreen vaultPath={vaultPath} onDismiss={() => setShowVaultHealth(false)} />
+            ) : (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'var(--sidebar-bg)', minHeight: 0, alignItems: 'stretch' }}>
           <ActivityBar />
           {!sidebarCollapsed && (
@@ -514,6 +540,7 @@ export default function App() {
             </div>
           </aside>
         </div>
+            )
       ) : (
         <WelcomeScreen />
       )}

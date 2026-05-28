@@ -472,6 +472,17 @@ export interface ProactiveTriggerThresholds {
   overdueTaskMin: number
 }
 
+export interface VaultHealthSummary {
+  noteCount: number
+  linkCount: number
+  unresolvedLinkCount: number
+  orphanCount: number
+  openTaskCount: number
+  duplicateTitleCount: number
+  missingMemoryCount: number
+  staleNoteCount: number
+}
+
 export interface ProactiveUserPrefs {
   enabled: boolean
   silentHoursStart?: string
@@ -567,6 +578,9 @@ export interface IPCChannelMap {
   'vault:get': { params: undefined; result: string | null }
   'vault:get-recent': { params: undefined; result: string[] }
   'vault:clear-current': { params: undefined; result: void }
+  'vault:health-scan': { params: { vaultPath: string }; result: VaultHealthSummary }
+  'vault:health-shown': { params: { vaultPath: string }; result: { lastShownAt: number } }
+  'vault:health-mark-shown': { params: { vaultPath: string; at?: number }; result: { lastShownAt: number } }
   'db:index-vault': { params: { vaultPath: string }; result: { indexed: number } }
   'db:index-file': { params: { vaultPath: string; filePath: string }; result: void }
   'db:remove-file': { params: { vaultPath: string; filePath: string }; result: void }
