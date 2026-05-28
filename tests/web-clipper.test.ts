@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { mkdtempSync } from 'fs'
-import { formatWebClipMarkdown, safeClipFileName, saveWebClip } from '../packages/main/src/services/web-clipper'
+import { formatWebClipMarkdown, isAllowedClipperOrigin, safeClipFileName, saveWebClip } from '../packages/main/src/services/web-clipper'
 
 describe('web clipper', () => {
   let vaultPath: string
@@ -79,5 +79,18 @@ describe('web clipper', () => {
     expect(second.path).not.toBe(first.path)
     expect(readFileSync(first.path!, 'utf-8')).toContain('Body')
     expect(getAllNotes(vaultPath).map((note) => note.title).sort()).toEqual(['Clip', 'Clip'])
+  })
+
+  it('only accepts browser-extension origins for clipper requests', () => {
+    expect(isAllowedClipperOrigin('chrome-extension://abc123')).toBe(true)
+    expect(isAllowedClipperOrigin('moz-extension://xyz')).toBe(true)
+    expect(isAllowedClipperOrigin('safari-web-extension://abc')).toBe(true)
+    expect(isAllowedClipperOrigin('edge-extension://abc')).toBe(true)
+    expect(isAllowedClipperOrigin('https://evil.com')).toBe(false)
+    expect(isAllowedClipperOrigin('http://localhost:3000')).toBe(false)
+    expect(isAllowedClipperOrigin('null')).toBe(false)
+    expect(isAllowedClipperOrigin('')).toBe(false)
+    expect(isAllowedClipperOrigin(undefined)).toBe(false)
+    expect(isAllowedClipperOrigin(null)).toBe(false)
   })
 })

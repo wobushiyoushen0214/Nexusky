@@ -21,7 +21,20 @@ export interface WebClipResult {
 
 const CLIPPER_PORT = 17321
 const MAX_BODY_BYTES = 2 * 1024 * 1024
+const ALLOWED_ORIGIN_PREFIXES = [
+  'chrome-extension://',
+  'moz-extension://',
+  'safari-web-extension://',
+  'edge-extension://'
+] as const
+const REQUIRED_HEADER = 'x-nexusky-clipper'
+const REQUIRED_HEADER_VALUE = 'extension'
 let server: Server | null = null
+
+export function isAllowedClipperOrigin(origin: string | undefined | null): boolean {
+  if (!origin) return false
+  return ALLOWED_ORIGIN_PREFIXES.some((prefix) => origin.startsWith(prefix))
+}
 
 export function safeClipFileName(value: string): string {
   const cleaned = value
@@ -145,13 +158,17 @@ export async function saveWebClip(vaultPath: string, payload: WebClipPayload, ca
   return { ok: true, path: filePath }
 }
 
-function sendJson(res: ServerResponse, status: number, data: unknown): void {
-  res.writeHead(status, {
+function sendJson(res: ServerResponse, status: number, data: unknown, origin?: string | null): void {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
-  })
+    Vary: 'Origin'
+  }
+  if (origin && isAllowedClipperOrigin(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Nexusky-Clipper'
+    headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+  }
+  res.writeHead(status, headers)
   res.end(JSON.stringify(data))
 }
 
@@ -177,29 +194,43 @@ function readBody(req: IncomingMessage): Promise<string> {
 export function startWebClipperServer(): void {
   if (server) return
   const next = createServer(async (req, res) => {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : null
     if (req.method === 'OPTIONS') {
-      sendJson(res, 204, {})
+      if (!isAllowedClipperOrigin(origin)) {
+        sendJson(res, 403, { ok: false, error: 'origin_not_allowed' })
+        return
+      }
+      sendJson(res, 204, {}, origin)
       return
     }
     if (req.method === 'GET' && req.url === '/health') {
-      sendJson(res, 200, { ok: true, app: 'Nexusky', feature: 'web-clipper' })
+      sendJson(res, 200, { ok: true, app: 'Nexusky', feature: 'web-clipper' }, origin)
       return
     }
     if (req.method !== 'POST' || req.url !== '/clip') {
-      sendJson(res, 404, { ok: false, error: 'Not found' })
+      sendJson(res, 404, { ok: false, error: 'Not found' }, origin)
+      return
+    }
+    if (!isAllowedClipperOrigin(origin)) {
+      sendJson(res, 403, { ok: false, error: 'origin_not_allowed' })
+      return
+    }
+    const clipperHeader = req.headers[REQUIRED_HEADER]
+    if (clipperHeader !== REQUIRED_HEADER_VALUE) {
+      sendJson(res, 403, { ok: false, error: 'missing_clipper_header' }, origin)
       return
     }
     const vaultPath = store.get('vaultPath') as string | null
     if (!vaultPath) {
-      sendJson(res, 409, { ok: false, error: 'Nexusky 当前未打开 vault' })
+      sendJson(res, 409, { ok: false, error: 'Nexusky 当前未打开 vault' }, origin)
       return
     }
     try {
       const payload = JSON.parse(await readBody(req)) as WebClipPayload
       const result = await saveWebClip(vaultPath, payload)
-      sendJson(res, 200, result)
+      sendJson(res, 200, result, origin)
     } catch (error) {
-      sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) })
+      sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) }, origin)
     }
   })
   next.on('error', (err: NodeJS.ErrnoException) => {

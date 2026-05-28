@@ -35,7 +35,10 @@ async function getPagePayload(tab, selectionText = '') {
 async function saveClip(payload) {
   const response = await fetch(CLIPPER_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Nexusky-Clipper': 'extension'
+    },
     body: JSON.stringify(payload)
   })
   const result = await response.json().catch(() => ({}))
