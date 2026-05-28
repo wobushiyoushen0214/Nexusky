@@ -37,13 +37,6 @@ interface GraphPanelProps {
   showFolderEdges: boolean
   setShowFolderEdges: (v: boolean) => void
 
-  chargeStrength: number
-  setChargeStrength: (n: number) => void
-  linkDistance: number
-  setLinkDistance: (n: number) => void
-  centerStrength: number
-  setCenterStrength: (n: number) => void
-
   indexStatus: string | null
   setIndexStatus: (s: string | null) => void
   onOpenInferConfirm: () => void
@@ -65,9 +58,6 @@ export function GraphPanel(props: GraphPanelProps) {
     showExplicitEdges, setShowExplicitEdges,
     showInferredEdges, setShowInferredEdges,
     showFolderEdges, setShowFolderEdges,
-    chargeStrength, setChargeStrength,
-    linkDistance, setLinkDistance,
-    centerStrength, setCenterStrength,
     indexStatus, setIndexStatus,
     onOpenInferConfirm, onStartAi, onStopAi, onBackToEditor
   } = props
@@ -256,49 +246,6 @@ export function GraphPanel(props: GraphPanelProps) {
                 <input type="checkbox" checked={showFolderEdges} onChange={(e) => setShowFolderEdges(e.target.checked)} />
                 <span className="graph-toggle-slider" />
               </label>
-            </div>
-
-            <div className="graph-panel-section">
-              <div className="graph-panel-section-title">{t('graph.forces').toUpperCase()}</div>
-              <label className="graph-slider-label">
-                <span>{t('graph.repulsion')}</span>
-                <span className="graph-slider-value">{chargeStrength}</span>
-              </label>
-              <input
-                type="range"
-                min="-800"
-                max="-50"
-                step="10"
-                value={chargeStrength}
-                onChange={(e) => setChargeStrength(Number(e.target.value))}
-                className="graph-slider"
-              />
-              <label className="graph-slider-label">
-                <span>{t('graph.distance')}</span>
-                <span className="graph-slider-value">{linkDistance}</span>
-              </label>
-              <input
-                type="range"
-                min="20"
-                max="200"
-                step="5"
-                value={linkDistance}
-                onChange={(e) => setLinkDistance(Number(e.target.value))}
-                className="graph-slider"
-              />
-              <label className="graph-slider-label">
-                <span>{t('graph.aggregation')}</span>
-                <span className="graph-slider-value">{centerStrength.toFixed(2)}</span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="0.1"
-                step="0.005"
-                value={centerStrength}
-                onChange={(e) => setCenterStrength(Number(e.target.value))}
-                className="graph-slider"
-              />
             </div>
 
             <div className="graph-panel-section">

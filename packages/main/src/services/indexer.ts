@@ -458,6 +458,18 @@ function addAggregatedGraphEdge(
   edges.set(key, { source: edgeSource, target: edgeTarget, linkType, weight: 1 })
 }
 
+function addGraphEdge(
+  edges: GraphEdge[],
+  edgeSet: Set<string>,
+  edge: GraphEdge,
+): void {
+  if (edge.source === edge.target) return
+  const key = `${edge.source}->${edge.target}->${edge.linkType}`
+  if (edgeSet.has(key)) return
+  edgeSet.add(key)
+  edges.push(edge)
+}
+
 function buildGroupGraphData(notes: GraphNoteRow[], edges: GraphEdge[]): GraphData {
   const noteCountByFolder = new Map<string, number>()
   const folderPathByNoteId = new Map<string, string>()
@@ -490,30 +502,81 @@ function buildGroupGraphData(notes: GraphNoteRow[], edges: GraphEdge[]): GraphDa
   return { nodes, edges: Array.from(aggregatedEdges.values()) }
 }
 
-function buildFolderScopeGraphData(notes: GraphNoteRow[], edges: GraphEdge[], rootPath: string): GraphData {
+function buildFlatFolderGraphData(notes: GraphNoteRow[], edges: GraphEdge[], rootPath = ''): GraphData {
   const normalizedRootPath = normalizeGraphFolderPath(rootPath)
   const folderStats = new Map<string, { noteCount: number; directNoteCount: number; childFolders: Set<string> }>()
-  const directFileNodes: GraphNode[] = []
-  const visibleOwnerByNoteId = new Map<string, string>()
+  const fileNodes: GraphNode[] = []
+  const visibleNoteIds = new Set<string>()
+  const ownershipEdges: GraphEdge[] = []
+  const ownershipEdgeSet = new Set<string>()
+
+  const ensureFolderStats = (path: string) => {
+    const existing = folderStats.get(path)
+    if (existing) return existing
+    const stats = { noteCount: 0, directNoteCount: 0, childFolders: new Set<string>() }
+    folderStats.set(path, stats)
+    return stats
+  }
+
+  if (normalizedRootPath) {
+    ensureFolderStats(normalizedRootPath)
+  }
 
   for (const note of notes) {
     const remainder = getNotePathWithinGraphFolder(note.file_path, normalizedRootPath)
     if (remainder == null || !remainder) continue
 
+    fileNodes.push({ id: note.id, title: note.title, filePath: note.file_path, type: 'file' })
+    visibleNoteIds.add(note.id)
+
     const parts = remainder.split('/').filter(Boolean)
-    if (parts.length === 1) {
-      directFileNodes.push({ id: note.id, title: note.title, filePath: note.file_path, type: 'file' })
-      visibleOwnerByNoteId.set(note.id, note.id)
-      continue
+    const folderParts = parts.slice(0, -1)
+
+    if (normalizedRootPath) {
+      const rootStats = ensureFolderStats(normalizedRootPath)
+      rootStats.noteCount += 1
+      if (folderParts.length === 0) rootStats.directNoteCount += 1
+      else rootStats.childFolders.add(folderParts[0])
     }
 
-    const childFolderPath = normalizedRootPath ? `${normalizedRootPath}/${parts[0]}` : parts[0]
-    const stats = folderStats.get(childFolderPath) || { noteCount: 0, directNoteCount: 0, childFolders: new Set<string>() }
-    stats.noteCount += 1
-    if (parts.length === 2) stats.directNoteCount += 1
-    else stats.childFolders.add(parts[1])
-    folderStats.set(childFolderPath, stats)
-    visibleOwnerByNoteId.set(note.id, getGraphFolderId(childFolderPath))
+    for (let index = 0; index < folderParts.length; index += 1) {
+      const relativeFolderPath = folderParts.slice(0, index + 1).join('/')
+      const folderPath = normalizedRootPath ? `${normalizedRootPath}/${relativeFolderPath}` : relativeFolderPath
+      const stats = ensureFolderStats(folderPath)
+      stats.noteCount += 1
+      if (index === folderParts.length - 1) stats.directNoteCount += 1
+      else stats.childFolders.add(folderParts[index + 1])
+
+      const parentPath = index === 0
+        ? normalizedRootPath
+        : normalizedRootPath
+          ? `${normalizedRootPath}/${folderParts.slice(0, index).join('/')}`
+          : folderParts.slice(0, index).join('/')
+      if (parentPath) {
+        addGraphEdge(ownershipEdges, ownershipEdgeSet, {
+          source: getGraphFolderId(parentPath),
+          target: getGraphFolderId(folderPath),
+          linkType: 'folder',
+        })
+      }
+    }
+
+    if (folderParts.length > 0) {
+      const parentFolderPath = normalizedRootPath
+        ? `${normalizedRootPath}/${folderParts.join('/')}`
+        : folderParts.join('/')
+      addGraphEdge(ownershipEdges, ownershipEdgeSet, {
+        source: getGraphFolderId(parentFolderPath),
+        target: note.id,
+        linkType: 'folder',
+      })
+    } else if (normalizedRootPath) {
+      addGraphEdge(ownershipEdges, ownershipEdgeSet, {
+        source: getGraphFolderId(normalizedRootPath),
+        target: note.id,
+        linkType: 'folder',
+      })
+    }
   }
 
   const folderNodes = Array.from(folderStats.entries())
@@ -524,17 +587,17 @@ function buildFolderScopeGraphData(notes: GraphNoteRow[], edges: GraphEdge[], ro
       childFolderCount: stats.childFolders.size,
     }))
 
-  const aggregatedEdges = new Map<string, AggregatedGraphEdge>()
+  const relationEdges: GraphEdge[] = []
+  const relationEdgeSet = new Set<string>()
   for (const edge of edges) {
-    const sourceOwner = visibleOwnerByNoteId.get(edge.source)
-    const targetOwner = visibleOwnerByNoteId.get(edge.target)
-    if (!sourceOwner || !targetOwner || sourceOwner === targetOwner) continue
-    addAggregatedGraphEdge(aggregatedEdges, sourceOwner, targetOwner, edge.linkType)
+    if (edge.linkType === 'folder') continue
+    if (!visibleNoteIds.has(edge.source) || !visibleNoteIds.has(edge.target)) continue
+    addGraphEdge(relationEdges, relationEdgeSet, edge)
   }
 
-  directFileNodes.sort((a, b) => a.title.localeCompare(b.title))
+  fileNodes.sort((a, b) => a.title.localeCompare(b.title))
 
-  return { nodes: [...folderNodes, ...directFileNodes], edges: Array.from(aggregatedEdges.values()) }
+  return { nodes: [...folderNodes, ...fileNodes], edges: [...ownershipEdges, ...relationEdges] }
 }
 
 export function getGraphData(vaultPath: string, mode: GraphMode = 'folder', rootPath = ''): GraphData {
@@ -601,7 +664,7 @@ export function getGraphData(vaultPath: string, mode: GraphMode = 'folder', root
   }
 
   if (mode === 'folder-scope') {
-    return buildFolderScopeGraphData(notes, edges, rootPath)
+    return buildFlatFolderGraphData(notes, edges, rootPath)
   }
 
   if (mode === 'connection') {
@@ -615,39 +678,7 @@ export function getGraphData(vaultPath: string, mode: GraphMode = 'folder', root
     return { nodes: fileNodes, edges }
   }
 
-  // folder mode: include folder nodes + folder→file edges
-  const folderMap = new Map<string, string>()
-  for (const n of notes) {
-    const parts = n.file_path.split('/')
-    if (parts.length > 1) {
-      const folder = parts.slice(0, -1).join('/')
-      if (!folderMap.has(folder)) {
-        folderMap.set(folder, `folder:${folder}`)
-      }
-    }
-  }
-
-  const folderNodes: GraphNode[] = Array.from(folderMap.entries()).map(([path, id]) => ({
-    id,
-    title: path.split('/').pop() || path,
-    filePath: path,
-    type: 'folder',
-  }))
-
-  for (const n of notes) {
-    const parts = n.file_path.split('/')
-    if (parts.length > 1) {
-      const folder = parts.slice(0, -1).join('/')
-      const folderId = folderMap.get(folder)
-      if (folderId) {
-        edges.push({ source: folderId, target: n.id, linkType: 'folder' })
-      }
-    }
-  }
-
-  const fileNodes: GraphNode[] = notes.map((n) => ({ id: n.id, title: n.title, filePath: n.file_path, type: 'file' }))
-
-  return { nodes: [...folderNodes, ...fileNodes], edges }
+  return buildFlatFolderGraphData(notes, edges)
 }
 
 function extractTitle(content: string, filePath: string): string {

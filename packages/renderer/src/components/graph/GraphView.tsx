@@ -1,38 +1,100 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { select } from 'd3-selection'
-import { zoom, zoomIdentity, zoomTransform } from 'd3-zoom'
-import { drag } from 'd3-drag'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
 import { GraphPanel } from './GraphPanel'
-import { setupGraphFilters } from './graph-filters'
-import { DEFAULT_GRAPH_DISPLAY_STATE, buildGraphRelationLinkCountMap, getGraphFolderNodeId, getGraphNodeGroupId, getLinkLevel, getNodeRadius, getStableGraphGroupIndex, isGraphLabelHidden, isGraphNodeHiddenByDisplay, isGraphNodeHiddenByGroup, seedNodePositionsFromCaches, shouldSkipGraphAutoZoom, type SimLink, type SimNode } from './graph-types'
+import { buildGraphGroupColorMap } from './graph-colors'
+import {
+  DEFAULT_GRAPH_DISPLAY_STATE,
+  assignGraphClusterAnchors,
+  buildGraphRelationLinkCountMap,
+  getGraphCanvasWorld,
+  getGraphForceLayoutLinks,
+  getGraphNodeGroupId,
+  getNodeRadius,
+  isGraphCrossClusterRelation,
+  isGraphLabelHidden,
+  isGraphNodeHiddenByDisplay,
+  isGraphNodeHiddenByGroup,
+  layoutGraphNodesByGroup,
+  type GraphCanvasWorld,
+  type SimLink,
+  type SimNode
+} from './graph-types'
 import type { GraphData, GraphEdge, GraphMode, GraphNode } from '@shared/types/ipc'
 import './GraphView.css'
 
-const GROUP_COLORS = [
-  '#7c6ef5', '#f59e0b', '#10b981', '#ef4444', '#06b6d4',
-  '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#6366f1',
-]
+const GRAPH_MIN_ZOOM = 0.18
+const GRAPH_MAX_ZOOM = 2.4
+const GRAPH_FOCUS_ZOOM = 1.15
+const DEFAULT_GRAPH_WORLD: GraphCanvasWorld = getGraphCanvasWorld(1200, 800, 1)
+
+interface GraphCanvasNode extends SimNode {
+  noteCount?: number
+  directNoteCount?: number
+  childFolderCount?: number
+}
+
+interface GraphLayoutState {
+  nodes: GraphCanvasNode[]
+  links: SimLink[]
+  world: GraphCanvasWorld
+  layoutKey: string
+}
+
+interface GraphPanState {
+  startX: number
+  startY: number
+  scrollLeft: number
+  scrollTop: number
+}
+
+interface GraphDragState {
+  id: string
+  offsetX: number
+  offsetY: number
+  startClientX: number
+  startClientY: number
+  moved: boolean
+}
+
+interface GraphZoomAnchor {
+  graphX: number
+  graphY: number
+  focalX: number
+  focalY: number
+  zoom: number
+}
+
+type PositionedGraphCanvasNode = GraphCanvasNode & { x: number; y: number }
+
+interface GraphRenderableLink {
+  link: SimLink
+  source: PositionedGraphCanvasNode
+  target: PositionedGraphCanvasNode
+  sourceId: string
+  targetId: string
+  index: number
+}
+
+type GraphForceWorkerMessage =
+  | { type: 'tick'; payload: Array<string | number>; alpha: number }
+  | { type: 'end' }
 
 function getLinkEndpointId(endpoint: string | SimNode): string {
   return typeof endpoint === 'string' ? endpoint : endpoint.id
 }
 
-function getLinkEndpoint(endpoint: string | SimNode, nodeMap: Map<string, SimNode>): SimNode | null {
-  return typeof endpoint === 'string' ? nodeMap.get(endpoint) ?? null : endpoint
+function getLinkEndpoint(endpoint: string | SimNode, nodeMap: ReadonlyMap<string, GraphCanvasNode>): GraphCanvasNode | null {
+  return typeof endpoint === 'string' ? nodeMap.get(endpoint) ?? null : endpoint as GraphCanvasNode
 }
 
-function hasPosition(node: SimNode | null): node is SimNode & { x: number; y: number } {
+function hasPosition(node: GraphCanvasNode | null): node is GraphCanvasNode & { x: number; y: number } {
   return !!node && node.x != null && node.y != null
-}
-
-function getGraphGroupColor(path: string): string {
-  return GROUP_COLORS[getStableGraphGroupIndex(path || '.', GROUP_COLORS.length)]
 }
 
 function getGraphNodeFill(node: { type: 'file' | 'folder'; color?: string }): string {
@@ -41,29 +103,150 @@ function getGraphNodeFill(node: { type: 'file' | 'folder'; color?: string }): st
   return `color-mix(in srgb, ${node.color} ${mix}%, var(--bg-base))`
 }
 
-const getRadius = getNodeRadius
+function getGraphNodeColor(node: GraphCanvasNode): string {
+  return node.color || (node.type === 'folder' ? 'var(--accent)' : 'var(--text-tertiary)')
+}
+
+function getGraphNodeRing(node: GraphCanvasNode): string {
+  if (!node.colors || node.colors.length < 2) return getGraphNodeColor(node)
+  const step = 100 / node.colors.length
+  const stops = node.colors.map((color, index) => `${color} ${index * step}% ${(index + 1) * step}%`)
+  return `conic-gradient(${stops.join(', ')})`
+}
+
+function getGraphNodeSize(node: GraphCanvasNode): number {
+  if (node.type === 'folder') {
+    const count = node.noteCount ?? node.directNoteCount ?? node.linkCount
+    return Math.max(58, Math.min(86, 58 + Math.sqrt(Math.max(count, 0)) * 5))
+  }
+  return Math.max(18, getNodeRadius(node) * 2 + 10)
+}
+
+function getGraphNodeEdgeRadius(node: GraphCanvasNode): number {
+  if (node.type === 'folder') return getGraphNodeSize(node) / 2
+  return getNodeRadius(node)
+}
+
+function formatGraphNodeCount(count: number): string {
+  if (count >= 1000) return `${Math.floor(count / 100) / 10}k`
+  if (count >= 100) return '99+'
+  return String(count)
+}
+
+function getGraphEdgeWidth(link: SimLink): number {
+  if (link.linkType === 'folder') return 1
+  return Math.min(2.6, 1.05 + ((link.weight ?? 1) - 1) * 0.25)
+}
+
+function isLinkTypeVisible(link: SimLink, options: {
+  showExplicitEdges: boolean
+  showInferredEdges: boolean
+  showFolderEdges: boolean
+}): boolean {
+  if (link.linkType === 'explicit') return options.showExplicitEdges
+  if (link.linkType === 'inferred') return options.showInferredEdges
+  if (link.linkType === 'folder') return options.showFolderEdges
+  return true
+}
+
+function buildGraphCanvasData(
+  graphData: GraphData,
+  groupColorMap: ReadonlyMap<string, string>,
+  activeFolderPath: string | null,
+): { nodes: GraphCanvasNode[]; links: SimLink[] } {
+  const linkCountMap = buildGraphRelationLinkCountMap(graphData.edges)
+  const folderIdSet = new Set(graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((n: GraphNode) => n.id))
+  const nodeToFolder = new Map<string, string>()
+  graphData.edges.forEach((edge: GraphEdge) => {
+    if (folderIdSet.has(edge.source) && !folderIdSet.has(edge.target)) {
+      nodeToFolder.set(edge.target, edge.source)
+    }
+  })
+
+  const nodeCount = graphData.nodes.length
+  const nodesForLayout = nodeCount > 500
+    ? graphData.nodes.filter((n: GraphNode) => n.type === 'folder' || (linkCountMap.get(n.id) || 0) > 0)
+    : graphData.nodes
+
+  const incomingColorsMap = new Map<string, Set<string>>()
+  graphData.edges.forEach((edge: GraphEdge) => {
+    if (edge.source === edge.target) return
+    const sourceFolderId = folderIdSet.has(edge.source) ? edge.source : nodeToFolder.get(edge.source)
+    if (!sourceFolderId) return
+    const sourceColor = groupColorMap.get(sourceFolderId)
+    if (!sourceColor) return
+    const colors = incomingColorsMap.get(edge.target) ?? new Set<string>()
+    colors.add(sourceColor)
+    incomingColorsMap.set(edge.target, colors)
+  })
+
+  const nodes: GraphCanvasNode[] = nodesForLayout.map((node: GraphNode) => {
+    const folderId = getGraphNodeGroupId(node, nodeToFolder, activeFolderPath)
+    const color = folderId ? groupColorMap.get(folderId) : undefined
+    const incomingColors = incomingColorsMap.get(node.id)
+    const colorSet = new Set<string>()
+    if (color) colorSet.add(color)
+    if (incomingColors) incomingColors.forEach((item) => colorSet.add(item))
+    const colors = [...colorSet]
+    return {
+      ...node,
+      linkCount: linkCountMap.get(node.id) || 0,
+      group: folderId,
+      color: colors.length > 0 ? colors[0] : undefined,
+      colors: colors.length > 1 ? colors : undefined,
+    }
+  })
+
+  const nodeIds = new Set(nodes.map((node) => node.id))
+  const links: SimLink[] = graphData.edges
+    .filter((edge: GraphEdge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
+    .map((edge: GraphEdge) => ({ source: edge.source, target: edge.target, linkType: edge.linkType, weight: edge.weight }))
+
+  return { nodes, links }
+}
+
+function getCurrentRelPath(currentFilePath: string | null, vaultPath: string | null): string {
+  if (!currentFilePath || !vaultPath) return ''
+  return currentFilePath
+    .replace(`${vaultPath}/`, '')
+    .replace(`${vaultPath}\\`, '')
+}
+
+function clampGraphZoom(value: number): number {
+  return Math.max(GRAPH_MIN_ZOOM, Math.min(GRAPH_MAX_ZOOM, value))
+}
 
 export function GraphView() {
   const { t } = useTranslation()
-  const svgRef = useRef<SVGSVGElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const workerRef = useRef<Worker | null>(null)
-  const nodeMapRef = useRef<Map<string, SimNode>>(new Map())
-  const tickHandlerRef = useRef<(() => void) | null>(null)
-  const endHandlerRef = useRef<(() => void) | null>(null)
-  const draggingIdRef = useRef<string | null>(null)
-  const hiddenGroupIdsRef = useRef<Set<string>>(new Set())
+  const nodeMapRef = useRef<Map<string, GraphCanvasNode>>(new Map())
   const lastKnownNodePositionsRef = useRef<Map<string, [number, number]>>(new Map())
-  const layoutCacheRef = useRef<Map<string, Map<string, [number, number]>>>(new Map())
   const graphBuiltForRef = useRef<string | null>(null)
   const graphRequestIdRef = useRef(0)
   const aiStopRequestedRef = useRef(false)
   const autoInferAttemptedRef = useRef<string | null>(null)
   const silentMemoryRefreshRef = useRef(false)
+  const worldRef = useRef<GraphCanvasWorld>(DEFAULT_GRAPH_WORLD)
+  const zoomRef = useRef(1)
+  const desiredZoomRef = useRef(1)
+  const pendingZoomAnchorRef = useRef<GraphZoomAnchor | null>(null)
+  const initialScrollKeyRef = useRef<string | null>(null)
+  const dragStateRef = useRef<GraphDragState | null>(null)
+  const currentRelPathRef = useRef('')
+
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const setMainView = useUIStore((s) => s.setMainView)
+
   const [graphData, setGraphData] = useState<GraphData | null>(null)
+  const [layout, setLayout] = useState<GraphLayoutState>({
+    nodes: [],
+    links: [],
+    world: DEFAULT_GRAPH_WORLD,
+    layoutKey: '',
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [minLinks, setMinLinks] = useState(0)
   const [showLabels, setShowLabels] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showLabels)
@@ -75,40 +258,66 @@ export function GraphView() {
   const [showFolderEdges, setShowFolderEdges] = useState(DEFAULT_GRAPH_DISPLAY_STATE.showFolderEdges)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [indexStatus, setIndexStatus] = useState<string | null>(null)
-  const [chargeStrength, setChargeStrength] = useState(-350)
-  const [linkDistance, setLinkDistance] = useState(80)
-  const [centerStrength, setCenterStrength] = useState(0.02)
   const [confirmInferOpen, setConfirmInferOpen] = useState(false)
   const [hiddenGroupIds, setHiddenGroupIds] = useState<Set<string>>(() => new Set())
-  const [activeFolderPath, setActiveFolderPath] = useState<string | null>(null)
-  const activeGraphMode: GraphMode = activeFolderPath == null ? 'group' : 'folder-scope'
-  const graphScopeKey = activeFolderPath == null ? 'groups' : `folder:${activeFolderPath || '.'}`
+  const [zoomValue, setZoomValue] = useState(1)
+  const [panning, setPanning] = useState<GraphPanState | null>(null)
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
+
+  const activeFolderPath: string | null = null
+  const activeGraphMode: GraphMode = 'folder'
+  const graphScopeKey = 'flat-folder'
+  const currentRelPath = useMemo(() => getCurrentRelPath(currentFilePath, vaultPath), [currentFilePath, vaultPath])
+
+  useEffect(() => {
+    currentRelPathRef.current = currentRelPath
+  }, [currentRelPath])
+
+  useEffect(() => {
+    worldRef.current = layout.world
+  }, [layout.world])
+
+  const applyGraphScrollAnchor = useCallback((anchor: GraphZoomAnchor, zoom: number) => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const world = worldRef.current
+    viewport.scrollLeft = Math.max(0, (anchor.graphX - world.minX) * zoom - anchor.focalX)
+    viewport.scrollTop = Math.max(0, (anchor.graphY - world.minY) * zoom - anchor.focalY)
+  }, [])
+
+  useLayoutEffect(() => {
+    zoomRef.current = zoomValue
+    desiredZoomRef.current = zoomValue
+    const anchor = pendingZoomAnchorRef.current
+    if (!anchor || Math.abs(anchor.zoom - zoomValue) > 0.001) return
+    pendingZoomAnchorRef.current = null
+    applyGraphScrollAnchor(anchor, zoomValue)
+  }, [applyGraphScrollAnchor, zoomValue])
 
   const groupColorMap = useMemo(() => {
-    const map = new Map<string, string>()
-    if (activeFolderPath != null) {
-      map.set(getGraphFolderNodeId(activeFolderPath), getGraphGroupColor(activeFolderPath || '.'))
-    }
-    if (!graphData) return map
-    const folders = graphData.nodes.filter((n: GraphNode) => n.type === 'folder')
-    folders.forEach((f: GraphNode) => {
-      map.set(f.id, getGraphGroupColor(f.filePath || f.id))
-    })
-    return map
-  }, [activeFolderPath, graphData])
+    if (!graphData) return new Map<string, string>()
+    const folders = graphData.nodes
+      .filter((node: GraphNode) => node.type === 'folder')
+      .map((folder: GraphNode) => ({
+        id: folder.id,
+        seed: folder.filePath || folder.id,
+      }))
+    return buildGraphGroupColorMap(folders)
+  }, [graphData])
 
   const loadGraph = useCallback(() => {
     if (!vaultPath) return
     const requestId = ++graphRequestIdRef.current
-    window.api.invoke('db:get-graph', { vaultPath, mode: activeGraphMode, rootPath: activeFolderPath ?? '' }).then((data) => {
+    window.api.invoke('db:get-graph', { vaultPath, mode: activeGraphMode, rootPath: '' }).then((data) => {
       if (requestId === graphRequestIdRef.current) setGraphData(data)
     })
-  }, [activeFolderPath, activeGraphMode, vaultPath])
+  }, [activeGraphMode, vaultPath])
 
   useEffect(() => {
     graphRequestIdRef.current += 1
     setGraphData(null)
-    setActiveFolderPath(null)
+    setLayout((current) => ({ ...current, nodes: [], links: [], layoutKey: '' }))
   }, [vaultPath])
 
   useEffect(() => {
@@ -154,7 +363,7 @@ export function GraphView() {
 
   useEffect(() => {
     if (!graphData) return
-    const folderIds = new Set(graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((n: GraphNode) => n.id))
+    const folderIds = new Set(graphData.nodes.filter((node: GraphNode) => node.type === 'folder').map((node: GraphNode) => node.id))
     setHiddenGroupIds((current) => {
       let changed = false
       const next = new Set<string>()
@@ -175,50 +384,15 @@ export function GraphView() {
     })
   }, [])
 
-  const openGraphFolder = useCallback((folderPath: string) => {
-    graphRequestIdRef.current += 1
-    setGraphData(null)
-    setHiddenGroupIds(new Set())
-    setActiveFolderPath(folderPath)
-  }, [])
-
   const openGraphOverview = useCallback(() => {
-    graphRequestIdRef.current += 1
     setGraphData(null)
     setHiddenGroupIds(new Set())
-    setActiveFolderPath(null)
-  }, [])
+    loadGraph()
+  }, [loadGraph])
 
   const openParentGraphFolder = useCallback(() => {
-    if (activeFolderPath == null || activeFolderPath === '') {
-      openGraphOverview()
-      return
-    }
-    const index = activeFolderPath.lastIndexOf('/')
-    if (index < 0) openGraphOverview()
-    else openGraphFolder(activeFolderPath.slice(0, index))
-  }, [activeFolderPath, openGraphFolder, openGraphOverview])
-
-  const applyGroupVisibility = useCallback((hiddenGroups: ReadonlySet<string>) => {
-    if (!svgRef.current) return
-    const svg = select(svgRef.current)
-    const nodeMap = nodeMapRef.current
-
-    svg.selectAll<SVGGElement, SimNode>('g.graph-node')
-      .classed('group-hidden', (d) => isGraphNodeHiddenByGroup(d, hiddenGroups))
-
-    svg.selectAll<SVGPathElement, SimLink>('path.graph-link')
-      .classed('group-hidden', (d) => {
-        const source = getLinkEndpoint(d.source, nodeMap)
-        const target = getLinkEndpoint(d.target, nodeMap)
-        return isGraphNodeHiddenByGroup(source, hiddenGroups) || isGraphNodeHiddenByGroup(target, hiddenGroups)
-      })
-  }, [])
-
-  useEffect(() => {
-    hiddenGroupIdsRef.current = hiddenGroupIds
-    applyGroupVisibility(hiddenGroupIds)
-  }, [applyGroupVisibility, hiddenGroupIds])
+    openGraphOverview()
+  }, [openGraphOverview])
 
   useEffect(() => {
     const cleanup = window.api.onAiMemoryProgress((data: { current: number; total: number; generated: number; skipped: number; failed: number; title?: string; state: 'running' | 'done' }) => {
@@ -230,17 +404,6 @@ export function GraphView() {
     })
     return () => cleanup()
   }, [])
-
-  const showLabelsRef = useRef(showLabels)
-  const showArrowsRef = useRef(showArrows)
-
-  useEffect(() => {
-    showLabelsRef.current = showLabels
-  }, [showLabels])
-
-  useEffect(() => {
-    showArrowsRef.current = showArrows
-  }, [showArrows])
 
   const runGlobalInference = async () => {
     if (!vaultPath) return
@@ -263,623 +426,448 @@ export function GraphView() {
     setTimeout(() => setIndexStatus(null), 3000)
   }
 
-  const updateHighlight = useCallback((currentRelPath: string) => {
-    if (!svgRef.current) return
-    const svg = select(svgRef.current)
+  const scrollToGraphPoint = useCallback((x: number, y: number, nextZoom: number) => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const clamped = clampGraphZoom(nextZoom)
+    const anchor: GraphZoomAnchor = {
+      graphX: x,
+      graphY: y,
+      focalX: viewport.clientWidth / 2,
+      focalY: viewport.clientHeight / 2,
+      zoom: clamped,
+    }
+    pendingZoomAnchorRef.current = anchor
+    desiredZoomRef.current = clamped
+    if (Math.abs(zoomRef.current - clamped) < 0.001) {
+      pendingZoomAnchorRef.current = null
+      applyGraphScrollAnchor(anchor, clamped)
+      return
+    }
+    setZoomValue(clamped)
+  }, [applyGraphScrollAnchor])
 
-    svg.selectAll<SVGGElement, SimNode>('g.graph-node').each(function (d) {
-      const group = select(this)
-      const isCurrent = d.filePath === currentRelPath
-      const isFolder = d.type === 'folder'
-      const r = getRadius(d)
+  const zoomAtViewportPoint = useCallback((nextZoom: number, clientX?: number, clientY?: number) => {
+    const viewport = viewportRef.current
+    const clamped = clampGraphZoom(nextZoom)
+    if (!viewport) {
+      zoomRef.current = clamped
+      desiredZoomRef.current = clamped
+      setZoomValue(clamped)
+      return
+    }
+    const rect = viewport.getBoundingClientRect()
+    const focalClientX = clientX ?? rect.left + viewport.clientWidth / 2
+    const focalClientY = clientY ?? rect.top + viewport.clientHeight / 2
+    const focalX = focalClientX - rect.left
+    const focalY = focalClientY - rect.top
+    const world = worldRef.current
+    const currentZoom = zoomRef.current
+    const graphX = (viewport.scrollLeft + focalX) / currentZoom + world.minX
+    const graphY = (viewport.scrollTop + focalY) / currentZoom + world.minY
 
-      group.select('.node-core')
-        .attr('r', r)
-        .attr('fill', getGraphNodeFill(d))
-        .attr('opacity', 1)
-
-      group.select('.node-pulse')
-        .style('display', isCurrent ? '' : 'none')
-
-      group.select('.node-label')
-        .classed('active', isCurrent)
-        .classed('hub-label', isFolder)
-        .classed('hidden', isGraphLabelHidden(d, showLabelsRef.current, isCurrent))
-    })
-  }, [])
+    const anchor: GraphZoomAnchor = { graphX, graphY, focalX, focalY, zoom: clamped }
+    pendingZoomAnchorRef.current = anchor
+    desiredZoomRef.current = clamped
+    if (Math.abs(zoomRef.current - clamped) < 0.001) {
+      pendingZoomAnchorRef.current = null
+      applyGraphScrollAnchor(anchor, clamped)
+      return
+    }
+    setZoomValue(clamped)
+  }, [applyGraphScrollAnchor])
 
   useEffect(() => {
-    if (!graphData || !svgRef.current) return
-    if (!graphBuiltForRef.current) return
-    const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
-    updateHighlight(currentRelPath)
-  }, [currentFilePath, updateHighlight, graphData])
-
-  useEffect(() => {
-    if (!graphData || !svgRef.current) return
-    if (graphData.nodes.length === 0) return
+    if (!graphData || graphData.nodes.length === 0) return
 
     if (workerRef.current) {
       workerRef.current.postMessage({ type: 'stop' })
       workerRef.current.terminate()
       workerRef.current = null
     }
-    tickHandlerRef.current = null
-    endHandlerRef.current = null
 
-    const graphDataKey = `${graphScopeKey}:${JSON.stringify(graphData)}`
-    const isVisibilityOnlyRerender = graphBuiltForRef.current === graphDataKey
-    const svg = select(svgRef.current)
-    const preservedTransform = zoomTransform(svgRef.current)
-    const width = svgRef.current.clientWidth
-    const height = svgRef.current.clientHeight
-    const nodeCount = graphData.nodes.length
-    // Very dense graphs skip expensive SVG filters and per-link gradients so
-    // initial render stays smooth. Medium-sized graphs keep the visual style.
-    const isHeavy = nodeCount > 80
-    const skipVisualEffects = nodeCount > 220
-    const isLarge = nodeCount > 200
+    const graphDataKey = `${vaultPath ?? ''}:${graphScopeKey}:${JSON.stringify(graphData)}`
+    const isSameGraph = graphBuiltForRef.current === graphDataKey
+    const viewport = viewportRef.current
+    const width = viewport?.clientWidth || 1200
+    const height = viewport?.clientHeight || 800
 
-    svg.selectAll('*').remove()
+    const { nodes, links } = buildGraphCanvasData(graphData, groupColorMap, activeFolderPath)
+    layoutGraphNodesByGroup(nodes, width, height)
+    assignGraphClusterAnchors(nodes)
 
-    const defs = svg.append('defs')
-
-    defs.append('marker')
-      .attr('id', 'arrowhead')
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 10)
-      .attr('refY', 0)
-      .attr('markerWidth', 4)
-      .attr('markerHeight', 4)
-      .attr('orient', 'auto')
-      .append('path')
-      .attr('d', 'M0,-4L10,0L0,4')
-      .attr('fill', 'context-stroke')
-
-    const g = svg.append('g').attr('transform', preservedTransform.toString())
-
-    const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
-
-    const linkCountMap = buildGraphRelationLinkCountMap(graphData.edges)
-
-    const folderIdSet = new Set(graphData.nodes.filter((n: GraphNode) => n.type === 'folder').map((n: GraphNode) => n.id))
-    const nodeToFolder = new Map<string, string>()
-    graphData.edges.forEach((e: GraphEdge) => {
-      if (folderIdSet.has(e.source) && !folderIdSet.has(e.target)) {
-        nodeToFolder.set(e.target, e.source)
+    const nodeMap = new Map<string, GraphCanvasNode>()
+    nodes.forEach((node) => {
+      nodeMap.set(node.id, node)
+      if (node.x != null && node.y != null) {
+        lastKnownNodePositionsRef.current.set(node.id, [node.x, node.y])
       }
     })
-
-    const nodesForLayout = isLarge && nodeCount > 500
-      ? graphData.nodes.filter((n: GraphNode) => n.type === 'folder' || (linkCountMap.get(n.id) || 0) > 0)
-      : graphData.nodes
-
-    // Pre-aggregate incoming folder colors per node in one O(E) pass instead
-    // of one O(E) scan per node (was O(N*E)).
-    const incomingColorsMap = new Map<string, Set<string>>()
-    graphData.edges.forEach((e: GraphEdge) => {
-      if (e.source === e.target) return
-      const srcFolderId = folderIdSet.has(e.source) ? e.source : nodeToFolder.get(e.source)
-      if (!srcFolderId) return
-      const srcColor = groupColorMap.get(srcFolderId)
-      if (!srcColor) return
-      let set = incomingColorsMap.get(e.target)
-      if (!set) {
-        set = new Set<string>()
-        incomingColorsMap.set(e.target, set)
-      }
-      set.add(srcColor)
-    })
-
-    const nodes: SimNode[] = nodesForLayout.map((n: { id: string; title: string; filePath?: string; type: 'file' | 'folder' }) => {
-      const folderId = getGraphNodeGroupId(n, nodeToFolder, activeFolderPath)
-      const color = folderId ? groupColorMap.get(folderId) : undefined
-
-      const incomingColors = incomingColorsMap.get(n.id)
-      const colorSet = new Set<string>()
-      if (color) colorSet.add(color)
-      if (incomingColors) incomingColors.forEach((c) => colorSet.add(c))
-
-      const colorsArr = [...colorSet]
-      return {
-        ...n,
-        linkCount: linkCountMap.get(n.id) || 0,
-        group: folderId,
-        color: colorsArr.length > 0 ? colorsArr[0] : undefined,
-        colors: colorsArr.length > 1 ? colorsArr : undefined,
-      }
-    })
-    const nodeIds = new Set(nodes.map((n: SimNode) => n.id))
-    const links: SimLink[] = graphData.edges
-      .filter((e: GraphEdge) => nodeIds.has(e.source) && nodeIds.has(e.target))
-      .map((e: GraphEdge) => ({ source: e.source, target: e.target, linkType: e.linkType, weight: e.weight }))
-
-    const nodeMap = new Map<string, SimNode>()
-    nodes.forEach((n) => nodeMap.set(n.id, n))
     nodeMapRef.current = nodeMap
 
-    // Layout cache: when the same vault + mode is opened again, seed node
-    // positions from the last simulation end so the graph doesn't fly
-    // around. High hit rate also lets us start at a low alpha so the
-    // worker barely needs to move anything.
-    const layoutCacheKey = `${vaultPath ?? ''}::${graphScopeKey}`
-    const cachedPositions = layoutCacheRef.current.get(layoutCacheKey)
-    const { hits: positionSeedHits, hitRate: positionSeedHitRate } = seedNodePositionsFromCaches(
-      nodes,
-      cachedPositions,
-      lastKnownNodePositionsRef.current,
-    )
-    const layoutStartAlpha = positionSeedHitRate >= 0.8 ? 0.08 : undefined
+    const world = getGraphCanvasWorld(width, height, nodes.length)
+    worldRef.current = world
+    setLayout({ nodes: [...nodes], links, world, layoutKey: graphDataKey })
 
-    // Link gradients for bone-joint style connections (skipped on very dense
-    // graphs; we fall back to a plain stroke and avoid rewriting <stop> coords
-    // each tick).
-    if (!skipVisualEffects) {
-      links.forEach((l, i) => {
-        const sId = typeof l.source === 'string' ? l.source : l.source.id
-        const tId = typeof l.target === 'string' ? l.target : l.target.id
-        const sNode = nodeMap.get(sId)
-        const tNode = nodeMap.get(tId)
-        const color = sNode?.color || tNode?.color || 'var(--text-tertiary)'
-        const grad = defs.append('linearGradient')
-          .attr('id', `link-grad-${i}`)
-          .attr('gradientUnits', 'userSpaceOnUse')
-        grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', '0.7')
-        grad.append('stop').attr('offset', '30%').attr('stop-color', color).attr('stop-opacity', '0.2')
-        grad.append('stop').attr('offset', '70%').attr('stop-color', color).attr('stop-opacity', '0.2')
-        grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', '0.7')
-      })
-    }
+    let cleanupWorker: (() => void) | undefined
+    if (nodes.length > 1) {
+      let pendingFrame = false
+      let stopped = false
+      const worker = new Worker(new URL('../../workers/graph-force-worker.ts', import.meta.url), { type: 'module' })
+      workerRef.current = worker
 
-    const linkGroup = g.append('g').attr('class', 'graph-links')
-    const link = linkGroup
-      .selectAll<SVGPathElement, SimLink>('path')
-      .data(links)
-      .join('path')
-      .attr('class', (l) => `graph-link link-${l.linkType}`)
-      .attr('stroke', (l, i) => {
-        if (!skipVisualEffects) return `url(#link-grad-${i})`
-        const sId = typeof l.source === 'string' ? l.source : l.source.id
-        const tId = typeof l.target === 'string' ? l.target : l.target.id
-        const sNode = nodeMap.get(sId)
-        const tNode = nodeMap.get(tId)
-        return sNode?.color || tNode?.color || 'var(--text-tertiary)'
-      })
-      .attr('stroke-width', (l) => Math.min(2.4, 0.8 + ((l.weight ?? 1) - 1) * 0.25))
-      .attr('marker-end', showArrowsRef.current ? 'url(#arrowhead)' : null)
-
-    const nodeGroup = g.append('g').attr('class', 'graph-nodes')
-      .selectAll<SVGGElement, SimNode>('g')
-      .data(nodes)
-      .join('g')
-      .attr('class', 'graph-node')
-      .classed('group-hidden', (d) => isGraphNodeHiddenByGroup(d, hiddenGroupIdsRef.current))
-
-    const isCurrentNode = (d: SimNode) => d.filePath === currentRelPath
-
-    // Build all <defs> filters (multi-color, folder glow, file glow at 5
-    // brightness levels, plus their hover variants) in one helper call.
-    // When visual effects are skipped we get empty maps and fall through to
-    // plain strokes.
-    const {
-      multiFilterIds,
-      multiHoverFilterIds,
-      folderFilterIds,
-      folderHoverFilterIds,
-      fileHoverFilterIds,
-      fileLevelFilterIds,
-    } = setupGraphFilters(defs, nodes, groupColorMap, skipVisualEffects)
-
-    const nodeIndexMap = new Map<string, number>()
-    nodes.forEach((n, i) => nodeIndexMap.set(n.id, i))
-
-    nodeGroup.append('circle')
-      .attr('class', 'node-core')
-      .attr('r', (d) => getRadius(d))
-      .attr('fill', (d) => getGraphNodeFill(d))
-      .attr('opacity', 1)
-      .attr('stroke', (d) => {
-        if (d.gradientId) return `url(#${d.gradientId})`
-        if (d.type === 'folder') return d.color || 'var(--accent)'
-        return d.color || 'var(--text-tertiary)'
-      })
-      .attr('stroke-width', (d) => d.type === 'folder' ? 1.5 : 1)
-      .attr('stroke-opacity', (d) => {
-        if (d.type === 'folder') return 0.9
-        const level = getLinkLevel(d.linkCount)
-        return 0.35 + level * 0.15
-      })
-      .attr('filter', (d) => {
-        const idx = nodeIndexMap.get(d.id)
-        if (idx != null && multiFilterIds.has(idx)) {
-          return `url(#${multiFilterIds.get(idx)})`
-        }
-        if (d.type === 'folder' && d.group) {
-          const fId = folderFilterIds.get(d.group)
-          return fId ? `url(#${fId})` : null
-        }
-        if (d.type === 'file' && d.group) {
-          const levelMap = fileLevelFilterIds.get(d.group)
-          if (levelMap) {
-            const level = getLinkLevel(d.linkCount)
-            const fId = levelMap.get(level)
-            return fId ? `url(#${fId})` : null
-          }
-        }
-        return null
-      })
-
-    // Label — show for folder nodes or current node
-    nodeGroup.append('text')
-      .text((d) => d.title)
-      .attr('class', (d) => `node-label${isCurrentNode(d) ? ' active' : d.type === 'folder' ? ' hub-label' : ''}${isGraphLabelHidden(d, showLabelsRef.current, isCurrentNode(d)) ? ' hidden' : ''}`)
-      .attr('text-anchor', 'middle')
-      .attr('y', (d) => {
-        const r = getRadius(d)
-        return d.type === 'folder' ? 4 : r + 14
-      })
-
-    // Current node: use hover filter for stronger glow + pulse ring
-    nodeGroup.filter(isCurrentNode).select('.node-core')
-      .attr('stroke-opacity', 0.9)
-      .attr('filter', (d) => {
-        const idx = nodeIndexMap.get(d.id)
-        if (idx != null && multiHoverFilterIds.has(idx)) {
-          return `url(#${multiHoverFilterIds.get(idx)})`
-        }
-        if (d.type === 'folder' && d.group) {
-          const fId = folderHoverFilterIds.get(d.group)
-          return fId ? `url(#${fId})` : null
-        }
-        if (d.type === 'file' && d.group) {
-          const fId = fileHoverFilterIds.get(d.group)
-          return fId ? `url(#${fId})` : null
-        }
-        return null
-      })
-
-    nodeGroup.filter(isCurrentNode).append('circle')
-      .attr('class', 'node-pulse')
-      .attr('r', (d) => getRadius(d) + 8)
-      .style('stroke', (d) => d.color || 'var(--accent)')
-      .style('stroke-width', '2px')
-
-    // Hover interactions
-    nodeGroup
-      .on('mouseenter', function (_event, d) {
-        const group = select(this)
-        group.select('.node-label').classed('hidden', false).attr('opacity', 1).style('fill', 'var(--text-primary)')
-
-        const r = getRadius(d)
-        const hoverR = Math.min(r * 1.25, r + 4)
-        group.select('.node-core')
-          .attr('r', hoverR)
-          .attr('stroke-opacity', 0.9)
-          .attr('filter', () => {
-            const idx = nodeIndexMap.get(d.id)
-            if (idx != null && multiHoverFilterIds.has(idx)) {
-              return `url(#${multiHoverFilterIds.get(idx)})`
-            }
-            if (d.type === 'folder' && d.group) {
-              const fId = folderHoverFilterIds.get(d.group)
-              return fId ? `url(#${fId})` : null
-            }
-            if (d.type === 'file' && d.group) {
-              const fId = fileHoverFilterIds.get(d.group)
-              return fId ? `url(#${fId})` : null
-            }
-            return null
-        })
-
-        const connectedIds = new Set<string>()
-        links.forEach((l) => {
-          const s = getLinkEndpointId(l.source)
-          const t = getLinkEndpointId(l.target)
-          if (s === d.id) connectedIds.add(t)
-          if (t === d.id) connectedIds.add(s)
-        })
-
-        nodeGroup.classed('dimmed', (n) => n.id !== d.id && !connectedIds.has(n.id))
-
-        nodeGroup.each(function (n) {
-          if (!connectedIds.has(n.id) || n.id === d.id) return
-          const connGroup = select(this)
-          connGroup.select('.node-core')
-            .attr('stroke-opacity', 0.9)
-            .attr('filter', () => {
-              const idx = nodeIndexMap.get(n.id)
-              if (idx != null && multiHoverFilterIds.has(idx)) {
-                return `url(#${multiHoverFilterIds.get(idx)})`
-              }
-              if (n.type === 'folder' && n.group) {
-                const fId = folderHoverFilterIds.get(n.group)
-                return fId ? `url(#${fId})` : null
-              }
-              if (n.type === 'file' && n.group) {
-                const fId = fileHoverFilterIds.get(n.group)
-                return fId ? `url(#${fId})` : null
-              }
-              return null
-            })
-          connGroup.select('.node-label').classed('hidden', false).attr('opacity', 1)
-        })
-
-        link.classed('highlighted', (l) => {
-          const s = getLinkEndpointId(l.source)
-          const t = getLinkEndpointId(l.target)
-          return s === d.id || t === d.id
-        }).classed('dimmed', (l) => {
-          const s = getLinkEndpointId(l.source)
-          const t = getLinkEndpointId(l.target)
-          return s !== d.id && t !== d.id
-        })
-      })
-      .on('mouseleave', function () {
-        nodeGroup.classed('dimmed', false)
-        link.classed('highlighted', false).classed('dimmed', false)
-
-        nodeGroup.each(function (d) {
-          const group = select(this)
-          const isCurrent = d.filePath === currentRelPath
-          const r = getRadius(d)
-          group.select('.node-core')
-            .attr('r', r)
-            .attr('fill', getGraphNodeFill(d))
-            .attr('opacity', 1)
-            .attr('stroke-opacity', d.type === 'folder' ? 0.8 : 0.35 + getLinkLevel(d.linkCount) * 0.15)
-            .attr('filter', () => {
-              const idx = nodeIndexMap.get(d.id)
-              if (idx != null && multiFilterIds.has(idx)) {
-                return `url(#${multiFilterIds.get(idx)})`
-              }
-              if (d.type === 'folder' && d.group) {
-                const fId = folderFilterIds.get(d.group)
-                return fId ? `url(#${fId})` : null
-              }
-              if (d.type === 'file' && d.group) {
-                const levelMap = fileLevelFilterIds.get(d.group)
-                if (levelMap) {
-                  const level = getLinkLevel(d.linkCount)
-                  const fId = levelMap.get(level)
-                  return fId ? `url(#${fId})` : null
-                }
-              }
-              return null
-            })
-          group.select('.node-label')
-            .classed('hidden', isGraphLabelHidden(d, showLabelsRef.current, isCurrent))
-            .attr('opacity', isCurrent ? 1 : 0.75)
-            .style('fill', isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)')
-        })
-      })
-
-    const dragBehavior = drag<SVGGElement, SimNode>()
-      .on('start', (event, d) => {
-        if (!event.active && workerRef.current) {
-          draggingIdRef.current = d.id
-          workerRef.current.postMessage({ type: 'drag-start', id: d.id, x: d.x ?? 0, y: d.y ?? 0 })
-        }
-        d.fx = d.x
-        d.fy = d.y
-      })
-      .on('drag', (event, d) => {
-        d.fx = event.x
-        d.fy = event.y
-        if (workerRef.current) {
-          workerRef.current.postMessage({ type: 'drag-move', id: d.id, x: event.x, y: event.y })
-        }
-      })
-      .on('end', (event, d) => {
-        if (!event.active && workerRef.current) {
-          workerRef.current.postMessage({ type: 'drag-end', id: d.id })
-        }
-        draggingIdRef.current = null
-        d.fx = null
-        d.fy = null
-      })
-
-    nodeGroup.call(dragBehavior)
-
-    nodeGroup.on('click', (_event, d) => {
-      if (!vaultPath) return
-      if (d.type === 'folder') {
-        openGraphFolder(d.filePath ?? '')
-        return
-      }
-      if (d.filePath) {
-        setMainView('editor')
-        requestAnimationFrame(() => {
-          openFile(`${vaultPath}/${d.filePath}`)
-        })
-      }
-    })
-
-    const zoomBehavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 8])
-      .on('zoom', (event) => {
-        g.attr('transform', event.transform)
-      })
-
-    svg.call(zoomBehavior)
-    svg.call(zoomBehavior.transform, preservedTransform)
-
-    const renderTick = () => {
-      link
-        .attr('d', (d) => {
-          const source = getLinkEndpoint(d.source, nodeMap)
-          const target = getLinkEndpoint(d.target, nodeMap)
-          if (!hasPosition(source) || !hasPosition(target)) return ''
-          const sx = source.x
-          const sy = source.y
-          const tx = target.x
-          const ty = target.y
-          const dx = tx - sx
-          const dy = ty - sy
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          const sr = getRadius(source)
-          const tr = getRadius(target)
-          const x1 = sx + (dx / dist) * sr
-          const y1 = sy + (dy / dist) * sr
-          const x2 = tx - (dx / dist) * tr
-          const y2 = ty - (dy / dist) * tr
-          return `M${x1},${y1} L${x2},${y2}`
-        })
-
-      // Update link gradient positions only when gradients exist.
-      if (!skipVisualEffects) {
-        link.each(function (d, i) {
-          const source = getLinkEndpoint(d.source, nodeMap)
-          const target = getLinkEndpoint(d.target, nodeMap)
-          if (!hasPosition(source) || !hasPosition(target)) return
-          const grad = select(defs.node()!).select(`#link-grad-${i}`)
-          if (!grad.empty()) {
-            grad.attr('x1', source.x).attr('y1', source.y)
-              .attr('x2', target.x).attr('y2', target.y)
-          }
+      const flushPositions = () => {
+        if (stopped) return
+        setLayout((current) => {
+          if (current.layoutKey !== graphDataKey) return current
+          return { ...current, nodes: [...nodes] }
         })
       }
 
-      nodeGroup.attr('transform', (d) => `translate(${d.x},${d.y})`)
-    }
-
-    let pendingFrame = false
-    const onEnd = () => {
-      const positionsToCache = new Map<string, [number, number]>()
-      for (const n of nodes) {
-        if (n.x != null && n.y != null) {
-          positionsToCache.set(n.id, [n.x, n.y])
-          lastKnownNodePositionsRef.current.set(n.id, [n.x, n.y])
+      worker.onmessage = (event: MessageEvent<GraphForceWorkerMessage>) => {
+        const data = event.data
+        if (data.type === 'end') {
+          flushPositions()
+          return
         }
-      }
-      if (positionsToCache.size > 0) {
-        layoutCacheRef.current.set(layoutCacheKey, positionsToCache)
+        for (let index = 0; index < data.payload.length; index += 3) {
+          const id = data.payload[index] as string
+          const node = nodeMap.get(id)
+          if (!node) continue
+          node.x = data.payload[index + 1] as number
+          node.y = data.payload[index + 2] as number
+          lastKnownNodePositionsRef.current.set(id, [node.x, node.y])
+        }
+        if (pendingFrame) return
+        pendingFrame = true
+        window.requestAnimationFrame(() => {
+          pendingFrame = false
+          flushPositions()
+        })
       }
 
-      // Skip the auto-zoom on cache-hit reruns; the graph is already in
-      // the user's expected layout and snapping the camera feels jarring.
-      if (shouldSkipGraphAutoZoom(positionSeedHitRate, isVisibilityOnlyRerender)) return
-      const currentNode = nodes.find((n) => n.filePath === currentRelPath)
-      if (currentNode && currentNode.x != null && currentNode.y != null) {
-        const { x, y } = currentNode
-        const transform = { k: 1.2, x: width / 2 - x * 1.2, y: height / 2 - y * 1.2 }
-        svg.transition().duration(800).call(
-          zoomBehavior.transform,
-          zoomIdentity.translate(transform.x, transform.y).scale(transform.k)
-        )
+      const isLarge = nodes.length > 220
+      const isHeavy = nodes.length > 90
+      const forceLinks = getGraphForceLayoutLinks(links)
+      const relationLinkCount = forceLinks.length
+      worker.postMessage({
+        type: 'start',
+        nodes: nodes.map((node) => ({
+          id: node.id,
+          linkCount: node.linkCount,
+          type: node.type,
+          x: node.x,
+          y: node.y,
+          anchorX: node.anchorX,
+          anchorY: node.anchorY,
+        })),
+        links: forceLinks.map((link) => ({
+          source: typeof link.source === 'string' ? link.source : link.source.id,
+          target: typeof link.target === 'string' ? link.target : link.target.id,
+        })),
+        width,
+        height,
+        params: {
+          chargeStrength: isLarge ? -180 : -280,
+          linkDistance: relationLinkCount > nodes.length ? 72 : 96,
+          centerStrength: isLarge ? 0.004 : 0.008,
+          clusterStrength: isLarge ? 0.045 : 0.07,
+          isLarge,
+          isHeavy,
+        },
+      })
+
+      cleanupWorker = () => {
+        stopped = true
+        worker.postMessage({ type: 'stop' })
+        worker.terminate()
+        if (workerRef.current === worker) workerRef.current = null
       }
     }
-    endHandlerRef.current = onEnd
 
-    applyGroupVisibility(hiddenGroupIdsRef.current)
-
-    const onTick = (positions: Array<string | number>) => {
-      for (let i = 0; i < positions.length; i += 3) {
-        const id = positions[i] as string
-        const node = nodeMap.get(id)
-        if (!node) continue
-        node.x = positions[i + 1] as number
-        node.y = positions[i + 2] as number
-        lastKnownNodePositionsRef.current.set(id, [node.x, node.y])
-      }
-      if (pendingFrame) return
-      pendingFrame = true
-      requestAnimationFrame(() => {
-        pendingFrame = false
-        renderTick()
+    if (!isSameGraph) {
+      window.requestAnimationFrame(() => {
+        const currentNode = nodes.find((node) => node.filePath === currentRelPathRef.current)
+        if (currentNode?.x == null || currentNode.y == null) return
+        scrollToGraphPoint(currentNode.x, currentNode.y, GRAPH_FOCUS_ZOOM)
       })
     }
-    tickHandlerRef.current = () => renderTick()
-
-    // Initial paint from cached positions so the SVG isn't blank while
-    // we wait for the first worker tick. Especially matters on cache hits
-    // where the worker barely moves anything.
-    if (positionSeedHits > 0) renderTick()
-
-    const worker = new Worker(new URL('../../workers/graph-force-worker.ts', import.meta.url), { type: 'module' })
-    workerRef.current = worker
-    worker.onmessage = (event: MessageEvent<{ type: 'tick'; payload: Array<string | number>; alpha: number } | { type: 'end' }>) => {
-      const data = event.data
-      if (data.type === 'tick') onTick(data.payload)
-      else if (data.type === 'end') onEnd()
-    }
-    worker.postMessage({
-      type: 'start',
-      nodes: nodes.map((n) => ({ id: n.id, linkCount: n.linkCount, type: n.type, x: n.x, y: n.y })),
-      links: links.map((l) => ({ source: typeof l.source === 'string' ? l.source : l.source.id, target: typeof l.target === 'string' ? l.target : l.target.id })),
-      width,
-      height,
-      params: { chargeStrength, linkDistance, centerStrength, isLarge, isHeavy },
-      startAlpha: layoutStartAlpha
-    })
 
     graphBuiltForRef.current = graphDataKey
-
-    return () => {
-      worker.postMessage({ type: 'stop' })
-      worker.terminate()
-      if (workerRef.current === worker) workerRef.current = null
-    }
-  }, [activeFolderPath, applyGroupVisibility, graphData, graphScopeKey, groupColorMap, openGraphFolder])
+    return cleanupWorker
+  }, [activeFolderPath, graphData, graphScopeKey, groupColorMap, scrollToGraphPoint, vaultPath])
 
   useEffect(() => {
-    if (!svgRef.current) return
-    const svg = select(svgRef.current)
-    svg.selectAll('.graph-link').attr('marker-end', showArrows ? 'url(#arrowhead)' : null)
-  }, [showArrows])
-
-  useEffect(() => {
-    if (!workerRef.current) return
-    const nodeCount = graphData?.nodes.length || 0
-    const isLarge = nodeCount > 200
-    const isHeavy = nodeCount > 80
-    workerRef.current.postMessage({
-      type: 'update-params',
-      params: { chargeStrength, linkDistance, centerStrength, isLarge, isHeavy }
+    if (!layout.layoutKey || layout.nodes.length === 0) return
+    const key = `${vaultPath ?? ''}:${layout.layoutKey}`
+    if (initialScrollKeyRef.current === key) return
+    initialScrollKeyRef.current = key
+    const viewport = viewportRef.current
+    if (!viewport) return
+    window.requestAnimationFrame(() => {
+      const world = worldRef.current
+      const graphCenterX = viewport.clientWidth / 2
+      const graphCenterY = viewport.clientHeight / 2
+      viewport.scrollLeft = Math.max(0, (graphCenterX - world.minX) * zoomRef.current - viewport.clientWidth / 2)
+      viewport.scrollTop = Math.max(0, (graphCenterY - world.minY) * zoomRef.current - viewport.clientHeight / 2)
     })
-  }, [chargeStrength, linkDistance, centerStrength, graphData])
+  }, [layout.layoutKey, layout.nodes.length, vaultPath])
 
-  useEffect(() => {
-    if (!svgRef.current || !graphData) return
-    const svg = select(svgRef.current)
-    const q = searchQuery.trim().toLowerCase()
-    const hiddenNodeIds = new Set<string>()
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, GraphCanvasNode>()
+    layout.nodes.forEach((node) => map.set(node.id, node))
+    return map
+  }, [layout.nodes])
 
-    svg.selectAll<SVGGElement, SimNode>('g.graph-node').each((d) => {
-      if (isGraphNodeHiddenByDisplay(d, { showFolders, showOrphans, minLinks })) {
-        hiddenNodeIds.add(d.id)
+  const hiddenNodeIds = useMemo(() => {
+    const hidden = new Set<string>()
+    layout.nodes.forEach((node) => {
+      if (isGraphNodeHiddenByGroup(node, hiddenGroupIds) || isGraphNodeHiddenByDisplay(node, { showFolders, showOrphans, minLinks })) {
+        hidden.add(node.id)
       }
-    }).classed('filtered', (d) => hiddenNodeIds.has(d.id))
-      .classed('dimmed', (d) => {
-        if (hiddenNodeIds.has(d.id)) return false
-        return !!q && !d.title.toLowerCase().includes(q)
-      })
-
-    svg.selectAll<SVGPathElement, SimLink>('path.graph-link').classed('filtered', (l) => {
-      const sourceId = getLinkEndpointId(l.source)
-      const targetId = getLinkEndpointId(l.target)
-      return hiddenNodeIds.has(sourceId) || hiddenNodeIds.has(targetId)
     })
-  }, [searchQuery, minLinks, showOrphans, showFolders, graphData])
+    return hidden
+  }, [hiddenGroupIds, layout.nodes, minLinks, showFolders, showOrphans])
 
-  useEffect(() => {
-    if (!svgRef.current || !graphData) return
-    const svg = select(svgRef.current)
-    const currentRelPath = currentFilePath ? currentFilePath.replace(vaultPath + '/', '').replace(vaultPath + '\\', '') : ''
-    svg.selectAll<SVGTextElement, SimNode>('g.graph-node .node-label')
-      .classed('hidden', (d) => isGraphLabelHidden(d, showLabels, d.filePath === currentRelPath))
-  }, [showLabels, currentFilePath, vaultPath, graphData])
+  const connectedNodeIds = useMemo(() => {
+    const connected = new Set<string>()
+    if (!hoveredNodeId) return connected
+    layout.links.forEach((link) => {
+      const sourceId = getLinkEndpointId(link.source)
+      const targetId = getLinkEndpointId(link.target)
+      if (sourceId === hoveredNodeId) connected.add(targetId)
+      if (targetId === hoveredNodeId) connected.add(sourceId)
+    })
+    return connected
+  }, [hoveredNodeId, layout.links])
 
-  useEffect(() => {
-    if (!svgRef.current) return
-    const svg = select(svgRef.current)
-    svg.selectAll<SVGPathElement, SimLink>('path.graph-link')
-      .classed('hidden-type', (l) => {
-        if (l.linkType === 'explicit') return !showExplicitEdges
-        if (l.linkType === 'inferred') return !showInferredEdges
-        if (l.linkType === 'folder') return !showFolderEdges
-        return false
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+
+  const visibleLinks = useMemo(() => {
+    const next: GraphRenderableLink[] = []
+    layout.links.forEach((link, index) => {
+      if (!isLinkTypeVisible(link, { showExplicitEdges, showInferredEdges, showFolderEdges })) return
+      const sourceId = getLinkEndpointId(link.source)
+      const targetId = getLinkEndpointId(link.target)
+      if (hiddenNodeIds.has(sourceId) || hiddenNodeIds.has(targetId)) return
+      const source = getLinkEndpoint(link.source, nodeMap)
+      const target = getLinkEndpoint(link.target, nodeMap)
+      if (!hasPosition(source) || !hasPosition(target)) return
+      next.push({ link, source, target, sourceId, targetId, index })
+    })
+    return next
+  }, [hiddenNodeIds, layout.links, nodeMap, showExplicitEdges, showFolderEdges, showInferredEdges])
+
+  const folderVisibleLinks = useMemo(
+    () => visibleLinks.filter(({ link }) => link.linkType === 'folder'),
+    [visibleLinks]
+  )
+
+  const relationVisibleLinks = useMemo(
+    () => visibleLinks.filter(({ link }) => link.linkType !== 'folder'),
+    [visibleLinks]
+  )
+
+  const getGraphPointFromPointer = useCallback((event: Pick<PointerEvent, 'clientX' | 'clientY'>) => {
+    const viewport = viewportRef.current
+    if (!viewport) return null
+    const rect = viewport.getBoundingClientRect()
+    const world = worldRef.current
+    const zoom = zoomRef.current
+    return {
+      x: (viewport.scrollLeft + event.clientX - rect.left) / zoom + world.minX,
+      y: (viewport.scrollTop + event.clientY - rect.top) / zoom + world.minY,
+    }
+  }, [])
+
+  const updateNodePosition = useCallback((id: string, x: number, y: number) => {
+    const node = nodeMapRef.current.get(id)
+    if (!node) return
+    node.x = x
+    node.y = y
+    lastKnownNodePositionsRef.current.set(id, [x, y])
+    setLayout((current) => {
+      if (!current.nodes.some((item) => item.id === id)) return current
+      return { ...current, nodes: [...current.nodes] }
+    })
+  }, [])
+
+  const activateGraphNode = useCallback((nodeId: string) => {
+    if (!vaultPath) return
+    const node = nodeMapRef.current.get(nodeId)
+    if (!node) return
+    if (node.type === 'folder') {
+      return
+    }
+    if (node.filePath) {
+      setMainView('editor')
+      requestAnimationFrame(() => {
+        openFile(`${vaultPath}/${node.filePath}`)
       })
-  }, [showExplicitEdges, showInferredEdges, showFolderEdges, graphData])
+    }
+  }, [openFile, setMainView, vaultPath])
+
+  useEffect(() => {
+    if (!draggingNodeId) return
+    const handlePointerMove = (event: PointerEvent) => {
+      const dragState = dragStateRef.current
+      if (!dragState) return
+      const point = getGraphPointFromPointer(event)
+      if (!point) return
+      const dx = event.clientX - dragState.startClientX
+      const dy = event.clientY - dragState.startClientY
+      if (!dragState.moved && Math.sqrt(dx * dx + dy * dy) > 3) {
+        dragState.moved = true
+      }
+      const x = point.x - dragState.offsetX
+      const y = point.y - dragState.offsetY
+      updateNodePosition(dragState.id, x, y)
+      workerRef.current?.postMessage({ type: 'drag-move', id: dragState.id, x, y })
+    }
+    const handlePointerUp = () => {
+      const dragState = dragStateRef.current
+      if (dragState) {
+        workerRef.current?.postMessage({ type: 'drag-end', id: dragState.id })
+        if (!dragState.moved) activateGraphNode(dragState.id)
+      }
+      dragStateRef.current = null
+      setDraggingNodeId(null)
+    }
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [activateGraphNode, draggingNodeId, getGraphPointFromPointer, updateNodePosition])
+
+  useEffect(() => {
+    if (!panning) return
+    const handlePointerMove = (event: PointerEvent) => {
+      const viewport = viewportRef.current
+      if (!viewport) return
+      viewport.scrollLeft = panning.scrollLeft - (event.clientX - panning.startX)
+      viewport.scrollTop = panning.scrollTop - (event.clientY - panning.startY)
+    }
+    const handlePointerUp = () => setPanning(null)
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [panning])
+
+  const handleCanvasWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    if (!event.ctrlKey && !event.metaKey) return
+    event.preventDefault()
+    const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+    zoomAtViewportPoint(desiredZoomRef.current * Math.exp(-delta * 0.002), event.clientX, event.clientY)
+  }
+
+  const handleCanvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-graph-node]')) return
+    if (target.closest('button,input,textarea,select,a')) return
+    if (event.button !== 0 && event.button !== 1) return
+    const viewport = viewportRef.current
+    if (!viewport) return
+    event.preventDefault()
+    setPanning({
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop
+    })
+  }
+
+  const handleNodePointerDown = (event: ReactPointerEvent<HTMLButtonElement>, node: GraphCanvasNode) => {
+    if (event.button !== 0) return
+    const point = getGraphPointFromPointer(event.nativeEvent)
+    if (!point) return
+    const x = node.x ?? point.x
+    const y = node.y ?? point.y
+    event.preventDefault()
+    event.stopPropagation()
+    dragStateRef.current = {
+      id: node.id,
+      offsetX: point.x - x,
+      offsetY: point.y - y,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      moved: false,
+    }
+    setDraggingNodeId(node.id)
+    workerRef.current?.postMessage({ type: 'drag-start', id: node.id, x, y })
+  }
+
+  const fitToView = useCallback(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const visibleNodes = layout.nodes.filter((node) => !hiddenNodeIds.has(node.id) && node.x != null && node.y != null)
+    if (visibleNodes.length === 0) return
+    const bounds = visibleNodes.reduce(
+      (acc, node) => {
+        const radius = node.type === 'folder' ? 68 : Math.max(24, getNodeRadius(node) + 20)
+        return {
+          minX: Math.min(acc.minX, (node.x ?? 0) - radius),
+          minY: Math.min(acc.minY, (node.y ?? 0) - radius),
+          maxX: Math.max(acc.maxX, (node.x ?? 0) + radius),
+          maxY: Math.max(acc.maxY, (node.y ?? 0) + radius),
+        }
+      },
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+    )
+    const width = Math.max(1, bounds.maxX - bounds.minX)
+    const height = Math.max(1, bounds.maxY - bounds.minY)
+    const nextZoom = clampGraphZoom(Math.min(1.55, (viewport.clientWidth - 96) / width, (viewport.clientHeight - 96) / height))
+    scrollToGraphPoint(bounds.minX + width / 2, bounds.minY + height / 2, nextZoom)
+  }, [hiddenNodeIds, layout.nodes, scrollToGraphPoint])
+
+  const canvasWorldStyle = {
+    width: layout.world.width * zoomValue,
+    height: layout.world.height * zoomValue,
+  }
+  const scaledWorldStyle = {
+    width: layout.world.width,
+    height: layout.world.height,
+    transform: `scale(${zoomValue})`,
+  }
+
+  const renderGraphEdge = ({ link, source, target, sourceId, targetId, index }: GraphRenderableLink) => {
+    const dx = target.x - source.x
+    const dy = target.y - source.y
+    const distance = Math.sqrt(dx * dx + dy * dy) || 1
+    const sourceRadius = getGraphNodeEdgeRadius(source)
+    const targetRadius = getGraphNodeEdgeRadius(target)
+    const x1 = source.x + (dx / distance) * sourceRadius
+    const y1 = source.y + (dy / distance) * sourceRadius
+    const x2 = target.x - (dx / distance) * targetRadius
+    const y2 = target.y - (dy / distance) * targetRadius
+    const length = Math.max(1, Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2))
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI
+    const edgeColor = source.color || target.color || 'var(--text-tertiary)'
+    const edgeTargetColor = target.color || source.color || 'var(--text-tertiary)'
+    const isCrossCluster = isGraphCrossClusterRelation(link, source, target)
+    const isHoverDimmed = hoveredNodeId != null && hoveredNodeId !== sourceId && hoveredNodeId !== targetId
+    const isHighlighted = hoveredNodeId === sourceId || hoveredNodeId === targetId
+    const style = {
+      left: x1 - layout.world.minX,
+      top: y1 - layout.world.minY,
+      width: length,
+      transform: `rotate(${angle}deg)`,
+      '--edge-color': edgeColor,
+      '--edge-target-color': edgeTargetColor,
+      '--edge-width': `${getGraphEdgeWidth(link)}px`,
+    } as CSSProperties
+    return (
+      <div
+        key={`${sourceId}->${targetId}:${link.linkType}:${index}`}
+        className={`graph-canvas-edge link-${link.linkType}${isCrossCluster ? ' is-cross-cluster' : ''}${showArrows ? ' has-arrow' : ''}${isHighlighted ? ' is-highlighted' : ''}${isHoverDimmed ? ' is-dimmed' : ''}`}
+        style={style}
+      />
+    )
+  }
 
   if (!graphData || graphData.nodes.length === 0) {
     return (
@@ -923,12 +911,6 @@ export function GraphView() {
         setShowInferredEdges={setShowInferredEdges}
         showFolderEdges={showFolderEdges}
         setShowFolderEdges={setShowFolderEdges}
-        chargeStrength={chargeStrength}
-        setChargeStrength={setChargeStrength}
-        linkDistance={linkDistance}
-        setLinkDistance={setLinkDistance}
-        centerStrength={centerStrength}
-        setCenterStrength={setCenterStrength}
         indexStatus={indexStatus}
         setIndexStatus={setIndexStatus}
         onOpenInferConfirm={() => setConfirmInferOpen(true)}
@@ -943,7 +925,90 @@ export function GraphView() {
         }}
         onBackToEditor={() => setMainView('editor')}
       />
-      <svg ref={svgRef} className="graph-svg" />
+
+      <div className="graph-canvas-stage">
+        <div
+          ref={viewportRef}
+          className={`graph-canvas-viewport${panning ? ' is-panning' : ''}`}
+          onWheel={handleCanvasWheel}
+          onPointerDown={handleCanvasPointerDown}
+        >
+          <div className="graph-canvas-world" style={canvasWorldStyle}>
+            <div className="graph-canvas-scaled" style={scaledWorldStyle}>
+              <div className="graph-canvas-edge-layer" aria-hidden="true">
+                {folderVisibleLinks.map(renderGraphEdge)}
+              </div>
+
+              <div className="graph-canvas-node-layer">
+                {layout.nodes.map((node) => {
+                  if (!hasPosition(node) || hiddenNodeIds.has(node.id)) return null
+                  const isCurrent = node.filePath === currentRelPath
+                  const isSearchDimmed = !!normalizedSearchQuery && !node.title.toLowerCase().includes(normalizedSearchQuery)
+                  const isHoverDimmed = hoveredNodeId != null && hoveredNodeId !== node.id && !connectedNodeIds.has(node.id)
+                  const nodeSize = getGraphNodeSize(node)
+                  const nodeStyle = {
+                    left: node.x - layout.world.minX,
+                    top: node.y - layout.world.minY,
+                    '--node-size': `${nodeSize}px`,
+                    '--node-core-size': `${Math.max(8, getNodeRadius(node) * 2)}px`,
+                    '--node-color': getGraphNodeColor(node),
+                    '--node-ring': getGraphNodeRing(node),
+                    '--node-fill': getGraphNodeFill(node),
+                  } as CSSProperties
+                  const labelHidden = isGraphLabelHidden(node, showLabels, isCurrent, {
+                    zoom: zoomValue,
+                    nodeCount: layout.nodes.length,
+                    isHovered: hoveredNodeId === node.id,
+                    isConnected: connectedNodeIds.has(node.id),
+                    isSearchMatch: !!normalizedSearchQuery && !isSearchDimmed,
+                  })
+                  const folderCount = node.noteCount ?? node.directNoteCount ?? node.linkCount
+                  return (
+                    <button
+                      key={node.id}
+                      data-graph-node
+                      type="button"
+                      className={`graph-canvas-node ${node.type}${isCurrent ? ' is-current' : ''}${isSearchDimmed || isHoverDimmed ? ' is-dimmed' : ''}${draggingNodeId === node.id ? ' is-dragging' : ''}`}
+                      style={nodeStyle}
+                      title={node.filePath || node.title}
+                      onPointerDown={(event) => handleNodePointerDown(event, node)}
+                      onMouseEnter={() => setHoveredNodeId(node.id)}
+                      onMouseLeave={() => setHoveredNodeId((current) => current === node.id ? null : current)}
+                    >
+                      {node.type === 'folder' ? (
+                        <>
+                          <span className="graph-canvas-folder-dot" />
+                          <span className="graph-canvas-folder-title">{node.title}</span>
+                          {folderCount > 0 && (
+                            <span className="graph-canvas-folder-count">{formatGraphNodeCount(folderCount)}</span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span className="graph-canvas-node-core" />
+                          <span className={`graph-canvas-node-label${isCurrent ? ' active' : ''}${labelHidden ? ' hidden' : ''}`}>{node.title}</span>
+                        </>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="graph-canvas-relation-edge-layer" aria-hidden="true">
+                {relationVisibleLinks.map(renderGraphEdge)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="graph-canvas-toolbar">
+          <button type="button" title={t('canvas.zoomOut')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current / 1.16)}>-</button>
+          <button type="button" className="graph-canvas-zoom-readout" title={t('canvas.zoomReset')} onClick={() => zoomAtViewportPoint(1)}>{Math.round(zoomValue * 100)}%</button>
+          <button type="button" title={t('canvas.zoomIn')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current * 1.16)}>+</button>
+          <button type="button" title={t('canvas.fitView')} onClick={fitToView}>Fit</button>
+        </div>
+      </div>
+
       <ConfirmModal
         open={confirmInferOpen}
         title="重新计算语义关联"

@@ -63,15 +63,19 @@ describe('getGraphData modes', () => {
     return { closeDatabase, byTitle }
   }
 
-  it('folder mode returns folder nodes + folder→file edges + explicit and inferred edges', async () => {
+  it('folder mode returns a flat folder/file graph with ownership edges plus explicit and inferred relation edges', async () => {
     const { getGraphData } = await import('../packages/main/src/services/indexer')
     const { closeDatabase, byTitle } = await setupVault()
 
     const graph = getGraphData(vaultPath, 'folder')
 
     expect(graph.nodes.some((n) => n.type === 'folder' && n.filePath === 'Folder')).toBe(true)
-    expect(graph.edges).toContainEqual(expect.objectContaining({ linkType: 'folder' }))
+    expect(graph.nodes.some((n) => n.type === 'folder' && n.filePath === 'Folder/Sub')).toBe(true)
+    expect(graph.nodes.some((n) => n.id === byTitle('E').id && n.filePath === 'Folder/Sub/E.md')).toBe(true)
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: 'folder:Folder', target: 'folder:Folder/Sub', linkType: 'folder' }))
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: 'folder:Folder/Sub', target: byTitle('E').id, linkType: 'folder' }))
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('B').id, linkType: 'explicit' }))
+    expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('B').id, target: byTitle('C').id, linkType: 'explicit' }))
     expect(graph.edges).toContainEqual(expect.objectContaining({ source: byTitle('A').id, target: byTitle('D').id, linkType: 'inferred' }))
 
     closeDatabase()
@@ -111,23 +115,29 @@ describe('getGraphData modes', () => {
     closeDatabase()
   })
 
-  it('folder-scope mode lazy-loads one directory level and aggregates deep file connections through child folders', async () => {
+  it('folder-scope mode flattens all descendant folders and files in the selected folder', async () => {
     const { getGraphData } = await import('../packages/main/src/services/indexer')
     const { closeDatabase, byTitle } = await setupVault()
 
     const graph = getGraphData(vaultPath, 'folder-scope', 'Folder')
 
+    expect(graph.nodes).toContainEqual(expect.objectContaining({ id: 'folder:Folder', type: 'folder', filePath: 'Folder' }))
     expect(graph.nodes).toContainEqual(expect.objectContaining({ id: byTitle('C').id, type: 'file', filePath: 'Folder/C.md' }))
     expect(graph.nodes).toContainEqual(expect.objectContaining({ id: 'folder:Folder/Sub', type: 'folder', filePath: 'Folder/Sub', noteCount: 1 }))
-    expect(graph.nodes.some((n) => n.id === byTitle('E').id)).toBe(false)
+    expect(graph.nodes).toContainEqual(expect.objectContaining({ id: byTitle('E').id, type: 'file', filePath: 'Folder/Sub/E.md' }))
     expect(graph.nodes.some((n) => n.id === byTitle('F').id)).toBe(false)
     expect(graph.edges).toContainEqual(expect.objectContaining({
-      source: byTitle('C').id,
+      source: 'folder:Folder',
       target: 'folder:Folder/Sub',
-      linkType: 'inferred',
-      weight: 1,
+      linkType: 'folder',
     }))
-    expect(graph.edges.some((e) => e.source === 'folder:Other' || e.target === 'folder:Other')).toBe(false)
+    expect(graph.edges).toContainEqual(expect.objectContaining({
+      source: byTitle('C').id,
+      target: byTitle('E').id,
+      linkType: 'inferred',
+    }))
+    expect(graph.edges.some((edge) => edge.linkType === 'explicit')).toBe(false)
+    expect(graph.edges.some((e) => e.source === 'folder:Other' || e.target === 'folder:Other' || e.source === byTitle('F').id || e.target === byTitle('F').id)).toBe(false)
 
     closeDatabase()
   })
