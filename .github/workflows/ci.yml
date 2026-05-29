@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Typecheck + Tests
+    name: Typecheck + Build + Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -33,6 +33,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm run typecheck
+
+      - name: Build smoke
+        run: pnpm run build
 
       - name: Tests
         run: pnpm test

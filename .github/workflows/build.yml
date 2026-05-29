@@ -21,7 +21,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: python -m pip install setuptools
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm exec electron-builder --win nsis --x64 --publish always
         env:
@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm exec electron-builder --mac dmg --x64 --publish always
         env:
@@ -65,7 +65,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm exec electron-builder --mac dmg --arm64 --publish always
         env:
@@ -86,7 +86,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm exec electron-builder --linux AppImage --x64 --publish always
         env:
