@@ -37,7 +37,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 - 证据：`manager.ts:151-188`、`supabase-provider.ts:88,129-132`、`onedrive-provider.ts:216,236-240`、`database.ts:26-41`
 - **修复**：所有 provider 的 push/pull/listRemoteFiles 改 Buffer 二进制通道（`readFileSync(path)` / `Buffer.from(await res.arrayBuffer())` / `writeFileSync(path, buf)`；OneDrive `graphRequest` 增加 `{raw}` 选项）。对文本 `.md/.json`，`md5(Buffer)==md5(utf-8)`，哈希与冲突判定不变。typecheck 通过、cloud 测试 6/6 通过。
 
-### 🔴 P0-2　删除不传播 + 已删笔记“复活”　— 🔧 待修复
+### 🔴 P0-2　删除不传播 + 已删笔记“复活”　— ✅ 已修复（4cb8e4e / 3599408 / ef28373）
 - 机制：`syncAll` 末尾对“远端有、本地无”的文件一律 `pullFile` 拉回（判据仅 `!existsSync`）；本地删除（watcher `unlink` / `file:delete`）从不通知云端，`SyncProvider` 接口无 `deleteRemote`。无 tombstone/manifest。
 - 后果：删一篇笔记→同步→它又回到原位；多设备间删除意图永久丢失。
 - 证据：`supabase-provider.ts:203-216`、`watcher.ts:102-115`、`provider.ts:24-38`（5 provider 一致）
@@ -156,7 +156,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 优先级 | 行动 | 工作量 | 收益 | 状态 |
 |---|---|---|---|---|
 | P0 | 同步走 Buffer 通道（修 index.db 损坏 + 打开附件同步） | 小 | 极高 | ✅ c919753 |
-| P0 | 同步引入 manifest/tombstone（修删除复活/不传播） | 中 | 极高 | 🔧 |
+| P0 | 同步引入 manifest 基线（修删除复活/不传播） | 中 | 极高 | ✅ ef28373 |
 | P0 | Agent/apply-fix 写盘经统一网关（指纹守卫 + trash + 回滚校验） | 中 | 极高 | 🔧 |
 | P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | 🔧 |
 | P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | 🔧 |
@@ -182,3 +182,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P1 主动建议限流失效（展示回写 shown_at） | `c219629` | NotificationCenter 送达即标 shown；630/630 测试通过 |
 | 2026-05-29 | P1 主动建议存储无限增长 | `da9565d` | 维护收尾激活 pruneExpired + 物理删除过期建议 |
 | 2026-05-29 | P1 可访问性（reduced-motion/对比度/focus） | `3c0f45f` | media query + text-tertiary #8a8a8a + 恢复焦点环 |
+| 2026-05-29 | P0-2 删除复活/不传播 | `4cb8e4e` `3599408` `ef28373` | 三方 reconcile（planSync）+ per-provider manifest 基线 + 全 provider deleteRemote；13 个新测试；643/643 通过 |

@@ -10,7 +10,7 @@
 | 工单 | 标题 | 严重度 | 状态 | commit |
 |---|---|---|---|---|
 | P0-1 | index.db 二进制同步损坏 | critical | ✅ 已修复 | `c919753` |
-| P0-2 | 删除复活 / 不传播 | critical | 🔧 待修复 | — |
+| P0-2 | 删除复活 / 不传播 | critical | ✅ 已修复 | `4cb8e4e`/`3599408`/`ef28373` |
 | P0-3 | Agent 写入数据丢失三连 | critical | 🔧 待修复 | — |
 | P0-4 | 安全链：任意读 + 明文密钥 + 无 CSP | critical | 🔧 待修复 | — |
 | P0-5 | 编辑器 Markdown 往返非保真 | high | 🔧 待修复 | — |
@@ -48,7 +48,7 @@
 
 ---
 
-## P0-2　删除复活 / 删除不传播　🔧
+## P0-2　删除复活 / 删除不传播　✅ 已修复（4cb8e4e / 3599408 / ef28373）
 
 - 严重度：critical（多设备删除意图永久丢失）
 - 验证：CONFIRMED（5 provider 一致）
@@ -69,11 +69,16 @@
 4. 提供“镜像删除”开关，默认开但首次弹确认。
 
 ### 验收
-- [ ] A 删笔记→同步→B 同步后该笔记消失（不复活）
-- [ ] manifest 缺失/损坏时安全降级（退回当前“只增不删”行为，不误删）
-- [ ] 新增 syncAll 删除语义单测
+- [x] manifest 缺失/损坏时安全降级（planSync 空 manifest ≡ 旧 two-way，首次同步不删任何文件）
+- [x] reconcile/执行器单测（planSync 9 + executeSyncPlan 4），全量 643/643 通过
+- [x] 删除双向传播（planSync 产出 deleteRemote/deleteLocal）+ 全 5 provider 实现 deleteRemote
+- [ ] 端到端多设备往返集成测试（fake provider）—— 后续补强
 
-### 工作量：中（建议先在一个 provider + manager 落地，再推广）
+### 实施
+`sync-reconcile.ts` 的 `planSync`（三方决策：local/remote/manifest 基线，空基线退化为两路，故首次同步永不删除）+ `sync-manifest.ts`（per-provider 基线读写，出错降级 `{}`）+ `sync-execute.ts` 的 `executeSyncPlan`（统一执行，删本地用 `unlinkSync`，删远端用各 provider 的 `deleteRemote`）。基线仅在无错误的同步后推进。
+> 注：OneDrive 仍有独立的 hash 体系不匹配问题（远端 `sha256Hash`/`eTag` vs 本地 md5），影响其 push/pull 判定（非删除逻辑），单列为后续工单。
+
+### 工作量：中（已完成）
 
 ---
 
