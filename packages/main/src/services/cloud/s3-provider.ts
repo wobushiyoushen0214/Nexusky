@@ -3,7 +3,9 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, extname, join, relative } from 'path'
 import { store } from '../store'
 import type { SyncFileInfo, SyncProvider, SyncResult } from './provider'
-import { decideSyncSide } from './conflict-detection'
+import { readManifest, writeManifest } from './sync-manifest'
+import { planSync, manifestFromLocal } from './sync-reconcile'
+import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 
 export interface S3Config {
   endpoint: string
@@ -216,45 +218,21 @@ export class S3SyncProvider implements SyncProvider {
 
   async syncAll(vaultPath: string): Promise<SyncResult> {
     if (!getConfig()) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置 S3'] }
-    const result: SyncResult = { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: [] }
     const remoteFiles = await this.listRemoteFiles()
-    const remoteMap = new Map(remoteFiles.map((file) => [file.path, file]))
-    const localFiles = collectLocalFiles(vaultPath)
-    result.total = localFiles.length
-    for (const filePath of localFiles) {
-      const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-      const localHash = createHash('md5').update(readFileSync(filePath)).digest('hex')
-      const remote = remoteMap.get(relPath)
-      if (!remote) {
-        if (await this.pushFile(vaultPath, filePath)) result.pushed++
-        else result.errors.push(`push failed: ${relPath}`)
-      } else {
-        const side = decideSyncSide({
-          localHash,
-          remoteHash: remote.hash,
-          localMtimeMs: statSync(filePath).mtimeMs,
-          remoteMtimeMs: new Date(remote.updatedAt).getTime()
-        })
-        if (side === 'conflict') {
-          result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
-        } else if (side === 'pull') {
-          if (await this.pullFile(vaultPath, relPath)) result.pulled++
-          else result.errors.push(`pull failed: ${relPath}`)
-        } else if (side === 'push') {
-          if (await this.pushFile(vaultPath, filePath)) result.pushed++
-          else result.errors.push(`push failed: ${relPath}`)
-        }
-      }
-      remoteMap.delete(relPath)
+    const localFiles = toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))
+    const manifest = readManifest(vaultPath, this.type)
+    const plan = planSync({ localFiles, remoteFiles, manifest })
+    const outcome = await executeSyncPlan(vaultPath, plan, this)
+    if (outcome.errors.length === 0) {
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))))
     }
-    for (const [relPath] of remoteMap) {
-      if (!existsSync(join(vaultPath, relPath))) {
-        result.total++
-        if (await this.pullFile(vaultPath, relPath)) result.pulled++
-        else result.errors.push(`pull failed: ${relPath}`)
-      }
+    return {
+      total: localFiles.length,
+      pushed: outcome.pushed,
+      pulled: outcome.pulled,
+      conflicts: plan.conflicts,
+      errors: outcome.errors
     }
-    return result
   }
 
   async pullAll(vaultPath: string): Promise<SyncResult> {

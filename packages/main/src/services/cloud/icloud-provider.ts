@@ -4,7 +4,9 @@ import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { homedir } from 'os'
 import { store } from '../store'
-import { decideSyncSide } from './conflict-detection'
+import { readManifest, writeManifest } from './sync-manifest'
+import { planSync, manifestFromLocal } from './sync-reconcile'
+import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 
 const ICLOUD_CONTAINER = 'iCloud~com~nexusky~notes'
 
@@ -122,62 +124,21 @@ export class ICloudSyncProvider implements SyncProvider {
     const base = getICloudBasePath()
     if (!base) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['iCloud Drive 不可用'] }
 
-    const result: SyncResult = { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: [] }
-
     const remoteFiles = await this.listRemoteFiles()
-    const remoteMap = new Map(remoteFiles.map((f) => [f.path, f]))
-
-    const localFiles = collectFiles(vaultPath)
-    result.total = localFiles.length
-
-    for (const filePath of localFiles) {
-      const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-      const content = readFileSync(filePath)
-      const localHash = createHash('md5').update(content).digest('hex')
-      const remote = remoteMap.get(relPath)
-
-      if (!remote) {
-        const ok = await this.pushFile(vaultPath, filePath)
-        if (ok) result.pushed++
-        else result.errors.push(`push failed: ${relPath}`)
-        remoteMap.delete(relPath)
-        continue
-      }
-
-      const localMtimeMs = statSync(filePath).mtimeMs
-      const remoteMtimeMs = new Date(remote.updatedAt).getTime()
-      const side = decideSyncSide({
-        localHash,
-        remoteHash: remote.hash,
-        localMtimeMs,
-        remoteMtimeMs
-      })
-
-      if (side === 'conflict') {
-        result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
-      } else if (side === 'pull') {
-        const ok = await this.pullFile(vaultPath, relPath)
-        if (ok) result.pulled++
-        else result.errors.push(`pull failed: ${relPath}`)
-      } else if (side === 'push') {
-        const ok = await this.pushFile(vaultPath, filePath)
-        if (ok) result.pushed++
-        else result.errors.push(`push failed: ${relPath}`)
-      }
-      remoteMap.delete(relPath)
+    const localFiles = toLocalFileInfos(vaultPath, collectFiles(vaultPath))
+    const manifest = readManifest(vaultPath, this.type)
+    const plan = planSync({ localFiles, remoteFiles, manifest })
+    const outcome = await executeSyncPlan(vaultPath, plan, this)
+    if (outcome.errors.length === 0) {
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectFiles(vaultPath))))
     }
-
-    for (const [relPath] of remoteMap) {
-      const fullPath = join(vaultPath, relPath)
-      if (!existsSync(fullPath)) {
-        const ok = await this.pullFile(vaultPath, relPath)
-        if (ok) result.pulled++
-        else result.errors.push(`pull failed: ${relPath}`)
-        result.total++
-      }
+    return {
+      total: localFiles.length,
+      pushed: outcome.pushed,
+      pulled: outcome.pulled,
+      conflicts: plan.conflicts,
+      errors: outcome.errors
     }
-
-    return result
   }
 
   async pullAll(vaultPath: string): Promise<SyncResult> {

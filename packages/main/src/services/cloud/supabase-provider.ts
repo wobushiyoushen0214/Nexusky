@@ -4,7 +4,9 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSy
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { logger } from '../logger'
-import { decideSyncSide } from './conflict-detection'
+import { readManifest, writeManifest } from './sync-manifest'
+import { planSync, manifestFromLocal } from './sync-reconcile'
+import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 
 interface NoteSyncRow {
   file_path: string
@@ -165,71 +167,25 @@ export class SupabaseSyncProvider implements SyncProvider {
     const client = getAdminClient() || getSupabaseClient()
     if (!client) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置云端'] }
 
-    const result: SyncResult = { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: [] }
-
     const remoteFiles = await this.listRemoteFiles()
-    const remoteMap = new Map(remoteFiles.map((f) => [f.path, f]))
+    const localFiles = toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))
+    const manifest = readManifest(vaultPath, this.type)
+    const plan = planSync({ localFiles, remoteFiles, manifest })
 
-    const localFiles = collectLocalFiles(vaultPath)
-    result.total = localFiles.length
-
-    const pushTasks: (() => Promise<void>)[] = []
-
-    for (const filePath of localFiles) {
-      const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-      const content = readFileSync(filePath)
-      const localHash = createHash('md5').update(content).digest('hex')
-      const remote = remoteMap.get(relPath)
-
-      if (!remote) {
-        pushTasks.push(async () => {
-          const ok = await this.pushFile(vaultPath, filePath)
-          if (ok) result.pushed++
-          else result.errors.push(`push failed: ${relPath}`)
-        })
-      } else {
-        const side = decideSyncSide({
-          localHash,
-          remoteHash: remote.hash,
-          localMtimeMs: statSync(filePath).mtimeMs,
-          remoteMtimeMs: new Date(remote.updatedAt).getTime()
-        })
-        if (side === 'conflict') {
-          result.conflicts.push({ path: relPath, localHash, remoteHash: remote.hash, remoteUpdatedAt: remote.updatedAt })
-        } else if (side === 'pull') {
-          pushTasks.push(async () => {
-            const ok = await this.pullFile(vaultPath, relPath)
-            if (ok) result.pulled++
-            else result.errors.push(`pull failed: ${relPath}`)
-          })
-        } else if (side === 'push') {
-          pushTasks.push(async () => {
-            const ok = await this.pushFile(vaultPath, filePath)
-            if (ok) result.pushed++
-            else result.errors.push(`push failed: ${relPath}`)
-          })
-        }
-      }
-      remoteMap.delete(relPath)
+    const outcome = await executeSyncPlan(vaultPath, plan, this)
+    const result: SyncResult = {
+      total: localFiles.length,
+      pushed: outcome.pushed,
+      pulled: outcome.pulled,
+      conflicts: plan.conflicts,
+      errors: outcome.errors
     }
 
-    await runConcurrent(pushTasks, 5)
-
-    const pullTasks: (() => Promise<void>)[] = []
-    for (const [relPath] of remoteMap) {
-      const fullPath = join(vaultPath, relPath)
-      if (!existsSync(fullPath)) {
-        result.total++
-        pullTasks.push(async () => {
-          const ok = await this.pullFile(vaultPath, relPath)
-          if (ok) result.pulled++
-          else result.errors.push(`pull failed: ${relPath}`)
-        })
-      }
+    // Only advance the deletion baseline after a clean sync, so a failed run
+    // never causes the next run to misclassify a file as deleted.
+    if (outcome.errors.length === 0) {
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))))
     }
-
-    await runConcurrent(pullTasks, 5)
-
     return result
   }
 
