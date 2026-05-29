@@ -362,6 +362,19 @@ export function pruneExpired(vaultPath: string, params: PruneExpiredParams = {})
   return result.changes ?? 0
 }
 
+export function deleteExpiredSuggestions(vaultPath: string, params: PruneExpiredParams = {}): number {
+  const db = getDatabase(vaultPath)
+  const now = params.now ?? Math.floor(Date.now() / 1000)
+  // Physically remove long-settled suggestions so the table can't grow forever.
+  const cutoff = now - (params.ageSeconds ?? PRUNE_AGE_SECONDS * 3)
+  const result = db.prepare(`
+    DELETE FROM proactive_suggestions
+    WHERE status IN ('expired', 'dismissed', 'opened')
+      AND created_at < ?
+  `).run(cutoff)
+  return result.changes ?? 0
+}
+
 export function getSuggestionById(vaultPath: string, id: string): ProactiveSuggestionRow | null {
   const db = getDatabase(vaultPath)
   return getById(db, id)

@@ -10,6 +10,7 @@ import { generateCognitiveReview, type CognitiveReviewResult } from './cognitive
 import type { EntityType } from './relation-candidates'
 import type { RelationClassifierProvider } from './relation-classifier'
 import { runProactiveCycle } from '../proactive/proactive-orchestrator'
+import { pruneExpired, deleteExpiredSuggestions } from '../proactive/proactive-store'
 
 export interface LongContextAnalysisJob {
   vaultPath: string
@@ -177,6 +178,16 @@ export async function runVaultLongContextMaintenance(
     } catch {
       // ignore
     }
+  }
+
+  try {
+    // Retention GC: expire stale pending/shown suggestions, then physically
+    // delete long-settled ones. Previously pruneExpired was never called and
+    // the table grew unbounded.
+    pruneExpired(params.vaultPath, { now: params.now })
+    deleteExpiredSuggestions(params.vaultPath, { now: params.now })
+  } catch {
+    // Retention GC must never break maintenance.
   }
 
   return { analyzed, review }
