@@ -48,9 +48,9 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 - C：回滚时 `previousContent` 缺失则 `writeFileSync(targetPath,'')` 清空文件而非中止。
 - 证据：`executor.ts:263-268`、`agent.ipc.ts:230-246`
 
-### 🔴 P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　— ✅ 已修复（a9118de）
-- 修复：普通 `file:*` IPC 统一走主进程可信 vault guard，配置读取只返回 `has*` 标记，生产响应注入 CSP 且 `index.html` 带 CSP meta，Markdown DOMPurify 改显式白名单，遥测默认关闭。
-- 验收：`p0-security` 覆盖 vault 外读拒绝、AI/cloud secret 不回传、CSP 存在、遥测 opt-out；typecheck 与全量测试通过。
+### 🔴 P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　— ✅ 已修复（a9118de / 65e725e）
+- 修复：普通 `file:*` IPC 统一走主进程可信 vault guard，配置读取只返回 `has*` 标记，生产响应注入 CSP 且 `index.html` 带 CSP meta，Markdown DOMPurify 改显式白名单，遥测默认关闭；`65e725e` 追加 dev CSP 兼容，生产仍禁 inline script，dev 仅为 Vite/React Refresh 放开必要 inline preamble。
+- 验收：`p0-security` 覆盖 vault 外读拒绝、AI/cloud secret 不回传、CSP 存在、遥测 opt-out；typecheck 与全量测试通过；后续 `p0-security vault-store` 重跑全量 655 tests 通过。
 - 仍需分发侧配合：macOS/Windows 代码签名与更新验签策略。
 
 ### 🔴 P0-5　编辑器 Markdown 往返非保真，破坏 Obsidian 语法　— ✅ 已修复（b3debd3）
@@ -159,7 +159,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P0 | 同步引入 manifest 基线（修删除复活/不传播） | 中 | 极高 | ✅ ef28373 |
 | P0 | Agent 写盘指纹守卫（回滚/重试不毁用户编辑） | 中 | 极高 | ✅ 3ac2cae |
 | P1 | apply-fix 写盘加预览/undo（对齐 Agent 安全标准）；file_create 回滚改走 trash | 中 | 中 | 🔧 |
-| P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | 🔧 |
+| P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | ✅ a9118de / 65e725e |
 | P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | 🔧 |
 | P1 | 主动建议限流生效：展示时回写 `shown_at`（修复失效） | 小 | 高 | ✅ c219629 |
 | P1 | “向量检索”二选一：接真实 embedding，或重命名+删死代码+改文案 | 中/大 | 高 | 🔧 |
@@ -185,5 +185,5 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P1 可访问性（reduced-motion/对比度/focus） | `3c0f45f` | media query + text-tertiary #8a8a8a + 恢复焦点环 |
 | 2026-05-29 | P0-2 删除复活/不传播 | `4cb8e4e` `3599408` `ef28373` | 三方 reconcile（planSync）+ per-provider manifest 基线 + 全 provider deleteRemote；13 个新测试；643/643 通过 |
 | 2026-05-29 | P0-3 Agent 回滚/重试数据丢失 | `3ac2cae` | 内容指纹守卫：写步骤记 afterHash，回滚/重试前校验，文件被用户改过则中止；2 个新测试；645/645 |
-| 2026-05-29 | P0-4 安全链（任意读/密钥/CSP/遥测） | `a9118de` | vault guard + secret redaction + CSP + DOMPurify 白名单 + telemetry opt-out；p0-security 覆盖 |
+| 2026-05-29 | P0-4 安全链（任意读/密钥/CSP/遥测） | `a9118de` `65e725e` | vault guard + secret redaction + CSP + DOMPurify 白名单 + telemetry opt-out；dev CSP 兼容 Vite/React Refresh；vault 读取/索引失败可恢复；p0-security/vault-store 覆盖 |
 | 2026-05-29 | P0-5 编辑器 Markdown 往返非保真 | `b3debd3` | 源文本保留式 Markdown merge；round-trip 保存测试覆盖 Obsidian 语法与 CRLF；653/653 通过 |

@@ -12,7 +12,7 @@
 | P0-1 | index.db 二进制同步损坏 | critical | ✅ 已修复 | `c919753` |
 | P0-2 | 删除复活 / 不传播 | critical | ✅ 已修复 | `4cb8e4e`/`3599408`/`ef28373` |
 | P0-3 | Agent 写入数据丢失三连 | critical | ✅ 已修复 | `3ac2cae` |
-| P0-4 | 安全链：任意读 + 明文密钥 + 无 CSP | critical | ✅ 已修复 | `a9118de` |
+| P0-4 | 安全链：任意读 + 明文密钥 + 无 CSP | critical | ✅ 已修复 | `a9118de`/`65e725e` |
 | P0-5 | 编辑器 Markdown 往返非保真 | high | ✅ 已修复 | `b3debd3` |
 
 ---
@@ -116,7 +116,7 @@
 
 ---
 
-## P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　✅ 已修复（a9118de）
+## P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　✅ 已修复（a9118de / 65e725e）
 
 - 严重度：critical（XSS → 偷本地文件 + 全部密钥）
 - 验证：CONFIRMED（A/B/C）
@@ -150,10 +150,12 @@
 - 主进程 `onHeadersReceived` 注入 CSP，并在 `index.html` 加 CSP meta；Markdown 渲染 DOMPurify 改显式白名单。
 - 日志遥测默认 opt-out，设置页新增“发送匿名错误报告”开关；关闭时清空队列，且 `device_id` 只在启用并实际发送时生成。
 - portable v2 secret key 改为静态种子 + 主机名 + 用户名 + home 目录派生；保留 legacy v2 解密 fallback，避免旧配置丢失。
+- `65e725e` 补齐 P0-4 后续硬化：CSP 构造抽到 `services/csp.ts`，生产继续保持 `script-src 'self'`，dev 模式只为 Vite/React Refresh 放开 inline preamble 和 localhost websocket；同时 vault 文件读取/索引失败改为可恢复错误态，侧边栏提供重试/重新选择，避免当前 vault 权限异常时整屏不可用。
 
 ### 验证
 - [x] `pnpm typecheck` 通过
 - [x] `pnpm test -- p0-security` 通过（实际跑全量：109 files / 649 tests）
+- [x] `65e725e` 后重新验证：`pnpm typecheck` 通过；`pnpm test -- p0-security vault-store` 实际跑全量 110 files / 655 tests 通过
 
 > 后续（分发侧，需证书/发布流水线配合）：启用 macOS/Windows 代码签名与更新验签策略。本次提交已修复应用内 “XSS → 任意读 → 明文 key → 无 CSP/遥测外发” 安全链。
 
