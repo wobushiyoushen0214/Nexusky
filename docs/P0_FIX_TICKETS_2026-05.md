@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | P0-1 | index.db 二进制同步损坏 | critical | ✅ 已修复 | `c919753` |
 | P0-2 | 删除复活 / 不传播 | critical | ✅ 已修复 | `4cb8e4e`/`3599408`/`ef28373` |
-| P0-3 | Agent 写入数据丢失三连 | critical | 🔧 待修复 | — |
+| P0-3 | Agent 写入数据丢失三连 | critical | ✅ 已修复 | `3ac2cae` |
 | P0-4 | 安全链：任意读 + 明文密钥 + 无 CSP | critical | 🔧 待修复 | — |
 | P0-5 | 编辑器 Markdown 往返非保真 | high | 🔧 待修复 | — |
 
@@ -82,7 +82,7 @@
 
 ---
 
-## P0-3　Agent 写入数据丢失三连　🔧
+## P0-3　Agent 写入数据丢失三连　✅ 已修复（3ac2cae）
 
 - 严重度：critical（AI 误删/覆盖用户已编辑内容，不可恢复）
 - 验证：CONFIRMED（A/B/C 全部）
@@ -103,12 +103,16 @@
 5. （战略）所有写经统一“vault 写入网关”：`assertPathInsideVault`(realpath) + 指纹守卫 + trash + `.bak` + 审计。
 
 ### 验收
-- [ ] Agent 建文件→用户编辑→回滚：文件进 trash 且内容保留（或拒绝删除）
-- [ ] 已完成写步骤 retry：用户改动不被静默覆盖
-- [ ] 损坏 rollbackData：回滚中止而非清空
-- [ ] 新增对应单测（现有 `agent-executor.test.ts` 仅覆盖 happy path）
+- [x] Agent 建文件→用户编辑→回滚：拒绝删除（`file_modified_since_create`），用户内容保留
+- [x] 已完成写步骤 retry：先安全回滚（指纹守卫），用户改动不被静默覆盖
+- [x] 损坏/缺失 rollbackData：回滚中止（`rollback_data_invalid`）而非清空
+- [x] 新增 2 个数据安全回归测试（edit-after-create / edit-after-write）；全量 645/645
 
-### 工作量：中
+### 实施
+统一内容指纹守卫：`file_create` 记 `createdHash`、`file_write`/`note_edit`/`task_update` 记 `afterHash`；回滚前比对磁盘现状与该 hash，不符则中止（`file_modified_since_create` / `file_modified_since_write`）。`retry-step` 对已完成写步骤先经守卫回滚再重跑。
+> 后续（已降为 P1）：`file_create` 回滚改走 `shell.trashItem`（当前为"拒绝删除"守卫，更安全但不可找回）；apply-fix 对齐同标准；单步失败自动回滚选项。
+
+### 工作量：中（已完成）
 
 ---
 

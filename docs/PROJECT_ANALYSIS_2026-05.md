@@ -42,7 +42,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 - 后果：删一篇笔记→同步→它又回到原位；多设备间删除意图永久丢失。
 - 证据：`supabase-provider.ts:203-216`、`watcher.ts:102-115`、`provider.ts:24-38`（5 provider 一致）
 
-### 🔴 P0-3　Agent 引擎数据丢失三连　— 🔧 待修复
+### 🔴 P0-3　Agent 引擎数据丢失三连　— ✅ 已修复（3ac2cae）
 - A：`file_create` 回滚无条件 `unlinkSync`，不校验文件是否已被用户编辑 → “Rollback All” 整删用户已写满内容的文件，不可恢复。`701d7df` 修了“空文件”但把伤害从“清空”升级为“硬删”，且未走 `.trash`。
 - B：对已完成的 `file_write`/`note_edit` 点 `retry-step`，用 plan 内容覆盖用户改动，并把“用户改动版”记成新的 `previousContent` → 原始内容永久丢失。
 - C：回滚时 `previousContent` 缺失则 `writeFileSync(targetPath,'')` 清空文件而非中止。
@@ -157,7 +157,8 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 |---|---|---|---|---|
 | P0 | 同步走 Buffer 通道（修 index.db 损坏 + 打开附件同步） | 小 | 极高 | ✅ c919753 |
 | P0 | 同步引入 manifest 基线（修删除复活/不传播） | 中 | 极高 | ✅ ef28373 |
-| P0 | Agent/apply-fix 写盘经统一网关（指纹守卫 + trash + 回滚校验） | 中 | 极高 | 🔧 |
+| P0 | Agent 写盘指纹守卫（回滚/重试不毁用户编辑） | 中 | 极高 | ✅ 3ac2cae |
+| P1 | apply-fix 写盘加预览/undo（对齐 Agent 安全标准）；file_create 回滚改走 trash | 中 | 中 | 🔧 |
 | P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | 🔧 |
 | P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | 🔧 |
 | P1 | 主动建议限流生效：展示时回写 `shown_at`（修复失效） | 小 | 高 | ✅ c219629 |
@@ -183,3 +184,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P1 主动建议存储无限增长 | `da9565d` | 维护收尾激活 pruneExpired + 物理删除过期建议 |
 | 2026-05-29 | P1 可访问性（reduced-motion/对比度/focus） | `3c0f45f` | media query + text-tertiary #8a8a8a + 恢复焦点环 |
 | 2026-05-29 | P0-2 删除复活/不传播 | `4cb8e4e` `3599408` `ef28373` | 三方 reconcile（planSync）+ per-provider manifest 基线 + 全 provider deleteRemote；13 个新测试；643/643 通过 |
+| 2026-05-29 | P0-3 Agent 回滚/重试数据丢失 | `3ac2cae` | 内容指纹守卫：写步骤记 afterHash，回滚/重试前校验，文件被用户改过则中止；2 个新测试；645/645 |
