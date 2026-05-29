@@ -4,7 +4,8 @@ import { applyMaintenanceFix, type ApplyFixAction } from '../services/maintenanc
 import type {
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
-  MaintenanceApplyAction
+  MaintenanceApplyAction,
+  MaintenanceApplyMode
 } from '@shared/types/ipc'
 
 export function registerMaintenanceIPC(): void {
@@ -32,12 +33,14 @@ export function registerMaintenanceIPC(): void {
     vaultPath: string
     item: KnowledgeMaintenanceItem
     action: MaintenanceApplyAction
+    mode?: MaintenanceApplyMode
     payload?: Record<string, unknown>
   }) => {
     return applyMaintenanceFix({
       vaultPath: params.vaultPath,
       item: params.item,
       action: params.action as ApplyFixAction,
+      mode: params.mode,
       payload: params.payload
     })
   })

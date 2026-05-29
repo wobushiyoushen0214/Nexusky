@@ -558,12 +558,26 @@ export interface KnowledgeMaintenanceItem {
 }
 
 export type MaintenanceApplyAction = 'open_note' | 'create_target' | 'mark_done' | 'archive' | 'add_alias'
+export type MaintenanceApplyMode = 'preview' | 'apply' | 'undo'
+
+export interface MaintenanceApplyPreview {
+  filePath: string
+  summary: string
+  before: string | null
+  after: string | null
+  beforeHash?: string
+  afterHash?: string
+  createsFile: boolean
+}
 
 export interface MaintenanceApplyResult {
   ok: boolean
   appliedAction: string
   resultMessage: string
   filePath?: string
+  preview?: MaintenanceApplyPreview
+  undoToken?: string
+  undoExpiresAt?: number
 }
 
 export interface IPCChannelMap {
@@ -924,6 +938,7 @@ export interface IPCChannelMap {
       vaultPath: string
       item: KnowledgeMaintenanceItem
       action: MaintenanceApplyAction
+      mode?: MaintenanceApplyMode
       payload?: Record<string, unknown>
     }
     result: MaintenanceApplyResult

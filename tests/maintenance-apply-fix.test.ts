@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { KnowledgeMaintenanceItem } from '../packages/shared/src/types/ipc'
 
 function makeItem(over: Partial<KnowledgeMaintenanceItem> = {}): KnowledgeMaintenanceItem {
@@ -99,6 +99,122 @@ describe('applyMaintenanceFix', () => {
     expect(updated).toContain('- [x] Second task')
   })
 
+  it('previews mark_done without writing the file', async () => {
+    const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
+    writeFileSync(join(vaultPath, 'Tasks.md'), '# Tasks\n\n- [ ] First task\n', 'utf-8')
+    const result = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+      action: 'mark_done',
+      mode: 'preview'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.preview?.before).toContain('- [ ] First task')
+    expect(result.preview?.after).toContain('- [x] First task')
+    expect(readFileSync(join(vaultPath, 'Tasks.md'), 'utf-8')).toContain('- [ ] First task')
+  })
+
+  it('undo restores the previous content when the file is unchanged after apply', async () => {
+    const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
+    const original = '# Tasks\n\n- [ ] First task\n'
+    writeFileSync(join(vaultPath, 'Tasks.md'), original, 'utf-8')
+    const applied = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+      action: 'mark_done'
+    })
+
+    expect(applied.ok).toBe(true)
+    expect(applied.undoToken).toBeTruthy()
+    const undone = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+      action: 'mark_done',
+      mode: 'undo',
+      payload: { undoToken: applied.undoToken }
+    })
+
+    expect(undone.ok).toBe(true)
+    expect(readFileSync(join(vaultPath, 'Tasks.md'), 'utf-8')).toBe(original)
+  })
+
+  it('refuses expired undo records', async () => {
+    const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
+    const original = '# Tasks\n\n- [ ] First task\n'
+    writeFileSync(join(vaultPath, 'Tasks.md'), original, 'utf-8')
+    const applied = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+      action: 'mark_done'
+    })
+
+    expect(applied.ok).toBe(true)
+    expect(applied.undoExpiresAt).toBeTruthy()
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime((applied.undoExpiresAt ?? 0) + 1)
+      const undone = applyMaintenanceFix({
+        vaultPath,
+        item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+        action: 'mark_done',
+        mode: 'undo',
+        payload: { undoToken: applied.undoToken }
+      })
+
+      expect(undone.ok).toBe(false)
+      expect(readFileSync(join(vaultPath, 'Tasks.md'), 'utf-8')).toContain('- [x] First task')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('refuses to apply a stale preview after the file changes', async () => {
+    const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
+    writeFileSync(join(vaultPath, 'Tasks.md'), '# Tasks\n\n- [ ] First task\n', 'utf-8')
+    const preview = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+      action: 'mark_done',
+      mode: 'preview'
+    })
+    writeFileSync(join(vaultPath, 'Tasks.md'), '# Tasks\n\n- [ ] Changed elsewhere\n', 'utf-8')
+
+    const applied = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+      action: 'mark_done',
+      payload: { expectedBeforeHash: preview.preview?.beforeHash }
+    })
+
+    expect(applied.ok).toBe(false)
+    expect(readFileSync(join(vaultPath, 'Tasks.md'), 'utf-8')).toContain('Changed elsewhere')
+  })
+
+  it('undo for create_target moves the created note to the vault trash', async () => {
+    const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
+    const item = makeItem({
+      type: 'fix_unresolved_link',
+      action: 'Resolve or create [[Ghost Note]]',
+      detail: 'Ghost Note'
+    })
+    const applied = applyMaintenanceFix({ vaultPath, item, action: 'create_target' })
+    expect(applied.ok).toBe(true)
+    expect(existsSync(join(vaultPath, 'Ghost Note.md'))).toBe(true)
+
+    const undone = applyMaintenanceFix({
+      vaultPath,
+      item,
+      action: 'create_target',
+      mode: 'undo',
+      payload: { undoToken: applied.undoToken }
+    })
+
+    expect(undone.ok).toBe(true)
+    expect(existsSync(join(vaultPath, 'Ghost Note.md'))).toBe(false)
+    expect(readdirSync(join(vaultPath, '.trash')).some((entry) => entry.endsWith('_Ghost Note.md'))).toBe(true)
+  })
+
   it('archive sets frontmatter.archived to true', async () => {
     const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
     writeFileSync(join(vaultPath, 'A.md'), '---\ntitle: A\n---\n\n# A\n', 'utf-8')
@@ -160,5 +276,14 @@ describe('applyMaintenanceFix', () => {
       action: 'something_else' as never
     })
     expect(result.ok).toBe(false)
+  })
+
+  it('rejects item paths outside the vault', async () => {
+    const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
+    expect(() => applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: '../outside.md' }),
+      action: 'open_note'
+    })).toThrow(/outside/)
   })
 })

@@ -4,12 +4,12 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
-import { ConfirmModal } from '../ConfirmModal'
 import { RelatedContextPanel } from '../long-context/RelatedContextPanel'
 import type {
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
-  MaintenanceApplyAction
+  MaintenanceApplyAction,
+  MaintenanceApplyPreview
 } from '@shared/types/ipc'
 import './maintenance.css'
 
@@ -48,6 +48,21 @@ const ACTIONS_BY_TYPE: Record<KnowledgeMaintenanceType, MaintenanceApplyAction[]
   maintain_bridge: ['open_note']
 }
 
+const MUTATING_ACTIONS = new Set<MaintenanceApplyAction>(['create_target', 'mark_done', 'archive', 'add_alias'])
+
+interface PendingMaintenancePreview {
+  item: KnowledgeMaintenanceItem
+  action: MaintenanceApplyAction
+  payload?: Record<string, unknown>
+  preview: MaintenanceApplyPreview
+}
+
+interface LastMaintenanceUndo {
+  item: KnowledgeMaintenanceItem
+  action: MaintenanceApplyAction
+  undoToken: string
+}
+
 export function MaintenanceQueuePanel() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
@@ -59,7 +74,8 @@ export function MaintenanceQueuePanel() {
   const [counts, setCounts] = useState<Partial<Record<KnowledgeMaintenanceType, number>>>({})
   const [loading, setLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
-  const [pendingBatch, setPendingBatch] = useState<{ targets: KnowledgeMaintenanceItem[]; action: MaintenanceApplyAction } | null>(null)
+  const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
+  const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
 
   const refresh = useCallback(async () => {
     if (!vaultPath) return
@@ -84,19 +100,59 @@ export function MaintenanceQueuePanel() {
     void refresh()
   }, [refresh, maintenancePanelSection])
 
-  const runFix = useCallback(async (item: KnowledgeMaintenanceItem, action: MaintenanceApplyAction, payload?: Record<string, unknown>) => {
+  const runFix = useCallback(async (
+    item: KnowledgeMaintenanceItem,
+    action: MaintenanceApplyAction,
+    payload?: Record<string, unknown>,
+    expectedBeforeHash?: string
+  ) => {
     if (!vaultPath) return
-    const result = await window.api.invoke('maintenance:apply-fix', { vaultPath, item, action, payload })
+    const applyPayload = expectedBeforeHash ? { ...(payload || {}), expectedBeforeHash } : payload
+    const result = await window.api.invoke('maintenance:apply-fix', { vaultPath, item, action, mode: 'apply', payload: applyPayload })
     if (!result.ok) {
       toast(result.resultMessage, 'error')
       return
     }
+    if (result.undoToken) setLastUndo({ item, action, undoToken: result.undoToken })
     toast(result.resultMessage, 'success')
     if (action === 'open_note' && result.filePath) {
       await useEditorStore.getState().openFile(`${vaultPath}/${result.filePath}`)
     }
     void refresh()
   }, [vaultPath, refresh])
+
+  const previewFix = useCallback(async (item: KnowledgeMaintenanceItem, action: MaintenanceApplyAction, payload?: Record<string, unknown>) => {
+    if (!vaultPath) return
+    if (!MUTATING_ACTIONS.has(action)) {
+      await runFix(item, action, payload)
+      return
+    }
+
+    const result = await window.api.invoke('maintenance:apply-fix', { vaultPath, item, action, mode: 'preview', payload })
+    if (!result.ok || !result.preview) {
+      toast(result.resultMessage, 'error')
+      return
+    }
+    setPendingPreview({ item, action, payload, preview: result.preview })
+  }, [vaultPath, runFix])
+
+  const undoLastFix = useCallback(async () => {
+    if (!vaultPath || !lastUndo) return
+    const result = await window.api.invoke('maintenance:apply-fix', {
+      vaultPath,
+      item: lastUndo.item,
+      action: lastUndo.action,
+      mode: 'undo',
+      payload: { undoToken: lastUndo.undoToken }
+    })
+    if (!result.ok) {
+      toast(result.resultMessage, 'error')
+      return
+    }
+    setLastUndo(null)
+    toast(result.resultMessage, 'success')
+    void refresh()
+  }, [vaultPath, lastUndo, refresh])
 
   const grouped = useMemo(() => items, [items])
 
@@ -120,14 +176,26 @@ export function MaintenanceQueuePanel() {
           </button>
         </div>
         {maintenancePanelSection === 'queue' && (
-          <button
-            type="button"
-            className="maintenance-panel__refresh"
-            onClick={() => void refresh()}
-            disabled={loading || !vaultPath}
-          >
-            {loading ? t('maintenance.refreshing') : t('maintenance.refresh')}
-          </button>
+          <div className="maintenance-panel__header-actions">
+            {lastUndo && (
+              <button
+                type="button"
+                className="maintenance-panel__refresh"
+                onClick={() => void undoLastFix()}
+                disabled={!vaultPath}
+              >
+                {t('maintenance.undoLast')}
+              </button>
+            )}
+            <button
+              type="button"
+              className="maintenance-panel__refresh"
+              onClick={() => void refresh()}
+              disabled={loading || !vaultPath}
+            >
+              {loading ? t('maintenance.refreshing') : t('maintenance.refresh')}
+            </button>
+          </div>
         )}
       </div>
       {maintenancePanelSection === 'context' ? (
@@ -165,33 +233,21 @@ export function MaintenanceQueuePanel() {
               <MaintenanceItemCard
                 key={`${item.filePath}-${item.type}-${idx}`}
                 item={item}
-                onAction={(action) => {
-                  if (action === 'mark_done') {
-                    setPendingBatch({ targets: [item], action })
-                    return
-                  }
-                  void runFix(item, action)
-                }}
+                onAction={(action) => void previewFix(item, action)}
                 onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
               />
             ))}
           </div>
         </>
       )}
-      {pendingBatch && (
-        <ConfirmModal
-          open={Boolean(pendingBatch)}
-          title={t('maintenance.confirm.markDoneTitle')}
-          message={t('maintenance.confirm.markDoneMessage', { count: pendingBatch.targets.length })}
-          confirmText={t('maintenance.confirm.confirm')}
-          onCancel={() => setPendingBatch(null)}
+      {pendingPreview && (
+        <MaintenancePreviewModal
+          pending={pendingPreview}
+          onCancel={() => setPendingPreview(null)}
           onConfirm={async () => {
-            const targets = pendingBatch.targets
-            const action = pendingBatch.action
-            setPendingBatch(null)
-            for (const target of targets) {
-              await runFix(target, action)
-            }
+            const pending = pendingPreview
+            setPendingPreview(null)
+            await runFix(pending.item, pending.action, pending.payload, pending.preview.beforeHash)
           }}
         />
       )}
@@ -236,6 +292,65 @@ function MaintenanceItemCard({ item, onAction, onFocusInBases }: MaintenanceItem
         >
           {t('maintenance.jumps.focusInBases')}
         </button>
+      </div>
+    </div>
+  )
+}
+
+interface MaintenancePreviewModalProps {
+  pending: PendingMaintenancePreview
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+function MaintenancePreviewModal({ pending, onConfirm, onCancel }: MaintenancePreviewModalProps) {
+  const { t } = useTranslation()
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCancel()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onCancel])
+
+  return (
+    <div className="maintenance-preview" role="presentation" onClick={onCancel}>
+      <div
+        className="maintenance-preview__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="maintenance-preview-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="maintenance-preview__header">
+          <div>
+            <h3 id="maintenance-preview-title">{t('maintenance.preview.title')}</h3>
+            <div className="maintenance-preview__summary">{pending.preview.summary}</div>
+          </div>
+          <button type="button" className="maintenance-preview__icon-btn" onClick={onCancel} aria-label={t('maintenance.preview.cancel')}>
+            x
+          </button>
+        </div>
+        <div className="maintenance-preview__path">{pending.preview.filePath}</div>
+        <div className="maintenance-preview__grid">
+          <div className="maintenance-preview__pane">
+            <div className="maintenance-preview__label">{t('maintenance.preview.before')}</div>
+            <pre>{pending.preview.before ?? t('maintenance.preview.noExistingFile')}</pre>
+          </div>
+          <div className="maintenance-preview__pane">
+            <div className="maintenance-preview__label">{t('maintenance.preview.after')}</div>
+            <pre>{pending.preview.after ?? t('maintenance.preview.noResult')}</pre>
+          </div>
+        </div>
+        <div className="maintenance-preview__actions">
+          <button type="button" className="maintenance-preview__button" onClick={onCancel}>
+            {t('maintenance.preview.cancel')}
+          </button>
+          <button type="button" className="maintenance-preview__button is-primary" onClick={onConfirm} autoFocus>
+            {t('maintenance.preview.apply')}
+          </button>
+        </div>
       </div>
     </div>
   )

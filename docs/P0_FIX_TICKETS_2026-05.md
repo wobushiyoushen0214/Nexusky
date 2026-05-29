@@ -110,7 +110,7 @@
 
 ### 实施
 统一内容指纹守卫：`file_create` 记 `createdHash`、`file_write`/`note_edit`/`task_update` 记 `afterHash`；回滚前比对磁盘现状与该 hash，不符则中止（`file_modified_since_create` / `file_modified_since_write`）。`retry-step` 对已完成写步骤先经守卫回滚再重跑。
-> 后续（已降为 P1）：`file_create` 回滚改走 `shell.trashItem`（当前为"拒绝删除"守卫，更安全但不可找回）；apply-fix 对齐同标准；单步失败自动回滚选项。
+> 后续（已降为 P1）：apply-fix 已对齐预览/undo/`.trash` 标准；Agent `file_create` 回滚已改走 vault `.trash` 并保留指纹守卫；单步失败自动回滚选项仍可继续收口。
 
 ### 工作量：中（已完成）
 
@@ -208,5 +208,7 @@
 | RAG 注入 | 检索片段用 `<retrieved_notes trust="low">` 包裹 + 声明“非指令”，并转义检索内容中的标签边界 | ✅ 已修复（本提交） |
 | 批量生成失败统计 | `ai:generate-notes` 返回 `failed/total/failedItems`，前端显示部分失败 | ✅ 已修复（本提交） |
 | provider 工具能力声明 | `BaseAIProvider.capabilities.toolCalling` 显式声明；不支持工具调用时 Agent 直接报错 | ✅ 已修复（本提交） |
+| apply-fix 预览/撤销 | maintenance apply-fix 先预览再应用，写入前校验 preview hash，应用后保留 undo 记录；create_target 撤销进入 `.trash` | ✅ 已修复（本提交） |
+| Agent file_create 回滚 trash | 未被用户改动的 Agent 新建文件回滚时移入 vault `.trash`，仍用 createdHash 阻止误删用户编辑 | ✅ 已修复（本提交） |
 | lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | 🔧 待修 |
 | 关系候选 O(N) 扫描 | 改走 embedding/FTS（大 vault 扩展性） | 🔧 待修 |

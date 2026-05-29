@@ -103,6 +103,7 @@
     },
     "refresh": "Refresh",
     "refreshing": "Refreshing...",
+    "undoLast": "Undo",
     "empty": "Nothing to do",
     "contextEmpty": "Open a note to view related context.",
     "noVault": "Open a vault first",
@@ -154,6 +155,15 @@
       "markDoneTitle": "Mark as done?",
       "markDoneMessage": "{{count}} task(s) will be marked as done.",
       "confirm": "Confirm"
+    },
+    "preview": {
+      "title": "Review change",
+      "before": "Before",
+      "after": "After",
+      "apply": "Apply",
+      "cancel": "Cancel",
+      "noExistingFile": "No existing file",
+      "noResult": "No resulting content"
     }
   },
   "citationLookup": {

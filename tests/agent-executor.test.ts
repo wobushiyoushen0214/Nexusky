@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -64,7 +64,7 @@ describe('agent executor', () => {
     expect(step.hasRollback).toBe(true)
   })
 
-  it('file_create rollback deletes the created file and clears its index', async () => {
+  it('file_create rollback moves the created file to trash and clears its index', async () => {
     const runId = createAgentRun({
       vaultPath,
       goal: 'g',
@@ -82,6 +82,7 @@ describe('agent executor', () => {
     const rollback = rollbackAgentStep(vaultPath, runId, 1)
     expect(rollback.ok).toBe(true)
     expect(existsSync(join(vaultPath, 'rollback.md'))).toBe(false)
+    expect(readdirSync(join(vaultPath, '.trash')).some((entry) => entry.endsWith('_rollback.md'))).toBe(true)
     expect(getAllNotes(vaultPath).some((n) => n.filePath === 'rollback.md')).toBe(false)
     const step = getAgentStep(vaultPath, runId, 1)!
     expect(step.status).toBe('rolled_back')

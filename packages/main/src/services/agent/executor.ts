@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
-import { dirname, isAbsolute, join, relative, resolve } from 'path'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'path'
 import { createHash } from 'crypto'
 import { indexNote, removeNoteIndex } from '../indexer'
 import { runAgentTool } from './tool-runner'
@@ -271,7 +271,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
           const current = createHash('md5').update(readFileSync(targetPath)).digest('hex')
           if (current !== createdHash) return { ok: false, error: 'file_modified_since_create' }
         }
-        unlinkSync(targetPath)
+        moveCreatedFileToTrash(vaultPath, targetPath)
       }
       removeNoteIndex(vaultPath, targetPath)
     } else if (kind === 'file_write' || kind === 'note_edit') {
@@ -343,6 +343,17 @@ function safeIndex(vaultPath: string, filePath: string): void {
   } catch {
     // tolerate reindex failures; vault watcher will catch up.
   }
+}
+
+function moveCreatedFileToTrash(vaultPath: string, targetPath: string): void {
+  const trashDir = join(vaultPath, '.trash')
+  mkdirSync(trashDir, { recursive: true })
+  const timestamp = Date.now()
+  const rand = Math.random().toString(36).slice(2, 6)
+  const trashPath = join(trashDir, `${timestamp}_${rand}_${basename(targetPath)}`)
+  renameSync(targetPath, trashPath)
+  const originalPath = relative(vaultPath, targetPath).replace(/\\/g, '/')
+  writeFileSync(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
 }
 
 function getStringArg(args: Record<string, unknown>, key: string): string {

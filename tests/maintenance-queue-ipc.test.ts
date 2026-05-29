@@ -31,17 +31,29 @@ describe('maintenance IPC types', () => {
       vaultPath: '/tmp/vault',
       item,
       action: 'mark_done',
+      mode: 'preview',
       payload: { taskText: 'Buy milk' }
     }
     const applyResult: MaintenanceApplyResult = {
       ok: true,
       appliedAction: 'mark_done',
-      resultMessage: 'Marked a task as done'
+      resultMessage: 'Marked a task as done',
+      preview: {
+        filePath: 'Demo.md',
+        summary: 'Marked a task as done',
+        before: '- [ ] Buy milk',
+        after: '- [x] Buy milk',
+        beforeHash: 'before',
+        afterHash: 'after',
+        createsFile: false
+      }
     }
 
     expect(getParams.type).toBe('review_open_tasks')
     expect(getResult.total).toBe(1)
     expect(applyParams.action).toBe('mark_done')
+    expect(applyParams.mode).toBe('preview')
     expect(applyResult.appliedAction).toBe('mark_done')
+    expect(applyResult.preview?.createsFile).toBe(false)
   })
 })

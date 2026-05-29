@@ -158,7 +158,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P0 | 同步走 Buffer 通道（修 index.db 损坏 + 打开附件同步） | 小 | 极高 | ✅ c919753 |
 | P0 | 同步引入 manifest 基线（修删除复活/不传播） | 中 | 极高 | ✅ ef28373 |
 | P0 | Agent 写盘指纹守卫（回滚/重试不毁用户编辑） | 中 | 极高 | ✅ 3ac2cae |
-| P1 | apply-fix 写盘加预览/undo（对齐 Agent 安全标准）；file_create 回滚改走 trash | 中 | 中 | 🔧 |
+| P1 | apply-fix 写盘加预览/undo（对齐 Agent 安全标准）；file_create 回滚改走 trash | 中 | 中 | ✅ 本提交 |
 | P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | ✅ a9118de / 65e725e |
 | P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | 🔧 |
 | P1 | 主动建议限流生效：展示时回写 `shown_at`（修复失效） | 小 | 高 | ✅ c219629 |
@@ -200,3 +200,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P2 文档入口死链与产品描述漂移 | 本提交 | README 文档入口改为现存文档；PROJECT_OVERVIEW 对齐 PRODUCT 的 Canvas 属性/时间图层与 Agent 非 ActivityBar 入口；docs-links 1/1、typecheck 通过 |
 | 2026-05-29 | P2 CI/build 冒烟与依赖冻结 | 本提交 | CI 增加 `pnpm run build`，release workflow 全部使用 `pnpm install --frozen-lockfile`，package 声明 Node/pnpm engine 与 packageManager；workflow-config 3/3、typecheck、build 通过 |
 | 2026-05-29 | P2 附件/图片同步缺口 | 本提交 | 云同步 provider 统一使用共享文件枚举器，纳入图片、PDF、普通附件与 memory JSON，同时继续排除内部索引/配置；sync-files/sync-execute/sync-reconcile/webdav-provider/s3-provider 21/21、typecheck、build 通过 |
+| 2026-05-30 | P1 apply-fix 预览/撤销 | 本提交 | maintenance apply-fix 统一生成预览再应用，写入前校验 preview hash，应用后写入 undo 记录；create_target 与 Agent file_create 撤销进入 `.trash`，维护面板增加预览确认与撤销入口；maintenance-apply-fix/maintenance-queue-ipc/agent-executor 29/29、typecheck、build 通过 |

@@ -103,6 +103,7 @@
     },
     "refresh": "刷新",
     "refreshing": "刷新中...",
+    "undoLast": "撤销",
     "empty": "暂无待办项",
     "contextEmpty": "打开一篇笔记后查看相关上下文。",
     "noVault": "请先打开一个 vault",
@@ -154,6 +155,15 @@
       "markDoneTitle": "标记为完成？",
       "markDoneMessage": "将把 {{count}} 项任务标记为完成。",
       "confirm": "确认"
+    },
+    "preview": {
+      "title": "检查变更",
+      "before": "变更前",
+      "after": "变更后",
+      "apply": "应用",
+      "cancel": "取消",
+      "noExistingFile": "无现有文件",
+      "noResult": "无变更内容"
     }
   },
   "citationLookup": {
