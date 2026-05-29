@@ -17,28 +17,12 @@ import { setupAutoUpdater } from './services/updater'
 import { startWebClipperServer, stopWebClipperServer } from './services/web-clipper'
 import { registerCrashReporting } from './services/crash-reporting'
 import { isExternalUrlAllowed, safeOpenExternal } from './services/external-url'
+import { buildContentSecurityPolicy } from './services/csp'
 
 registerCrashReporting()
 
 let mainWindow: BrowserWindow | null = null
 const windows = new Set<BrowserWindow>()
-
-function buildContentSecurityPolicy(): string {
-  const devConnect = process.env.ELECTRON_RENDERER_URL ? ' http://localhost:* ws://localhost:*' : ''
-  return [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    `connect-src 'self'${devConnect}`,
-    "img-src 'self' data: blob: file:",
-    "font-src 'self' data:",
-    "worker-src 'self' blob:",
-    "media-src 'self' data: blob: file:",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "frame-ancestors 'none'",
-  ].join('; ')
-}
 
 function configureContentSecurityPolicy(): void {
   const csp = buildContentSecurityPolicy()

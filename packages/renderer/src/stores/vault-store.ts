@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
+import { getErrorMessage } from '../utils/errors'
 import type { FileEntry } from '@shared/types/ipc'
 
 export const VAULT_FILES_REFRESHED_EVENT = 'nexusky:vault-files-refreshed'
@@ -12,6 +13,8 @@ export interface VaultFilesRefreshedDetail {
 interface VaultState {
   vaultPath: string | null
   files: FileEntry[]
+  fileError: string | null
+  indexError: string | null
   favorites: string[]
   setVaultPath: (path: string | null) => void
   setFiles: (files: FileEntry[]) => void
@@ -33,9 +36,11 @@ let refreshRequestId = 0
 export const useVaultStore = create<VaultState>((set, get) => ({
   vaultPath: null,
   files: [],
+  fileError: null,
+  indexError: null,
   favorites: loadFavorites(),
 
-  setVaultPath: (path) => set({ vaultPath: path }),
+  setVaultPath: (path) => set({ vaultPath: path, files: [], fileError: null, indexError: null }),
   setFiles: (files) => set({ files }),
 
   toggleFavorite: (path) => {
@@ -50,7 +55,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   selectVault: async () => {
     const path = await window.api.invoke('vault:select', undefined)
     if (path) {
-      set({ vaultPath: path })
+      get().setVaultPath(path)
       await get().refreshFiles()
       await get().indexVault()
     }
@@ -59,7 +64,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   createVault: async (name: string) => {
     const path = await window.api.invoke('vault:create', { name })
     if (path) {
-      set({ vaultPath: path })
+      get().setVaultPath(path)
       await get().refreshFiles()
       await get().indexVault()
     }
@@ -68,7 +73,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   loadVault: async () => {
     const path = await window.api.invoke('vault:get', undefined)
     if (path) {
-      set({ vaultPath: path })
+      get().setVaultPath(path)
       await get().refreshFiles()
       await get().indexVault()
     }
@@ -78,15 +83,30 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const { vaultPath } = get()
     if (!vaultPath) return
     const requestId = ++refreshRequestId
-    const files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+    let files: FileEntry[]
+    try {
+      files = await window.api.invoke('file:list-shallow', { dirPath: vaultPath })
+    } catch (error: unknown) {
+      if (requestId !== refreshRequestId) return
+      set({
+        files: [],
+        fileError: getErrorMessage(error, '无法读取当前笔记空间')
+      })
+      return
+    }
     if (requestId !== refreshRequestId) return
-    set({ files })
+    set({ files, fileError: null })
     window.dispatchEvent(new CustomEvent<VaultFilesRefreshedDetail>(VAULT_FILES_REFRESHED_EVENT, { detail: { vaultPath, changedPaths } }))
   },
 
   indexVault: async () => {
     const { vaultPath } = get()
     if (!vaultPath) return
-    await window.api.invoke('db:index-vault', { vaultPath })
+    try {
+      await window.api.invoke('db:index-vault', { vaultPath })
+      set({ indexError: null })
+    } catch (error: unknown) {
+      set({ indexError: getErrorMessage(error, '索引当前笔记空间失败') })
+    }
   }
 }))

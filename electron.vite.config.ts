@@ -1,7 +1,28 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+
+const DEV_RENDERER_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: blob: file:; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' data: blob: file:; object-src 'none'; base-uri 'none'"
+
+function rendererDevCspPlugin(): Plugin {
+  let isDevServer = false
+  return {
+    name: 'nexusky-renderer-dev-csp',
+    enforce: 'pre',
+    configResolved(config) {
+      isDevServer = config.command === 'serve'
+    },
+    transformIndexHtml(html) {
+      if (!isDevServer) return html
+      return html.replace(
+        /(<meta http-equiv="Content-Security-Policy" content=")[^"]*(" \/>)/,
+        `$1${DEV_RENDERER_CSP}$2`
+      )
+    }
+  }
+}
 
 export default defineConfig({
   main: {
@@ -37,7 +58,7 @@ export default defineConfig({
     server: {
       port: 5188
     },
-    plugins: [react(), tailwindcss()],
+    plugins: [rendererDevCspPlugin(), react(), tailwindcss()],
     optimizeDeps: {
       include: ['dompurify']
     },

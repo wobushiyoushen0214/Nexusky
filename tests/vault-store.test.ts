@@ -84,4 +84,16 @@ describe('vault store file refresh', () => {
 
     expect(useVaultStore.getState().files).toEqual(newest)
   })
+
+  it('keeps the app recoverable when the current vault cannot be read', async () => {
+    const invoke = vi.fn().mockRejectedValue(new Error("EPERM: operation not permitted, scandir '/vault'"))
+    installWindowMock(invoke)
+    const { useVaultStore } = await import('../packages/renderer/src/stores/vault-store')
+
+    useVaultStore.getState().setVaultPath('/vault')
+    await expect(useVaultStore.getState().refreshFiles()).resolves.toBeUndefined()
+
+    expect(useVaultStore.getState().files).toEqual([])
+    expect(useVaultStore.getState().fileError).toContain('EPERM')
+  })
 })

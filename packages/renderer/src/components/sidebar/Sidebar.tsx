@@ -40,6 +40,8 @@ function filterFiles(entries: FileEntry[], query: string): FileEntry[] {
 export function Sidebar({ width = 240 }: { width?: number }) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const files = useVaultStore((s) => s.files)
+  const fileError = useVaultStore((s) => s.fileError)
+  const indexError = useVaultStore((s) => s.indexError)
   const favorites = useVaultStore((s) => s.favorites)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
   const selectVault = useVaultStore((s) => s.selectVault)
@@ -324,7 +326,37 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           setBlankContextMenu({ x: e.clientX, y: e.clientY })
         }}
       >
-        <VirtualFileTree key={treeKey} entries={sortedFiles} defaultExpanded={defaultExpanded} />
+        {fileError ? (
+          <div style={{ padding: '18px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>无法读取笔记空间</div>
+              <div style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'break-word' }}>{fileError}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => refreshFiles()}
+                style={{ height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
+              >
+                重试
+              </button>
+              <button
+                onClick={() => selectVault()}
+                style={{ height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 12, cursor: 'pointer' }}
+              >
+                重新选择
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {indexError && (
+              <div style={{ margin: '0 4px 8px 0', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.5 }}>
+                索引失败：{indexError}
+              </div>
+            )}
+            <VirtualFileTree key={treeKey} entries={sortedFiles} defaultExpanded={defaultExpanded} />
+          </>
+        )}
       </div>
       {blankContextMenu && (
         <ContextMenu

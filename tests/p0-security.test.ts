@@ -85,4 +85,16 @@ describe('P0 security guards', () => {
     expect(getTelemetryPrefs()).toEqual({ enabled: true })
     expect(setTelemetryPrefs({ enabled: false })).toEqual({ enabled: false })
   })
+
+  it('keeps production CSP strict while allowing the Vite dev preamble', async () => {
+    const { buildContentSecurityPolicy } = await import('../packages/main/src/services/csp')
+
+    const prodDirectives = buildContentSecurityPolicy(false).split('; ')
+    const devCsp = buildContentSecurityPolicy(true)
+
+    expect(prodDirectives).toContain("script-src 'self'")
+    expect(prodDirectives).not.toContain("script-src 'self' 'unsafe-inline'")
+    expect(devCsp).toContain("script-src 'self' 'unsafe-inline'")
+    expect(devCsp).toContain("connect-src 'self' http://localhost:* ws://localhost:*")
+  })
 })
