@@ -99,7 +99,7 @@ export class ICloudSyncProvider implements SyncProvider {
     const files = collectFiles(base)
     return files.map((f) => {
       const relPath = relative(base, f).replace(/\\/g, '/')
-      const content = readFileSync(f, 'utf-8')
+      const content = readFileSync(f)
       const hash = createHash('md5').update(content).digest('hex')
       const stat = statSync(f)
       return { path: relPath, hash, updatedAt: stat.mtime.toISOString() }
@@ -120,7 +120,7 @@ export class ICloudSyncProvider implements SyncProvider {
 
     for (const filePath of localFiles) {
       const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-      const content = readFileSync(filePath, 'utf-8')
+      const content = readFileSync(filePath)
       const localHash = createHash('md5').update(content).digest('hex')
       const remote = remoteMap.get(relPath)
 
@@ -183,7 +183,7 @@ export class ICloudSyncProvider implements SyncProvider {
       if (!existsSync(fullPath)) {
         needPull = true
       } else {
-        const content = readFileSync(fullPath, 'utf-8')
+        const content = readFileSync(fullPath)
         const localHash = createHash('md5').update(content).digest('hex')
         if (localHash !== remote.hash) needPull = true
       }

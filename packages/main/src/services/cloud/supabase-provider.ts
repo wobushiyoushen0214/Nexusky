@@ -85,7 +85,9 @@ export class SupabaseSyncProvider implements SyncProvider {
 
     const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
     const storagePath = encodeStoragePath(relPath)
-    const content = readFileSync(filePath, 'utf-8')
+    // 二进制安全：用 Buffer 读取，避免 index.db 等非 UTF-8 文件被损坏。
+    // 对纯文本 .md/.json，md5(Buffer) 与 md5(utf-8 字符串) 结果一致，哈希语义不变。
+    const content = readFileSync(filePath)
     const hash = createHash('md5').update(content).digest('hex')
 
     const contentType = extname(filePath) === '.json'
@@ -126,10 +128,10 @@ export class SupabaseSyncProvider implements SyncProvider {
       return false
     }
 
-    const content = await data.text()
+    const content = Buffer.from(await data.arrayBuffer())
     const fullPath = join(vaultPath, relPath)
     mkdirSync(dirname(fullPath), { recursive: true })
-    writeFileSync(fullPath, content, 'utf-8')
+    writeFileSync(fullPath, content)
     return true
   }
 
@@ -162,7 +164,7 @@ export class SupabaseSyncProvider implements SyncProvider {
 
     for (const filePath of localFiles) {
       const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-      const content = readFileSync(filePath, 'utf-8')
+      const content = readFileSync(filePath)
       const localHash = createHash('md5').update(content).digest('hex')
       const remote = remoteMap.get(relPath)
 
@@ -236,7 +238,7 @@ export class SupabaseSyncProvider implements SyncProvider {
       if (!existsSync(fullPath)) {
         needPull = true
       } else {
-        const content = readFileSync(fullPath, 'utf-8')
+        const content = readFileSync(fullPath)
         const localHash = createHash('md5').update(content).digest('hex')
         if (localHash !== remote.hash) needPull = true
       }

@@ -180,10 +180,10 @@ export class WebDavSyncProvider implements SyncProvider {
     if (!config) return false
     const res = await request(config, buildWebDavUrl(config, relPath), { method: 'GET' })
     if (!res.ok) return false
-    const content = await res.text()
+    const content = Buffer.from(await res.arrayBuffer())
     const fullPath = join(vaultPath, relPath)
     mkdirSync(dirname(fullPath), { recursive: true })
-    writeFileSync(fullPath, content, 'utf-8')
+    writeFileSync(fullPath, content)
     return true
   }
 
@@ -199,7 +199,7 @@ export class WebDavSyncProvider implements SyncProvider {
     for (const path of relPaths) {
       const file = await request(config, buildWebDavUrl(config, path), { method: 'GET' })
       if (!file.ok) continue
-      const content = await file.text()
+      const content = Buffer.from(await file.arrayBuffer())
       files.push({
         path,
         hash: createHash('md5').update(content).digest('hex'),

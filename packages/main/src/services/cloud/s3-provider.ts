@@ -189,7 +189,7 @@ export class S3SyncProvider implements SyncProvider {
     if (!res.ok) return false
     const fullPath = join(vaultPath, relPath)
     mkdirSync(dirname(fullPath), { recursive: true })
-    writeFileSync(fullPath, await res.text(), 'utf-8')
+    writeFileSync(fullPath, Buffer.from(await res.arrayBuffer()))
     return true
   }
 

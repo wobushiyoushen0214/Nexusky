@@ -50,7 +50,7 @@ function saveConfig(config: OneDriveConfig): void {
   store.set('onedriveConfig', config)
 }
 
-async function graphRequest<T = unknown>(path: string, options: { method?: string; body?: GraphRequestBody; headers?: Record<string, string> } = {}): Promise<T> {
+async function graphRequest<T = unknown>(path: string, options: { method?: string; body?: GraphRequestBody; headers?: Record<string, string>; raw?: boolean } = {}): Promise<T> {
   const config = getConfig()
   if (!config) throw new Error('OneDrive 未配置')
 
@@ -83,6 +83,10 @@ async function graphRequest<T = unknown>(path: string, options: { method?: strin
     throw new Error(`Graph API ${response.status}: ${text}`)
   }
 
+  // 二进制安全：raw 模式直接返回字节，供 index.db 等非文本文件下载使用。
+  if (options.raw) {
+    return Buffer.from(await response.arrayBuffer()) as T
+  }
   const contentType = response.headers.get('content-type') || ''
   if (contentType.includes('application/json')) {
     return await response.json() as T
@@ -213,14 +217,14 @@ export class OneDriveSyncProvider implements SyncProvider {
   async pushFile(vaultPath: string, filePath: string): Promise<boolean> {
     try {
       const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-      const content = readFileSync(filePath, 'utf-8')
+      const content = readFileSync(filePath)
       const remotePath = `${this.folder}/${relPath}`
       const encodedPath = remotePath.split('/').map(encodeURIComponent).join('/')
 
       await graphRequest(`/me/drive/root:${encodedPath}:/content`, {
         method: 'PUT',
         body: content,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        headers: { 'Content-Type': 'application/octet-stream' }
       })
       return true
     } catch (err: unknown) {
@@ -233,11 +237,11 @@ export class OneDriveSyncProvider implements SyncProvider {
     try {
       const remotePath = `${this.folder}/${relPath}`
       const encodedPath = remotePath.split('/').map(encodeURIComponent).join('/')
-      const content = await graphRequest<string>(`/me/drive/root:${encodedPath}:/content`)
+      const content = await graphRequest<Buffer>(`/me/drive/root:${encodedPath}:/content`, { raw: true })
 
       const fullPath = join(vaultPath, relPath)
       mkdirSync(dirname(fullPath), { recursive: true })
-      writeFileSync(fullPath, content, 'utf-8')
+      writeFileSync(fullPath, content)
       return true
     } catch (err: unknown) {
       logger.error('OneDrive pull failed', err)
@@ -284,7 +288,7 @@ export class OneDriveSyncProvider implements SyncProvider {
 
     for (const filePath of localFiles) {
       const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-      const content = readFileSync(filePath, 'utf-8')
+      const content = readFileSync(filePath)
       const localHash = createHash('md5').update(content).digest('hex')
       const remote = remoteMap.get(relPath)
 
@@ -346,7 +350,7 @@ export class OneDriveSyncProvider implements SyncProvider {
       if (!existsSync(fullPath)) {
         needPull = true
       } else {
-        const content = readFileSync(fullPath, 'utf-8')
+        const content = readFileSync(fullPath)
         const localHash = createHash('md5').update(content).digest('hex')
         if (localHash !== remote.hash) needPull = true
       }
