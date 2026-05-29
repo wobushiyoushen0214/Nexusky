@@ -17,11 +17,12 @@ import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-str
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
-import type { ChatContentPart, ChatSource, GeneratedNoteBatchPlanItem, IPCChatMessage } from '@shared/types/ipc'
+import type { ChatContentPart, ChatSource, GeneratedNoteBatchPlanItem, IPCChannelMap, IPCChatMessage } from '@shared/types/ipc'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
-type BatchPlanItem = { title: string; done: boolean }
+type BatchPlanItem = { title: string; done: boolean; failed?: boolean }
+type GenerateNotesResult = IPCChannelMap['ai:generate-notes']['result']
 type SharedBatchPlan = { id: string; items: BatchPlanItem[] }
 type PendingBatchPlan = { instruction: string; batches: GeneratedNoteBatchPlanItem[] }
 
@@ -774,7 +775,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
     const updatePlanMsg = () => {
       const visibleItems = options.sharedPlan?.items || planItems
-      const lines = visibleItems.map((item) => `${item.done ? '✓' : '○'} ${item.title}`).join('\n')
+      const lines = visibleItems.map((item) => `${item.failed ? '!' : item.done ? '✓' : '○'} ${item.title}`).join('\n')
       setMessages((msgs) => {
         const idx = msgs.findIndex((m) => m.id === planMsgId)
         if (idx >= 0) {
@@ -812,19 +813,34 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         if (data.current > 1) {
           if (options.sharedPlan && planItemIndexes[data.current - 2] !== undefined) {
             const index = planItemIndexes[data.current - 2]
-            options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
+            if (!options.sharedPlan.items[index].failed) {
+              options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
+            }
           } else {
-            planItems[data.current - 2] = { ...planItems[data.current - 2], done: true }
+            if (!planItems[data.current - 2]?.failed) {
+              planItems[data.current - 2] = { ...planItems[data.current - 2], done: true }
+            }
           }
         }
         updatePlanMsg()
+      } else if (data.stage === 'note-error' && data.current) {
+        if (options.sharedPlan && planItemIndexes[data.current - 1] !== undefined) {
+          const index = planItemIndexes[data.current - 1]
+          options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], failed: true, done: false }
+        } else if (planItems[data.current - 1]) {
+          planItems[data.current - 1] = { ...planItems[data.current - 1], failed: true, done: false }
+        }
+        updatePlanMsg()
+        setStreamContent(data.message)
       } else if (data.stage === 'indexing') {
         if (options.sharedPlan && planItemIndexes.length > 0) {
           for (const index of planItemIndexes) {
-            options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
+            if (!options.sharedPlan.items[index].failed) {
+              options.sharedPlan.items[index] = { ...options.sharedPlan.items[index], done: true }
+            }
           }
         } else {
-          planItems = planItems.map((item) => ({ ...item, done: true }))
+          planItems = planItems.map((item) => item.failed ? item : { ...item, done: true })
         }
         updatePlanMsg()
         setStreamContent('正在索引笔记关系...')
@@ -836,18 +852,18 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       }
     })
 
-    let result: { success: boolean; error?: string; files: string[] }
+    let result: GenerateNotesResult
     try {
       result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir, requestId: operationId })
     } catch (e: unknown) {
-      result = { success: false, error: friendlyError(getErrorMessage(e)), files: [] }
+      result = { success: false, error: friendlyError(getErrorMessage(e)), files: [], failed: 0, total: 0, failedItems: [] }
     } finally {
       cleanup()
     }
 
     if (!isCurrentOperation()) {
       if (!options.sharedPlan) activeBatchPlanMsgIdsRef.current.delete(planMsgId)
-      return { success: false, error: '已取消', files: result.files }
+      return { ...result, success: false, error: '已取消' }
     }
 
     if (result.success && !batchCancelledRef.current) {
@@ -872,11 +888,17 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setMessages((msgs) => [...msgs, msg])
         appendToDb(msg)
       }
+    } else if (batchCancelledRef.current || result.error === '已取消') {
+      await useVaultStore.getState().refreshFiles()
+      if (!options.suppressResultMessage) {
+        appendAssistantMessage(result.files.length > 0 ? `已停止，生成了 ${result.files.length} 个文件。` : '已停止，未生成新文件。')
+      }
+    } else if (result.files.length > 0 && result.failed > 0) {
+      await useVaultStore.getState().refreshFiles()
+      if (!options.suppressResultMessage) appendAssistantMessage(`部分生成完成：已生成 ${result.files.length} 个文件，失败 ${result.failed} 篇。${result.error || ''}`)
     } else if (result.files.length > 0) {
       await useVaultStore.getState().refreshFiles()
-      if (!options.suppressResultMessage) appendAssistantMessage(`已停止，生成了 ${result.files.length} 个文件。`)
-    } else if (batchCancelledRef.current || result.error === '已取消') {
-      if (!options.suppressResultMessage) appendAssistantMessage('已停止，未生成新文件。')
+      if (!options.suppressResultMessage) appendAssistantMessage(`生成中断：已生成 ${result.files.length} 个文件，失败原因：${result.error || '未知错误'}`)
     } else {
       if (!options.suppressResultMessage) appendAssistantMessage(`生成失败: ${result.error || '未知错误'}`)
     }

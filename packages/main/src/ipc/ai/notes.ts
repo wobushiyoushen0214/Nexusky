@@ -8,6 +8,7 @@ import { consumeStream } from '../streams/consume-stream'
 import { extractJsonFromText } from '../../services/ai/json'
 import { normalizeGeneratedNoteBatchPlan, normalizeGeneratedNotePlan } from '../../services/ai/note-plan'
 import { buildGeneratedNoteSystemPrompt, buildGeneratedNoteUserPrompt, ensureGeneratedNoteMetadata } from '../../services/ai/note-writing'
+import { buildGenerateNotesCompletion, formatGenerateNotesDoneMessage, type GeneratedNoteFailure, type GeneratedNoteFailureStage } from '../../services/ai/generate-notes-result'
 import { indexNote, resolveAllLinks } from '../../services/indexer'
 import { getDatabase } from '../../services/database'
 import { refreshInferredLinksFromMemory } from '../../services/memory-links'
@@ -95,7 +96,7 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
 
   const windowId = window.id
   const controller = startAiTask(windowId)
-  const sendProgress = (data: { stage: string; message: string; plan?: { title: string; brief?: string }[]; current?: number; total?: number }) => {
+  const sendProgress = (data: { stage: string; message: string; plan?: { title: string; brief?: string }[]; current?: number; total?: number; created?: number; failed?: number; failedItems?: GeneratedNoteFailure[] }) => {
     window.webContents.send('ai:generate-notes-progress', { requestId: params.requestId, ...data })
   }
 
@@ -157,6 +158,21 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
 
   // Step 2: Generate each note
   const createdFiles: string[] = []
+  const failedItems: GeneratedNoteFailure[] = []
+  const recordFailure = (item: { title: string }, stage: GeneratedNoteFailureStage, error: string, index: number) => {
+    const failure: GeneratedNoteFailure = { title: item.title, stage, error: getErrorMessage(error) }
+    failedItems.push(failure)
+    logger.warn('Generated note failed', { title: item.title, stage, error: failure.error })
+    sendProgress({
+      stage: 'note-error',
+      message: `生成失败 (${index + 1}/${plan.length}): ${item.title}`,
+      current: index + 1,
+      total: plan.length,
+      created: createdFiles.length,
+      failed: failedItems.length,
+      failedItems: [failure]
+    })
+  }
   for (let i = 0; i < plan.length; i++) {
     if (controller.signal.aborted) break
     const item = plan[i]
@@ -165,22 +181,37 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
     let noteContent = ''
     const siblingTitles = safeNames.filter((_, j) => j !== i)
     try {
-      const { text } = await consumeStream(
+      const { text, errorChunk } = await consumeStream(
         provider.chatStream([
           { role: 'system', content: buildGeneratedNoteSystemPrompt() },
           { role: 'user', content: buildGeneratedNoteUserPrompt(safeNames[i], item.brief, siblingTitles) }
         ], controller.signal),
         { signal: controller.signal }
       )
+      if (controller.signal.aborted) break
+      if (errorChunk !== null) {
+        recordFailure(item, 'generate', errorChunk, i)
+        continue
+      }
       noteContent = text
-    } catch { continue }
+    } catch (e: unknown) {
+      if (controller.signal.aborted) break
+      recordFailure(item, 'generate', getErrorMessage(e), i)
+      continue
+    }
 
-    if (noteContent.trim() && !controller.signal.aborted) {
+    if (!noteContent.trim()) {
+      recordFailure(item, 'generate', 'empty_content', i)
+      continue
+    }
+    if (!controller.signal.aborted) {
       const filePath = join(targetDir, `${safeNames[i]}.md`)
       try {
         writeFileSync(filePath, ensureGeneratedNoteMetadata(noteContent, safeNames[i], item.brief, siblingTitles), 'utf-8')
         createdFiles.push(filePath)
-      } catch {}
+      } catch (e: unknown) {
+        recordFailure(item, 'write', getErrorMessage(e), i)
+      }
     }
   }
 
@@ -227,9 +258,17 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
   }
 
   const aborted = controller.signal.aborted
+  const completion = buildGenerateNotesCompletion({ aborted, files: createdFiles, total: plan.length, failedItems })
   finishAiTask(windowId, controller)
-  sendProgress({ stage: 'done', message: aborted ? `已停止，已生成 ${createdFiles.length} 个文件` : `完成！已生成 ${createdFiles.length} 个文件` })
-  return { success: !aborted, error: aborted ? '已取消' : undefined, files: createdFiles }
+  sendProgress({
+    stage: 'done',
+    message: formatGenerateNotesDoneMessage(completion),
+    created: createdFiles.length,
+    failed: completion.failed,
+    total: completion.total,
+    failedItems: completion.failedItems
+  })
+  return completion
 })
 
 ipcMain.handle('ai:infer-links', async (event, params: { vaultPath: string; filePaths: string[] }) => {

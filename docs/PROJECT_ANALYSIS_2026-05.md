@@ -98,7 +98,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 |---|---|---|
 | P1 | 无 token/成本统计：本地优先自带 key 却看不到花了多少 | 各 provider 流式循环 |
 | P1 | RAG 检索内容无 prompt injection 防护（long-context 路径有 guard 而检索路径没有，防护不对称） | `ai.ipc.ts:121-145` |
-| P1 | 批量生成部分失败静默吞掉，返回值无 failed 计数 | `notes.ts:176,183,232` |
+| P1 | 批量生成部分失败静默吞掉，返回值无 failed 计数（✅ 本提交） | `notes.ts:176,183,232` |
 | P1 | Codex/Ollama 的 agent 工具静默降级（无 `chatStreamWithTools`），能力差异无声明 | `codex-cli-provider.ts`、`ollama-provider.ts` |
 | P2 | Codex 子进程无超时/无 SIGKILL/无输出上限，`validate()` 不传 signal 会挂死 IPC | `codex-cli-provider.ts:35-66,154` |
 | P2 | 主聊天/agent 路径无请求超时；工具参数 JSON 截断不可恢复；Claude `max_tokens` 硬编码 4096 | `ai.ipc.ts`、`json.ts:10-71`、`claude-provider.ts:128` |
@@ -188,3 +188,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P0-4 安全链（任意读/密钥/CSP/遥测） | `a9118de` `65e725e` | vault guard + secret redaction + CSP + DOMPurify 白名单 + telemetry opt-out；dev CSP 兼容 Vite/React Refresh；vault 读取/索引失败可恢复；p0-security/vault-store 覆盖 |
 | 2026-05-29 | P0-5 编辑器 Markdown 往返非保真 | `b3debd3` | 源文本保留式 Markdown merge；round-trip 保存测试覆盖 Obsidian 语法与 CRLF；653/653 通过 |
 | 2026-05-29 | P1 RAG 检索 prompt injection 防护 | 本提交 | 检索片段统一进入 `<retrieved_notes trust="low">`，声明其为非指令数据，并转义 `&/< />` 防止笔记内容逃出边界；retrieved-notes-context 测试 3/3、typecheck 通过 |
+| 2026-05-29 | P1 批量生成部分失败可见化 | 本提交 | `ai:generate-notes` 对单篇生成/写盘失败计数并返回 `failed/total/failedItems`；前端显示部分失败而非误判为停止/成功；generate-notes-result 测试 4/4、typecheck 通过 |
