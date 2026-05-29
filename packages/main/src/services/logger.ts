@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { redact } from './redact'
+import { store } from './store'
 
 type LogLevel = 'error' | 'warn' | 'info'
 
@@ -14,6 +15,25 @@ interface LogPayload {
 }
 
 const REPORT_URL = 'https://website-ebon-xi-90.vercel.app/api/logs'
+const TELEMETRY_PREF_KEY = 'telemetry'
+
+function telemetryEnabled(): boolean {
+  const prefs = store.get(TELEMETRY_PREF_KEY) as { enabled?: boolean } | undefined
+  return prefs?.enabled === true
+}
+
+export function getTelemetryPrefs(): { enabled: boolean } {
+  return { enabled: telemetryEnabled() }
+}
+
+export function setTelemetryPrefs(next: { enabled: boolean }): { enabled: boolean } {
+  const prefs = { enabled: next.enabled === true }
+  store.set(TELEMETRY_PREF_KEY, prefs)
+  if (!prefs.enabled) {
+    queue.length = 0
+  }
+  return prefs
+}
 
 let deviceId: string | null = null
 function getDeviceId(): string {
@@ -33,6 +53,10 @@ const queue: LogPayload[] = []
 let flushing = false
 
 async function flush() {
+  if (!telemetryEnabled()) {
+    queue.length = 0
+    return
+  }
   if (flushing || queue.length === 0) return
   flushing = true
 
@@ -65,6 +89,7 @@ function report(level: LogLevel, message: string, extra?: { stack?: string; cont
   const safeContext = extra?.context ? redact(extra.context) : undefined
 
   console.error(`[${level}]`, safeMessage, safeStack || '')
+  if (!telemetryEnabled()) return
 
   queue.push({
     level,

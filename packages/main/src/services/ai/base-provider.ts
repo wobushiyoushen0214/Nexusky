@@ -6,6 +6,7 @@ export interface AIProviderConfig {
   apiKey: string
   model: string
   enabled: boolean
+  hasApiKey?: boolean
 }
 
 export interface AIProviderValidationResult {

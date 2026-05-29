@@ -1,11 +1,31 @@
 import { safeStorage } from 'electron'
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto'
+import { homedir, hostname, userInfo } from 'os'
 
 const PREFIX_V1 = 'enc:v1:'
 const PREFIX_V2 = 'enc:v2:'
 const PREFIX_V3 = 'enc:v3:'
 
 function getPortableKey(): Buffer {
+  const user = (() => {
+    try {
+      return userInfo().username
+    } catch {
+      return ''
+    }
+  })()
+  return createHash('sha256')
+    .update('nexusky-note-secret-2024')
+    .update('\0')
+    .update(hostname())
+    .update('\0')
+    .update(user)
+    .update('\0')
+    .update(homedir())
+    .digest()
+}
+
+function getLegacyPortableKey(): Buffer {
   return createHash('sha256').update('nexusky-note-secret-2024').digest()
 }
 
@@ -66,8 +86,7 @@ export function decrypt(value: string): string {
   }
 
   if (value.startsWith(PREFIX_V2)) {
-    try {
-      const key = getPortableKey()
+    const tryDecrypt = (key: Buffer) => {
       const combined = Buffer.from(value.slice(PREFIX_V2.length), 'base64')
       const iv = combined.subarray(0, 12)
       const tag = combined.subarray(12, 28)
@@ -75,8 +94,15 @@ export function decrypt(value: string): string {
       const decipher = createDecipheriv('aes-256-gcm', key, iv)
       decipher.setAuthTag(tag)
       return decipher.update(encrypted, undefined, 'utf8') + decipher.final('utf8')
+    }
+    try {
+      return tryDecrypt(getPortableKey())
     } catch {
-      return ''
+      try {
+        return tryDecrypt(getLegacyPortableKey())
+      } catch {
+        return ''
+      }
     }
   }
 

@@ -105,13 +105,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'trash', category: 'file', label: t('commandPalette.commands.trash.label'), keywords: ['trash'], action: () => window.dispatchEvent(new CustomEvent('open-trash')) },
     { id: 'import-obsidian', category: 'file', label: t('commandPalette.commands.importObsidian.label'), description: t('commandPalette.commands.importObsidian.description'), keywords: ['obsidian', 'vault', 'import'], action: async () => {
       if (!vaultPath) return
-      const sourcePath = await window.api.invoke('vault:select', undefined)
-      if (sourcePath) {
-        const result = await window.api.invoke('file:import-obsidian', { sourcePath, vaultPath })
-        const { toast } = await import('../stores/toast-store')
-        toast(t('commandPalette.toasts.importDone', { imported: result.imported, converted: result.converted }), 'success')
-        useVaultStore.getState().refreshFiles()
-      }
+      const result = await window.api.invoke('file:import-obsidian', { vaultPath })
+      if (result.canceled) return
+      const { toast } = await import('../stores/toast-store')
+      toast(t('commandPalette.toasts.importDone', { imported: result.imported, converted: result.converted }), 'success')
+      useVaultStore.getState().refreshFiles()
     }},
     { id: 'import-readwise', category: 'file', label: t('commandPalette.commands.importReadwise.label'), description: t('commandPalette.commands.importReadwise.description'), keywords: ['readwise', 'reader', 'highlight', 'import'], action: async () => {
       if (!vaultPath) return

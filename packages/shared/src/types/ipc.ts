@@ -269,6 +269,7 @@ export interface AIProviderConfig {
   apiKey: string
   model: string
   enabled: boolean
+  hasApiKey?: boolean
 }
 
 export interface AIProviderValidationResult {
@@ -766,12 +767,12 @@ export interface IPCChannelMap {
   'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }
   'ai:summarize': { params: { content: string }; result: string }
   'ai:generate-flashcards': { params: { content: string; title?: string; maxCards?: number }; result: { success: boolean; cards: GeneratedFlashcard[]; markdown?: string; error?: string } }
-  'ai:detect-local-config': { params: undefined; result: { claude?: { apiKey: string; baseUrl: string; source?: string }; openai?: { apiKey: string; source?: string }; codex?: { command: string; source?: string }; skipped?: string[] } }
+  'ai:detect-local-config': { params: undefined; result: { importable: number; imported: number; existing: number; skipped?: string[] } }
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }; result: { success: boolean; content?: string; error?: string } }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }
   'ai:plan-note-batches': { params: { instruction: string; existingDirs?: string[] }; result: { success: boolean; batches: GeneratedNoteBatchPlanItem[]; error?: string } }
   'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number }; result: { success: boolean; files: string[]; error?: string } }
-  'file:import-obsidian': { params: { sourcePath: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number } }
+  'file:import-obsidian': { params: { vaultPath: string }; result: { imported: number; converted: number; indexed: number; canceled?: boolean } }
   'file:import-readwise': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
   'file:import-pocket': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
   'file:import-notion': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; converted: number; indexed: number; assets: number; skipped: number; canceled?: boolean } }
@@ -790,8 +791,8 @@ export interface IPCChannelMap {
   'plugins:install-marketplace-pack': { params: { vaultPath: string }; result: { installed: number; plugins: LocalPlugin[] } }
   'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }
   'themes:list': { params: { vaultPath: string }; result: ThemePackage[] }
-  'cloud:get-config': { params: undefined; result: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }
-  'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean } }; result: void }
+  'cloud:get-config': { params: undefined; result: { supabaseUrl: string; enabled: boolean; hasSupabaseKey: boolean; hasServiceRoleKey: boolean } }
+  'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey?: string; serviceRoleKey?: string; enabled: boolean } }; result: void }
   'cloud:init': { params: undefined; result: { success: boolean; error?: string } }
   'cloud:sign-in': { params: { email: string; password: string }; result: { success: boolean; error?: string } }
   'cloud:sign-up': { params: { email: string; password: string }; result: { success: boolean; error?: string } }
@@ -808,9 +809,9 @@ export interface IPCChannelMap {
   'cloud:onedrive-auth': { params: { clientId: string }; result: { success: boolean; error?: string } }
   'cloud:get-onedrive-config': { params: undefined; result: { clientId: string; folder: string; hasToken: boolean } | null }
   'cloud:save-onedrive-config': { params: { clientId: string; folder: string }; result: void }
-  'cloud:get-webdav-config': { params: undefined; result: { url: string; username?: string; password?: string; folder: string } }
+  'cloud:get-webdav-config': { params: undefined; result: { url: string; username?: string; folder: string; hasPassword: boolean } }
   'cloud:save-webdav-config': { params: { url: string; username?: string; password?: string; folder: string }; result: void }
-  'cloud:get-s3-config': { params: undefined; result: { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string; prefix?: string } }
+  'cloud:get-s3-config': { params: undefined; result: { endpoint: string; region: string; bucket: string; prefix?: string; hasAccessKeyId: boolean; hasSecretAccessKey: boolean } }
   'cloud:save-s3-config': { params: { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string; prefix?: string }; result: void }
   'cloud:get-icloud-path': { params: undefined; result: string | null }
   'cloud:set-icloud-path': { params: { path: string }; result: void }
@@ -826,6 +827,8 @@ export interface IPCChannelMap {
   'updater:install': { params: undefined; result: void }
   'app:get-version': { params: undefined; result: string }
   'app:open-external': { params: { url: string }; result: void }
+  'telemetry:get-prefs': { params: undefined; result: { enabled: boolean } }
+  'telemetry:set-prefs': { params: { enabled: boolean }; result: { enabled: boolean } }
   'proactive:list': {
     params: {
       vaultPath: string

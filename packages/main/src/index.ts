@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut, session } from 'electron'
 import type { IpcMainEvent } from 'electron'
 import { join } from 'path'
 import { registerFileIPC } from './ipc/file.ipc'
@@ -22,6 +22,35 @@ registerCrashReporting()
 
 let mainWindow: BrowserWindow | null = null
 const windows = new Set<BrowserWindow>()
+
+function buildContentSecurityPolicy(): string {
+  const devConnect = process.env.ELECTRON_RENDERER_URL ? ' http://localhost:* ws://localhost:*' : ''
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    `connect-src 'self'${devConnect}`,
+    "img-src 'self' data: blob: file:",
+    "font-src 'self' data:",
+    "worker-src 'self' blob:",
+    "media-src 'self' data: blob: file:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ')
+}
+
+function configureContentSecurityPolicy(): void {
+  const csp = buildContentSecurityPolicy()
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
+    })
+  })
+}
 
 interface WindowBounds {
   x: number
@@ -141,6 +170,7 @@ function getEventWindow(event: IpcMainEvent): BrowserWindow | null {
 }
 
 app.whenReady().then(() => {
+  configureContentSecurityPolicy()
   registerFileIPC()
   registerVaultIPC()
   registerDbIPC()

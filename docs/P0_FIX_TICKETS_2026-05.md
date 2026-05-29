@@ -12,7 +12,7 @@
 | P0-1 | index.db 二进制同步损坏 | critical | ✅ 已修复 | `c919753` |
 | P0-2 | 删除复活 / 不传播 | critical | ✅ 已修复 | `4cb8e4e`/`3599408`/`ef28373` |
 | P0-3 | Agent 写入数据丢失三连 | critical | ✅ 已修复 | `3ac2cae` |
-| P0-4 | 安全链：任意读 + 明文密钥 + 无 CSP | critical | 🔧 待修复 | — |
+| P0-4 | 安全链：任意读 + 明文密钥 + 无 CSP | critical | ✅ 已修复 | `待提交` |
 | P0-5 | 编辑器 Markdown 往返非保真 | high | 🔧 待修复 | — |
 
 ---
@@ -116,7 +116,7 @@
 
 ---
 
-## P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　🔧
+## P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　✅ 已修复（待提交）
 
 - 严重度：critical（XSS → 偷本地文件 + 全部密钥）
 - 验证：CONFIRMED（A/B/C）
@@ -138,12 +138,26 @@
 5. 便携加密派生机器绑定熵；启用代码签名 + 更新验签；遥测加首启同意 + 可关闭。
 
 ### 验收
-- [ ] `file:read('/etc/passwd')` 被拒
-- [ ] 渲染进程无法取得任何明文 key（grep 渲染层无明文 key 落点）
-- [ ] CSP 头存在，inline script 被拦
-- [ ] 遥测可在设置中关闭
+- [x] `file:read('/etc/passwd')` 被拒（`tests/p0-security.test.ts` 覆盖当前 vault 外路径）
+- [x] 渲染进程无法通过配置读取 IPC 取得已存明文 key（AI/cloud get 接口只回 `has*`，本地检测在主进程内导入）
+- [x] CSP 头 / meta 存在，`script-src 'self'` 禁止 inline script
+- [x] 遥测默认关闭，设置中可显式开启/关闭；关闭时不生成/发送持久 `device_id`
 
-### 工作量：中（建议拆成“IPC 守卫 + 密钥隔离”“CSP + DOMPurify”“分发签名 + 遥测”三个子任务）
+### 已实施修复
+- 新增 `vault-guard.ts`，所有普通 `file:*` 读/写/列目录/历史/回收站/加密解密 IPC 均从主进程 store 读取可信当前 vault，并用 `assertPathInsideVault` 做 realpath/symlink 校验；渲染层伪造 `vaultPath` 会被拒。
+- `file:read` / `file:stat` / `file:extract-document-text` 不再接受 vault 外路径；导入类 IPC 不再接受渲染层传入任意 `sourcePath`，改由主进程文件选择器产生导入源。
+- `ai:get-providers`、`cloud:get-config`、`cloud:get-webdav-config`、`cloud:get-s3-config` 只回传 `hasApiKey` / `has*Key` / `hasPassword` 标记；保存时空输入保留主进程已存 secret；`ai:detect-local-config` 改为主进程内检测并导入，只返回数量。
+- 主进程 `onHeadersReceived` 注入 CSP，并在 `index.html` 加 CSP meta；Markdown 渲染 DOMPurify 改显式白名单。
+- 日志遥测默认 opt-out，设置页新增“发送匿名错误报告”开关；关闭时清空队列，且 `device_id` 只在启用并实际发送时生成。
+- portable v2 secret key 改为静态种子 + 主机名 + 用户名 + home 目录派生；保留 legacy v2 解密 fallback，避免旧配置丢失。
+
+### 验证
+- [x] `pnpm typecheck` 通过
+- [x] `pnpm test -- p0-security` 通过（实际跑全量：109 files / 649 tests）
+
+> 后续（分发侧，需证书/发布流水线配合）：启用 macOS/Windows 代码签名与更新验签策略。本次提交已修复应用内 “XSS → 任意读 → 明文 key → 无 CSP/遥测外发” 安全链。
+
+### 工作量：中（已完成）
 
 ---
 

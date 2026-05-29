@@ -10,6 +10,7 @@ import { importNotionExport } from '../services/notion-importer'
 import { importPocketBookmarks, importReadwiseCsv } from '../services/reader-importer'
 import { extractDocumentTextFromBuffer } from '../services/document-text'
 import { isPathInsideVault, assertPathInsideVault } from './file-path'
+import { assertPathInsideCurrentVault, requireCurrentVaultPath } from './vault-guard'
 import { ensureNonEmptyString, ensureSafeFileName } from './validators'
 import { notifyVaultFilesChanged } from './events'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
@@ -76,15 +77,18 @@ const writeNotifyPaths = new Set<string>()
 
 export function registerFileIPC(): void {
   ipcMain.handle('file:read', async (_event, params: { path: string }) => {
-    return readFile(params.path, 'utf-8')
+    const { filePath } = await assertPathInsideCurrentVault(params.path)
+    return readFile(filePath, 'utf-8')
   })
 
   ipcMain.handle('file:extract-document-text', async (_event, params: { path: string }) => {
-    return extractDocumentTextFromBuffer(params.path, await readFile(params.path))
+    const { filePath } = await assertPathInsideCurrentVault(params.path)
+    return extractDocumentTextFromBuffer(filePath, await readFile(filePath))
   })
 
   ipcMain.handle('file:stat', async (_event, params: { path: string }) => {
-    const s = await stat(params.path)
+    const { filePath } = await assertPathInsideCurrentVault(params.path)
+    const s = await stat(filePath)
     return { size: s.size, mtime: s.mtimeMs }
   })
 
@@ -93,95 +97,85 @@ export function registerFileIPC(): void {
     if (typeof params?.content !== 'string') {
       throw new Error('Invalid IPC payload: file:write.content must be a string')
     }
-    if (params.vaultPath) {
-      await assertPathInsideVault(params.path, params.vaultPath)
+    const { vaultPath, filePath } = await assertPathInsideCurrentVault(params.path, params.vaultPath)
+    if (filePath.endsWith('.md')) {
+      await saveSnapshot(filePath, vaultPath)
     }
-    if (params.vaultPath && params.path.endsWith('.md')) {
-      await saveSnapshot(params.path, params.vaultPath)
+    await writeFile(filePath, params.content, 'utf-8')
+    if (filePath.endsWith('.md')) {
+      try { indexNote(vaultPath, filePath) } catch {}
     }
-    await writeFile(params.path, params.content, 'utf-8')
-    if (params.vaultPath && params.path.endsWith('.md')) {
-      try { indexNote(params.vaultPath, params.path) } catch {}
-      writeNotifyPaths.add(params.path)
-      if (writeNotifyTimer) clearTimeout(writeNotifyTimer)
-      writeNotifyTimer = setTimeout(() => {
-        notifyVaultFilesChanged(Array.from(writeNotifyPaths))
-        writeNotifyPaths.clear()
-        writeNotifyTimer = null
-      }, 120)
-    }
+    writeNotifyPaths.add(filePath)
+    if (writeNotifyTimer) clearTimeout(writeNotifyTimer)
+    writeNotifyTimer = setTimeout(() => {
+      notifyVaultFilesChanged(Array.from(writeNotifyPaths))
+      writeNotifyPaths.clear()
+      writeNotifyTimer = null
+    }, 120)
   })
 
   ipcMain.handle('file:list', async (_event, params: { dirPath: string }) => {
-    return listDirectory(params.dirPath)
+    const { filePath } = await assertPathInsideCurrentVault(params.dirPath)
+    return listDirectory(filePath)
   })
 
   ipcMain.handle('file:list-shallow', async (_event, params: { dirPath: string }) => {
-    return listDirectoryShallow(params.dirPath)
+    const { filePath } = await assertPathInsideCurrentVault(params.dirPath)
+    return listDirectoryShallow(filePath)
   })
 
   ipcMain.handle('file:create', async (_event, params: { path: string; content?: string; vaultPath?: string }) => {
     ensureNonEmptyString(params?.path, 'file:create.path')
-    if (params.vaultPath) {
-      await assertPathInsideVault(params.path, params.vaultPath)
+    const { vaultPath, filePath } = await assertPathInsideCurrentVault(params.path, params.vaultPath)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, params.content || '', 'utf-8')
+    if (filePath.endsWith('.md')) {
+      try { indexNote(vaultPath, filePath) } catch {}
     }
-    await mkdir(dirname(params.path), { recursive: true })
-    await writeFile(params.path, params.content || '', 'utf-8')
-    if (params.vaultPath) {
-      if (params.path.endsWith('.md')) {
-        try { indexNote(params.vaultPath, params.path) } catch {}
-      }
-      notifyVaultFilesChanged([params.path])
-    }
+    notifyVaultFilesChanged([filePath])
   })
 
   ipcMain.handle('file:reveal', async (_event, params: { path: string }) => {
-    shell.showItemInFolder(params.path)
+    const { filePath } = await assertPathInsideCurrentVault(params.path)
+    shell.showItemInFolder(filePath)
   })
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {
     ensureNonEmptyString(params?.path, 'file:delete.path')
-    if (params.vaultPath) {
-      await assertPathInsideVault(params.path, params.vaultPath)
-    }
-    if (params.vaultPath) {
-      const trashDir = join(params.vaultPath, '.trash')
-      await mkdir(trashDir, { recursive: true })
-      const fileName = params.path.split(/[\\/]/).pop() || 'file'
-      const timestamp = Date.now()
-      const rand = Math.random().toString(36).slice(2, 6)
-      const trashPath = join(trashDir, `${timestamp}_${rand}_${fileName}`)
-      await rename(params.path, trashPath)
-      const originalPath = relative(params.vaultPath, params.path).replace(/\\/g, '/')
-      await writeFile(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
-    } else {
-      await rm(params.path, { recursive: true })
-    }
-    if (params.vaultPath) notifyVaultFilesChanged([params.path])
+    const { vaultPath, filePath } = await assertPathInsideCurrentVault(params.path, params.vaultPath)
+    const trashDir = join(vaultPath, '.trash')
+    await mkdir(trashDir, { recursive: true })
+    const fileName = filePath.split(/[\\/]/).pop() || 'file'
+    const timestamp = Date.now()
+    const rand = Math.random().toString(36).slice(2, 6)
+    const trashPath = join(trashDir, `${timestamp}_${rand}_${fileName}`)
+    await rename(filePath, trashPath)
+    const originalPath = relative(vaultPath, filePath).replace(/\\/g, '/')
+    await writeFile(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
+    notifyVaultFilesChanged([filePath])
   })
 
   ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string; vaultPath?: string }) => {
     ensureNonEmptyString(params?.oldPath, 'file:rename.oldPath')
     ensureNonEmptyString(params?.newPath, 'file:rename.newPath')
-    if (params.vaultPath) {
-      await assertPathInsideVault(params.oldPath, params.vaultPath)
-      await assertPathInsideVault(params.newPath, params.vaultPath)
-    }
-    await mkdir(dirname(params.newPath), { recursive: true })
-    await rename(params.oldPath, params.newPath)
+    const vaultPath = await requireCurrentVaultPath(params.vaultPath)
+    const oldPath = await assertPathInsideVault(params.oldPath, vaultPath)
+    const newPath = await assertPathInsideVault(params.newPath, vaultPath)
+    await mkdir(dirname(newPath), { recursive: true })
+    await rename(oldPath, newPath)
 
-    if (params.vaultPath && params.oldPath.endsWith('.md') && params.newPath.endsWith('.md')) {
-      const oldName = params.oldPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
-      const newName = params.newPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
+    if (oldPath.endsWith('.md') && newPath.endsWith('.md')) {
+      const oldName = oldPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
+      const newName = newPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
       if (oldName !== newName) {
-        await updateWikilinks(params.vaultPath, oldName, newName)
+        await updateWikilinks(vaultPath, oldName, newName)
       }
     }
-    if (params.vaultPath) notifyVaultFilesChanged([params.oldPath, params.newPath])
+    notifyVaultFilesChanged([oldPath, newPath])
   })
 
   ipcMain.handle('file:save-image', async (_event, params: { vaultPath: string; imageData: string; fileName: string }) => {
-    ensureNonEmptyString(params?.vaultPath, 'file:save-image.vaultPath')
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
     const safeName = ensureSafeFileName(params?.fileName, 'file:save-image.fileName')
     if (typeof params?.imageData !== 'string' || params.imageData.length === 0) {
       throw new Error('Invalid IPC payload: file:save-image.imageData must be a non-empty string')
@@ -197,9 +191,11 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:get-history', async (_event, params: { vaultPath: string; filePath: string }) => {
-    const relPath = relative(params.vaultPath, params.filePath).replace(/\\/g, '/')
-    const name = basename(params.filePath, '.md')
-    const historyDir = join(params.vaultPath, '.history', dirname(relPath))
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
+    const filePath = await assertPathInsideVault(params.filePath, vaultPath)
+    const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
+    const name = basename(filePath, '.md')
+    const historyDir = join(vaultPath, '.history', dirname(relPath))
     try {
       const entries = await readdir(historyDir)
       const snapshots = entries
@@ -218,12 +214,16 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:restore-history', async (_event, params: { snapshotPath: string; targetPath: string }) => {
-    const content = await readFile(params.snapshotPath, 'utf-8')
-    await writeFile(params.targetPath, content, 'utf-8')
+    const { vaultPath } = await assertPathInsideCurrentVault(params.targetPath)
+    const snapshotPath = await assertPathInsideVault(params.snapshotPath, vaultPath)
+    const targetPath = await assertPathInsideVault(params.targetPath, vaultPath)
+    const content = await readFile(snapshotPath, 'utf-8')
+    await writeFile(targetPath, content, 'utf-8')
   })
 
   ipcMain.handle('file:encrypt', async (_event, params: { path: string; password: string }) => {
-    const content = await readFile(params.path, 'utf-8')
+    const { filePath } = await assertPathInsideCurrentVault(params.path)
+    const content = await readFile(filePath, 'utf-8')
     const salt = randomBytes(16)
     const key = scryptSync(params.password, salt, 32)
     const iv = randomBytes(12)
@@ -231,12 +231,13 @@ export function registerFileIPC(): void {
     const encrypted = Buffer.concat([cipher.update(content, 'utf-8'), cipher.final()])
     const tag = cipher.getAuthTag()
     const payload = Buffer.concat([salt, iv, tag, encrypted])
-    await writeFile(params.path, '---encrypted---\n' + payload.toString('base64'), 'utf-8')
+    await writeFile(filePath, '---encrypted---\n' + payload.toString('base64'), 'utf-8')
     return true
   })
 
   ipcMain.handle('file:decrypt', async (_event, params: { path: string; password: string }) => {
-    const raw = await readFile(params.path, 'utf-8')
+    const { filePath } = await assertPathInsideCurrentVault(params.path)
+    const raw = await readFile(filePath, 'utf-8')
     if (!raw.startsWith('---encrypted---\n')) return { success: false, error: '文件未加密' }
     try {
       const payload = Buffer.from(raw.slice('---encrypted---\n'.length), 'base64')
@@ -255,7 +256,8 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:list-trash', async (_event, params: { vaultPath: string }) => {
-    const trashDir = join(params.vaultPath, '.trash')
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
+    const trashDir = join(vaultPath, '.trash')
     try {
       const entries = await readdir(trashDir)
       const trashEntries: TrashEntry[] = []
@@ -283,36 +285,50 @@ export function registerFileIPC(): void {
   })
 
   ipcMain.handle('file:restore-trash', async (_event, params: { trashPath: string; vaultPath: string }) => {
-    const fileName = params.trashPath.split(/[\\/]/).pop() || ''
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
+    const trashPath = await assertPathInsideVault(params.trashPath, join(vaultPath, '.trash'))
+    const fileName = trashPath.split(/[\\/]/).pop() || ''
     let originalPath = parseTrashOriginalName(fileName)
     try {
-      const metadata = JSON.parse(await readFile(`${params.trashPath}.json`, 'utf-8')) as { originalPath?: string }
+      const metadataPath = await assertPathInsideVault(`${trashPath}.json`, join(vaultPath, '.trash'))
+      const metadata = JSON.parse(await readFile(metadataPath, 'utf-8')) as { originalPath?: string }
       if (metadata.originalPath) originalPath = metadata.originalPath
     } catch {}
-    const destPath = join(params.vaultPath, originalPath)
-    await assertPathInsideVault(params.trashPath, join(params.vaultPath, '.trash'))
-    await assertPathInsideVault(destPath, params.vaultPath)
+    const destPath = join(vaultPath, originalPath)
+    await assertPathInsideVault(destPath, vaultPath)
     const uniqueDestPath = await getUniqueRestorePath(destPath)
     await mkdir(dirname(uniqueDestPath), { recursive: true })
-    await rename(params.trashPath, uniqueDestPath)
-    await rm(`${params.trashPath}.json`, { force: true })
+    await rename(trashPath, uniqueDestPath)
+    await rm(`${trashPath}.json`, { force: true })
     notifyVaultFilesChanged([uniqueDestPath])
   })
 
   ipcMain.handle('file:empty-trash', async (_event, params: { vaultPath: string }) => {
-    const trashDir = join(params.vaultPath, '.trash')
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
+    const trashDir = join(vaultPath, '.trash')
     await rm(trashDir, { recursive: true, force: true })
-    notifyVaultFilesChanged([params.vaultPath])
+    notifyVaultFilesChanged([vaultPath])
   })
 
-  ipcMain.handle('file:import-obsidian', async (_event, params: { sourcePath: string; vaultPath: string }) => {
-    const result = await importObsidianVault(params.sourcePath, params.vaultPath)
-    notifyVaultFilesChanged([params.vaultPath])
+  ipcMain.handle('file:import-obsidian', async (_event, params: { sourcePath?: string; vaultPath: string }) => {
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
+    if (params.sourcePath) throw new Error('导入源必须通过文件选择器选择')
+    const open = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: '选择 Obsidian 笔记库目录'
+    })
+    if (open.canceled || open.filePaths.length === 0) {
+      return { imported: 0, converted: 0, indexed: 0, canceled: true }
+    }
+    const result = await importObsidianVault(open.filePaths[0], vaultPath)
+    notifyVaultFilesChanged([vaultPath])
     return result
   })
 
   ipcMain.handle('file:import-readwise', async (_event, params: { sourcePath?: string; vaultPath: string }) => {
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
     let sourcePath = params.sourcePath
+    if (sourcePath) throw new Error('导入源必须通过文件选择器选择')
     if (!sourcePath) {
       const result = await dialog.showOpenDialog({
         properties: ['openFile'],
@@ -324,13 +340,15 @@ export function registerFileIPC(): void {
       }
       sourcePath = result.filePaths[0]
     }
-    const result = await importReadwiseCsv(sourcePath, params.vaultPath)
-    notifyVaultFilesChanged([join(params.vaultPath, 'Imports', 'Readwise')])
+    const result = await importReadwiseCsv(sourcePath, vaultPath)
+    notifyVaultFilesChanged([join(vaultPath, 'Imports', 'Readwise')])
     return result
   })
 
   ipcMain.handle('file:import-pocket', async (_event, params: { sourcePath?: string; vaultPath: string }) => {
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
     let sourcePath = params.sourcePath
+    if (sourcePath) throw new Error('导入源必须通过文件选择器选择')
     if (!sourcePath) {
       const result = await dialog.showOpenDialog({
         properties: ['openFile'],
@@ -342,13 +360,15 @@ export function registerFileIPC(): void {
       }
       sourcePath = result.filePaths[0]
     }
-    const result = await importPocketBookmarks(sourcePath, params.vaultPath)
-    notifyVaultFilesChanged([join(params.vaultPath, 'Imports', 'Pocket')])
+    const result = await importPocketBookmarks(sourcePath, vaultPath)
+    notifyVaultFilesChanged([join(vaultPath, 'Imports', 'Pocket')])
     return result
   })
 
   ipcMain.handle('file:import-notion', async (_event, params: { sourcePath?: string; vaultPath: string }) => {
+    const vaultPath = await requireCurrentVaultPath(params?.vaultPath)
     let sourcePath = params.sourcePath
+    if (sourcePath) throw new Error('导入源必须通过文件选择器选择')
     if (!sourcePath) {
       const result = await dialog.showOpenDialog({
         properties: ['openDirectory'],
@@ -359,8 +379,8 @@ export function registerFileIPC(): void {
       }
       sourcePath = result.filePaths[0]
     }
-    const result = await importNotionExport(sourcePath, params.vaultPath)
-    notifyVaultFilesChanged([join(params.vaultPath, 'Imports', 'Notion')])
+    const result = await importNotionExport(sourcePath, vaultPath)
+    notifyVaultFilesChanged([join(vaultPath, 'Imports', 'Notion')])
     return result
   })
 }

@@ -15,7 +15,7 @@ import type { AIProviderConfig, CssSnippet, LocalPlugin, PluginMarketplaceItem, 
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
-type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean }
+type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean; hasSupabaseKey: boolean; hasServiceRoleKey: boolean }
 type CloudUser = { email: string } | null
 type SnippetView = CssSnippet & { enabled: boolean }
 type ThemePackageView = ThemePackage & { active: boolean }
@@ -93,7 +93,7 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [testingProvider, setTestingProvider] = useState(false)
   const [probing, setProbing] = useState(false)
   const [probeResult, setProbeResult] = useState<{ ok: boolean; text: string; latencyMs?: number } | null>(null)
-  const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false })
+  const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false, hasSupabaseKey: false, hasServiceRoleKey: false })
   const [cloudUser, setCloudUser] = useState<CloudUser>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
   const overlayPointerDownRef = useRef(false)
@@ -122,14 +122,20 @@ export function Settings({ open, onClose }: SettingsProps) {
           setActiveProviderId(active?.id || ps[0]?.id || null)
         })
       })
-      window.api.invoke('cloud:get-config', undefined).then(setCloudConfig)
+      window.api.invoke('cloud:get-config', undefined).then((config) => {
+        setCloudConfig({ ...config, supabaseKey: '', serviceRoleKey: '' })
+      })
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
     }
   }, [open])
 
   const saveProviders = async (updated: ProviderConfig[]) => {
-    setProviders(updated)
     await window.api.invoke('ai:save-providers', { providers: updated })
+    setProviders(updated.map((provider) => ({
+      ...provider,
+      apiKey: '',
+      hasApiKey: !!provider.apiKey || !!provider.hasApiKey
+    })))
   }
 
   const handleAdd = (preset?: typeof PROVIDER_PRESETS[0]) => {
@@ -156,7 +162,7 @@ export function Settings({ open, onClose }: SettingsProps) {
       toast('请填写提供商名称', 'error')
       return
     }
-    if (!['ollama', 'codex'].includes(normalized.type) && !normalized.apiKey) {
+    if (!['ollama', 'codex'].includes(normalized.type) && !normalized.apiKey && !editing.hasApiKey) {
       toast('请填写 API Key', 'error')
       return
     }
@@ -493,7 +499,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>API Key</label>
                   <input type="password" value={editing.apiKey} onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
-                    style={inputStyle} placeholder={editing.type === 'ollama' ? '无需填写' : 'sk-...'}
+                    style={inputStyle} placeholder={editing.hasApiKey ? '已保存，留空保留现有 Key' : editing.type === 'ollama' ? '无需填写' : 'sk-...'}
                     onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                     onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
                 </div>
@@ -539,52 +545,18 @@ export function Settings({ open, onClose }: SettingsProps) {
       <ConfirmModal
         open={detectConfirm}
         title="自动检测 AI 配置"
-        message="将读取本地 Claude Code / Codex 配置。Codex 的 ChatGPT 官方登录会添加为 Codex CLI 提供商。"
-        confirmText="检测"
+        message="将读取本地 Claude Code / Codex 配置并在主进程内导入；不会把检测到的密钥回传到界面。"
+        confirmText="检测并导入"
         onConfirm={async () => {
           setDetectConfirm(false)
           const detected = await window.api.invoke('ai:detect-local-config', undefined)
-          let added = 0
-          let existed = 0
-          const updated = [...providers]
-          if (detected.claude) {
-            const exists = updated.find((p) => p.apiKey === detected.claude!.apiKey)
-            if (!exists) {
-              const hasCustomBase = !!detected.claude.baseUrl
-              const providerType: ProviderConfig['type'] = hasCustomBase ? 'custom' : 'claude'
-              const np = {
-                id: crypto.randomUUID(),
-                name: hasCustomBase ? 'Claude 中转站 (本地检测)' : 'Claude (本地检测)',
-                type: providerType,
-                baseUrl: hasCustomBase ? detected.claude.baseUrl + '/v1' : '',
-                apiKey: detected.claude.apiKey,
-                model: 'claude-sonnet-4-6',
-                enabled: true
-              }
-              updated.push(np)
-              added++
-            } else existed++
-          }
-          if (detected.openai) {
-            const exists = updated.find((p) => p.apiKey === detected.openai!.apiKey)
-            if (!exists) {
-              const np = { id: crypto.randomUUID(), name: 'OpenAI (本地检测)', type: 'openai' as const, baseUrl: '', apiKey: detected.openai.apiKey, model: 'gpt-4.1-mini', enabled: true }
-              updated.push(np)
-              added++
-            } else existed++
-          }
-          if (detected.codex) {
-            const exists = updated.find((p) => p.type === 'codex' && (p.baseUrl || 'codex') === detected.codex!.command)
-            if (!exists) {
-              const np = { id: crypto.randomUUID(), name: 'Codex CLI (本地登录)', type: 'codex' as const, baseUrl: detected.codex.command, apiKey: '', model: 'gpt-5.4', enabled: true }
-              updated.push(np)
-              added++
-            } else existed++
-          }
-          if (added > 0) {
-            saveProviders(updated)
-            toast(`已检测并添加 ${added} 个 AI 配置`, 'success')
-          } else if (existed > 0) {
+          if (detected.imported > 0) {
+            const ps = await window.api.invoke('ai:get-providers', undefined)
+            setProviders(ps)
+            const active = ps.find((p) => p.enabled)
+            setActiveProviderId(active?.id || ps[0]?.id || null)
+            toast(`已检测并添加 ${detected.imported} 个 AI 配置`, 'success')
+          } else if (detected.existing > 0) {
             toast('检测到的 AI 配置已存在', 'info')
           } else if (detected.skipped?.length) {
             toast(detected.skipped[0], 'info')
@@ -614,8 +586,8 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
   const [conflicts, setConflicts] = useState<Array<{ path: string; localHash: string; remoteHash: string; remoteUpdatedAt: string }>>([])
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
   const [onedriveConfig, setOnedriveConfig] = useState({ clientId: '', folder: '/Nexusky' })
-  const [webdavConfig, setWebdavConfig] = useState({ url: '', username: '', password: '', folder: '/Nexusky' })
-  const [s3Config, setS3Config] = useState({ endpoint: '', region: 'us-east-1', bucket: '', accessKeyId: '', secretAccessKey: '', prefix: 'Nexusky' })
+  const [webdavConfig, setWebdavConfig] = useState({ url: '', username: '', password: '', folder: '/Nexusky', hasPassword: false })
+  const [s3Config, setS3Config] = useState({ endpoint: '', region: 'us-east-1', bucket: '', accessKeyId: '', secretAccessKey: '', prefix: 'Nexusky', hasAccessKeyId: false, hasSecretAccessKey: false })
   const [icloudPath, setIcloudPath] = useState<string | null>(null)
 
   useEffect(() => {
@@ -624,8 +596,8 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
     window.api.invoke('cloud:get-onedrive-config', undefined).then((c) => {
       if (c) setOnedriveConfig({ clientId: c.clientId, folder: c.folder })
     })
-    window.api.invoke('cloud:get-webdav-config', undefined).then((c) => setWebdavConfig({ url: c.url, username: c.username || '', password: c.password || '', folder: c.folder }))
-    window.api.invoke('cloud:get-s3-config', undefined).then((c) => setS3Config({ endpoint: c.endpoint, region: c.region, bucket: c.bucket, accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey, prefix: c.prefix || '' }))
+    window.api.invoke('cloud:get-webdav-config', undefined).then((c) => setWebdavConfig({ url: c.url, username: c.username || '', password: '', folder: c.folder, hasPassword: c.hasPassword }))
+    window.api.invoke('cloud:get-s3-config', undefined).then((c) => setS3Config({ endpoint: c.endpoint, region: c.region, bucket: c.bucket, accessKeyId: '', secretAccessKey: '', prefix: c.prefix || '', hasAccessKeyId: c.hasAccessKeyId, hasSecretAccessKey: c.hasSecretAccessKey }))
     window.api.invoke('cloud:get-icloud-path', undefined).then(setIcloudPath)
   }, [])
 
@@ -848,7 +820,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
                 value={webdavConfig.password}
                 onChange={(e) => setWebdavConfig({ ...webdavConfig, password: e.target.value })}
                 style={inputStyle}
-                placeholder="••••••••"
+                placeholder={webdavConfig.hasPassword ? '已保存，留空保留' : '••••••••'}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
               />
@@ -946,7 +918,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
                 value={s3Config.accessKeyId}
                 onChange={(e) => setS3Config({ ...s3Config, accessKeyId: e.target.value })}
                 style={inputStyle}
-                placeholder="AKIA..."
+                placeholder={s3Config.hasAccessKeyId ? '已保存，留空保留' : 'AKIA...'}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
               />
@@ -958,7 +930,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
                 value={s3Config.secretAccessKey}
                 onChange={(e) => setS3Config({ ...s3Config, secretAccessKey: e.target.value })}
                 style={inputStyle}
-                placeholder="••••••••"
+                placeholder={s3Config.hasSecretAccessKey ? '已保存，留空保留' : '••••••••'}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
               />
@@ -1089,7 +1061,7 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
           value={cloudConfig.supabaseKey}
           onChange={(e) => setCloudConfig({ ...cloudConfig, supabaseKey: e.target.value })}
           style={inputStyle}
-          placeholder="eyJ..."
+          placeholder={cloudConfig.hasSupabaseKey ? '已保存，留空保留' : 'eyJ...'}
           onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
           onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
         />
@@ -1101,7 +1073,7 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
           value={cloudConfig.serviceRoleKey}
           onChange={(e) => setCloudConfig({ ...cloudConfig, serviceRoleKey: e.target.value })}
           style={inputStyle}
-          placeholder="eyJ... (Dashboard → Settings → API → service_role)"
+          placeholder={cloudConfig.hasServiceRoleKey ? '已保存，留空保留' : 'eyJ... (Dashboard → Settings → API → service_role)'}
           onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
           onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
         />
@@ -1122,7 +1094,7 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
         >
           保存配置
         </button>
-        {cloudConfig.supabaseUrl && cloudConfig.supabaseKey && (
+        {cloudConfig.supabaseUrl && (cloudConfig.supabaseKey || cloudConfig.hasSupabaseKey) && (
           <button
             onClick={async () => {
               await window.api.invoke('cloud:save-config', { config: cloudConfig })
@@ -1223,10 +1195,12 @@ function AppearanceTab() {
   const [updateStage, setUpdateStage] = useState<'idle' | 'checking' | 'downloading' | 'ready'>('idle')
   const [downloadPercent, setDownloadPercent] = useState(0)
   const [showThemePicker, setShowThemePicker] = useState(false)
+  const [telemetryEnabled, setTelemetryEnabled] = useState(false)
   const { theme, accentColor, setAccentColor, resetAccentColor, language, setLanguage } = useUIStore()
 
   useEffect(() => {
     window.api.invoke('app:get-version', undefined).then(setAppVersion)
+    window.api.invoke('telemetry:get-prefs', undefined).then((prefs) => setTelemetryEnabled(prefs.enabled)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -1338,6 +1312,24 @@ function AppearanceTab() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>隐私</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={telemetryEnabled}
+            onChange={async (e) => {
+              const next = e.target.checked
+              setTelemetryEnabled(next)
+              const prefs = await window.api.invoke('telemetry:set-prefs', { enabled: next })
+              setTelemetryEnabled(prefs.enabled)
+            }}
+            style={{ width: 14, height: 14, accentColor: 'var(--accent)' }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>发送匿名错误报告</span>
+        </label>
       </div>
 
       {/* Version & Update */}

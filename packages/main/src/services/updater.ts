@@ -1,7 +1,7 @@
 import { autoUpdater } from 'electron-updater'
 import { BrowserWindow, ipcMain, app } from 'electron'
 import { isVersionNewer } from './version'
-import { logger } from './logger'
+import { getTelemetryPrefs, logger, setTelemetryPrefs } from './logger'
 import { safeOpenExternal } from './external-url'
 
 let updateAvailable = false
@@ -74,6 +74,14 @@ export function setupAutoUpdater(): void {
 
   ipcMain.handle('app:open-external', async (_event, params: { url: string }) => {
     await safeOpenExternal(params?.url)
+  })
+
+  ipcMain.handle('telemetry:get-prefs', () => {
+    return getTelemetryPrefs()
+  })
+
+  ipcMain.handle('telemetry:set-prefs', (_event, params: { enabled: boolean }) => {
+    return setTelemetryPrefs({ enabled: params?.enabled === true })
   })
 
   // Check for updates 30 seconds after launch

@@ -5,6 +5,7 @@ import { marked } from 'marked'
 import type { ChatSource } from '@shared/types/ipc'
 import { useEditorStore } from '../../stores/editor-store'
 import { useVaultStore } from '../../stores/vault-store'
+import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import './tool-result-panel.css'
 
 interface ToolSurfaceResultDetail {
@@ -33,7 +34,7 @@ export function ToolResultPanel() {
   const rendered = useMemo(() => {
     if (!result) return ''
     const raw = marked.parse(result.content, { async: false }) as string
-    return DOMPurify.sanitize(raw)
+    return DOMPurify.sanitize(raw, MARKDOWN_PURIFY_CONFIG)
   }, [result])
 
   if (!result) return null

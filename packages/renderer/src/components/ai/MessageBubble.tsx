@@ -6,19 +6,15 @@ import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
 import type { ChatSource } from '@shared/types/ipc'
+import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
 import { ChatSourceRow } from '../observability/ChatSourceRow'
 
 marked.setOptions({ breaks: true, gfm: true })
 
-const PURIFY_CONFIG = {
-  FORBID_TAGS: ['form', 'iframe', 'object', 'embed', 'script', 'style', 'link', 'meta'],
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
-}
-
 export function renderMarkdown(md: string): string {
   const html = marked.parse(renderMarkdownHighlights(renderMarkdownCallouts(renderMarkdownFootnotes(stripMarkdownComments(md)))), { async: false }) as string
-  return DOMPurify.sanitize(html, PURIFY_CONFIG)
+  return DOMPurify.sanitize(html, MARKDOWN_PURIFY_CONFIG)
 }
 
 export interface Message {

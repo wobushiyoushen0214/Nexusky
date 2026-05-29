@@ -28,11 +28,23 @@ import { S3Config, normalizeS3Config } from '../services/cloud/s3-provider'
 
 export function registerCloudIPC(): void {
   ipcMain.handle('cloud:get-config', () => {
-    return store.get('cloudConfig') || { supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false }
+    const config = (store.get('cloudConfig') as Partial<CloudConfig> | undefined) || {}
+    return {
+      supabaseUrl: config.supabaseUrl || '',
+      enabled: !!config.enabled,
+      hasSupabaseKey: !!config.supabaseKey,
+      hasServiceRoleKey: !!config.serviceRoleKey
+    }
   })
 
   ipcMain.handle('cloud:save-config', (_event, params: { config: CloudConfig }) => {
-    store.set('cloudConfig', params.config)
+    const existing = (store.get('cloudConfig') as Partial<CloudConfig> | undefined) || {}
+    store.set('cloudConfig', {
+      supabaseUrl: params.config.supabaseUrl || '',
+      supabaseKey: params.config.supabaseKey || existing.supabaseKey || '',
+      serviceRoleKey: params.config.serviceRoleKey || existing.serviceRoleKey || '',
+      enabled: !!params.config.enabled
+    })
     resetClient()
   })
 
@@ -110,19 +122,42 @@ export function registerCloudIPC(): void {
   })
 
   ipcMain.handle('cloud:get-webdav-config', () => {
-    return normalizeWebDavConfig(store.get('webdavConfig') as Partial<WebDavConfig> | undefined)
+    const config = normalizeWebDavConfig(store.get('webdavConfig') as Partial<WebDavConfig> | undefined)
+    return {
+      url: config.url,
+      username: config.username,
+      folder: config.folder,
+      hasPassword: !!config.password
+    }
   })
 
   ipcMain.handle('cloud:save-webdav-config', (_event, params: WebDavConfig) => {
-    store.set('webdavConfig', normalizeWebDavConfig(params))
+    const existing = normalizeWebDavConfig(store.get('webdavConfig') as Partial<WebDavConfig> | undefined)
+    store.set('webdavConfig', normalizeWebDavConfig({
+      ...params,
+      password: params.password || existing.password || ''
+    }))
   })
 
   ipcMain.handle('cloud:get-s3-config', () => {
-    return normalizeS3Config(store.get('s3Config') as Partial<S3Config> | undefined)
+    const config = normalizeS3Config(store.get('s3Config') as Partial<S3Config> | undefined)
+    return {
+      endpoint: config.endpoint,
+      region: config.region,
+      bucket: config.bucket,
+      prefix: config.prefix,
+      hasAccessKeyId: !!config.accessKeyId,
+      hasSecretAccessKey: !!config.secretAccessKey
+    }
   })
 
   ipcMain.handle('cloud:save-s3-config', (_event, params: S3Config) => {
-    store.set('s3Config', normalizeS3Config(params))
+    const existing = normalizeS3Config(store.get('s3Config') as Partial<S3Config> | undefined)
+    store.set('s3Config', normalizeS3Config({
+      ...params,
+      accessKeyId: params.accessKeyId || existing.accessKeyId,
+      secretAccessKey: params.secretAccessKey || existing.secretAccessKey
+    }))
   })
 
   ipcMain.handle('cloud:get-icloud-path', () => {

@@ -1,16 +1,52 @@
 import { ipcMain } from 'electron'
+import { randomUUID } from 'crypto'
 import { aiManager, AIProviderConfig } from '../../services/ai'
 import { store } from '../../services/store'
 import { listOllamaModels } from '../../services/ai/ollama-provider'
 import { transcribeAudio, type TranscribeAudioParams } from '../../services/ai/transcription'
 
+function getStoredProviders(): AIProviderConfig[] {
+  return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
+}
+
+export function redactProviderForRenderer(config: AIProviderConfig): AIProviderConfig {
+  return {
+    ...config,
+    apiKey: '',
+    hasApiKey: !!config.apiKey
+  }
+}
+
+function hydrateProviderConfig(config: AIProviderConfig): AIProviderConfig {
+  if (config.apiKey) return config
+  const stored = getStoredProviders().find((provider) => provider.id === config.id)
+  if (!stored?.apiKey) return config
+  return { ...config, apiKey: stored.apiKey }
+}
+
+function normalizeProviderForStore(config: AIProviderConfig): AIProviderConfig {
+  const { hasApiKey: _hasApiKey, ...rest } = config
+  return rest
+}
+
+export function mergeProviderSecretsForStore(providers: AIProviderConfig[], existingProviders: AIProviderConfig[]): AIProviderConfig[] {
+  const existingById = new Map(existingProviders.map((provider) => [provider.id, provider]))
+  return providers.map((provider) => {
+    const existing = existingById.get(provider.id)
+    return normalizeProviderForStore({
+      ...provider,
+      apiKey: provider.apiKey || existing?.apiKey || ''
+    })
+  })
+}
+
 export function registerAiProviderHandlers(): void {
   ipcMain.handle('ai:get-providers', () => {
-    return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
+    return getStoredProviders().map(redactProviderForRenderer)
   })
 
   ipcMain.handle('ai:save-providers', (_event, params: { providers: AIProviderConfig[] }) => {
-    store.set('aiProviders', params.providers)
+    store.set('aiProviders', mergeProviderSecretsForStore(params.providers, getStoredProviders()))
     aiManager.clearCache()
   })
 
@@ -24,14 +60,15 @@ export function registerAiProviderHandlers(): void {
   })
 
   ipcMain.handle('ai:validate', async (_event, params: { config: AIProviderConfig }) => {
-    const configError = aiManager.validateConfig(params.config)
+    const config = hydrateProviderConfig(params.config)
+    const configError = aiManager.validateConfig(config)
     if (configError) return { ok: false, error: configError }
-    const provider = aiManager.getProvider(params.config)
+    const provider = aiManager.getProvider(config)
     return provider.validate()
   })
 
   ipcMain.handle('ai:probe-question', async (_event, params: { config?: AIProviderConfig; question?: string }) => {
-    const config = params.config ?? aiManager.getActiveConfig()
+    const config = params.config ? hydrateProviderConfig(params.config) : aiManager.getActiveConfig()
     if (!config) return { ok: false as const, error: '未配置 AI 提供商' }
     const configError = aiManager.validateConfig(config)
     if (configError) return { ok: false as const, error: configError }
@@ -82,7 +119,7 @@ export function registerAiProviderHandlers(): void {
     const { join } = require('path')
     const home = homedir()
     const os = platform()
-    const result: { claude?: { apiKey: string; baseUrl: string; source?: string }; openai?: { apiKey: string; source?: string }; codex?: { command: string; source?: string }; skipped?: string[] } = { skipped: [] }
+    const detected: { claude?: { apiKey: string; baseUrl: string; source?: string }; openai?: { apiKey: string; source?: string }; codex?: { command: string; source?: string }; skipped?: string[] } = { skipped: [] }
     const isUsableOpenAIKey = (key: unknown) => typeof key === 'string' && /^sk-[A-Za-z0-9_-]+/.test(key.trim())
 
     const claudePaths = [
@@ -96,14 +133,14 @@ export function registerAiProviderHandlers(): void {
         const data = JSON.parse(readFileSync(p, 'utf-8'))
         const env = data.env || {}
         if (env.ANTHROPIC_AUTH_TOKEN) {
-          result.claude = { apiKey: env.ANTHROPIC_AUTH_TOKEN, baseUrl: env.ANTHROPIC_BASE_URL || '', source: 'Claude Code' }
+          detected.claude = { apiKey: env.ANTHROPIC_AUTH_TOKEN, baseUrl: env.ANTHROPIC_BASE_URL || '', source: 'Claude Code' }
           break
         }
       } catch {}
     }
 
     if (isUsableOpenAIKey(process.env.OPENAI_API_KEY)) {
-      result.openai = { apiKey: process.env.OPENAI_API_KEY!.trim(), source: '环境变量 OPENAI_API_KEY' }
+      detected.openai = { apiKey: process.env.OPENAI_API_KEY!.trim(), source: '环境变量 OPENAI_API_KEY' }
     }
 
     const codexPaths = [
@@ -115,24 +152,85 @@ export function registerAiProviderHandlers(): void {
       if (!existsSync(p)) continue
       try {
         const data = JSON.parse(readFileSync(p, 'utf-8'))
-        if (!result.openai && isUsableOpenAIKey(data.OPENAI_API_KEY)) {
-          result.openai = { apiKey: data.OPENAI_API_KEY.trim(), source: 'Codex API Key' }
-          break
+        if (!detected.openai && isUsableOpenAIKey(data.OPENAI_API_KEY)) {
+          detected.openai = { apiKey: data.OPENAI_API_KEY.trim(), source: 'Codex API Key' }
         }
         if (data.auth_mode === 'chatgpt' && data.tokens) {
-          result.codex = { command: 'codex', source: 'Codex ChatGPT 登录' }
+          detected.codex = { command: 'codex', source: 'Codex ChatGPT 登录' }
         } else if (data.OPENAI_API_KEY && !isUsableOpenAIKey(data.OPENAI_API_KEY)) {
-          result.skipped?.push('Codex 中的 OpenAI Key 格式不符合 API Key 要求，已跳过')
+          detected.skipped?.push('Codex 中的 OpenAI Key 格式不符合 API Key 要求，已跳过')
         }
       } catch {}
     }
 
-    if (!result.claude && process.env.ANTHROPIC_API_KEY) {
-      result.claude = { apiKey: process.env.ANTHROPIC_API_KEY, baseUrl: process.env.ANTHROPIC_BASE_URL || '', source: '环境变量 ANTHROPIC_API_KEY' }
+    if (!detected.claude && process.env.ANTHROPIC_API_KEY) {
+      detected.claude = { apiKey: process.env.ANTHROPIC_API_KEY, baseUrl: process.env.ANTHROPIC_BASE_URL || '', source: '环境变量 ANTHROPIC_API_KEY' }
     }
 
-    if (result.skipped?.length === 0) delete result.skipped
-    return result
+    const existing = getStoredProviders()
+    const next = [...existing]
+    let importable = 0
+    let imported = 0
+    let existingCount = 0
+
+    const addIfMissing = (provider: AIProviderConfig, exists: (candidate: AIProviderConfig) => boolean) => {
+      importable++
+      if (next.some(exists)) {
+        existingCount++
+        return
+      }
+      next.push(provider)
+      imported++
+    }
+
+    if (detected.claude) {
+      const hasCustomBase = !!detected.claude.baseUrl
+      addIfMissing({
+        id: randomUUID(),
+        name: hasCustomBase ? 'Claude 中转站 (本地检测)' : 'Claude (本地检测)',
+        type: hasCustomBase ? 'custom' : 'claude',
+        baseUrl: hasCustomBase ? `${detected.claude.baseUrl.replace(/\/+$/, '')}/v1` : '',
+        apiKey: detected.claude.apiKey,
+        model: 'claude-sonnet-4-6',
+        enabled: true
+      }, (candidate) => candidate.apiKey === detected.claude!.apiKey)
+    }
+
+    if (detected.openai) {
+      addIfMissing({
+        id: randomUUID(),
+        name: 'OpenAI (本地检测)',
+        type: 'openai',
+        baseUrl: '',
+        apiKey: detected.openai.apiKey,
+        model: 'gpt-4.1-mini',
+        enabled: true
+      }, (candidate) => candidate.apiKey === detected.openai!.apiKey)
+    }
+
+    if (detected.codex) {
+      addIfMissing({
+        id: randomUUID(),
+        name: 'Codex CLI (本地登录)',
+        type: 'codex',
+        baseUrl: detected.codex.command,
+        apiKey: '',
+        model: 'gpt-5.4',
+        enabled: true
+      }, (candidate) => candidate.type === 'codex' && (candidate.baseUrl || 'codex') === detected.codex!.command)
+    }
+
+    if (imported > 0) {
+      store.set('aiProviders', next)
+      aiManager.clearCache()
+    }
+
+    return {
+      importable,
+      imported,
+      existing: existingCount,
+      skipped: detected.skipped && detected.skipped.length > 0 ? detected.skipped : undefined
+    }
   })
 
   ipcMain.handle('ai:list-ollama-models', async (_event, params: { baseUrl?: string }) => {
