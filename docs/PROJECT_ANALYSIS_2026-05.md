@@ -48,17 +48,17 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 - C：回滚时 `previousContent` 缺失则 `writeFileSync(targetPath,'')` 清空文件而非中止。
 - 证据：`executor.ts:263-268`、`agent.ipc.ts:230-246`
 
-### 🔴 P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　— 🔧 待修复
-- 任意路径读取：`file:read`/`file:stat`/`file:extract-document-text` 连 `vaultPath` 参数都没有，直接 `readFile(params.path)`，可读 `~/.ssh/id_rsa`。`file.ipc.ts:78-89`
-- 明文密钥回流渲染进程：`cloud:get-config` 返回明文 `serviceRoleKey`，`ai:get-providers` 返回明文 `apiKey`，`ai:detect-local-config` 明文回传本地 token（对比正确写法 OneDrive `hasToken`）。`cloud.ipc.ts:30-32`、`ai/provider.ts:8-10,98-119`
-- 零 CSP：全仓无 `Content-Security-Policy`/`onHeadersReceived`，DOMPurify（黑名单式）是唯一 XSS 防线。`index.html`
-- 可利用链：渲染进程用 `dangerouslySetInnerHTML` 渲染 AI 回复/笔记/工具输出，DOMPurify 一旦被绕过 → 注入脚本经 preload 泛化 `invoke` 调 `file:read` 偷任意文件 + `cloud:get-config` 偷 service-role key → `fetch` 外传。
-- 配套短板：便携加密硬编码静态密钥 `secret.ts:8-10`；自动更新无签名 `electron-builder.yml`；日志器无 opt-out + 持久 `device_id` `logger.ts:16-51`。
+### 🔴 P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　— ✅ 已修复（a9118de）
+- 修复：普通 `file:*` IPC 统一走主进程可信 vault guard，配置读取只返回 `has*` 标记，生产响应注入 CSP 且 `index.html` 带 CSP meta，Markdown DOMPurify 改显式白名单，遥测默认关闭。
+- 验收：`p0-security` 覆盖 vault 外读拒绝、AI/cloud secret 不回传、CSP 存在、遥测 opt-out；typecheck 与全量测试通过。
+- 仍需分发侧配合：macOS/Windows 代码签名与更新验签策略。
 
-### 🔴 P0-5　编辑器 Markdown 往返非保真，破坏 Obsidian 语法　— 🔧 待修复
+### 🔴 P0-5　编辑器 Markdown 往返非保真，破坏 Obsidian 语法　— ✅ 已修复（b3debd3）
 - 机制：`onUpdate` 每次把正文整段 `TipTap→Markdown` 重序列化后写盘（仅 frontmatter 用正则保回），`html:false` 丢弃内联 HTML。callout/嵌入/脚注/Dataview 在“打开→编辑无关段落→自动保存”后被改写/丢失。
 - 后果：损坏用户真实笔记，违背“兼容 Obsidian”承诺；仓库无 round-trip 测试守护。
 - 证据：`Editor.tsx:175-181`、`editor-store.ts:199-204`
+- 修复：保存层改为源文本保留式 merge，以上一次 TipTap 序列化正文为基线，只把实际编辑行映射回原始 Markdown；未触碰的 frontmatter、wikilink/embed、Dataview、Tasks、callout、footnote、KaTeX、Mermaid、inline HTML 与 CRLF 原样保留。
+- 验收：新增 round-trip 保存测试覆盖无变化字节幂等、无关段落编辑只改目标段落、markdown-it 隐藏 footnote definition 时仍保留、CRLF 不被改写；`pnpm typecheck` 与全量 110 files / 653 tests 通过。
 
 ---
 
@@ -185,3 +185,5 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P1 可访问性（reduced-motion/对比度/focus） | `3c0f45f` | media query + text-tertiary #8a8a8a + 恢复焦点环 |
 | 2026-05-29 | P0-2 删除复活/不传播 | `4cb8e4e` `3599408` `ef28373` | 三方 reconcile（planSync）+ per-provider manifest 基线 + 全 provider deleteRemote；13 个新测试；643/643 通过 |
 | 2026-05-29 | P0-3 Agent 回滚/重试数据丢失 | `3ac2cae` | 内容指纹守卫：写步骤记 afterHash，回滚/重试前校验，文件被用户改过则中止；2 个新测试；645/645 |
+| 2026-05-29 | P0-4 安全链（任意读/密钥/CSP/遥测） | `a9118de` | vault guard + secret redaction + CSP + DOMPurify 白名单 + telemetry opt-out；p0-security 覆盖 |
+| 2026-05-29 | P0-5 编辑器 Markdown 往返非保真 | `b3debd3` | 源文本保留式 Markdown merge；round-trip 保存测试覆盖 Obsidian 语法与 CRLF；653/653 通过 |

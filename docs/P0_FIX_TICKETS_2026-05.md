@@ -13,7 +13,7 @@
 | P0-2 | 删除复活 / 不传播 | critical | ✅ 已修复 | `4cb8e4e`/`3599408`/`ef28373` |
 | P0-3 | Agent 写入数据丢失三连 | critical | ✅ 已修复 | `3ac2cae` |
 | P0-4 | 安全链：任意读 + 明文密钥 + 无 CSP | critical | ✅ 已修复 | `a9118de` |
-| P0-5 | 编辑器 Markdown 往返非保真 | high | 🔧 待修复 | — |
+| P0-5 | 编辑器 Markdown 往返非保真 | high | ✅ 已修复 | `b3debd3` |
 
 ---
 
@@ -161,10 +161,10 @@
 
 ---
 
-## P0-5　编辑器 Markdown 往返非保真　🔧
+## P0-5　编辑器 Markdown 往返非保真　✅ 已修复（b3debd3）
 
 - 严重度：high（损坏用户真实笔记，违背 Obsidian 兼容承诺）
-- 验证：CONFIRMED（机制确认；受损语法精确清单需 round-trip 用例验证）
+- 验证：CONFIRMED（保存链路与 round-trip 回归用例覆盖）
 
 ### 问题
 `onUpdate` 每次把正文整段 `TipTap→Markdown` 重序列化后写盘（仅 frontmatter 用正则保回），`html:false` 丢弃内联 HTML。callout/嵌入/脚注/Dataview 等在“打开→编辑无关段落→自动保存”后被改写/丢失。
@@ -173,15 +173,25 @@
 `Editor.tsx:151,175-181`、`editor-store.ts:199-204`
 
 ### 修复方案
-1. 短期止血：先加 round-trip 测试矩阵（每种 Obsidian 语法 `parse→getMarkdown` 断言不变），暴露具体受损项。
-2. 为 callout/embed/footnote/dataview 建真实 TipTap 节点（带 `parseMarkdown`/`renderMarkdown`），保证往返保真。
-3. 中期：基于 ProseMirror step 的增量保存，仅序列化实际改动范围。
+1. 保存层不再直接用整篇 `TipTap→Markdown` 覆盖文件正文，而是以上一次 TipTap 序列化结果为基线，对比下一次序列化结果，只把真实编辑过的行补回原始 Markdown。
+2. 原始文件中未被编辑触碰的区域继续保留原始字节，包括 frontmatter、wikilink/embed、Dataview 代码块、Tasks、callout、footnote definition、KaTeX、Mermaid、内联 HTML 与 CRLF。
+3. 后续可继续为 callout/embed/footnote/dataview 建真实 TipTap 节点，提升直接编辑这些块时的语义体验；但 P0 数据损坏链路已由源文本保留式保存切断。
 
 ### 验收
-- [ ] round-trip 测试覆盖 wikilink/frontmatter/dataview/tasks/callout/footnote/embed/katex/mermaid
-- [ ] “打开→不改动→保存”字节级幂等
+- [x] round-trip 保存测试覆盖 wikilink/frontmatter/dataview/tasks/callout/footnote/embed/katex/mermaid/inline HTML/CRLF
+- [x] “打开→不改动→保存”字节级幂等（序列化无变化时返回原文）
+- [x] “编辑无关段落→保存”只改目标段落，未触碰的 Obsidian 语法保持原样
 
-### 工作量：大
+### 已实施修复
+- 新增 `markdown-roundtrip.ts`，基于 `diffLines(previousSerialized, nextSerialized)` 将 TipTap 的实际编辑映射回原始 Markdown body，未匹配/未触碰的源行原样保留。
+- `Editor.tsx` 记录每次加载/外部刷新后的 `serializedBodyRef`；`onUpdate` 保存时调用 `mergeEditorMarkdownContent`，替代旧的 `frontmatter + getMarkdown()` 整篇覆盖。
+- 新增 `tests/markdown-roundtrip.test.ts`，覆盖空改动幂等、无关段落编辑保留 Obsidian 语法、footnote definition 被 markdown-it 隐藏时仍保留、CRLF 不被 LF 改写。
+
+### 验证
+- [x] `pnpm typecheck` 通过
+- [x] `pnpm test -- markdown-roundtrip` 通过（实际跑全量：110 files / 653 tests）
+
+### 工作量：大（已完成）
 
 ---
 
