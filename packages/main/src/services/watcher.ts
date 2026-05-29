@@ -5,6 +5,7 @@ import { extname } from 'path'
 import { indexNote, removeNoteIndex } from './indexer'
 import { indexNoteEmbeddings, invalidateNoteInCache } from './embedding'
 import { getDatabase } from './database'
+import { logger } from './logger'
 import { readFileSync } from 'fs'
 import { generateMemory, readMemory, deleteMemory } from './memory'
 import { refreshInferredLinksFromMemory } from './memory-links'
@@ -84,7 +85,11 @@ export function startWatching(vaultPath: string): void {
           eventType,
           trigger: 'watcher'
         })
-      } catch {}
+      } catch (err) {
+        // Don't swallow silently: a dropped index write (e.g. SQLITE_BUSY)
+        // would otherwise leave the note unindexed with no trace.
+        logger.warn('Failed to index note from watcher', { path, error: String(err) })
+      }
       const windows = BrowserWindow.getAllWindows()
       for (const win of windows) {
         if (!win.isDestroyed()) {

@@ -23,6 +23,10 @@ export function getDatabase(vaultPath: string): Database.Database {
     db = new Database(dbPath)
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
+    // Wait up to 5s on a locked DB instead of throwing SQLITE_BUSY. Prevents
+    // the watcher's incremental writes from being silently dropped while the
+    // index worker holds a long write transaction (e.g. first full index).
+    db.pragma('busy_timeout = 5000')
     // Integrity check to detect corruption early
     const check = db.pragma('integrity_check') as { integrity_check: string }[]
     if (check[0]?.integrity_check !== 'ok') {
@@ -38,6 +42,7 @@ export function getDatabase(vaultPath: string): Database.Database {
     db = new Database(dbPath)
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
+    db.pragma('busy_timeout = 5000')
   }
 
   currentVaultPath = vaultPath
