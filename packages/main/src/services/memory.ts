@@ -15,6 +15,44 @@ export interface NoteMemory {
   updatedAt: number
 }
 
+export const MEMORY_CONTENT_CHAR_BUDGET = 6000
+const MEMORY_HEAD_CHARS = 2400
+const MEMORY_MIDDLE_CHARS = 1800
+const MEMORY_TAIL_CHARS = MEMORY_CONTENT_CHAR_BUDGET - MEMORY_HEAD_CHARS - MEMORY_MIDDLE_CHARS
+
+export interface MemoryContentExcerpt {
+  text: string
+  truncated: boolean
+}
+
+export function buildMemoryContentExcerpt(content: string): MemoryContentExcerpt {
+  if (content.length <= MEMORY_CONTENT_CHAR_BUDGET) {
+    return { text: content, truncated: false }
+  }
+
+  const middleStart = Math.max(
+    MEMORY_HEAD_CHARS,
+    Math.floor((content.length - MEMORY_MIDDLE_CHARS) / 2)
+  )
+  const middleEnd = Math.min(
+    content.length - MEMORY_TAIL_CHARS,
+    middleStart + MEMORY_MIDDLE_CHARS
+  )
+  const tailStart = content.length - MEMORY_TAIL_CHARS
+
+  return {
+    truncated: true,
+    text: [
+      '[note excerpt: beginning]',
+      content.slice(0, MEMORY_HEAD_CHARS).trimEnd(),
+      '[note excerpt: middle]',
+      content.slice(middleStart, middleEnd).trim(),
+      '[note excerpt: end]',
+      content.slice(tailStart).trimStart()
+    ].join('\n')
+  }
+}
+
 function getMemoriesDir(vaultPath: string): string {
   const dir = join(vaultPath, '.nexusky', 'memories')
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -69,6 +107,10 @@ export async function generateMemory(
 
   const provider = aiManager.getProvider(config)
   const folder = filePath.split('/').slice(0, -1).join('/') || '_root'
+  const contentExcerpt = buildMemoryContentExcerpt(content)
+  const contentLabel = contentExcerpt.truncated
+    ? 'Note content excerpts (truncated; sampled from beginning, middle, and end):'
+    : 'Note content:'
 
   let result = ''
   try {
@@ -90,7 +132,7 @@ topics (2-4): Knowledge domain tags the note belongs to.
 
 summary (50-150 chars): What this note covers, what problem it solves, and its core conclusion. Write in the same language as the note content.
 </fields>` },
-      { role: 'user', content: `Note title: ${title}\nNote path: ${filePath}\n\nNote content:\n${content.slice(0, 3000)}` }
+      { role: 'user', content: `Note title: ${title}\nNote path: ${filePath}\n\n${contentLabel}\n${contentExcerpt.text}` }
     ], signal)) {
       if (signal?.aborted) return null
       if (chunk.type === 'text') result += chunk.content

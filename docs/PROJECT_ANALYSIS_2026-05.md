@@ -102,7 +102,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | Codex/Ollama 的 agent 工具静默降级（无 `chatStreamWithTools`），能力差异无声明（✅ 本提交） | `codex-cli-provider.ts`、`ollama-provider.ts` |
 | P2 | Codex 子进程无超时/无 SIGKILL/无输出上限，`validate()` 不传 signal 会挂死 IPC（✅ 本提交） | `codex-cli-provider.ts:35-66,154` |
 | P2 | 主聊天/agent 路径无请求超时；工具参数 JSON 截断不可恢复（✅ d75cfdd）；Claude `max_tokens` 硬编码 4096（✅ 本提交） | `ai.ipc.ts`、`json.ts:10-71`、`claude-provider.ts:128` |
-| P2 | memory 仅取内容前 3000 字符，长笔记记忆系统性偏差 | `memory.ts:93` |
+| P2 | memory 仅取内容前 3000 字符，长笔记记忆系统性偏差（✅ 本提交） | `memory.ts` |
 
 ---
 
@@ -193,3 +193,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P2 Codex CLI 子进程边界 | 本提交 | Codex chat/validate 增加超时、Windows taskkill/Unix SIGTERM+SIGKILL 终止、stdout/stderr 与输出文件大小上限；codex-cli-provider 测试 2/2、typecheck 通过 |
 | 2026-05-29 | P2 工具参数 JSON 截断恢复 | 本提交 | `extractJsonFromText` 对末尾缺闭合引号/括号的对象或数组做保守补齐，再由 `JSON.parse` 校验；ai-json/ai-tool-arguments 12/12、typecheck 通过 |
 | 2026-05-29 | P2 Claude 输出 token 预算 | 本提交 | `ChatOptions.maxTokens` 支持覆盖 Claude 输出预算，默认从 4096 提到 `DEFAULT_CLAUDE_MAX_TOKENS=8192` 并做上下限规范化；claude-provider 测试 2/2、typecheck 通过 |
+| 2026-05-29 | P2 长笔记记忆采样偏差 | 本提交 | 记忆生成从固定前 3000 字符改为 6000 字符预算的开头/中部/结尾采样，并在 prompt 中标注截断；memory-excerpt 2/2、typecheck 通过 |
