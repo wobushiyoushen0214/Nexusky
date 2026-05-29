@@ -167,7 +167,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 维护收尾 GC（`pruneExpired` + 删除过期建议，防膨胀） | 小 | 高 | ✅ da9565d |
 | P1 | 关系候选改走 embedding/FTS（大 vault 扩展性） | 中 | 高 | 🔧 |
 | P1 | Token/成本总线 + provider capabilities 声明 | 中 | 高 | 🔧 |
-| P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | 🔧 |
+| P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | ✅ 本提交 |
 | P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
 | P1 | reduced-motion 媒体块 + `--text-tertiary` 提亮 + 全局 `:focus-visible` | 小 | 高 | ✅ 3c0f45f |
 | P2 | 图谱 Canvas/WebGL 化；稳定笔记 ID；mac 签名；修文档漂移 | 大/中 | 中-高 | 🔧 |
@@ -187,3 +187,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P0-3 Agent 回滚/重试数据丢失 | `3ac2cae` | 内容指纹守卫：写步骤记 afterHash，回滚/重试前校验，文件被用户改过则中止；2 个新测试；645/645 |
 | 2026-05-29 | P0-4 安全链（任意读/密钥/CSP/遥测） | `a9118de` `65e725e` | vault guard + secret redaction + CSP + DOMPurify 白名单 + telemetry opt-out；dev CSP 兼容 Vite/React Refresh；vault 读取/索引失败可恢复；p0-security/vault-store 覆盖 |
 | 2026-05-29 | P0-5 编辑器 Markdown 往返非保真 | `b3debd3` | 源文本保留式 Markdown merge；round-trip 保存测试覆盖 Obsidian 语法与 CRLF；653/653 通过 |
+| 2026-05-29 | P1 RAG 检索 prompt injection 防护 | 本提交 | 检索片段统一进入 `<retrieved_notes trust="low">`，声明其为非指令数据，并转义 `&/< />` 防止笔记内容逃出边界；retrieved-notes-context 测试 3/3、typecheck 通过 |

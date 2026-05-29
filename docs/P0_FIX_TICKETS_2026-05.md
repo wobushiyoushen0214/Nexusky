@@ -205,6 +205,6 @@
 | 并发写静默丢失 | 全连接 `busy_timeout=5000`；watcher `catch{}` 改记日志 | ✅ ecd1e44 |
 | 存储无限增长 | 维护收尾调 `pruneExpired` + `deleteExpiredSuggestions` | ✅ da9565d |
 | reduced-motion / 对比度 / focus | media query + `--text-tertiary`→`#8a8a8a` + 恢复焦点环 | ✅ 3c0f45f |
-| RAG 注入 | 检索片段用 `<retrieved_notes trust="low">` 包裹 + 声明“非指令” | 🔧 待修 |
+| RAG 注入 | 检索片段用 `<retrieved_notes trust="low">` 包裹 + 声明“非指令”，并转义检索内容中的标签边界 | ✅ 已修复（本提交） |
 | lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | 🔧 待修 |
 | 关系候选 O(N) 扫描 | 改走 embedding/FTS（大 vault 扩展性） | 🔧 待修 |
