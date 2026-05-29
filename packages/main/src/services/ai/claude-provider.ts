@@ -91,6 +91,11 @@ function toFinishReason(stopReason: Anthropic.StopReason | null | undefined): st
 }
 
 export class ClaudeProvider extends BaseAIProvider {
+  override readonly capabilities = {
+    streaming: true,
+    toolCalling: true
+  }
+
   private client: Anthropic
 
   constructor(config: AIProviderConfig) {

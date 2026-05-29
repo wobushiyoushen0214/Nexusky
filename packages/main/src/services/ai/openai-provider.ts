@@ -60,6 +60,11 @@ function toOpenAITools(tools: ToolDefinition[]): ChatCompletionTool[] {
 }
 
 export class OpenAIProvider extends BaseAIProvider {
+  override readonly capabilities = {
+    streaming: true,
+    toolCalling: true
+  }
+
   private client: OpenAI
 
   constructor(config: AIProviderConfig) {

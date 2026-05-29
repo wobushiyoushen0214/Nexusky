@@ -1,4 +1,4 @@
-import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult } from './base-provider'
+import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult, AIProviderCapabilities, buildToolCallingUnsupportedMessage } from './base-provider'
 import { OpenAIProvider } from './openai-provider'
 import { OpenAIResponsesProvider } from './openai-responses-provider'
 import { ClaudeProvider } from './claude-provider'
@@ -108,9 +108,13 @@ class AIManager {
       return
     }
     const provider = this.getProvider(config)
+    if (!provider.capabilities.toolCalling) {
+      yield { type: 'error', content: buildToolCallingUnsupportedMessage(config) }
+      return
+    }
     yield* provider.chatStreamWithTools(messages, tools, signal)
   }
 }
 
 export const aiManager = new AIManager()
-export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult }
+export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult, AIProviderCapabilities }

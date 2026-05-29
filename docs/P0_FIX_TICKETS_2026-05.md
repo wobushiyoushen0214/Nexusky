@@ -207,5 +207,6 @@
 | reduced-motion / 对比度 / focus | media query + `--text-tertiary`→`#8a8a8a` + 恢复焦点环 | ✅ 3c0f45f |
 | RAG 注入 | 检索片段用 `<retrieved_notes trust="low">` 包裹 + 声明“非指令”，并转义检索内容中的标签边界 | ✅ 已修复（本提交） |
 | 批量生成失败统计 | `ai:generate-notes` 返回 `failed/total/failedItems`，前端显示部分失败 | ✅ 已修复（本提交） |
+| provider 工具能力声明 | `BaseAIProvider.capabilities.toolCalling` 显式声明；不支持工具调用时 Agent 直接报错 | ✅ 已修复（本提交） |
 | lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | 🔧 待修 |
 | 关系候选 O(N) 扫描 | 改走 embedding/FTS（大 vault 扩展性） | 🔧 待修 |

@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import type { AIProviderValidationResult, ChatMessage, ToolDefinition } from '../packages/main/src/services/ai/base-provider'
+import { BaseAIProvider, buildToolCallingUnsupportedMessage } from '../packages/main/src/services/ai/base-provider'
+import type { AIProviderCapabilities, AIProviderValidationResult, ChatMessage, ChatStreamEvent, ToolDefinition } from '../packages/main/src/services/ai/base-provider'
 import type { IPCChannelMap } from '../packages/shared/src/types/ipc'
 
 describe('AI provider shared types', () => {
@@ -44,6 +45,52 @@ describe('AI provider shared types', () => {
     expectTypeOf(result).toMatchTypeOf<AIProviderValidationResult>()
     expect(result.ok).toBe(false)
     expect(result.error).toBe('invalid key')
+  })
+
+  it('declares tool-calling capability and refuses unsupported tool use by default', async () => {
+    class TextOnlyProvider extends BaseAIProvider {
+      async *chatStream(): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'text', content: 'plain chat' }
+      }
+      async validate(): Promise<AIProviderValidationResult> {
+        return { ok: true }
+      }
+    }
+
+    const provider = new TextOnlyProvider({
+      id: 'ollama',
+      name: 'Ollama',
+      type: 'ollama',
+      baseUrl: '',
+      apiKey: '',
+      model: 'llama',
+      enabled: true
+    })
+    const capabilities: AIProviderCapabilities = provider.capabilities
+    const events = []
+    for await (const event of provider.chatStreamWithTools([], [])) events.push(event)
+
+    expect(capabilities.toolCalling).toBe(false)
+    expect(events[0]).toEqual({
+      type: 'error',
+      content: buildToolCallingUnsupportedMessage({ name: 'Ollama', type: 'ollama' })
+    })
+  })
+
+  it('keeps provider capabilities on renderer-safe IPC provider configs', () => {
+    const provider: IPCChannelMap['ai:get-providers']['result'][number] = {
+      id: 'openai',
+      name: 'OpenAI',
+      type: 'openai',
+      baseUrl: '',
+      apiKey: '',
+      model: 'gpt-4.1',
+      enabled: true,
+      hasApiKey: true,
+      capabilities: { streaming: true, toolCalling: true }
+    }
+
+    expect(provider.capabilities?.toolCalling).toBe(true)
   })
 
   it('exposes ai:probe-question with a discriminated union result', () => {

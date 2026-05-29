@@ -279,6 +279,12 @@ export interface AIProviderConfig {
   model: string
   enabled: boolean
   hasApiKey?: boolean
+  capabilities?: AIProviderCapabilities
+}
+
+export interface AIProviderCapabilities {
+  streaming: boolean
+  toolCalling: boolean
 }
 
 export interface AIProviderValidationResult {

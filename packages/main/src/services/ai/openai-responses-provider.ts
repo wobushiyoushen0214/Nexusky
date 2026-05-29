@@ -33,6 +33,11 @@ function toResponseTools(tools: ToolDefinition[]): FunctionTool[] {
 }
 
 export class OpenAIResponsesProvider extends BaseAIProvider {
+  override readonly capabilities = {
+    streaming: true,
+    toolCalling: true
+  }
+
   private client: OpenAI
 
   constructor(config: AIProviderConfig) {

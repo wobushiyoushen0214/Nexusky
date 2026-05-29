@@ -13,7 +13,8 @@ export function redactProviderForRenderer(config: AIProviderConfig): AIProviderC
   return {
     ...config,
     apiKey: '',
-    hasApiKey: !!config.apiKey
+    hasApiKey: !!config.apiKey,
+    capabilities: aiManager.getProvider(config).capabilities
   }
 }
 
@@ -25,7 +26,7 @@ function hydrateProviderConfig(config: AIProviderConfig): AIProviderConfig {
 }
 
 function normalizeProviderForStore(config: AIProviderConfig): AIProviderConfig {
-  const { hasApiKey: _hasApiKey, ...rest } = config
+  const { hasApiKey: _hasApiKey, capabilities: _capabilities, ...rest } = config
   return rest
 }
 

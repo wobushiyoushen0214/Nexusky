@@ -7,6 +7,12 @@ export interface AIProviderConfig {
   model: string
   enabled: boolean
   hasApiKey?: boolean
+  capabilities?: AIProviderCapabilities
+}
+
+export interface AIProviderCapabilities {
+  streaming: boolean
+  toolCalling: boolean
 }
 
 export interface AIProviderValidationResult {
@@ -52,6 +58,11 @@ export interface ChatOptions {
 }
 
 export abstract class BaseAIProvider {
+  readonly capabilities: AIProviderCapabilities = {
+    streaming: true,
+    toolCalling: false
+  }
+
   protected config: AIProviderConfig
 
   constructor(config: AIProviderConfig) {
@@ -66,6 +77,14 @@ export abstract class BaseAIProvider {
     tools: ToolDefinition[],
     signal?: AbortSignal
   ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
-    yield* this.chatStream(messages, signal)
+    void messages
+    void tools
+    void signal
+    yield { type: 'error', content: buildToolCallingUnsupportedMessage(this.config) }
   }
+}
+
+export function buildToolCallingUnsupportedMessage(config: Pick<AIProviderConfig, 'name' | 'type'>): string {
+  const providerName = config.name || config.type
+  return `${providerName} 不支持 Agent 工具调用。请切换到 OpenAI、OpenAI Responses、Claude 或兼容工具调用的提供商后再使用 Agent 模式。`
 }
