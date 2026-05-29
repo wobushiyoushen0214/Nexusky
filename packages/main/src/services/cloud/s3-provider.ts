@@ -1,11 +1,12 @@
 import { createHash, createHmac } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs'
-import { dirname, extname, join, relative } from 'path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { dirname, join, relative } from 'path'
 import { store } from '../store'
 import type { SyncFileInfo, SyncProvider, SyncResult } from './provider'
 import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
+import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
 
 export interface S3Config {
   endpoint: string
@@ -97,27 +98,6 @@ function relPathFromKey(config: S3Config, key: string): string | null {
   return rel
 }
 
-function collectLocalFiles(dirPath: string): string[] {
-  const results: string[] = []
-  function walk(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (extname(entry.name) === '.md') results.push(full)
-    }
-  }
-  walk(dirPath)
-  const memoriesDir = join(dirPath, '.nexusky', 'memories')
-  if (existsSync(memoriesDir)) {
-    for (const entry of readdirSync(memoriesDir, { withFileTypes: true })) {
-      if (entry.isFile() && extname(entry.name) === '.json') results.push(join(memoriesDir, entry.name))
-    }
-  }
-  return results
-}
-
 export function signS3Request(config: S3Config, method: string, url: string, body: string | Buffer = '', extraHeaders: Record<string, string> = {}, date = new Date()): Record<string, string> {
   const normalized = normalizeS3Config(config)
   const parsed = new URL(url)
@@ -178,7 +158,7 @@ export class S3SyncProvider implements SyncProvider {
     const body = readFileSync(filePath)
     const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
     const res = await s3Fetch(config, 'PUT', buildS3ObjectUrl(config, relPath), body, {
-      'content-type': extname(filePath) === '.json' ? 'application/json' : 'text/markdown; charset=utf-8',
+      'content-type': getSyncContentType(filePath),
       'x-amz-meta-content-md5': createHash('md5').update(body).digest('hex')
     })
     return res.ok
@@ -210,7 +190,7 @@ export class S3SyncProvider implements SyncProvider {
     return parseS3ListObjects(await res.text())
       .map((object) => {
         const rel = relPathFromKey(config, object.key)
-        if (!rel || !(extname(rel) === '.md' || rel.startsWith('.nexusky/memories/') && extname(rel) === '.json')) return null
+        if (!rel || !shouldSyncRelPath(rel)) return null
         return { path: rel, hash: object.etag, updatedAt: object.lastModified || new Date().toISOString() }
       })
       .filter((item): item is SyncFileInfo => !!item)
@@ -219,12 +199,12 @@ export class S3SyncProvider implements SyncProvider {
   async syncAll(vaultPath: string): Promise<SyncResult> {
     if (!getConfig()) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置 S3'] }
     const remoteFiles = await this.listRemoteFiles()
-    const localFiles = toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))
+    const localFiles = toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))
     const manifest = readManifest(vaultPath, this.type)
     const plan = planSync({ localFiles, remoteFiles, manifest })
     const outcome = await executeSyncPlan(vaultPath, plan, this)
     if (outcome.errors.length === 0) {
-      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))))
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))))
     }
     return {
       total: localFiles.length,

@@ -1,12 +1,13 @@
 import { SyncProvider, SyncFileInfo, SyncResult, SyncConflict } from './provider'
 import { getSupabaseClient, getAdminClient } from './client'
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs'
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { logger } from '../logger'
 import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
+import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
 
 interface NoteSyncRow {
   file_path: string
@@ -39,32 +40,6 @@ async function runConcurrent<T>(tasks: (() => Promise<T>)[], concurrency: number
   return results
 }
 
-function collectLocalFiles(dirPath: string): string[] {
-  const results: string[] = []
-  function walk(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (extname(entry.name) === '.md') results.push(full)
-    }
-  }
-  walk(dirPath)
-
-  const memoriesDir = join(dirPath, '.nexusky', 'memories')
-  if (existsSync(memoriesDir)) {
-    const memFiles = readdirSync(memoriesDir, { withFileTypes: true })
-    for (const entry of memFiles) {
-      if (entry.isFile() && extname(entry.name) === '.json') {
-        results.push(join(memoriesDir, entry.name))
-      }
-    }
-  }
-
-  return results
-}
-
 export class SupabaseSyncProvider implements SyncProvider {
   readonly type = 'supabase' as const
   readonly name = 'Supabase'
@@ -92,9 +67,7 @@ export class SupabaseSyncProvider implements SyncProvider {
     const content = readFileSync(filePath)
     const hash = createHash('md5').update(content).digest('hex')
 
-    const contentType = extname(filePath) === '.json'
-      ? 'application/json; charset=utf-8'
-      : 'text/markdown; charset=utf-8'
+    const contentType = getSyncContentType(filePath)
 
     const { error } = await client.storage
       .from('notes')
@@ -156,11 +129,13 @@ export class SupabaseSyncProvider implements SyncProvider {
 
     const { data } = await client.from('note_sync').select('file_path, content_hash, updated_at')
     const rows = (data || []) as NoteSyncRow[]
-    return rows.map((row) => ({
-      path: row.file_path,
-      hash: row.content_hash,
-      updatedAt: row.updated_at
-    }))
+    return rows
+      .filter((row) => shouldSyncRelPath(row.file_path))
+      .map((row) => ({
+        path: row.file_path,
+        hash: row.content_hash,
+        updatedAt: row.updated_at
+      }))
   }
 
   async syncAll(vaultPath: string): Promise<SyncResult> {
@@ -168,7 +143,7 @@ export class SupabaseSyncProvider implements SyncProvider {
     if (!client) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置云端'] }
 
     const remoteFiles = await this.listRemoteFiles()
-    const localFiles = toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))
+    const localFiles = toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))
     const manifest = readManifest(vaultPath, this.type)
     const plan = planSync({ localFiles, remoteFiles, manifest })
 
@@ -184,7 +159,7 @@ export class SupabaseSyncProvider implements SyncProvider {
     // Only advance the deletion baseline after a clean sync, so a failed run
     // never causes the next run to misclassify a file as deleted.
     if (outcome.errors.length === 0) {
-      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))))
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))))
     }
     return result
   }

@@ -88,7 +88,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 重命名/移动 = 删除+新建（id 绑路径），丢失该笔记的 AI 记忆/关系/看板溯源 | `indexer.ts:147`、`watcher.ts:102-115` |
 | P1 | 后台关系发现每次保存做 2000 行 JS 扫描 + 10×`LIKE`；存储无限增长（`pruneExpired` 死代码、无 VACUUM） | `relation-candidates.ts:362-408`、`proactive-store.ts:350` |
 | P1 | `getPropertyRows`/未链接提及在主进程同步重读全文，大 vault 卡主线程 | `indexer.ts:211-260,345-386` |
-| P2 | 附件/图片根本不同步（`collectLocalFiles` 只收 `.md`+memories），隐性数据缺口 | 各 provider `collectLocalFiles` |
+| P2 | 附件/图片根本不同步（`collectLocalFiles` 只收 `.md`+memories），隐性数据缺口（✅ 本提交） | 各 provider `collectLocalFiles` |
 
 ---
 
@@ -199,3 +199,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P2 可配置快捷键未生效 | 本提交 | App/Editor 共用快捷键匹配工具，保存与查找替换读取用户配置；Canvas 入口恢复为 `mainView='canvas'`，不再和属性层快捷键落到同一状态；shortcuts/activity-bar-registry 8/8、typecheck 通过 |
 | 2026-05-29 | P2 文档入口死链与产品描述漂移 | 本提交 | README 文档入口改为现存文档；PROJECT_OVERVIEW 对齐 PRODUCT 的 Canvas 属性/时间图层与 Agent 非 ActivityBar 入口；docs-links 1/1、typecheck 通过 |
 | 2026-05-29 | P2 CI/build 冒烟与依赖冻结 | 本提交 | CI 增加 `pnpm run build`，release workflow 全部使用 `pnpm install --frozen-lockfile`，package 声明 Node/pnpm engine 与 packageManager；workflow-config 3/3、typecheck、build 通过 |
+| 2026-05-29 | P2 附件/图片同步缺口 | 本提交 | 云同步 provider 统一使用共享文件枚举器，纳入图片、PDF、普通附件与 memory JSON，同时继续排除内部索引/配置；sync-files/sync-execute/sync-reconcile/webdav-provider/s3-provider 21/21、typecheck、build 通过 |

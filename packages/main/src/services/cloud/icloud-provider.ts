@@ -1,12 +1,13 @@
 import { SyncProvider, SyncFileInfo, SyncResult } from './provider'
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync, copyFileSync, unlinkSync } from 'fs'
-import { join, relative, dirname, extname } from 'path'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, copyFileSync, unlinkSync } from 'fs'
+import { join, relative, dirname } from 'path'
 import { createHash } from 'crypto'
 import { homedir } from 'os'
 import { store } from '../store'
 import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
+import { collectSyncLocalFiles } from './sync-files'
 
 const ICLOUD_CONTAINER = 'iCloud~com~nexusky~notes'
 
@@ -35,21 +36,6 @@ function getICloudBasePath(): string | null {
   return null
 }
 
-function collectFiles(dirPath: string): string[] {
-  const results: string[] = []
-  if (!existsSync(dirPath)) return results
-  function walk(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (extname(entry.name) === '.md') results.push(full)
-    }
-  }
-  walk(dirPath)
-  return results
-}
 export class ICloudSyncProvider implements SyncProvider {
   readonly type = 'icloud' as const
   readonly name = 'iCloud Drive'
@@ -110,7 +96,7 @@ export class ICloudSyncProvider implements SyncProvider {
     const base = getICloudBasePath()
     if (!base) return []
 
-    const files = collectFiles(base)
+    const files = collectSyncLocalFiles(base)
     return files.map((f) => {
       const relPath = relative(base, f).replace(/\\/g, '/')
       const content = readFileSync(f)
@@ -125,12 +111,12 @@ export class ICloudSyncProvider implements SyncProvider {
     if (!base) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['iCloud Drive 不可用'] }
 
     const remoteFiles = await this.listRemoteFiles()
-    const localFiles = toLocalFileInfos(vaultPath, collectFiles(vaultPath))
+    const localFiles = toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))
     const manifest = readManifest(vaultPath, this.type)
     const plan = planSync({ localFiles, remoteFiles, manifest })
     const outcome = await executeSyncPlan(vaultPath, plan, this)
     if (outcome.errors.length === 0) {
-      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectFiles(vaultPath))))
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))))
     }
     return {
       total: localFiles.length,

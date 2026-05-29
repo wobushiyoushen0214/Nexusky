@@ -1,12 +1,13 @@
 import { createHash } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs'
-import { dirname, extname, join, relative } from 'path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { dirname, join, relative } from 'path'
 import { store } from '../store'
 import { logger } from '../logger'
 import type { SyncFileInfo, SyncProvider, SyncResult } from './provider'
 import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
+import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
 
 export interface WebDavConfig {
   url: string
@@ -72,28 +73,6 @@ export function buildWebDavUrl(config: WebDavConfig, relPath = ''): string {
 function authHeaders(config: WebDavConfig): Record<string, string> {
   if (!config.username && !config.password) return {}
   return { Authorization: `Basic ${Buffer.from(`${config.username || ''}:${config.password || ''}`).toString('base64')}` }
-}
-
-function collectLocalFiles(dirPath: string): string[] {
-  const results: string[] = []
-  function walk(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (extname(entry.name) === '.md') results.push(full)
-    }
-  }
-  walk(dirPath)
-
-  const memoriesDir = join(dirPath, '.nexusky', 'memories')
-  if (existsSync(memoriesDir)) {
-    for (const entry of readdirSync(memoriesDir, { withFileTypes: true })) {
-      if (entry.isFile() && extname(entry.name) === '.json') results.push(join(memoriesDir, entry.name))
-    }
-  }
-  return results
 }
 
 function decodeXml(value: string): string {
@@ -172,7 +151,7 @@ export class WebDavSyncProvider implements SyncProvider {
     const res = await request(config, buildWebDavUrl(config, relPath), {
       method: 'PUT',
       body: readFileSync(filePath),
-      headers: { 'Content-Type': extname(filePath) === '.json' ? 'application/json' : 'text/markdown; charset=utf-8' }
+      headers: { 'Content-Type': getSyncContentType(filePath) }
     })
     return res.ok
   }
@@ -203,7 +182,7 @@ export class WebDavSyncProvider implements SyncProvider {
     if (!res.ok && res.status !== 207) return []
     const hrefs = parseWebDavHrefs(await res.text())
     const relPaths = Array.from(new Set(hrefs.map((href) => hrefToRelPath(href, config)).filter((path): path is string => !!path)))
-      .filter((path) => extname(path) === '.md' || path.startsWith('.nexusky/memories/') && extname(path) === '.json')
+      .filter((path) => shouldSyncRelPath(path))
     const files: SyncFileInfo[] = []
     for (const path of relPaths) {
       const file = await request(config, buildWebDavUrl(config, path), { method: 'GET' })
@@ -221,12 +200,12 @@ export class WebDavSyncProvider implements SyncProvider {
   async syncAll(vaultPath: string): Promise<SyncResult> {
     if (!getConfig()) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置 WebDAV'] }
     const remoteFiles = await this.listRemoteFiles()
-    const localFiles = toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))
+    const localFiles = toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))
     const manifest = readManifest(vaultPath, this.type)
     const plan = planSync({ localFiles, remoteFiles, manifest })
     const outcome = await executeSyncPlan(vaultPath, plan, this)
     if (outcome.errors.length === 0) {
-      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))))
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))))
     }
     return {
       total: localFiles.length,

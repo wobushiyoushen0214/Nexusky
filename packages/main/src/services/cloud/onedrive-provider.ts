@@ -1,6 +1,6 @@
 import { SyncProvider, SyncFileInfo, SyncResult } from './provider'
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync } from 'fs'
-import { join, relative, dirname, extname } from 'path'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs'
+import { join, relative, dirname } from 'path'
 import { createHash } from 'crypto'
 import { net, BrowserWindow } from 'electron'
 import { logger } from '../logger'
@@ -9,6 +9,7 @@ import { getErrorMessage } from '@shared/utils/errors'
 import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
+import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
 
 export interface OneDriveConfig {
   clientId: string
@@ -181,20 +182,6 @@ export async function startOneDriveAuth(clientId: string): Promise<{ success: bo
   })
 }
 
-function collectLocalFiles(dirPath: string): string[] {
-  const results: string[] = []
-  function walk(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (extname(entry.name) === '.md') results.push(full)
-    }
-  }
-  walk(dirPath)
-  return results
-}
 export class OneDriveSyncProvider implements SyncProvider {
   readonly type = 'onedrive' as const
   readonly name = 'OneDrive'
@@ -226,7 +213,7 @@ export class OneDriveSyncProvider implements SyncProvider {
       await graphRequest(`/me/drive/root:${encodedPath}:/content`, {
         method: 'PUT',
         body: content,
-        headers: { 'Content-Type': 'application/octet-stream' }
+        headers: { 'Content-Type': getSyncContentType(filePath) }
       })
       return true
     } catch (err: unknown) {
@@ -274,8 +261,9 @@ export class OneDriveSyncProvider implements SyncProvider {
         for (const item of data.value || []) {
           if (item.folder) {
             await listFolder(`${path}/${item.name}`)
-          } else if (item.name.endsWith('.md')) {
+          } else {
             const relPath = `${path}/${item.name}`.replace(folder + '/', '')
+            if (!shouldSyncRelPath(relPath)) continue
             results.push({
               path: relPath,
               hash: item.file?.hashes?.sha256Hash || item.eTag || '',
@@ -294,12 +282,12 @@ export class OneDriveSyncProvider implements SyncProvider {
     if (!this.isConfigured()) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['OneDrive 未配置'] }
 
     const remoteFiles = await this.listRemoteFiles()
-    const localFiles = toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))
+    const localFiles = toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))
     const manifest = readManifest(vaultPath, this.type)
     const plan = planSync({ localFiles, remoteFiles, manifest })
     const outcome = await executeSyncPlan(vaultPath, plan, this)
     if (outcome.errors.length === 0) {
-      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectLocalFiles(vaultPath))))
+      writeManifest(vaultPath, this.type, manifestFromLocal(toLocalFileInfos(vaultPath, collectSyncLocalFiles(vaultPath))))
     }
     return {
       total: localFiles.length,
