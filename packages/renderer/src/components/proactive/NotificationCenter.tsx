@@ -32,9 +32,14 @@ export function NotificationCenter() {
     if (typeof window.api?.onProactiveEmitted !== 'function') return
     const off = window.api.onProactiveEmitted((suggestion) => {
       upsertSuggestion(suggestion)
+      // The suggestion has now been surfaced to the user (bell badge / toast),
+      // so record it as shown. proactive-policy's per-day / per-entity / global
+      // rate limits count shown suggestions; without this write shown_at stays
+      // null and those limits never fire in production.
+      if (vaultPath) void respond(vaultPath, suggestion.id, 'shown')
     })
     return off
-  }, [upsertSuggestion])
+  }, [upsertSuggestion, respond, vaultPath])
 
   const badge = useMemo(() => suggestions.length, [suggestions])
   const hasSuggestions = suggestions.length > 0
