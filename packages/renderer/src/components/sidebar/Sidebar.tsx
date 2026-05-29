@@ -111,7 +111,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   }
 
   return (
-    <aside className="animate-slide-in-left" style={{ width, height: '100%', background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative' }}>
+    <aside className="animate-slide-in-left" style={{ width, height: '100%', minHeight: 0, background: 'var(--sidebar-bg)', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <button
@@ -319,7 +319,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       {/* File tree */}
       <div
         tabIndex={0}
-        style={{ flex: 1, overflowY: 'hidden', padding: '0 4px 12px 8px', outline: 'none' }}
+        style={{ flex: 1, minHeight: 0, overflowY: 'hidden', padding: '0 4px 12px 8px', outline: 'none', display: 'flex', flexDirection: 'column' }}
         onContextMenu={(e) => {
           if ((e.target as HTMLElement).closest('button')) return
           e.preventDefault()
@@ -327,7 +327,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
         }}
       >
         {fileError ? (
-          <div style={{ padding: '18px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ flex: 1, minHeight: 0, padding: '18px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>无法读取笔记空间</div>
               <div style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'break-word' }}>{fileError}</div>
@@ -350,7 +350,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
         ) : (
           <>
             {indexError && (
-              <div style={{ margin: '0 4px 8px 0', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.5 }}>
+              <div style={{ flexShrink: 0, margin: '0 4px 8px 0', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.5 }}>
                 索引失败：{indexError}
               </div>
             )}

@@ -324,7 +324,7 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
 
   if (entries.length === 0) {
     return (
-      <div style={{ padding: '32px 8px', textAlign: 'center' }}>
+      <div style={{ flex: 1, minHeight: 0, padding: '32px 8px', textAlign: 'center' }}>
         <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>空笔记库</p>
       </div>
     )
@@ -344,7 +344,8 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
         }
       }}
       style={{
-        height: '100%',
+        flex: 1,
+        minHeight: 0,
         overflowY: 'auto',
         position: 'relative',
         outline: 'none',
