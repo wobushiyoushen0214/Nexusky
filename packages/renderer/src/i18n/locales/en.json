@@ -530,7 +530,12 @@
     "empty": "No matching note cards",
     "noteNode": "Knowledge node",
     "propertyCount": "{{count}} props",
-    "noTags": "No tags"
+    "noTags": "No tags",
+    "focusMenu": "Focus this card and its links",
+    "focusBanner": "Focused: {{title}} · {{count}} direct link(s)",
+    "focusClear": "Exit focus",
+    "focusEmpty": "No directly linked cards",
+    "guideFocus": "8. Right-click a card to show only it and its direct links; press Esc or the top button to exit focus."
   },
   "timeline": {
     "title": "Knowledge Space Time Layer",

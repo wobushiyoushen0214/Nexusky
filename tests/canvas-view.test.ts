@@ -43,7 +43,7 @@ describe('canvas card placement', () => {
 
   it('places a new card around the current visible viewport center', () => {
     const origin = getViewportCenteredCardOrigin(
-      { scrollLeft: 600, scrollTop: 300, clientWidth: 800, clientHeight: 500 },
+      { panX: -600, panY: -300, clientWidth: 800, clientHeight: 500 },
       { minX: -760, minY: -760 },
       1.25,
       0

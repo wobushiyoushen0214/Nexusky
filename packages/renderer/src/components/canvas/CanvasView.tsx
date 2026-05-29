@@ -27,15 +27,15 @@ interface DragPreview {
 interface PanState {
   startX: number
   startY: number
-  scrollLeft: number
-  scrollTop: number
+  initialPanX: number
+  initialPanY: number
 }
 
 type CanvasPositionOverrides = Partial<Record<CanvasMode, Record<string, CanvasPosition>>>
 
-interface PendingScroll {
-  left?: number
-  top?: number
+interface PendingPan {
+  panX?: number
+  panY?: number
   focusX?: number
   focusY?: number
 }
@@ -54,8 +54,8 @@ interface CanvasMetrics {
 }
 
 interface CanvasViewportBox {
-  scrollLeft: number
-  scrollTop: number
+  panX: number
+  panY: number
   clientWidth: number
   clientHeight: number
 }
@@ -180,8 +180,8 @@ export function getViewportCenteredCardOrigin(viewport: CanvasViewportBox | null
   if (!viewport) return defaultPosition(fallbackIndex)
   const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
   return {
-    x: (viewport.scrollLeft + viewport.clientWidth / 2) / scale + metrics.minX - CARD_WIDTH / 2,
-    y: (viewport.scrollTop + viewport.clientHeight / 2) / scale + metrics.minY - CARD_HEIGHT / 2
+    x: (viewport.clientWidth / 2 - viewport.panX) / scale + metrics.minX - CARD_WIDTH / 2,
+    y: (viewport.clientHeight / 2 - viewport.panY) / scale + metrics.minY - CARD_HEIGHT / 2
   }
 }
 
@@ -760,15 +760,18 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
   const [canvasMode, setCanvasMode] = useState<CanvasMode>(initialMode)
   const [activeSuggestionKey, setActiveSuggestionKey] = useState<string | null>(null)
   const [acceptingSuggestionKey, setAcceptingSuggestionKey] = useState<string | null>(null)
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
   const [canvasEdges, setCanvasEdges] = useState<CanvasEdgeRoute[]>([])
   const [canvasSuggestedEdges, setCanvasSuggestedEdges] = useState<CanvasSuggestedEdgeRoute[]>([])
   const canvasRef = useRef<HTMLDivElement>(null)
+  const transformElRef = useRef<HTMLDivElement>(null)
   const modePositionOverridesRef = useRef<CanvasPositionOverrides>({})
   const metricsRef = useRef(getCanvasMetrics([], {}))
   const previousMetricsRef = useRef(metricsRef.current)
   const initialScrollKeyRef = useRef<string | null>(null)
   const zoomRef = useRef(zoom)
-  const pendingScrollRef = useRef<PendingScroll | null>(null)
+  const panRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const pendingPanRef = useRef<PendingPan | null>(null)
   const saveViewportTimerRef = useRef<number | null>(null)
   const restoredViewportKeyRef = useRef<string | null>(null)
   const dragPositionRef = useRef<CanvasPosition | null>(null)
@@ -785,6 +788,12 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
   useEffect(() => {
     zoomRef.current = zoom
   }, [zoom])
+
+  const applyTransform = () => {
+    const el = transformElRef.current
+    if (!el) return
+    el.style.transform = `translate3d(${panRef.current.x}px, ${panRef.current.y}px, 0) scale(${zoomRef.current})`
+  }
 
   useEffect(() => {
     setCanvasMode(initialMode)
@@ -817,23 +826,34 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     metricsRef.current = canvasMetrics
     previousMetricsRef.current = canvasMetrics
     const viewport = canvasRef.current
-    if (!viewport) return
-    const pendingScroll = pendingScrollRef.current
-    if (pendingScroll) {
-      pendingScrollRef.current = null
-      if (typeof pendingScroll.focusX === 'number' && typeof pendingScroll.focusY === 'number') {
-        viewport.scrollLeft = Math.max(0, (pendingScroll.focusX - canvasMetrics.minX) * zoom - viewport.clientWidth / 2)
-        viewport.scrollTop = Math.max(0, (pendingScroll.focusY - canvasMetrics.minY) * zoom - viewport.clientHeight / 2)
+    if (!viewport) {
+      applyTransform()
+      return
+    }
+    const pending = pendingPanRef.current
+    if (pending) {
+      pendingPanRef.current = null
+      if (typeof pending.focusX === 'number' && typeof pending.focusY === 'number') {
+        panRef.current = {
+          x: viewport.clientWidth / 2 - (pending.focusX - canvasMetrics.minX) * zoom,
+          y: viewport.clientHeight / 2 - (pending.focusY - canvasMetrics.minY) * zoom,
+        }
       } else {
-        viewport.scrollLeft = Math.max(0, pendingScroll.left || 0)
-        viewport.scrollTop = Math.max(0, pendingScroll.top || 0)
+        if (typeof pending.panX === 'number') panRef.current.x = pending.panX
+        if (typeof pending.panY === 'number') panRef.current.y = pending.panY
       }
+      applyTransform()
       return
     }
     const dx = (previous.minX - canvasMetrics.minX) * zoom
     const dy = (previous.minY - canvasMetrics.minY) * zoom
-    if (dx !== 0) viewport.scrollLeft += dx
-    if (dy !== 0) viewport.scrollTop += dy
+    if (dx !== 0 || dy !== 0) {
+      panRef.current = {
+        x: panRef.current.x - dx,
+        y: panRef.current.y - dy,
+      }
+    }
+    applyTransform()
   }, [canvasMetrics, zoom])
 
   const loadRows = async () => {
@@ -857,7 +877,7 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
         )
         const position = initialPositions[focusRow.id]
         if (position) {
-          pendingScrollRef.current = {
+          pendingPanRef.current = {
             focusX: position.x + CARD_WIDTH / 2,
             focusY: position.y + CARD_HEIGHT / 2
           }
@@ -897,11 +917,9 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     const handlePointerMove = (event: PointerEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect()
       if (!rect) return
-      const scrollLeft = canvasRef.current!.scrollLeft
-      const scrollTop = canvasRef.current!.scrollTop
       const metrics = metricsRef.current
-      const x = (event.clientX - rect.left + scrollLeft) / zoom + metrics.minX - dragging.offsetX
-      const y = (event.clientY - rect.top + scrollTop) / zoom + metrics.minY - dragging.offsetY
+      const x = (event.clientX - rect.left - panRef.current.x) / zoom + metrics.minX - dragging.offsetX
+      const y = (event.clientY - rect.top - panRef.current.y) / zoom + metrics.minY - dragging.offsetY
       dragPositionRef.current = { x, y }
       if (dragFrameRef.current === null) {
         dragFrameRef.current = window.requestAnimationFrame(applyDragPosition)
@@ -940,10 +958,12 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
   useEffect(() => {
     if (!panning) return
     const handlePointerMove = (event: PointerEvent) => {
-      const viewport = canvasRef.current
-      if (!viewport) return
-      viewport.scrollLeft = panning.scrollLeft - (event.clientX - panning.startX)
-      viewport.scrollTop = panning.scrollTop - (event.clientY - panning.startY)
+      panRef.current = {
+        x: panning.initialPanX + (event.clientX - panning.startX),
+        y: panning.initialPanY + (event.clientY - panning.startY),
+      }
+      applyTransform()
+      scheduleViewportSave()
     }
     const handlePointerUp = () => setPanning(null)
     window.addEventListener('pointermove', handlePointerMove)
@@ -966,9 +986,9 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
         const nextZoom = Math.max(0.5, Math.min(1.8, typeof saved.zoom === 'number' ? saved.zoom : zoomRef.current))
         const metrics = metricsRef.current
         zoomRef.current = nextZoom
-        pendingScrollRef.current = {
-          left: (saved.x - metrics.minX) * nextZoom,
-          top: (saved.y - metrics.minY) * nextZoom
+        pendingPanRef.current = {
+          panX: -(saved.x - metrics.minX) * nextZoom,
+          panY: -(saved.y - metrics.minY) * nextZoom,
         }
         restoredViewportKeyRef.current = key
         setZoom(nextZoom)
@@ -977,22 +997,69 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     }
     requestAnimationFrame(() => {
       const metrics = metricsRef.current
-      viewport.scrollLeft = Math.max(0, -metrics.minX * zoom - 44)
-      viewport.scrollTop = Math.max(0, -metrics.minY * zoom - 44)
+      panRef.current = {
+        x: 44 + metrics.minX * zoom,
+        y: 44 + metrics.minY * zoom,
+      }
+      applyTransform()
     })
   }, [filteredRows.length, rows.length, vaultPath, zoom])
 
   const visibleIds = useMemo(() => new Set(filteredRows.map((row) => row.id)), [filteredRows])
   const canvasAssociationSuggestions = useMemo(() => buildCanvasAssociationSuggestions(filteredRows, graph?.edges || []), [filteredRows, graph?.edges])
 
+  const focusedNeighborIds = useMemo(() => {
+    if (!focusedRowId) return null
+    const neighbors = new Set<string>([focusedRowId])
+    if (graph) {
+      for (const edge of graph.edges) {
+        if (edge.source === focusedRowId) neighbors.add(edge.target)
+        else if (edge.target === focusedRowId) neighbors.add(edge.source)
+      }
+    }
+    for (const edge of canvasAssociationSuggestions) {
+      if (edge.source === focusedRowId) neighbors.add(edge.target)
+      else if (edge.target === focusedRowId) neighbors.add(edge.source)
+    }
+    return neighbors
+  }, [focusedRowId, graph, canvasAssociationSuggestions])
+
+  const displayedIds = useMemo(() => {
+    if (!focusedNeighborIds) return visibleIds
+    const next = new Set<string>()
+    for (const id of visibleIds) {
+      if (focusedNeighborIds.has(id)) next.add(id)
+    }
+    return next
+  }, [visibleIds, focusedNeighborIds])
+
+  const displayedRows = useMemo(() => {
+    if (!focusedNeighborIds) return filteredRows
+    return filteredRows.filter((row) => focusedNeighborIds.has(row.id))
+  }, [filteredRows, focusedNeighborIds])
+
+  const focusedRow = focusedRowId ? rows.find((row) => row.id === focusedRowId) || null : null
+  const focusedNeighborCount = focusedNeighborIds ? Math.max(0, focusedNeighborIds.size - 1) : 0
+
+  useEffect(() => {
+    if (focusedRowId && !rows.some((row) => row.id === focusedRowId)) setFocusedRowId(null)
+  }, [rows, focusedRowId])
+
+  useEffect(() => {
+    if (!focusedRowId) return
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFocusedRowId(null)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [focusedRowId])
+
   const persistViewport = () => {
     if (!vaultPath) return
-    const viewport = canvasRef.current
-    if (!viewport) return
     const metrics = metricsRef.current
     safeSetJSON(getCanvasViewportStorageKey(vaultPath), {
-      x: viewport.scrollLeft / zoomRef.current + metrics.minX,
-      y: viewport.scrollTop / zoomRef.current + metrics.minY,
+      x: -panRef.current.x / zoomRef.current + metrics.minX,
+      y: -panRef.current.y / zoomRef.current + metrics.minY,
       zoom: zoomRef.current
     })
   }
@@ -1125,7 +1192,9 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
       }
     }
     const currentEdges = canvasEdges.map(ensureFreshRoute)
-    if (!dragPreview) return currentEdges
+    const restrict = (list: CanvasEdgeRoute[]) =>
+      focusedNeighborIds ? list.filter((edge) => displayedIds.has(edge.source) && displayedIds.has(edge.target)) : list
+    if (!dragPreview) return restrict(currentEdges)
     const rerouted = graph.edges
       .filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
       .filter((edge) => edge.source === dragPreview.id || edge.target === dragPreview.id)
@@ -1144,12 +1213,12 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
         }
       })
       .filter((edge): edge is CanvasEdgeRoute => edge !== null)
-    if (rerouted.length === 0) return currentEdges
-    return [
+    if (rerouted.length === 0) return restrict(currentEdges)
+    return restrict([
       ...currentEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
       ...rerouted
-    ]
-  }, [canvasEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows, graph, visibleIds])
+    ])
+  }, [canvasEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows, graph, visibleIds, displayedIds, focusedNeighborIds])
 
   const visibleCanvasSuggestedEdges = useMemo<CanvasSuggestedEdgeRoute[]>(() => {
     const ensureFreshRoute = (edge: CanvasSuggestedEdgeRoute): CanvasSuggestedEdgeRoute => {
@@ -1165,7 +1234,9 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
       }
     }
     const currentEdges = canvasSuggestedEdges.map(ensureFreshRoute)
-    if (!dragPreview || canvasAssociationSuggestions.length === 0) return currentEdges
+    const restrict = (list: CanvasSuggestedEdgeRoute[]) =>
+      focusedNeighborIds ? list.filter((edge) => displayedIds.has(edge.source) && displayedIds.has(edge.target)) : list
+    if (!dragPreview || canvasAssociationSuggestions.length === 0) return restrict(currentEdges)
     const rerouted = canvasAssociationSuggestions
       .filter((edge) => edge.source === dragPreview.id || edge.target === dragPreview.id)
       .map((edge) => {
@@ -1185,12 +1256,12 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
         }
       })
       .filter((edge): edge is CanvasSuggestedEdgeRoute => edge !== null)
-    if (rerouted.length === 0) return currentEdges
-    return [
+    if (rerouted.length === 0) return restrict(currentEdges)
+    return restrict([
       ...currentEdges.filter((edge) => edge.source !== dragPreview.id && edge.target !== dragPreview.id),
       ...rerouted
-    ]
-  }, [canvasAssociationSuggestions, canvasSuggestedEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows])
+    ])
+  }, [canvasAssociationSuggestions, canvasSuggestedEdges, canvasMetrics.minX, canvasMetrics.minY, displayPositions, dragPreview, filteredRows, displayedIds, focusedNeighborIds])
 
   const activeSuggestion = useMemo(() => {
     if (!activeSuggestionKey) return null
@@ -1213,11 +1284,12 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     })
     if (vaultPath) safeSetJSON(getCanvasModeStorageKey(vaultPath, canvasMode), next)
     requestAnimationFrame(() => {
-      const viewport = canvasRef.current
-      if (!viewport) return
       const metrics = metricsRef.current
-      viewport.scrollLeft = Math.max(0, -metrics.minX * zoom - 44)
-      viewport.scrollTop = Math.max(0, -metrics.minY * zoom - 44)
+      panRef.current = {
+        x: 44 + metrics.minX * zoom,
+        y: 44 + metrics.minY * zoom,
+      }
+      applyTransform()
     })
   }
 
@@ -1234,28 +1306,40 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
       setZoom(clamped)
       return
     }
+    if (Math.abs(currentZoom - clamped) < 0.0005) return
     const rect = viewport.getBoundingClientRect()
     const focalClientX = clientX ?? rect.left + viewport.clientWidth / 2
     const focalClientY = clientY ?? rect.top + viewport.clientHeight / 2
     const focalX = focalClientX - rect.left
     const focalY = focalClientY - rect.top
-    const canvasX = (viewport.scrollLeft + focalX) / currentZoom
-    const canvasY = (viewport.scrollTop + focalY) / currentZoom
-    zoomRef.current = clamped
-    pendingScrollRef.current = {
-      left: canvasX * clamped - focalX,
-      top: canvasY * clamped - focalY
+    const canvasX = (focalX - panRef.current.x) / currentZoom
+    const canvasY = (focalY - panRef.current.y) / currentZoom
+    panRef.current = {
+      x: focalX - canvasX * clamped,
+      y: focalY - canvasY * clamped,
     }
+    zoomRef.current = clamped
+    applyTransform()
     setZoom(clamped)
     scheduleViewportSave()
   }
 
   const handleCanvasWheel = (event: WheelEvent) => {
-    if (!event.ctrlKey && !event.metaKey) return
     event.preventDefault()
-    const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
-    const nextZoom = zoomRef.current * Math.exp(-delta * 0.002)
-    zoomAtViewportPoint(nextZoom, event.clientX, event.clientY)
+    if (event.ctrlKey || event.metaKey) {
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+      const nextZoom = zoomRef.current * Math.exp(-delta * 0.002)
+      zoomAtViewportPoint(nextZoom, event.clientX, event.clientY)
+      return
+    }
+    const deltaX = event.deltaMode === 1 ? event.deltaX * 16 : event.deltaX
+    const deltaY = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+    panRef.current = {
+      x: panRef.current.x - deltaX,
+      y: panRef.current.y - deltaY,
+    }
+    applyTransform()
+    scheduleViewportSave()
   }
 
   useEffect(() => {
@@ -1270,14 +1354,12 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     if (target.closest('[data-canvas-card]')) return
     if (target.closest('button,input,textarea,select,a')) return
     if (event.button !== 0 && event.button !== 1) return
-    const viewport = canvasRef.current
-    if (!viewport) return
     event.preventDefault()
     setPanning({
       startX: event.clientX,
       startY: event.clientY,
-      scrollLeft: viewport.scrollLeft,
-      scrollTop: viewport.scrollTop
+      initialPanX: panRef.current.x,
+      initialPanY: panRef.current.y,
     })
   }
 
@@ -1299,13 +1381,17 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     const width = Math.max(1, bounds.maxX - bounds.minX)
     const height = Math.max(1, bounds.maxY - bounds.minY)
     const nextZoom = Math.max(0.5, Math.min(1.4, Math.min((viewport.clientWidth - 80) / width, (viewport.clientHeight - 80) / height)))
-    zoomRef.current = nextZoom
     const metrics = metricsRef.current
-    pendingScrollRef.current = {
-      left: (bounds.minX - metrics.minX) * nextZoom - 40,
-      top: (bounds.minY - metrics.minY) * nextZoom - 40
+    const focusX = bounds.minX + width / 2
+    const focusY = bounds.minY + height / 2
+    panRef.current = {
+      x: viewport.clientWidth / 2 - (focusX - metrics.minX) * nextZoom,
+      y: viewport.clientHeight / 2 - (focusY - metrics.minY) * nextZoom,
     }
+    zoomRef.current = nextZoom
+    applyTransform()
     setZoom(nextZoom)
+    scheduleViewportSave()
   }
 
   const createCanvasNote = async () => {
@@ -1368,7 +1454,7 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
       <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{t('canvas.title')}</div>
-          <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-tertiary)' }}>{t('canvas.summary', { count: rows.length, shown: filteredRows.length })}</div>
+          <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-tertiary)' }}>{t('canvas.summary', { count: rows.length, shown: displayedRows.length })}</div>
         </div>
       </div>
 
@@ -1385,15 +1471,15 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
       >
         <div
           ref={canvasRef}
-          onScroll={scheduleViewportSave}
           onPointerDown={handleCanvasPointerDown}
           style={{
             height: '100%',
-            overflow: 'auto',
+            overflow: 'hidden',
             position: 'relative',
             background: 'radial-gradient(circle at 1px 1px, var(--border-subtle) 1px, transparent 0)',
             backgroundSize: '24px 24px',
-            cursor: panning ? 'grabbing' : 'grab'
+            cursor: panning ? 'grabbing' : 'grab',
+            touchAction: 'none'
           }}
         >
           {filteredRows.length === 0 ? (
@@ -1402,8 +1488,18 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
               {!loading && <button onClick={createCanvasNote} style={{ ...buttonStyle, marginTop: 10 }}>{t('canvas.createFirst')}</button>}
             </div>
           ) : (
-            <div style={{ position: 'relative', width: canvasWidth * zoom, height: canvasHeight * zoom }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
+            <div
+              ref={transformElRef}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: canvasWidth,
+                height: canvasHeight,
+                transformOrigin: '0 0',
+                willChange: 'transform'
+              }}
+            >
               <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: 0, pointerEvents: 'none' }}>
                 <defs>
                   <marker id="canvas-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
@@ -1450,7 +1546,7 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
                   )
                 })}
               </svg>
-              {canvasGroupLabels.map((label) => (
+              {!focusedRowId && canvasGroupLabels.map((label) => (
                 <div
                   key={label.key}
                   style={{
@@ -1478,7 +1574,7 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
                   <span style={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums', opacity: 0.74 }}>{label.count}</span>
                 </div>
               ))}
-              {filteredRows.map((row, index) => {
+              {displayedRows.map((row, index) => {
                 const pos = displayPositions[row.id] || defaultPosition(index)
                 const tags = Array.isArray(row.properties.tags) ? row.properties.tags.map(String) : []
                 const status = valueToText(row.properties.status)
@@ -1491,6 +1587,7 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
                     : ''
                 const updated = row.updatedAt ? new Date(row.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''
                 const metaItems = [source, status, updated, propertyCount > 0 ? t('canvas.propertyCount', { count: propertyCount }) : ''].filter(Boolean)
+                const isFocused = focusedRowId === row.id
                 return (
                   <div
                     key={row.id}
@@ -1506,6 +1603,12 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
                       event.currentTarget.setPointerCapture(event.pointerId)
                     }}
                     onDoubleClick={() => openRow(row)}
+                    onContextMenu={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setFocusedRowId((current) => (current === row.id ? null : row.id))
+                    }}
+                    title={isFocused ? t('canvas.focusClear') : t('canvas.focusMenu')}
                     style={{
                       position: 'absolute',
                       left: pos.x - canvasMetrics.minX,
@@ -1517,12 +1620,18 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
                       display: 'flex',
                       flexDirection: 'column',
                       borderRadius: 7,
-                      border: dragging?.id === row.id ? '1px solid var(--border-default)' : '1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent)',
-                      background: 'color-mix(in srgb, var(--bg-surface) 72%, var(--editor-bg))',
+                      border: isFocused
+                        ? '1px solid var(--accent-text)'
+                        : dragging?.id === row.id
+                          ? '1px solid var(--border-default)'
+                          : '1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent)',
+                      background: isFocused
+                        ? 'color-mix(in srgb, var(--accent-muted) 28%, var(--bg-surface))'
+                        : 'color-mix(in srgb, var(--bg-surface) 72%, var(--editor-bg))',
                       boxShadow: dragging?.id === row.id ? '0 16px 36px rgba(0,0,0,0.34)' : '0 10px 24px rgba(0,0,0,0.11)',
                       cursor: dragging?.id === row.id ? 'grabbing' : 'grab',
                       userSelect: 'none',
-                      zIndex: dragging?.id === row.id ? 5 : 2
+                      zIndex: isFocused ? 4 : dragging?.id === row.id ? 5 : 2
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexShrink: 0 }}>
@@ -1547,7 +1656,6 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
                   </div>
                 )
               })}
-              </div>
             </div>
           )}
         </div>
@@ -1639,6 +1747,43 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
             <div>{t('canvas.guideZoom')}</div>
             <div>{t('canvas.guidePan')}</div>
             <div>{t('canvas.guideCreate')}</div>
+            <div>{t('canvas.guideFocus')}</div>
+          </div>
+        )}
+
+        {focusedRow && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 14,
+              left: 16,
+              zIndex: 6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              maxWidth: 'calc(100% - 360px)',
+              padding: '8px 12px',
+              borderRadius: 8,
+              border: '1px solid color-mix(in srgb, var(--accent-text) 60%, var(--border-subtle))',
+              background: 'color-mix(in srgb, var(--accent-muted) 22%, var(--bg-surface))',
+              color: 'var(--text-primary)',
+              fontSize: 12,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.22)'
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--accent-text)', flexShrink: 0 }} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {focusedNeighborCount > 0
+                ? t('canvas.focusBanner', { title: focusedRow.title, count: focusedNeighborCount })
+                : `${focusedRow.title} · ${t('canvas.focusEmpty')}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setFocusedRowId(null)}
+              style={{ ...buttonStyle, height: 26, padding: '0 8px', flexShrink: 0 }}
+            >
+              {t('canvas.focusClear')}
+            </button>
           </div>
         )}
 

@@ -530,7 +530,12 @@
     "empty": "没有匹配的笔记卡片",
     "noteNode": "知识节点",
     "propertyCount": "{{count}} 个属性",
-    "noTags": "无标签"
+    "noTags": "无标签",
+    "focusMenu": "聚焦此卡片及其关联",
+    "focusBanner": "聚焦中：{{title}} · 直接关联 {{count}} 张",
+    "focusClear": "退出聚焦",
+    "focusEmpty": "没有直接关联的卡片",
+    "guideFocus": "8. 右键卡片可只显示它与直接关联，再次按 Esc 或顶部按钮退出聚焦。"
   },
   "timeline": {
     "title": "知识空间时间图层",
