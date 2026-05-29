@@ -86,7 +86,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 知识图谱用 DOM 渲染节点+边，数千节点卡死，无 Canvas/WebGL 降级 | `GraphView.tsx:952-1009` |
 | P1 | 并发写静默丢失：无 `busy_timeout`，首次索引 worker 长事务期间 watcher 写撞 `SQLITE_BUSY` 被 `catch{}` 吞掉 | `watcher.ts:87`、`database.ts:22-41` |
 | P1 | 重命名/移动 = 删除+新建（id 绑路径），丢失该笔记的 AI 记忆/关系/看板溯源 | `indexer.ts:147`、`watcher.ts:102-115` |
-| P1 | 后台关系发现每次保存做 2000 行 JS 扫描 + 10×`LIKE`；存储无限增长（`pruneExpired` 死代码、无 VACUUM） | `relation-candidates.ts:362-408`、`proactive-store.ts:350` |
+| P1 | 后台关系发现每次保存做 2000 行 JS 扫描 + 10×`LIKE`；存储无限增长（`pruneExpired` 死代码、无 VACUUM）（✅ 本提交已把关系候选关键词/chunk 召回改走 FTS；存储 GC 已由 `da9565d` 修复） | `relation-candidates.ts:326-415`、`proactive-store.ts:350` |
 | P1 | `getPropertyRows`/未链接提及在主进程同步重读全文，大 vault 卡主线程 | `indexer.ts:211-260,345-386` |
 | P2 | 附件/图片根本不同步（`collectLocalFiles` 只收 `.md`+memories），隐性数据缺口（✅ 本提交） | 各 provider `collectLocalFiles` |
 
@@ -165,7 +165,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | “向量检索”二选一：接真实 embedding，或重命名+删死代码+改文案 | 中/大 | 高 | ✅ 本提交 |
 | P1 | 全连接 `busy_timeout` + watcher 的 `catch{}` 加日志 | 小 | 高 | ✅ ecd1e44 |
 | P1 | 维护收尾 GC（`pruneExpired` + 删除过期建议，防膨胀） | 小 | 高 | ✅ da9565d |
-| P1 | 关系候选改走 FTS/BM25 或真实 embedding（大 vault 扩展性） | 中 | 高 | 🔧 |
+| P1 | 关系候选改走 FTS/BM25 或真实 embedding（大 vault 扩展性） | 中 | 高 | ✅ 本提交 |
 | P1 | Token/成本总线 + provider capabilities 声明 | 中 | 高 | 🔧 |
 | P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | ✅ 本提交 |
 | P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
@@ -202,3 +202,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P2 附件/图片同步缺口 | 本提交 | 云同步 provider 统一使用共享文件枚举器，纳入图片、PDF、普通附件与 memory JSON，同时继续排除内部索引/配置；sync-files/sync-execute/sync-reconcile/webdav-provider/s3-provider 21/21、typecheck、build 通过 |
 | 2026-05-30 | P1 apply-fix 预览/撤销 | 本提交 | maintenance apply-fix 统一生成预览再应用，写入前校验 preview hash，应用后写入 undo 记录；create_target 与 Agent file_create 撤销进入 `.trash`，维护面板增加预览确认与撤销入口；maintenance-apply-fix/maintenance-queue-ipc/agent-executor 29/29、typecheck、build 通过 |
 | 2026-05-30 | P1 向量检索命名漂移 | 本提交 | 选择“重命名+删死代码+改文案”路径：`embedding.ts` 改为 `search-index.ts`，IPC/UI 改为本地词法相关检索，移除 cosine/embedding schema 死代码；search-index/long-context-candidates/long-context-classifier 17/17、typecheck、build 通过 |
+| 2026-05-30 | P1 关系候选 FTS 召回 | 本提交 | `relation-candidates` 关键词候选从 `LIKE` 改为 FTS5 `MATCH`，chunk 相似候选先用 FTS 召回 note id 再读候选 chunks 评分，避免保存时全量扫 2000 chunk；long-context-candidates 4/4、typecheck、build 通过 |

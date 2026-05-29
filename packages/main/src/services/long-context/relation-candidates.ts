@@ -54,6 +54,7 @@ interface CandidateAccumulator {
 const DEFAULT_LIMIT = 20
 const MAX_SNIPPETS = 4
 const MAX_KEYWORDS = 10
+const MAX_FTS_TERMS = 12
 const STOP_WORDS = new Set([
   'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'about', 'note', 'notes',
   'current', 'history', 'project', 'task', 'todo', 'done', 'true', 'false',
@@ -325,17 +326,19 @@ function collectKeywordCandidates(
   const terms = extractKeywords(`${source.title}\n${source.content}`, MAX_KEYWORDS)
   if (terms.length === 0) return
 
-  const where = terms.map(() => '(lower(n.title) LIKE ? OR lower(COALESCE(f.content, \'\')) LIKE ?)').join(' OR ')
-  const params = terms.flatMap((term) => [`%${term}%`, `%${term}%`])
+  const ftsQuery = buildFtsQuery(terms)
+  if (!ftsQuery) return
+
   const rows = db.prepare(`
-    SELECT n.id, n.title, n.file_path as filePath, n.updated_at as updatedAt, COALESCE(f.content, '') as content
-    FROM notes n
-    LEFT JOIN notes_fts_map m ON m.note_id = n.id
-    LEFT JOIN notes_fts f ON f.rowid = m.rowid
-    WHERE n.id != ? AND (${where})
-    ORDER BY n.updated_at DESC, n.title ASC
+    SELECT n.id, n.title, n.file_path as filePath, n.updated_at as updatedAt, f.content,
+           bm25(notes_fts) as rank
+    FROM notes_fts f
+    JOIN notes_fts_map m ON m.rowid = f.rowid
+    JOIN notes n ON n.id = m.note_id
+    WHERE notes_fts MATCH ? AND n.id != ?
+    ORDER BY rank ASC, n.updated_at DESC, n.title ASC
     LIMIT ?
-  `).all(source.entityType === 'note' ? source.id : '', ...params, Math.max(limit * 5, 50)) as (NoteCandidateRow & { content: string })[]
+  `).all(ftsQuery, source.entityType === 'note' ? source.id : '', Math.max(limit * 5, 50)) as (NoteCandidateRow & { content: string; rank: number })[]
 
   for (const row of rows) {
     const titleLower = row.title.toLowerCase()
@@ -368,15 +371,31 @@ function collectChunkSimilarityCandidates(
   const queryTokens = new Set(extractKeywords(`${source.title}\n${source.content}`, 32))
   if (queryTokens.size === 0) return
 
+  const ftsQuery = buildFtsQuery(Array.from(queryTokens))
+  if (!ftsQuery) return
+
+  const recallRows = db.prepare(`
+    SELECT n.id, n.title, n.file_path as filePath, n.updated_at as updatedAt,
+           bm25(notes_fts) as rank
+    FROM notes_fts f
+    JOIN notes_fts_map m ON m.rowid = f.rowid
+    JOIN notes n ON n.id = m.note_id
+    WHERE notes_fts MATCH ? AND n.id != ?
+    ORDER BY rank ASC, n.updated_at DESC, n.title ASC
+    LIMIT ?
+  `).all(ftsQuery, source.entityType === 'note' ? source.id : '', Math.max(limit * 8, 80)) as NoteCandidateRow[]
+  if (recallRows.length === 0) return
+
+  const recalledIds = Array.from(new Set(recallRows.map((row) => row.id)))
+  const placeholders = recalledIds.map(() => '?').join(',')
   const rows = db.prepare(`
     SELECT c.note_id as id, n.title, n.file_path as filePath, n.updated_at as updatedAt,
            c.content, COALESCE(c.heading_context, '') as headingContext
     FROM chunks c
     JOIN notes n ON n.id = c.note_id
-    WHERE c.note_id != ?
+    WHERE c.note_id IN (${placeholders})
     ORDER BY n.updated_at DESC, c.chunk_index ASC
-    LIMIT 2000
-  `).all(source.entityType === 'note' ? source.id : '') as (NoteCandidateRow & { content: string; headingContext: string })[]
+  `).all(...recalledIds) as (NoteCandidateRow & { content: string; headingContext: string })[]
 
   const bestByNote = new Map<string, NoteCandidateRow & { content: string; headingContext: string; similarity: number }>()
   for (const row of rows) {
@@ -571,6 +590,22 @@ function propertyValueTokens(value: PropertyValue | undefined): string[] {
   return Array.from(new Set(values
     .map((item) => String(item).trim().toLowerCase())
     .filter((item) => item.length > 0)))
+}
+
+function buildFtsQuery(terms: string[]): string {
+  return Array.from(new Set(terms))
+    .slice(0, MAX_FTS_TERMS)
+    .map(escapeFtsPhrase)
+    .filter((term) => term.length > 0)
+    .map((term) => `"${term}"`)
+    .join(' OR ')
+}
+
+function escapeFtsPhrase(value: string): string {
+  return value
+    .replace(/"/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function extractKeywords(text: string, max: number): string[] {
