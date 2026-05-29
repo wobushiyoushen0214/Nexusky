@@ -36,6 +36,7 @@ import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
 import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, stripMarkdownFrontmatter, type ObsidianLinkReference } from '../../utils/obsidian-link'
+import { mergeEditorMarkdownContent } from '../../utils/markdown-roundtrip'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
 function stripFrontmatter(content: string): string {
@@ -119,6 +120,7 @@ export function Editor() {
   const linkPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const markdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const serializedBodyRef = useRef('')
   const editorStateCache = useRef(new LRUCache<string, EditorStateSnapshot>(20))
   const linkPreviewCache = useRef<Map<string, string>>(new Map())
 
@@ -175,9 +177,9 @@ export function Editor() {
       markdownTimer.current = setTimeout(() => {
         const markdown = editor.storage.markdown.getMarkdown()
         const fullContent = useEditorStore.getState().content
-        const fmMatch = fullContent.match(/^(---\r?\n[\s\S]*?\r?\n---\r?\n?)/)
-        const fm = fmMatch ? fmMatch[1] : ''
-        setContent(fm + markdown)
+        const previousSerialized = serializedBodyRef.current || stripFrontmatter(fullContent)
+        setContent(mergeEditorMarkdownContent(fullContent, previousSerialized, markdown))
+        serializedBodyRef.current = markdown
       }, 1000)
     }
   })
@@ -240,6 +242,7 @@ export function Editor() {
             cached
           )
           editor.view.updateState(state)
+          serializedBodyRef.current = editor.storage.markdown.getMarkdown()
           return
         } catch {}
       }
@@ -248,6 +251,7 @@ export function Editor() {
       if (currentMarkdown !== bodyContent) {
         editor.commands.setContent(bodyContent)
       }
+      serializedBodyRef.current = editor.storage.markdown.getMarkdown()
     }
   }, [currentFilePath])
 
@@ -257,6 +261,7 @@ export function Editor() {
       const newContent = (e as CustomEvent).detail?.content
       if (newContent !== undefined) {
         editor.commands.setContent(stripFrontmatter(newContent))
+        serializedBodyRef.current = editor.storage.markdown.getMarkdown()
       }
     }
     const handleApply = (e: Event) => {
@@ -292,6 +297,7 @@ export function Editor() {
         const currentMarkdown = editor.storage.markdown.getMarkdown()
         if (bodyContent !== currentMarkdown) {
           editor.commands.setContent(bodyContent)
+          serializedBodyRef.current = editor.storage.markdown.getMarkdown()
           useEditorStore.setState((state) => {
             const tabs = [...state.tabs]
             if (state.activeTabIndex >= 0 && state.activeTabIndex < tabs.length) {
