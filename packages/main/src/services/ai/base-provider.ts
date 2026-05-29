@@ -55,6 +55,7 @@ export interface ToolDefinition {
 
 export interface ChatOptions {
   temperature?: number
+  maxTokens?: number
 }
 
 export abstract class BaseAIProvider {

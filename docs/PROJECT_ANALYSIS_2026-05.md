@@ -101,7 +101,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 批量生成部分失败静默吞掉，返回值无 failed 计数（✅ 本提交） | `notes.ts:176,183,232` |
 | P1 | Codex/Ollama 的 agent 工具静默降级（无 `chatStreamWithTools`），能力差异无声明（✅ 本提交） | `codex-cli-provider.ts`、`ollama-provider.ts` |
 | P2 | Codex 子进程无超时/无 SIGKILL/无输出上限，`validate()` 不传 signal 会挂死 IPC（✅ 本提交） | `codex-cli-provider.ts:35-66,154` |
-| P2 | 主聊天/agent 路径无请求超时；工具参数 JSON 截断不可恢复（✅ 本提交）；Claude `max_tokens` 硬编码 4096 | `ai.ipc.ts`、`json.ts:10-71`、`claude-provider.ts:128` |
+| P2 | 主聊天/agent 路径无请求超时；工具参数 JSON 截断不可恢复（✅ d75cfdd）；Claude `max_tokens` 硬编码 4096（✅ 本提交） | `ai.ipc.ts`、`json.ts:10-71`、`claude-provider.ts:128` |
 | P2 | memory 仅取内容前 3000 字符，长笔记记忆系统性偏差 | `memory.ts:93` |
 
 ---
@@ -192,3 +192,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P1 provider 工具能力声明 | 本提交 | `BaseAIProvider.capabilities` 暴露 `toolCalling`，OpenAI/Responses/Claude 标记支持，Codex/Ollama 不再静默降级为普通 chat；ai-provider-types 6/6、typecheck 通过 |
 | 2026-05-29 | P2 Codex CLI 子进程边界 | 本提交 | Codex chat/validate 增加超时、Windows taskkill/Unix SIGTERM+SIGKILL 终止、stdout/stderr 与输出文件大小上限；codex-cli-provider 测试 2/2、typecheck 通过 |
 | 2026-05-29 | P2 工具参数 JSON 截断恢复 | 本提交 | `extractJsonFromText` 对末尾缺闭合引号/括号的对象或数组做保守补齐，再由 `JSON.parse` 校验；ai-json/ai-tool-arguments 12/12、typecheck 通过 |
+| 2026-05-29 | P2 Claude 输出 token 预算 | 本提交 | `ChatOptions.maxTokens` 支持覆盖 Claude 输出预算，默认从 4096 提到 `DEFAULT_CLAUDE_MAX_TOKENS=8192` 并做上下限规范化；claude-provider 测试 2/2、typecheck 通过 |

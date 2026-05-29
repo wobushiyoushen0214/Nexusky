@@ -4,6 +4,8 @@ import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, wa
 import { parseToolArguments } from './tool-arguments'
 
 type AnthropicImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+export const DEFAULT_CLAUDE_MAX_TOKENS = 8192
+export const MAX_CLAUDE_MAX_TOKENS = 64_000
 
 function isAnthropicImageMediaType(value: string): value is AnthropicImageMediaType {
   return value === 'image/jpeg' || value === 'image/png' || value === 'image/gif' || value === 'image/webp'
@@ -90,6 +92,11 @@ function toFinishReason(stopReason: Anthropic.StopReason | null | undefined): st
   return stopReason === 'max_tokens' ? 'length' : (stopReason || 'stop')
 }
 
+export function normalizeClaudeMaxTokens(value?: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_CLAUDE_MAX_TOKENS
+  return Math.max(1, Math.min(Math.floor(value as number), MAX_CLAUDE_MAX_TOKENS))
+}
+
 export class ClaudeProvider extends BaseAIProvider {
   override readonly capabilities = {
     streaming: true,
@@ -130,7 +137,7 @@ export class ClaudeProvider extends BaseAIProvider {
       try {
         const stream = this.client.messages.stream({
           model: this.config.model,
-          max_tokens: 4096,
+          max_tokens: normalizeClaudeMaxTokens(options?.maxTokens),
           system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
           messages: chatMessages,
           ...(options?.temperature !== undefined && { temperature: options.temperature })
@@ -192,7 +199,7 @@ export class ClaudeProvider extends BaseAIProvider {
       try {
         const stream = this.client.messages.stream({
           model: this.config.model,
-          max_tokens: 4096,
+          max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
           system: typeof systemMsg?.content === 'string' ? systemMsg.content : undefined,
           messages: chatMessages,
           tools: anthropicTools.length > 0 ? anthropicTools : undefined
