@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -492,6 +492,41 @@ export function GraphView() {
     setZoomValue(clamped)
   }, [applyGraphScrollAnchor])
 
+  const graphReady = !!graphData && graphData.nodes.length > 0
+
+  // 缩放走原生非被动 wheel 监听：React 合成 onWheel 是被动的，preventDefault 失效，
+  // 会让 Electron 原生 ctrl/⌘+滚轮页面缩放与本组件缩放叠加而抖动。同时按帧合并，
+  // 避免高频滚轮每次都触发整图重渲染 + reflow。
+  useEffect(() => {
+    if (!graphReady) return
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    let rafId: number | null = null
+    let focusX: number | undefined
+    let focusY: number | undefined
+
+    const handleWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return
+      event.preventDefault()
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+      desiredZoomRef.current = clampGraphZoom(desiredZoomRef.current * Math.exp(-delta * 0.002))
+      focusX = event.clientX
+      focusY = event.clientY
+      if (rafId != null) return
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null
+        zoomAtViewportPoint(desiredZoomRef.current, focusX, focusY)
+      })
+    }
+
+    viewport.addEventListener('wheel', handleWheel, { passive: false })
+    return () => {
+      viewport.removeEventListener('wheel', handleWheel)
+      if (rafId != null) window.cancelAnimationFrame(rafId)
+    }
+  }, [graphReady, zoomAtViewportPoint])
+
   useEffect(() => {
     if (!graphData || graphData.nodes.length === 0) return
 
@@ -768,13 +803,6 @@ export function GraphView() {
     }
   }, [panning])
 
-  const handleCanvasWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
-    if (!event.ctrlKey && !event.metaKey) return
-    event.preventDefault()
-    const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
-    zoomAtViewportPoint(desiredZoomRef.current * Math.exp(-delta * 0.002), event.clientX, event.clientY)
-  }
-
   const handleCanvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement
     if (target.closest('[data-graph-node]')) return
@@ -940,7 +968,6 @@ export function GraphView() {
         <div
           ref={viewportRef}
           className={`graph-canvas-viewport${panning ? ' is-panning' : ''}`}
-          onWheel={handleCanvasWheel}
           onPointerDown={handleCanvasPointerDown}
         >
           <div className="graph-canvas-world" style={canvasWorldStyle}>

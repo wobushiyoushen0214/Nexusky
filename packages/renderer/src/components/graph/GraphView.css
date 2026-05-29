@@ -466,6 +466,7 @@
     linear-gradient(var(--bg-base), var(--bg-base));
   background-size: 24px 24px, auto;
   touch-action: none;
+  scrollbar-gutter: stable;
 }
 
 .graph-canvas-viewport.is-panning {
