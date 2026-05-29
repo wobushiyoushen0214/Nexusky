@@ -25,6 +25,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
+import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { EditorToolbar } from './EditorToolbar'
 import { BacklinksPanel } from './BacklinksPanel'
 import { AIWritingMenu } from './AIWritingMenu'
@@ -37,6 +38,7 @@ import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
 import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, stripMarkdownFrontmatter, type ObsidianLinkReference } from '../../utils/obsidian-link'
 import { mergeEditorMarkdownContent } from '../../utils/markdown-roundtrip'
+import { matchesShortcut } from '../../utils/shortcuts'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
 function stripFrontmatter(content: string): string {
@@ -351,7 +353,8 @@ export function Editor() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      const getKey = useKeyBindingStore.getState().getKey
+      if (matchesShortcut(e, getKey('save'))) {
         e.preventDefault()
         useEditorStore.getState().saveFile()
       }
@@ -369,7 +372,7 @@ export function Editor() {
         e.preventDefault()
         if (editor) editor.commands.deleteNode('paragraph')
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+      if (matchesShortcut(e, getKey('find-replace'))) {
         e.preventDefault()
         setFindReplaceOpen((v) => !v)
       }

@@ -24,6 +24,7 @@ import { ToolResultPanel } from './components/tool-surface/ToolResultPanel'
 import { getErrorMessage } from './utils/errors'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED } from './utils/css-snippets'
 import { applyThemePackage, THEME_PACKAGES_UPDATED } from './utils/theme-packages'
+import { matchesShortcut } from './utils/shortcuts'
 import { safeGet } from './utils/storage'
 import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
 
@@ -70,27 +71,6 @@ function PluginPanelView({ active }: { active: ActivePluginPanel | null }) {
         <div style={{ color: 'var(--text-tertiary)' }}>{t('common.pluginPanelNoContent')}</div>
       )}
     </div>
-  )
-}
-
-function normalizeShortcutKey(key: string): string {
-  if (key === ' ') return 'Space'
-  if (key === 'Escape') return 'Esc'
-  return key.length === 1 ? key.toUpperCase() : key
-}
-
-function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
-  if (!shortcut) return false
-  const parts = shortcut.split('+').map((part) => part.trim()).filter(Boolean)
-  const key = parts.find((part) => !['Ctrl', 'Shift', 'Alt'].includes(part))
-  const wantsCtrl = parts.includes('Ctrl')
-  const wantsShift = parts.includes('Shift')
-  const wantsAlt = parts.includes('Alt')
-  return (
-    normalizeShortcutKey(e.key) === key &&
-    (e.ctrlKey || e.metaKey) === wantsCtrl &&
-    e.shiftKey === wantsShift &&
-    e.altKey === wantsAlt
   )
 }
 
@@ -343,7 +323,7 @@ export default function App() {
       }
       if (matchesShortcut(e, getKey('canvas'))) {
         e.preventDefault()
-        setMainView('bases')
+        setMainView('canvas')
         if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
       }
       if (matchesShortcut(e, getKey('chat'))) {

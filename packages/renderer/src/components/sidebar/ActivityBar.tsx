@@ -70,7 +70,7 @@ export function ActivityBar() {
       }
     },
     canvas: () => {
-      setMainView('bases')
+      setMainView('canvas')
       if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
     },
     reader: () => {
