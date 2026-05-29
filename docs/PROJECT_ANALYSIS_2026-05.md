@@ -114,7 +114,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 默认暗色 `--text-tertiary:#5c5c5c` on `#1e1e1e` = 2.49:1（远低于 AA 4.5），398 处引用 | `globals.css:31`（已验证含计算） |
 | P2 | 无 `:focus-visible` 样式 + 36 处 `outline:none` | `globals.css`、各组件 |
 | P2 | Toast 无 `aria-live`；Settings 模态无 `role=dialog`/焦点陷阱/无 Esc 关闭 | `Toast.tsx`、`Settings.tsx:219` |
-| P2 | 切英文后 `document.documentElement.lang` 仍是 `zh-CN` | `ui-store.ts:390-394` |
+| P2 | 切英文后 `document.documentElement.lang` 仍是 `zh-CN`（✅ 本提交） | `ui-store.ts` |
 
 > 亮点反例：`VirtualFileTree` 的键盘导航做得很好；i18n key 已 100% 对齐（730/730）。
 
@@ -194,3 +194,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P2 工具参数 JSON 截断恢复 | 本提交 | `extractJsonFromText` 对末尾缺闭合引号/括号的对象或数组做保守补齐，再由 `JSON.parse` 校验；ai-json/ai-tool-arguments 12/12、typecheck 通过 |
 | 2026-05-29 | P2 Claude 输出 token 预算 | 本提交 | `ChatOptions.maxTokens` 支持覆盖 Claude 输出预算，默认从 4096 提到 `DEFAULT_CLAUDE_MAX_TOKENS=8192` 并做上下限规范化；claude-provider 测试 2/2、typecheck 通过 |
 | 2026-05-29 | P2 长笔记记忆采样偏差 | 本提交 | 记忆生成从固定前 3000 字符改为 6000 字符预算的开头/中部/结尾采样，并在 prompt 中标注截断；memory-excerpt 2/2、typecheck 通过 |
+| 2026-05-29 | P2 文档语言属性不同步 | 本提交 | UI store 在初始化和语言切换时同步 `<html lang>`，并规范化无效语言值；ui-store 13/13、typecheck 通过 |

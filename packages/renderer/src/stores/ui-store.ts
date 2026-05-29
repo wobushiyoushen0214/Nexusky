@@ -5,13 +5,14 @@ import type { GraphMode } from '@shared/types/ipc'
 
 type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'history' | 'graph' | 'plugin' | 'maintenance' | 'agent'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
+const LANGUAGE_IDS = ['zh-CN', 'en'] as const
 const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
 const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
 const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
 type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader' | 'kanban'
-type Language = 'zh-CN' | 'en'
+type Language = typeof LANGUAGE_IDS[number]
 type MaintenancePanelSection = 'context' | 'queue'
 type WorkspaceLayout = {
   mainView: MainView
@@ -98,6 +99,15 @@ function getInitialGraphMode(): GraphMode {
   const saved = safeGet(GRAPH_MODE_STORAGE_KEY)
   if (saved && (GRAPH_MODE_IDS as readonly string[]).includes(saved)) return saved as GraphMode
   return 'folder'
+}
+
+function normalizeLanguage(value: string | null): Language {
+  return value && (LANGUAGE_IDS as readonly string[]).includes(value) ? value as Language : 'zh-CN'
+}
+
+function applyDocumentLanguage(lang: Language): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = lang
 }
 
 function applyTheme(theme: Theme) {
@@ -276,9 +286,11 @@ function resetSidebarWidth(scope: string): void {
 const initialTheme = getInitialTheme()
 const initialAccentColor = normalizeHexColor(safeGet(ACCENT_STORAGE_KEY))
 const initialWorkspaceLayout = getInitialWorkspaceLayout()
+const initialLanguage = normalizeLanguage(safeGet('nexusky-language'))
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', initialTheme)
   applyAccentColor(initialAccentColor)
+  applyDocumentLanguage(initialLanguage)
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -298,7 +310,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   commandPaletteOpen: false,
   theme: initialTheme,
   accentColor: initialAccentColor,
-  language: (safeGet('nexusky-language') || 'zh-CN') as Language,
+  language: initialLanguage,
   graphMode: getInitialGraphMode(),
   maintenancePanelSection: 'queue',
   pendingAgentGoal: null,
@@ -388,9 +400,11 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ theme: next })
   },
   setLanguage: (lang) => {
-    i18n.changeLanguage(lang)
-    safeSet('nexusky-language', lang)
-    set({ language: lang })
+    const next = normalizeLanguage(lang)
+    i18n.changeLanguage(next)
+    applyDocumentLanguage(next)
+    safeSet('nexusky-language', next)
+    set({ language: next })
   },
   setGraphMode: (mode) => {
     const next: GraphMode = GRAPH_MODE_IDS.includes(mode) ? mode : 'folder'

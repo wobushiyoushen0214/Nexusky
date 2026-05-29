@@ -19,6 +19,26 @@ function installLocalStorageMock() {
   return mock
 }
 
+function installDocumentMock() {
+  const root = {
+    lang: '',
+    attributes: new Map<string, string>(),
+    style: {
+      removeProperty: vi.fn(),
+      setProperty: vi.fn(),
+    },
+    setAttribute: vi.fn((name: string, value: string) => {
+      root.attributes.set(name, value)
+      if (name === 'lang') root.lang = value
+    }),
+  }
+  Object.defineProperty(globalThis, 'document', {
+    value: { documentElement: root },
+    configurable: true
+  })
+  return root
+}
+
 describe('ui store workspace widths', () => {
   beforeEach(() => {
     installLocalStorageMock()
@@ -216,6 +236,32 @@ describe('ui store workspace widths', () => {
     expect(JSON.parse(localStorage.getItem('nexusky-sidebar-widths') || '{}')).toEqual({
       'files:/vault/a': 250,
     })
+  })
+})
+
+describe('ui store language accessibility', () => {
+  beforeEach(() => {
+    installLocalStorageMock()
+  })
+
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, 'document')
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
+
+  it('syncs the document language on restore and language changes', async () => {
+    localStorage.setItem('nexusky-language', 'en')
+    const root = installDocumentMock()
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+
+    expect(useUIStore.getState().language).toBe('en')
+    expect(root.lang).toBe('en')
+
+    useUIStore.getState().setLanguage('zh-CN')
+
+    expect(root.lang).toBe('zh-CN')
+    expect(localStorage.getItem('nexusky-language')).toBe('zh-CN')
   })
 })
 
