@@ -68,6 +68,15 @@ interface SettingsProps {
 
 type Tab = 'appearance' | 'ai' | 'cloud' | 'plugins' | 'keys' | 'proactive' | 'long-context'
 const ACCENT_PRESETS = ['#7c6ef5', '#4facfe', '#4ec9a0', '#f0a050', '#e8577a', '#ffd60a', '#88c0d0', '#268bd2']
+const SETTINGS_DIALOG_TITLE_ID = 'settings-dialog-title'
+const SETTINGS_FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(',')
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -80,6 +89,33 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text-primary)',
   outline: 'none',
   transition: 'border-color 150ms',
+}
+
+export function getSettingsDialogFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(SETTINGS_FOCUSABLE_SELECTOR)).filter((element) => {
+    if (element.tabIndex < 0) return false
+    if (element.hasAttribute('hidden')) return false
+    if (element.getAttribute('aria-hidden') === 'true') return false
+    return true
+  })
+}
+
+export function getSettingsDialogTabTarget(
+  container: HTMLElement,
+  activeElement: Element | null,
+  shiftKey: boolean
+): HTMLElement | null {
+  const focusable = getSettingsDialogFocusableElements(container)
+  if (focusable.length === 0) return container
+
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  const activeInside = !!activeElement && container.contains(activeElement)
+
+  if (shiftKey) {
+    return !activeInside || activeElement === first ? last : null
+  }
+  return !activeInside || activeElement === last ? first : null
 }
 
 export function Settings({ open, onClose }: SettingsProps) {
@@ -98,6 +134,8 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [detectConfirm, setDetectConfirm] = useState(false)
   const overlayPointerDownRef = useRef(false)
   const providerOverlayPointerDownRef = useRef(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const previousActiveElementRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (open && settingsInitialTab) {
@@ -128,6 +166,42 @@ export function Settings({ open, onClose }: SettingsProps) {
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    previousActiveElementRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    const focusTimer = window.setTimeout(() => {
+      const firstFocusable = getSettingsDialogFocusableElements(dialog)[0]
+      ;(firstFocusable || dialog).focus()
+    }, 0)
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const target = getSettingsDialogTabTarget(dialog, document.activeElement, e.shiftKey)
+      if (!target) return
+      e.preventDefault()
+      target.focus()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.removeEventListener('keydown', handleKeyDown)
+      const previous = previousActiveElementRef.current
+      if (previous && document.contains(previous)) previous.focus()
+      previousActiveElementRef.current = null
+    }
+  }, [open, onClose])
 
   const saveProviders = async (updated: ProviderConfig[]) => {
     await window.api.invoke('ai:save-providers', { providers: updated })
@@ -235,15 +309,21 @@ export function Settings({ open, onClose }: SettingsProps) {
       }}
     >
       <div
+        ref={dialogRef}
         className="animate-scale-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={SETTINGS_DIALOG_TITLE_ID}
+        tabIndex={-1}
         style={{ width: 760, maxWidth: 'calc(100vw - 40px)', height: 600, maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-surface)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{ height: 48, padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.title')}</span>
+          <span id={SETTINGS_DIALOG_TITLE_ID} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.title')}</span>
           <button
             onClick={onClose}
+            aria-label={t('common.close')}
             style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
