@@ -74,7 +74,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 - per-day / per-entity / 全局冷却三道闸全是 `WHERE shown_at IS NOT NULL`，但 `shown_at` 生产路径永不写入（插入恒 `pending`，渲染层只发 opened/snoozed/dismissed）。
 - 后果：`maxPerDay`（默认 5）等可配阈值完全不生效，实际“会刷屏”，仅靠 `signature` 去重压住一部分。
 - 证据：`proactive-policy.ts:122-159`、`proactive-store.ts:219,305-311`、`NotificationCenter.tsx:127-206`
-- 修复：限流基准从 `shown_at` 改 `created_at`（一行）。
+- 修复（✅ c219629）：限流逻辑（基于 `shown_at`）设计本身正确（测试契约证实），根因是渲染层从不回写 `shown_at`。已让 `NotificationCenter` 在建议送达渲染层时标记 `shown`，使 per-day/per-entity/全局冷却真正生效；全量测试 630/630 通过。（注：初版曾尝试改 `created_at`，但破坏了 snoozed 重新激活语义与既有测试，已回退。）
 
 ---
 
@@ -160,14 +160,15 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P0 | Agent/apply-fix 写盘经统一网关（指纹守卫 + trash + 回滚校验） | 中 | 极高 | 🔧 |
 | P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | 🔧 |
 | P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | 🔧 |
-| P1 | 限流基准改 `created_at`（一行修复主动建议失效） | 小 | 高 | 🔧 |
+| P1 | 主动建议限流生效：展示时回写 `shown_at`（修复失效） | 小 | 高 | ✅ c219629 |
 | P1 | “向量检索”二选一：接真实 embedding，或重命名+删死代码+改文案 | 中/大 | 高 | 🔧 |
-| P1 | 全连接 `busy_timeout` + watcher 的 `catch{}` 加日志/重试 | 小 | 高 | 🔧 |
-| P1 | 关系候选改走 embedding/FTS + 收尾调用 `pruneExpired` | 中 | 高 | 🔧 |
+| P1 | 全连接 `busy_timeout` + watcher 的 `catch{}` 加日志 | 小 | 高 | ✅ ecd1e44 |
+| P1 | 维护收尾 GC（`pruneExpired` + 删除过期建议，防膨胀） | 小 | 高 | ✅ da9565d |
+| P1 | 关系候选改走 embedding/FTS（大 vault 扩展性） | 中 | 高 | 🔧 |
 | P1 | Token/成本总线 + provider capabilities 声明 | 中 | 高 | 🔧 |
 | P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | 🔧 |
 | P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
-| P1 | reduced-motion 媒体块 + `--text-tertiary` 提亮 + 全局 `:focus-visible` | 小 | 高 | 🔧 |
+| P1 | reduced-motion 媒体块 + `--text-tertiary` 提亮 + 全局 `:focus-visible` | 小 | 高 | ✅ 3c0f45f |
 | P2 | 图谱 Canvas/WebGL 化；稳定笔记 ID；mac 签名；修文档漂移 | 大/中 | 中-高 | 🔧 |
 
 ---
@@ -177,3 +178,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 日期 | 项 | commit | 说明 |
 |---|---|---|---|
 | 2026-05-29 | P0-1 index.db 二进制同步损坏 | `c919753` | 5 个 provider push/pull/listRemoteFiles 改 Buffer 通道；typecheck + cloud 测试通过 |
+| 2026-05-29 | P1 并发写静默丢失（busy_timeout + watcher 日志） | `ecd1e44` | 全连接 busy_timeout=5000；watcher catch 改记日志 |
+| 2026-05-29 | P1 主动建议限流失效（展示回写 shown_at） | `c219629` | NotificationCenter 送达即标 shown；630/630 测试通过 |
+| 2026-05-29 | P1 主动建议存储无限增长 | `da9565d` | 维护收尾激活 pruneExpired + 物理删除过期建议 |
+| 2026-05-29 | P1 可访问性（reduced-motion/对比度/focus） | `3c0f45f` | media query + text-tertiary #8a8a8a + 恢复焦点环 |

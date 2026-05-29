@@ -162,14 +162,14 @@
 
 ---
 
-## 附录：P1 速修（一并建议尽快处理）
+## 附录：P1 速修
 
-| 项 | 一句话修复 | 证据 |
+| 项 | 一句话修复 | 状态 |
 |---|---|---|
-| 主动建议限流失效 | 限流基准 `shown_at` → `created_at` | `proactive-policy.ts:122-159` |
-| 并发写静默丢失 | 全连接 `db.pragma('busy_timeout=5000')`；watcher `catch{}` 加日志/重试 | `database.ts:22-41`、`watcher.ts:87` |
-| 存储无限增长 | `runVaultLongContextMaintenance` 收尾调 `pruneExpired` + 事件 GC | `background.ts`、`proactive-store.ts:350` |
-| RAG 注入 | 检索片段用 `<retrieved_notes trust="low">` 包裹 + 系统声明“非指令” | `ai.ipc.ts:121-145` |
-| lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | `package.json`、`ci.yml` |
-| reduced-motion | `globals.css` 加 `@media (prefers-reduced-motion: reduce)` | `globals.css:589-651` |
-| 对比度 | `--text-tertiary` 提到 ≥ `#8a8a8a` | `globals.css:31` |
+| 主动建议限流失效 | 渲染层送达时回写 `shown_at`（限流逻辑本身正确，非改 created_at） | ✅ c219629 |
+| 并发写静默丢失 | 全连接 `busy_timeout=5000`；watcher `catch{}` 改记日志 | ✅ ecd1e44 |
+| 存储无限增长 | 维护收尾调 `pruneExpired` + `deleteExpiredSuggestions` | ✅ da9565d |
+| reduced-motion / 对比度 / focus | media query + `--text-tertiary`→`#8a8a8a` + 恢复焦点环 | ✅ 3c0f45f |
+| RAG 注入 | 检索片段用 `<retrieved_notes trust="low">` 包裹 + 声明“非指令” | 🔧 待修 |
+| lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | 🔧 待修 |
+| 关系候选 O(N) 扫描 | 改走 embedding/FTS（大 vault 扩展性） | 🔧 待修 |
