@@ -28,7 +28,7 @@
 
   --text-primary: #dcddde;
   --text-secondary: #999999;
-  --text-tertiary: #5c5c5c;
+  --text-tertiary: #8a8a8a;
 
   --accent: #7c6ef5;
   --accent-hover: #8b80f7;
@@ -66,7 +66,7 @@
 
   --text-primary: #dcddde;
   --text-secondary: #999999;
-  --text-tertiary: #5c5c5c;
+  --text-tertiary: #8a8a8a;
 
   --accent: #7c6ef5;
   --accent-hover: #8b80f7;
@@ -499,7 +499,9 @@ body {
 
 /* Focus ring - only for keyboard navigation, not clicks */
 :focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 button:focus-visible {
@@ -1039,4 +1041,17 @@ div[class*="ProseMirror"] {
 }
 .editor-content.chat-md img {
   height: auto;
+}
+
+/* Respect the OS "reduce motion" setting (PRODUCT.md accessibility commitment).
+   Near-instant durations keep state changes functional without animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
