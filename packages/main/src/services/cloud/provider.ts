@@ -30,6 +30,7 @@ export interface SyncProvider {
 
   pushFile(vaultPath: string, filePath: string): Promise<boolean>
   pullFile(vaultPath: string, relPath: string): Promise<boolean>
+  deleteRemote(relPath: string): Promise<boolean>
 
   listRemoteFiles(): Promise<SyncFileInfo[]>
 

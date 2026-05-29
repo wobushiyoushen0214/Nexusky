@@ -193,6 +193,13 @@ export class S3SyncProvider implements SyncProvider {
     return true
   }
 
+  async deleteRemote(relPath: string): Promise<boolean> {
+    const config = getConfig()
+    if (!config) return false
+    const res = await s3Fetch(config, 'DELETE', buildS3ObjectUrl(config, relPath))
+    return res.ok || res.status === 404
+  }
+
   async listRemoteFiles(): Promise<SyncFileInfo[]> {
     const config = getConfig()
     if (!config) return []

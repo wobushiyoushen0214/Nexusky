@@ -187,6 +187,13 @@ export class WebDavSyncProvider implements SyncProvider {
     return true
   }
 
+  async deleteRemote(relPath: string): Promise<boolean> {
+    const config = getConfig()
+    if (!config) return false
+    const res = await request(config, buildWebDavUrl(config, relPath), { method: 'DELETE' })
+    return res.ok || res.status === 404
+  }
+
   async listRemoteFiles(): Promise<SyncFileInfo[]> {
     const config = getConfig()
     if (!config) return []

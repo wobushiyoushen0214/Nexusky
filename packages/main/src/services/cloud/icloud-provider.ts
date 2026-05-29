@@ -1,5 +1,5 @@
 import { SyncProvider, SyncFileInfo, SyncResult } from './provider'
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync, copyFileSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, statSync, copyFileSync, unlinkSync } from 'fs'
 import { join, relative, dirname, extname } from 'path'
 import { createHash } from 'crypto'
 import { homedir } from 'os'
@@ -90,6 +90,18 @@ export class ICloudSyncProvider implements SyncProvider {
     mkdirSync(dirname(destPath), { recursive: true })
     copyFileSync(srcPath, destPath)
     return true
+  }
+
+  async deleteRemote(relPath: string): Promise<boolean> {
+    const base = getICloudBasePath()
+    if (!base) return false
+    try {
+      const target = join(base, relPath)
+      if (existsSync(target)) unlinkSync(target)
+      return true
+    } catch {
+      return false
+    }
   }
 
   async listRemoteFiles(): Promise<SyncFileInfo[]> {

@@ -249,6 +249,18 @@ export class OneDriveSyncProvider implements SyncProvider {
     }
   }
 
+  async deleteRemote(relPath: string): Promise<boolean> {
+    try {
+      const remotePath = `${this.folder}/${relPath}`
+      const encodedPath = remotePath.split('/').map(encodeURIComponent).join('/')
+      await graphRequest(`/me/drive/root:${encodedPath}`, { method: 'DELETE' })
+      return true
+    } catch (err: unknown) {
+      logger.error('OneDrive delete failed', err)
+      return false
+    }
+  }
+
   async listRemoteFiles(): Promise<SyncFileInfo[]> {
     const results: SyncFileInfo[] = []
     const folder = this.folder

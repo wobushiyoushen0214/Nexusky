@@ -135,6 +135,19 @@ export class SupabaseSyncProvider implements SyncProvider {
     return true
   }
 
+  async deleteRemote(relPath: string): Promise<boolean> {
+    const client = getAdminClient() || getSupabaseClient()
+    if (!client) return false
+    const storagePath = encodeStoragePath(relPath)
+    const { error } = await client.storage.from('notes').remove([storagePath])
+    await client.from('note_sync').delete().eq('file_path', relPath)
+    if (error) {
+      logger.error('Supabase delete failed', new Error(error.message), { file: relPath })
+      return false
+    }
+    return true
+  }
+
   async listRemoteFiles(): Promise<SyncFileInfo[]> {
     const client = getAdminClient() || getSupabaseClient()
     if (!client) return []
