@@ -128,7 +128,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 核心路径零测试：5 个 AI provider、1485 行 tool 执行器、watcher、updater、5/7 cloud provider | `grep tests/` |
 | P2 | CI 不做 `build`/打包冒烟；`build.yml` 不冻结依赖（58 个 `^`、无 `engines`） | `ci.yml`、`build.yml` |
 | P2 | mac 自动更新大概率静默失效：ad-hoc 签名 + Squirrel.Mac 要求 Developer ID | `afterPack.js:13-16`、`electron-builder.yml` |
-| P2 | 文档漂移：README 文档入口 5/8 死链；PROJECT_OVERVIEW 与 PRODUCT.md 关于 Kanban/Canvas 自相矛盾 | `README.md:86-93` |
+| P2 | 文档漂移：README 文档入口 5/8 死链；PROJECT_OVERVIEW 与 PRODUCT.md 关于 Kanban/Canvas 自相矛盾（✅ 本提交） | `README.md`、`PROJECT_OVERVIEW.md` |
 | P2 | `save`/`find-replace` 设置可改但 `Editor.tsx:348,366` 硬编码忽略；`Ctrl+Shift+C` 与 `Ctrl+Shift+D` 行为相同（✅ 本提交） | `Editor.tsx`、`App.tsx`、`shortcuts.ts` |
 
 巨石组件：ChatPanel 2267 行 / CanvasView 2003 行 / GraphView 1032 行 / `db.ipc.ts` 1458 行。
@@ -197,3 +197,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P2 文档语言属性不同步 | 本提交 | UI store 在初始化和语言切换时同步 `<html lang>`，并规范化无效语言值；ui-store 13/13、typecheck 通过 |
 | 2026-05-29 | P2 Toast/Settings 模态可访问性 | 本提交 | Toast 增加 live region 与 alert/status 语义；Settings 主弹窗增加 labelled dialog、Esc 关闭和 Tab 焦点循环；accessibility-components 3/3、typecheck 通过 |
 | 2026-05-29 | P2 可配置快捷键未生效 | 本提交 | App/Editor 共用快捷键匹配工具，保存与查找替换读取用户配置；Canvas 入口恢复为 `mainView='canvas'`，不再和属性层快捷键落到同一状态；shortcuts/activity-bar-registry 8/8、typecheck 通过 |
+| 2026-05-29 | P2 文档入口死链与产品描述漂移 | 本提交 | README 文档入口改为现存文档；PROJECT_OVERVIEW 对齐 PRODUCT 的 Canvas 属性/时间图层与 Agent 非 ActivityBar 入口；docs-links 1/1、typecheck 通过 |

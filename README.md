@@ -84,13 +84,13 @@ pnpm -C website run build
 ## 文档入口
 
 - [项目全景文档](docs/PROJECT_OVERVIEW.md)：给维护者和 AI agent 的代码导航与系统说明。
-- [使用指南](docs/GUIDE.md)：面向用户的启动、编辑、链接、AI、同步和外观说明。
-- [设计系统](docs/DESIGN.md)：颜色、排版、间距、动效和组件方向。
+- [产品上下文](PRODUCT.md)：当前产品取舍、ActivityBar 调整、Canvas/Kanban/Agent 入口决策。
+- [项目分析与修复记录](docs/PROJECT_ANALYSIS_2026-05.md)：当前缺陷清单、优先级和修复进度。
+- [P0 修复工单](docs/P0_FIX_TICKETS_2026-05.md)：数据安全、安全链和 P1 速修工单。
 - [Web Clipper](docs/WEB_CLIPPER.md)：浏览器剪藏扩展和本地接口说明。
 - [本地插件 API](docs/PLUGIN_COMMANDS.md)：声明式插件命令、面板和编辑器扩展格式。
-- [长期上下文计划](docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md)：长期关系、主题和认知复盘系统的工程记录。
-- [认知伙伴计划](docs/COGNITIVE_PARTNER_PLAN.md)：主动建议、Tool Surface、Agent Run 和可观测性的路线。
-- [提分优化计划](docs/PROJECT_SCORE_OPTIMIZATION_PLAN.md)：当前安全、工程、性能和发布成熟度 backlog。
+- [产品策略分析](docs/PRODUCT_STRATEGY_ANALYSIS.md)：产品方向、目标用户和体验策略。
+- [历史项目审计](docs/PROJECT_AUDIT.md)：早期工程审计记录和历史问题背景。
 
 ## 安全边界
 

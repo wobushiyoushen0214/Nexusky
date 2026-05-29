@@ -103,7 +103,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 | 前端 | React 19、Zustand、i18next |
 | 编辑器 | TipTap / ProseMirror、tiptap-markdown |
 | Markdown 渲染 | marked、DOMPurify、KaTeX、Mermaid、lowlight |
-| 图谱/知识空间 | D3 force / drag / zoom；`db:get-graph` 支持 `GraphMode`（semantic / connection / folder / group / folder-scope），GraphView 默认展示分组总览并支持目录钻取、linkType 视觉区分、布局缓存和 renderer Web Worker 力仿真；知识空间连接线默认显示并由路由 worker 绕开卡片 |
+| 图谱/知识空间 | D3 force / drag / zoom；`db:get-graph` 支持 `GraphMode`（semantic / connection / folder / group / folder-scope），GraphView 默认展示分组总览并支持目录钻取、linkType 视觉区分、布局缓存和 renderer Web Worker 力仿真；知识空间保留属性/时间图层，连接线默认显示并由路由 worker 绕开卡片 |
 | 本地数据库 | better-sqlite3，WAL 模式，FTS5 |
 | AI SDK | OpenAI、Anthropic、Ollama 兼容接口、Codex CLI |
 | 同步 | Supabase、iCloud、OneDrive、WebDAV、S3 |
@@ -411,7 +411,7 @@ AI 面板还支持：
 | 命令面板 | `components/CommandPalette.tsx` | 功能命令、AI 快捷任务、导入/导出入口 |
 | 搜索 | `components/SearchPanel.tsx` | 全文/语义搜索、embedding 进度 |
 | 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 group 总览 + folder-scope 目录钻取，底层 `db:get-graph` 兼容 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
-| 知识空间 | `components/canvas/CanvasView.tsx` | 无限画布、图层、节点布局和默认可见的正交连接线路由 |
+| 知识空间 | `components/canvas/CanvasView.tsx` | 属性/时间图层、节点布局和默认可见的正交连接线路由 |
 | 看板 | `components/KanbanPanel.tsx` | 任务列、拖拽、AI 分析 |
 | 阅读收件箱 | `components/reader/ReaderInboxView.tsx` | 外部阅读材料 triage |
 | 长期上下文面板 | `components/long-context/*` | 当前笔记相关上下文、关系卡片、轮播布局和长期上下文徽标 |
@@ -675,13 +675,13 @@ pnpm test
 ## 21. 与其他文档的关系
 
 - `README.md`：项目入口、快速开始和高层介绍。
-- `docs/GUIDE.md`：面向用户的使用指南。
-- `docs/DESIGN.md`：视觉和交互设计方向。
+- `PRODUCT.md`：产品取舍、ActivityBar 调整和 Canvas/Kanban/Agent 入口决策。
+- `docs/PROJECT_ANALYSIS_2026-05.md`：当前缺陷清单、优先级和修复进度。
+- `docs/P0_FIX_TICKETS_2026-05.md`：数据安全、安全链和 P1 速修工单。
 - `docs/PLUGIN_COMMANDS.md`：插件命令格式。
 - `docs/WEB_CLIPPER.md`：浏览器剪藏功能说明。
-- `docs/OPTIMIZATION.md`：已完成的历史优化清单。
-- `docs/OPTIMIZATION_PLAN.md`：v0.4.0 审计后整理的新一轮优化与改进建议。
-- `docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md`：长期上下文系统的工程执行计划。
+- `docs/PRODUCT_STRATEGY_ANALYSIS.md`：产品方向和策略分析。
+- `docs/PROJECT_AUDIT.md`：历史项目审计记录。
 - 本文：面向开发者和 AI 的代码/功能全景索引。
 
 ## 22. v0.4.0 及之后的增量索引
@@ -735,7 +735,7 @@ pnpm test
 
 - 新增 schema v11：`agent_runs` / `agent_steps`。
 - 新增 Agent planner、store、executor、reflector、tool-runner 和 `agent:*` IPC。
-- 前端新增 `AgentRunPanel` 与 activity bar 入口，支持两向跳转到看板、维护项等上下文。
+- 前端新增 `AgentRunPanel`，保留 Command Palette、Chat/Kanban hand-off 等入口，不再占用 ActivityBar 默认导航位。
 - AI IPC 被拆分为 provider、transcribe、complete、edit、text-tools、notes、graph 等模块；stream/abort 公共逻辑抽到 `ipc/streams/consume-stream.ts`。
 - Agent tool 定义和执行从 `ai.ipc.ts` 抽到 `ipc/tools/agent-tools.ts` 和 `ipc/tools/execute-tool-call.ts`。
 - 新增 tool surface registry、`ai:run-tool` / `ai:list-tool-surface`、命令面板工具入口、编辑器上下文菜单和结构化结果抽屉。
@@ -757,13 +757,13 @@ pnpm test
 ### 22.10 文档与配套
 
 - `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
-- `README.md`、`docs/GUIDE.md`、`docs/OPTIMIZATION.md`、`docs/OPTIMIZATION_PLAN.md` 在同一周期内同步更新。
-- 新增 `docs/COGNITIVE_PARTNER_PLAN.md`、`docs/LONG_TERM_CONTEXT_SYSTEM_PLAN.md` 和 `docs/PROJECT_SCORE_OPTIMIZATION_PLAN.md` 作为长期上下文、认知伙伴和项目评分优化的规划材料。
+- `README.md`、`PRODUCT.md`、`docs/PROJECT_ANALYSIS_2026-05.md`、`docs/P0_FIX_TICKETS_2026-05.md` 在同一周期内同步更新。
+- 保留 `docs/PRODUCT_STRATEGY_ANALYSIS.md` 和 `docs/PROJECT_AUDIT.md` 作为策略与历史审计背景。
 
 ### 22.11 `ac7dee4..cb6a1f3` 最新回写
 
 - 图谱新增 `group` 与 `folder-scope` 两种数据模式。当前 `GraphView` 默认打开顶层分组总览，点击目录节点后按 `rootPath` 懒加载一层目录；深层子目录以 folder 节点聚合，跨可见节点的 explicit / inferred 关系会按可见 owner 聚合成边。`db:get-graph` 的缓存 key 同步纳入 `mode` 和 `rootPath`。
-- 知识空间连接线体验修复：进入画布时会先种下所有可见边和关联建议的轻量正交路由，再交给 `canvas-route-worker.ts` 做绕卡片的精细路由；拖拽时用轻量路线保持反馈，完成后再刷新 worker 路由，避免连接线默认不可见或使用过期锚点。
+- 知识空间连接线体验修复：属性/时间图层进入时会先种下所有可见边和关联建议的轻量正交路由，再交给 `canvas-route-worker.ts` 做绕卡片的精细路由；拖拽时用轻量路线保持反馈，完成后再刷新 worker 路由，避免连接线默认不可见或使用过期锚点。
 - 当前笔记相关上下文从正文上方的内联区域调整为右侧维护面板的 `context` 页签，编辑器状态栏提供"相关上下文"入口；`RelatedContextPanel` 支持 top / side 轮播布局，维护队列和相关上下文共享同一个 `maintenance` 右侧面板。
 - 编辑器底部的链接概览默认折叠，每次切换当前文件都会恢复折叠状态，只在用户主动展开时显示出链、反链和未链接提及。
 - 左侧活动栏将维护入口设为默认可见，命令面板、activity bar registry、`ui-store` 和中英文 i18n 同步适配维护面板子页签。
