@@ -53,22 +53,6 @@ export function chunkText(content: string, noteId: string): TextChunk[] {
   return chunks
 }
 
-export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
-  const length = Math.min(a.length, b.length)
-  if (length === 0) return 0
-
-  let dot = 0
-  let normA = 0
-  let normB = 0
-  for (let i = 0; i < length; i++) {
-    dot += a[i] * b[i]
-    normA += a[i] * a[i]
-    normB += b[i] * b[i]
-  }
-  if (normA === 0 || normB === 0) return 0
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB))
-}
-
 // --- TF-IDF implementation ---
 
 const STOP_WORDS = new Set(['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这',
@@ -142,7 +126,7 @@ interface TfIdfDoc {
 
 let tfidfCache: { vaultPath: string; docs: TfIdfDoc[]; idf: Map<string, number> } | null = null
 
-export function invalidateEmbeddingCache(): void {
+export function invalidateSearchIndexCache(): void {
   tfidfCache = null
 }
 
@@ -403,7 +387,7 @@ ${snippets}`
 
 // --- Public API ---
 
-export async function semanticSearch(vaultPath: string, query: string, topK = 10): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
+export async function lexicalSearch(vaultPath: string, query: string, topK = 10): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
   const candidates = tfidfSearch(vaultPath, query, topK * 3)
   if (candidates.length === 0) return keywordFallbackSearch(vaultPath, query, topK)
 
@@ -429,7 +413,7 @@ export async function semanticSearch(vaultPath: string, query: string, topK = 10
 }
 
 
-export async function indexNoteEmbeddings(vaultPath: string, noteId: string, content: string): Promise<void> {
+export async function indexNoteSearchChunks(vaultPath: string, noteId: string, content: string): Promise<boolean> {
   const db = getDatabase(vaultPath)
   const chunks = chunkText(content, noteId)
 
@@ -451,7 +435,7 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
     }
   }
 
-  if (changedChunks.length === 0 && chunks.length === existingChunks.length) return
+  if (changedChunks.length === 0 && chunks.length === existingChunks.length) return false
 
   const staleIds = existingChunks
     .filter((c) => !unchangedIndexes.has(c.chunk_index) && c.chunk_index >= chunks.length)
@@ -463,13 +447,13 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
   }
 
   if (changedChunks.length === 0) {
-    invalidateEmbeddingCache()
-    return
+    invalidateSearchIndexCache()
+    return true
   }
 
   const upsert = db.prepare(`
-    INSERT INTO chunks (id, note_id, chunk_index, content, heading_context, token_count, embedding, embedding_model)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO chunks (id, note_id, chunk_index, content, heading_context, token_count)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       content = excluded.content,
       heading_context = excluded.heading_context,
@@ -484,15 +468,14 @@ export async function indexNoteEmbeddings(vaultPath: string, noteId: string, con
         chunk.chunkIndex,
         chunk.content,
         chunk.headingContext,
-        chunk.tokenCount,
-        null,
-        null
+        chunk.tokenCount
       )
     }
   })
 
   transaction()
-  invalidateEmbeddingCache()
+  invalidateSearchIndexCache()
+  return true
 }
 
 export function findSimilarNotes(vaultPath: string, topK = 3, threshold = 0.75): { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] {

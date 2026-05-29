@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { aiManager, ChatMessage, ToolCallEvent } from '../services/ai'
 import { store } from '../services/store'
-import { semanticSearch } from '../services/embedding'
+import { lexicalSearch } from '../services/search-index'
 import { parseToolArguments } from '../services/ai/tool-arguments'
 import { withMergedSystemContext } from '../services/ai/system-context'
 import { buildLongContextPack, mergeLongContextIntoSystemPrompt, type LongContextPack } from '../services/long-context/context-pack-builder'
@@ -116,7 +116,7 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
         const queryText = typeof lastUserMsg.content === 'string'
           ? lastUserMsg.content
           : lastUserMsg.content.filter((p) => p.type === 'text').map((p) => p.text).join(' ')
-        const results = await semanticSearch(params.vaultPath, queryText, 5)
+        const results = await lexicalSearch(params.vaultPath, queryText, 5)
         if (results.length > 0) {
           const context = results.map((r, i) => `[^${i + 1}] ${r.title}\n${r.chunk}`).join('\n\n---\n\n')
           const systemContent = params.systemPrompt || `You are the user's personal knowledge base assistant. Answer questions based on retrieved note content. Respond in the same language as the user's question.
@@ -146,13 +146,13 @@ ${wrapRetrievedNotes(context)}`
           }
           messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(String(systemMsg.content), longContextPack), messages)
 
-          const semanticSources = results.map((r) => ({
+          const retrievalSources = results.map((r) => ({
             title: r.title,
             filePath: r.filePath,
             chunk: r.chunk.slice(0, 100),
             score: r.score
           }))
-          window.webContents.send('ai:sources', mergeChatSources(longContextPack?.sources, semanticSources))
+          window.webContents.send('ai:sources', mergeChatSources(longContextPack?.sources, retrievalSources))
         } else if (params.systemPrompt) {
           messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(params.systemPrompt, longContextPack), messages)
           if (longContextPack?.sources.length) window.webContents.send('ai:sources', longContextPack.sources)

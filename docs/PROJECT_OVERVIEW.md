@@ -6,7 +6,7 @@
 
 ## 1. 一句话理解
 
-Nexusky 是一个 Electron 桌面端、本地优先的 Markdown 知识库笔记应用。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、Agent、编辑、批量生成、长期上下文、语义搜索、知识图谱、看板、闪卡、阅读收件箱和主动建议等工作流中接入多种 AI Provider。
+Nexusky 是一个 Electron 桌面端、本地优先的 Markdown 知识库笔记应用。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、Agent、编辑、批量生成、长期上下文、本地相关检索、知识图谱、看板、闪卡、阅读收件箱和主动建议等工作流中接入多种 AI Provider。
 
 ## 2. 产品定位
 
@@ -67,7 +67,7 @@ Nexusky 不只处理用户手写笔记，也能导入外部阅读材料并帮助
 
 能力包括：
 
-- 全文搜索和语义搜索。
+- 全文搜索和本地词法相关检索。
 - Notion、Readwise、Pocket 导入。
 - 阅读收件箱按来源、状态、关键词筛选。
 - 命令面板从笔记生成摘要或闪卡。
@@ -176,7 +176,7 @@ main/services/*
 关键点：
 
 - `invoke` 使用 `IPCChannelMap` 做类型约束。
-- 事件订阅包括文件变化、vault 变化、AI stream、AI sources、AI edit stream、图谱进度、笔记生成进度、记忆生成进度、embedding 进度、主动建议、Agent step update、更新器事件等。
+- 事件订阅包括文件变化、vault 变化、AI stream、AI sources、AI edit stream、图谱进度、笔记生成进度、记忆生成进度、本地检索索引进度、主动建议、Agent step update、更新器事件等。
 - 窗口控制通过 `window:minimize`、`window:maximize`、`window:close`、`window:new` 发送给主进程。
 
 ### 6.3 渲染进程
@@ -216,7 +216,7 @@ main/services/*
 | `note_aliases` | frontmatter alias / aliases |
 | `note_properties` | frontmatter / Dataview inline 属性键值索引 |
 | `notes_fts` / `notes_fts_map` | SQLite FTS5 全文搜索 |
-| `chunks` | 分块文本和 embedding 数据 |
+| `chunks` | 本地检索分块文本 |
 | `tasks` | Markdown task list 抽取结果，含状态字符（含 Obsidian 自定义状态）、嵌套层级、Tasks 插件 due/scheduled/start 日期、Dataview 字段 |
 | `kanban_columns` / `kanban_tasks` / `kanban_task_relations` | 看板列、任务（含 priority、due_date、source_note_id、source_file_path、时间戳）和任务间关系（`related` / `blocks` / `depends_on` 等） |
 | `conversations` / `chat_sessions` | AI 对话历史与多会话 |
@@ -257,7 +257,7 @@ main/services/*
 | --- | --- |
 | `file:*` | 文件读写、创建、删除、重命名、历史、加密、回收站、文档文本提取 |
 | `vault:*` | 选择、创建、读取、清空当前 vault 和最近 vault |
-| `db:*` | 索引、搜索、图谱、反链、属性、对话历史、embedding 状态 |
+| `db:*` | 索引、搜索、图谱、反链、属性、对话历史、本地检索状态 |
 | `flashcards:*` | 到期闪卡队列和评分写回 |
 | `kanban:*` | 看板列、任务、关系、AI 分析、AI 任务拆解、AI 笔记转看板、按笔记任务批量导入和 AI plan 预览 |
 | `ai:*` | Provider、聊天、Agent 工具执行、工具面板 surface、编辑、批量笔记、摘要、闪卡、标签、语音转写 |
@@ -409,7 +409,7 @@ AI 面板还支持：
 | 消息气泡 | `components/ai/MessageBubble.tsx` | Markdown 渲染、复制、来源 |
 | 文件树 | `components/sidebar/FileTree.tsx` / `VirtualFileTree.tsx` | 文件导航、拖拽、右键菜单、虚拟滚动 |
 | 命令面板 | `components/CommandPalette.tsx` | 功能命令、AI 快捷任务、导入/导出入口 |
-| 搜索 | `components/SearchPanel.tsx` | 全文/语义搜索、embedding 进度 |
+| 搜索 | `components/SearchPanel.tsx` | 全文/本地相关检索、检索索引进度 |
 | 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 group 总览 + folder-scope 目录钻取，底层 `db:get-graph` 兼容 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
 | 知识空间 | `components/canvas/CanvasView.tsx` | 属性/时间图层、节点布局和默认可见的正交连接线路由 |
 | 看板 | `components/KanbanPanel.tsx` | 任务列、拖拽、AI 分析 |
@@ -608,7 +608,7 @@ pnpm dist
 | `tests/agent-*.test.ts` | Agent planner、store、executor、IPC 类型 |
 | `tests/proactive-*.test.ts` | 主动建议 schema、store、触发器、策略、orchestrator、偏好、通知中心和 IPC 类型 |
 | `tests/long-context-*.test.ts` | 长期上下文 schema、候选、分类、ranker、store、pack、后台任务、认知回顾、偏好、指标和 UI helper |
-| `tests/embedding.test.ts` | 分块、相似度和语义搜索 fallback |
+| `tests/search-index.test.ts` | 分块与本地词法检索 fallback |
 | `tests/file-path.test.ts` / `file-tree-refresh.test.ts` | 路径安全与文件树刷新 |
 | `tests/markdown-comments.test.ts` / `markdown-highlights.test.ts` / `callouts.test.ts` / `footnotes.test.ts` / `frontmatter.test.ts` / `table-formulas.test.ts` | Markdown 兼容渲染特性 |
 | `tests/obsidian-importer.test.ts` / `obsidian-link.test.ts` / `notion-importer.test.ts` / `reader-importer.test.ts` | 各导入器 |
@@ -657,7 +657,7 @@ pnpm test
 | backlink | 指向当前笔记的其他笔记链接 |
 | unlinked mention | 提到当前标题但没有写成 wikilink 的文本 |
 | inferred link | AI 根据语义推断出的非显式链接 |
-| chunk | 为语义搜索拆出的笔记片段 |
+| chunk | 为本地相关检索拆出的笔记片段 |
 | provider | OpenAI/Claude/Ollama/自定义等 AI 服务配置 |
 | Agent | 可调用工具读取和分析 vault 的 AI 对话模式 |
 | Agent run | 独立 Agent 任务运行记录，包含计划、步骤状态、结果和回滚数据 |

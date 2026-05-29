@@ -92,10 +92,10 @@ describe('long-context relation candidates', () => {
       'Archive/Semantic.md': '# Semantic\n\nExternal tools can be coordinated by an agent planner for orchestration and routing.',
       'Archive/Unrelated.md': '# Unrelated\n\nGarden recipes and grocery planning.'
     })
-    const { indexNoteEmbeddings } = await import('../packages/main/src/services/embedding')
+    const { indexNoteSearchChunks } = await import('../packages/main/src/services/search-index')
     const { findRelationCandidates } = await import('../packages/main/src/services/long-context/relation-candidates')
-    await indexNoteEmbeddings(vaultPath, ids.Semantic, 'External tools can be coordinated by an agent planner for orchestration and routing.')
-    await indexNoteEmbeddings(vaultPath, ids.Unrelated, 'Garden recipes and grocery planning.')
+    await indexNoteSearchChunks(vaultPath, ids.Semantic, 'External tools can be coordinated by an agent planner for orchestration and routing.')
+    await indexNoteSearchChunks(vaultPath, ids.Unrelated, 'Garden recipes and grocery planning.')
 
     const candidates = findRelationCandidates({
       vaultPath,
@@ -107,7 +107,7 @@ describe('long-context relation candidates', () => {
     const semanticIndex = candidates.findIndex((candidate) => candidate.targetTitle === 'Semantic')
     const unrelatedIndex = candidates.findIndex((candidate) => candidate.targetTitle === 'Unrelated')
 
-    expect(semantic?.signals).toContain('semantic_chunk')
+    expect(semantic?.signals).toContain('lexical_chunk')
     expect(unrelatedIndex === -1 || semanticIndex < unrelatedIndex).toBe(true)
   })
 

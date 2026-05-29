@@ -14,7 +14,6 @@ export interface AIModel {
   name: string
   contextWindow: number
   supportsStreaming: boolean
-  supportsEmbedding: boolean
 }
 
 export interface ChatMessage {

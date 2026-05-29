@@ -385,7 +385,7 @@
     },
     "toolSurface": {
       "search_notes": { "label": "搜索笔记", "description": "在知识库中按关键词搜索相关笔记" },
-      "find_similar_notes": { "label": "查找相似笔记", "description": "为当前笔记寻找语义相似的其他笔记" },
+      "find_similar_notes": { "label": "查找相似笔记", "description": "为当前笔记寻找词法相似的其他笔记" },
       "find_memory_related_notes": { "label": "查找记忆相关笔记", "description": "基于当前笔记记忆术语查找相关条目" },
       "find_connection_opportunities": { "label": "发现关联机会", "description": "为当前笔记推荐潜在的关联点" },
       "read_current_note": { "label": "读取当前笔记", "description": "把当前笔记内容输出到结果面板" },

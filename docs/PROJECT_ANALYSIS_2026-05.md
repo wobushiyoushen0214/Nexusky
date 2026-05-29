@@ -7,7 +7,7 @@
 
 ## 一句话结论
 
-Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户数据”和“同步/索引”这两条最该可靠的路径上，存在多个**已验证**的数据丢失/损坏缺陷；同时其招牌能力“向量检索”名不副实。优先级不是加功能，而是先把数据安全的几道闸补上。
+Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户数据”和“同步/索引”这两条最该可靠的路径上，存在多个**已验证**的数据丢失/损坏缺陷；此前“向量检索/语义搜索”命名与实际词法检索实现不一致，本轮已改为诚实的本地词法相关检索。优先级不是加功能，而是先把数据安全的几道闸补上。
 
 ---
 
@@ -64,11 +64,11 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 
 ## 三、招牌能力名不副实（已验证）
 
-### 🟠 “向量检索/语义搜索”实为词法检索
-- `chunks.embedding`/`embedding_model` 列永远写 `null`，`ON CONFLICT` 不更新它们；全仓无 `SELECT embedding`；`cosineSimilarity` 是死代码（仅测试引用）；全仓无任何真实嵌入生成。
-- `semanticSearch` 实际 = TF-IDF + 一个硬编码 62 词的中文词典分词 + LLM 文本重排。
-- UI 却包装成“建立向量索引”，`getEmbeddingStatus` 只要有 chunk 行就算“已嵌入”。
-- 证据：`embedding.ts:470-491,406-429,77-131`、`db.ipc.ts:1056-1136`
+### 🟠 “向量检索/语义搜索”实为词法检索　— ✅ 已修复（本提交）
+- 原问题：检索实际为 TF-IDF + 词典分词 + LLM 文本重排，UI 和 IPC 却称为“向量索引/embedding”。
+- 修复：服务重命名为 `search-index.ts`，公开 IPC 改为 `db:lexical-search` / `db:build-search-index` / `db:search-index-status`，搜索面板文案改为“本地检索索引/相关内容搜索”。
+- 删除：移除 `cosineSimilarity` 死代码、`chunks.embedding`/`embedding_model` 新库 schema 与 `supportsEmbedding` 死字段；关系候选信号由 `semantic_chunk` 改为 `lexical_chunk`。
+- 验收：`search-index`、`long-context-candidates`、`long-context-classifier` 17/17 通过，`typecheck`、`build` 通过。
 
 ### 🟠 主动建议限流整体失效（可配阈值是死参数）
 - per-day / per-entity / 全局冷却三道闸全是 `WHERE shown_at IS NOT NULL`，但 `shown_at` 生产路径永不写入（插入恒 `pending`，渲染层只发 opened/snoozed/dismissed）。
@@ -82,7 +82,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 
 | 优先级 | 问题 | 证据 |
 |---|---|---|
-| P1 | TF-IDF 全内存硬上限 2000 chunk（旧笔记搜不到）；`findSimilarNotes`/memory 关联 O(N²) | `embedding.ts:6,525-549`、`memory.ts:136` |
+| P1 | TF-IDF 全内存硬上限 2000 chunk（旧笔记搜不到）；`findSimilarNotes`/memory 关联 O(N²) | `search-index.ts:6,498-549`、`memory.ts:136` |
 | P1 | 知识图谱用 DOM 渲染节点+边，数千节点卡死，无 Canvas/WebGL 降级 | `GraphView.tsx:952-1009` |
 | P1 | 并发写静默丢失：无 `busy_timeout`，首次索引 worker 长事务期间 watcher 写撞 `SQLITE_BUSY` 被 `catch{}` 吞掉 | `watcher.ts:87`、`database.ts:22-41` |
 | P1 | 重命名/移动 = 删除+新建（id 绑路径），丢失该笔记的 AI 记忆/关系/看板溯源 | `indexer.ts:147`、`watcher.ts:102-115` |
@@ -140,7 +140,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 以“信任”为护城河：
 
 1. **统一“可撤销变更”管道（最高战略价值）**：抽象 `VaultMutation { preview(); apply(); undo() }`，让 agent / apply-fix / AI 写回 / cognitive-review 四处写盘全部经它——强制 `assertPathInsideVault`(realpath) + 内容指纹守卫 + `.trash` 回收 + `.bak` 备份 + 审计日志。一举消除 P0-3 全部数据丢失面。
-2. **真正的混合 RAG**：接入嵌入模型（本地 ONNX/`@xenova/transformers` 或 provider embeddings，schema 列已就绪）→ vector + FTS5/BM25 双路召回 → RRF 融合 → 重排 + 可观测的检索调试面板。
+2. **真正的混合 RAG**：若要重新提供向量检索，应接入嵌入模型（本地 ONNX/`@xenova/transformers` 或 provider embeddings）→ vector + FTS5/BM25 双路召回 → RRF 融合 → 重排 + 可观测的检索调试面板。
 3. **可靠双向同步**：引入同步基线 manifest/tombstone → 删除传播、移动检测、冲突副本 + 行级 3-way merge；二进制安全传输层（顺带打开附件/图片同步缺口）。
 4. **成本与能力透明**：统一 Usage/Cost 总线；`BaseAIProvider` 暴露 `capabilities`，UI 据此禁用不支持的功能而非静默降级。
 5. **认知伙伴产品化**：修好限流后建“注意力预算 + 基于反馈的动态重要度”；关系加 `provenance: authored | inferred`；cognitive-review 升级为可对话复盘。
@@ -162,10 +162,10 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | ✅ a9118de / 65e725e |
 | P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | 🔧 |
 | P1 | 主动建议限流生效：展示时回写 `shown_at`（修复失效） | 小 | 高 | ✅ c219629 |
-| P1 | “向量检索”二选一：接真实 embedding，或重命名+删死代码+改文案 | 中/大 | 高 | 🔧 |
+| P1 | “向量检索”二选一：接真实 embedding，或重命名+删死代码+改文案 | 中/大 | 高 | ✅ 本提交 |
 | P1 | 全连接 `busy_timeout` + watcher 的 `catch{}` 加日志 | 小 | 高 | ✅ ecd1e44 |
 | P1 | 维护收尾 GC（`pruneExpired` + 删除过期建议，防膨胀） | 小 | 高 | ✅ da9565d |
-| P1 | 关系候选改走 embedding/FTS（大 vault 扩展性） | 中 | 高 | 🔧 |
+| P1 | 关系候选改走 FTS/BM25 或真实 embedding（大 vault 扩展性） | 中 | 高 | 🔧 |
 | P1 | Token/成本总线 + provider capabilities 声明 | 中 | 高 | 🔧 |
 | P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | ✅ 本提交 |
 | P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
@@ -201,3 +201,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-29 | P2 CI/build 冒烟与依赖冻结 | 本提交 | CI 增加 `pnpm run build`，release workflow 全部使用 `pnpm install --frozen-lockfile`，package 声明 Node/pnpm engine 与 packageManager；workflow-config 3/3、typecheck、build 通过 |
 | 2026-05-29 | P2 附件/图片同步缺口 | 本提交 | 云同步 provider 统一使用共享文件枚举器，纳入图片、PDF、普通附件与 memory JSON，同时继续排除内部索引/配置；sync-files/sync-execute/sync-reconcile/webdav-provider/s3-provider 21/21、typecheck、build 通过 |
 | 2026-05-30 | P1 apply-fix 预览/撤销 | 本提交 | maintenance apply-fix 统一生成预览再应用，写入前校验 preview hash，应用后写入 undo 记录；create_target 与 Agent file_create 撤销进入 `.trash`，维护面板增加预览确认与撤销入口；maintenance-apply-fix/maintenance-queue-ipc/agent-executor 29/29、typecheck、build 通过 |
+| 2026-05-30 | P1 向量检索命名漂移 | 本提交 | 选择“重命名+删死代码+改文案”路径：`embedding.ts` 改为 `search-index.ts`，IPC/UI 改为本地词法相关检索，移除 cosine/embedding schema 死代码；search-index/long-context-candidates/long-context-classifier 17/17、typecheck、build 通过 |

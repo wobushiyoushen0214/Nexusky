@@ -400,7 +400,7 @@ function collectChunkSimilarityCandidates(
       targetTitle: row.title,
       targetPath: row.filePath,
       score: 0.8 * Math.min(1, row.similarity * 2),
-      signal: 'semantic_chunk',
+      signal: 'lexical_chunk',
       snippet: truncate(row.headingContext ? `${row.headingContext}: ${row.content}` : row.content, 220),
       updatedAt: row.updatedAt
     })

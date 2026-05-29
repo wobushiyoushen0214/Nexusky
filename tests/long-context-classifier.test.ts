@@ -13,7 +13,7 @@ describe('long-context relation classifier', () => {
     const messages = buildRelationClassificationPrompt({
       current: { title: 'Current', content: 'Working on AI automation workflows.' },
       candidate: { title: 'MCP Notes', content: 'Notes about MCP tool calling.' },
-      signals: ['tag:ai', 'semantic_chunk']
+      signals: ['tag:ai', 'lexical_chunk']
     })
 
     expect(messages[0].role).toBe('system')

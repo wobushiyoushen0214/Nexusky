@@ -3,7 +3,7 @@ import type { FSWatcher } from 'chokidar'
 import { BrowserWindow } from 'electron'
 import { extname } from 'path'
 import { indexNote, removeNoteIndex } from './indexer'
-import { indexNoteEmbeddings, invalidateNoteInCache } from './embedding'
+import { indexNoteSearchChunks, invalidateNoteInCache } from './search-index'
 import { getDatabase } from './database'
 import { logger } from './logger'
 import { readFileSync } from 'fs'
@@ -63,7 +63,7 @@ export function startWatching(vaultPath: string): void {
         invalidateNoteInCache(vaultPath, noteId)
         const content = readFileSync(path, 'utf-8')
         const contentHash = createHash('md5').update(content).digest('hex')
-        indexNoteEmbeddings(vaultPath, noteId, content).catch(() => {})
+        indexNoteSearchChunks(vaultPath, noteId, content).catch(() => {})
 
         const existingMemory = readMemory(vaultPath, noteId)
         if (!existingMemory || existingMemory.contentHash !== contentHash) {

@@ -3,7 +3,7 @@ import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { getErrorMessage } from '../utils/errors'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
-import type { EmbeddingStatus } from '@shared/types/ipc'
+import type { SearchIndexStatus } from '@shared/types/ipc'
 
 interface SearchResult {
   filePath: string
@@ -13,7 +13,7 @@ interface SearchResult {
   score?: number
 }
 
-type SearchMode = 'keyword' | 'semantic' | 'regex'
+type SearchMode = 'keyword' | 'related' | 'regex'
 
 interface SearchPanelProps {
   open: boolean
@@ -79,7 +79,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [searching, setSearching] = useState(false)
-  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null)
+  const [searchIndexStatus, setSearchIndexStatus] = useState<SearchIndexStatus | null>(null)
   const [history, setHistory] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -101,15 +101,15 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     if (!vaultPath) return
     let disposed = false
     const refreshStatus = () => {
-      window.api.invoke('db:embedding-status', { vaultPath })
-        .then((status) => { if (!disposed) setEmbeddingStatus(status) })
+      window.api.invoke('db:search-index-status', { vaultPath })
+        .then((status) => { if (!disposed) setSearchIndexStatus(status) })
         .catch(() => {})
     }
 
     refreshStatus()
     const pollTimer = setInterval(refreshStatus, 1500)
-    const cleanupProgress = window.api.onEmbedProgress((status: EmbeddingStatus) => {
-      setEmbeddingStatus(status)
+    const cleanupProgress = window.api.onSearchIndexProgress((status: SearchIndexStatus) => {
+      setSearchIndexStatus(status)
       if (status.state === 'done') clearCacheForVault(vaultPath)
     })
 
@@ -131,7 +131,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   }, [vaultPath])
 
   useEffect(() => {
-    if (!open || mode === 'semantic' || !query.trim() || !vaultPath) return
+    if (!open || mode === 'related' || !query.trim() || !vaultPath) return
     if (skipAutoSearchRef.current) {
       skipAutoSearchRef.current = false
       return
@@ -179,7 +179,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
       } else if (mode === 'regex') {
         res = await window.api.invoke('db:fulltext-search', { vaultPath, query: normalizedQuery, regex: true })
       } else {
-        const raw = await window.api.invoke('db:semantic-search', { vaultPath, query: normalizedQuery })
+        const raw = await window.api.invoke('db:lexical-search', { vaultPath, query: normalizedQuery })
         res = raw.map((r: { filePath: string; title: string; chunk: string; score: number }) => ({
           filePath: r.filePath,
           title: r.title,
@@ -196,26 +196,26 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   }
   const handleBuildIndex = async () => {
     if (!vaultPath) return
-    const total = embeddingStatus?.total || 0
-    setEmbeddingStatus({
+    const total = searchIndexStatus?.total || 0
+    setSearchIndexStatus({
       state: 'indexing',
       current: 0,
       total,
-      embedded: embeddingStatus?.embedded || 0,
-      message: '准备建立向量索引',
+      indexed: searchIndexStatus?.indexed || 0,
+      message: '准备建立本地检索索引',
       updatedAt: Date.now()
     })
     try {
-      await window.api.invoke('db:embed-vault', { vaultPath })
-      const status = await window.api.invoke('db:embedding-status', { vaultPath })
-      setEmbeddingStatus(status)
+      await window.api.invoke('db:build-search-index', { vaultPath })
+      const status = await window.api.invoke('db:search-index-status', { vaultPath })
+      setSearchIndexStatus(status)
     } catch (e: unknown) {
-      setEmbeddingStatus((prev) => ({
+      setSearchIndexStatus((prev) => ({
         state: 'error',
         current: prev?.current || 0,
         total: prev?.total || 0,
-        embedded: prev?.embedded || 0,
-        message: getErrorMessage(e, '向量索引失败'),
+        indexed: prev?.indexed || 0,
+        message: getErrorMessage(e, '本地检索索引失败'),
         updatedAt: Date.now()
       }))
     }
@@ -240,11 +240,16 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
 
   if (!open) return null
 
-  const embeddingPercent = embeddingStatus && embeddingStatus.total > 0
-    ? Math.round((Math.min(embeddingStatus.current, embeddingStatus.total) / embeddingStatus.total) * 100)
+  const searchIndexPercent = searchIndexStatus && searchIndexStatus.total > 0
+    ? Math.round((Math.min(searchIndexStatus.current, searchIndexStatus.total) / searchIndexStatus.total) * 100)
     : 0
-  const hasCompleteEmbedding = Boolean(embeddingStatus && embeddingStatus.total > 0 && embeddingStatus.embedded >= embeddingStatus.total)
-  const isEmbedding = embeddingStatus?.state === 'indexing'
+  const hasCompleteSearchIndex = Boolean(searchIndexStatus && searchIndexStatus.total > 0 && searchIndexStatus.indexed >= searchIndexStatus.total)
+  const isIndexing = searchIndexStatus?.state === 'indexing'
+  const searchPlaceholder = mode === 'keyword'
+    ? '关键词搜索...'
+    : mode === 'regex'
+      ? '正则搜索...'
+      : '相关内容搜索（按词语重合排序）...'
 
   return (
     <div
@@ -294,7 +299,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
                 })
               }
             }}
-            placeholder={mode === 'keyword' ? '关键词搜索...' : '语义搜索（用自然语言描述）...'}
+            placeholder={searchPlaceholder}
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)' }}
           />
           {query && (
@@ -322,15 +327,15 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             关键词
           </button>
           <button
-            onClick={() => setMode('semantic')}
+            onClick={() => setMode('related')}
             style={{
               padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer', fontWeight: 500,
-              background: mode === 'semantic' ? 'var(--accent-muted)' : 'transparent',
-              color: mode === 'semantic' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              border: mode === 'semantic' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              background: mode === 'related' ? 'var(--accent-muted)' : 'transparent',
+              color: mode === 'related' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              border: mode === 'related' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
             }}
           >
-            语义
+            相关
           </button>
           <button
             onClick={() => setMode('regex')}
@@ -343,43 +348,43 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           >
             正则
           </button>
-          {mode === 'semantic' && (
+          {mode === 'related' && (
             <button
               onClick={handleBuildIndex}
-              disabled={isEmbedding}
+              disabled={isIndexing}
               style={{
                 marginLeft: 'auto', padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer',
-                background: hasCompleteEmbedding ? 'var(--accent-muted)' : 'transparent',
-                color: hasCompleteEmbedding ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                border: hasCompleteEmbedding ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                background: hasCompleteSearchIndex ? 'var(--accent-muted)' : 'transparent',
+                color: hasCompleteSearchIndex ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                border: hasCompleteSearchIndex ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
               }}
             >
-              {isEmbedding ? '索引中...' : hasCompleteEmbedding ? '更新索引' : '建立向量索引'}
+              {isIndexing ? '索引中...' : hasCompleteSearchIndex ? '更新索引' : '建立本地索引'}
             </button>
           )}
         </div>
 
-        {mode === 'semantic' && embeddingStatus && (embeddingStatus.state === 'indexing' || embeddingStatus.state === 'error' || !hasCompleteEmbedding) && (
+        {mode === 'related' && searchIndexStatus && (searchIndexStatus.state === 'indexing' || searchIndexStatus.state === 'error' || !hasCompleteSearchIndex) && (
           <div style={{ padding: '0 16px 12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: embeddingStatus.state === 'error' ? 'var(--danger)' : 'var(--text-tertiary)' }}>
-                {embeddingStatus.state === 'indexing'
-                  ? `正在建立向量索引 ${embeddingStatus.current}/${embeddingStatus.total}`
-                  : embeddingStatus.state === 'error'
-                    ? embeddingStatus.message || '向量索引失败'
-                    : embeddingStatus.total > 0
-                      ? `已索引 ${embeddingStatus.embedded}/${embeddingStatus.total} 篇`
+              <span style={{ fontSize: 11, color: searchIndexStatus.state === 'error' ? 'var(--danger)' : 'var(--text-tertiary)' }}>
+                {searchIndexStatus.state === 'indexing'
+                  ? `正在建立本地检索索引 ${searchIndexStatus.current}/${searchIndexStatus.total}`
+                  : searchIndexStatus.state === 'error'
+                    ? searchIndexStatus.message || '本地检索索引失败'
+                    : searchIndexStatus.total > 0
+                      ? `已索引 ${searchIndexStatus.indexed}/${searchIndexStatus.total} 篇`
                       : '当前知识库还没有可索引的笔记'}
               </span>
-              {embeddingStatus.total > 0 && embeddingStatus.state === 'indexing' && (
-                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{embeddingPercent}%</span>
+              {searchIndexStatus.total > 0 && searchIndexStatus.state === 'indexing' && (
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexPercent}%</span>
               )}
             </div>
-            {embeddingStatus.state === 'indexing' && (
+            {searchIndexStatus.state === 'indexing' && (
               <div style={{ height: 4, overflow: 'hidden', borderRadius: 999, background: 'var(--bg-hover)' }}>
                 <div
                   style={{
-                    width: `${embeddingPercent}%`,
+                    width: `${searchIndexPercent}%`,
                     height: '100%',
                     borderRadius: 999,
                     background: 'var(--accent)',
@@ -388,8 +393,8 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
                 />
               </div>
             )}
-            {embeddingStatus.message && embeddingStatus.state !== 'error' && embeddingStatus.state === 'indexing' && (
-              <div style={{ marginTop: 5, fontSize: 10, color: 'var(--text-tertiary)' }}>{embeddingStatus.message}</div>
+            {searchIndexStatus.message && searchIndexStatus.state !== 'error' && searchIndexStatus.state === 'indexing' && (
+              <div style={{ marginTop: 5, fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexStatus.message}</div>
             )}
           </div>
         )}
@@ -423,7 +428,11 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           )}
           {!searching && results.length === 0 && !query && history.length === 0 && (
             <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {mode === 'keyword' ? '输入关键词后按 Enter 搜索' : '用自然语言描述你要找的内容'}
+              {mode === 'keyword'
+                ? '输入关键词后按 Enter 搜索'
+                : mode === 'regex'
+                  ? '输入正则表达式后按 Enter 搜索'
+                  : '输入词语或短句查找相关内容'}
             </div>
           )}
           {results.map((r, i) => (

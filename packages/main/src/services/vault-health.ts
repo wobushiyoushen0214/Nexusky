@@ -20,7 +20,7 @@ const STALE_AGE_SECONDS = 60 * 24 * 60 * 60
  * so the call stays well under 100 ms even for ~10k notes.
  *
  * The result is intended for a one-shot "vault health" panel; expensive
- * per-note analysis (theme extraction, embeddings, etc.) belongs in the
+ * per-note analysis (theme extraction, local search chunks, etc.) belongs in the
  * existing maintenance queue, not here.
  */
 export function scanVaultHealth(vaultPath: string, nowSeconds: number = Math.floor(Date.now() / 1000)): VaultHealthSummary {

@@ -20,7 +20,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'find_similar_notes',
-      description: '查找语义相近的跨文件夹笔记对，适合发现潜在双链、合并候选或相关主题。',
+      description: '基于本地词法相似度查找跨文件夹笔记对，适合发现潜在双链、合并候选或相关主题。',
       parameters: {
         type: 'object',
         properties: {

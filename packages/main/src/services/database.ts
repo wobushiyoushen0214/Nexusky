@@ -129,8 +129,6 @@ function initSchema(db: Database.Database): void {
       content TEXT NOT NULL,
       heading_context TEXT,
       token_count INTEGER,
-      embedding BLOB,
-      embedding_model TEXT,
       FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
     );
 
@@ -442,9 +440,6 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'chunks', 'content', "content TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, 'chunks', 'heading_context', 'heading_context TEXT')
   ensureColumn(db, 'chunks', 'token_count', 'token_count INTEGER')
-  ensureColumn(db, 'chunks', 'embedding', 'embedding BLOB')
-  ensureColumn(db, 'chunks', 'embedding_model', 'embedding_model TEXT')
-
   ensureColumn(db, 'conversations', 'sources', 'sources TEXT')
   ensureColumn(db, 'conversations', 'session_id', 'session_id TEXT DEFAULT NULL')
 

@@ -5,7 +5,7 @@ import { randomUUID } from 'crypto'
 import { Worker } from 'worker_threads'
 import { indexNote, removeNoteIndex, getAllNotes, getPropertyRows, getOutgoingLinks, getBacklinks, getUnlinkedMentions, getGraphData, getAllTags, getNotesByTag, getAllTasks } from '../services/indexer'
 import { getDatabase, closeDatabase } from '../services/database'
-import { semanticSearch, indexNoteEmbeddings, invalidateEmbeddingCache } from '../services/embedding'
+import { lexicalSearch, indexNoteSearchChunks, invalidateSearchIndexCache } from '../services/search-index'
 import { pushIndex } from '../services/cloud/manager'
 import { aiManager } from '../services/ai'
 import { extractJsonFromText } from '../services/ai/json'
@@ -29,7 +29,7 @@ import { buildLongContextPack, type LongContextPackItem } from '../services/long
 import { runProactiveCycle } from '../services/proactive/proactive-orchestrator'
 import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextRelationRefreshResult, LongContextRelationType, LongContextSuggestion, LongContextUserPrefs, LongTermTheme } from '@shared/types/ipc'
+import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextRelationRefreshResult, LongContextRelationType, LongContextSuggestion, LongContextUserPrefs, LongTermTheme, SearchIndexStatus } from '@shared/types/ipc'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -136,13 +136,17 @@ function recordSuggestionShownEvents(params: {
   }
 }
 
-type EmbeddingJobStatus = {
-  state: 'idle' | 'indexing' | 'done' | 'error'
-  current: number
-  total: number
-  embedded: number
-  message?: string
-  updatedAt: number
+type SearchIndexJobStatus = SearchIndexStatus
+
+type SearchIndexBuildResult = {
+  indexed: number
+}
+
+type SearchIndexProgressPublisher = (status: SearchIndexStatus) => void
+
+type SearchIndexBuildParams = {
+  vaultPath: string
+  publishProgress: SearchIndexProgressPublisher
 }
 
 interface KanbanTaskRow {
@@ -178,7 +182,7 @@ const RELATION_TYPES = new Set<KanbanRelationType>(['blocks', 'depends_on', 'rel
 const FLASHCARD_RATINGS = new Set<FlashcardReviewRating>(['again', 'hard', 'good', 'easy'])
 const LONG_CONTEXT_ENTITY_TYPES = new Set<LongContextEntityType>(['note', 'task', 'chat'])
 const LONG_CONTEXT_FEEDBACK_TYPES = new Set<LongContextFeedbackType>(['useful', 'not_related', 'wrong_reason', 'dismissed'])
-const embeddingJobs = new Map<string, EmbeddingJobStatus>()
+const searchIndexJobs = new Map<string, SearchIndexJobStatus>()
 
 function runIndexVaultWorker(vaultPath: string, onProgress: (progress: VaultIndexProgress) => void): Promise<VaultIndexResult> {
   return new Promise((resolve, reject) => {
@@ -222,7 +226,7 @@ export function registerDbIPC(): void {
       const result = process.env.NEXUSKY_DISABLE_INDEX_WORKER === '1'
         ? await indexVault(params.vaultPath, onProgress)
         : await runIndexVaultWorker(params.vaultPath, onProgress)
-      invalidateEmbeddingCache()
+      invalidateSearchIndexCache()
       scheduleVaultLongContextMaintenance(params.vaultPath)
       return result
     } finally {
@@ -316,8 +320,8 @@ export function registerDbIPC(): void {
     return searchNotes(params.vaultPath, params.query)
   })
 
-  ipcMain.handle('db:semantic-search', async (_event, params: { vaultPath: string; query: string }) => {
-    return semanticSearch(params.vaultPath, params.query)
+  ipcMain.handle('db:lexical-search', async (_event, params: { vaultPath: string; query: string }) => {
+    return lexicalSearch(params.vaultPath, params.query)
   })
 
   ipcMain.handle('db:fulltext-search', async (_event, params: { vaultPath: string; query: string; regex?: boolean }) => {
@@ -415,7 +419,7 @@ export function registerDbIPC(): void {
       const next = reviewFlashcardInMarkdown(current, params.startLine, params.rating, reviewedAt)
       writeFileSync(fullPath, next, 'utf-8')
       indexNote(params.vaultPath, fullPath)
-      invalidateEmbeddingCache()
+      invalidateSearchIndexCache()
       const win = BrowserWindow.fromWebContents(event.sender)
       if (win && !win.isDestroyed()) win.webContents.send('vault:files-changed')
 
@@ -699,14 +703,14 @@ export function registerDbIPC(): void {
     }
   })
 
-  ipcMain.handle('db:embed-note', async (_event, params: { vaultPath: string; noteId: string; content: string }) => {
-    await indexNoteEmbeddings(params.vaultPath, params.noteId, params.content)
+  ipcMain.handle('db:index-search-note', async (_event, params: { vaultPath: string; noteId: string; content: string }) => {
+    await indexNoteSearchChunks(params.vaultPath, params.noteId, params.content)
   })
 
-  ipcMain.handle('db:embedding-status', async (_event, params: { vaultPath: string }) => {
-    const running = embeddingJobs.get(params.vaultPath)
+  ipcMain.handle('db:search-index-status', async (_event, params: { vaultPath: string }) => {
+    const running = searchIndexJobs.get(params.vaultPath)
     if (running?.state === 'indexing') return running
-    return getEmbeddingStatus(params.vaultPath, running)
+    return getSearchIndexStatus(params.vaultPath, running)
   })
 
   ipcMain.handle('long-context:get-suggestions', async (_event, params: {
@@ -1053,86 +1057,15 @@ export function registerDbIPC(): void {
     }
   })
 
-  ipcMain.handle('db:embed-vault', async (event, params: { vaultPath: string }) => {
+  ipcMain.handle('db:build-search-index', async (event, params: { vaultPath: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
-    const existingJob = embeddingJobs.get(params.vaultPath)
-    if (existingJob?.state === 'indexing') {
-      return { embedded: existingJob.embedded }
-    }
-
-    const files = collectMarkdownFiles(params.vaultPath)
-    const db = getDatabase(params.vaultPath)
-    let embedded = 0
-    const total = files.length
-    const publishProgress = (status: EmbeddingJobStatus): void => {
-      embeddingJobs.set(params.vaultPath, status)
+    const publishProgress = (status: SearchIndexStatus): void => {
+      searchIndexJobs.set(params.vaultPath, status)
       if (window && !window.isDestroyed()) {
-        window.webContents.send('embed:progress', status)
+        window.webContents.send('search-index:progress', status)
       }
     }
-
-    publishProgress({
-      state: 'indexing',
-      current: 0,
-      total,
-      embedded,
-      message: total === 0 ? '没有需要索引的笔记' : '准备建立向量索引',
-      updatedAt: Date.now()
-    })
-
-    const startTime = Date.now()
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        const content = readFileSync(file, 'utf-8')
-        const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
-        const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
-        if (note) {
-          const hasChunks = db.prepare('SELECT 1 FROM chunks WHERE note_id = ? LIMIT 1').get(note.id)
-          if (!hasChunks) {
-            await indexNoteEmbeddings(params.vaultPath, note.id, content)
-            embedded++
-          }
-        }
-        if (i % 3 === 0 || i === files.length - 1) {
-          publishProgress({
-            state: 'indexing',
-            current: i + 1,
-            total,
-            embedded,
-            message: `正在处理 ${i + 1}/${total}`,
-            updatedAt: Date.now()
-          })
-          await new Promise((r) => setTimeout(r, 80))
-        }
-      }
-      pushIndex(params.vaultPath).catch(() => {})
-      invalidateEmbeddingCache()
-      const elapsed = Date.now() - startTime
-      const minDuration = 1500
-      if (elapsed < minDuration) {
-        await new Promise((r) => setTimeout(r, minDuration - elapsed))
-      }
-      const finalStatus = getEmbeddingStatus(params.vaultPath)
-      publishProgress({
-        ...finalStatus,
-        state: 'done',
-        current: finalStatus.embedded,
-        message: embedded > 0 ? `已新增 ${embedded} 篇笔记的向量索引` : '向量索引已是最新',
-        updatedAt: Date.now()
-      })
-      return { embedded }
-    } catch (e: unknown) {
-      publishProgress({
-        state: 'error',
-        current: Math.min(total, embeddingJobs.get(params.vaultPath)?.current || 0),
-        total,
-        embedded,
-        message: getErrorMessage(e, '向量索引失败'),
-        updatedAt: Date.now()
-      })
-      throw e
-    }
+    return buildSearchIndex({ vaultPath: params.vaultPath, publishProgress })
   })
 
   ipcMain.handle('db:chat-history-load', async (_event, params: { vaultPath: string; sessionId?: string }) => {
@@ -1229,22 +1162,94 @@ function getKanbanSnapshot(vaultPath: string): { columns: KanbanColumnRow[]; tas
   return { columns, tasks, relations }
 }
 
-function getEmbeddingStatus(vaultPath: string, previous?: EmbeddingJobStatus): EmbeddingJobStatus {
+async function buildSearchIndex(params: SearchIndexBuildParams): Promise<SearchIndexBuildResult> {
+  const existingJob = searchIndexJobs.get(params.vaultPath)
+  if (existingJob?.state === 'indexing') {
+    return { indexed: existingJob.indexed }
+  }
+
+  const files = collectMarkdownFiles(params.vaultPath)
+  const db = getDatabase(params.vaultPath)
+  let indexed = 0
+  const total = files.length
+
+  params.publishProgress({
+    state: 'indexing',
+    current: 0,
+    total,
+    indexed,
+    message: total === 0 ? '没有需要索引的笔记' : '准备建立本地检索索引',
+    updatedAt: Date.now()
+  })
+
+  const startTime = Date.now()
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const content = readFileSync(file, 'utf-8')
+      const relPath = file.replace(params.vaultPath, '').replace(/\\/g, '/').replace(/^\//, '')
+      const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
+      if (note) {
+        const changed = await indexNoteSearchChunks(params.vaultPath, note.id, content)
+        if (changed) indexed++
+      }
+      if (i % 3 === 0 || i === files.length - 1) {
+        params.publishProgress({
+          state: 'indexing',
+          current: i + 1,
+          total,
+          indexed,
+          message: `正在处理 ${i + 1}/${total}`,
+          updatedAt: Date.now()
+        })
+        await new Promise((r) => setTimeout(r, 80))
+      }
+    }
+    pushIndex(params.vaultPath).catch(() => {})
+    invalidateSearchIndexCache()
+    const elapsed = Date.now() - startTime
+    const minDuration = 1500
+    if (elapsed < minDuration) {
+      await new Promise((r) => setTimeout(r, minDuration - elapsed))
+    }
+    const finalStatus = getSearchIndexStatus(params.vaultPath)
+    params.publishProgress({
+      ...finalStatus,
+      state: 'done',
+      current: finalStatus.indexed,
+      message: indexed > 0 ? `已刷新 ${indexed} 篇笔记的本地检索索引` : '本地检索索引已是最新',
+      updatedAt: Date.now()
+    })
+    return { indexed }
+  } catch (e: unknown) {
+    params.publishProgress({
+      state: 'error',
+      current: Math.min(total, searchIndexJobs.get(params.vaultPath)?.current || 0),
+      total,
+      indexed,
+      message: getErrorMessage(e, '本地检索索引失败'),
+      updatedAt: Date.now()
+    })
+    throw e
+  }
+}
+
+function getSearchIndexStatus(vaultPath: string, previous?: SearchIndexJobStatus): SearchIndexStatus {
   const db = getDatabase(vaultPath)
   const totalRow = db.prepare('SELECT COUNT(*) as total FROM notes').get() as { total: number }
-  const embeddedRow = db.prepare(`
-    SELECT COUNT(DISTINCT n.id) as embedded
+  const indexedRow = db.prepare(`
+    SELECT COUNT(DISTINCT n.id) as indexed
     FROM notes n
     JOIN chunks c ON c.note_id = n.id
-  `).get() as { embedded: number }
+  `).get() as { indexed: number }
   const total = totalRow.total || 0
-  const embedded = embeddedRow.embedded || 0
-  const state = total > 0 && embedded >= total ? 'done' : 'idle'
+  const indexed = indexedRow.indexed || 0
+  const state = total > 0 && indexed >= total ? 'done' : 'idle'
   return {
     state,
-    current: previous?.state === 'done' ? previous.current : embedded,
+    current: previous?.state === 'done' ? previous.current : indexed,
     total,
-    embedded,
+    indexed,
     message: previous?.message,
     updatedAt: previous?.updatedAt || Date.now()
   }

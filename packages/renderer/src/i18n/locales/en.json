@@ -384,8 +384,8 @@
       "theme": { "label": "Toggle theme" }
     },
     "toolSurface": {
-      "search_notes": { "label": "Search notes", "description": "Run a semantic search across the vault" },
-      "find_similar_notes": { "label": "Find similar notes", "description": "Find notes semantically similar to the current one" },
+      "search_notes": { "label": "Search notes", "description": "Run local relevance search across the vault" },
+      "find_similar_notes": { "label": "Find similar notes", "description": "Find notes lexically similar to the current one" },
       "find_memory_related_notes": { "label": "Find memory-related notes", "description": "Find notes that share memory terms with the current one" },
       "find_connection_opportunities": { "label": "Find connection opportunities", "description": "Suggest potential links for the current note" },
       "read_current_note": { "label": "Read current note", "description": "Output the current note content to the result panel" },

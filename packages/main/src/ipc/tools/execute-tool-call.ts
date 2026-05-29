@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { semanticSearch, findSimilarNotes } from '../../services/embedding'
+import { lexicalSearch, findSimilarNotes } from '../../services/search-index'
 import { extractJsonFromText } from '../../services/ai/json'
 import { extractMarkdownBlockReference, extractMarkdownBlockReferences, extractMarkdownHeadingSection, extractMarkdownHeadings, extractNoteReferenceBlockId, extractNoteReferenceHeading, findNoteCandidatesForAiTool, findNoteForAiTool } from '../../services/ai/note-lookup'
 import { formatConnectionOpportunitiesToolResult, formatCurrentNoteLinkStatsToolResult, formatCurrentNotePropertiesToolResult, formatCurrentNoteUnlinkedReferencesToolResult, formatDeadEndNotesToolResult, formatDuplicateAliasesToolResult, formatDuplicateNoteTitlesToolResult, formatEmptyNotesToolResult, formatFindTextInNoteToolResult, formatKnowledgeBridgesToolResult, formatKnowledgeMaintenanceQueueToolResult, formatLargeNotesToolResult, formatLinkHubsToolResult, formatListFoldersToolResult, formatListPropertiesToolResult, formatListTagsToolResult, formatListTasksToolResult, formatMemoryFoldersToolResult, formatMemoryOverviewToolResult, formatMemoryRelatedNotesToolResult, formatMemoryTermPairsToolResult, formatMemoryTermsToolResult, formatMissingMemoryNotesToolResult, formatMissingPropertyNotesToolResult, formatNoteBlocksToolResult, formatNoteHeadingsToolResult, formatNoteLinksToolResult, formatNoteMemoriesToolResult, formatNotesByFolderToolResult, formatNotesByMemoryTermToolResult, formatNotesByPropertyToolResult, formatNotesByTagToolResult, formatOrphanNotesToolResult, formatPropertyValue, formatPropertyValuesToolResult, formatReadNoteLinesToolResult, formatReadNoteMemoryToolResult, formatReadNoteToolResult, formatRecentNotesToolResult, formatSearchNotesToolResult, formatSimilarNotesToolResult, formatUntaggedNotesToolResult, formatUnreferencedNotesToolResult, formatUnresolvedLinksToolResult, formatVaultOverviewToolResult } from '../../services/ai/search-results'
@@ -143,7 +143,7 @@ export async function executeToolCall(
     case 'search_notes': {
       const query = getStringArg(args, 'query')
       if (!query.trim()) return { content: 'search_notes 缺少 query 参数。请根据用户问题提供明确的搜索关键词。' }
-      const results = await semanticSearch(vaultPath, query, normalizeToolLimit(args.limit))
+      const results = await lexicalSearch(vaultPath, query, normalizeToolLimit(args.limit))
       if (results.length === 0) return { content: '未找到相关笔记。' }
       return {
         content: formatSearchNotesToolResult(results),

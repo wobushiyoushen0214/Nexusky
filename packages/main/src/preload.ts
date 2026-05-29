@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AINotesProgress, AIStreamEvent, AgentStepUpdateEvent, ChatSource, EmbeddingStatus, IPCChannelMap, IPCChannel, ProactiveSuggestion } from '@shared/types/ipc'
+import type { AINotesProgress, AIStreamEvent, AgentStepUpdateEvent, ChatSource, IPCChannelMap, IPCChannel, ProactiveSuggestion, SearchIndexStatus } from '@shared/types/ipc'
 
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
@@ -78,10 +78,10 @@ const api = {
     ipcRenderer.on('ai:memory-progress', handler)
     return () => { ipcRenderer.removeListener('ai:memory-progress', handler) }
   },
-  onEmbedProgress: (callback: (data: EmbeddingStatus) => void) => {
-    const handler = (_event: unknown, data: EmbeddingStatus) => callback(data)
-    ipcRenderer.on('embed:progress', handler)
-    return () => { ipcRenderer.removeListener('embed:progress', handler) }
+  onSearchIndexProgress: (callback: (data: SearchIndexStatus) => void) => {
+    const handler = (_event: unknown, data: SearchIndexStatus) => callback(data)
+    ipcRenderer.on('search-index:progress', handler)
+    return () => { ipcRenderer.removeListener('search-index:progress', handler) }
   },
   onUpdaterAvailable: (callback: (data: { version: string }) => void) => {
     const handler = (_event: unknown, data: { version: string }) => callback(data)

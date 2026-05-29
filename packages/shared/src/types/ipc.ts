@@ -182,11 +182,11 @@ export interface KanbanAiPlan {
   relations: { sourceIndex: number; targetIndex: number; relationType: KanbanRelation['relationType'] }[]
 }
 
-export interface EmbeddingStatus {
+export interface SearchIndexStatus {
   state: 'idle' | 'indexing' | 'done' | 'error'
   current: number
   total: number
-  embedded: number
+  indexed: number
   message?: string
   updatedAt: number
 }
@@ -623,7 +623,7 @@ export interface IPCChannelMap {
   'db:get-unlinked-mentions': { params: { vaultPath: string; noteId?: string; filePath?: string }; result: UnlinkedMentionResult[] }
   'db:get-graph': { params: { vaultPath: string; mode?: GraphMode; rootPath?: string }; result: GraphData }
   'db:search-notes': { params: { vaultPath: string; query: string }; result: NoteSearchResult[] }
-  'db:semantic-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }
+  'db:lexical-search': { params: { vaultPath: string; query: string }; result: { noteId: string; title: string; filePath: string; chunk: string; score: number }[] }
   'db:fulltext-search': { params: { vaultPath: string; query: string; regex?: boolean }; result: { filePath: string; title: string; line: string; lineNumber: number }[] }
   'db:get-tags': { params: { vaultPath: string }; result: { name: string; count: number }[] }
   'db:get-notes-by-tag': { params: { vaultPath: string; tag: string }; result: NoteSearchResult[] }
@@ -647,9 +647,9 @@ export interface IPCChannelMap {
   'kanban:ai-analyze': { params: { vaultPath: string }; result: { summary: string } }
   'kanban:ai-breakdown-task': { params: { vaultPath: string; taskId?: string; title: string; description?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }; result: { tasks: KanbanTask[] | KanbanAiPlan['tasks']; relations: KanbanRelation[] | KanbanAiPlan['relations']; summary: string; plan?: KanbanAiPlan } }
   'kanban:ai-from-note': { params: { vaultPath: string; filePath: string; content?: string; columnId?: string; preview?: boolean; plan?: KanbanAiPlan }; result: { tasks: KanbanTask[] | KanbanAiPlan['tasks']; relations: KanbanRelation[] | KanbanAiPlan['relations']; summary: string; plan?: KanbanAiPlan } }
-  'db:embed-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
-  'db:embed-vault': { params: { vaultPath: string }; result: { embedded: number } }
-  'db:embedding-status': { params: { vaultPath: string }; result: EmbeddingStatus }
+  'db:index-search-note': { params: { vaultPath: string; noteId: string; content: string }; result: void }
+  'db:build-search-index': { params: { vaultPath: string }; result: { indexed: number } }
+  'db:search-index-status': { params: { vaultPath: string }; result: SearchIndexStatus }
   'long-context:get-suggestions': {
     params: {
       vaultPath: string

@@ -210,5 +210,6 @@
 | provider 工具能力声明 | `BaseAIProvider.capabilities.toolCalling` 显式声明；不支持工具调用时 Agent 直接报错 | ✅ 已修复（本提交） |
 | apply-fix 预览/撤销 | maintenance apply-fix 先预览再应用，写入前校验 preview hash，应用后保留 undo 记录；create_target 撤销进入 `.trash` | ✅ 已修复（本提交） |
 | Agent file_create 回滚 trash | 未被用户改动的 Agent 新建文件回滚时移入 vault `.trash`，仍用 createdHash 阻止误删用户编辑 | ✅ 已修复（本提交） |
+| 向量检索命名漂移 | 不接伪 embedding；改名为本地词法相关检索，删除 cosine/embedding schema 死代码，UI/IPC/测试同步改名 | ✅ 已修复（本提交） |
 | lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | 🔧 待修 |
-| 关系候选 O(N) 扫描 | 改走 embedding/FTS（大 vault 扩展性） | 🔧 待修 |
+| 关系候选 O(N) 扫描 | 改走 FTS/BM25 或真实 embedding（大 vault 扩展性） | 🔧 待修 |
