@@ -234,15 +234,25 @@ export function registerAgentIPC(): void {
       throw new Error('Invalid IPC payload: agent:retry-step.stepIndex must be a non-negative integer')
     }
     const snapshot = getAgentRun(params.vaultPath, params.runId)
-    if (!snapshot) return
+    if (!snapshot) return { ok: false, error: 'run_not_found' }
+    const step = snapshot.steps.find((s) => s.stepIndex === params.stepIndex)
+    // If re-running an already-applied write, roll it back first so the original
+    // baseline is restored and the user's post-run edits aren't silently
+    // overwritten. The rollback's content-fingerprint guard aborts the retry if
+    // the file was changed since the agent wrote it.
+    if (step && step.status === 'completed' && step.hasRollback) {
+      const rb = rollbackAgentStep(params.vaultPath, params.runId, params.stepIndex)
+      if (!rb.ok) return { ok: false, error: rb.error || 'rollback_before_retry_failed' }
+    }
     updateAgentStep(params.vaultPath, params.runId, params.stepIndex, { status: 'pending', error: null, completedAt: null })
-    await executeAgentStep({
+    const result = await executeAgentStep({
       vaultPath: params.vaultPath,
       runId: params.runId,
       stepIndex: params.stepIndex,
       dryRun: snapshot.run.dryRun,
       overrides: params.overrideContent !== undefined ? { content: params.overrideContent } : undefined
     })
+    return { ok: result.status !== 'failed', error: result.status === 'failed' ? result.error : undefined }
   })
 
   ipcMain.handle('agent:skip-step', async (_event, params: { vaultPath: string; runId: string; stepIndex: number }) => {

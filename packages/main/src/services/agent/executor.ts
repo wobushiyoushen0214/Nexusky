@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'path'
+import { createHash } from 'crypto'
 import { indexNote, removeNoteIndex } from '../indexer'
 import { runAgentTool } from './tool-runner'
 import { isAllowedAgentTool, isWriteStepKind, type AgentStepKind } from './step-kinds'
@@ -132,7 +133,7 @@ async function runFileCreate(step: AgentStepRecord, params: ExecuteStepParams): 
   mkdirSync(dirname(targetPath), { recursive: true })
   writeFileSync(targetPath, content, 'utf-8')
   updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'file_create', filePath: relPath }
+    rollbackData: { kind: 'file_create', filePath: relPath, createdHash: hashContent(content) }
   })
   safeIndex(params.vaultPath, targetPath)
   return { status: 'completed', preview, content }
@@ -153,7 +154,7 @@ async function runFileWrite(step: AgentStepRecord, params: ExecuteStepParams): P
   }
   writeFileSync(targetPath, nextContent, 'utf-8')
   updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'file_write', filePath: relPath, previousContent }
+    rollbackData: { kind: 'file_write', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
   })
   safeIndex(params.vaultPath, targetPath)
   return { status: 'completed', preview, content: nextContent }
@@ -184,7 +185,7 @@ async function runTaskUpdate(step: AgentStepRecord, params: ExecuteStepParams): 
   }
   writeFileSync(targetPath, nextContent, 'utf-8')
   updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'task_update', filePath: relPath, line: idx + 1, previousLine }
+    rollbackData: { kind: 'task_update', filePath: relPath, line: idx + 1, previousLine, afterHash: hashContent(nextContent) }
   })
   safeIndex(params.vaultPath, targetPath)
   return { status: 'completed', preview, content: nextContent }
@@ -211,7 +212,7 @@ async function runNoteEdit(step: AgentStepRecord, params: ExecuteStepParams): Pr
   }
   writeFileSync(targetPath, proposed, 'utf-8')
   updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'note_edit', filePath: relPath, previousContent }
+    rollbackData: { kind: 'note_edit', filePath: relPath, previousContent, afterHash: hashContent(proposed) }
   })
   safeIndex(params.vaultPath, targetPath)
   return { status: 'completed', preview, content: proposed }
@@ -261,16 +262,38 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
   if (!targetPath) return { ok: false, error: 'invalid_target_path' }
   try {
     if (kind === 'file_create') {
-      if (existsSync(targetPath)) unlinkSync(targetPath)
+      if (existsSync(targetPath)) {
+        // Guard against destroying user work: only delete if the file is still
+        // exactly what the agent created. If the user edited it after creation,
+        // refuse rather than silently wiping their changes.
+        const createdHash = typeof data.createdHash === 'string' ? data.createdHash : null
+        if (createdHash) {
+          const current = createHash('md5').update(readFileSync(targetPath)).digest('hex')
+          if (current !== createdHash) return { ok: false, error: 'file_modified_since_create' }
+        }
+        unlinkSync(targetPath)
+      }
       removeNoteIndex(vaultPath, targetPath)
     } else if (kind === 'file_write' || kind === 'note_edit') {
-      const prev = typeof data.previousContent === 'string' ? data.previousContent : ''
-      writeFileSync(targetPath, prev, 'utf-8')
+      // Never truncate to empty on a missing/corrupt baseline — abort instead.
+      if (typeof data.previousContent !== 'string') return { ok: false, error: 'rollback_data_invalid' }
+      // Don't clobber edits the user made after the agent wrote: only restore if
+      // the file is still exactly the agent's version.
+      const afterHash = typeof data.afterHash === 'string' ? data.afterHash : null
+      if (afterHash && existsSync(targetPath)) {
+        const current = createHash('md5').update(readFileSync(targetPath)).digest('hex')
+        if (current !== afterHash) return { ok: false, error: 'file_modified_since_write' }
+      }
+      writeFileSync(targetPath, data.previousContent, 'utf-8')
     } else if (kind === 'task_update') {
       const prevLine = typeof data.previousLine === 'string' ? data.previousLine : null
       const line = typeof data.line === 'number' ? data.line : Number(data.line)
       if (prevLine === null || !Number.isFinite(line)) return { ok: false, error: 'rollback_data_invalid' }
       const original = readFileSync(targetPath, 'utf-8')
+      const afterHash = typeof data.afterHash === 'string' ? data.afterHash : null
+      if (afterHash && createHash('md5').update(original, 'utf-8').digest('hex') !== afterHash) {
+        return { ok: false, error: 'file_modified_since_write' }
+      }
       const lines = original.split(/\r?\n/)
       const idx = Math.floor(line) - 1
       if (idx < 0 || idx >= lines.length) return { ok: false, error: 'rollback_line_oor' }
@@ -345,6 +368,10 @@ function truncate(text: string, max: number): string {
 
 function nowSeconds(): number {
   return Math.floor(Date.now() / 1000)
+}
+
+function hashContent(content: string): string {
+  return createHash('md5').update(content, 'utf-8').digest('hex')
 }
 
 export function isWriteStep(kind: AgentStepKind): boolean {

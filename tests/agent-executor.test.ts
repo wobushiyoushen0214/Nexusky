@@ -198,4 +198,47 @@ describe('agent executor', () => {
     expect(result.error).toBe('aborted')
     expect(existsSync(join(vaultPath, 'B.md'))).toBe(false)
   })
+
+  it('file_create rollback refuses to delete a file the user edited after creation', async () => {
+    const runId = createAgentRun({
+      vaultPath,
+      goal: 'g',
+      plan: planWithRead([{ index: 0, kind: 'file_create', args: { filePath: 'guard.md', content: 'agent original' }, description: 'create', expectedEffect: 'guard.md', dependsOn: [0] }]),
+      rationale: ''
+    })
+    const { updateAgentStep } = await import('../packages/main/src/services/agent/agent-store')
+    updateAgentStep(vaultPath, runId, 0, { status: 'completed' })
+    await executeAgentStep({ vaultPath, runId, stepIndex: 1, dryRun: false })
+
+    // The user edits the agent-created file before rolling back.
+    writeFileSync(join(vaultPath, 'guard.md'), 'user added important notes', 'utf-8')
+
+    const rollback = rollbackAgentStep(vaultPath, runId, 1)
+    expect(rollback.ok).toBe(false)
+    expect(rollback.error).toBe('file_modified_since_create')
+    // The user's edit must survive — the file is NOT deleted.
+    expect(readFileSync(join(vaultPath, 'guard.md'), 'utf-8')).toBe('user added important notes')
+  })
+
+  it('file_write rollback refuses to overwrite edits the user made after the agent wrote', async () => {
+    writeFileSync(join(vaultPath, 'W.md'), 'before', 'utf-8')
+    const runId = createAgentRun({
+      vaultPath,
+      goal: 'g',
+      plan: planWithRead([{ index: 0, kind: 'file_write', args: { filePath: 'W.md', content: 'agent version' }, description: 'write', expectedEffect: 'W updated', dependsOn: [0] }]),
+      rationale: ''
+    })
+    const { updateAgentStep } = await import('../packages/main/src/services/agent/agent-store')
+    updateAgentStep(vaultPath, runId, 0, { status: 'completed' })
+    await executeAgentStep({ vaultPath, runId, stepIndex: 1, dryRun: false })
+    expect(readFileSync(join(vaultPath, 'W.md'), 'utf-8')).toBe('agent version')
+
+    // The user edits the file after the agent wrote it.
+    writeFileSync(join(vaultPath, 'W.md'), 'user precious edit', 'utf-8')
+
+    const rollback = rollbackAgentStep(vaultPath, runId, 1)
+    expect(rollback.ok).toBe(false)
+    expect(rollback.error).toBe('file_modified_since_write')
+    expect(readFileSync(join(vaultPath, 'W.md'), 'utf-8')).toBe('user precious edit')
+  })
 })
