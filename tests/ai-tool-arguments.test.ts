@@ -26,4 +26,10 @@ describe('parseToolArguments', () => {
       error: '工具参数必须是 JSON 对象。'
     })
   })
+
+  it('repairs tool arguments truncated at the end of a JSON object', () => {
+    expect(parseToolArguments('{"query":"project roadmap"')).toEqual({
+      args: { query: 'project roadmap' }
+    })
+  })
 })

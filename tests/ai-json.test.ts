@@ -21,4 +21,16 @@ describe('extractJsonFromText', () => {
   it('rejects the wrong expected root type', () => {
     expect(() => extractJsonFromText('{"ok":true}', 'array')).toThrow('AI 未返回有效的 JSON')
   })
+
+  it('repairs JSON truncated at the end of an object', () => {
+    expect(extractJsonFromText('{"query":"project roadmap"', 'object')).toEqual({ query: 'project roadmap' })
+  })
+
+  it('repairs JSON truncated inside a string value', () => {
+    expect(extractJsonFromText('{"query":"project', 'object')).toEqual({ query: 'project' })
+  })
+
+  it('repairs nested arrays when only closing brackets are missing', () => {
+    expect(extractJsonFromText('{"items":[{"title":"A"}', 'object')).toEqual({ items: [{ title: 'A' }] })
+  })
 })
