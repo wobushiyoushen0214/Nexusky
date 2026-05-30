@@ -60,5 +60,9 @@ Reason: avoid maintaining two view families that visually answer the same questi
 
 Canvas, Reader Inbox, Outline, and Tags moved from `defaultVisible: true` to `defaultVisible: false`. Reason: new users should first see the core vault loop: files, search, AI chat, graph, and maintenance. Canvas remains reachable through the More menu and Command Palette; Reader Inbox, Outline, and Tags remain available through customization and context-specific panels. Existing users who already customized their ActivityBar keep their saved `visibleIds`, so this only changes the default for fresh workspaces or reset-to-defaults.
 
+### 2026-05-30 - Agent wording moved behind reviewable execution
+
+Agent remains available through advanced command palette and task hand-off paths, but it is no longer treated as a first-run or marketing headline. Reason: Agent is an execution mechanism, not the product's primary user promise. Default copy now emphasizes cited AI answers, reviewable actions, preview-first workflows, maintenance queues, and execution history instead of asking new users to understand Agent as a standalone surface.
+
 
 

@@ -135,7 +135,7 @@
     "properties": "属性",
     "outline": "大纲",
     "maintenance": "知识维护",
-    "agent": "Agent 任务"
+    "agent": "执行历史"
   },
   "maintenance": {
     "title": "知识维护",
@@ -223,7 +223,7 @@
     "openTarget": "打开关联笔记"
   },
   "agent": {
-    "title": "Agent 任务",
+    "title": "执行历史",
     "noVault": "请先打开一个 vault",
     "idle": {
       "start": "新建任务",
@@ -419,8 +419,8 @@
       "importPocket": { "label": "导入 Pocket 稍后读", "description": "选择 Pocket HTML 导出文件，为每条收藏生成可做笔记的阅读条目" },
       "importNotion": { "label": "导入 Notion 导出", "description": "选择 Notion Markdown、CSV 或 HTML 导出文件夹，转换页面链接和数据库表" },
       "search": { "label": "全文搜索" },
-      "chat": { "label": "打开 AI 工作台", "description": "对话、Agent、编辑和批量生成入口" },
-      "aiRag": { "label": "基于知识库提问", "description": "打开 Agent 模式，自动搜索和引用笔记" },
+      "chat": { "label": "打开 AI 工作台", "description": "对话、有来源回答、编辑和批量生成入口" },
+      "aiRag": { "label": "基于知识库提问", "description": "自动搜索 vault 并引用笔记来源" },
       "aiEditCurrent": { "label": "AI 修改当前笔记", "description": "生成修改方案，确认后再写入文件" },
       "aiRewriteSelection": { "label": "AI 改写选中文本", "description": "把当前选区作为编辑目标上下文" },
       "aiNewNote": { "label": "AI 生成新笔记", "description": "不绑定当前文件，直接创建新的 Markdown 笔记" },
@@ -448,7 +448,7 @@
       "properties": { "label": "打开笔记属性", "description": "编辑 title、aliases、tags、cssclasses" },
       "settings": { "label": "打开设置" },
       "viewContextPack": { "label": "查看上下文包", "description": "查看 Hot / Warm / Cold 三层记忆、token 占用与调参" },
-      "openAgent": { "label": "打开 Agent 任务面板", "description": "Plan-Execute-Reflect：让 AI 多步规划并由你审核执行" },
+      "openAgent": { "label": "查看执行历史", "description": "高级入口：检查已保存的计划、步骤、反思和回滚记录" },
       "openMaintenance": { "label": "打开知识维护队列", "description": "查看未解析链接、孤立笔记、未完任务等可一键修复项" },
       "newWindow": { "label": "打开新窗口", "description": "新建一个独立 Nexusky 窗口，可并行查看不同视图" },
       "sidebar": { "label": "切换侧边栏" },

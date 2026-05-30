@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Nexusky — Local-first AI knowledge base",
   description:
-    "A local-first desktop knowledge base for Markdown vaults, long-context AI, graphs, Agent runs and maintenance workflows.",
+    "A local-first desktop knowledge base for Markdown vaults, long-context AI, graphs and reviewable maintenance workflows.",
 };
 
 export default function RootLayout({

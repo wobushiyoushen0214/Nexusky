@@ -58,7 +58,7 @@ const pillars = [
   {
     icon: Bot,
     title: "AI tools with boundaries",
-    text: "Chat, edit, batch writing, maintenance tools and Agent runs operate through typed IPC and preview-first workflows.",
+    text: "Chat, edit, batch writing and maintenance tools operate through typed IPC, source context and preview-first workflows.",
   },
   {
     icon: Network,
@@ -128,7 +128,7 @@ export default function Home() {
         <div className="hero-strip" aria-label="Product highlights">
           <span>Markdown vault</span>
           <span>SQLite index</span>
-          <span>Agent runs</span>
+          <span>Reviewable actions</span>
           <span>Long-context graph</span>
         </div>
       </section>
@@ -187,7 +187,7 @@ export default function Home() {
           <div className="workflow-node">
             <span>04</span>
             <strong>Action</strong>
-            <small>Tools, Agent runs and maintenance queues stay reviewable.</small>
+            <small>Tools, previews and maintenance queues stay reviewable.</small>
           </div>
         </aside>
       </section>
@@ -196,12 +196,12 @@ export default function Home() {
         <article>
           <PanelRight aria-hidden="true" />
           <h3>Tool Surface</h3>
-          <p>Direct commands expose high-value Agent tools without spending tokens or entering chat.</p>
+          <p>Direct commands expose high-value vault tools without spending tokens or entering chat.</p>
         </article>
         <article>
           <GitBranch aria-hidden="true" />
-          <h3>Plan-Execute-Reflect</h3>
-          <p>Agent runs keep plans, steps, status, evidence and rollback data in local SQLite tables.</p>
+          <h3>Reviewable execution</h3>
+          <p>Advanced runs keep plans, steps, status, evidence and rollback data in local SQLite tables.</p>
         </article>
         <article>
           <Search aria-hidden="true" />

@@ -135,7 +135,7 @@
     "properties": "Properties",
     "outline": "Outline",
     "maintenance": "Knowledge Maintenance",
-    "agent": "Agent Runs"
+    "agent": "Execution History"
   },
   "maintenance": {
     "title": "Knowledge Maintenance",
@@ -223,7 +223,7 @@
     "openTarget": "Open related note"
   },
   "agent": {
-    "title": "Agent Runs",
+    "title": "Execution History",
     "noVault": "Open a vault first",
     "idle": {
       "start": "New run",
@@ -419,8 +419,8 @@
       "importPocket": { "label": "Import Pocket read-later", "description": "Choose a Pocket HTML export and generate note-ready reading entries" },
       "importNotion": { "label": "Import Notion export", "description": "Choose a Notion Markdown, CSV, or HTML export folder and convert page links and database tables" },
       "search": { "label": "Full-text search" },
-      "chat": { "label": "Open AI workspace", "description": "Chat, Agent, editing, and batch generation entry point" },
-      "aiRag": { "label": "Ask from knowledge base", "description": "Open Agent mode to search and cite notes automatically" },
+      "chat": { "label": "Open AI workspace", "description": "Chat, cited answers, editing, and batch generation entry point" },
+      "aiRag": { "label": "Ask from knowledge base", "description": "Search the vault and cite notes automatically" },
       "aiEditCurrent": { "label": "AI edit current note", "description": "Generate an edit plan and write only after confirmation" },
       "aiRewriteSelection": { "label": "AI rewrite selection", "description": "Use the current selection as editing context" },
       "aiNewNote": { "label": "AI generate new note", "description": "Create a new Markdown note without binding to the current file" },
@@ -448,7 +448,7 @@
       "properties": { "label": "Open note properties", "description": "Edit title, aliases, tags, and cssclasses" },
       "settings": { "label": "Open settings" },
       "viewContextPack": { "label": "View context pack", "description": "Inspect Hot / Warm / Cold memory tiers, token usage and tune parameters" },
-      "openAgent": { "label": "Open Agent panel", "description": "Plan-Execute-Reflect: let AI plan multi-step actions for you to review" },
+      "openAgent": { "label": "Review execution history", "description": "Advanced: inspect saved plans, steps, reflections, and rollback records" },
       "openMaintenance": { "label": "Open maintenance queue", "description": "Browse unresolved links, orphan notes, open tasks and one-click fixes" },
       "newWindow": { "label": "Open new window", "description": "Create an independent Nexusky window for viewing different areas in parallel" },
       "sidebar": { "label": "Toggle sidebar" },
