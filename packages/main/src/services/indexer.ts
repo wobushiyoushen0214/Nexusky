@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import { existsSync, readFileSync, statSync } from 'fs'
+import { readFileSync, statSync } from 'fs'
 import { basename, join, relative } from 'path'
 import type Database from 'better-sqlite3'
 import { getDatabase } from './database'
@@ -10,6 +10,7 @@ import { invalidateVaultQueryCache } from './db-query-cache'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*+]\s+(?:\[[^\]\r\n]?\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
+const NOTE_PROPERTIES_VERSION = 1
 
 interface IndexerStatements {
   selectHash: Database.Statement
@@ -36,14 +37,16 @@ function getIndexerStatements(db: Database.Database): IndexerStatements {
   const cached = indexerStatementsCache.get(db)
   if (cached) return cached
   const prepared: IndexerStatements = {
-    selectHash: db.prepare('SELECT content_hash FROM notes WHERE file_path = ?'),
+    selectHash: db.prepare('SELECT content_hash, properties_version FROM notes WHERE file_path = ?'),
     upsertNote: db.prepare(`
-      INSERT INTO notes (id, title, file_path, created_at, updated_at, content_hash)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO notes (id, title, file_path, created_at, updated_at, content_hash, properties_json, properties_version)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(file_path) DO UPDATE SET
         title = excluded.title,
         updated_at = excluded.updated_at,
-        content_hash = excluded.content_hash
+        content_hash = excluded.content_hash,
+        properties_json = excluded.properties_json,
+        properties_version = excluded.properties_version
     `),
     deleteLinks: db.prepare('DELETE FROM links WHERE source_note_id = ?'),
     insertLink: db.prepare('INSERT INTO links (source_note_id, target_title, context, line) VALUES (?, ?, ?, ?)'),
@@ -135,8 +138,8 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const hash = createHash('md5').update(rawContent).digest('hex')
 
   const stmts = getIndexerStatements(db)
-  const existing = stmts.selectHash.get(relPath) as { content_hash: string } | undefined
-  if (existing?.content_hash === hash) return
+  const existing = stmts.selectHash.get(relPath) as { content_hash: string; properties_version?: number } | undefined
+  if (existing?.content_hash === hash && (existing.properties_version || 0) >= NOTE_PROPERTIES_VERSION) return
 
   const { data: frontmatter, content } = matter(rawContent)
   const visibleContent = stripMarkdownComments(content, { preserveLineBreaks: true })
@@ -153,9 +156,11 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const dataviewTags = normalizeTagNames(inlineProperties.tags)
   const tags = [...new Set([...fmTags, ...inlineTags, ...dataviewTags])]
   const tasks = extractTasks(visibleContent)
+  const properties = buildIndexedProperties({ title, aliases, tags, frontmatter, inlineProperties })
+  const propertiesJson = JSON.stringify(properties)
 
   const transaction = db.transaction(() => {
-    stmts.upsertNote.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash)
+    stmts.upsertNote.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash, propertiesJson, NOTE_PROPERTIES_VERSION)
     stmts.deleteLinks.run(id)
     for (const link of links) {
       stmts.insertLink.run(id, link.targetTitle, link.context, link.line)
@@ -211,10 +216,10 @@ export function getAllNotes(vaultPath: string): NoteIndex[] {
 export function getPropertyRows(vaultPath: string): PropertyTableRow[] {
   const db = getDatabase(vaultPath)
   const notes = db.prepare(`
-    SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt
+    SELECT id, title, file_path as filePath, created_at as createdAt, updated_at as updatedAt, properties_json as propertiesJson
     FROM notes
     ORDER BY updated_at DESC
-  `).all() as { id: string; title: string; filePath: string; createdAt: number; updatedAt: number }[]
+  `).all() as { id: string; title: string; filePath: string; createdAt: number; updatedAt: number; propertiesJson?: string }[]
 
   const aliasesByNote = new Map<string, string[]>()
   for (const row of db.prepare('SELECT note_id as noteId, alias FROM note_aliases ORDER BY alias ASC').all() as { noteId: string; alias: string }[]) {
@@ -232,28 +237,18 @@ export function getPropertyRows(vaultPath: string): PropertyTableRow[] {
   }
 
   return notes.map((note) => {
-    const absolutePath = join(vaultPath, note.filePath)
-    let frontmatter: Record<string, unknown> = {}
-    let inlineProperties: Record<string, PropertyValue> = {}
-    if (existsSync(absolutePath)) {
-      try {
-        const parsed = matter(readFileSync(absolutePath, 'utf-8'))
-        frontmatter = parsed.data
-        inlineProperties = extractDataviewInlineFields(stripMarkdownComments(parsed.content, { preserveLineBreaks: true }))
-      } catch {
-        frontmatter = {}
-        inlineProperties = {}
-      }
-    }
-
-    const properties = { ...inlineProperties, ...normalizeProperties(frontmatter) }
-    properties.title = normalizePropertyValue(frontmatter.title) ?? inlineProperties.title ?? note.title
-    properties.aliases = aliasesByNote.get(note.id) || normalizeListProperty(frontmatter.aliases ?? frontmatter.alias ?? inlineProperties.aliases ?? inlineProperties.alias)
-    properties.tags = tagsByNote.get(note.id) || normalizeTagNames(frontmatter.tags ?? inlineProperties.tags)
-    properties.cssclasses = normalizeCssClasses(frontmatter.cssclasses ?? frontmatter.cssclass ?? inlineProperties.cssclasses ?? inlineProperties.cssclass)
+    const properties = parseStoredProperties(note.propertiesJson)
+    properties.title = normalizePropertyValue(properties.title) ?? note.title
+    properties.aliases = aliasesByNote.get(note.id) || normalizeListProperty(properties.aliases ?? properties.alias)
+    properties.tags = tagsByNote.get(note.id) || normalizeTagNames(properties.tags)
+    properties.cssclasses = normalizeCssClasses(properties.cssclasses ?? properties.cssclass)
 
     return {
-      ...note,
+      id: note.id,
+      title: note.title,
+      filePath: note.filePath,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
       properties
     }
   })
@@ -696,6 +691,42 @@ export function getGraphData(vaultPath: string, mode: GraphMode = 'folder', root
   }
 
   return buildOverviewGraphData(notes, edges)
+}
+
+function buildIndexedProperties(params: {
+  title: string
+  aliases: string[]
+  tags: string[]
+  frontmatter: Record<string, unknown>
+  inlineProperties: Record<string, PropertyValue>
+}): Record<string, PropertyValue> {
+  const properties = { ...params.inlineProperties, ...normalizeProperties(params.frontmatter) }
+  properties.title = normalizePropertyValue(params.frontmatter.title) ?? params.inlineProperties.title ?? params.title
+  properties.aliases = params.aliases
+  properties.tags = params.tags
+  properties.cssclasses = normalizeCssClasses(
+    params.frontmatter.cssclasses ??
+    params.frontmatter.cssclass ??
+    params.inlineProperties.cssclasses ??
+    params.inlineProperties.cssclass
+  )
+  return properties
+}
+
+function parseStoredProperties(value: unknown): Record<string, PropertyValue> {
+  if (typeof value !== 'string' || !value.trim()) return {}
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const properties: Record<string, PropertyValue> = {}
+    for (const [key, raw] of Object.entries(parsed)) {
+      const normalized = normalizePropertyValue(raw)
+      if (normalized !== undefined) properties[key] = normalized
+    }
+    return properties
+  } catch {
+    return {}
+  }
 }
 
 function extractTitle(content: string, filePath: string): string {

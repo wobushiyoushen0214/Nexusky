@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 11
+const SCHEMA_VERSION = 12
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -70,7 +70,9 @@ function initSchema(db: Database.Database): void {
       file_path TEXT NOT NULL UNIQUE,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      content_hash TEXT NOT NULL
+      content_hash TEXT NOT NULL,
+      properties_json TEXT NOT NULL DEFAULT '{}',
+      properties_version INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS links (
@@ -423,6 +425,8 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'notes', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'notes', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'notes', 'content_hash', "content_hash TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'notes', 'properties_json', "properties_json TEXT NOT NULL DEFAULT '{}'")
+  ensureColumn(db, 'notes', 'properties_version', 'properties_version INTEGER NOT NULL DEFAULT 0')
 
   ensureColumn(db, 'links', 'source_note_id', "source_note_id TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, 'links', 'target_note_id', 'target_note_id TEXT')
@@ -679,6 +683,11 @@ const migrations: Migration[] = [
   // Migration 11: agent runs / steps tables
   (db) => {
     createAgentSchema(db)
+  },
+  // Migration 12: cached note property snapshots
+  (db) => {
+    ensureColumn(db, 'notes', 'properties_json', "properties_json TEXT NOT NULL DEFAULT '{}'")
+    ensureColumn(db, 'notes', 'properties_version', 'properties_version INTEGER NOT NULL DEFAULT 0')
   }
 ]
 

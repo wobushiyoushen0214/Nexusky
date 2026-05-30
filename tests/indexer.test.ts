@@ -73,7 +73,9 @@ describe('indexer', () => {
     const links = db.prepare('PRAGMA table_info(links)').all() as { name: string }[]
     const conversations = db.prepare('PRAGMA table_info(conversations)').all() as { name: string }[]
     const kanbanTasks = db.prepare('PRAGMA table_info(kanban_tasks)').all() as { name: string }[]
+    const notes = db.prepare('PRAGMA table_info(notes)').all() as { name: string }[]
 
+    expect(notes.map((column) => column.name)).toEqual(expect.arrayContaining(['properties_json', 'properties_version']))
     expect(links.map((column) => column.name)).toEqual(expect.arrayContaining(['context', 'line', 'link_type']))
     expect(conversations.map((column) => column.name)).toEqual(expect.arrayContaining(['sources', 'session_id']))
     expect(kanbanTasks.map((column) => column.name)).toEqual(expect.arrayContaining(['description', 'priority', 'due_date', 'source_note_id', 'source_file_path', 'created_at', 'updated_at']))
@@ -660,6 +662,36 @@ describe('indexer', () => {
         cssclasses: ['wide-page', 'readable']
       }
     })
+
+    closeDatabase()
+  })
+
+  it('serves property rows from the indexed snapshot without re-reading note files', async () => {
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    const { indexNote, getPropertyRows } = await import('../packages/main/src/services/indexer')
+
+    const notePath = join(vaultPath, 'Snapshot.md')
+    writeFileSync(notePath, [
+      '---',
+      'status: active',
+      '---',
+      '# Snapshot',
+      '',
+      'project:: Indexed'
+    ].join('\n'))
+
+    indexNote(vaultPath, notePath)
+    writeFileSync(notePath, [
+      '---',
+      'status: changed-without-index',
+      '---',
+      '# Snapshot',
+      '',
+      'project:: Changed'
+    ].join('\n'))
+
+    const row = getPropertyRows(vaultPath).find((item) => item.filePath === 'Snapshot.md')
+    expect(row?.properties).toMatchObject({ status: 'active', project: 'Indexed' })
 
     closeDatabase()
   })
