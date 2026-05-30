@@ -136,7 +136,7 @@ packages/
     src/markdown/       Markdown 兼容渲染工具
 
 docs/                   项目文档
-scripts/                开发/CLI 脚本（dev.mjs、rebuild-native.mjs、nexusky-cli.mjs、afterPack.js、vitest-electron.mjs）
+scripts/                开发/CLI 脚本（dev.mjs、rebuild-native.mjs、nexusky-cli.mjs、vitest-electron.mjs）
 supabase/               Supabase schema 和部署说明
 browser-extension/      Web Clipper 浏览器扩展（Chrome/Edge MV3）
 website/                官网首页、下载入口与发布日志后台（Next.js 子项目）

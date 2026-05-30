@@ -157,7 +157,7 @@
 - [x] `pnpm test -- p0-security` 通过（实际跑全量：109 files / 649 tests）
 - [x] `65e725e` 后重新验证：`pnpm typecheck` 通过；`pnpm test -- p0-security vault-store` 实际跑全量 110 files / 655 tests 通过
 
-> 后续（分发侧，需证书/发布流水线配合）：启用 macOS/Windows 代码签名与更新验签策略。本次提交已修复应用内 “XSS → 任意读 → 明文 key → 无 CSP/遥测外发” 安全链。
+> 后续（分发侧，需证书/发布流水线配合）：Windows 代码签名与更新验签策略仍待补齐；macOS 发布流水线已要求 Developer ID 签名、公证与 zip 更新产物。本次提交已修复应用内 “XSS → 任意读 → 明文 key → 无 CSP/遥测外发” 安全链。
 
 ### 工作量：中（已完成）
 
@@ -216,5 +216,6 @@
 | 本地检索/记忆关联扩展性 | 搜索合并 TF-IDF 与 FTS fallback，旧笔记不再被 2000 chunk 缓存窗口遮蔽；相似笔记和 memory 关联改倒排候选对 | ✅ 已修复（本提交） |
 | 重命名/移动保持身份 | 同内容新路径复用已消失旧路径 note id，同步看板/上下文/AI 关系路径引用；watcher 延迟 unlink，避免 move 被当删除 | ✅ 已修复（本提交） |
 | 图谱大图 Canvas 降级 | 可见节点/边超过阈值时用视口大小 Canvas 绘制，保留小图 DOM 和大图点击/悬停/拖动，避免数千 DOM 元素卡死 | ✅ 已修复（本提交） |
+| mac 签名/公证发布 | mac 构建移除 ad-hoc 签名，强制 Developer ID 签名和 notarize，发布 `dmg+zip+latest-mac.yml`；缺少 secrets 时 CI 失败 | ✅ 已修复（本提交） |
 | lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | 🔧 待修 |
 | 关系候选 O(N) 扫描 | 关键词候选改 FTS5 `MATCH`；chunk 相似候选先 FTS 召回 note id，再只读取候选 chunks 评分 | ✅ 已修复（本提交） |

@@ -51,7 +51,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 ### 🔴 P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　— ✅ 已修复（a9118de / 65e725e）
 - 修复：普通 `file:*` IPC 统一走主进程可信 vault guard，配置读取只返回 `has*` 标记，生产响应注入 CSP 且 `index.html` 带 CSP meta，Markdown DOMPurify 改显式白名单，遥测默认关闭；`65e725e` 追加 dev CSP 兼容，生产仍禁 inline script，dev 仅为 Vite/React Refresh 放开必要 inline preamble。
 - 验收：`p0-security` 覆盖 vault 外读拒绝、AI/cloud secret 不回传、CSP 存在、遥测 opt-out；typecheck 与全量测试通过；后续 `p0-security vault-store` 重跑全量 655 tests 通过。
-- 仍需分发侧配合：macOS/Windows 代码签名与更新验签策略。
+- 仍需分发侧配合：Windows 代码签名与更新验签策略；macOS 发布流水线已要求 Developer ID 签名、公证与 `zip` 更新产物（本提交）。
 
 ### 🔴 P0-5　编辑器 Markdown 往返非保真，破坏 Obsidian 语法　— ✅ 已修复（b3debd3）
 - 机制：`onUpdate` 每次把正文整段 `TipTap→Markdown` 重序列化后写盘（仅 frontmatter 用正则保回），`html:false` 丢弃内联 HTML。callout/嵌入/脚注/Dataview 在“打开→编辑无关段落→自动保存”后被改写/丢失。
@@ -127,7 +127,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | `pnpm lint` 是坏的：eslint 未安装、无根配置，CI 也不跑 lint | `pnpm run lint` → `command not found` |
 | P1 | 核心路径零测试：5 个 AI provider、1485 行 tool 执行器、watcher、updater、5/7 cloud provider | `grep tests/` |
 | P2 | CI 不做 `build`/打包冒烟；`build.yml` 不冻结依赖（58 个 `^`、无 `engines`）（✅ 本提交） | `ci.yml`、`build.yml`、`package.json` |
-| P2 | mac 自动更新大概率静默失效：ad-hoc 签名 + Squirrel.Mac 要求 Developer ID | `afterPack.js:13-16`、`electron-builder.yml` |
+| P2 | mac 自动更新大概率静默失效：ad-hoc 签名 + Squirrel.Mac 要求 Developer ID（✅ 本提交） | `electron-builder.yml`、`.github/workflows/build.yml` |
 | P2 | 文档漂移：README 文档入口 5/8 死链；PROJECT_OVERVIEW 与 PRODUCT.md 关于 Kanban/Canvas 自相矛盾（✅ 本提交） | `README.md`、`PROJECT_OVERVIEW.md` |
 | P2 | `save`/`find-replace` 设置可改但 `Editor.tsx:348,366` 硬编码忽略；`Ctrl+Shift+C` 与 `Ctrl+Shift+D` 行为相同（✅ 本提交） | `Editor.tsx`、`App.tsx`、`shortcuts.ts` |
 
@@ -170,7 +170,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | ✅ 本提交 |
 | P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
 | P1 | reduced-motion 媒体块 + `--text-tertiary` 提亮 + 全局 `:focus-visible` | 小 | 高 | ✅ 3c0f45f |
-| P2 | 图谱 Canvas/WebGL 化（Canvas 降级 ✅ 本提交）；mac 签名；修文档漂移（稳定笔记 ID ✅ 本提交） | 大/中 | 中-高 | 🔧（剩 mac 签名） |
+| P2 | 图谱 Canvas/WebGL 化（Canvas 降级 ✅ 本提交）；mac 签名/公证发布；修文档漂移（稳定笔记 ID ✅ 本提交） | 大/中 | 中-高 | ✅ 本提交 |
 
 ---
 
@@ -208,3 +208,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-30 | P1 本地检索/记忆关联扩展性 | 本提交 | `lexicalSearch` 合并 TF-IDF 与 FTS fallback，旧笔记即使落在 2000 chunk 缓存窗口外也能命中；`findSimilarNotes` 与 memory 关联改为倒排候选对，避免直接全量两两扫描；search-index/memory-links 10/10、typecheck 通过 |
 | 2026-05-30 | P1 重命名/移动保持 note id | 本提交 | `indexNote` 对已消失旧路径的同内容新文件复用原 note id，并同步 kanban/source/context/AI relation/theme 路径引用；watcher 延迟 unlink 删除，全库索引先索引再清理 stale；vault-indexer/indexer/memory-links 28/28、typecheck 通过 |
 | 2026-05-30 | P1 图谱大图 Canvas 降级 | 本提交 | 可见节点/边超过阈值时自动切到视口大小的 Canvas raster renderer，小图保留原 DOM 交互；大图仍支持滚动缩放、悬停高亮、点击打开和拖动节点，避免数千 DOM 节点/边卡死；graph-ui 18/18、typecheck 通过 |
+| 2026-05-30 | P2 mac 签名/公证发布 | 本提交 | 移除 `identity: null` 与 ad-hoc `afterPack` 签名，mac 构建强制 Developer ID 签名与 notarize，同时发布 `dmg+zip+latest-mac.yml`；GitHub Actions 缺少签名/公证 secrets 时直接失败，避免上传不可自动更新的 mac 包；workflow-config/typecheck 通过 |
