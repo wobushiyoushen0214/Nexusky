@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../stores/vault-store'
 
 export function WelcomeScreen() {
+  const { t } = useTranslation()
   const { selectVault, createVault } = useVaultStore()
   const [isCreating, setIsCreating] = useState(false)
   const [vaultName, setVaultName] = useState('')
@@ -27,8 +29,8 @@ export function WelcomeScreen() {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', gap: 32 }}>
-      <div style={{ textAlign: 'center' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', gap: 28, padding: '48px 24px' }}>
+      <div style={{ width: 'min(420px, 100%)', textAlign: 'center' }}>
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--accent)' }}>
             <path d="M12 3L2 7l10 4 10-4-10-4z" fill="currentColor" opacity="0.9" />
@@ -39,13 +41,18 @@ export function WelcomeScreen() {
         <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.02em' }}>
           Nexusky
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-          AI 驱动的知识库
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 auto', maxWidth: 360 }}>
+          {t('welcome.subtitle')}
         </p>
+        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+          <WelcomeSignal>{t('welcome.signal.local')}</WelcomeSignal>
+          <WelcomeSignal>{t('welcome.signal.memory')}</WelcomeSignal>
+          <WelcomeSignal>{t('welcome.signal.review')}</WelcomeSignal>
+        </div>
       </div>
 
       {isCreating ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 260 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(320px, 100%)' }}>
           <input
             autoFocus
             value={vaultName}
@@ -54,7 +61,7 @@ export function WelcomeScreen() {
               if (e.key === 'Enter') handleCreate()
               if (e.key === 'Escape') { setIsCreating(false); setVaultName('') }
             }}
-            placeholder="输入笔记空间名称"
+            placeholder={t('welcome.create.placeholder')}
             style={{
               height: 36, padding: '0 12px', fontSize: 13, borderRadius: 8,
               background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
@@ -68,36 +75,38 @@ export function WelcomeScreen() {
               onClick={handleCreate}
               style={{ flex: 1, height: 36, fontSize: 13, borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 500 }}
             >
-              选择位置并创建
+              {t('welcome.create.confirm')}
             </button>
             <button
               onClick={() => { setIsCreating(false); setVaultName('') }}
               style={{ height: 36, padding: '0 14px', fontSize: 13, borderRadius: 8, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-default)', cursor: 'pointer' }}
             >
-              取消
+              {t('welcome.create.cancel')}
             </button>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 260 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 'min(320px, 100%)' }}>
           <button
             onClick={() => setIsCreating(true)}
             style={{ height: 38, fontSize: 13, borderRadius: 8, fontWeight: 500, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}
           >
-            创建笔记空间
+            {t('welcome.action.create')}
           </button>
           <button
             onClick={selectVault}
             style={{ height: 38, fontSize: 13, borderRadius: 8, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-default)', cursor: 'pointer' }}
           >
-            打开已有文件夹
+            {t('welcome.action.open')}
           </button>
         </div>
       )}
 
       {recentVaults.length > 0 && !isCreating && (
-        <div style={{ width: 260, marginTop: 8 }}>
-          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>最近打开</p>
+        <div style={{ width: 'min(320px, 100%)', marginTop: 4 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {t('welcome.recent')}
+          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {recentVaults.map((path) => {
               const name = path.split(/[\\/]/).pop() || path
@@ -127,5 +136,26 @@ export function WelcomeScreen() {
         </div>
       )}
     </div>
+  )
+}
+
+function WelcomeSignal({ children }: { children: ReactNode }) {
+  return (
+    <span
+      style={{
+        height: 24,
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '0 9px',
+        borderRadius: 6,
+        border: '1px solid var(--border-subtle)',
+        background: 'var(--bg-elevated)',
+        color: 'var(--text-tertiary)',
+        fontSize: 11,
+        fontWeight: 500
+      }}
+    >
+      {children}
+    </span>
   )
 }

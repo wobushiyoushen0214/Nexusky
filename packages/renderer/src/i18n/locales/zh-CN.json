@@ -54,6 +54,24 @@
       }
     }
   },
+  "welcome": {
+    "subtitle": "Markdown 文件留在你的本地文件夹里，Nexusky 围绕它建立记忆、搜索和可审查的 AI 操作。",
+    "signal": {
+      "local": "本地 Markdown",
+      "memory": "长期记忆",
+      "review": "可审查 AI"
+    },
+    "action": {
+      "create": "创建 vault",
+      "open": "打开已有文件夹"
+    },
+    "create": {
+      "placeholder": "Vault 名称",
+      "confirm": "选择位置并创建",
+      "cancel": "取消"
+    },
+    "recent": "最近打开"
+  },
   "graph": {
     "title": "图谱",
     "emptyTitle": "暂无图谱数据",

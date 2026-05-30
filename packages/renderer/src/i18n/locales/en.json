@@ -54,6 +54,24 @@
       }
     }
   },
+  "welcome": {
+    "subtitle": "Local Markdown stays in your folder. Nexusky builds memory, search, and reviewable AI actions around it.",
+    "signal": {
+      "local": "Local Markdown",
+      "memory": "Long memory",
+      "review": "Reviewable AI"
+    },
+    "action": {
+      "create": "Create a vault",
+      "open": "Open an existing folder"
+    },
+    "create": {
+      "placeholder": "Vault name",
+      "confirm": "Choose location and create",
+      "cancel": "Cancel"
+    },
+    "recent": "Recent vaults"
+  },
   "graph": {
     "title": "Graph",
     "emptyTitle": "No graph data yet",
