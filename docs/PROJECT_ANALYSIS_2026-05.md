@@ -160,7 +160,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P0 | Agent 写盘指纹守卫（回滚/重试不毁用户编辑） | 中 | 极高 | ✅ 3ac2cae |
 | P1 | apply-fix 写盘加预览/undo（对齐 Agent 安全标准）；file_create 回滚改走 trash | 中 | 中 | ✅ 本提交 |
 | P0 | 安全三件套：读路径强制 vault 校验 + `get-*-config` 只返回 `hasKey` + 加 CSP | 中 | 极高 | ✅ a9118de / 65e725e |
-| P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | 🔧 |
+| P0 | 编辑器增量保存 / Obsidian 语法建节点 + 补 round-trip 测试 | 大 | 极高 | ✅ b3debd3 |
 | P1 | 主动建议限流生效：展示时回写 `shown_at`（修复失效） | 小 | 高 | ✅ c219629 |
 | P1 | “向量检索”二选一：接真实 embedding，或重命名+删死代码+改文案 | 中/大 | 高 | ✅ 本提交 |
 | P1 | 全连接 `busy_timeout` + watcher 的 `catch{}` 加日志 | 小 | 高 | ✅ ecd1e44 |
@@ -168,7 +168,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 关系候选改走 FTS/BM25 或真实 embedding（大 vault 扩展性） | 中 | 高 | ✅ 本提交 |
 | P1 | Token/成本总线 + provider capabilities 声明 | 中 | 高 | ✅ 本提交 |
 | P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | ✅ 本提交 |
-| P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
+| P1 | CI 加 build/typecheck/test 冒烟；provider/tool 执行器基础测试；lint 按当前要求不处理 | 中 | 高 | ✅（eslint 跳过） |
 | P1 | reduced-motion 媒体块 + `--text-tertiary` 提亮 + 全局 `:focus-visible` | 小 | 高 | ✅ 3c0f45f |
 | P2 | 图谱 Canvas/WebGL 化（Canvas 降级 ✅ 本提交）；mac 签名/公证发布；修文档漂移（稳定笔记 ID ✅ 本提交） | 大/中 | 中-高 | ✅ 本提交 |
 
@@ -209,3 +209,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-30 | P1 重命名/移动保持 note id | 本提交 | `indexNote` 对已消失旧路径的同内容新文件复用原 note id，并同步 kanban/source/context/AI relation/theme 路径引用；watcher 延迟 unlink 删除，全库索引先索引再清理 stale；vault-indexer/indexer/memory-links 28/28、typecheck 通过 |
 | 2026-05-30 | P1 图谱大图 Canvas 降级 | 本提交 | 可见节点/边超过阈值时自动切到视口大小的 Canvas raster renderer，小图保留原 DOM 交互；大图仍支持滚动缩放、悬停高亮、点击打开和拖动节点，避免数千 DOM 节点/边卡死；graph-ui 18/18、typecheck 通过 |
 | 2026-05-30 | P2 mac 签名/公证发布 | 本提交 | 移除 `identity: null` 与 ad-hoc `afterPack` 签名，mac 构建强制 Developer ID 签名与 notarize，同时发布 `dmg+zip+latest-mac.yml`；GitHub Actions 缺少签名/公证 secrets 时直接失败，避免上传不可自动更新的 mac 包；workflow-config/typecheck 通过 |
+| 2026-05-30 | 待办状态校准 | 本提交 | P0 编辑器 round-trip 项已由 `b3debd3` 完成，行动表补标；lint 项按当前要求不处理，保留现有 typecheck/build/test CI 与 provider/tool 基础测试 |
