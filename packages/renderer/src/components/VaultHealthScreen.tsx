@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
@@ -57,9 +57,13 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
     await dismiss()
   }
 
+  const repairSignalCount = summary
+    ? summary.unresolvedLinkCount + summary.orphanCount + summary.duplicateTitleCount
+    : 0
+
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)', padding: '64px 32px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)', padding: '56px 32px' }}>
+      <div style={{ maxWidth: 840, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 4 }}>
@@ -86,20 +90,50 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
         </div>
 
         {error && (
-          <div style={{ padding: 12, borderRadius: 6, background: 'var(--bg-elevated)', color: '#f87171', fontSize: 12, marginBottom: 16 }}>
-            {error}
-          </div>
+          <StatePanel
+            title={t('vaultHealth.state.error.title')}
+            desc={`${t('vaultHealth.state.error.desc')} ${error}`}
+            tone="error"
+          />
         )}
 
         {!summary && !error && (
-          <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
-            {t('vaultHealth.scanning')}
-          </div>
+          <StatePanel
+            title={t('vaultHealth.state.scanning.title')}
+            desc={t('vaultHealth.state.scanning.desc')}
+          />
         )}
 
         {summary && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+            <div
+              style={{
+                padding: '18px 20px',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 8,
+                marginBottom: 16
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {t('vaultHealth.hero.kicker')}
+              </div>
+              <h2 style={{ fontSize: 18, lineHeight: 1.35, color: 'var(--text-primary)', margin: 0, marginBottom: 8 }}>
+                {repairSignalCount > 0
+                  ? t('vaultHealth.hero.titleWithWork', { count: repairSignalCount })
+                  : t('vaultHealth.hero.title')}
+              </h2>
+              <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0, maxWidth: 640 }}>
+                {t('vaultHealth.hero.body')}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+                <SignalLabel>{t('vaultHealth.hero.signal.local')}</SignalLabel>
+                <SignalLabel>{t('vaultHealth.hero.signal.review')}</SignalLabel>
+                <SignalLabel>{t('vaultHealth.hero.signal.context')}</SignalLabel>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
               <HealthMetric label={t('vaultHealth.metric.notes')} value={summary.noteCount} />
               <HealthMetric label={t('vaultHealth.metric.links')} value={summary.linkCount} />
               <HealthMetric label={t('vaultHealth.metric.unresolvedLinks')} value={summary.unresolvedLinkCount} tone={summary.unresolvedLinkCount > 0 ? 'warn' : 'ok'} />
@@ -115,17 +149,20 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <NextStepButton
+                kicker={t('vaultHealth.action.askAi.kicker')}
                 title={t('vaultHealth.action.askAi.title')}
                 desc={t('vaultHealth.action.askAi.desc')}
                 onClick={askAi}
               />
               <NextStepButton
+                kicker={t('vaultHealth.action.fixLinks.kicker')}
                 title={t('vaultHealth.action.fixLinks.title', { count: summary.unresolvedLinkCount })}
                 desc={t('vaultHealth.action.fixLinks.desc')}
                 onClick={openMaintenance}
                 disabled={summary.unresolvedLinkCount === 0}
               />
               <NextStepButton
+                kicker={t('vaultHealth.action.browseGraph.kicker')}
                 title={t('vaultHealth.action.browseGraph.title')}
                 desc={t('vaultHealth.action.browseGraph.desc')}
                 onClick={openGraph}
@@ -135,6 +172,54 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
         )}
       </div>
     </div>
+  )
+}
+
+interface StatePanelProps {
+  title: string
+  desc: string
+  tone?: 'default' | 'error'
+}
+
+function StatePanel({ title, desc, tone = 'default' }: StatePanelProps) {
+  return (
+    <div
+      style={{
+        padding: '22px 20px',
+        borderRadius: 8,
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-default)',
+        marginBottom: 16
+      }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 600, color: tone === 'error' ? '#f87171' : 'var(--text-primary)', marginBottom: 6 }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
+        {desc}
+      </div>
+    </div>
+  )
+}
+
+function SignalLabel({ children }: { children: ReactNode }) {
+  return (
+    <span
+      style={{
+        height: 24,
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '0 9px',
+        borderRadius: 6,
+        border: '1px solid var(--border-subtle)',
+        color: 'var(--text-secondary)',
+        background: 'var(--bg-base)',
+        fontSize: 11,
+        fontWeight: 500
+      }}
+    >
+      {children}
+    </span>
   )
 }
 
@@ -165,13 +250,14 @@ function HealthMetric({ label, value, tone = 'ok' }: HealthMetricProps) {
 }
 
 interface NextStepButtonProps {
+  kicker: string
   title: string
   desc: string
   onClick: () => void
   disabled?: boolean
 }
 
-function NextStepButton({ title, desc, onClick, disabled = false }: NextStepButtonProps) {
+function NextStepButton({ kicker, title, desc, onClick, disabled = false }: NextStepButtonProps) {
   return (
     <button
       onClick={onClick}
@@ -192,10 +278,15 @@ function NextStepButton({ title, desc, onClick, disabled = false }: NextStepButt
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = 'var(--border-default)'
-      }}
-    >
-      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>{title}</div>
-      <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{desc}</div>
+        }}
+      >
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+        <span style={{ minWidth: 52, fontSize: 11, fontWeight: 700, color: disabled ? 'var(--text-tertiary)' : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {kicker}
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</span>
+      </div>
+      <div style={{ paddingLeft: 62, fontSize: 12, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>{desc}</div>
     </button>
   )
 }

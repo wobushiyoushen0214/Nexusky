@@ -5,6 +5,27 @@
     "skip": "暂时跳过",
     "scanning": "正在扫描…",
     "nextSteps": "下一步建议",
+    "hero": {
+      "kicker": "首次扫描完成",
+      "title": "Vault 已建立索引，先选一个有用的下一步。",
+      "titleWithWork": "发现 {{count}} 个维护信号，先从小任务开始。",
+      "body": "Nexusky 保持文件仍在本地，用索引解释接下来值得询问、修复或查看的内容。",
+      "signal": {
+        "local": "本地索引",
+        "review": "可审查操作",
+        "context": "带上下文的 AI"
+      }
+    },
+    "state": {
+      "scanning": {
+        "title": "正在建立本地快照",
+        "desc": "读取文件、链接、任务和记忆信号，不会改动你的笔记。"
+      },
+      "error": {
+        "title": "暂时无法生成 Vault Health",
+        "desc": "你仍然可以打开 vault 继续工作。详情："
+      }
+    },
     "metric": {
       "notes": "笔记",
       "links": "链接",
@@ -17,14 +38,17 @@
     },
     "action": {
       "askAi": {
+        "kicker": "询问",
         "title": "问 AI 一个关于 vault 的问题",
         "desc": "打开聊天面板，让助手带你回顾笔记空间。"
       },
       "fixLinks": {
+        "kicker": "修复",
         "title": "修复 {{count}} 个未解析链接",
         "desc": "打开维护队列，集中处理失效的 wikilink。"
       },
       "browseGraph": {
+        "kicker": "查看",
         "title": "浏览知识图谱",
         "desc": "一眼看清聚类、桥接节点和孤岛笔记。"
       }
