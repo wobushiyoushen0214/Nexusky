@@ -40,6 +40,18 @@ describe('workflow configuration', () => {
     expect(build).toContain('dist/latest-mac.yml')
   })
 
+  it('requires signed Windows release artifacts', () => {
+    const build = readFileSync('.github/workflows/build.yml', 'utf-8')
+    const builder = readFileSync('electron-builder.yml', 'utf-8')
+
+    expect(builder).toContain('forceCodeSigning: true')
+    expect(builder).toContain('verifyUpdateCodeSignature: true')
+    expect(builder).not.toContain('sign: false')
+    expect(build).toContain('pnpm exec electron-builder --win nsis --x64 --publish always')
+    expect(build).toContain('WIN_CSC_LINK')
+    expect(build).toContain('WIN_CSC_KEY_PASSWORD')
+  })
+
   it('declares the runtime package manager and engine range', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as {
       packageManager?: string

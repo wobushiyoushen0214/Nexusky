@@ -15,11 +15,12 @@ publish:
   provider: github
   releaseType: release
 win:
+  forceCodeSigning: true
+  verifyUpdateCodeSignature: true
   target:
     - target: nsis
       arch: [x64]
   icon: resources/icon.png
-  sign: false
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

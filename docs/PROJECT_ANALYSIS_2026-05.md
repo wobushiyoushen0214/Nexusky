@@ -51,7 +51,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 ### 🔴 P0-4　安全链：任意路径读取 + 明文密钥回传 + 零 CSP　— ✅ 已修复（a9118de / 65e725e）
 - 修复：普通 `file:*` IPC 统一走主进程可信 vault guard，配置读取只返回 `has*` 标记，生产响应注入 CSP 且 `index.html` 带 CSP meta，Markdown DOMPurify 改显式白名单，遥测默认关闭；`65e725e` 追加 dev CSP 兼容，生产仍禁 inline script，dev 仅为 Vite/React Refresh 放开必要 inline preamble。
 - 验收：`p0-security` 覆盖 vault 外读拒绝、AI/cloud secret 不回传、CSP 存在、遥测 opt-out；typecheck 与全量测试通过；后续 `p0-security vault-store` 重跑全量 655 tests 通过。
-- 仍需分发侧配合：Windows 代码签名与更新验签策略；macOS 发布流水线已要求 Developer ID 签名、公证与 `zip` 更新产物（本提交）。
+- 分发侧补齐：macOS 发布流水线要求 Developer ID 签名、公证与 `zip` 更新产物；Windows 发布流水线要求 Authenticode 签名并开启更新签名校验（本提交）。
 
 ### 🔴 P0-5　编辑器 Markdown 往返非保真，破坏 Obsidian 语法　— ✅ 已修复（b3debd3）
 - 机制：`onUpdate` 每次把正文整段 `TipTap→Markdown` 重序列化后写盘（仅 frontmatter 用正则保回），`html:false` 丢弃内联 HTML。callout/嵌入/脚注/Dataview 在“打开→编辑无关段落→自动保存”后被改写/丢失。
@@ -210,3 +210,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-30 | P1 图谱大图 Canvas 降级 | 本提交 | 可见节点/边超过阈值时自动切到视口大小的 Canvas raster renderer，小图保留原 DOM 交互；大图仍支持滚动缩放、悬停高亮、点击打开和拖动节点，避免数千 DOM 节点/边卡死；graph-ui 18/18、typecheck 通过 |
 | 2026-05-30 | P2 mac 签名/公证发布 | 本提交 | 移除 `identity: null` 与 ad-hoc `afterPack` 签名，mac 构建强制 Developer ID 签名与 notarize，同时发布 `dmg+zip+latest-mac.yml`；GitHub Actions 缺少签名/公证 secrets 时直接失败，避免上传不可自动更新的 mac 包；workflow-config/typecheck 通过 |
 | 2026-05-30 | 待办状态校准 | 本提交 | P0 编辑器 round-trip 项已由 `b3debd3` 完成，行动表补标；lint 项按当前要求不处理，保留现有 typecheck/build/test CI 与 provider/tool 基础测试 |
+| 2026-05-30 | P2 Windows 签名发布 | 本提交 | 移除 `win.sign:false`，Windows 构建强制 Authenticode 签名并显式开启更新签名校验；GitHub Actions 缺少 `WIN_CSC_LINK/WIN_CSC_KEY_PASSWORD` 时直接失败，避免上传未签名安装包；workflow-config/typecheck 通过 |

@@ -23,9 +23,21 @@ jobs:
       - run: python -m pip install setuptools
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
+      - name: Verify Windows signing secrets
+        shell: bash
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          test -n "$WIN_CSC_LINK" || { echo "Missing WIN_CSC_LINK"; exit 1; }
+          test -n "$WIN_CSC_KEY_PASSWORD" || { echo "Missing WIN_CSC_KEY_PASSWORD"; exit 1; }
       - run: pnpm exec electron-builder --win nsis --x64 --publish always
         env:
           GH_TOKEN: ${{ github.token }}
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-windows
