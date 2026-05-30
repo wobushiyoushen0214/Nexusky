@@ -310,11 +310,6 @@ export default function App() {
         setMainView('bases')
         if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
       }
-      if (matchesShortcut(e, getKey('canvas'))) {
-        e.preventDefault()
-        setMainView('canvas')
-        if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
-      }
       if (matchesShortcut(e, getKey('chat'))) {
         e.preventDefault()
         toggleRightPanel('chat')
@@ -449,7 +444,7 @@ export default function App() {
             </>
           )}
           <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: sidebarCollapsed ? 0 : 4, marginRight: rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
-            {mainView === 'editor' ? <Editor /> : mainView === 'bases' || mainView === 'canvas' ? (
+            {mainView === 'editor' ? <Editor /> : mainView === 'bases' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><CanvasView initialMode="properties" /></Suspense>
               </div>

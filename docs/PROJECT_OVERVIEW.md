@@ -2,7 +2,7 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：`cb6a1f3`（v0.5.0 后，含分组图谱钻取、相关上下文侧栏整合、知识空间路由显示和官网首页重做）
+最后核对版本：`cb6a1f3`（v0.5.0 后，含分组图谱钻取、相关上下文侧栏整合、属性/时间视图路由显示和官网首页重做）
 
 ## 1. 一句话理解
 
@@ -17,7 +17,7 @@ Nexusky 的核心目标是让用户在本地文件夹中长期维护知识资产
 - 本地 Markdown 文件是主数据，应用可以离线使用。
 - SQLite 是索引和派生状态，不替代 Markdown 文件。
 - AI 能读取、搜索、生成和修改笔记，但关键写入仍落到 vault 文件或本地数据库。
-- 知识图谱、知识空间、搜索、看板、闪卡等功能都围绕同一个 vault 运转。
+- 知识图谱、属性视图、时间线、搜索、AI 和维护队列都围绕同一个 vault 运转。
 
 ## 3. 主要用户场景
 
@@ -43,7 +43,7 @@ Nexusky 的核心目标是让用户在本地文件夹中长期维护知识资产
 - `[[folder/note]]`、`[[note#heading]]`、别名和大小写变体可解析。
 - 当前笔记底部可看出链、反链和未链接提及。
 - 未链接提及可转为 wikilink。
-- D3 知识图谱和知识空间会基于索引展示节点关系。
+- D3 知识图谱基于索引展示节点关系；属性视图和时间线基于同一索引做结构化浏览。
 - 知识图谱底层支持 folder / semantic / connection / group / folder-scope 数据模式，边会区分显式链接、AI 推断链接和目录归属。
 - 当前图谱 UI 先展示顶层分组总览，可点击目录节点钻入单层目录视图；深层笔记会通过子目录节点聚合，跨目录推断关系以聚合边呈现。
 - 图谱默认以显式关系为主，隐藏 AI 推断边、目录归属边、孤立节点和普通节点标签，保留开关供用户临时查看低信号关联。
@@ -102,7 +102,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 | 前端 | React 19、Zustand、i18next |
 | 编辑器 | TipTap / ProseMirror、tiptap-markdown |
 | Markdown 渲染 | marked、DOMPurify、KaTeX、Mermaid、lowlight |
-| 图谱/知识空间 | D3 force / drag / zoom；`db:get-graph` 支持 `GraphMode`（semantic / connection / folder / group / folder-scope），GraphView 默认展示分组总览并支持目录钻取、linkType 视觉区分、布局缓存和 renderer Web Worker 力仿真；知识空间保留属性/时间图层，连接线默认显示并由路由 worker 绕开卡片 |
+| 图谱/属性/时间 | D3 force / drag / zoom；`db:get-graph` 支持 `GraphMode`（semantic / connection / folder / group / folder-scope），GraphView 默认展示分组总览并支持目录钻取、linkType 视觉区分、布局缓存和 renderer Web Worker 力仿真；属性视图和时间线复用 CanvasView 布局引擎 |
 | 本地数据库 | better-sqlite3，WAL 模式，FTS5 |
 | AI SDK | OpenAI、Anthropic、Ollama 兼容接口、Codex CLI |
 | 同步 | Supabase、iCloud、OneDrive、WebDAV、S3 |
@@ -186,7 +186,7 @@ main/services/*
 - 装配 TitleBar、ActivityBar、Sidebar、Editor、WelcomeScreen、主视图和右侧面板。
 - 通过 React.lazy 拆分重型视图：GraphView、CanvasView、ChatPanel、Settings、SearchPanel 等。
 - 根据全局快捷键打开快速切换、搜索、命令面板、设置、AI 面板等。
-- 处理图谱生成、知识空间、插件面板、回收站、闪卡复习、主题包和 CSS 片段。
+- 处理图谱生成、属性/时间视图、插件面板、回收站、主题包和 CSS 片段。
 
 ## 7. 数据模型与持久化
 
@@ -410,7 +410,7 @@ AI 面板还支持：
 | 命令面板 | `components/CommandPalette.tsx` | 功能命令、AI 快捷任务、导入/导出入口 |
 | 搜索 | `components/SearchPanel.tsx` | 全文/本地相关检索、检索索引进度 |
 | 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 group 总览 + folder-scope 目录钻取，底层 `db:get-graph` 兼容 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
-| 知识空间 | `components/canvas/CanvasView.tsx` | 属性/时间图层、节点布局和默认可见的正交连接线路由 |
+| 属性/时间视图 | `components/canvas/CanvasView.tsx` | 属性视图、时间线、卡片布局和默认可见的正交连接线路由 |
 | 长期上下文面板 | `components/long-context/*` | 当前笔记相关上下文、关系卡片、轮播布局和长期上下文徽标 |
 | 维护队列 | `components/maintenance/MaintenanceQueuePanel.tsx` | 知识维护项列表、筛选、修复入口，以及当前笔记相关上下文页签 |
 | Agent 运行面板 | `components/agent/AgentRunPanel.tsx` | Agent 计划、步骤执行、回滚、重试和反思入口 |
@@ -611,7 +611,7 @@ pnpm dist
 | `tests/obsidian-importer.test.ts` / `obsidian-link.test.ts` / `notion-importer.test.ts` / `reader-importer.test.ts` | 各导入器 |
 | `tests/publish-wikilinks.test.ts` / `wikilink.test.ts` | wikilink 解析与发布 |
 | `tests/backlinks-panel.test.ts` / `related-context-panel.test.ts` | 链接概览默认折叠、相关上下文布局和轮播 helper |
-| `tests/canvas-view.test.ts` | 知识空间画布、连接线路由和拖拽时轻量路由 |
+| `tests/canvas-view.test.ts` | 属性/时间视图布局、连接线路由和拖拽时轻量路由 |
 | `tests/graph-modes.test.ts` / `graph-ui.test.ts` | 图谱数据模式、group/folder-scope 钻取、布局缓存、默认降噪和过滤 helper |
 | `tests/reader-inbox.test.ts` | 阅读收件箱 |
 | `tests/vault-store.test.ts` / `tests/ui-store.test.ts` / `activity-bar-registry.test.ts` | Zustand store 行为 |
@@ -760,7 +760,7 @@ pnpm test
 ### 22.11 `ac7dee4..cb6a1f3` 最新回写
 
 - 图谱新增 `group` 与 `folder-scope` 两种数据模式。当前 `GraphView` 默认打开顶层分组总览，点击目录节点后按 `rootPath` 懒加载一层目录；深层子目录以 folder 节点聚合，跨可见节点的 explicit / inferred 关系会按可见 owner 聚合成边。`db:get-graph` 的缓存 key 同步纳入 `mode` 和 `rootPath`。
-- 知识空间连接线体验修复：属性/时间图层进入时会先种下所有可见边和关联建议的轻量正交路由，再交给 `canvas-route-worker.ts` 做绕卡片的精细路由；拖拽时用轻量路线保持反馈，完成后再刷新 worker 路由，避免连接线默认不可见或使用过期锚点。
+- 属性/时间视图连接线体验修复：进入时会先种下所有可见边和关联建议的轻量正交路由，再交给 `canvas-route-worker.ts` 做绕卡片的精细路由；拖拽时用轻量路线保持反馈，完成后再刷新 worker 路由，避免连接线默认不可见或使用过期锚点。
 - 当前笔记相关上下文从正文上方的内联区域调整为右侧维护面板的 `context` 页签，编辑器状态栏提供"相关上下文"入口；`RelatedContextPanel` 支持 top / side 轮播布局，维护队列和相关上下文共享同一个 `maintenance` 右侧面板。
 - 编辑器底部的链接概览默认折叠，每次切换当前文件都会恢复折叠状态，只在用户主动展开时显示出链、反链和未链接提及。
 - 左侧活动栏将维护入口设为默认可见，命令面板、activity bar registry、`ui-store` 和中英文 i18n 同步适配维护面板子页签。

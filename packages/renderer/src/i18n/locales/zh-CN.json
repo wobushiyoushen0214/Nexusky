@@ -112,9 +112,8 @@
     "search": "搜索",
     "chat": "AI 对话",
     "graph": "知识图谱",
-    "bases": "知识空间属性图层",
-    "canvas": "知识空间",
-    "timeline": "知识空间时间图层",
+    "bases": "属性视图",
+    "timeline": "时间线",
     "outline": "文档大纲",
     "properties": "属性",
     "tags": "标签",
@@ -191,8 +190,8 @@
       "add_alias": "添加别名"
     },
     "jumps": {
-      "focusInBases": "在属性图层定位",
-      "focusInBasesTitle": "在知识空间属性图层定位此笔记，便于编辑属性后再回来刷新"
+      "focusInBases": "在属性视图定位",
+      "focusInBasesTitle": "在属性视图定位此笔记，便于编辑属性后再回来刷新"
     },
     "confirm": {
       "markDoneTitle": "标记为完成？",
@@ -415,9 +414,8 @@
       "summarize": { "label": "AI 摘要写入当前笔记", "description": "把摘要插入到当前笔记开头" },
       "pluginMarketplacePack": { "label": "安装精选插件包", "description": "安装研究、会议和常青笔记工作流插件" },
       "graphFull": { "label": "打开全屏知识图谱" },
-      "bases": { "label": "打开知识空间属性图层", "description": "在知识空间内按属性浏览、筛选和整理笔记" },
-      "canvas": { "label": "打开知识空间", "description": "以属性或时间图层探索笔记" },
-      "timeline": { "label": "打开知识空间时间图层", "description": "在知识空间内按创建或更新时间回看笔记活动" },
+      "bases": { "label": "打开属性视图", "description": "按 frontmatter、标签、别名和状态浏览、筛选和整理笔记" },
+      "timeline": { "label": "打开时间线", "description": "按创建或更新时间回看笔记活动" },
       "graphCurrent": { "label": "为当前笔记生成 AI 图谱", "description": "基于当前笔记推断概念关系" },
       "inferLinks": { "label": "推断全库语义链接", "description": "补齐隐含关联并刷新知识图谱" },
       "memoryIndex": { "label": "生成 AI 记忆索引", "description": "为长期知识关联生成笔记级记忆" },
@@ -499,7 +497,7 @@
     }
   },
   "bases": {
-    "title": "知识空间属性图层",
+    "title": "属性视图",
     "summary": "共 {{count}} 篇笔记，当前显示 {{shown}} 篇",
     "refresh": "刷新",
     "loading": "加载中...",
@@ -511,7 +509,7 @@
     "empty": "没有匹配的笔记属性",
     "emptyHint": "在笔记顶部添加 frontmatter，或打开右侧属性面板填写标题、标签、别名等字段。",
     "guide": "如何使用",
-    "guideTitle": "知识空间属性图层使用方式",
+    "guideTitle": "属性视图使用方式",
     "guideFrontmatter": "1. 在笔记顶部写 frontmatter，或用右侧属性面板维护 title、aliases、tags、cssclasses。",
     "guideSearch": "2. 用搜索、标签筛选和排序快速定位项目、任务、课程或文章状态。",
     "guideEdit": "3. 双击单元格即可编辑属性，保存后会写回原 Markdown 文件。",
@@ -538,7 +536,7 @@
     "propertySaveFailed": "属性保存失败"
   },
   "canvas": {
-    "title": "知识空间",
+    "title": "属性与时间布局",
     "summary": "共 {{count}} 张笔记卡片，当前显示 {{shown}} 张",
     "refresh": "刷新",
     "loading": "加载中...",
@@ -560,7 +558,7 @@
     "createNote": "新建卡片",
     "createFirst": "新建第一张卡片",
     "defaultCardTitle": "未命名卡片",
-    "created": "知识节点已创建",
+    "created": "笔记卡片已创建",
     "associationTitle": "关联线索",
     "associationReview": "复习线索",
     "associationCounter": "{{current}} / {{total}}",
@@ -581,8 +579,8 @@
     "zoomOut": "缩小画布",
     "zoomReset": "重置缩放",
     "fitView": "适应视图",
-    "guideTitle": "知识空间使用方式",
-    "guideDrag": "1. 拖拽节点整理空间位置，可向上、下、左、右继续展开，布局会按 vault 自动保存。",
+    "guideTitle": "布局使用方式",
+    "guideDrag": "1. 拖拽卡片整理位置，布局会按 vault 自动保存。",
     "guideOpen": "2. 双击卡片打开对应 Markdown 笔记。",
     "guideLinks": "3. 实线箭头来自笔记里的 [[wikilink]] 关系。",
     "guideSuggestions": "4. 更淡的虚线是根据共同标签、来源或标题词自动发现的关联线索。",
@@ -591,7 +589,7 @@
     "guideCreate": "7. 新建节点会优先靠近当前视图中心，并自动避开已有节点。",
     "searchPlaceholder": "搜索笔记卡片...",
     "empty": "没有匹配的笔记卡片",
-    "noteNode": "知识节点",
+    "noteNode": "笔记卡片",
     "propertyCount": "{{count}} 个属性",
     "noTags": "无标签",
     "focusMenu": "聚焦此卡片及其关联",
@@ -601,7 +599,7 @@
     "guideFocus": "8. 右键卡片可只显示它与直接关联，再次按 Esc 或顶部按钮退出聚焦。"
   },
   "timeline": {
-    "title": "知识空间时间图层",
+    "title": "时间线",
     "summary": "共 {{count}} 篇笔记，今日更新 {{today}} 篇，近 7 天更新 {{week}} 篇",
     "updatedTrack": "最近变动",
     "createdTrack": "创建脉络",
@@ -648,7 +646,7 @@
     "triageReason": {
       "unread": "这条内容还没有被处理，适合作为下一次阅读或摘录入口。",
       "read": "这条内容已经读过，下一步应该连接到项目、主题或长期笔记。",
-      "tagged": "已有标签暗示它属于某个主题，可以直接进入知识空间建立关系。",
+      "tagged": "已有标签暗示它属于某个主题，可以直接进入属性视图整理。",
       "source": "保留了原文链接，适合稍后打开核对或补充摘录。",
       "later": "暂时缺少明确状态，先停放在稍后处理区，避免打断当前阅读流。",
       "archived": "这条内容已归档，不会进入默认处理队列。"
@@ -668,7 +666,7 @@
     "nextItem": "下一条",
     "completeNext": "完成并下一条",
     "openItem": "打开条目",
-    "openInSpace": "在知识空间定位",
+    "openInSpace": "在属性视图定位",
     "markRead": "标记已读",
     "markUnread": "标记待读",
     "markVisibleRead": "当前结果标记已读",

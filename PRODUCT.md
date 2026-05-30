@@ -78,15 +78,21 @@ What stays for this pass: `ai:generate-flashcards`, `flashcards:list-due`, `flas
 
 ### 2026-05-31 - Reader Inbox standalone route removed
 
-Reader Inbox is no longer exposed as an ActivityBar item, Command Palette command, or `mainView` route. Imported Readwise, Pocket, and Notion content remains accessible as normal Markdown notes through Files, Search, Graph, and Knowledge Space. Legacy saved workspace layouts with `mainView === 'reader'` now reopen in the editor.
+Reader Inbox is no longer exposed as an ActivityBar item, Command Palette command, or `mainView` route. Imported Readwise, Pocket, and Notion content remains accessible as normal Markdown notes through Files, Search, Graph, and the Properties view. Legacy saved workspace layouts with `mainView === 'reader'` now reopen in the editor.
 
 What stays for this pass: reader importers, reader metadata helpers, and the existing reader helper tests remain. Reason: import is still useful, but a separate triage surface competes with the core note workflow when imported items are already first-class notes.
 
 ### 2026-05-31 - Calendar and Daily Note visible entries removed
 
-Calendar and Daily Note are no longer exposed as ActivityBar items, a Command Palette daily-note command, or a Calendar right-panel surface. They were two variants of the same date-based workflow: open or create notes by date. That workflow overlaps with Files, Search, and the Knowledge Space time layer.
+Calendar and Daily Note are no longer exposed as ActivityBar items, a Command Palette daily-note command, or a Calendar right-panel surface. They were two variants of the same date-based workflow: open or create notes by date. That workflow overlaps with Files, Search, and Timeline.
 
 What stays for this pass: the `template:daily-note` IPC remains for compatibility with existing template behavior or future explicit automation. Legacy saved `rightPanel === 'calendar'` layouts now reopen with no right panel.
+
+### 2026-05-31 - Generic Knowledge Space entry removed
+
+The product no longer exposes `Knowledge Space` as a standalone surface. The ActivityBar `canvas` item, Command Palette `Open knowledge space` command, `Ctrl+Shift+C` keybinding, and `mainView === 'canvas'` route were removed. Legacy saved `canvas` layouts now reopen in `bases`.
+
+What stays: the underlying `CanvasView` layout engine still powers the explicit `Properties View` and `Timeline` surfaces. Reason: Graph is now the only relationship-map surface. Properties View answers "what metadata do my notes have?", and Timeline answers "what changed when?", so the generic spatial metaphor is unnecessary and confusing.
 
 
 

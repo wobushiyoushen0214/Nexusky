@@ -159,7 +159,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       setMainView('graph')
     }},
     { id: 'bases', category: 'search', label: t('commandPalette.commands.bases.label'), description: t('commandPalette.commands.bases.description'), keywords: ['bases', 'database', 'properties', 'obsidian'], action: () => setMainView('bases') },
-    { id: 'canvas', category: 'graph', label: t('commandPalette.commands.canvas.label'), description: t('commandPalette.commands.canvas.description'), keywords: ['canvas', 'board', 'obsidian'], action: () => setMainView('canvas') },
     { id: 'timeline', category: 'search', label: t('commandPalette.commands.timeline.label'), description: t('commandPalette.commands.timeline.description'), keywords: ['timeline', 'history', 'recent', 'activity'], action: () => setMainView('timeline') },
     { id: 'graph-current', category: 'graph', label: t('commandPalette.commands.graphCurrent.label'), description: t('commandPalette.commands.graphCurrent.description'), keywords: ['graph', 'mermaid'], action: () => {
       const filePath = currentFilePath

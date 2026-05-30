@@ -133,11 +133,11 @@ describe('ui store workspace widths', () => {
 
     store.setRightPanel('chat')
     expect(useUIStore.getState().rightPanel).toBe('chat')
-    store.setMainView('canvas')
+    store.setMainView('bases')
     expect(useUIStore.getState().rightPanel).toBe('chat')
 
     expect(JSON.parse(localStorage.getItem('nexusky-workspace-layouts') || '{}')).toEqual({
-      'workspace:/vault/a': { mainView: 'canvas', rightPanel: 'chat', sidebarCollapsed: false },
+      'workspace:/vault/a': { mainView: 'bases', rightPanel: 'chat', sidebarCollapsed: false },
     })
   })
 
@@ -167,10 +167,11 @@ describe('ui store workspace widths', () => {
     expect(useUIStore.getState().sidebarCollapsed).toBe(true)
   })
 
-  it('maps retired standalone workspace layouts back to the editor', async () => {
+  it('maps retired standalone workspace layouts back to active views', async () => {
     localStorage.setItem('nexusky-workspace-layouts', JSON.stringify({
       'workspace:/vault/a': { mainView: 'kanban', rightPanel: 'chat', sidebarCollapsed: true },
       'workspace:/vault/b': { mainView: 'reader', rightPanel: 'none', sidebarCollapsed: false },
+      'workspace:/vault/c': { mainView: 'canvas', rightPanel: 'chat', sidebarCollapsed: true },
     }))
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
 
@@ -185,6 +186,12 @@ describe('ui store workspace widths', () => {
     expect(useUIStore.getState().mainView).toBe('editor')
     expect(useUIStore.getState().rightPanel).toBe('none')
     expect(useUIStore.getState().sidebarCollapsed).toBe(false)
+
+    useUIStore.getState().setWorkspaceScope('workspace:/vault/c')
+
+    expect(useUIStore.getState().mainView).toBe('bases')
+    expect(useUIStore.getState().rightPanel).toBe('chat')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true)
   })
 
   it('uses legacy global workspace layout only as a fallback', async () => {
@@ -195,7 +202,7 @@ describe('ui store workspace widths', () => {
     const store = useUIStore.getState()
 
     store.setWorkspaceScope('workspace:/vault/a')
-    expect(useUIStore.getState().mainView).toBe('canvas')
+    expect(useUIStore.getState().mainView).toBe('bases')
     expect(useUIStore.getState().rightPanel).toBe('chat')
     expect(useUIStore.getState().sidebarCollapsed).toBe(true)
 

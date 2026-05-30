@@ -17,13 +17,12 @@ describe('activity bar registry', () => {
     expect(isActivityBarItemAvailable(item('outline'), { mainView: 'editor', currentFilePath: '/vault/a.md' })).toBe(true)
     expect(isActivityBarItemAvailable(item('outline'), { mainView: 'editor', currentFilePath: null })).toBe(false)
     expect(isActivityBarItemAvailable(item('outline'), { mainView: 'graph', currentFilePath: '/vault/a.md' })).toBe(false)
-    expect(isActivityBarItemAvailable(item('tags'), { mainView: 'canvas', currentFilePath: '/vault/a.md' })).toBe(false)
+    expect(isActivityBarItemAvailable(item('tags'), { mainView: 'bases', currentFilePath: '/vault/a.md' })).toBe(false)
   })
 
   it('keeps global workspace items available outside the editor', () => {
     expect(isActivityBarItemAvailable(item('graph'), { mainView: 'graph', currentFilePath: null })).toBe(true)
-    expect(isActivityBarItemAvailable(item('chat'), { mainView: 'canvas', currentFilePath: null })).toBe(true)
-    expect(isActivityBarItemAvailable(item('canvas'), { mainView: 'timeline', currentFilePath: null })).toBe(true)
+    expect(isActivityBarItemAvailable(item('chat'), { mainView: 'bases', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('maintenance'), { mainView: 'graph', currentFilePath: null })).toBe(true)
   })
 
@@ -32,6 +31,7 @@ describe('activity bar registry', () => {
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'kanban')).toBe(false)
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'calendar')).toBe(false)
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'daily-note')).toBe(false)
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'canvas')).toBe(false)
   })
 
   it('keeps related context merged under knowledge maintenance instead of a separate activity item', () => {
@@ -39,9 +39,8 @@ describe('activity bar registry', () => {
     expect(item('maintenance').defaultVisible).toBe(true)
   })
 
-  it('keeps property and time layers under the single knowledge space activity entry', () => {
+  it('keeps properties and timeline command-only instead of activity items', () => {
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'bases')).toBe(false)
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'timeline')).toBe(false)
-    expect(item('canvas').labelKey).toBe('activityBar.canvas')
   })
 })

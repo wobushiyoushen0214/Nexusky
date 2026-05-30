@@ -112,9 +112,8 @@
     "search": "Search",
     "chat": "AI Chat",
     "graph": "Knowledge Graph",
-    "bases": "Knowledge Space Properties",
-    "canvas": "Knowledge Space",
-    "timeline": "Knowledge Space Time",
+    "bases": "Properties View",
+    "timeline": "Timeline",
     "outline": "Outline",
     "properties": "Properties",
     "tags": "Tags",
@@ -191,8 +190,8 @@
       "add_alias": "Add Alias"
     },
     "jumps": {
-      "focusInBases": "Locate in Bases",
-      "focusInBasesTitle": "Open the Bases property layer focused on this note so you can edit properties, then come back to refresh."
+      "focusInBases": "Locate in properties",
+      "focusInBasesTitle": "Open the properties view focused on this note so you can edit properties, then come back to refresh."
     },
     "confirm": {
       "markDoneTitle": "Mark as done?",
@@ -415,9 +414,8 @@
       "summarize": { "label": "AI summary into current note", "description": "Insert a summary at the beginning of the current note" },
       "pluginMarketplacePack": { "label": "Install featured plugin pack", "description": "Install research, meeting, and evergreen-note workflow plugins" },
       "graphFull": { "label": "Open full-screen knowledge graph" },
-      "bases": { "label": "Open Knowledge Space property layer", "description": "Browse, filter, and organize notes by properties inside Knowledge Space" },
-      "canvas": { "label": "Open knowledge space", "description": "Explore notes as property or time layers" },
-      "timeline": { "label": "Open Knowledge Space time layer", "description": "Review note activity by creation or update time inside Knowledge Space" },
+      "bases": { "label": "Open properties view", "description": "Browse, filter, and organize notes by frontmatter, tags, aliases, and status" },
+      "timeline": { "label": "Open timeline", "description": "Review note activity by creation or update time" },
       "graphCurrent": { "label": "Generate AI graph for current note", "description": "Infer concept relationships from the current note" },
       "inferLinks": { "label": "Infer vault-wide semantic links", "description": "Fill implicit relationships and refresh the knowledge graph" },
       "memoryIndex": { "label": "Generate AI memory index", "description": "Create note-level memories for long-term knowledge linking" },
@@ -499,7 +497,7 @@
     }
   },
   "bases": {
-    "title": "Knowledge Space Property Layer",
+    "title": "Properties View",
     "summary": "{{count}} notes, showing {{shown}}",
     "refresh": "Refresh",
     "loading": "Loading...",
@@ -511,7 +509,7 @@
     "empty": "No matching note properties",
     "emptyHint": "Add frontmatter at the top of a note, or use the right properties panel to fill title, tags, aliases, and other fields.",
     "guide": "How to use",
-    "guideTitle": "How to use the Knowledge Space property layer",
+    "guideTitle": "How to use the properties view",
     "guideFrontmatter": "1. Add frontmatter to notes, or maintain title, aliases, tags, and cssclasses in the right properties panel.",
     "guideSearch": "2. Use search, tag filtering, and sorting to manage projects, tasks, courses, or article status.",
     "guideEdit": "3. Double-click a cell to edit a property; saving writes back to the original Markdown file.",
@@ -538,7 +536,7 @@
     "propertySaveFailed": "Failed to save property"
   },
   "canvas": {
-    "title": "Knowledge Space",
+    "title": "Properties and Timeline",
     "summary": "{{count}} note cards, showing {{shown}}",
     "refresh": "Refresh",
     "loading": "Loading...",
@@ -560,7 +558,7 @@
     "createNote": "New card",
     "createFirst": "Create first card",
     "defaultCardTitle": "Untitled card",
-    "created": "Knowledge node created",
+    "created": "Note card created",
     "associationTitle": "Association hint",
     "associationReview": "Review hints",
     "associationCounter": "{{current}} / {{total}}",
@@ -581,8 +579,8 @@
     "zoomOut": "Zoom out",
     "zoomReset": "Reset zoom",
     "fitView": "Fit view",
-    "guideTitle": "How to use Knowledge Space",
-    "guideDrag": "1. Drag nodes to arrange them spatially in every direction; layout is saved per vault.",
+    "guideTitle": "How to use this layout",
+    "guideDrag": "1. Drag cards to arrange them; layout is saved per vault.",
     "guideOpen": "2. Double-click a card to open its Markdown note.",
     "guideLinks": "3. Solid arrows come from [[wikilink]] relations in notes.",
     "guideSuggestions": "4. Faint dashed lines are automatic association hints from shared tags, sources, or title terms.",
@@ -591,7 +589,7 @@
     "guideCreate": "7. New nodes appear near the current view center and avoid existing nodes.",
     "searchPlaceholder": "Search note cards...",
     "empty": "No matching note cards",
-    "noteNode": "Knowledge node",
+    "noteNode": "Note card",
     "propertyCount": "{{count}} props",
     "noTags": "No tags",
     "focusMenu": "Focus this card and its links",
@@ -601,7 +599,7 @@
     "guideFocus": "8. Right-click a card to show only it and its direct links; press Esc or the top button to exit focus."
   },
   "timeline": {
-    "title": "Knowledge Space Time Layer",
+    "title": "Timeline",
     "summary": "{{count}} notes, {{today}} updated today, {{week}} updated in the last 7 days",
     "updatedTrack": "Recent changes",
     "createdTrack": "Creation trail",

@@ -1453,7 +1453,7 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--editor-bg)' }}>
       <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{t('canvas.title')}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{canvasMode === 'time' ? t('timeline.title') : t('bases.title')}</div>
           <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-tertiary)' }}>{t('canvas.summary', { count: rows.length, shown: displayedRows.length })}</div>
         </div>
       </div>
@@ -1739,7 +1739,7 @@ export function CanvasView({ initialMode = 'properties' }: { initialMode?: Canva
 
         {showGuide && (
           <div style={{ position: 'absolute', top: 62, right: 16, zIndex: 4, width: 360, maxWidth: 'calc(100% - 32px)', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.7, boxShadow: '0 16px 42px rgba(0,0,0,0.28)' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('canvas.guideTitle')}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{canvasMode === 'time' ? t('timeline.title') : t('bases.guideTitle')}</div>
             <div>{t('canvas.guideDrag')}</div>
             <div>{t('canvas.guideOpen')}</div>
             <div>{t('canvas.guideLinks')}</div>

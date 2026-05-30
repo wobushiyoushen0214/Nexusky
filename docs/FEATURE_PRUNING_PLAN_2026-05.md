@@ -16,9 +16,9 @@ This document records product surfaces that can be removed or reduced because th
 | --- | --- | --- | --- | --- |
 | P1 | Kanban standalone board | Remove user-facing route, command, and hand-off entry points; keep database and IPC compatibility. | Task boards are not part of the everyday knowledge-vault loop, and the panel was already demoted from primary navigation. | Completed |
 | P2 | Flashcards | Remove visible command palette and review modal entry points; keep backend handlers initially. | SRS is a niche workflow that adds product weight without supporting the main read-link-maintain loop for most users. | Completed |
-| P3 | Reader Inbox | Remove standalone route, ActivityBar item, and Command Palette entry; keep importers and metadata helpers. | Imported reading content is already Markdown note content, so a separate triage surface should not compete with Files, Search, Graph, and Knowledge Space. | Completed |
-| P4 | Canvas / Timeline overlap | Revisit after P1-P2. | Some views answer adjacent questions; deletion needs stronger migration analysis. | Candidate |
-| P5 | Calendar / Daily Note | Remove ActivityBar entries, Calendar right panel, and Daily Note command; keep `template:daily-note` IPC compatibility. | Both are date-based note entry points and overlap with Files, Search, and Knowledge Space time layer. | Completed |
+| P3 | Reader Inbox | Remove standalone route, ActivityBar item, and Command Palette entry; keep importers and metadata helpers. | Imported reading content is already Markdown note content, so a separate triage surface should not compete with Files, Search, Graph, and Properties View. | Completed |
+| P4 | Generic Knowledge Space / Canvas entry | Remove generic `canvas` entry, shortcut, command, and main-view route; keep explicit Properties View and Timeline. | Graph is the only relationship-map surface; properties and time are structured browsing modes, not another "space". | Completed |
+| P5 | Calendar / Daily Note | Remove ActivityBar entries, Calendar right panel, and Daily Note command; keep `template:daily-note` IPC compatibility. | Both are date-based note entry points and overlap with Files, Search, and Timeline. | Completed |
 
 ## Execution Log
 
@@ -29,3 +29,4 @@ This document records product surfaces that can be removed or reduced because th
 - Completed P2 implementation: removed flashcard generation and review commands from the Command Palette, removed the review modal entry event and component, and removed renderer flashcard i18n. Backend handlers and Markdown/SRS helpers remain for compatibility with existing note content.
 - Completed P3 implementation: removed the `reader` main view, ActivityBar registry entry, Command Palette entry, App route, and active-state handling. Existing `reader` workspace layouts map to `editor`; importers and reader helper code stay available for imported Markdown compatibility.
 - Completed P5 implementation: removed Calendar and Daily Note ActivityBar entries, the Calendar right-panel route/component, the daily-note Command Palette entry, and related renderer i18n. Existing `calendar` right-panel layouts map to `none`; `template:daily-note` IPC remains for compatibility.
+- Completed P4 implementation: removed the generic `canvas` ActivityBar item, Command Palette entry, keybinding, and `mainView` route. Existing `canvas` workspace layouts map to `bases`; remaining user-facing surfaces are Graph, Properties View, and Timeline.
