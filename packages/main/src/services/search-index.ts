@@ -4,6 +4,7 @@ import { aiManager } from './ai'
 const CHUNK_SIZE = 400
 const CHUNK_OVERLAP = 50
 const MAX_CACHE_CHUNKS = 2000
+const MAX_SIMILARITY_TERM_FANOUT = 250
 
 export interface TextChunk {
   noteId: string
@@ -387,9 +388,27 @@ ${snippets}`
 
 // --- Public API ---
 
+function mergeSearchCandidates(
+  primary: { noteId: string; title: string; filePath: string; chunk: string; score: number }[],
+  secondary: { noteId: string; title: string; filePath: string; chunk: string; score: number }[]
+): { noteId: string; title: string; filePath: string; chunk: string; score: number }[] {
+  const byKey = new Map<string, { noteId: string; title: string; filePath: string; chunk: string; score: number }>()
+  for (const candidate of [...primary, ...secondary]) {
+    const key = `${candidate.noteId}:${candidate.chunk}`
+    const existing = byKey.get(key)
+    if (!existing || candidate.score > existing.score) {
+      byKey.set(key, candidate)
+    }
+  }
+  return Array.from(byKey.values()).sort((a, b) => b.score - a.score)
+}
+
 export async function lexicalSearch(vaultPath: string, query: string, topK = 10): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
-  const candidates = tfidfSearch(vaultPath, query, topK * 3)
-  if (candidates.length === 0) return keywordFallbackSearch(vaultPath, query, topK)
+  const candidates = mergeSearchCandidates(
+    tfidfSearch(vaultPath, query, topK * 3),
+    keywordFallbackSearch(vaultPath, query, topK * 3)
+  )
+  if (candidates.length === 0) return []
 
   const deduped: typeof candidates = []
   const seen = new Set<string>()
@@ -504,36 +523,57 @@ export function findSimilarNotes(vaultPath: string, topK = 3, threshold = 0.75):
   })
 
   const results: { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number }[] = []
+  const termToNoteIndexes = new Map<string, number[]>()
 
   for (let i = 0; i < notes.length; i++) {
-    const a = notes[i]
-    if (a.norm === 0) continue
-    const scored: { targetId: string; targetTitle: string; score: number }[] = []
+    if (notes[i].norm === 0) continue
+    for (const term of notes[i].terms.keys()) {
+      const indexes = termToNoteIndexes.get(term) || []
+      indexes.push(i)
+      termToNoteIndexes.set(term, indexes)
+    }
+  }
 
-    for (let j = i + 1; j < notes.length; j++) {
-      const b = notes[j]
-      if (b.norm === 0) continue
-      // Only infer cross-folder links
-      if (a.folder === b.folder) continue
-
-      let dot = 0
-      for (const [term, freqA] of a.terms) {
-        const freqB = b.terms.get(term)
-        if (freqB) {
-          const idfVal = idf.get(term) || 1
-          dot += (freqA * idfVal) * (freqB * idfVal)
-        }
-      }
-      if (dot === 0) continue
-      const score = dot / (a.norm * b.norm)
-      if (score >= threshold) {
-        scored.push({ targetId: b.id, targetTitle: b.title, score })
+  const pairDots = new Map<string, number>()
+  for (const [term, indexes] of termToNoteIndexes) {
+    if (indexes.length < 2 || indexes.length > MAX_SIMILARITY_TERM_FANOUT) continue
+    const idfVal = idf.get(term) || 1
+    for (let a = 0; a < indexes.length; a++) {
+      const i = indexes[a]
+      const noteA = notes[i]
+      const freqA = noteA.terms.get(term) || 0
+      for (let b = a + 1; b < indexes.length; b++) {
+        const j = indexes[b]
+        const noteB = notes[j]
+        if (noteA.folder === noteB.folder) continue
+        const freqB = noteB.terms.get(term) || 0
+        if (freqA === 0 || freqB === 0) continue
+        const key = `${i}:${j}`
+        pairDots.set(key, (pairDots.get(key) || 0) + (freqA * idfVal) * (freqB * idfVal))
       }
     }
+  }
 
+  const scoredBySource = new Map<number, { targetId: string; targetTitle: string; score: number }[]>()
+  for (const [key, dot] of pairDots) {
+    if (dot === 0) continue
+    const [sourceIndex, targetIndex] = key.split(':').map(Number)
+    const source = notes[sourceIndex]
+    const target = notes[targetIndex]
+    if (!source || !target || source.norm === 0 || target.norm === 0) continue
+    const score = dot / (source.norm * target.norm)
+    if (score < threshold) continue
+    const scored = scoredBySource.get(sourceIndex) || []
+    scored.push({ targetId: target.id, targetTitle: target.title, score })
+    scoredBySource.set(sourceIndex, scored)
+  }
+
+  for (let i = 0; i < notes.length; i++) {
+    const scored = scoredBySource.get(i)
+    if (!scored) continue
     scored.sort((x, y) => y.score - x.score)
     for (const s of scored.slice(0, topK)) {
-      results.push({ sourceId: a.id, sourceTitle: a.title, ...s })
+      results.push({ sourceId: notes[i].id, sourceTitle: notes[i].title, ...s })
     }
   }
 

@@ -213,5 +213,6 @@
 | 向量检索命名漂移 | 不接伪 embedding；改名为本地词法相关检索，删除 cosine/embedding schema 死代码，UI/IPC/测试同步改名 | ✅ 已修复（本提交） |
 | Token/成本统计 | provider 流式事件透出真实 usage；所有 chat/agent 调用写入本地 usage store；Settings 支持本月 tokens/成本摘要与单价配置 | ✅ 已修复（本提交） |
 | 属性表查询卡主线程 | 索引时缓存 frontmatter/Dataview 属性快照，`getPropertyRows` 只读 SQLite；未链接提及查询保持 FTS 内容通道 | ✅ 已修复（本提交） |
+| 本地检索/记忆关联扩展性 | 搜索合并 TF-IDF 与 FTS fallback，旧笔记不再被 2000 chunk 缓存窗口遮蔽；相似笔记和 memory 关联改倒排候选对 | ✅ 已修复（本提交） |
 | lint 坏掉 | 根目录加 eslint + flat config，并加进 `ci.yml` | 🔧 待修 |
 | 关系候选 O(N) 扫描 | 关键词候选改 FTS5 `MATCH`；chunk 相似候选先 FTS 召回 note id，再只读取候选 chunks 评分 | ✅ 已修复（本提交） |

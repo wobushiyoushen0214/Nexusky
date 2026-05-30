@@ -82,7 +82,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 
 | 优先级 | 问题 | 证据 |
 |---|---|---|
-| P1 | TF-IDF 全内存硬上限 2000 chunk（旧笔记搜不到）；`findSimilarNotes`/memory 关联 O(N²) | `search-index.ts:6,498-549`、`memory.ts:136` |
+| P1 | TF-IDF 全内存硬上限 2000 chunk（旧笔记搜不到）；`findSimilarNotes`/memory 关联 O(N²)（✅ 本提交） | `search-index.ts:6,498-549`、`memory.ts:136` |
 | P1 | 知识图谱用 DOM 渲染节点+边，数千节点卡死，无 Canvas/WebGL 降级 | `GraphView.tsx:952-1009` |
 | P1 | 并发写静默丢失：无 `busy_timeout`，首次索引 worker 长事务期间 watcher 写撞 `SQLITE_BUSY` 被 `catch{}` 吞掉 | `watcher.ts:87`、`database.ts:22-41` |
 | P1 | 重命名/移动 = 删除+新建（id 绑路径），丢失该笔记的 AI 记忆/关系/看板溯源 | `indexer.ts:147`、`watcher.ts:102-115` |
@@ -205,3 +205,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-30 | P1 关系候选 FTS 召回 | 本提交 | `relation-candidates` 关键词候选从 `LIKE` 改为 FTS5 `MATCH`，chunk 相似候选先用 FTS 召回 note id 再读候选 chunks 评分，避免保存时全量扫 2000 chunk；long-context-candidates 4/4、typecheck、build 通过 |
 | 2026-05-30 | P1 Token/成本总线 | 本提交 | 所有 provider 经 `UsageTrackingProvider` 记录 chat/agent 用量；OpenAI/Responses/Claude 流式 usage 透传，缺失时按内容估算；Settings 支持输入/输出单价与本月用量摘要；ai-usage/ai-provider-types 12/12、typecheck 通过 |
 | 2026-05-30 | P1 属性表/未链接提及查询去全文重读 | 本提交 | `indexNote` 写入 `notes.properties_json/properties_version` 属性快照，`getPropertyRows` 只读索引表；未链接提及继续走 FTS 内容，不再在查询路径同步读 Markdown 全文；indexer 25/25、typecheck 通过 |
+| 2026-05-30 | P1 本地检索/记忆关联扩展性 | 本提交 | `lexicalSearch` 合并 TF-IDF 与 FTS fallback，旧笔记即使落在 2000 chunk 缓存窗口外也能命中；`findSimilarNotes` 与 memory 关联改为倒排候选对，避免直接全量两两扫描；search-index/memory-links 10/10、typecheck 通过 |

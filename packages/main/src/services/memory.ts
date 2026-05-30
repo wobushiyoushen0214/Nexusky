@@ -19,6 +19,7 @@ export const MEMORY_CONTENT_CHAR_BUDGET = 6000
 const MEMORY_HEAD_CHARS = 2400
 const MEMORY_MIDDLE_CHARS = 1800
 const MEMORY_TAIL_CHARS = MEMORY_CONTENT_CHAR_BUDGET - MEMORY_HEAD_CHARS - MEMORY_MIDDLE_CHARS
+const MAX_MEMORY_TERM_FANOUT = 500
 
 export interface MemoryContentExcerpt {
   text: string
@@ -174,32 +175,65 @@ export function findRelatedByMemory(
   if (memories.length < 2) return []
 
   const results: { sourceId: string; sourceTitle: string; targetId: string; targetTitle: string; score: number; reason: string }[] = []
+  const conceptIndex = new Map<string, number[]>()
+  const topicIndex = new Map<string, number[]>()
+
+  for (let i = 0; i < memories.length; i++) {
+    for (const concept of new Set(memories[i].concepts.map((item) => item.toLowerCase()).filter(Boolean))) {
+      const indexes = conceptIndex.get(concept) || []
+      indexes.push(i)
+      conceptIndex.set(concept, indexes)
+    }
+    for (const topic of new Set(memories[i].topics.map((item) => item.toLowerCase()).filter(Boolean))) {
+      const indexes = topicIndex.get(topic) || []
+      indexes.push(i)
+      topicIndex.set(topic, indexes)
+    }
+  }
+
+  const pairKeys = new Set<string>()
+  const addPairs = (indexes: number[]) => {
+    if (indexes.length < 2 || indexes.length > MAX_MEMORY_TERM_FANOUT) return
+    for (let a = 0; a < indexes.length; a++) {
+      for (let b = a + 1; b < indexes.length; b++) {
+        pairKeys.add(`${indexes[a]}:${indexes[b]}`)
+      }
+    }
+  }
+  for (const indexes of conceptIndex.values()) addPairs(indexes)
+  for (const indexes of topicIndex.values()) addPairs(indexes)
+
+  const scoredBySource = new Map<number, { targetId: string; targetTitle: string; score: number; reason: string }[]>()
+  for (const key of pairKeys) {
+    const [sourceIndex, targetIndex] = key.split(':').map(Number)
+    const a = memories[sourceIndex]
+    const b = memories[targetIndex]
+    if (!a || !b) continue
+
+    const bConceptsLower = new Set(b.concepts.map(c => c.toLowerCase()))
+    const bTopicsLower = new Set(b.topics.map(t => t.toLowerCase()))
+    const sharedConcepts = a.concepts.filter(c => bConceptsLower.has(c.toLowerCase()))
+    const sharedTopics = a.topics.filter(t => bTopicsLower.has(t.toLowerCase()))
+
+    if (sharedConcepts.length === 0 && sharedTopics.length === 0) continue
+
+    const conceptScore = sharedConcepts.length / Math.max(a.concepts.length, b.concepts.length, 1)
+    const topicScore = sharedTopics.length / Math.max(a.topics.length, b.topics.length, 1)
+    const score = conceptScore * 0.7 + topicScore * 0.3
+
+    if (score < 0.3) continue
+    const reason = sharedConcepts.length > 0
+      ? `共享概念: ${sharedConcepts.join(', ')}`
+      : `共享主题: ${sharedTopics.join(', ')}`
+    const scored = scoredBySource.get(sourceIndex) || []
+    scored.push({ targetId: b.noteId, targetTitle: b.title, score, reason })
+    scoredBySource.set(sourceIndex, scored)
+  }
 
   for (let i = 0; i < memories.length; i++) {
     const a = memories[i]
-    const scored: { targetId: string; targetTitle: string; score: number; reason: string }[] = []
-
-    for (let j = i + 1; j < memories.length; j++) {
-      const b = memories[j]
-      const bConceptsLower = b.concepts.map(c => c.toLowerCase())
-      const bTopicsLower = b.topics.map(t => t.toLowerCase())
-      const sharedConcepts = a.concepts.filter(c => bConceptsLower.includes(c.toLowerCase()))
-      const sharedTopics = a.topics.filter(t => bTopicsLower.includes(t.toLowerCase()))
-
-      if (sharedConcepts.length === 0 && sharedTopics.length === 0) continue
-
-      const conceptScore = sharedConcepts.length / Math.max(a.concepts.length, b.concepts.length)
-      const topicScore = sharedTopics.length / Math.max(a.topics.length, b.topics.length)
-      const score = conceptScore * 0.7 + topicScore * 0.3
-
-      if (score >= 0.3) {
-        const reason = sharedConcepts.length > 0
-          ? `共享概念: ${sharedConcepts.join(', ')}`
-          : `共享主题: ${sharedTopics.join(', ')}`
-        scored.push({ targetId: b.noteId, targetTitle: b.title, score, reason })
-      }
-    }
-
+    const scored = scoredBySource.get(i)
+    if (!scored) continue
     scored.sort((x, y) => y.score - x.score)
     for (const s of scored.slice(0, topK)) {
       results.push({ sourceId: a.noteId, sourceTitle: a.title, ...s })

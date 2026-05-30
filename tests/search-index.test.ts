@@ -79,6 +79,46 @@ describe('lexicalSearch', () => {
     })
   })
 
+  it('includes fallback matches outside the TF-IDF chunk cache window', async () => {
+    const { getDatabase } = await import('../packages/main/src/services/database')
+    const { invalidateSearchIndexCache, lexicalSearch } = await import('../packages/main/src/services/search-index')
+    const db = getDatabase(vaultPath)
+    const insertNote = db.prepare(`
+      INSERT INTO notes (id, title, file_path, created_at, updated_at, content_hash, properties_json, properties_version)
+      VALUES (?, ?, ?, ?, ?, ?, '{}', 1)
+    `)
+    const insertChunk = db.prepare(`
+      INSERT INTO chunks (id, note_id, chunk_index, content, heading_context, token_count)
+      VALUES (?, ?, 0, ?, '', 10)
+    `)
+    const insertFtsMap = db.prepare('INSERT INTO notes_fts_map (rowid, note_id) VALUES (?, ?)')
+    const insertFts = db.prepare('INSERT INTO notes_fts (rowid, title, content) VALUES (?, ?, ?)')
+
+    const transaction = db.transaction(() => {
+      for (let i = 0; i <= 2000; i++) {
+        const isOldTarget = i === 2000
+        const id = `note-${i}`
+        const title = isOldTarget ? 'Old Target' : `Recent ${i}`
+        const filePath = isOldTarget ? 'Old Target.md' : `Recent ${i}.md`
+        const content = i === 0
+          ? 'rareanchor appears in a recent decoy note'
+          : isOldTarget
+            ? 'rareanchor appears in the old target note'
+            : `ordinary filler ${i}`
+        insertNote.run(id, title, filePath, 1, 3000 - i, `hash-${i}`)
+        insertChunk.run(`${id}_0`, id, content)
+        insertFtsMap.run(i + 1, id)
+        insertFts.run(i + 1, title, content)
+      }
+    })
+    transaction()
+    invalidateSearchIndexCache()
+
+    const results = await lexicalSearch(vaultPath, 'rareanchor', 10)
+
+    expect(results.some((result) => result.filePath === 'Old Target.md')).toBe(true)
+  })
+
   it('reports whether search chunks changed', async () => {
     const { getAllNotes, indexNote } = await import('../packages/main/src/services/indexer')
     const { indexNoteSearchChunks } = await import('../packages/main/src/services/search-index')
