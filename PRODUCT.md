@@ -56,5 +56,9 @@ What stays: `properties` and `time` layers, including drag overrides, group labe
 
 Reason: avoid maintaining two view families that visually answer the same question ("how do my notes relate?") with the graph being the more capable one (better-tuned forces, color-by-folder, relation type filters, density controls). Properties / time stay because they answer different questions (group-by-attribute, group-by-recency) that the graph doesn't.
 
+### 2026-05-30 - ActivityBar defaults tightened around the core loop
+
+Canvas, Reader Inbox, Outline, and Tags moved from `defaultVisible: true` to `defaultVisible: false`. Reason: new users should first see the core vault loop: files, search, AI chat, graph, and maintenance. Canvas remains reachable through the More menu and Command Palette; Reader Inbox, Outline, and Tags remain available through customization and context-specific panels. Existing users who already customized their ActivityBar keep their saved `visibleIds`, so this only changes the default for fresh workspaces or reset-to-defaults.
+
 
 

@@ -26,7 +26,7 @@ Nexusky 的问题不是功能不足，而是用户进入产品后看见的入口
 | ID | 项目 | 状态 | 目标文件 | 验收方式 |
 | --- | --- | --- | --- | --- |
 | D0 | 建立本改造计划文档 | 完成 | `docs/PRODUCT_REWORK_PLAN_2026-05.md` | 文档存在，包含范围、优先级、验收和执行记录 |
-| A1 | 默认 ActivityBar 入口收束 | 待做 | `activity-bar-registry.ts`, `PRODUCT.md` | 新用户默认只看到核心入口，旧用户配置不被强制清空 |
+| A1 | 默认 ActivityBar 入口收束 | 完成 | `activity-bar-registry.ts`, `PRODUCT.md` | 新用户默认只看到核心入口，旧用户配置不被强制清空 |
 | A2 | Vault Health 改成启动后的任务首页 | 待做 | `VaultHealthScreen.tsx`, i18n | 扫描结果不只是指标，还给出“今天先做什么”的清晰节奏 |
 | A3 | WelcomeScreen 首屏叙事收束 | 待做 | `WelcomeScreen.tsx`, i18n | 首屏表达本地 vault、AI 上下文、可控写入，不再只是“AI 知识库” |
 | A4 | 维护队列从问题列表转成小任务 | 待做 | `MaintenanceQueuePanel.tsx`, i18n | 队列顶部出现优先 3 项，用户能快速开始 |
@@ -151,3 +151,4 @@ pnpm typecheck
 | 日期 | 项目 | 状态 | 说明 |
 | --- | --- | --- | --- |
 | 2026-05-30 | D0 建立计划文档 | 完成 | 新增本文件，作为后续调优和回写的唯一执行跟踪入口 |
+| 2026-05-30 | A1 默认 ActivityBar 入口收束 | 完成 | Canvas、Reader、Outline、Tags 改为默认隐藏，核心入口收束到 Files、Search、AI Chat、Graph、Maintenance；`PRODUCT.md` 已追加决策记录 |
