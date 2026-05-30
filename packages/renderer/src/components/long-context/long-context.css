@@ -167,6 +167,15 @@
   color: var(--accent-text);
 }
 
+.related-context-card__why {
+  margin-top: 8px;
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .long-context-badge {
   height: 22px;
   display: inline-flex;
@@ -190,7 +199,7 @@
 }
 
 .related-context-card__reason {
-  margin: 8px 0 0;
+  margin: 3px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.55;

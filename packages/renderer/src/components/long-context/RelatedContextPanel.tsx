@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
@@ -31,6 +32,7 @@ function isCarouselPlacement(placement: RelatedContextPanelPlacement): boolean {
 }
 
 export function RelatedContextPanel({ currentFilePath, content, placement = 'inline' }: RelatedContextPanelProps) {
+  const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const [noteId, setNoteId] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<LongContextSuggestion[]>([])
@@ -88,10 +90,10 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       setSuggestions(rows)
       setState('idle')
     } catch (err) {
-      setError(getErrorMessage(err, '上下文加载失败'))
+      setError(getErrorMessage(err, t('relatedContext.loadFailed')))
       setState('error')
     }
-  }, [vaultPath, noteId])
+  }, [vaultPath, noteId, t])
 
   useEffect(() => {
     if (!noteId) return
@@ -135,9 +137,9 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
         feedbackType
       })
     } catch (err) {
-      toast(getErrorMessage(err, '反馈提交失败'), 'error')
+      toast(getErrorMessage(err, t('relatedContext.feedbackFailed')), 'error')
     }
-  }, [vaultPath])
+  }, [vaultPath, t])
 
   if (!noteId) return null
 
@@ -147,18 +149,24 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
     ? [suggestions[activeIndex]]
     : suggestions
   const countText = suggestions.length > 0
-    ? usesCarousel ? `${activeIndex + 1}/${suggestions.length}` : `${suggestions.length} 条`
-    : state === 'loading' ? '读取中' : state === 'error' ? '出错' : '0 条'
+    ? usesCarousel
+      ? t('relatedContext.countCarousel', { current: activeIndex + 1, total: suggestions.length })
+      : t('relatedContext.count', { count: suggestions.length })
+    : state === 'loading'
+      ? t('relatedContext.loading')
+      : state === 'error'
+        ? t('relatedContext.error')
+        : t('relatedContext.empty')
   const showCarouselControls = usesCarousel && suggestions.length > 1
   const moveCarousel = (direction: RelatedContextDirection) => {
     setActiveSuggestionIndex((current) => getRelatedContextCarouselIndex(current, suggestions.length, direction))
   }
 
   return (
-    <section className={getRelatedContextPanelClassName(placement)} aria-label="相关上下文">
+    <section className={getRelatedContextPanelClassName(placement)} aria-label={t('relatedContext.label')}>
       <div className="related-context-panel__header">
         <div>
-          <div className="related-context-panel__eyebrow">相关上下文</div>
+          <div className="related-context-panel__eyebrow">{t('relatedContext.label')}</div>
           <div className="related-context-panel__count">{countText}</div>
         </div>
         <div className="related-context-panel__actions">
@@ -168,8 +176,8 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
                 type="button"
                 className="related-context-panel__nav"
                 onClick={() => moveCarousel(-1)}
-                title="上一条"
-                aria-label="上一条"
+                title={t('relatedContext.nav.previous')}
+                aria-label={t('relatedContext.nav.previous')}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="15 18 9 12 15 6" />
@@ -179,8 +187,8 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
                 type="button"
                 className="related-context-panel__nav"
                 onClick={() => moveCarousel(1)}
-                title="下一条"
-                aria-label="下一条"
+                title={t('relatedContext.nav.next')}
+                aria-label={t('relatedContext.nav.next')}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6" />
@@ -193,8 +201,8 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
             className="related-context-panel__refresh"
             onClick={() => loadSuggestions(true)}
             disabled={state === 'loading'}
-            title="刷新"
-            aria-label="刷新"
+            title={t('relatedContext.nav.refresh')}
+            aria-label={t('relatedContext.nav.refresh')}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a9 9 0 0 1-15 6.7" />
@@ -217,7 +225,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       {state === 'error' && (
         <div className="related-context-panel__error">
           <span>{error}</span>
-          <button type="button" onClick={() => loadSuggestions(false)}>重试</button>
+          <button type="button" onClick={() => loadSuggestions(false)}>{t('relatedContext.retry')}</button>
         </div>
       )}
 

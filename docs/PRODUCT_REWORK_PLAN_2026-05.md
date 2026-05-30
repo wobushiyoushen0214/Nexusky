@@ -30,7 +30,7 @@ Nexusky 的问题不是功能不足，而是用户进入产品后看见的入口
 | A2 | Vault Health 改成启动后的任务首页 | 完成 | `VaultHealthScreen.tsx`, i18n | 扫描结果不只是指标，还给出“今天先做什么”的清晰节奏 |
 | A3 | WelcomeScreen 首屏叙事收束 | 完成 | `WelcomeScreen.tsx`, i18n | 首屏表达本地 vault、AI 上下文、可控写入，不再只是“AI 知识库” |
 | A4 | 维护队列从问题列表转成小任务 | 完成 | `MaintenanceQueuePanel.tsx`, i18n | 队列顶部出现优先 3 项，用户能快速开始 |
-| A5 | 长期上下文用户化命名 | 待做 | long-context / observability 相关 UI | 将 debug 术语包装为 Memory Ledger、Context Pack、Why this |
+| A5 | 长期上下文用户化命名 | 完成 | long-context / observability 相关 UI | 将 debug 术语包装为 Memory Ledger、Context Pack、Why this |
 | A6 | Agent 入口继续后置 | 待做 | Command / Chat / Maintenance 相关入口 | Agent 不作为普通用户首要入口，只在任务执行时出现 |
 
 ## 3. 优先级说明
@@ -155,3 +155,4 @@ pnpm typecheck
 | 2026-05-30 | A2 Vault Health 改成启动后的任务首页 | 完成 | 增加任务导向摘要、扫描/错误状态说明、Ask/Repair/Map 下一步标签；中英文 i18n 已补齐，`pnpm typecheck` 通过 |
 | 2026-05-30 | A3 WelcomeScreen 首屏叙事收束 | 完成 | 欢迎页改为 i18n 文案，首屏突出 Local Markdown、Long memory、Reviewable AI；创建、打开、最近 vault 交互保持不变，`pnpm typecheck` 通过 |
 | 2026-05-30 | A4 维护队列从问题列表转成小任务 | 完成 | 队列顶部新增“先做这几件”区域，复用现有优先级排序展示最多 3 项；剩余队列继续保留，中英文 i18n 已补齐，`pnpm typecheck` 通过 |
+| 2026-05-30 | A5 长期上下文用户化命名 | 完成 | Related Context 改为 Context Pack，卡片增加 Why this 标签，设置页 long-context 标签与指标文案改为 Memory Ledger；中英文 i18n 已补齐，`pnpm typecheck` 通过 |

@@ -217,8 +217,8 @@
   "citationLookup": {
     "why": "Why was this cited?",
     "loading": "Loading...",
-    "empty": "No long-context relation found",
-    "relations": "Relations",
+    "empty": "No Memory Ledger relation found",
+    "relations": "Why this",
     "themes": "Themes",
     "openTarget": "Open related note"
   },
@@ -288,9 +288,9 @@
     }
   },
   "longContextDebug": {
-    "inspector": "Current context pack",
-    "metrics": "Effectiveness metrics",
-    "tuning": "Tuning",
+    "inspector": "Context Pack",
+    "metrics": "Memory Ledger feedback",
+    "tuning": "Memory settings",
     "loading": "Loading...",
     "saving": "Saving...",
     "save": "Save",
@@ -301,10 +301,10 @@
     "emptyTier": "Nothing in this tier",
     "tokens": "{{used}} / {{budget}} tokens",
     "tier": {
-      "hot": "Hot",
-      "warm": "Warm",
-      "cold": "Cold",
-      "dropped": "Dropped"
+      "hot": "Active",
+      "warm": "Nearby",
+      "cold": "Archive",
+      "dropped": "Excluded"
     },
     "packItem": {
       "confidence": "conf",
@@ -333,11 +333,36 @@
       "confidenceThreshold": "Confidence threshold",
       "tokenBudget": "Token budget",
       "decayHalfLifeDays": "Decay half-life (days)",
-      "topN": "Editor Top-N",
-      "hotLimit": "Hot limit",
-      "warmLimit": "Warm limit",
-      "coldLimit": "Cold limit",
+      "topN": "Editor suggestions",
+      "hotLimit": "Active memory limit",
+      "warmLimit": "Nearby memory limit",
+      "coldLimit": "Archive memory limit",
       "archiveAfterDays": "Archive cooldown (days)"
+    }
+  },
+  "relatedContext": {
+    "label": "Context Pack",
+    "count": "{{count}} suggestions",
+    "countCarousel": "{{current}}/{{total}} suggestions",
+    "loading": "Reading memory",
+    "error": "Needs attention",
+    "empty": "0 suggestions",
+    "loadFailed": "Context Pack failed to load",
+    "feedbackFailed": "Could not save feedback",
+    "retry": "Retry",
+    "nav": {
+      "previous": "Previous suggestion",
+      "next": "Next suggestion",
+      "refresh": "Refresh Context Pack"
+    },
+    "card": {
+      "whyThis": "Why this",
+      "score": "{{score}} score",
+      "open": "Open",
+      "useful": "Useful",
+      "notRelated": "Not related",
+      "wrongReason": "Wrong reason",
+      "dismiss": "Dismiss"
     }
   },
   "editor": {
@@ -756,7 +781,7 @@
       "plugins": "Plugins",
       "keys": "Hotkeys",
       "proactive": "Proactive",
-      "long-context": "Long-Context"
+      "long-context": "Memory Ledger"
     },
     "theme": {
       "title": "Theme",

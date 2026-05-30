@@ -217,8 +217,8 @@
   "citationLookup": {
     "why": "为什么引用此项？",
     "loading": "加载中...",
-    "empty": "未找到关联记忆",
-    "relations": "关联",
+    "empty": "未找到 Memory Ledger 关系",
+    "relations": "为什么是它",
     "themes": "主题",
     "openTarget": "打开关联笔记"
   },
@@ -288,9 +288,9 @@
     }
   },
   "longContextDebug": {
-    "inspector": "当前上下文包",
-    "metrics": "效果指标",
-    "tuning": "参数调整",
+    "inspector": "Context Pack",
+    "metrics": "Memory Ledger 反馈",
+    "tuning": "记忆设置",
     "loading": "加载中...",
     "saving": "保存中...",
     "save": "保存",
@@ -301,10 +301,10 @@
     "emptyTier": "此层级暂无内容",
     "tokens": "{{used}} / {{budget}} tokens",
     "tier": {
-      "hot": "Hot",
-      "warm": "Warm",
-      "cold": "Cold",
-      "dropped": "Dropped"
+      "hot": "活跃",
+      "warm": "邻近",
+      "cold": "归档",
+      "dropped": "未采用"
     },
     "packItem": {
       "confidence": "置信",
@@ -333,11 +333,36 @@
       "confidenceThreshold": "Confidence 阈值",
       "tokenBudget": "Token 预算",
       "decayHalfLifeDays": "衰减半衰期 (天)",
-      "topN": "编辑器相关项 Top N",
-      "hotLimit": "Hot 上限",
-      "warmLimit": "Warm 上限",
-      "coldLimit": "Cold 上限",
+      "topN": "编辑器建议数",
+      "hotLimit": "活跃记忆上限",
+      "warmLimit": "邻近记忆上限",
+      "coldLimit": "归档记忆上限",
       "archiveAfterDays": "归档冷却天数"
+    }
+  },
+  "relatedContext": {
+    "label": "Context Pack",
+    "count": "{{count}} 条建议",
+    "countCarousel": "{{current}}/{{total}} 条建议",
+    "loading": "正在读取记忆",
+    "error": "需要处理",
+    "empty": "0 条建议",
+    "loadFailed": "Context Pack 加载失败",
+    "feedbackFailed": "反馈保存失败",
+    "retry": "重试",
+    "nav": {
+      "previous": "上一条建议",
+      "next": "下一条建议",
+      "refresh": "刷新 Context Pack"
+    },
+    "card": {
+      "whyThis": "为什么是它",
+      "score": "{{score}} 分",
+      "open": "打开",
+      "useful": "有用",
+      "notRelated": "不相关",
+      "wrongReason": "原因不对",
+      "dismiss": "忽略"
     }
   },
   "editor": {
@@ -756,7 +781,7 @@
       "plugins": "插件",
       "keys": "快捷键",
       "proactive": "主动建议",
-      "long-context": "长期上下文"
+      "long-context": "Memory Ledger"
     },
     "theme": {
       "title": "主题",

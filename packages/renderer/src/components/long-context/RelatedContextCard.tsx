@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { LongContextFeedbackType, LongContextSuggestion } from '@shared/types/ipc'
 import { LongContextBadge } from './LongContextBadge'
 
@@ -10,6 +11,7 @@ interface RelatedContextCardProps {
 }
 
 export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }: RelatedContextCardProps) {
+  const { t } = useTranslation()
   const evidence = suggestion.evidence.slice(0, 2)
 
   return (
@@ -26,6 +28,7 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
         <LongContextBadge type={suggestion.relationType} confidence={suggestion.confidence} />
       </div>
 
+      <div className="related-context-card__why">{t('relatedContext.card.whyThis')}</div>
       <p className="related-context-card__reason">{suggestion.reason}</p>
 
       {evidence.length > 0 && (
@@ -37,25 +40,25 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
       )}
 
       <div className="related-context-card__footer">
-        <span className="related-context-card__score">{Math.round(suggestion.score * 100)} 分</span>
+        <span className="related-context-card__score">{t('relatedContext.card.score', { score: Math.round(suggestion.score * 100) })}</span>
         <div className="related-context-card__actions">
-          <IconButton title="打开" onClick={() => onOpen(suggestion)}>
+          <IconButton title={t('relatedContext.card.open')} onClick={() => onOpen(suggestion)}>
             <path d="M7 17L17 7" />
             <path d="M9 7h8v8" />
           </IconButton>
-          <IconButton title="有用" active={feedback === 'useful'} onClick={() => onFeedback(suggestion, 'useful')}>
+          <IconButton title={t('relatedContext.card.useful')} active={feedback === 'useful'} onClick={() => onFeedback(suggestion, 'useful')}>
             <path d="M20 6L9 17l-5-5" />
           </IconButton>
-          <IconButton title="不相关" onClick={() => onFeedback(suggestion, 'not_related')}>
+          <IconButton title={t('relatedContext.card.notRelated')} onClick={() => onFeedback(suggestion, 'not_related')}>
             <path d="M4 12h16" />
             <path d="M8 8l8 8" />
           </IconButton>
-          <IconButton title="原因不对" active={feedback === 'wrong_reason'} onClick={() => onFeedback(suggestion, 'wrong_reason')}>
+          <IconButton title={t('relatedContext.card.wrongReason')} active={feedback === 'wrong_reason'} onClick={() => onFeedback(suggestion, 'wrong_reason')}>
             <circle cx="12" cy="12" r="8" />
             <path d="M12 8v5" />
             <path d="M12 16h.01" />
           </IconButton>
-          <IconButton title="忽略" onClick={() => onFeedback(suggestion, 'dismissed')}>
+          <IconButton title={t('relatedContext.card.dismiss')} onClick={() => onFeedback(suggestion, 'dismissed')}>
             <path d="M18 6L6 18" />
             <path d="M6 6l12 12" />
           </IconButton>
