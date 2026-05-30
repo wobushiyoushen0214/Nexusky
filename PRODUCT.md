@@ -70,5 +70,11 @@ Kanban is no longer a user-facing main view. The renderer route, command palette
 
 What stays for this pass: `kanban_*` SQLite tables, shared IPC contracts, and main-process handlers. Reason: existing vaults may contain historical task data, and long-context maintenance still reads those rows as supporting signals. The product should not advertise a task-board workflow while the core value is note writing, search, graphing, AI review, and knowledge maintenance.
 
+### 2026-05-31 - Flashcards removed from visible AI commands
+
+Flashcards are no longer exposed through the Command Palette or a renderer review modal. The `AI generate review flashcards` and `Review due flashcards` commands, the `open-flashcard-review` event listener, the review panel component, and related renderer i18n strings were removed.
+
+What stays for this pass: `ai:generate-flashcards`, `flashcards:list-due`, `flashcards:review`, and the Markdown parsing / SRS helpers remain in the main process. Reason: existing notes may already contain flashcard blocks, and the backend helpers are covered by focused tests, but the visible SRS workflow is too niche for the product's current core loop.
+
 
 

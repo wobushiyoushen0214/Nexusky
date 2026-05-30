@@ -41,7 +41,6 @@ const CalendarPanel = lazy(() => import('./components/CalendarPanel').then((m) =
 const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => ({ default: m.HistoryPanel })))
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
-const FlashcardReviewPanel = lazy(() => import('./components/FlashcardReviewPanel').then((m) => ({ default: m.FlashcardReviewPanel })))
 const MaintenanceQueuePanel = lazy(() => import('./components/maintenance/MaintenanceQueuePanel').then((m) => ({ default: m.MaintenanceQueuePanel })))
 const AgentRunPanel = lazy(() => import('./components/agent/AgentRunPanel').then((m) => ({ default: m.AgentRunPanel })))
 
@@ -115,7 +114,6 @@ export default function App() {
   )
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const [trashOpen, setTrashOpen] = useState(false)
-  const [flashcardReviewOpen, setFlashcardReviewOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
   const [chatEverOpened, setChatEverOpened] = useState(false)
@@ -233,12 +231,6 @@ export default function App() {
     const handler = () => setTrashOpen(true)
     window.addEventListener('open-trash', handler)
     return () => window.removeEventListener('open-trash', handler)
-  }, [])
-
-  useEffect(() => {
-    const handler = () => setFlashcardReviewOpen(true)
-    window.addEventListener('open-flashcard-review', handler)
-    return () => window.removeEventListener('open-flashcard-review', handler)
   }, [])
 
   useEffect(() => {
@@ -525,7 +517,6 @@ export default function App() {
         {searchOpen && <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />}
         {commandPaletteOpen && <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />}
         {trashOpen && <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />}
-        {flashcardReviewOpen && <FlashcardReviewPanel open={flashcardReviewOpen} onClose={() => setFlashcardReviewOpen(false)} />}
       </Suspense>
       <ToastContainer />
       <GraphGenerator open={graphGenPaths.length > 0} filePaths={graphGenPaths} onClose={() => setGraphGenPaths([])} />

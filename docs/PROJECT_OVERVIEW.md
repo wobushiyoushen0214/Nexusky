@@ -257,7 +257,7 @@ main/services/*
 | `file:*` | 文件读写、创建、删除、重命名、历史、加密、回收站、文档文本提取 |
 | `vault:*` | 选择、创建、读取、清空当前 vault 和最近 vault |
 | `db:*` | 索引、搜索、图谱、反链、属性、对话历史、本地检索状态 |
-| `flashcards:*` | 到期闪卡队列和评分写回 |
+| `flashcards:*` | 历史闪卡兼容：到期队列和评分写回 IPC 仍保留，但渲染层已不再暴露闪卡复习入口 |
 | `kanban:*` | 看板列、任务、关系、AI 分析、AI 任务拆解、AI 笔记转看板、按笔记任务批量导入和 AI plan 预览 |
 | `ai:*` | Provider、聊天、Agent 工具执行、工具面板 surface、编辑、批量笔记、摘要、闪卡、标签、语音转写 |
 | `maintenance:*` | 知识维护队列查询和自动修复应用 |
@@ -365,7 +365,7 @@ AI 面板还支持：
 - 图片附件：通过多模态 content parts 发送。
 - 文档附件：`file:extract-document-text` 提取 PDF、DOCX、XLSX、CSV、TXT 等文本。
 - 语音转写：`ai:transcribe`。
-- 闪卡生成：`ai:generate-flashcards` 生成 Basic/Cloze 卡片，并由 `flashcards:*` 管理复习。
+- 闪卡兼容：`ai:generate-flashcards` 和 `flashcards:*` 后端仍保留，用于已有 Markdown 闪卡块和测试覆盖；渲染层命令与复习弹窗已移除。
 
 ### 9.7 Agent 运行面板
 
