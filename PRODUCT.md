@@ -76,5 +76,11 @@ Flashcards are no longer exposed through the Command Palette or a renderer revie
 
 What stays for this pass: `ai:generate-flashcards`, `flashcards:list-due`, `flashcards:review`, and the Markdown parsing / SRS helpers remain in the main process. Reason: existing notes may already contain flashcard blocks, and the backend helpers are covered by focused tests, but the visible SRS workflow is too niche for the product's current core loop.
 
+### 2026-05-31 - Reader Inbox standalone route removed
+
+Reader Inbox is no longer exposed as an ActivityBar item, Command Palette command, or `mainView` route. Imported Readwise, Pocket, and Notion content remains accessible as normal Markdown notes through Files, Search, Graph, and Knowledge Space. Legacy saved workspace layouts with `mainView === 'reader'` now reopen in the editor.
+
+What stays for this pass: reader importers, reader metadata helpers, and the existing reader helper tests remain. Reason: import is still useful, but a separate triage surface competes with the core note workflow when imported items are already first-class notes.
+
 
 

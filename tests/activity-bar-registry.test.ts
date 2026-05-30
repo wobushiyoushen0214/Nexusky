@@ -24,8 +24,12 @@ describe('activity bar registry', () => {
     expect(isActivityBarItemAvailable(item('graph'), { mainView: 'graph', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('chat'), { mainView: 'canvas', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('canvas'), { mainView: 'timeline', currentFilePath: null })).toBe(true)
-    expect(isActivityBarItemAvailable(item('reader'), { mainView: 'reader', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('maintenance'), { mainView: 'graph', currentFilePath: null })).toBe(true)
+  })
+
+  it('keeps retired standalone surfaces out of the activity registry', () => {
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'reader')).toBe(false)
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'kanban')).toBe(false)
   })
 
   it('keeps related context merged under knowledge maintenance instead of a separate activity item', () => {

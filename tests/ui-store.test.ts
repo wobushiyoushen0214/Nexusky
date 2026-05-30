@@ -154,9 +154,10 @@ describe('ui store workspace widths', () => {
     expect(useUIStore.getState().sidebarCollapsed).toBe(true)
   })
 
-  it('maps retired kanban workspace layouts back to the editor', async () => {
+  it('maps retired standalone workspace layouts back to the editor', async () => {
     localStorage.setItem('nexusky-workspace-layouts', JSON.stringify({
       'workspace:/vault/a': { mainView: 'kanban', rightPanel: 'chat', sidebarCollapsed: true },
+      'workspace:/vault/b': { mainView: 'reader', rightPanel: 'none', sidebarCollapsed: false },
     }))
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
 
@@ -165,6 +166,12 @@ describe('ui store workspace widths', () => {
     expect(useUIStore.getState().mainView).toBe('editor')
     expect(useUIStore.getState().rightPanel).toBe('chat')
     expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+
+    useUIStore.getState().setWorkspaceScope('workspace:/vault/b')
+
+    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().rightPanel).toBe('none')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(false)
   })
 
   it('uses legacy global workspace layout only as a fallback', async () => {

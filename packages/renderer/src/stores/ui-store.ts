@@ -11,7 +11,7 @@ const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
 const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader'
+type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline'
 type Language = typeof LANGUAGE_IDS[number]
 type MaintenancePanelSection = 'context' | 'queue'
 type WorkspaceLayout = {
@@ -30,7 +30,7 @@ const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'history', 'graph', 'plugin', 'maintenance', 'agent']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas', 'timeline', 'reader']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas', 'timeline']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
@@ -219,7 +219,7 @@ function saveRightPanelWidth(panel: Panel, width: number): number {
 }
 
 function normalizeMainView(value: string | null | undefined): MainView | null {
-  if (value === 'kanban') return 'editor'
+  if (value === 'kanban' || value === 'reader') return 'editor'
   return value && MAIN_VIEW_IDS.includes(value as MainView) ? value as MainView : null
 }
 

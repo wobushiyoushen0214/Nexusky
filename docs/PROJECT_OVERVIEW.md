@@ -184,7 +184,7 @@ main/services/*
 
 - 加载 vault。
 - 装配 TitleBar、ActivityBar、Sidebar、Editor、WelcomeScreen、主视图和右侧面板。
-- 通过 React.lazy 拆分重型视图：GraphView、CanvasView、ReaderInboxView、ChatPanel、Settings、SearchPanel 等。
+- 通过 React.lazy 拆分重型视图：GraphView、CanvasView、ChatPanel、Settings、SearchPanel 等。
 - 根据全局快捷键打开快速切换、搜索、命令面板、设置、AI 面板等。
 - 处理图谱生成、知识空间、插件面板、回收站、闪卡复习、主题包和 CSS 片段。
 
@@ -411,7 +411,6 @@ AI 面板还支持：
 | 搜索 | `components/SearchPanel.tsx` | 全文/本地相关检索、检索索引进度 |
 | 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 group 总览 + folder-scope 目录钻取，底层 `db:get-graph` 兼容 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
 | 知识空间 | `components/canvas/CanvasView.tsx` | 属性/时间图层、节点布局和默认可见的正交连接线路由 |
-| 阅读收件箱 | `components/reader/ReaderInboxView.tsx` | 外部阅读材料 triage |
 | 长期上下文面板 | `components/long-context/*` | 当前笔记相关上下文、关系卡片、轮播布局和长期上下文徽标 |
 | 维护队列 | `components/maintenance/MaintenanceQueuePanel.tsx` | 知识维护项列表、筛选、修复入口，以及当前笔记相关上下文页签 |
 | Agent 运行面板 | `components/agent/AgentRunPanel.tsx` | Agent 计划、步骤执行、回滚、重试和反思入口 |

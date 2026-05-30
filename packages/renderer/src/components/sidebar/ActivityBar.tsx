@@ -13,7 +13,6 @@ const iconMap: Record<string, React.ReactNode> = {
   chat: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
   graph: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><circle cx="18" cy="6" r="3" /><line x1="8.5" y1="7.5" x2="15.5" y2="16.5" /><line x1="15.5" y1="7.5" x2="8.5" y2="16.5" /></svg>,
   canvas: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="6" height="5" rx="1" /><rect x="14" y="6" width="6" height="5" rx="1" /><rect x="7" y="15" width="7" height="5" rx="1" /><path d="M10 9l3 2" /><path d="M14 11l-3 4" /></svg>,
-  reader: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16v14H4z" /><path d="M8 9h8" /><path d="M8 13h5" /><path d="M6 19l2-3h8l2 3" /></svg>,
   outline: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>,
   properties: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z" /><path d="M8 8h8" /><path d="M8 12h5" /><path d="M8 16h8" /></svg>,
   tags: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>,
@@ -73,10 +72,6 @@ export function ActivityBar() {
       setMainView('canvas')
       if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
     },
-    reader: () => {
-      setMainView('reader')
-      if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
-    },
     outline: () => toggleRightPanel('outline'),
     properties: () => toggleRightPanel('properties'),
     tags: () => toggleRightPanel('tags'),
@@ -102,7 +97,6 @@ export function ActivityBar() {
   const getActiveId = () => {
     if (useUIStore.getState().mainView === 'graph') return 'graph'
     if (['bases', 'canvas', 'timeline'].includes(useUIStore.getState().mainView)) return 'canvas'
-    if (useUIStore.getState().mainView === 'reader') return 'reader'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
     if (rightPanel === 'outline') return 'outline'
