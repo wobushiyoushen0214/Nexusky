@@ -149,6 +149,12 @@
     "empty": "Nothing to do",
     "contextEmpty": "Open a note to view related context.",
     "noVault": "Open a vault first",
+    "today": {
+      "title": "Start with these",
+      "desc": "The queue is sorted by impact. Handle a few small items, then continue when the vault feels lighter.",
+      "count": "{{count}} tasks",
+      "remaining": "{{count}} more in the queue"
+    },
     "filters": {
       "all": "All",
       "fix_unresolved_link": "Unresolved Links",

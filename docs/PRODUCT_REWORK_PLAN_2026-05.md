@@ -29,7 +29,7 @@ Nexusky 的问题不是功能不足，而是用户进入产品后看见的入口
 | A1 | 默认 ActivityBar 入口收束 | 完成 | `activity-bar-registry.ts`, `PRODUCT.md` | 新用户默认只看到核心入口，旧用户配置不被强制清空 |
 | A2 | Vault Health 改成启动后的任务首页 | 完成 | `VaultHealthScreen.tsx`, i18n | 扫描结果不只是指标，还给出“今天先做什么”的清晰节奏 |
 | A3 | WelcomeScreen 首屏叙事收束 | 完成 | `WelcomeScreen.tsx`, i18n | 首屏表达本地 vault、AI 上下文、可控写入，不再只是“AI 知识库” |
-| A4 | 维护队列从问题列表转成小任务 | 待做 | `MaintenanceQueuePanel.tsx`, i18n | 队列顶部出现优先 3 项，用户能快速开始 |
+| A4 | 维护队列从问题列表转成小任务 | 完成 | `MaintenanceQueuePanel.tsx`, i18n | 队列顶部出现优先 3 项，用户能快速开始 |
 | A5 | 长期上下文用户化命名 | 待做 | long-context / observability 相关 UI | 将 debug 术语包装为 Memory Ledger、Context Pack、Why this |
 | A6 | Agent 入口继续后置 | 待做 | Command / Chat / Maintenance 相关入口 | Agent 不作为普通用户首要入口，只在任务执行时出现 |
 
@@ -154,3 +154,4 @@ pnpm typecheck
 | 2026-05-30 | A1 默认 ActivityBar 入口收束 | 完成 | Canvas、Reader、Outline、Tags 改为默认隐藏，核心入口收束到 Files、Search、AI Chat、Graph、Maintenance；`PRODUCT.md` 已追加决策记录 |
 | 2026-05-30 | A2 Vault Health 改成启动后的任务首页 | 完成 | 增加任务导向摘要、扫描/错误状态说明、Ask/Repair/Map 下一步标签；中英文 i18n 已补齐，`pnpm typecheck` 通过 |
 | 2026-05-30 | A3 WelcomeScreen 首屏叙事收束 | 完成 | 欢迎页改为 i18n 文案，首屏突出 Local Markdown、Long memory、Reviewable AI；创建、打开、最近 vault 交互保持不变，`pnpm typecheck` 通过 |
+| 2026-05-30 | A4 维护队列从问题列表转成小任务 | 完成 | 队列顶部新增“先做这几件”区域，复用现有优先级排序展示最多 3 项；剩余队列继续保留，中英文 i18n 已补齐，`pnpm typecheck` 通过 |

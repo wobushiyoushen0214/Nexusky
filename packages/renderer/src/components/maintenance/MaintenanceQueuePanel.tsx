@@ -155,6 +155,8 @@ export function MaintenanceQueuePanel() {
   }, [vaultPath, lastUndo, refresh])
 
   const grouped = useMemo(() => items, [items])
+  const priorityItems = useMemo(() => grouped.slice(0, 3), [grouped])
+  const remainingItems = useMemo(() => grouped.slice(priorityItems.length), [grouped, priorityItems.length])
 
   return (
     <div className="maintenance-panel">
@@ -229,9 +231,35 @@ export function MaintenanceQueuePanel() {
             {vaultPath && grouped.length === 0 && !loading && (
               <div className="maintenance-panel__empty">{t('maintenance.empty')}</div>
             )}
-            {grouped.map((item, idx) => (
+            {vaultPath && priorityItems.length > 0 && (
+              <section className="maintenance-panel__today" aria-labelledby="maintenance-today-title">
+                <div className="maintenance-panel__today-head">
+                  <div>
+                    <h3 id="maintenance-today-title">{t('maintenance.today.title')}</h3>
+                    <p>{t('maintenance.today.desc')}</p>
+                  </div>
+                  <span>{t('maintenance.today.count', { count: priorityItems.length })}</span>
+                </div>
+                <div className="maintenance-panel__today-list">
+                  {priorityItems.map((item, idx) => (
+                    <MaintenanceItemCard
+                      key={`${item.filePath}-${item.type}-priority-${idx}`}
+                      item={item}
+                      onAction={(action) => void previewFix(item, action)}
+                      onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+            {vaultPath && remainingItems.length > 0 && (
+              <div className="maintenance-panel__section-label">
+                {t('maintenance.today.remaining', { count: remainingItems.length })}
+              </div>
+            )}
+            {remainingItems.map((item, idx) => (
               <MaintenanceItemCard
-                key={`${item.filePath}-${item.type}-${idx}`}
+                key={`${item.filePath}-${item.type}-rest-${idx}`}
                 item={item}
                 onAction={(action) => void previewFix(item, action)}
                 onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}

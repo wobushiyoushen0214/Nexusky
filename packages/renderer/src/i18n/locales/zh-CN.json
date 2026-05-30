@@ -149,6 +149,12 @@
     "empty": "暂无待办项",
     "contextEmpty": "打开一篇笔记后查看相关上下文。",
     "noVault": "请先打开一个 vault",
+    "today": {
+      "title": "先做这几件",
+      "desc": "队列已按影响排序。先处理几件小任务，让 vault 变轻一点。",
+      "count": "{{count}} 项任务",
+      "remaining": "队列中还有 {{count}} 项"
+    },
     "filters": {
       "all": "全部",
       "fix_unresolved_link": "未解析链接",
