@@ -11,7 +11,7 @@ const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
 const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader' | 'kanban'
+type MainView = 'editor' | 'graph' | 'bases' | 'canvas' | 'timeline' | 'reader'
 type Language = typeof LANGUAGE_IDS[number]
 type MaintenancePanelSection = 'context' | 'queue'
 type WorkspaceLayout = {
@@ -30,7 +30,7 @@ const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'history', 'graph', 'plugin', 'maintenance', 'agent']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas', 'timeline', 'reader', 'kanban']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas', 'timeline', 'reader']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
@@ -54,7 +54,6 @@ interface UIState {
   graphMode: GraphMode
   maintenancePanelSection: MaintenancePanelSection
   pendingAgentGoal: { goal: string; description?: string } | null
-  pendingKanbanTask: { title: string; description?: string } | null
   pendingBasesFocus: { filePath: string } | null
   setRightPanel: (panel: Panel) => void
   toggleRightPanel: (panel: Panel) => void
@@ -83,8 +82,6 @@ interface UIState {
   resetWorkspaceLayout: () => void
   sendToAgent: (payload: { goal: string; description?: string }) => void
   consumePendingAgentGoal: () => { goal: string; description?: string } | null
-  sendToKanban: (payload: { title: string; description?: string }) => void
-  consumePendingKanbanTask: () => { title: string; description?: string } | null
   focusInBases: (filePath: string) => void
   consumePendingBasesFocus: () => { filePath: string } | null
 }
@@ -221,9 +218,13 @@ function saveRightPanelWidth(panel: Panel, width: number): number {
   return next
 }
 
+function normalizeMainView(value: string | null | undefined): MainView | null {
+  if (value === 'kanban') return 'editor'
+  return value && MAIN_VIEW_IDS.includes(value as MainView) ? value as MainView : null
+}
+
 function getInitialMainView(): MainView {
-  const saved = safeGet(WORKSPACE_KEYS.mainView)
-  return saved && MAIN_VIEW_IDS.includes(saved as MainView) ? saved as MainView : 'editor'
+  return normalizeMainView(safeGet(WORKSPACE_KEYS.mainView)) || 'editor'
 }
 
 function getInitialRightPanel(): Panel {
@@ -244,8 +245,9 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scoped = getSavedWorkspaceLayouts()[scope]
   const savedRightPanel = scoped?.rightPanel as string | undefined
   const scopedRightPanel = savedRightPanel === 'context' ? 'maintenance' : savedRightPanel
-  if (scoped && MAIN_VIEW_IDS.includes(scoped.mainView) && PANEL_IDS.includes(scopedRightPanel as Panel) && typeof scoped.sidebarCollapsed === 'boolean') {
-    return { ...scoped, rightPanel: getAvailableRightPanel(scoped.mainView, scopedRightPanel as Panel) }
+  const scopedMainView = normalizeMainView(scoped?.mainView)
+  if (scoped && scopedMainView && PANEL_IDS.includes(scopedRightPanel as Panel) && typeof scoped.sidebarCollapsed === 'boolean') {
+    return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel as Panel) }
   }
   return {
     mainView: getInitialMainView(),
@@ -314,7 +316,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   graphMode: getInitialGraphMode(),
   maintenancePanelSection: 'queue',
   pendingAgentGoal: null,
-  pendingKanbanTask: null,
   pendingBasesFocus: null,
 
   setRightPanel: (panel) => {
@@ -434,7 +435,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   sendToAgent: (payload) => {
     const view = get().mainView
     const layout = saveWorkspaceLayout(get().workspaceScope, {
-      mainView: view === 'kanban' ? 'editor' : view,
+      mainView: view,
       rightPanel: 'agent'
     })
     set({
@@ -447,19 +448,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   consumePendingAgentGoal: () => {
     const pending = get().pendingAgentGoal
     if (pending) set({ pendingAgentGoal: null })
-    return pending
-  },
-  sendToKanban: (payload) => {
-    const layout = saveWorkspaceLayout(get().workspaceScope, { mainView: 'kanban' })
-    set({
-      pendingKanbanTask: { title: payload.title, description: payload.description },
-      mainView: layout.mainView,
-      rightPanel: layout.rightPanel
-    })
-  },
-  consumePendingKanbanTask: () => {
-    const pending = get().pendingKanbanTask
-    if (pending) set({ pendingKanbanTask: null })
     return pending
   },
   focusInBases: (filePath) => {

@@ -24,7 +24,6 @@ export function AgentRunPanel() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const consumePendingAgentGoal = useUIStore((s) => s.consumePendingAgentGoal)
-  const sendToKanban = useUIStore((s) => s.sendToKanban)
   const [stage, setStage] = useState<Stage>('idle')
   const [goal, setGoal] = useState('')
   const [description, setDescription] = useState('')
@@ -325,15 +324,6 @@ export function AgentRunPanel() {
             onSkip={skipStep}
             onRollback={rollbackStep}
             reflectResult={reflectResult}
-            onSendToKanban={() => {
-              const summary = reflectResult
-                ? `${reflectResult.goalAchieved
-                    ? t('agent.reflect.kanbanSummaryAchieved')
-                    : t('agent.reflect.kanbanSummaryPartial', { succeeded: reflectResult.succeededSteps, failed: reflectResult.failedSteps })}${reflectResult.suggestions.length > 0 ? `\n\n${t('agent.reflect.kanbanSummarySuggestions')}:\n- ${reflectResult.suggestions.join('\n- ')}` : ''}`
-                : t('agent.reflect.kanbanFallback', { runId: detail.run.id })
-              sendToKanban({ title: detail.run.goal, description: summary })
-              toast(t('agent.reflect.sendToKanbanSuccess'), 'success')
-            }}
             t={t}
           />
         )}
@@ -454,11 +444,10 @@ interface ExecuteViewProps {
   onSkip: (stepIndex: number) => void
   onRollback: (stepIndex: number) => void
   reflectResult: AgentReflectResult | null
-  onSendToKanban: () => void
   t: ReturnType<typeof useTranslation>['t']
 }
 
-function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectResult, onSendToKanban, t }: ExecuteViewProps) {
+function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectResult, t }: ExecuteViewProps) {
   return (
     <div>
       <div style={{ marginBottom: 8 }}>
@@ -485,16 +474,6 @@ function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectRes
               </ul>
             </div>
           )}
-          <div style={{ marginTop: 8 }}>
-            <button
-              type="button"
-              className="agent-run-panel__step-btn"
-              onClick={onSendToKanban}
-              title={t('agent.reflect.sendToKanbanTitle')}
-            >
-              {t('agent.reflect.sendToKanban')}
-            </button>
-          </div>
         </div>
       )}
       {stepRows.map((step) => (

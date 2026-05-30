@@ -154,6 +154,19 @@ describe('ui store workspace widths', () => {
     expect(useUIStore.getState().sidebarCollapsed).toBe(true)
   })
 
+  it('maps retired kanban workspace layouts back to the editor', async () => {
+    localStorage.setItem('nexusky-workspace-layouts', JSON.stringify({
+      'workspace:/vault/a': { mainView: 'kanban', rightPanel: 'chat', sidebarCollapsed: true },
+    }))
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+
+    useUIStore.getState().setWorkspaceScope('workspace:/vault/a')
+
+    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().rightPanel).toBe('chat')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+  })
+
   it('uses legacy global workspace layout only as a fallback', async () => {
     localStorage.setItem('nexusky-workspace-main-view', 'canvas')
     localStorage.setItem('nexusky-workspace-right-panel', 'chat')
@@ -279,10 +292,10 @@ describe('ui store cross-feature jumps', () => {
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
     const store = useUIStore.getState()
 
-    store.setMainView('kanban')
+    store.setMainView('graph')
     store.sendToAgent({ goal: 'Refactor splash screen', description: 'priority: high' })
 
-    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().mainView).toBe('graph')
     expect(useUIStore.getState().rightPanel).toBe('agent')
     expect(useUIStore.getState().pendingAgentGoal).toEqual({
       goal: 'Refactor splash screen',
@@ -293,23 +306,6 @@ describe('ui store cross-feature jumps', () => {
     expect(consumed).toEqual({ goal: 'Refactor splash screen', description: 'priority: high' })
     expect(useUIStore.getState().pendingAgentGoal).toBeNull()
     expect(useUIStore.getState().consumePendingAgentGoal()).toBeNull()
-  })
-
-  it('sendToKanban stashes pending task and switches to kanban view', async () => {
-    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
-    const store = useUIStore.getState()
-
-    store.sendToKanban({ title: 'Polish onboarding', description: 'from agent reflect' })
-
-    expect(useUIStore.getState().mainView).toBe('kanban')
-    expect(useUIStore.getState().pendingKanbanTask).toEqual({
-      title: 'Polish onboarding',
-      description: 'from agent reflect'
-    })
-
-    const consumed = useUIStore.getState().consumePendingKanbanTask()
-    expect(consumed).toEqual({ title: 'Polish onboarding', description: 'from agent reflect' })
-    expect(useUIStore.getState().pendingKanbanTask).toBeNull()
   })
 
   it('focusInBases stashes file path and switches to bases view', async () => {

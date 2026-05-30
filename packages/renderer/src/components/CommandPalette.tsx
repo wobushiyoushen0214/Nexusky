@@ -184,7 +184,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'canvas', category: 'graph', label: t('commandPalette.commands.canvas.label'), description: t('commandPalette.commands.canvas.description'), keywords: ['canvas', 'board', 'obsidian'], action: () => setMainView('canvas') },
     { id: 'timeline', category: 'search', label: t('commandPalette.commands.timeline.label'), description: t('commandPalette.commands.timeline.description'), keywords: ['timeline', 'history', 'recent', 'activity'], action: () => setMainView('timeline') },
     { id: 'reader-inbox', category: 'search', label: t('commandPalette.commands.readerInbox.label'), description: t('commandPalette.commands.readerInbox.description'), keywords: ['reader', 'readwise', 'pocket', 'notion', 'inbox'], action: () => setMainView('reader') },
-    { id: 'open-kanban', category: 'search', label: t('commandPalette.commands.openKanban.label'), description: t('commandPalette.commands.openKanban.description'), keywords: ['kanban', 'task', 'board'], action: () => setMainView('kanban') },
     { id: 'graph-current', category: 'graph', label: t('commandPalette.commands.graphCurrent.label'), description: t('commandPalette.commands.graphCurrent.description'), keywords: ['graph', 'mermaid'], action: () => {
       const filePath = currentFilePath
       if (!requireCurrentNote() || !filePath) return

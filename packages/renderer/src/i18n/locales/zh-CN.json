@@ -130,7 +130,6 @@
     "chat": "AI 对话",
     "tags": "标签",
     "calendar": "日历",
-    "kanban": "看板",
     "history": "版本历史",
     "properties": "属性",
     "outline": "大纲",
@@ -274,14 +273,7 @@
       "achieved": "目标已完成",
       "partial": "成功 {{succeeded}} 步，失败 {{failed}} 步",
       "unmet": "未达成的预期",
-      "suggestions": "建议",
-      "sendToKanban": "加入看板跟踪",
-      "sendToKanbanTitle": "把此次 Agent 运行的目标作为任务加入看板跟踪后续",
-      "sendToKanbanSuccess": "已发送到任务看板",
-      "kanbanSummaryAchieved": "Agent run 已达成",
-      "kanbanSummaryPartial": "Agent run 部分完成：{{succeeded}} 成功 / {{failed}} 失败",
-      "kanbanSummarySuggestions": "后续建议",
-      "kanbanFallback": "来源：Agent 运行 {{runId}}"
+      "suggestions": "建议"
     },
     "errors": {
       "goalRequired": "请填写任务目标"
@@ -434,7 +426,6 @@
       "canvas": { "label": "打开知识空间", "description": "以属性或时间图层探索笔记" },
       "timeline": { "label": "打开知识空间时间图层", "description": "在知识空间内按创建或更新时间回看笔记活动" },
       "readerInbox": { "label": "打开阅读收件箱", "description": "集中浏览 Notion、Readwise 和 Pocket 导入内容" },
-      "openKanban": { "label": "打开任务看板", "description": "以列管理任务和依赖；默认从主导航隐藏，可在 ActivityBar 右键找回" },
       "graphCurrent": { "label": "为当前笔记生成 AI 图谱", "description": "基于当前笔记推断概念关系" },
       "inferLinks": { "label": "推断全库语义链接", "description": "补齐隐含关联并刷新知识图谱" },
       "memoryIndex": { "label": "生成 AI 记忆索引", "description": "为长期知识关联生成笔记级记忆" },
@@ -743,7 +734,6 @@
     "pluginPanelEmpty": "未选择插件面板",
     "pluginPanelNoContent": "该插件面板没有声明内容。",
     "editorPlaceholder": "开始写作...",
-    "kanbanAiAnalyzeFailed": "AI 分析失败",
     "syncDone": "同步完成: ↑{{pushed}} ↓{{pulled}}",
     "syncError": "同步出错: {{error}}",
     "syncFailed": "同步失败: {{error}}"

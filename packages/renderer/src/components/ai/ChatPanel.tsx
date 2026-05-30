@@ -1195,7 +1195,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setToolStatus('识别请求意图...')
         const detected = await window.api.invoke('ai:detect-intent', {
           messages: chatMessages,
-          intents: ['graph', 'kanban', 'chat']
+          intents: ['graph', 'chat']
         })
         intent = detected.intent || 'chat'
       } catch (e: unknown) {
@@ -1237,45 +1237,6 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setMessages((msgs) => [...msgs, msg])
         appendToDb(msg)
         window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: targetPath, isDirectory: true } }))
-        return
-      }
-
-      if (intent === 'kanban') {
-        window.api.invoke('ai:stop', undefined)
-        editCompleteRef.current = true
-        streamContentRef.current = ''
-        setStreamContent('')
-        setToolStatus('正在从当前笔记提取看板任务...')
-
-        const fp = useEditorStore.getState().currentFilePath
-        if (!fp) {
-          setToolStatus(null)
-          setIsStreaming(false)
-          const msg: Message = { id: Date.now().toString(), role: 'assistant', content: '请先打开一篇笔记，再从当前笔记提取看板任务。' }
-          setMessages((msgs) => [...msgs, msg])
-          appendToDb(msg)
-          return
-        }
-
-        try {
-          const content = useEditorStore.getState().content
-          const result = await window.api.invoke('kanban:ai-from-note', { vaultPath, filePath: fp, content })
-          const msg: Message = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `${result.summary || '已从当前笔记生成看板任务。'}\n\n已创建 ${result.tasks?.length || 0} 个任务、${result.relations?.length || 0} 个关系，并关联到当前笔记。`
-          }
-          setMessages((msgs) => [...msgs, msg])
-          appendToDb(msg)
-          toast('已生成看板任务', 'success')
-        } catch (e: unknown) {
-          const msg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(getErrorMessage(e)) }
-          setMessages((msgs) => [...msgs, msg])
-          appendToDb(msg)
-        } finally {
-          setToolStatus(null)
-          setIsStreaming(false)
-        }
         return
       }
 

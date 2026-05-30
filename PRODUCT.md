@@ -64,5 +64,11 @@ Canvas, Reader Inbox, Outline, and Tags moved from `defaultVisible: true` to `de
 
 Agent remains available through advanced command palette and task hand-off paths, but it is no longer treated as a first-run or marketing headline. Reason: Agent is an execution mechanism, not the product's primary user promise. Default copy now emphasizes cited AI answers, reviewable actions, preview-first workflows, maintenance queues, and execution history instead of asking new users to understand Agent as a standalone surface.
 
+### 2026-05-31 - Kanban standalone surface removed
+
+Kanban is no longer a user-facing main view. The renderer route, command palette entry, standalone panel component, Agent "send to Kanban" hand-off, and Chat auto-Kanban intent path were removed. Legacy saved workspace layouts with `mainView === 'kanban'` now reopen in the editor instead of loading a retired route.
+
+What stays for this pass: `kanban_*` SQLite tables, shared IPC contracts, and main-process handlers. Reason: existing vaults may contain historical task data, and long-context maintenance still reads those rows as supporting signals. The product should not advertise a task-board workflow while the core value is note writing, search, graphing, AI review, and knowledge maintenance.
+
 
 

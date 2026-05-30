@@ -38,7 +38,6 @@ const OutlinePanel = lazy(() => import('./components/editor/OutlinePanel').then(
 const PropertiesPanel = lazy(() => import('./components/editor/PropertiesPanel').then((m) => ({ default: m.PropertiesPanel })))
 const TagsPanel = lazy(() => import('./components/TagsPanel').then((m) => ({ default: m.TagsPanel })))
 const CalendarPanel = lazy(() => import('./components/CalendarPanel').then((m) => ({ default: m.CalendarPanel })))
-const KanbanPanel = lazy(() => import('./components/KanbanPanel').then((m) => ({ default: m.KanbanPanel })))
 const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => ({ default: m.HistoryPanel })))
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
@@ -471,10 +470,6 @@ export default function App() {
             ) : mainView === 'reader' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><ReaderInboxView /></Suspense>
-              </div>
-            ) : mainView === 'kanban' ? (
-              <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><KanbanPanel /></Suspense>
               </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>

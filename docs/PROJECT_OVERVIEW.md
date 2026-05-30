@@ -87,8 +87,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 围绕 vault 中的 Markdown 任务列表，Nexusky 提供任务级别的工作流：
 
 - 索引器抽取 Markdown 任务，识别状态（待办、已完成、Obsidian 自定义状态如 `/`、`x`、`-` 等）、嵌套层级、Dataview inline 字段、Tasks 插件的截止/计划/开始日期、优先级、循环规则和阻塞信号。
-- 看板视图（`KanbanPanel`）按列管理任务，可手动新建、拖拽、关联，也可从已索引的笔记任务批量导入或预览导入。
-- 看板的 AI 工作流：`kanban:ai-analyze`、`kanban:ai-breakdown-task`、`kanban:ai-from-note` 先生成可编辑 plan 预览，用户确认后再写入。
+- 独立看板界面已从渲染层导航中删除；`kanban_*` 表和 `kanban:*` IPC 暂时保留，只作为历史数据兼容和 long-context 维护信号来源。
 - AI Agent 提供 `plan_knowledge_maintenance` 工具，把"未解析链接、空笔记、过期任务、今日到期、高优先级、计划/开始/阻塞/循环任务、即将到期、孤岛笔记、缺失属性、重复标题或别名、待复习笔记记忆、超长笔记、知识桥接"等问题统一汇总成可执行的维护队列。
 - `list_knowledge_bridges` 工具找出语义上的桥接笔记，配合 `suggest_note_links`、`connection-opportunities` 帮助补全跨主题链接。
 - 知识维护面板通过 `maintenance:*` IPC 获取队列并应用部分自动修复；同一右侧面板也整合了"相关上下文"页签，编辑器状态栏可一键打开当前笔记的长期上下文轮播。
@@ -412,7 +411,6 @@ AI 面板还支持：
 | 搜索 | `components/SearchPanel.tsx` | 全文/本地相关检索、检索索引进度 |
 | 图谱 | `components/graph/GraphView.tsx` | D3 知识图谱；当前 UI 使用 group 总览 + folder-scope 目录钻取，底层 `db:get-graph` 兼容 Semantic / Connection / Folder；linkType 视觉区分，力仿真在 `workers/graph-force-worker.ts` 中跑 |
 | 知识空间 | `components/canvas/CanvasView.tsx` | 属性/时间图层、节点布局和默认可见的正交连接线路由 |
-| 看板 | `components/KanbanPanel.tsx` | 任务列、拖拽、AI 分析 |
 | 阅读收件箱 | `components/reader/ReaderInboxView.tsx` | 外部阅读材料 triage |
 | 长期上下文面板 | `components/long-context/*` | 当前笔记相关上下文、关系卡片、轮播布局和长期上下文徽标 |
 | 维护队列 | `components/maintenance/MaintenanceQueuePanel.tsx` | 知识维护项列表、筛选、修复入口，以及当前笔记相关上下文页签 |

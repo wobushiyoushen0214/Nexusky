@@ -130,7 +130,6 @@
     "chat": "AI Chat",
     "tags": "Tags",
     "calendar": "Calendar",
-    "kanban": "Kanban",
     "history": "History",
     "properties": "Properties",
     "outline": "Outline",
@@ -274,14 +273,7 @@
       "achieved": "Goal achieved",
       "partial": "{{succeeded}} step(s) succeeded, {{failed}} failed",
       "unmet": "Unmet expectations",
-      "suggestions": "Suggestions",
-      "sendToKanban": "Send to Kanban",
-      "sendToKanbanTitle": "Track follow-up on this agent run by creating a Kanban task from its goal.",
-      "sendToKanbanSuccess": "Sent to Kanban",
-      "kanbanSummaryAchieved": "Agent run completed.",
-      "kanbanSummaryPartial": "Agent run partial: {{succeeded}} ok / {{failed}} failed",
-      "kanbanSummarySuggestions": "Follow-up suggestions",
-      "kanbanFallback": "Source: agent run {{runId}}"
+      "suggestions": "Suggestions"
     },
     "errors": {
       "goalRequired": "Goal is required"
@@ -434,7 +426,6 @@
       "canvas": { "label": "Open knowledge space", "description": "Explore notes as property or time layers" },
       "timeline": { "label": "Open Knowledge Space time layer", "description": "Review note activity by creation or update time inside Knowledge Space" },
       "readerInbox": { "label": "Open reader inbox", "description": "Browse imported Notion, Readwise, and Pocket knowledge in one place" },
-      "openKanban": { "label": "Open task kanban", "description": "Manage task columns and dependencies; hidden from the activity bar by default — re-add via right-click" },
       "graphCurrent": { "label": "Generate AI graph for current note", "description": "Infer concept relationships from the current note" },
       "inferLinks": { "label": "Infer vault-wide semantic links", "description": "Fill implicit relationships and refresh the knowledge graph" },
       "memoryIndex": { "label": "Generate AI memory index", "description": "Create note-level memories for long-term knowledge linking" },
@@ -743,7 +734,6 @@
     "pluginPanelEmpty": "No plugin panel selected",
     "pluginPanelNoContent": "This plugin panel has no content to display.",
     "editorPlaceholder": "Start writing...",
-    "kanbanAiAnalyzeFailed": "AI analysis failed",
     "syncDone": "Sync complete: ↑{{pushed}} ↓{{pulled}}",
     "syncError": "Sync error: {{error}}",
     "syncFailed": "Sync failed: {{error}}"
