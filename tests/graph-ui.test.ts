@@ -12,6 +12,7 @@ import {
   isGraphNodeHiddenByGroup,
   seedGraphNodeFallbackPositions,
   seedNodePositionsFromCaches,
+  shouldUseGraphRasterRenderer,
   shouldSkipGraphAutoZoom
 } from '../packages/renderer/src/components/graph/graph-types'
 import { buildGraphGroupColorMap } from '../packages/renderer/src/components/graph/graph-colors'
@@ -194,6 +195,13 @@ describe('graph UI layout helpers', () => {
     expect(world.minY).toBeLessThan(0)
     expect(world.width).toBeGreaterThan(800)
     expect(world.height).toBeGreaterThan(600)
+  })
+
+  it('switches dense graphs to the raster renderer before DOM elements explode', () => {
+    expect(shouldUseGraphRasterRenderer({ visibleNodeCount: 120, visibleLinkCount: 180 })).toBe(false)
+    expect(shouldUseGraphRasterRenderer({ visibleNodeCount: 420, visibleLinkCount: 120 })).toBe(true)
+    expect(shouldUseGraphRasterRenderer({ visibleNodeCount: 180, visibleLinkCount: 900 })).toBe(true)
+    expect(shouldUseGraphRasterRenderer({ visibleNodeCount: 360, visibleLinkCount: 540 })).toBe(true)
   })
 
   it('seeds fallback DOM node positions without overwriting cached layout', () => {

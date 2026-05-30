@@ -53,6 +53,23 @@ export const DEFAULT_GRAPH_DISPLAY_STATE: GraphDisplayState = {
   showFolderEdges: false,
 }
 
+export const GRAPH_RASTER_NODE_THRESHOLD = 420
+export const GRAPH_RASTER_EDGE_THRESHOLD = 900
+export const GRAPH_RASTER_DOM_ELEMENT_THRESHOLD = 900
+
+export function shouldUseGraphRasterRenderer(options: {
+  visibleNodeCount: number
+  visibleLinkCount: number
+}): boolean {
+  const nodeCount = Math.max(0, options.visibleNodeCount)
+  const linkCount = Math.max(0, options.visibleLinkCount)
+  return (
+    nodeCount >= GRAPH_RASTER_NODE_THRESHOLD ||
+    linkCount >= GRAPH_RASTER_EDGE_THRESHOLD ||
+    nodeCount + linkCount >= GRAPH_RASTER_DOM_ELEMENT_THRESHOLD
+  )
+}
+
 export const FILE_BRIGHTNESS_LEVELS = [
   { outerBlur: 2, outerOpacity: 0.12, innerOpacity: 0.15 },
   { outerBlur: 3, outerOpacity: 0.25, innerOpacity: 0.3 },

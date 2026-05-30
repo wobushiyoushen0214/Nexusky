@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -20,6 +20,7 @@ import {
   isGraphNodeHiddenByDisplay,
   isGraphNodeHiddenByGroup,
   seedGraphNodeFallbackPositions,
+  shouldUseGraphRasterRenderer,
   type GraphCanvasWorld,
   type SimLink,
   type SimNode
@@ -219,6 +220,387 @@ function getCurrentRelPath(currentFilePath: string | null, vaultPath: string | n
 
 function clampGraphZoom(value: number): number {
   return Math.max(GRAPH_MIN_ZOOM, Math.min(GRAPH_MAX_ZOOM, value))
+}
+
+interface GraphRasterCanvasProps {
+  viewportRef: RefObject<HTMLDivElement | null>
+  world: GraphCanvasWorld
+  nodes: PositionedGraphCanvasNode[]
+  folderLinks: GraphRenderableLink[]
+  relationLinks: GraphRenderableLink[]
+  zoomValue: number
+  showLabels: boolean
+  showArrows: boolean
+  hoveredNodeId: string | null
+  connectedNodeIds: ReadonlySet<string>
+  normalizedSearchQuery: string
+  currentRelPath: string
+}
+
+interface GraphRasterPalette {
+  bgBase: string
+  textPrimary: string
+  textSecondary: string
+  textTertiary: string
+  accent: string
+}
+
+interface GraphRasterDrawOptions extends GraphRasterCanvasProps {
+  palette: GraphRasterPalette
+  viewport: HTMLDivElement
+  width: number
+  height: number
+}
+
+function getGraphCssVar(styles: CSSStyleDeclaration, name: string, fallback: string): string {
+  const value = styles.getPropertyValue(name).trim()
+  return value || fallback
+}
+
+function resolveGraphCanvasColor(value: string | undefined, styles: CSSStyleDeclaration, fallback: string): string {
+  const trimmed = value?.trim()
+  if (!trimmed) return fallback
+  const match = trimmed.match(/^var\((--[\w-]+)(?:,\s*([^)]+))?\)$/)
+  if (!match) return trimmed
+  return getGraphCssVar(styles, match[1], match[2]?.trim() || fallback)
+}
+
+function getGraphRasterPoint(
+  node: PositionedGraphCanvasNode,
+  world: GraphCanvasWorld,
+  viewport: HTMLDivElement,
+  zoom: number,
+): { x: number; y: number } {
+  return {
+    x: (node.x - world.minX) * zoom - viewport.scrollLeft,
+    y: (node.y - world.minY) * zoom - viewport.scrollTop,
+  }
+}
+
+function graphRasterSegmentTouchesViewport(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  width: number,
+  height: number,
+  margin: number,
+): boolean {
+  return (
+    Math.max(x1, x2) >= -margin &&
+    Math.min(x1, x2) <= width + margin &&
+    Math.max(y1, y2) >= -margin &&
+    Math.min(y1, y2) <= height + margin
+  )
+}
+
+function graphRasterPointTouchesViewport(
+  x: number,
+  y: number,
+  radius: number,
+  width: number,
+  height: number,
+): boolean {
+  return x + radius >= 0 && x - radius <= width && y + radius >= 0 && y - radius <= height
+}
+
+function truncateGraphCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text
+  let next = text
+  while (next.length > 1 && ctx.measureText(`${next}...`).width > maxWidth) {
+    next = next.slice(0, -1)
+  }
+  return `${next}...`
+}
+
+function drawGraphRasterLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  options: { maxWidth: number; color: string; alpha: number; fontSize: number; weight?: number },
+): void {
+  if (!text) return
+  ctx.save()
+  ctx.globalAlpha = options.alpha
+  ctx.fillStyle = options.color
+  ctx.font = `${options.weight ?? 500} ${options.fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(truncateGraphCanvasText(ctx, text, options.maxWidth), x, y)
+  ctx.restore()
+}
+
+function drawGraphRasterLink(
+  ctx: CanvasRenderingContext2D,
+  item: GraphRenderableLink,
+  styles: CSSStyleDeclaration,
+  options: GraphRasterDrawOptions,
+): void {
+  const { link, source, target, sourceId, targetId } = item
+  const sourcePoint = getGraphRasterPoint(source, options.world, options.viewport, options.zoomValue)
+  const targetPoint = getGraphRasterPoint(target, options.world, options.viewport, options.zoomValue)
+  if (!graphRasterSegmentTouchesViewport(sourcePoint.x, sourcePoint.y, targetPoint.x, targetPoint.y, options.width, options.height, 96)) return
+
+  const dx = targetPoint.x - sourcePoint.x
+  const dy = targetPoint.y - sourcePoint.y
+  const distance = Math.sqrt(dx * dx + dy * dy) || 1
+  const sourceRadius = getGraphNodeEdgeRadius(source) * options.zoomValue
+  const targetRadius = getGraphNodeEdgeRadius(target) * options.zoomValue
+  const x1 = sourcePoint.x + (dx / distance) * sourceRadius
+  const y1 = sourcePoint.y + (dy / distance) * sourceRadius
+  const x2 = targetPoint.x - (dx / distance) * targetRadius
+  const y2 = targetPoint.y - (dy / distance) * targetRadius
+  const lineLength = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+  if (lineLength < 1) return
+
+  const sourceColor = resolveGraphCanvasColor(source.color, styles, options.palette.textTertiary)
+  const targetColor = resolveGraphCanvasColor(target.color, styles, sourceColor)
+  const isCrossCluster = isGraphCrossClusterRelation(link, source, target)
+  const isHoverDimmed = options.hoveredNodeId != null && options.hoveredNodeId !== sourceId && options.hoveredNodeId !== targetId
+  const isHighlighted = options.hoveredNodeId === sourceId || options.hoveredNodeId === targetId
+  let alpha = link.linkType === 'folder' ? 0.1 : link.linkType === 'inferred' ? 0.11 : 0.2
+  if (isCrossCluster && link.linkType === 'explicit') alpha = 0.42
+  if (isCrossCluster && link.linkType === 'inferred') alpha = 0.26
+  if (isHighlighted) alpha = 0.78
+  if (isHoverDimmed) alpha = 0.035
+
+  let strokeStyle: string | CanvasGradient = sourceColor
+  if (isCrossCluster && link.linkType !== 'inferred') {
+    const gradient = ctx.createLinearGradient(x1, y1, x2, y2)
+    gradient.addColorStop(0, sourceColor)
+    gradient.addColorStop(1, targetColor)
+    strokeStyle = gradient
+  }
+
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.strokeStyle = strokeStyle
+  ctx.lineWidth = Math.max(0.65, getGraphEdgeWidth(link) * options.zoomValue)
+  ctx.lineCap = 'round'
+  if (link.linkType === 'inferred') {
+    const dash = Math.max(2, 5 * options.zoomValue)
+    ctx.setLineDash([dash, dash])
+  }
+  ctx.beginPath()
+  ctx.moveTo(x1, y1)
+  ctx.lineTo(x2, y2)
+  ctx.stroke()
+
+  if (options.showArrows && link.linkType !== 'folder' && lineLength > 14) {
+    const angle = Math.atan2(y2 - y1, x2 - x1)
+    const arrowLength = Math.max(5, 7 * options.zoomValue)
+    const arrowWidth = Math.max(3, 4 * options.zoomValue)
+    ctx.setLineDash([])
+    ctx.fillStyle = targetColor
+    ctx.translate(x2, y2)
+    ctx.rotate(angle)
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.lineTo(-arrowLength, -arrowWidth)
+    ctx.lineTo(-arrowLength, arrowWidth)
+    ctx.closePath()
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
+function drawGraphRasterNode(
+  ctx: CanvasRenderingContext2D,
+  node: PositionedGraphCanvasNode,
+  styles: CSSStyleDeclaration,
+  options: GraphRasterDrawOptions,
+): void {
+  const point = getGraphRasterPoint(node, options.world, options.viewport, options.zoomValue)
+  const nodeSize = getGraphNodeSize(node)
+  const nodeRadius = node.type === 'folder'
+    ? (nodeSize / 2) * options.zoomValue
+    : Math.max(2, getNodeRadius(node) * options.zoomValue)
+  const viewportRadius = Math.max(nodeRadius + 72, 24)
+  if (!graphRasterPointTouchesViewport(point.x, point.y, viewportRadius, options.width, options.height)) return
+
+  const isCurrent = node.filePath === options.currentRelPath
+  const isHovered = options.hoveredNodeId === node.id
+  const isConnected = options.connectedNodeIds.has(node.id)
+  const isSearchMatch = !!options.normalizedSearchQuery && node.title.toLowerCase().includes(options.normalizedSearchQuery)
+  const isSearchDimmed = !!options.normalizedSearchQuery && !isSearchMatch
+  const isHoverDimmed = options.hoveredNodeId != null && !isHovered && !isConnected
+  const opacity = isSearchDimmed || isHoverDimmed ? 0.12 : 1
+  const nodeColor = resolveGraphCanvasColor(getGraphNodeColor(node), styles, options.palette.accent)
+  const ringColors = node.colors && node.colors.length > 1
+    ? node.colors.map((color) => resolveGraphCanvasColor(color, styles, nodeColor))
+    : [nodeColor]
+
+  ctx.save()
+  if (node.type === 'folder') {
+    ctx.globalAlpha = opacity * 0.34
+    ctx.fillStyle = nodeColor
+    ctx.beginPath()
+    ctx.arc(point.x, point.y, Math.max(16, nodeRadius), 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.globalAlpha = opacity * 0.86
+    ctx.fillStyle = options.palette.bgBase
+    ctx.beginPath()
+    ctx.arc(point.x, point.y, Math.max(12, nodeRadius * 0.72), 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.globalAlpha = opacity * (isHovered || isCurrent ? 0.86 : 0.48)
+    ctx.strokeStyle = nodeColor
+    ctx.lineWidth = isHovered || isCurrent ? 1.8 : 1.1
+    ctx.beginPath()
+    ctx.arc(point.x, point.y, Math.max(16, nodeRadius), 0, Math.PI * 2)
+    ctx.stroke()
+
+    const folderCount = node.noteCount ?? node.directNoteCount ?? node.linkCount
+    if (folderCount > 0 && nodeRadius >= 14) {
+      drawGraphRasterLabel(ctx, formatGraphNodeCount(folderCount), point.x, point.y, {
+        maxWidth: Math.max(28, nodeRadius * 1.5),
+        color: options.palette.textPrimary,
+        alpha: opacity * 0.86,
+        fontSize: Math.max(8, Math.min(12, 10 * options.zoomValue)),
+        weight: 650,
+      })
+    }
+
+    drawGraphRasterLabel(ctx, node.title, point.x, point.y + Math.max(18, nodeRadius + 11 * options.zoomValue), {
+      maxWidth: Math.max(72, 160 * options.zoomValue),
+      color: options.palette.textSecondary,
+      alpha: opacity * 0.82,
+      fontSize: Math.max(8, Math.min(12, 10.5 * options.zoomValue)),
+      weight: 650,
+    })
+    ctx.restore()
+    return
+  }
+
+  ctx.globalAlpha = opacity
+  ctx.fillStyle = options.palette.bgBase
+  ctx.beginPath()
+  ctx.arc(point.x, point.y, nodeRadius, 0, Math.PI * 2)
+  ctx.fill()
+
+  const ringRadius = nodeRadius + Math.max(1.5, 2 * options.zoomValue)
+  ctx.lineWidth = Math.max(1, 1.4 * options.zoomValue)
+  if (ringColors.length > 1) {
+    const segment = (Math.PI * 2) / ringColors.length
+    ringColors.forEach((color, index) => {
+      ctx.globalAlpha = opacity * 0.9
+      ctx.strokeStyle = color
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, ringRadius, index * segment, (index + 1) * segment)
+      ctx.stroke()
+    })
+  } else {
+    ctx.globalAlpha = opacity * (isHovered || isCurrent ? 0.95 : 0.58)
+    ctx.strokeStyle = nodeColor
+    ctx.beginPath()
+    ctx.arc(point.x, point.y, ringRadius, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  if (isCurrent || isHovered) {
+    ctx.globalAlpha = opacity * 0.44
+    ctx.strokeStyle = nodeColor
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.arc(point.x, point.y, ringRadius + Math.max(5, 8 * options.zoomValue), 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  const labelHidden = isGraphLabelHidden(node, options.showLabels, isCurrent, {
+    zoom: options.zoomValue,
+    nodeCount: options.nodes.length,
+    isHovered,
+    isConnected,
+    isSearchMatch,
+  })
+  if (!labelHidden) {
+    drawGraphRasterLabel(ctx, node.title, point.x, point.y + Math.max(13, ringRadius + 8 * options.zoomValue), {
+      maxWidth: Math.max(72, 160 * options.zoomValue),
+      color: isCurrent || isHovered ? options.palette.textPrimary : options.palette.textSecondary,
+      alpha: opacity * (isCurrent || isHovered ? 1 : 0.78),
+      fontSize: Math.max(8, Math.min(12, (isCurrent ? 11 : 9.5) * options.zoomValue)),
+      weight: isCurrent ? 650 : 500,
+    })
+  }
+
+  ctx.restore()
+}
+
+function GraphRasterCanvas(props: GraphRasterCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const latestPropsRef = useRef(props)
+  const scheduleRenderRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    latestPropsRef.current = props
+    scheduleRenderRef.current()
+  }, [props])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const viewport = props.viewportRef.current
+    if (!canvas || !viewport) return
+
+    let rafId: number | null = null
+    const render = () => {
+      rafId = null
+      const current = latestPropsRef.current
+      const width = viewport.clientWidth
+      const height = viewport.clientHeight
+      if (width <= 0 || height <= 0) return
+
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+      const nextWidth = Math.max(1, Math.floor(width * pixelRatio))
+      const nextHeight = Math.max(1, Math.floor(height * pixelRatio))
+      if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+        canvas.width = nextWidth
+        canvas.height = nextHeight
+      }
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const styles = getComputedStyle(viewport)
+      const palette: GraphRasterPalette = {
+        bgBase: getGraphCssVar(styles, '--bg-base', 'rgb(17, 19, 24)'),
+        textPrimary: getGraphCssVar(styles, '--text-primary', 'rgb(232, 236, 242)'),
+        textSecondary: getGraphCssVar(styles, '--text-secondary', 'rgb(178, 186, 198)'),
+        textTertiary: getGraphCssVar(styles, '--text-tertiary', 'rgb(129, 140, 153)'),
+        accent: getGraphCssVar(styles, '--accent', 'rgb(87, 143, 255)'),
+      }
+      const options: GraphRasterDrawOptions = { ...current, viewport, width, height, palette }
+
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+      ctx.clearRect(0, 0, width, height)
+      current.folderLinks.forEach((link) => drawGraphRasterLink(ctx, link, styles, options))
+      current.relationLinks.forEach((link) => drawGraphRasterLink(ctx, link, styles, options))
+      current.nodes.forEach((node) => drawGraphRasterNode(ctx, node, styles, options))
+    }
+
+    const scheduleRender = () => {
+      if (rafId != null) return
+      rafId = window.requestAnimationFrame(render)
+    }
+
+    scheduleRenderRef.current = scheduleRender
+    scheduleRender()
+    viewport.addEventListener('scroll', scheduleRender, { passive: true })
+    window.addEventListener('resize', scheduleRender)
+    const resizeObserver = new ResizeObserver(scheduleRender)
+    resizeObserver.observe(viewport)
+    return () => {
+      viewport.removeEventListener('scroll', scheduleRender)
+      window.removeEventListener('resize', scheduleRender)
+      resizeObserver.disconnect()
+      if (rafId != null) window.cancelAnimationFrame(rafId)
+      scheduleRenderRef.current = () => {}
+    }
+  }, [props.viewportRef])
+
+  return <canvas ref={canvasRef} className="graph-canvas-raster" aria-hidden="true" />
 }
 
 export function GraphView() {
@@ -713,6 +1095,16 @@ export function GraphView() {
     [visibleLinks]
   )
 
+  const visibleNodes = useMemo(
+    () => layout.nodes.filter((node): node is PositionedGraphCanvasNode => hasPosition(node) && !hiddenNodeIds.has(node.id)),
+    [hiddenNodeIds, layout.nodes]
+  )
+
+  const usesRasterGraph = shouldUseGraphRasterRenderer({
+    visibleNodeCount: visibleNodes.length,
+    visibleLinkCount: visibleLinks.length,
+  })
+
   const getGraphPointFromPointer = useCallback((event: Pick<PointerEvent, 'clientX' | 'clientY'>) => {
     const viewport = viewportRef.current
     if (!viewport) return null
@@ -724,6 +1116,24 @@ export function GraphView() {
       y: (viewport.scrollTop + event.clientY - rect.top) / zoom + world.minY,
     }
   }, [])
+
+  const getRasterNodeFromPointer = useCallback((event: Pick<PointerEvent, 'clientX' | 'clientY'>) => {
+    const point = getGraphPointFromPointer(event)
+    if (!point) return null
+    let bestNode: PositionedGraphCanvasNode | null = null
+    let bestDistance = Infinity
+    for (let index = visibleNodes.length - 1; index >= 0; index--) {
+      const node = visibleNodes[index]
+      const radius = Math.max(node.type === 'folder' ? getGraphNodeSize(node) / 2 : getGraphNodeSize(node) / 2, 14)
+      const dx = point.x - node.x
+      const dy = point.y - node.y
+      const distance = dx * dx + dy * dy
+      if (distance > radius * radius || distance >= bestDistance) continue
+      bestDistance = distance
+      bestNode = node
+    }
+    return bestNode
+  }, [getGraphPointFromPointer, visibleNodes])
 
   const updateNodePosition = useCallback((id: string, x: number, y: number) => {
     const node = nodeMapRef.current.get(id)
@@ -803,23 +1213,7 @@ export function GraphView() {
     }
   }, [panning])
 
-  const handleCanvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement
-    if (target.closest('[data-graph-node]')) return
-    if (target.closest('button,input,textarea,select,a')) return
-    if (event.button !== 0 && event.button !== 1) return
-    const viewport = viewportRef.current
-    if (!viewport) return
-    event.preventDefault()
-    setPanning({
-      startX: event.clientX,
-      startY: event.clientY,
-      scrollLeft: viewport.scrollLeft,
-      scrollTop: viewport.scrollTop
-    })
-  }
-
-  const handleNodePointerDown = (event: ReactPointerEvent<HTMLButtonElement>, node: GraphCanvasNode) => {
+  const handleNodePointerDown = (event: ReactPointerEvent<HTMLElement>, node: GraphCanvasNode) => {
     if (event.button !== 0) return
     const point = getGraphPointFromPointer(event.nativeEvent)
     if (!point) return
@@ -837,6 +1231,40 @@ export function GraphView() {
     }
     setDraggingNodeId(node.id)
     workerRef.current?.postMessage({ type: 'drag-start', id: node.id, x, y })
+  }
+
+  const handleCanvasPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    if (target.closest('[data-graph-node]')) return
+    if (target.closest('button,input,textarea,select,a')) return
+    if (event.button !== 0 && event.button !== 1) return
+    if (usesRasterGraph) {
+      const hitNode = getRasterNodeFromPointer(event.nativeEvent)
+      if (hitNode) {
+        handleNodePointerDown(event, hitNode)
+        return
+      }
+    }
+    const viewport = viewportRef.current
+    if (!viewport) return
+    event.preventDefault()
+    setPanning({
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop
+    })
+  }
+
+  const handleCanvasPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!usesRasterGraph || panning || draggingNodeId) return
+    const hitNode = getRasterNodeFromPointer(event.nativeEvent)
+    setHoveredNodeId((current) => current === (hitNode?.id ?? null) ? current : hitNode?.id ?? null)
+  }
+
+  const handleCanvasPointerLeave = () => {
+    if (!usesRasterGraph || draggingNodeId) return
+    setHoveredNodeId(null)
   }
 
   const fitToView = useCallback(() => {
@@ -967,76 +1395,97 @@ export function GraphView() {
       <div className="graph-canvas-stage">
         <div
           ref={viewportRef}
-          className={`graph-canvas-viewport${panning ? ' is-panning' : ''}`}
+          className={`graph-canvas-viewport${panning ? ' is-panning' : ''}${usesRasterGraph ? ' uses-raster' : ''}${usesRasterGraph && hoveredNodeId ? ' has-node-hover' : ''}`}
           onPointerDown={handleCanvasPointerDown}
+          onPointerMove={handleCanvasPointerMove}
+          onPointerLeave={handleCanvasPointerLeave}
         >
           <div className="graph-canvas-world" style={canvasWorldStyle}>
-            <div className="graph-canvas-scaled" style={scaledWorldStyle}>
-              <div className="graph-canvas-edge-layer" aria-hidden="true">
-                {folderVisibleLinks.map(renderGraphEdge)}
-              </div>
+            {!usesRasterGraph && (
+              <div className="graph-canvas-scaled" style={scaledWorldStyle}>
+                <div className="graph-canvas-edge-layer" aria-hidden="true">
+                  {folderVisibleLinks.map(renderGraphEdge)}
+                </div>
 
-              <div className="graph-canvas-node-layer">
-                {layout.nodes.map((node) => {
-                  if (!hasPosition(node) || hiddenNodeIds.has(node.id)) return null
-                  const isCurrent = node.filePath === currentRelPath
-                  const isSearchDimmed = !!normalizedSearchQuery && !node.title.toLowerCase().includes(normalizedSearchQuery)
-                  const isHoverDimmed = hoveredNodeId != null && hoveredNodeId !== node.id && !connectedNodeIds.has(node.id)
-                  const nodeSize = getGraphNodeSize(node)
-                  const nodeStyle = {
-                    left: node.x - layout.world.minX,
-                    top: node.y - layout.world.minY,
-                    '--node-size': `${nodeSize}px`,
-                    '--node-core-size': `${Math.max(8, getNodeRadius(node) * 2)}px`,
-                    '--node-color': getGraphNodeColor(node),
-                    '--node-ring': getGraphNodeRing(node),
-                    '--node-fill': getGraphNodeFill(node),
-                  } as CSSProperties
-                  const labelHidden = isGraphLabelHidden(node, showLabels, isCurrent, {
-                    zoom: zoomValue,
-                    nodeCount: layout.nodes.length,
-                    isHovered: hoveredNodeId === node.id,
-                    isConnected: connectedNodeIds.has(node.id),
-                    isSearchMatch: !!normalizedSearchQuery && !isSearchDimmed,
-                  })
-                  const folderCount = node.noteCount ?? node.directNoteCount ?? node.linkCount
-                  return (
-                    <button
-                      key={node.id}
-                      data-graph-node
-                      type="button"
-                      className={`graph-canvas-node ${node.type}${isCurrent ? ' is-current' : ''}${isSearchDimmed || isHoverDimmed ? ' is-dimmed' : ''}${draggingNodeId === node.id ? ' is-dragging' : ''}`}
-                      style={nodeStyle}
-                      title={node.filePath || node.title}
-                      onPointerDown={(event) => handleNodePointerDown(event, node)}
-                      onMouseEnter={() => setHoveredNodeId(node.id)}
-                      onMouseLeave={() => setHoveredNodeId((current) => current === node.id ? null : current)}
-                    >
-                      {node.type === 'folder' ? (
-                        <>
-                          <span className="graph-canvas-folder-dot" />
-                          <span className="graph-canvas-folder-title">{node.title}</span>
-                          {folderCount > 0 && (
-                            <span className="graph-canvas-folder-count">{formatGraphNodeCount(folderCount)}</span>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <span className="graph-canvas-node-core" />
-                          <span className={`graph-canvas-node-label${isCurrent ? ' active' : ''}${labelHidden ? ' hidden' : ''}`}>{node.title}</span>
-                        </>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
+                <div className="graph-canvas-node-layer">
+                  {layout.nodes.map((node) => {
+                    if (!hasPosition(node) || hiddenNodeIds.has(node.id)) return null
+                    const isCurrent = node.filePath === currentRelPath
+                    const isSearchDimmed = !!normalizedSearchQuery && !node.title.toLowerCase().includes(normalizedSearchQuery)
+                    const isHoverDimmed = hoveredNodeId != null && hoveredNodeId !== node.id && !connectedNodeIds.has(node.id)
+                    const nodeSize = getGraphNodeSize(node)
+                    const nodeStyle = {
+                      left: node.x - layout.world.minX,
+                      top: node.y - layout.world.minY,
+                      '--node-size': `${nodeSize}px`,
+                      '--node-core-size': `${Math.max(8, getNodeRadius(node) * 2)}px`,
+                      '--node-color': getGraphNodeColor(node),
+                      '--node-ring': getGraphNodeRing(node),
+                      '--node-fill': getGraphNodeFill(node),
+                    } as CSSProperties
+                    const labelHidden = isGraphLabelHidden(node, showLabels, isCurrent, {
+                      zoom: zoomValue,
+                      nodeCount: layout.nodes.length,
+                      isHovered: hoveredNodeId === node.id,
+                      isConnected: connectedNodeIds.has(node.id),
+                      isSearchMatch: !!normalizedSearchQuery && !isSearchDimmed,
+                    })
+                    const folderCount = node.noteCount ?? node.directNoteCount ?? node.linkCount
+                    return (
+                      <button
+                        key={node.id}
+                        data-graph-node
+                        type="button"
+                        className={`graph-canvas-node ${node.type}${isCurrent ? ' is-current' : ''}${isSearchDimmed || isHoverDimmed ? ' is-dimmed' : ''}${draggingNodeId === node.id ? ' is-dragging' : ''}`}
+                        style={nodeStyle}
+                        title={node.filePath || node.title}
+                        onPointerDown={(event) => handleNodePointerDown(event, node)}
+                        onMouseEnter={() => setHoveredNodeId(node.id)}
+                        onMouseLeave={() => setHoveredNodeId((current) => current === node.id ? null : current)}
+                      >
+                        {node.type === 'folder' ? (
+                          <>
+                            <span className="graph-canvas-folder-dot" />
+                            <span className="graph-canvas-folder-title">{node.title}</span>
+                            {folderCount > 0 && (
+                              <span className="graph-canvas-folder-count">{formatGraphNodeCount(folderCount)}</span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="graph-canvas-node-core" />
+                            <span className={`graph-canvas-node-label${isCurrent ? ' active' : ''}${labelHidden ? ' hidden' : ''}`}>{node.title}</span>
+                          </>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
 
-              <div className="graph-canvas-relation-edge-layer" aria-hidden="true">
-                {relationVisibleLinks.map(renderGraphEdge)}
+                <div className="graph-canvas-relation-edge-layer" aria-hidden="true">
+                  {relationVisibleLinks.map(renderGraphEdge)}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
+
+        {usesRasterGraph && (
+          <GraphRasterCanvas
+            viewportRef={viewportRef}
+            world={layout.world}
+            nodes={visibleNodes}
+            folderLinks={folderVisibleLinks}
+            relationLinks={relationVisibleLinks}
+            zoomValue={zoomValue}
+            showLabels={showLabels}
+            showArrows={showArrows}
+            hoveredNodeId={hoveredNodeId}
+            connectedNodeIds={connectedNodeIds}
+            normalizedSearchQuery={normalizedSearchQuery}
+            currentRelPath={currentRelPath}
+          />
+        )}
 
         <div className="graph-canvas-toolbar">
           <button type="button" title={t('canvas.zoomOut')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current / 1.16)}>-</button>
