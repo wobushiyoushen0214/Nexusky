@@ -15,6 +15,7 @@ let watcher: FSWatcher | null = null
 let currentVaultPath: string | null = null
 let structureTimer: ReturnType<typeof setTimeout> | null = null
 const changeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
+const unlinkTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
 
 export function startWatching(vaultPath: string): void {
   stopWatching()
@@ -50,16 +51,18 @@ export function startWatching(vaultPath: string): void {
   }
 
   const indexAndNotify = (path: string, eventType: 'note_created' | 'note_updated' = 'note_updated') => {
+    const pendingUnlink = unlinkTimers.get(path)
+    if (pendingUnlink) {
+      clearTimeout(pendingUnlink)
+      unlinkTimers.delete(path)
+    }
     const existing = changeTimers.get(path)
     if (existing) clearTimeout(existing)
     changeTimers.set(path, setTimeout(() => {
       changeTimers.delete(path)
       try {
-        indexNote(vaultPath, path)
+        const noteId = indexNote(vaultPath, path)
         const { createHash } = require('crypto')
-        const { relative } = require('path')
-        const relPath = relative(vaultPath, path).replace(/\\/g, '/')
-        const noteId = createHash('md5').update(relPath).digest('hex')
         invalidateNoteInCache(vaultPath, noteId)
         const content = readFileSync(path, 'utf-8')
         const contentHash = createHash('md5').update(content).digest('hex')
@@ -107,15 +110,17 @@ export function startWatching(vaultPath: string): void {
     .on('unlink', (path) => {
       notifyStructureChange()
       if (extname(path) === '.md') {
-        try {
-          const { createHash } = require('crypto')
-          const { relative } = require('path')
-          const relPath = relative(vaultPath, path).replace(/\\/g, '/')
-          const noteId = createHash('md5').update(relPath).digest('hex')
-          removeNoteIndex(vaultPath, path)
-          invalidateNoteInCache(vaultPath, noteId)
-          deleteMemory(vaultPath, noteId)
-        } catch {}
+        const existing = unlinkTimers.get(path)
+        if (existing) clearTimeout(existing)
+        unlinkTimers.set(path, setTimeout(() => {
+          unlinkTimers.delete(path)
+          try {
+            const removedNoteId = removeNoteIndex(vaultPath, path)
+            if (!removedNoteId) return
+            invalidateNoteInCache(vaultPath, removedNoteId)
+            deleteMemory(vaultPath, removedNoteId)
+          } catch {}
+        }, 1500))
       }
     })
     .on('addDir', notifyStructureChange)
@@ -137,6 +142,10 @@ export function stopWatching(): void {
     clearTimeout(timer)
   }
   changeTimers.clear()
+  for (const timer of unlinkTimers.values()) {
+    clearTimeout(timer)
+  }
+  unlinkTimers.clear()
 
   if (watcher) {
     watcher.close()

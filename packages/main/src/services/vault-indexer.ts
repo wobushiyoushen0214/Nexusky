@@ -58,7 +58,6 @@ export function cleanupStaleNoteIndexes(vaultPath: string, files: string[]): num
 
 export async function indexVault(vaultPath: string, onProgress?: (progress: VaultIndexProgress) => void): Promise<VaultIndexResult> {
   const files = collectMarkdownFiles(vaultPath)
-  cleanupStaleNoteIndexes(vaultPath, files)
 
   const batchSize = 20
   for (let i = 0; i < files.length; i += batchSize) {
@@ -73,5 +72,6 @@ export async function indexVault(vaultPath: string, onProgress?: (progress: Vaul
   }
 
   if (files.length === 0) onProgress?.({ current: 0, total: 0 })
+  cleanupStaleNoteIndexes(vaultPath, files)
   return { indexed: files.length }
 }

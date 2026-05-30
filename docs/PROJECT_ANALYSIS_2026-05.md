@@ -85,7 +85,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | TF-IDF 全内存硬上限 2000 chunk（旧笔记搜不到）；`findSimilarNotes`/memory 关联 O(N²)（✅ 本提交） | `search-index.ts:6,498-549`、`memory.ts:136` |
 | P1 | 知识图谱用 DOM 渲染节点+边，数千节点卡死，无 Canvas/WebGL 降级 | `GraphView.tsx:952-1009` |
 | P1 | 并发写静默丢失：无 `busy_timeout`，首次索引 worker 长事务期间 watcher 写撞 `SQLITE_BUSY` 被 `catch{}` 吞掉 | `watcher.ts:87`、`database.ts:22-41` |
-| P1 | 重命名/移动 = 删除+新建（id 绑路径），丢失该笔记的 AI 记忆/关系/看板溯源 | `indexer.ts:147`、`watcher.ts:102-115` |
+| P1 | 重命名/移动 = 删除+新建（id 绑路径），丢失该笔记的 AI 记忆/关系/看板溯源（✅ 本提交） | `indexer.ts:147`、`watcher.ts:102-115` |
 | P1 | 后台关系发现每次保存做 2000 行 JS 扫描 + 10×`LIKE`；存储无限增长（`pruneExpired` 死代码、无 VACUUM）（✅ 本提交已把关系候选关键词/chunk 召回改走 FTS；存储 GC 已由 `da9565d` 修复） | `relation-candidates.ts:326-415`、`proactive-store.ts:350` |
 | P1 | `getPropertyRows`/未链接提及在主进程同步重读全文，大 vault 卡主线程（✅ 本提交） | `indexer.ts:211-260,345-386` |
 | P2 | 附件/图片根本不同步（`collectLocalFiles` 只收 `.md`+memories），隐性数据缺口（✅ 本提交） | 各 provider `collectLocalFiles` |
@@ -170,7 +170,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | ✅ 本提交 |
 | P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
 | P1 | reduced-motion 媒体块 + `--text-tertiary` 提亮 + 全局 `:focus-visible` | 小 | 高 | ✅ 3c0f45f |
-| P2 | 图谱 Canvas/WebGL 化；稳定笔记 ID；mac 签名；修文档漂移 | 大/中 | 中-高 | 🔧 |
+| P2 | 图谱 Canvas/WebGL 化；mac 签名；修文档漂移（稳定笔记 ID ✅ 本提交） | 大/中 | 中-高 | 🔧 |
 
 ---
 
@@ -206,3 +206,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-30 | P1 Token/成本总线 | 本提交 | 所有 provider 经 `UsageTrackingProvider` 记录 chat/agent 用量；OpenAI/Responses/Claude 流式 usage 透传，缺失时按内容估算；Settings 支持输入/输出单价与本月用量摘要；ai-usage/ai-provider-types 12/12、typecheck 通过 |
 | 2026-05-30 | P1 属性表/未链接提及查询去全文重读 | 本提交 | `indexNote` 写入 `notes.properties_json/properties_version` 属性快照，`getPropertyRows` 只读索引表；未链接提及继续走 FTS 内容，不再在查询路径同步读 Markdown 全文；indexer 25/25、typecheck 通过 |
 | 2026-05-30 | P1 本地检索/记忆关联扩展性 | 本提交 | `lexicalSearch` 合并 TF-IDF 与 FTS fallback，旧笔记即使落在 2000 chunk 缓存窗口外也能命中；`findSimilarNotes` 与 memory 关联改为倒排候选对，避免直接全量两两扫描；search-index/memory-links 10/10、typecheck 通过 |
+| 2026-05-30 | P1 重命名/移动保持 note id | 本提交 | `indexNote` 对已消失旧路径的同内容新文件复用原 note id，并同步 kanban/source/context/AI relation/theme 路径引用；watcher 延迟 unlink 删除，全库索引先索引再清理 stale；vault-indexer/indexer/memory-links 28/28、typecheck 通过 |

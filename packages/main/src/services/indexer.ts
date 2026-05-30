@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import { readFileSync, statSync } from 'fs'
+import { existsSync, readFileSync, statSync } from 'fs'
 import { basename, join, relative } from 'path'
 import type Database from 'better-sqlite3'
 import { getDatabase } from './database'
@@ -14,6 +14,13 @@ const NOTE_PROPERTIES_VERSION = 1
 
 interface IndexerStatements {
   selectHash: Database.Statement
+  selectMoveCandidate: Database.Statement
+  moveNotePath: Database.Statement
+  updateKanbanSourcePath: Database.Statement
+  updateContextEventPath: Database.Statement
+  updateRelationSourcePath: Database.Statement
+  updateRelationTargetPath: Database.Statement
+  updateThemeMembershipPath: Database.Statement
   upsertNote: Database.Statement
   deleteLinks: Database.Statement
   insertLink: Database.Statement
@@ -37,7 +44,20 @@ function getIndexerStatements(db: Database.Database): IndexerStatements {
   const cached = indexerStatementsCache.get(db)
   if (cached) return cached
   const prepared: IndexerStatements = {
-    selectHash: db.prepare('SELECT content_hash, properties_version FROM notes WHERE file_path = ?'),
+    selectHash: db.prepare('SELECT id, content_hash, properties_version FROM notes WHERE file_path = ?'),
+    selectMoveCandidate: db.prepare(`
+      SELECT id, file_path
+      FROM notes
+      WHERE content_hash = ? AND file_path != ?
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `),
+    moveNotePath: db.prepare('UPDATE notes SET file_path = ? WHERE id = ?'),
+    updateKanbanSourcePath: db.prepare('UPDATE kanban_tasks SET source_file_path = ? WHERE source_note_id = ?'),
+    updateContextEventPath: db.prepare("UPDATE context_events SET entity_path = ? WHERE entity_type = 'note' AND entity_id = ?"),
+    updateRelationSourcePath: db.prepare("UPDATE ai_relations SET source_path = ? WHERE source_type = 'note' AND source_id = ?"),
+    updateRelationTargetPath: db.prepare("UPDATE ai_relations SET target_path = ? WHERE target_type = 'note' AND target_id = ?"),
+    updateThemeMembershipPath: db.prepare("UPDATE theme_memberships SET entity_path = ? WHERE entity_type = 'note' AND entity_id = ?"),
     upsertNote: db.prepare(`
       INSERT INTO notes (id, title, file_path, created_at, updated_at, content_hash, properties_json, properties_version)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -131,15 +151,38 @@ export interface OutgoingUnlinkedMentionIndex {
   mention: string
 }
 
-export function indexNote(vaultPath: string, filePath: string): void {
+function findMovedNoteCandidate(
+  vaultPath: string,
+  relPath: string,
+  contentHash: string,
+  stmts: IndexerStatements
+): { id: string; file_path: string } | undefined {
+  const candidate = stmts.selectMoveCandidate.get(contentHash, relPath) as { id: string; file_path: string } | undefined
+  if (!candidate) return undefined
+  if (existsSync(join(vaultPath, candidate.file_path))) return undefined
+  return candidate
+}
+
+function updateIndexedNotePathReferences(stmts: IndexerStatements, noteId: string, relPath: string): void {
+  stmts.updateKanbanSourcePath.run(relPath, noteId)
+  stmts.updateContextEventPath.run(relPath, noteId)
+  stmts.updateRelationSourcePath.run(relPath, noteId)
+  stmts.updateRelationTargetPath.run(relPath, noteId)
+  stmts.updateThemeMembershipPath.run(relPath, noteId)
+}
+
+export function indexNote(vaultPath: string, filePath: string): string {
   const db = getDatabase(vaultPath)
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
   const rawContent = readFileSync(filePath, 'utf-8')
   const hash = createHash('md5').update(rawContent).digest('hex')
 
   const stmts = getIndexerStatements(db)
-  const existing = stmts.selectHash.get(relPath) as { content_hash: string; properties_version?: number } | undefined
-  if (existing?.content_hash === hash && (existing.properties_version || 0) >= NOTE_PROPERTIES_VERSION) return
+  const existing = stmts.selectHash.get(relPath) as { id: string; content_hash: string; properties_version?: number } | undefined
+  if (existing?.content_hash === hash && (existing.properties_version || 0) >= NOTE_PROPERTIES_VERSION) return existing.id
+  const moveCandidate = !existing
+    ? findMovedNoteCandidate(vaultPath, relPath, hash, stmts)
+    : undefined
 
   const { data: frontmatter, content } = matter(rawContent)
   const visibleContent = stripMarkdownComments(content, { preserveLineBreaks: true })
@@ -147,7 +190,7 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const stat = statSync(filePath)
   const inlineTitle = normalizePropertyScalar(inlineProperties.title)
   const title = (frontmatter.title as string) || (typeof inlineTitle === 'string' ? inlineTitle : undefined) || extractTitle(visibleContent, filePath)
-  const id = createHash('md5').update(relPath).digest('hex')
+  const id = existing?.id || moveCandidate?.id || createHash('md5').update(relPath).digest('hex')
 
   const links = extractLinks(visibleContent)
   const aliases = Array.from(new Set([...extractAliases(frontmatter), ...extractInlineAliases(inlineProperties)]))
@@ -160,6 +203,10 @@ export function indexNote(vaultPath: string, filePath: string): void {
   const propertiesJson = JSON.stringify(properties)
 
   const transaction = db.transaction(() => {
+    if (moveCandidate) {
+      stmts.moveNotePath.run(relPath, id)
+      updateIndexedNotePathReferences(stmts, id, relPath)
+    }
     stmts.upsertNote.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash, propertiesJson, NOTE_PROPERTIES_VERSION)
     stmts.deleteLinks.run(id)
     for (const link of links) {
@@ -191,21 +238,22 @@ export function indexNote(vaultPath: string, filePath: string): void {
   transaction()
   resolveLinks(db, id, title, aliases)
   invalidateVaultQueryCache(vaultPath)
+  return id
 }
 
-export function removeNoteIndex(vaultPath: string, filePath: string): void {
+export function removeNoteIndex(vaultPath: string, filePath: string): string | null {
   const db = getDatabase(vaultPath)
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
   const note = db.prepare('SELECT id FROM notes WHERE file_path = ?').get(relPath) as { id: string } | undefined
-  if (note) {
-    const ftsRow = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?').get(note.id) as { rowid: number } | undefined
-    if (ftsRow) {
-      db.prepare('DELETE FROM notes_fts WHERE rowid = ?').run(ftsRow.rowid)
-      db.prepare('DELETE FROM notes_fts_map WHERE note_id = ?').run(note.id)
-    }
+  if (!note) return null
+  const ftsRow = db.prepare('SELECT rowid FROM notes_fts_map WHERE note_id = ?').get(note.id) as { rowid: number } | undefined
+  if (ftsRow) {
+    db.prepare('DELETE FROM notes_fts WHERE rowid = ?').run(ftsRow.rowid)
+    db.prepare('DELETE FROM notes_fts_map WHERE note_id = ?').run(note.id)
   }
   db.prepare('DELETE FROM notes WHERE file_path = ?').run(relPath)
   invalidateVaultQueryCache(vaultPath)
+  return note.id
 }
 
 export function getAllNotes(vaultPath: string): NoteIndex[] {
