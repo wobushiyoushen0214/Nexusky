@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, AIProviderConfig, ChatOptions, ToolCallEvent, ToolDefinition, AIProviderValidationResult } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, ChatUsageMeta, AIProviderConfig, ChatOptions, ToolCallEvent, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 import { parseToolArguments } from './tool-arguments'
 
@@ -92,6 +92,22 @@ function toFinishReason(stopReason: Anthropic.StopReason | null | undefined): st
   return stopReason === 'max_tokens' ? 'length' : (stopReason || 'stop')
 }
 
+function toClaudeUsageMeta(
+  usage: Anthropic.Usage | Anthropic.MessageDeltaUsage | null | undefined,
+  previous?: ChatUsageMeta
+): ChatUsageMeta | undefined {
+  if (!usage) return previous
+  const cacheCreation = usage.cache_creation_input_tokens ?? 0
+  const cacheRead = usage.cache_read_input_tokens ?? 0
+  const inputTokens = usage.input_tokens === null ? previous?.inputTokens : usage.input_tokens + cacheCreation + cacheRead
+  const outputTokens = usage.output_tokens ?? previous?.outputTokens
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: inputTokens !== undefined && outputTokens !== undefined ? inputTokens + outputTokens : undefined
+  }
+}
+
 export function normalizeClaudeMaxTokens(value?: number): number {
   if (!Number.isFinite(value)) return DEFAULT_CLAUDE_MAX_TOKENS
   return Math.max(1, Math.min(Math.floor(value as number), MAX_CLAUDE_MAX_TOKENS))
@@ -144,15 +160,19 @@ export class ClaudeProvider extends BaseAIProvider {
         }, signal ? { signal } : undefined)
 
         let finishReason = 'stop'
+        let usage: ChatUsageMeta | undefined
         for await (const event of stream) {
           if (signal?.aborted) break
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          if (event.type === 'message_start') {
+            usage = toClaudeUsageMeta(event.message.usage, usage)
+          } else if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
             yield { type: 'text', content: event.delta.text }
           } else if (event.type === 'message_delta') {
             finishReason = toFinishReason(event.delta.stop_reason)
+            usage = toClaudeUsageMeta(event.usage, usage)
           }
         }
-        yield { type: 'done', content: '', meta: { finishReason } }
+        yield { type: 'done', content: '', meta: { finishReason, usage } }
         return
       } catch (error: unknown) {
         const normalized = normalizeProviderError(error)
@@ -206,12 +226,15 @@ export class ClaudeProvider extends BaseAIProvider {
         }, signal ? { signal } : undefined)
 
         let finishReason = 'stop'
+        let usage: ChatUsageMeta | undefined
         const toolCalls = new Map<number, { id: string; name: string; arguments: string; initialInput: unknown }>()
 
         for await (const event of stream) {
           if (signal?.aborted) break
 
-          if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
+          if (event.type === 'message_start') {
+            usage = toClaudeUsageMeta(event.message.usage, usage)
+          } else if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
             toolCalls.set(event.index, {
               id: event.content_block.id,
               name: event.content_block.name,
@@ -225,6 +248,7 @@ export class ClaudeProvider extends BaseAIProvider {
             yield { type: 'text', content: event.delta.text }
           } else if (event.type === 'message_delta') {
             finishReason = toFinishReason(event.delta.stop_reason)
+            usage = toClaudeUsageMeta(event.usage, usage)
           }
         }
 
@@ -235,12 +259,13 @@ export class ClaudeProvider extends BaseAIProvider {
               id: call.id,
               name: call.name,
               arguments: call.arguments || JSON.stringify(call.initialInput || {})
-            }))
+            })),
+            meta: { usage }
           }
           return
         }
 
-        yield { type: 'done', content: '', meta: { finishReason } }
+        yield { type: 'done', content: '', meta: { finishReason, usage } }
         return
       } catch (error: unknown) {
         const normalized = normalizeProviderError(error)

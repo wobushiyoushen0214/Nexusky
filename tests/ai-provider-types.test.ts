@@ -86,11 +86,58 @@ describe('AI provider shared types', () => {
       apiKey: '',
       model: 'gpt-4.1',
       enabled: true,
+      inputCostPer1MTokens: 2,
+      outputCostPer1MTokens: 8,
       hasApiKey: true,
       capabilities: { streaming: true, toolCalling: true }
     }
 
     expect(provider.capabilities?.toolCalling).toBe(true)
+    expect(provider.inputCostPer1MTokens).toBe(2)
+  })
+
+  it('exposes AI usage IPC channels for renderer settings', () => {
+    const summary: IPCChannelMap['ai:get-usage-summary']['result'] = {
+      since: 100,
+      records: 1,
+      inputTokens: 1000,
+      outputTokens: 500,
+      totalTokens: 1500,
+      estimatedCostUsd: 0.006,
+      unknownCostRecords: 0,
+      byProvider: [{
+        providerId: 'openai',
+        providerName: 'OpenAI',
+        providerType: 'openai',
+        model: 'gpt-4.1',
+        records: 1,
+        inputTokens: 1000,
+        outputTokens: 500,
+        totalTokens: 1500,
+        estimatedCostUsd: 0.006,
+        unknownCostRecords: 0
+      }]
+    }
+    const records: IPCChannelMap['ai:list-usage-records']['result'] = [{
+      id: 'usage-1',
+      providerId: 'openai',
+      providerName: 'OpenAI',
+      providerType: 'openai',
+      model: 'gpt-4.1',
+      source: 'chat',
+      status: 'completed',
+      startedAt: 100,
+      completedAt: 200,
+      inputTokens: 1000,
+      outputTokens: 500,
+      totalTokens: 1500,
+      estimatedCostUsd: 0.006
+    }]
+    const clearResult: IPCChannelMap['ai:clear-usage-records']['result'] = { cleared: 1 }
+
+    expect(summary.totalTokens).toBe(1500)
+    expect(records[0].source).toBe('chat')
+    expect(clearResult.cleared).toBe(1)
   })
 
   it('exposes ai:probe-question with a discriminated union result', () => {

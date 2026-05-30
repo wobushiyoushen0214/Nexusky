@@ -278,6 +278,8 @@ export interface AIProviderConfig {
   apiKey: string
   model: string
   enabled: boolean
+  inputCostPer1MTokens?: number
+  outputCostPer1MTokens?: number
   hasApiKey?: boolean
   capabilities?: AIProviderCapabilities
 }
@@ -290,6 +292,53 @@ export interface AIProviderCapabilities {
 export interface AIProviderValidationResult {
   ok: boolean
   error?: string
+}
+
+export type AIUsageSource = 'chat' | 'agent' | 'completion' | 'edit' | 'utility'
+export type AIUsageStatus = 'completed' | 'error' | 'aborted'
+
+export interface AIUsageRecord {
+  id: string
+  providerId: string
+  providerName: string
+  providerType: AIProviderConfig['type']
+  model: string
+  source: AIUsageSource
+  status: AIUsageStatus
+  startedAt: number
+  completedAt: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  inputCostPer1MTokens?: number
+  outputCostPer1MTokens?: number
+  estimatedCostUsd: number | null
+  finishReason?: string
+}
+
+export interface AIUsageProviderSummary {
+  providerId: string
+  providerName: string
+  providerType: AIProviderConfig['type']
+  model: string
+  records: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  estimatedCostUsd: number
+  unknownCostRecords: number
+}
+
+export interface AIUsageSummary {
+  since?: number
+  until?: number
+  records: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  estimatedCostUsd: number
+  unknownCostRecords: number
+  byProvider: AIUsageProviderSummary[]
 }
 
 export interface ExtractedDocumentText {
@@ -772,6 +821,9 @@ export interface IPCChannelMap {
   'ai:save-providers': { params: { providers: AIProviderConfig[] }; result: void }
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:get-active-provider': { params: undefined; result: string | null }
+  'ai:get-usage-summary': { params: { since?: number; until?: number }; result: AIUsageSummary }
+  'ai:list-usage-records': { params: { since?: number; until?: number; limit?: number }; result: AIUsageRecord[] }
+  'ai:clear-usage-records': { params: undefined; result: { cleared: number } }
   'ai:validate': { params: { config: AIProviderConfig }; result: AIProviderValidationResult }
   'ai:probe-question': {
     params: { config?: AIProviderConfig; question?: string }

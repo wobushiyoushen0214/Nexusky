@@ -7,7 +7,7 @@ import type {
   ResponseInput,
   ResponseInputContent,
 } from 'openai/resources/responses/responses'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatUsageMeta, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 
 function contentToString(content: ChatMessage['content']): string {
@@ -30,6 +30,17 @@ function toResponseTools(tools: ToolDefinition[]): FunctionTool[] {
     parameters: tool.function.parameters || { type: 'object', properties: {} },
     strict: null
   }))
+}
+
+function toResponseUsageMeta(
+  usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } | null
+): ChatUsageMeta | undefined {
+  if (!usage) return undefined
+  return {
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    totalTokens: usage.total_tokens
+  }
 }
 
 export class OpenAIResponsesProvider extends BaseAIProvider {
@@ -97,15 +108,17 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         }
         const stream = await this.client.responses.create(request, signal ? { signal } : undefined)
 
+        let usage: ChatUsageMeta | undefined
         for await (const event of stream) {
           if (signal?.aborted) break
           if (event.type === 'response.output_text.delta') {
             yield { type: 'text', content: event.delta }
           } else if (event.type === 'response.completed') {
+            usage = toResponseUsageMeta(event.response.usage)
             break
           }
         }
-        yield { type: 'done', content: '' }
+        yield { type: 'done', content: '', meta: { usage } }
         return
       } catch (error: unknown) {
         const normalized = normalizeProviderError(error)
@@ -159,6 +172,7 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         const stream = await this.client.responses.create(request, signal ? { signal } : undefined)
 
         const toolCalls = new Map<string, { id: string; name: string; arguments: string }>()
+        let usage: ChatUsageMeta | undefined
 
         for await (const event of stream) {
           if (signal?.aborted) break
@@ -184,16 +198,17 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
               arguments: event.item.arguments || ''
             })
           } else if (event.type === 'response.completed') {
+            usage = toResponseUsageMeta(event.response.usage)
             break
           }
         }
 
         if (toolCalls.size > 0) {
-          yield { type: 'tool_calls', calls: Array.from(toolCalls.values()) }
+          yield { type: 'tool_calls', calls: Array.from(toolCalls.values()), meta: { usage } }
           return
         }
 
-        yield { type: 'done', content: '' }
+        yield { type: 'done', content: '', meta: { usage } }
         return
       } catch (error: unknown) {
         const normalized = normalizeProviderError(error)

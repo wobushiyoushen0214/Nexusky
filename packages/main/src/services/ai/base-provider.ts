@@ -6,6 +6,8 @@ export interface AIProviderConfig {
   apiKey: string
   model: string
   enabled: boolean
+  inputCostPer1MTokens?: number
+  outputCostPer1MTokens?: number
   hasApiKey?: boolean
   capabilities?: AIProviderCapabilities
 }
@@ -33,15 +35,27 @@ export interface ChatContentPart {
   image_url?: { url: string }
 }
 
+export interface ChatUsageMeta {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+}
+
 export interface ChatStreamEvent {
   type: 'text' | 'done' | 'error' | 'retry' | 'tool_call'
   content: string
-  meta?: { finishReason?: string }
+  meta?: {
+    finishReason?: string
+    usage?: ChatUsageMeta
+  }
 }
 
 export interface ToolCallEvent {
   type: 'tool_calls'
   calls: { id: string; name: string; arguments: string }[]
+  meta?: {
+    usage?: ChatUsageMeta
+  }
 }
 
 export interface ToolDefinition {

@@ -5,7 +5,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool,
 } from 'openai/resources/chat/completions'
-import { BaseAIProvider, ChatMessage, ChatStreamEvent, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult } from './base-provider'
+import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatUsageMeta, AIProviderConfig, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 
 function contentToString(content: ChatMessage['content']): string {
@@ -59,6 +59,17 @@ function toOpenAITools(tools: ToolDefinition[]): ChatCompletionTool[] {
   }))
 }
 
+function toOpenAIUsageMeta(
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null
+): ChatUsageMeta | undefined {
+  if (!usage) return undefined
+  return {
+    inputTokens: usage.prompt_tokens,
+    outputTokens: usage.completion_tokens,
+    totalTokens: usage.total_tokens
+  }
+}
+
 export class OpenAIProvider extends BaseAIProvider {
   override readonly capabilities = {
     streaming: true,
@@ -98,12 +109,15 @@ export class OpenAIProvider extends BaseAIProvider {
           model: this.config.model,
           messages: messages.map(toOpenAIMessage),
           stream: true,
+          ...(this.config.type === 'openai' ? { stream_options: { include_usage: true } } : {}),
           ...(options?.temperature !== undefined && { temperature: options.temperature })
         }, signal ? { signal } : undefined)
 
         let finishReason = 'stop'
+        let usage: ChatUsageMeta | undefined
         for await (const chunk of stream) {
           if (signal?.aborted) break
+          if (chunk.usage) usage = toOpenAIUsageMeta(chunk.usage)
           const choice = chunk.choices[0]
           const content = choice?.delta?.content
           if (content) {
@@ -113,7 +127,7 @@ export class OpenAIProvider extends BaseAIProvider {
             finishReason = choice.finish_reason
           }
         }
-        yield { type: 'done', content: '', meta: { finishReason } }
+        yield { type: 'done', content: '', meta: { finishReason, usage } }
         return
       } catch (error: unknown) {
         const normalized = normalizeProviderError(error)
@@ -161,14 +175,17 @@ export class OpenAIProvider extends BaseAIProvider {
           model: this.config.model,
           messages: messages.map(toOpenAIMessage),
           tools: tools.length > 0 ? toOpenAITools(tools) : undefined,
-          stream: true
+          stream: true,
+          ...(this.config.type === 'openai' ? { stream_options: { include_usage: true } } : {})
         }, signal ? { signal } : undefined)
 
         let finishReason = 'stop'
+        let usage: ChatUsageMeta | undefined
         const toolCalls: Map<number, { id: string; name: string; arguments: string }> = new Map()
 
         for await (const chunk of stream) {
           if (signal?.aborted) break
+          if (chunk.usage) usage = toOpenAIUsageMeta(chunk.usage)
           const choice = chunk.choices[0]
           const delta = choice?.delta
 
@@ -199,11 +216,11 @@ export class OpenAIProvider extends BaseAIProvider {
         // If there were tool calls, yield them
         if (toolCalls.size > 0) {
           const calls = Array.from(toolCalls.values())
-          yield { type: 'tool_calls', calls }
+          yield { type: 'tool_calls', calls, meta: { usage } }
           return
         }
 
-        yield { type: 'done', content: '', meta: { finishReason } }
+        yield { type: 'done', content: '', meta: { finishReason, usage } }
         return
       } catch (error: unknown) {
         const normalized = normalizeProviderError(error)

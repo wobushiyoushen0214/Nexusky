@@ -4,6 +4,7 @@ import { aiManager, AIProviderConfig } from '../../services/ai'
 import { store } from '../../services/store'
 import { listOllamaModels } from '../../services/ai/ollama-provider'
 import { transcribeAudio, type TranscribeAudioParams } from '../../services/ai/transcription'
+import { clearAIUsageRecords, getAIUsageSummary, listAIUsageRecords, type AIUsageQuery } from '../../services/ai/usage'
 
 function getStoredProviders(): AIProviderConfig[] {
   return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
@@ -28,6 +29,16 @@ function hydrateProviderConfig(config: AIProviderConfig): AIProviderConfig {
 function normalizeProviderForStore(config: AIProviderConfig): AIProviderConfig {
   const { hasApiKey: _hasApiKey, capabilities: _capabilities, ...rest } = config
   return rest
+}
+
+function normalizeUsageQuery(params?: AIUsageQuery): AIUsageQuery {
+  const query: AIUsageQuery = {}
+  if (typeof params?.since === 'number' && Number.isFinite(params.since)) query.since = params.since
+  if (typeof params?.until === 'number' && Number.isFinite(params.until)) query.until = params.until
+  if (typeof params?.limit === 'number' && Number.isFinite(params.limit) && params.limit > 0) {
+    query.limit = Math.floor(params.limit)
+  }
+  return query
 }
 
 export function mergeProviderSecretsForStore(providers: AIProviderConfig[], existingProviders: AIProviderConfig[]): AIProviderConfig[] {
@@ -58,6 +69,18 @@ export function registerAiProviderHandlers(): void {
 
   ipcMain.handle('ai:get-active-provider', () => {
     return (store.get('activeProviderId') as string | undefined) || null
+  })
+
+  ipcMain.handle('ai:get-usage-summary', (_event, params: AIUsageQuery) => {
+    return getAIUsageSummary(normalizeUsageQuery(params))
+  })
+
+  ipcMain.handle('ai:list-usage-records', (_event, params: AIUsageQuery) => {
+    return listAIUsageRecords(normalizeUsageQuery(params))
+  })
+
+  ipcMain.handle('ai:clear-usage-records', () => {
+    return clearAIUsageRecords()
   })
 
   ipcMain.handle('ai:validate', async (_event, params: { config: AIProviderConfig }) => {

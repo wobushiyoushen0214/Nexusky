@@ -11,7 +11,7 @@ import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCss
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
 import { ProactivePreferencesTab } from '../proactive/ProactivePreferences'
 import { LongContextDebugPanel } from '../observability/LongContextDebugPanel'
-import type { AIProviderConfig, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
+import type { AIProviderConfig, AIUsageSummary, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
@@ -91,6 +91,31 @@ const inputStyle: React.CSSProperties = {
   transition: 'border-color 150ms',
 }
 
+function currentMonthSince(): number {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+}
+
+function parseOptionalCostRate(value: string): number | undefined {
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
+}
+
+function formatTokenCount(value: number): string {
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.round(value))
+}
+
+function formatUsd(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: value > 0 && value < 0.01 ? 4 : 2,
+    maximumFractionDigits: value > 0 && value < 0.01 ? 4 : 2
+  }).format(value)
+}
+
 export function getSettingsDialogFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(SETTINGS_FOCUSABLE_SELECTOR)).filter((element) => {
     if (element.tabIndex < 0) return false
@@ -129,6 +154,8 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [testingProvider, setTestingProvider] = useState(false)
   const [probing, setProbing] = useState(false)
   const [probeResult, setProbeResult] = useState<{ ok: boolean; text: string; latencyMs?: number } | null>(null)
+  const [aiUsageSummary, setAiUsageSummary] = useState<AIUsageSummary | null>(null)
+  const [aiUsageLoading, setAiUsageLoading] = useState(false)
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false, hasSupabaseKey: false, hasServiceRoleKey: false })
   const [cloudUser, setCloudUser] = useState<CloudUser>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
@@ -136,6 +163,18 @@ export function Settings({ open, onClose }: SettingsProps) {
   const providerOverlayPointerDownRef = useRef(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
+
+  const loadAiUsageSummary = async () => {
+    setAiUsageLoading(true)
+    try {
+      const summary = await window.api.invoke('ai:get-usage-summary', { since: currentMonthSince() })
+      setAiUsageSummary(summary)
+    } catch {
+      setAiUsageSummary(null)
+    } finally {
+      setAiUsageLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (open && settingsInitialTab) {
@@ -164,6 +203,7 @@ export function Settings({ open, onClose }: SettingsProps) {
         setCloudConfig({ ...config, supabaseKey: '', serviceRoleKey: '' })
       })
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
+      loadAiUsageSummary()
     }
   }, [open])
 
@@ -230,7 +270,9 @@ export function Settings({ open, onClose }: SettingsProps) {
       ...editing,
       name: editing.name.trim(),
       apiKey: editing.apiKey.trim(),
-      baseUrl: editing.type === 'codex' && !editing.baseUrl.trim() ? 'codex' : editing.baseUrl.trim()
+      baseUrl: editing.type === 'codex' && !editing.baseUrl.trim() ? 'codex' : editing.baseUrl.trim(),
+      inputCostPer1MTokens: typeof editing.inputCostPer1MTokens === 'number' ? editing.inputCostPer1MTokens : undefined,
+      outputCostPer1MTokens: typeof editing.outputCostPer1MTokens === 'number' ? editing.outputCostPer1MTokens : undefined
     }
     if (!normalized.name) {
       toast('请填写提供商名称', 'error')
@@ -284,6 +326,7 @@ export function Settings({ open, onClose }: SettingsProps) {
       setProbeResult({ ok: false, text: getErrorMessage(e, '未知错误') })
     } finally {
       setProbing(false)
+      loadAiUsageSummary()
     }
   }
 
@@ -393,6 +436,12 @@ export function Settings({ open, onClose }: SettingsProps) {
                 </button>
               </div>
             </div>
+
+            <AIUsageSummaryPanel
+              summary={aiUsageSummary}
+              loading={aiUsageLoading}
+              onRefresh={loadAiUsageSummary}
+            />
 
             {/* Quick presets */}
             {providers.length === 0 && !editing && (
@@ -591,6 +640,36 @@ export function Settings({ open, onClose }: SettingsProps) {
                   onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                   onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'} />
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>输入价格（USD / 100万 tokens）</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={editing.inputCostPer1MTokens ?? ''}
+                    onChange={(e) => setEditing({ ...editing, inputCostPer1MTokens: parseOptionalCostRate(e.target.value) })}
+                    style={inputStyle}
+                    placeholder="例如 0.15"
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>输出价格（USD / 100万 tokens）</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={editing.outputCostPer1MTokens ?? ''}
+                    onChange={(e) => setEditing({ ...editing, outputCostPer1MTokens: parseOptionalCostRate(e.target.value) })}
+                    style={inputStyle}
+                    placeholder="例如 0.60"
+                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+                  />
+                </div>
+              </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>模型</label>
                 <ModelSelect
@@ -646,6 +725,61 @@ export function Settings({ open, onClose }: SettingsProps) {
         }}
         onCancel={() => setDetectConfirm(false)}
       />
+    </div>
+  )
+}
+
+function AIUsageSummaryPanel({
+  summary,
+  loading,
+  onRefresh
+}: {
+  summary: AIUsageSummary | null
+  loading: boolean
+  onRefresh: () => void
+}) {
+  const providerRows = summary?.byProvider.slice(0, 3) || []
+  const costLabel = summary
+    ? `${formatUsd(summary.estimatedCostUsd)}${summary.unknownCostRecords > 0 ? ` + ${summary.unknownCostRecords} 条未计价` : ''}`
+    : '-'
+
+  return (
+    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>本月用量</span>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          style={{ height: 24, padding: '0 8px', fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.65 : 1 }}
+        >
+          {loading ? '刷新中...' : '刷新'}
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>
+        <div>
+          <span style={{ display: 'block', fontSize: 10, color: 'var(--text-tertiary)' }}>请求</span>
+          <span style={{ display: 'block', marginTop: 2, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{summary ? formatTokenCount(summary.records) : '-'}</span>
+        </div>
+        <div>
+          <span style={{ display: 'block', fontSize: 10, color: 'var(--text-tertiary)' }}>Tokens</span>
+          <span style={{ display: 'block', marginTop: 2, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{summary ? formatTokenCount(summary.totalTokens) : '-'}</span>
+        </div>
+        <div>
+          <span style={{ display: 'block', fontSize: 10, color: 'var(--text-tertiary)' }}>成本</span>
+          <span style={{ display: 'block', marginTop: 2, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{costLabel}</span>
+        </div>
+      </div>
+      {providerRows.length > 0 && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {providerRows.map((row) => (
+            <div key={`${row.providerId}:${row.model}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', alignItems: 'center', gap: 8, fontSize: 11 }}>
+              <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.providerName} · {row.model}</span>
+              <span style={{ color: 'var(--text-tertiary)' }}>{formatTokenCount(row.totalTokens)} tokens</span>
+              <span style={{ color: 'var(--text-tertiary)' }}>{row.unknownCostRecords > 0 ? '未计价' : formatUsd(row.estimatedCostUsd)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

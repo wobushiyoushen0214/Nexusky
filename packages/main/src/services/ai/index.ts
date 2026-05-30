@@ -1,17 +1,64 @@
-import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult, AIProviderCapabilities, buildToolCallingUnsupportedMessage } from './base-provider'
+import { BaseAIProvider, AIProviderConfig, ChatMessage, ChatStreamEvent, ChatUsageMeta, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult, AIProviderCapabilities, buildToolCallingUnsupportedMessage } from './base-provider'
 import { OpenAIProvider } from './openai-provider'
 import { OpenAIResponsesProvider } from './openai-responses-provider'
 import { ClaudeProvider } from './claude-provider'
 import { OllamaProvider } from './ollama-provider'
 import { CodexCliProvider } from './codex-cli-provider'
 import { store } from '../store'
+import { trackAIUsageStream } from './usage'
+
+class UsageTrackingProvider extends BaseAIProvider {
+  readonly capabilities: AIProviderCapabilities
+
+  constructor(
+    private readonly inner: BaseAIProvider,
+    config: AIProviderConfig
+  ) {
+    super(config)
+    this.capabilities = inner.capabilities
+  }
+
+  chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
+    return trackAIUsageStream(
+      this.config,
+      messages,
+      this.inner.chatStream(messages, signal, options),
+      { signal, source: 'chat' }
+    )
+  }
+
+  chatStreamWithTools(
+    messages: ChatMessage[],
+    tools: ToolDefinition[],
+    signal?: AbortSignal
+  ): AsyncGenerator<ChatStreamEvent | ToolCallEvent> {
+    return trackAIUsageStream(
+      this.config,
+      messages,
+      this.inner.chatStreamWithTools(messages, tools, signal),
+      { signal, source: 'agent' }
+    )
+  }
+
+  validate(): Promise<AIProviderValidationResult> {
+    return this.inner.validate()
+  }
+}
 
 class AIManager {
   private providers: Map<string, BaseAIProvider> = new Map()
   private configHashes: Map<string, string> = new Map()
 
   private hashConfig(config: AIProviderConfig): string {
-    return `${config.type}:${config.apiKey}:${config.baseUrl}:${config.model}`
+    return [
+      config.type,
+      config.apiKey,
+      config.baseUrl,
+      config.model,
+      config.name,
+      config.inputCostPer1MTokens ?? '',
+      config.outputCostPer1MTokens ?? ''
+    ].join(':')
   }
 
   getProvider(config: AIProviderConfig): BaseAIProvider {
@@ -43,9 +90,10 @@ class AIManager {
         break
     }
 
-    this.providers.set(config.id, provider)
+    const trackedProvider = new UsageTrackingProvider(provider, config)
+    this.providers.set(config.id, trackedProvider)
     this.configHashes.set(config.id, hash)
-    return provider
+    return trackedProvider
   }
 
   clearCache(): void {
@@ -117,4 +165,4 @@ class AIManager {
 }
 
 export const aiManager = new AIManager()
-export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult, AIProviderCapabilities }
+export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ChatUsageMeta, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult, AIProviderCapabilities }

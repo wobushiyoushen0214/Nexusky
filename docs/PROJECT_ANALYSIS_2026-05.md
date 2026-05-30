@@ -96,7 +96,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 
 | 优先级 | 问题 | 证据 |
 |---|---|---|
-| P1 | 无 token/成本统计：本地优先自带 key 却看不到花了多少 | 各 provider 流式循环 |
+| P1 | 无 token/成本统计：本地优先自带 key 却看不到花了多少（✅ 本提交） | 各 provider 流式循环 |
 | P1 | RAG 检索内容无 prompt injection 防护（long-context 路径有 guard 而检索路径没有，防护不对称） | `ai.ipc.ts:121-145` |
 | P1 | 批量生成部分失败静默吞掉，返回值无 failed 计数（✅ 本提交） | `notes.ts:176,183,232` |
 | P1 | Codex/Ollama 的 agent 工具静默降级（无 `chatStreamWithTools`），能力差异无声明（✅ 本提交） | `codex-cli-provider.ts`、`ollama-provider.ts` |
@@ -166,7 +166,7 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | P1 | 全连接 `busy_timeout` + watcher 的 `catch{}` 加日志 | 小 | 高 | ✅ ecd1e44 |
 | P1 | 维护收尾 GC（`pruneExpired` + 删除过期建议，防膨胀） | 小 | 高 | ✅ da9565d |
 | P1 | 关系候选改走 FTS/BM25 或真实 embedding（大 vault 扩展性） | 中 | 高 | ✅ 本提交 |
-| P1 | Token/成本总线 + provider capabilities 声明 | 中 | 高 | 🔧 |
+| P1 | Token/成本总线 + provider capabilities 声明 | 中 | 高 | ✅ 本提交 |
 | P1 | RAG 检索内容加“不可信数据”包裹 | 小 | 高 | ✅ 本提交 |
 | P1 | 修 lint + CI 加 lint/build 冒烟；给 provider/tool 执行器补测试 | 中 | 高 | 🔧 |
 | P1 | reduced-motion 媒体块 + `--text-tertiary` 提亮 + 全局 `:focus-visible` | 小 | 高 | ✅ 3c0f45f |
@@ -203,3 +203,4 @@ Nexusky 有一流的产品愿景和扎实的架构骨架，但在“AI 改用户
 | 2026-05-30 | P1 apply-fix 预览/撤销 | 本提交 | maintenance apply-fix 统一生成预览再应用，写入前校验 preview hash，应用后写入 undo 记录；create_target 与 Agent file_create 撤销进入 `.trash`，维护面板增加预览确认与撤销入口；maintenance-apply-fix/maintenance-queue-ipc/agent-executor 29/29、typecheck、build 通过 |
 | 2026-05-30 | P1 向量检索命名漂移 | 本提交 | 选择“重命名+删死代码+改文案”路径：`embedding.ts` 改为 `search-index.ts`，IPC/UI 改为本地词法相关检索，移除 cosine/embedding schema 死代码；search-index/long-context-candidates/long-context-classifier 17/17、typecheck、build 通过 |
 | 2026-05-30 | P1 关系候选 FTS 召回 | 本提交 | `relation-candidates` 关键词候选从 `LIKE` 改为 FTS5 `MATCH`，chunk 相似候选先用 FTS 召回 note id 再读候选 chunks 评分，避免保存时全量扫 2000 chunk；long-context-candidates 4/4、typecheck、build 通过 |
+| 2026-05-30 | P1 Token/成本总线 | 本提交 | 所有 provider 经 `UsageTrackingProvider` 记录 chat/agent 用量；OpenAI/Responses/Claude 流式 usage 透传，缺失时按内容估算；Settings 支持输入/输出单价与本月用量摘要；ai-usage/ai-provider-types 12/12、typecheck 通过 |
