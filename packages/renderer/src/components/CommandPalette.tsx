@@ -81,11 +81,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       await navigator.clipboard.writeText(`[[${title}]]`)
       toast(t('commandPalette.toasts.wikilinkCopied'), 'success')
     }},
-    { id: 'daily', category: 'file', label: t('commandPalette.commands.daily.label'), keywords: ['daily', 'journal'], action: async () => {
-      if (!vaultPath) return
-      const path = await window.api.invoke('template:daily-note', { vaultPath })
-      if (path) useEditorStore.getState().openFile(path)
-    }},
     { id: 'template-marketplace-pack', category: 'file', label: t('commandPalette.commands.templateMarketplacePack.label'), description: t('commandPalette.commands.templateMarketplacePack.description'), keywords: ['template', 'marketplace', 'community'], action: async () => {
       const result = await window.api.invoke('template:install-marketplace-pack', undefined)
       const { toast } = await import('../stores/toast-store')

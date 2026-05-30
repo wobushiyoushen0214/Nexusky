@@ -82,5 +82,11 @@ Reader Inbox is no longer exposed as an ActivityBar item, Command Palette comman
 
 What stays for this pass: reader importers, reader metadata helpers, and the existing reader helper tests remain. Reason: import is still useful, but a separate triage surface competes with the core note workflow when imported items are already first-class notes.
 
+### 2026-05-31 - Calendar and Daily Note visible entries removed
+
+Calendar and Daily Note are no longer exposed as ActivityBar items, a Command Palette daily-note command, or a Calendar right-panel surface. They were two variants of the same date-based workflow: open or create notes by date. That workflow overlaps with Files, Search, and the Knowledge Space time layer.
+
+What stays for this pass: the `template:daily-note` IPC remains for compatibility with existing template behavior or future explicit automation. Legacy saved `rightPanel === 'calendar'` layouts now reopen with no right panel.
+
 
 

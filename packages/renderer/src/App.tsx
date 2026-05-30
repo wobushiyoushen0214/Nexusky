@@ -36,7 +36,6 @@ const SearchPanel = lazy(() => import('./components/SearchPanel').then((m) => ({
 const OutlinePanel = lazy(() => import('./components/editor/OutlinePanel').then((m) => ({ default: m.OutlinePanel })))
 const PropertiesPanel = lazy(() => import('./components/editor/PropertiesPanel').then((m) => ({ default: m.PropertiesPanel })))
 const TagsPanel = lazy(() => import('./components/TagsPanel').then((m) => ({ default: m.TagsPanel })))
-const CalendarPanel = lazy(() => import('./components/CalendarPanel').then((m) => ({ default: m.CalendarPanel })))
 const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => ({ default: m.HistoryPanel })))
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
@@ -470,7 +469,7 @@ export default function App() {
           <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'calendar' ? t('panels.calendar') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'maintenance' ? t('panels.maintenance') : rightPanel === 'agent' ? t('panels.agent') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
+                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'maintenance' ? t('panels.maintenance') : rightPanel === 'agent' ? t('panels.agent') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
@@ -488,7 +487,6 @@ export default function App() {
               {rightPanel === 'outline' && <OutlinePanel />}
               {rightPanel === 'properties' && <PropertiesPanel />}
               {rightPanel === 'tags' && <TagsPanel />}
-              {rightPanel === 'calendar' && <CalendarPanel />}
               {rightPanel === 'history' && <HistoryPanel />}
               {rightPanel === 'maintenance' && <MaintenanceQueuePanel />}
               {rightPanel === 'agent' && <AgentRunPanel />}

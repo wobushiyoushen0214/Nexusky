@@ -154,6 +154,19 @@ describe('ui store workspace widths', () => {
     expect(useUIStore.getState().sidebarCollapsed).toBe(true)
   })
 
+  it('maps retired calendar panels back to no right panel', async () => {
+    localStorage.setItem('nexusky-workspace-layouts', JSON.stringify({
+      'workspace:/vault/a': { mainView: 'graph', rightPanel: 'calendar', sidebarCollapsed: true },
+    }))
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+
+    useUIStore.getState().setWorkspaceScope('workspace:/vault/a')
+
+    expect(useUIStore.getState().mainView).toBe('graph')
+    expect(useUIStore.getState().rightPanel).toBe('none')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+  })
+
   it('maps retired standalone workspace layouts back to the editor', async () => {
     localStorage.setItem('nexusky-workspace-layouts', JSON.stringify({
       'workspace:/vault/a': { mainView: 'kanban', rightPanel: 'chat', sidebarCollapsed: true },

@@ -263,7 +263,7 @@ main/services/*
 | `maintenance:*` | 知识维护队列查询和自动修复应用 |
 | `proactive:*` | 主动建议列表、单条响应、批量已读/删除、偏好设置和调试运行 |
 | `agent:*` | Agent 规划、运行控制、步骤重试/跳过/回滚、运行列表和反思 |
-| `template:*` | 内置/市场/社区模板 |
+| `template:*` | 内置/市场/社区模板；`template:daily-note` 暂时保留兼容，但渲染层已不再暴露今日笔记入口 |
 | `plugins:*` | 本地插件和插件市场 |
 | `cloud:*` | 云配置、登录、同步、各 Provider 配置、索引同步 |
 | `export:*` | HTML、PDF、分享、发布站点 |

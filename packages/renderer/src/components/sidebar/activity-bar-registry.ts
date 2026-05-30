@@ -21,8 +21,6 @@ export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
   { id: 'canvas', labelKey: 'activityBar.canvas', shortcut: 'Ctrl+Shift+C', defaultVisible: false, defaultOrder: 4 },
   { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: false, defaultOrder: 8, requiresCurrentFile: true },
   { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: false, defaultOrder: 9, requiresCurrentFile: true },
-  { id: 'calendar', labelKey: 'activityBar.calendar', defaultVisible: false, defaultOrder: 10 },
-  { id: 'daily-note', labelKey: 'activityBar.dailyNote', defaultVisible: false, defaultOrder: 12 },
   { id: 'maintenance', labelKey: 'activityBar.maintenance', defaultVisible: true, defaultOrder: 13 },
 ]
 

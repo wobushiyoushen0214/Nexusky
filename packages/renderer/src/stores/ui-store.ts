@@ -3,7 +3,7 @@ import i18n from '../i18n'
 import { safeGet, safeGetJSON, safeRemove, safeSet, safeSetJSON } from '../utils/storage'
 import type { GraphMode } from '@shared/types/ipc'
 
-type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'calendar' | 'history' | 'graph' | 'plugin' | 'maintenance' | 'agent'
+type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'history' | 'graph' | 'plugin' | 'maintenance' | 'agent'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 const LANGUAGE_IDS = ['zh-CN', 'en'] as const
 const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
@@ -29,7 +29,7 @@ const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
-const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'calendar', 'history', 'graph', 'plugin', 'maintenance', 'agent']
+const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'history', 'graph', 'plugin', 'maintenance', 'agent']
 const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'canvas', 'timeline']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
@@ -228,9 +228,7 @@ function getInitialMainView(): MainView {
 }
 
 function getInitialRightPanel(): Panel {
-  const saved = safeGet(WORKSPACE_KEYS.rightPanel)
-  if (saved === 'context') return 'maintenance'
-  return saved && PANEL_IDS.includes(saved as Panel) ? saved as Panel : 'none'
+  return normalizeRightPanel(safeGet(WORKSPACE_KEYS.rightPanel)) || 'none'
 }
 
 function getInitialSidebarCollapsed(): boolean {
@@ -241,13 +239,18 @@ function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
   return safeGetJSON<Record<string, WorkspaceLayout>>(WORKSPACE_LAYOUTS_KEY, {})
 }
 
+function normalizeRightPanel(value: string | null | undefined): Panel | null {
+  if (value === 'context') return 'maintenance'
+  if (value === 'calendar') return 'none'
+  return value && PANEL_IDS.includes(value as Panel) ? value as Panel : null
+}
+
 function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scoped = getSavedWorkspaceLayouts()[scope]
-  const savedRightPanel = scoped?.rightPanel as string | undefined
-  const scopedRightPanel = savedRightPanel === 'context' ? 'maintenance' : savedRightPanel
+  const scopedRightPanel = normalizeRightPanel(scoped?.rightPanel as string | undefined)
   const scopedMainView = normalizeMainView(scoped?.mainView)
-  if (scoped && scopedMainView && PANEL_IDS.includes(scopedRightPanel as Panel) && typeof scoped.sidebarCollapsed === 'boolean') {
-    return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel as Panel) }
+  if (scoped && scopedMainView && scopedRightPanel && typeof scoped.sidebarCollapsed === 'boolean') {
+    return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel) }
   }
   return {
     mainView: getInitialMainView(),

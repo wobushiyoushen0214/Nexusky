@@ -30,6 +30,8 @@ describe('activity bar registry', () => {
   it('keeps retired standalone surfaces out of the activity registry', () => {
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'reader')).toBe(false)
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'kanban')).toBe(false)
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'calendar')).toBe(false)
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'daily-note')).toBe(false)
   })
 
   it('keeps related context merged under knowledge maintenance instead of a separate activity item', () => {
