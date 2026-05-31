@@ -894,6 +894,44 @@
       "zhCN": "简体中文",
       "en": "English"
     },
+    "providerTest": {
+      "title": "配置检查",
+      "optional": "保存前可选",
+      "config": "配置",
+      "connection": "连接",
+      "response": "响应",
+      "notTested": "尚未测试",
+      "configOk": "必填项已填写。",
+      "connectionOk": "连接可用。",
+      "validateAction": "测试连接",
+      "testing": "测试中...",
+      "probeAction": "测试问题",
+      "probing": "提问中...",
+      "probeAnswer": "回答，{{latency}} ms，{{model}}",
+      "probeFailed": "调用失败",
+      "unknownError": "未知错误",
+      "status": {
+        "idle": "待测",
+        "running": "进行中",
+        "success": "通过",
+        "error": "需修复"
+      },
+      "configIssues": {
+        "name": "填写提供商名称。",
+        "api_key": "填写 API Key，或保留已保存的 Key。",
+        "base_url": "填写 OpenAI 兼容接口的 Base URL。",
+        "model": "选择或输入模型。"
+      },
+      "errorKinds": {
+        "api_key": "检查 API Key 和账号权限。",
+        "model": "检查模型名称和协议类型。",
+        "network": "检查 Base URL 和网络连接。",
+        "rate_limit": "检查额度、计费或限流。",
+        "context": "换用上下文窗口更大的模型。",
+        "timeout": "请求超时，可重试或换用更快的接口。",
+        "unknown": "检查提供商配置后重新测试。"
+      }
+    },
     "proactive": {
       "title": "主动建议",
       "description": "在后台分析笔记关系、长期主题和任务时主动给出值得关注的提示。",

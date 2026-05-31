@@ -19,6 +19,8 @@ type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: s
 type CloudUser = { email: string } | null
 type SnippetView = CssSnippet & { enabled: boolean }
 type ThemePackageView = ThemePackage & { active: boolean }
+type ProviderSetupErrorKind = 'api_key' | 'model' | 'network' | 'rate_limit' | 'context' | 'timeout' | 'unknown'
+type ProviderTestResult = { ok: boolean; text: string; latencyMs?: number; model?: string; errorKind?: ProviderSetupErrorKind }
 
 const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini'],
@@ -91,6 +93,25 @@ const inputStyle: React.CSSProperties = {
   transition: 'border-color 150ms',
 }
 
+export function classifyProviderSetupError(message: string): ProviderSetupErrorKind {
+  const lower = message.toLowerCase()
+  if (/abort|timeout|timed out|超时|中止/.test(lower)) return 'timeout'
+  if (/context|token|maximum|too long|上下文|过长/.test(lower)) return 'context'
+  if (/429|rate|quota|too many|limit|限流|频率|配额/.test(lower)) return 'rate_limit'
+  if (/401|403|unauthorized|forbidden|api key|apikey|invalid key|auth|认证|鉴权|密钥/.test(lower)) return 'api_key'
+  if (/model|模型|not found|404/.test(lower)) return 'model'
+  if (/network|fetch|econn|enotfound|etimedout|tls|socket|连接|网络/.test(lower)) return 'network'
+  return 'unknown'
+}
+
+function getProviderConfigIssue(config: ProviderConfig): 'name' | 'api_key' | 'base_url' | 'model' | null {
+  if (!config.name.trim()) return 'name'
+  if (!config.model.trim()) return 'model'
+  if (!['ollama', 'codex'].includes(config.type) && !config.apiKey.trim() && !config.hasApiKey) return 'api_key'
+  if (config.type === 'custom' && !config.baseUrl.trim()) return 'base_url'
+  return null
+}
+
 function currentMonthSince(): number {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), 1).getTime()
@@ -153,7 +174,8 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [editing, setEditing] = useState<ProviderConfig | null>(null)
   const [testingProvider, setTestingProvider] = useState(false)
   const [probing, setProbing] = useState(false)
-  const [probeResult, setProbeResult] = useState<{ ok: boolean; text: string; latencyMs?: number } | null>(null)
+  const [validationResult, setValidationResult] = useState<ProviderTestResult | null>(null)
+  const [probeResult, setProbeResult] = useState<ProviderTestResult | null>(null)
   const [aiUsageSummary, setAiUsageSummary] = useState<AIUsageSummary | null>(null)
   const [aiUsageLoading, setAiUsageLoading] = useState(false)
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false, hasSupabaseKey: false, hasServiceRoleKey: false })
@@ -252,7 +274,13 @@ export function Settings({ open, onClose }: SettingsProps) {
     })))
   }
 
+  const resetProviderTestState = () => {
+    setValidationResult(null)
+    setProbeResult(null)
+  }
+
   const handleAdd = (preset?: typeof PROVIDER_PRESETS[0]) => {
+    resetProviderTestState()
     setEditing({
       id: crypto.randomUUID(),
       name: preset?.label || '',
@@ -262,6 +290,11 @@ export function Settings({ open, onClose }: SettingsProps) {
       model: preset?.model || 'gpt-4.1-mini',
       enabled: true
     })
+  }
+
+  const handleEditProvider = (provider: ProviderConfig) => {
+    resetProviderTestState()
+    setEditing(provider)
   }
 
   const handleSave = () => {
@@ -301,11 +334,21 @@ export function Settings({ open, onClose }: SettingsProps) {
   const handleValidateEditing = async () => {
     if (!editing) return
     setTestingProvider(true)
+    setValidationResult(null)
     try {
       const result = await window.api.invoke('ai:validate', { config: editing })
+      setValidationResult(result.ok
+        ? { ok: true, text: t('settings.providerTest.connectionOk') }
+        : {
+          ok: false,
+          text: result.error || t('settings.providerTest.unknownError'),
+          errorKind: classifyProviderSetupError(result.error || '')
+        })
       toast(result.ok ? 'AI 连接测试通过' : `AI 连接测试失败: ${result.error || '请检查配置'}`, result.ok ? 'success' : 'error')
     } catch (e: unknown) {
-      toast(`AI 连接测试失败: ${getErrorMessage(e, '未知错误')}`, 'error')
+      const message = getErrorMessage(e, t('settings.providerTest.unknownError'))
+      setValidationResult({ ok: false, text: message, errorKind: classifyProviderSetupError(message) })
+      toast(`AI 连接测试失败: ${message}`, 'error')
     } finally {
       setTestingProvider(false)
     }
@@ -318,12 +361,13 @@ export function Settings({ open, onClose }: SettingsProps) {
     try {
       const result = await window.api.invoke('ai:probe-question', { config: editing })
       if (result.ok) {
-        setProbeResult({ ok: true, text: result.answer, latencyMs: result.latencyMs })
+        setProbeResult({ ok: true, text: result.answer, latencyMs: result.latencyMs, model: result.model })
       } else {
-        setProbeResult({ ok: false, text: result.error })
+        setProbeResult({ ok: false, text: result.error, errorKind: classifyProviderSetupError(result.error) })
       }
     } catch (e: unknown) {
-      setProbeResult({ ok: false, text: getErrorMessage(e, '未知错误') })
+      const message = getErrorMessage(e, t('settings.providerTest.unknownError'))
+      setProbeResult({ ok: false, text: message, errorKind: classifyProviderSetupError(message) })
     } finally {
       setProbing(false)
       loadAiUsageSummary()
@@ -478,7 +522,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {!isActive && <button onClick={() => handleSetActive(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#fff', background: 'var(--accent)', border: 'none', cursor: 'pointer', fontWeight: 500 }}>激活</button>}
-                      <button onClick={() => setEditing(p)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>编辑</button>
+                      <button onClick={() => handleEditProvider(p)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>编辑</button>
                       <button onClick={() => handleDelete(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}>删除</button>
                     </div>
                   </div>
@@ -679,9 +723,16 @@ export function Settings({ open, onClose }: SettingsProps) {
                   onChange={(model) => setEditing({ ...editing, model })}
                 />
               </div>
+              <ProviderSetupChecklist
+                config={editing}
+                validationResult={validationResult}
+                probeResult={probeResult}
+                testingProvider={testingProvider}
+                probing={probing}
+              />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button onClick={handleProbeQuestion} disabled={probing || testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: probing ? 'wait' : 'pointer', opacity: probing ? 0.6 : 1 }}>{probing ? '提问中...' : '测试问题'}</button>
-                <button onClick={handleValidateEditing} disabled={testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: testingProvider ? 'wait' : 'pointer', opacity: testingProvider ? 0.6 : 1 }}>{testingProvider ? '测试中...' : '测试连接'}</button>
+                <button onClick={handleProbeQuestion} disabled={probing || testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: probing ? 'wait' : 'pointer', opacity: probing ? 0.6 : 1 }}>{probing ? t('settings.providerTest.probing') : t('settings.providerTest.probeAction')}</button>
+                <button onClick={handleValidateEditing} disabled={testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: testingProvider ? 'wait' : 'pointer', opacity: testingProvider ? 0.6 : 1 }}>{testingProvider ? t('settings.providerTest.testing') : t('settings.providerTest.validateAction')}</button>
                 <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>取消</button>
                 <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
               </div>
@@ -689,8 +740,8 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <div style={{ marginTop: 10, padding: 10, borderRadius: 6, background: 'var(--bg-elevated)', border: `1px solid ${probeResult.ok ? 'var(--border-subtle)' : '#f8717155'}` }}>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
                     {probeResult.ok
-                      ? `回答（${probeResult.latencyMs} ms）`
-                      : '调用失败'}
+                      ? t('settings.providerTest.probeAnswer', { latency: probeResult.latencyMs ?? 0, model: probeResult.model || editing.model })
+                      : t('settings.providerTest.probeFailed')}
                   </div>
                   <div style={{ fontSize: 12, color: probeResult.ok ? 'var(--text-primary)' : '#f87171', whiteSpace: 'pre-wrap' }}>
                     {probeResult.text}
@@ -780,6 +831,80 @@ function AIUsageSummaryPanel({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+type ProviderChecklistStatus = 'idle' | 'running' | 'success' | 'error'
+
+interface ProviderSetupChecklistProps {
+  config: ProviderConfig
+  validationResult: ProviderTestResult | null
+  probeResult: ProviderTestResult | null
+  testingProvider: boolean
+  probing: boolean
+}
+
+function ProviderSetupChecklist({ config, validationResult, probeResult, testingProvider, probing }: ProviderSetupChecklistProps) {
+  const { t } = useTranslation()
+  const configIssue = getProviderConfigIssue(config)
+  const resultDetail = (result: ProviderTestResult | null, fallback: string): string => {
+    if (!result) return fallback
+    if (result.ok) return result.text
+    const help = t(`settings.providerTest.errorKinds.${result.errorKind || 'unknown'}`)
+    return `${result.text} ${help}`
+  }
+  const items: Array<{ key: string; label: string; status: ProviderChecklistStatus; detail: string }> = [
+    {
+      key: 'config',
+      label: t('settings.providerTest.config'),
+      status: configIssue ? 'error' : 'success',
+      detail: configIssue
+        ? t(`settings.providerTest.configIssues.${configIssue}`)
+        : t('settings.providerTest.configOk')
+    },
+    {
+      key: 'connection',
+      label: t('settings.providerTest.connection'),
+      status: testingProvider ? 'running' : validationResult ? (validationResult.ok ? 'success' : 'error') : 'idle',
+      detail: testingProvider
+        ? t('settings.providerTest.testing')
+        : resultDetail(validationResult, t('settings.providerTest.notTested'))
+    },
+    {
+      key: 'response',
+      label: t('settings.providerTest.response'),
+      status: probing ? 'running' : probeResult ? (probeResult.ok ? 'success' : 'error') : 'idle',
+      detail: probing
+        ? t('settings.providerTest.probing')
+        : resultDetail(probeResult, t('settings.providerTest.notTested'))
+    }
+  ]
+  const colorByStatus: Record<ProviderChecklistStatus, string> = {
+    idle: 'var(--text-tertiary)',
+    running: 'var(--accent)',
+    success: 'oklch(72% 0.11 154)',
+    error: 'oklch(66% 0.16 23)'
+  }
+
+  return (
+    <div style={{ marginBottom: 14, padding: 10, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 650, color: 'var(--text-secondary)' }}>{t('settings.providerTest.title')}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('settings.providerTest.optional')}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {items.map((item) => (
+          <div key={item.key} style={{ display: 'grid', gridTemplateColumns: '14px 82px minmax(0, 1fr) auto', alignItems: 'center', gap: 8, minHeight: 24 }}>
+            <span style={{ width: 7, height: 7, borderRadius: 999, background: colorByStatus[item.status] }} />
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{item.label}</span>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: item.status === 'error' ? 'oklch(72% 0.14 24)' : 'var(--text-tertiary)' }}>{item.detail}</span>
+            <span style={{ fontSize: 10, color: colorByStatus[item.status], textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {t(`settings.providerTest.status.${item.status}`)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

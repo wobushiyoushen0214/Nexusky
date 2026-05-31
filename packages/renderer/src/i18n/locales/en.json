@@ -894,6 +894,44 @@
       "zhCN": "简体中文",
       "en": "English"
     },
+    "providerTest": {
+      "title": "Setup checks",
+      "optional": "optional before save",
+      "config": "Config",
+      "connection": "Connection",
+      "response": "Response",
+      "notTested": "Not tested",
+      "configOk": "Required fields are present.",
+      "connectionOk": "Connection is reachable.",
+      "validateAction": "Test connection",
+      "testing": "Testing...",
+      "probeAction": "Test question",
+      "probing": "Asking...",
+      "probeAnswer": "Answer, {{latency}} ms, {{model}}",
+      "probeFailed": "Call failed",
+      "unknownError": "Unknown error",
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "success": "OK",
+        "error": "Fix"
+      },
+      "configIssues": {
+        "name": "Add a provider name.",
+        "api_key": "Add an API key or keep a saved key.",
+        "base_url": "Add the OpenAI-compatible Base URL.",
+        "model": "Choose or enter a model."
+      },
+      "errorKinds": {
+        "api_key": "Check the API key and account permissions.",
+        "model": "Check the model name and provider type.",
+        "network": "Check the Base URL and network connection.",
+        "rate_limit": "Check quota, billing, or rate limits.",
+        "context": "Use a model with a larger context window.",
+        "timeout": "The request timed out. Try again or use a faster endpoint.",
+        "unknown": "Check provider settings and try the test again."
+      }
+    },
     "proactive": {
       "title": "Proactive suggestions",
       "description": "Surface noteworthy hints while the app analyzes relations, long-term themes, and tasks in the background.",

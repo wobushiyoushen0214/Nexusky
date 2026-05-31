@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Settings, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
+import { Settings, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
 
@@ -52,6 +52,16 @@ describe('accessibility component semantics', () => {
     expect(getSettingsDialogTabTarget(container, first, true)).toBe(last)
     expect(getSettingsDialogTabTarget(container, middle, false)).toBeNull()
     expect(getSettingsDialogTabTarget(container, {} as Element, false)).toBe(first)
+  })
+
+  it('classifies provider setup errors for actionable checklist copy', () => {
+    expect(classifyProviderSetupError('401 invalid API key')).toBe('api_key')
+    expect(classifyProviderSetupError('model not found: gpt-missing')).toBe('model')
+    expect(classifyProviderSetupError('fetch failed: ECONNREFUSED')).toBe('network')
+    expect(classifyProviderSetupError('429 rate limit exceeded')).toBe('rate_limit')
+    expect(classifyProviderSetupError('maximum context length exceeded')).toBe('context')
+    expect(classifyProviderSetupError('Request timed out')).toBe('timeout')
+    expect(classifyProviderSetupError('unexpected provider failure')).toBe('unknown')
   })
 })
 
