@@ -17,6 +17,7 @@ import {
   getUnlinkedMentions
 } from '../indexer'
 import { readMemory } from '../memory'
+import type { AppLanguage } from '@shared/types/ipc'
 
 const KNOWLEDGE_MAINTENANCE_TYPES = new Set<KnowledgeMaintenanceType>([
   'fix_unresolved_link',
@@ -48,6 +49,7 @@ export interface MaintenanceQueueParams {
   minCharacters?: number
   upcomingDays?: number
   requiredProperties?: string[]
+  language?: AppLanguage
 }
 
 export interface MaintenanceQueueResult {
@@ -195,7 +197,8 @@ export function gatherMaintenanceItems(params: MaintenanceQueueParams): Maintena
     bridges,
     query,
     type,
-    limit
+    limit,
+    language: params.language
   })
 
   const counts = countByType(items)

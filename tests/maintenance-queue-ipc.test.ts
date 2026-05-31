@@ -20,7 +20,8 @@ describe('maintenance IPC types', () => {
       vaultPath: '/tmp/vault',
       type: 'review_open_tasks',
       query: '',
-      limit: 50
+      limit: 50,
+      language: 'zh-CN'
     }
     const getResult: IPCChannelMap['maintenance:get-queue']['result'] = {
       items: [item],
@@ -32,7 +33,8 @@ describe('maintenance IPC types', () => {
       item,
       action: 'mark_done',
       mode: 'preview',
-      payload: { taskText: 'Buy milk' }
+      payload: { taskText: 'Buy milk' },
+      language: 'zh-CN'
     }
     const applyResult: MaintenanceApplyResult = {
       ok: true,
@@ -50,9 +52,11 @@ describe('maintenance IPC types', () => {
     }
 
     expect(getParams.type).toBe('review_open_tasks')
+    expect(getParams.language).toBe('zh-CN')
     expect(getResult.total).toBe(1)
     expect(applyParams.action).toBe('mark_done')
     expect(applyParams.mode).toBe('preview')
+    expect(applyParams.language).toBe('zh-CN')
     expect(applyResult.appliedAction).toBe('mark_done')
     expect(applyResult.preview?.createsFile).toBe(false)
   })

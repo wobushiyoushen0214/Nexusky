@@ -12,6 +12,7 @@ import { getAllNotes, getAllTags, getAllTasks, getBacklinks, getNotesByTag, getO
 import { getDatabase } from '../../services/database'
 import { readMemory, readAllMemories, findRelatedByMemory, deleteMemory } from '../../services/memory'
 import type { ChatSource } from '@shared/types/ipc'
+import { getAppLanguage } from '../../services/app-language'
 
 function getStringArg(args: Record<string, unknown>, key: string): string {
   const value = args[key]
@@ -138,6 +139,7 @@ export async function executeToolCall(
   currentFilePath?: string | null
 ): Promise<{ content: string; sources?: { title: string; filePath: string; chunk: string; score: number }[] }> {
   if (!vaultPath) return { content: '未打开知识库，无法使用笔记工具。' }
+  const language = getAppLanguage()
 
   switch (name) {
     case 'search_notes': {
@@ -1340,10 +1342,11 @@ export async function executeToolCall(
         bridges,
         query,
         type,
-        limit
+        limit,
+        language
       })
       return {
-        content: formatKnowledgeMaintenanceQueueToolResult(items),
+        content: formatKnowledgeMaintenanceQueueToolResult(items, language),
         sources: items.map((item) => ({
           title: item.title,
           filePath: item.filePath,

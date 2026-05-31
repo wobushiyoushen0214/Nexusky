@@ -2,11 +2,13 @@ import { ipcMain } from 'electron'
 import { gatherMaintenanceItems } from '../services/maintenance/queue-builder'
 import { applyMaintenanceFix, type ApplyFixAction } from '../services/maintenance/apply-fix'
 import type {
+  AppLanguage,
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
   MaintenanceApplyAction,
   MaintenanceApplyMode
 } from '@shared/types/ipc'
+import { resolveAppLanguage } from '../services/app-language'
 
 export function registerMaintenanceIPC(): void {
   ipcMain.handle('maintenance:get-queue', async (_event, params: {
@@ -17,6 +19,7 @@ export function registerMaintenanceIPC(): void {
     minCharacters?: number
     upcomingDays?: number
     requiredProperties?: string[]
+    language?: AppLanguage
   }) => {
     return gatherMaintenanceItems({
       vaultPath: params.vaultPath,
@@ -25,7 +28,8 @@ export function registerMaintenanceIPC(): void {
       limit: params.limit,
       minCharacters: params.minCharacters,
       upcomingDays: params.upcomingDays,
-      requiredProperties: params.requiredProperties
+      requiredProperties: params.requiredProperties,
+      language: resolveAppLanguage(params.language)
     })
   })
 
@@ -35,13 +39,15 @@ export function registerMaintenanceIPC(): void {
     action: MaintenanceApplyAction
     mode?: MaintenanceApplyMode
     payload?: Record<string, unknown>
+    language?: AppLanguage
   }) => {
     return applyMaintenanceFix({
       vaultPath: params.vaultPath,
       item: params.item,
       action: params.action as ApplyFixAction,
       mode: params.mode,
-      payload: params.payload
+      payload: params.payload,
+      language: resolveAppLanguage(params.language)
     })
   })
 }

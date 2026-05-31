@@ -1,3 +1,5 @@
+import type { AppLanguage } from '@shared/types/ipc'
+
 export interface AiSearchResult {
   title: string
   filePath: string
@@ -625,16 +627,19 @@ export function formatKnowledgeBridgesToolResult(notes: AiKnowledgeBridgeResult[
   ].join('\n')).join('\n\n')
 }
 
-export function formatKnowledgeMaintenanceQueueToolResult(items: AiKnowledgeMaintenanceItem[]): string {
-  if (items.length === 0) return 'No knowledge maintenance actions found.'
+export function formatKnowledgeMaintenanceQueueToolResult(items: AiKnowledgeMaintenanceItem[], language: AppLanguage = 'en'): string {
+  const labels = language === 'en'
+    ? { empty: 'No knowledge maintenance actions found.', path: 'Path', type: 'Type', priority: 'Priority', action: 'Action', reason: 'Reason', detail: 'Detail', none: '(none)' }
+    : { empty: '未找到知识维护事项。', path: '路径', type: '类型', priority: '优先级', action: '行动', reason: '原因', detail: '详情', none: '（无）' }
+  if (items.length === 0) return labels.empty
   return items.map((item, index) => [
     `${index + 1}. **${item.title}**`,
-    `Path: ${item.filePath}`,
-    `Type: ${item.type}`,
-    `Priority: ${item.priority}`,
-    `Action: ${item.action}`,
-    `Reason: ${item.reason}`,
-    `Detail: ${item.detail || '(none)'}`
+    `${labels.path}: ${item.filePath}`,
+    `${labels.type}: ${item.type}`,
+    `${labels.priority}: ${item.priority}`,
+    `${labels.action}: ${item.action}`,
+    `${labels.reason}: ${item.reason}`,
+    `${labels.detail}: ${item.detail || labels.none}`
   ].join('\n')).join('\n\n')
 }
 

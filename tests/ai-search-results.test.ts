@@ -537,8 +537,28 @@ describe('formatKnowledgeMaintenanceQueueToolResult', () => {
     expect(output).toBe('1. **Broken Source**\nPath: Broken.md\nType: fix_unresolved_link\nPriority: 100\nAction: Resolve or create [[Missing]]\nReason: Broken wikilink blocks graph navigation and AI note lookup.\nDetail: See [[Missing]]')
   })
 
+  it('formats maintenance actions with localized labels', () => {
+    const output = formatKnowledgeMaintenanceQueueToolResult([
+      {
+        type: 'fix_unresolved_link',
+        title: 'Broken Source',
+        filePath: 'Broken.md',
+        priority: 100,
+        action: '处理或创建 [[Missing]]',
+        reason: '断开的双链会影响图谱导航和 AI 查找笔记。',
+        detail: ''
+      }
+    ], 'zh-CN')
+
+    expect(output).toBe('1. **Broken Source**\n路径: Broken.md\n类型: fix_unresolved_link\n优先级: 100\n行动: 处理或创建 [[Missing]]\n原因: 断开的双链会影响图谱导航和 AI 查找笔记。\n详情: （无）')
+  })
+
   it('marks empty maintenance queues explicitly', () => {
     expect(formatKnowledgeMaintenanceQueueToolResult([])).toBe('No knowledge maintenance actions found.')
+  })
+
+  it('marks empty maintenance queues in the requested language', () => {
+    expect(formatKnowledgeMaintenanceQueueToolResult([], 'zh-CN')).toBe('未找到知识维护事项。')
   })
 })
 

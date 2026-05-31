@@ -1,5 +1,6 @@
 import type { OutgoingLinkIndex } from '../indexer'
 import type { KnowledgeBridgeNoteResult } from './graph-insights'
+import type { AppLanguage } from '@shared/types/ipc'
 
 export interface KnowledgeMaintenanceNote {
   id: string
@@ -74,6 +75,80 @@ interface KnowledgeMaintenanceQueueOptions {
   query?: string
   type?: KnowledgeMaintenanceType
   limit?: number
+  language?: AppLanguage
+}
+
+function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return count === 1 ? singular : pluralForm
+}
+
+function createMaintenanceCopy(language: AppLanguage = 'en') {
+  const zh = language !== 'en'
+  const priorityLabel = (value?: 'highest' | 'high') => {
+    if (!zh) return value || ''
+    return value === 'highest' ? '最高' : value === 'high' ? '高' : ''
+  }
+  return {
+    updated: (updatedAt: number) => zh ? `更新于：${new Date(updatedAt).toISOString()}` : `Updated: ${new Date(updatedAt).toISOString()}`,
+    resolveLinkAction: (targetTitle: string) => zh ? `处理或创建 [[${targetTitle}]]` : `Resolve or create [[${targetTitle}]]`,
+    brokenLinkReason: () => zh ? '断开的双链会影响图谱导航和 AI 查找笔记。' : 'Broken wikilink blocks graph navigation and AI note lookup.',
+    fillEmptyAction: () => zh ? '补全这篇空笔记，加入摘要、来源或下一步行动' : 'Fill this empty note with a summary, source, or next action',
+    fillEmptyReason: () => zh ? '空笔记会增加噪音，通常代表捕获流程还没有完成。' : 'Empty notes add noise and usually indicate unfinished capture.',
+    duplicateTitleAction: () => zh ? '重命名或添加唯一别名，避免笔记标题歧义' : 'Rename or add a unique alias to disambiguate this note title',
+    duplicateTitleReason: () => zh ? '重复标题会让双链解析和 Agent 查找笔记变得含糊。' : 'Duplicate note titles make wikilink resolution and Agent note lookup ambiguous.',
+    duplicateTitleDetail: (count: number, title: string) => zh ? `${count} 篇笔记共用标题：${title}` : `${count} notes share title: ${title}`,
+    duplicateAliasAction: (aliases: string[]) => zh ? `调整重复别名：${aliases.join(', ')}` : `Make duplicate alias${aliases.length === 1 ? '' : 'es'} unique: ${aliases.join(', ')}`,
+    duplicateAliasReason: () => zh ? '重复别名可能把双链和 Agent 读取导向错误笔记。' : 'Duplicate aliases can route wikilinks and Agent reads to the wrong note.',
+    duplicateAliasDetail: (aliases: string[]) => zh ? `重复别名：${aliases.join(', ')}` : `Duplicate aliases: ${aliases.join(', ')}`,
+    connectOrphanAction: () => zh ? '为这篇笔记添加至少一个有意义的入链或出链' : 'Add at least one meaningful wikilink in or out of this note',
+    connectOrphanReason: () => zh ? '这篇笔记暂时孤立在知识图谱之外。' : 'This note is isolated from the knowledge graph.',
+    unlinkedAction: (count: number) => zh ? `将 ${count} 处未链接提及转成双链` : `Convert ${count} unlinked ${plural(count, 'mention')} into wikilinks`,
+    unlinkedReason: () => zh ? '其他笔记提到了这个标题，但还没有链接到它。' : 'Other notes mention this title without linking to it.',
+    unlinkedDetail: (count: number) => zh ? `未链接提及：${count}` : `Unlinked mentions: ${count}`,
+    overdueAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项逾期任务` : `Review ${count} overdue ${plural(count, 'task')} in this note`,
+    overdueReason: () => zh ? '逾期任务应该优先于一般知识维护浮现。' : 'Overdue tasks should surface before general knowledge maintenance.',
+    overdueDetail: (count: number, earliest?: string) => zh
+      ? `逾期任务：${count}${earliest ? `；最早到期：${earliest}` : ''}`
+      : earliest ? `Overdue tasks: ${count}; earliest due: ${earliest}` : `Overdue tasks: ${count}`,
+    dueTodayAction: (count: number) => zh ? `检查这篇笔记中今日到期的 ${count} 项任务` : `Review ${count} ${plural(count, 'task')} due today in this note`,
+    dueTodayReason: () => zh ? '今日到期任务应该先于一般笔记清理变得可见。' : 'Tasks due today should become visible before general note cleanup.',
+    dueTodayDetail: (count: number, date?: string) => zh ? `今日到期：${count}；日期：${date || ''}` : `Due today: ${count}; date: ${date || ''}`,
+    highPriorityAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项高优先级任务` : `Review ${count} high-priority ${plural(count, 'task')} in this note`,
+    highPriorityReason: () => zh ? '高优先级任务不应该被埋在一般笔记清理里。' : 'High-priority tasks should not be buried in general note cleanup.',
+    highPriorityDetail: (count: number, priority?: 'highest' | 'high') => zh ? `高优先级任务：${count}；最高优先级：${priorityLabel(priority)}` : `High-priority tasks: ${count}; highest priority: ${priority || ''}`,
+    scheduledAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项已排程任务` : `Review ${count} scheduled ${plural(count, 'task')} in this note`,
+    scheduledReason: () => zh ? '已排程任务即使没有截止日期，也已经可以开始处理。' : 'Scheduled tasks are ready to work even when they do not have a due date.',
+    scheduledDetail: (count: number, date?: string) => zh ? `已排程任务：${count}；最早排程：${date || ''}` : `Scheduled tasks: ${count}; earliest scheduled: ${date || ''}`,
+    startedAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项已开始任务` : `Review ${count} started ${plural(count, 'task')} in this note`,
+    startedReason: () => zh ? '已开始任务即使没有排程或截止日期，也已经进入可执行状态。' : 'Started tasks are available to work even without scheduled or due dates.',
+    startedDetail: (count: number, date?: string) => zh ? `已开始任务：${count}；最早开始：${date || ''}` : `Started tasks: ${count}; earliest start: ${date || ''}`,
+    blockedAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项阻塞或等待任务` : `Review ${count} blocked or waiting ${plural(count, 'task')} in this note`,
+    blockedReason: () => zh ? '阻塞任务需要跟进依赖，而不是继续做笔记清理。' : 'Blocked tasks need dependency follow-up rather than more note cleanup.',
+    blockedDetail: (count: number, signal?: string) => zh ? `阻塞任务：${count}；信号：${signal || ''}` : `Blocked tasks: ${count}; signal: ${signal || ''}`,
+    recurringAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项周期任务` : `Review ${count} recurring ${plural(count, 'task')} in this note`,
+    recurringReason: () => zh ? '周期任务代表例行事项，应该持续留在维护计划里。' : 'Recurring tasks define routines that should stay visible in the maintenance plan.',
+    recurringDetail: (count: number, signal?: string) => zh ? `周期任务：${count}；信号：${signal || ''}` : `Recurring tasks: ${count}; signal: ${signal || ''}`,
+    upcomingAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项即将到期任务` : `Review ${count} upcoming ${plural(count, 'task')} in this note`,
+    upcomingReason: () => zh ? '即将到期的任务能让 Agent 在逾期前准备工作。' : 'Upcoming due dates let the Agent prepare work before it becomes overdue.',
+    upcomingDetail: (count: number, date?: string) => zh ? `即将到期：${count}；下一次到期：${date || ''}` : `Upcoming tasks: ${count}; next due: ${date || ''}`,
+    openAction: (count: number) => zh ? `检查这篇笔记中的 ${count} 项未完成任务` : `Review ${count} open ${plural(count, 'task')} in this note`,
+    openReason: () => zh ? '嵌在笔记里的未完成任务应该进入下一步行动流。' : 'Open tasks embedded in notes should feed the next-action workflow.',
+    openDetail: (counts: { open: number; overdue: number; dueToday: number; highPriority: number; scheduled: number; started: number; blocked: number; recurring: number; upcoming: number }) => zh
+      ? `未完成任务：${counts.open}；逾期：${counts.overdue}；今日到期：${counts.dueToday}；高优先级：${counts.highPriority}；已排程：${counts.scheduled}；已开始：${counts.started}；阻塞：${counts.blocked}；周期：${counts.recurring}；即将到期：${counts.upcoming}`
+      : `Open tasks: ${counts.open}; overdue: ${counts.overdue}; due today: ${counts.dueToday}; high priority: ${counts.highPriority}; scheduled: ${counts.scheduled}; started: ${counts.started}; blocked: ${counts.blocked}; recurring: ${counts.recurring}; upcoming: ${counts.upcoming}`,
+    memoryAction: (status: 'missing' | 'stale') => zh ? (status === 'stale' ? '根据当前内容重新生成这篇笔记的记忆账本' : '为这篇笔记生成 AI 记忆账本') : (status === 'stale' ? 'Regenerate this note memory from current content' : 'Generate AI memory for this note'),
+    memoryReason: (status: 'missing' | 'stale') => zh ? (status === 'stale' ? '这篇笔记在生成 AI 记忆后又发生了变化。' : '这篇笔记还没有用于语义导航的 AI 记忆。') : (status === 'stale' ? 'The note changed after its AI memory was generated.' : 'This note has no AI memory for semantic navigation.'),
+    memoryDetail: (status: 'missing' | 'stale') => zh ? `记忆状态：${status === 'stale' ? '过期' : '缺失'}` : `Memory status: ${status}`,
+    largeAction: () => zh ? '将这篇长笔记拆成聚焦的关联笔记，或补充目录型链接区' : 'Split this long note into focused linked notes or add a map-of-content section',
+    largeReason: () => zh ? '过长的笔记更难导航、总结，也更难精确建立连接。' : 'Very long notes are harder to navigate, summarize, and connect precisely.',
+    largeDetail: (characters: number) => zh ? `${characters} 个字符` : `${characters} characters`,
+    missingPropertyAction: (properties: string[]) => zh ? `补齐缺失属性：${properties.join(', ')}` : `Fill missing properties: ${properties.join(', ')}`,
+    missingPropertyReason: () => zh ? '一致的元数据能让属性视图、筛选和 Agent 规划更可靠。' : 'Consistent metadata makes Bases, filters, and Agent planning more reliable.',
+    missingPropertyDetail: (properties: string[]) => zh ? `缺失属性：${properties.join(', ')}` : `Missing properties: ${properties.join(', ')}`,
+    bridgeAction: () => zh ? '检查这篇综合笔记，补摘要、目录型链接，或判断是否需要拆分' : 'Review this synthesis note for summary, map-of-content links, or possible split',
+    bridgeReason: () => zh ? '这篇笔记连接了多个文件夹或标签簇。' : 'This note connects multiple folders or tag clusters.',
+    bridgeDetail: (folders: string[], tags: string[]) => zh ? `文件夹：${folders.join(', ')}；标签：${tags.join(', ')}` : `Folders: ${folders.join(', ')}; tags: ${tags.join(', ')}`
+  }
 }
 
 export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueueOptions): KnowledgeMaintenanceItem[] {
@@ -82,6 +157,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
   const query = (options.query || '').trim().toLowerCase()
   const type = options.type
   const bridgeByPath = new Map(options.bridges.map((bridge) => [bridge.filePath, bridge]))
+  const copy = createMaintenanceCopy(options.language ?? 'en')
 
   for (const note of options.notes) {
     const outgoing = options.outgoingLinksByNoteId.get(note.id) || []
@@ -120,8 +196,8 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 100,
-        action: `Resolve or create [[${link.targetTitle}]]`,
-        reason: 'Broken wikilink blocks graph navigation and AI note lookup.',
+        action: copy.resolveLinkAction(link.targetTitle),
+        reason: copy.brokenLinkReason(),
         detail: link.context || link.targetTitle
       })
     }
@@ -132,9 +208,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 78,
-        action: 'Fill this empty note with a summary, source, or next action',
-        reason: 'Empty notes add noise and usually indicate unfinished capture.',
-        detail: `Updated: ${new Date(note.updatedAt).toISOString()}`
+        action: copy.fillEmptyAction(),
+        reason: copy.fillEmptyReason(),
+        detail: copy.updated(note.updatedAt)
       })
     }
 
@@ -144,9 +220,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 76,
-        action: 'Rename or add a unique alias to disambiguate this note title',
-        reason: 'Duplicate note titles make wikilink resolution and Agent note lookup ambiguous.',
-        detail: `${duplicateTitleCount} notes share title: ${note.title}`
+        action: copy.duplicateTitleAction(),
+        reason: copy.duplicateTitleReason(),
+        detail: copy.duplicateTitleDetail(duplicateTitleCount, note.title)
       })
     }
 
@@ -156,9 +232,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 72,
-        action: `Make duplicate alias${duplicateAliases.length === 1 ? '' : 'es'} unique: ${duplicateAliases.join(', ')}`,
-        reason: 'Duplicate aliases can route wikilinks and Agent reads to the wrong note.',
-        detail: `Duplicate aliases: ${duplicateAliases.join(', ')}`
+        action: copy.duplicateAliasAction(duplicateAliases),
+        reason: copy.duplicateAliasReason(),
+        detail: copy.duplicateAliasDetail(duplicateAliases)
       })
     }
 
@@ -168,9 +244,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 80,
-        action: 'Add at least one meaningful wikilink in or out of this note',
-        reason: 'This note is isolated from the knowledge graph.',
-        detail: `Updated: ${new Date(note.updatedAt).toISOString()}`
+        action: copy.connectOrphanAction(),
+        reason: copy.connectOrphanReason(),
+        detail: copy.updated(note.updatedAt)
       })
     } else if (unlinkedMentionCount > 0) {
       items.push({
@@ -178,9 +254,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 60 + Math.min(unlinkedMentionCount, 10),
-        action: `Convert ${unlinkedMentionCount} unlinked mention${unlinkedMentionCount === 1 ? '' : 's'} into wikilinks`,
-        reason: 'Other notes mention this title without linking to it.',
-        detail: `Unlinked mentions: ${unlinkedMentionCount}`
+        action: copy.unlinkedAction(unlinkedMentionCount),
+        reason: copy.unlinkedReason(),
+        detail: copy.unlinkedDetail(unlinkedMentionCount)
       })
     }
 
@@ -190,9 +266,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 90 + Math.min(overdueTaskCount, 10),
-        action: `Review ${overdueTaskCount} overdue task${overdueTaskCount === 1 ? '' : 's'} in this note`,
-        reason: 'Overdue tasks should surface before general knowledge maintenance.',
-        detail: overdueTaskInfo ? `Overdue tasks: ${overdueTaskCount}; earliest due: ${overdueTaskInfo.earliestDue}` : `Overdue tasks: ${overdueTaskCount}`
+        action: copy.overdueAction(overdueTaskCount),
+        reason: copy.overdueReason(),
+        detail: copy.overdueDetail(overdueTaskCount, overdueTaskInfo?.earliestDue)
       })
     }
 
@@ -202,9 +278,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 86 + Math.min(dueTodayTaskCount, 10),
-        action: `Review ${dueTodayTaskCount} task${dueTodayTaskCount === 1 ? '' : 's'} due today in this note`,
-        reason: 'Tasks due today should become visible before general note cleanup.',
-        detail: `Due today: ${dueTodayTaskCount}; date: ${dueTodayTaskInfo?.earliestDue || ''}`
+        action: copy.dueTodayAction(dueTodayTaskCount),
+        reason: copy.dueTodayReason(),
+        detail: copy.dueTodayDetail(dueTodayTaskCount, dueTodayTaskInfo?.earliestDue)
       })
     }
 
@@ -214,9 +290,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: highPriorityTaskInfo?.highestPriority === 'highest' ? 84 : 82,
-        action: `Review ${highPriorityTaskCount} high-priority task${highPriorityTaskCount === 1 ? '' : 's'} in this note`,
-        reason: 'High-priority tasks should not be buried in general note cleanup.',
-        detail: `High-priority tasks: ${highPriorityTaskCount}; highest priority: ${highPriorityTaskInfo?.highestPriority || ''}`
+        action: copy.highPriorityAction(highPriorityTaskCount),
+        reason: copy.highPriorityReason(),
+        detail: copy.highPriorityDetail(highPriorityTaskCount, highPriorityTaskInfo?.highestPriority)
       })
     }
 
@@ -226,9 +302,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 79 + Math.min(scheduledTaskCount, 5),
-        action: `Review ${scheduledTaskCount} scheduled task${scheduledTaskCount === 1 ? '' : 's'} in this note`,
-        reason: 'Scheduled tasks are ready to work even when they do not have a due date.',
-        detail: `Scheduled tasks: ${scheduledTaskCount}; earliest scheduled: ${scheduledTaskInfo?.earliestDue || ''}`
+        action: copy.scheduledAction(scheduledTaskCount),
+        reason: copy.scheduledReason(),
+        detail: copy.scheduledDetail(scheduledTaskCount, scheduledTaskInfo?.earliestDue)
       })
     }
 
@@ -238,9 +314,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 70 + Math.min(startedTaskCount, 5),
-        action: `Review ${startedTaskCount} started task${startedTaskCount === 1 ? '' : 's'} in this note`,
-        reason: 'Started tasks are available to work even without scheduled or due dates.',
-        detail: `Started tasks: ${startedTaskCount}; earliest start: ${startedTaskInfo?.earliestDue || ''}`
+        action: copy.startedAction(startedTaskCount),
+        reason: copy.startedReason(),
+        detail: copy.startedDetail(startedTaskCount, startedTaskInfo?.earliestDue)
       })
     }
 
@@ -250,9 +326,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 68 + Math.min(blockedTaskCount, 5),
-        action: `Review ${blockedTaskCount} blocked or waiting task${blockedTaskCount === 1 ? '' : 's'} in this note`,
-        reason: 'Blocked tasks need dependency follow-up rather than more note cleanup.',
-        detail: `Blocked tasks: ${blockedTaskCount}; signal: ${blockedTaskInfo?.signal || ''}`
+        action: copy.blockedAction(blockedTaskCount),
+        reason: copy.blockedReason(),
+        detail: copy.blockedDetail(blockedTaskCount, blockedTaskInfo?.signal)
       })
     }
 
@@ -262,9 +338,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 66 + Math.min(recurringTaskCount, 5),
-        action: `Review ${recurringTaskCount} recurring task${recurringTaskCount === 1 ? '' : 's'} in this note`,
-        reason: 'Recurring tasks define routines that should stay visible in the maintenance plan.',
-        detail: `Recurring tasks: ${recurringTaskCount}; signal: ${recurringTaskInfo?.signal || ''}`
+        action: copy.recurringAction(recurringTaskCount),
+        reason: copy.recurringReason(),
+        detail: copy.recurringDetail(recurringTaskCount, recurringTaskInfo?.signal)
       })
     }
 
@@ -274,9 +350,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 74 + Math.min(upcomingTaskCount, 5),
-        action: `Review ${upcomingTaskCount} upcoming task${upcomingTaskCount === 1 ? '' : 's'} in this note`,
-        reason: 'Upcoming due dates let the Agent prepare work before it becomes overdue.',
-        detail: `Upcoming tasks: ${upcomingTaskCount}; next due: ${upcomingTaskInfo?.earliestDue || ''}`
+        action: copy.upcomingAction(upcomingTaskCount),
+        reason: copy.upcomingReason(),
+        detail: copy.upcomingDetail(upcomingTaskCount, upcomingTaskInfo?.earliestDue)
       })
     }
 
@@ -289,9 +365,19 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 60 + Math.min(remainingOpenTasks, 10),
-        action: `Review ${remainingOpenTasks} open task${remainingOpenTasks === 1 ? '' : 's'} in this note`,
-        reason: 'Open tasks embedded in notes should feed the next-action workflow.',
-        detail: `Open tasks: ${openTaskCount}; overdue: ${overdueTaskCount}; due today: ${dueTodayTaskCount}; high priority: ${highPriorityTaskCount}; scheduled: ${scheduledTaskCount}; started: ${startedTaskCount}; blocked: ${blockedTaskCount}; recurring: ${recurringTaskCount}; upcoming: ${upcomingTaskCount}`
+        action: copy.openAction(remainingOpenTasks),
+        reason: copy.openReason(),
+        detail: copy.openDetail({
+          open: openTaskCount,
+          overdue: overdueTaskCount,
+          dueToday: dueTodayTaskCount,
+          highPriority: highPriorityTaskCount,
+          scheduled: scheduledTaskCount,
+          started: startedTaskCount,
+          blocked: blockedTaskCount,
+          recurring: recurringTaskCount,
+          upcoming: upcomingTaskCount
+        })
       })
     }
 
@@ -301,9 +387,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: memoryStatus === 'stale' ? 58 : 52,
-        action: memoryStatus === 'stale' ? 'Regenerate this note memory from current content' : 'Generate AI memory for this note',
-        reason: memoryStatus === 'stale' ? 'The note changed after its AI memory was generated.' : 'This note has no AI memory for semantic navigation.',
-        detail: `Memory status: ${memoryStatus}`
+        action: copy.memoryAction(memoryStatus),
+        reason: copy.memoryReason(memoryStatus),
+        detail: copy.memoryDetail(memoryStatus)
       })
     }
 
@@ -313,9 +399,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 56,
-        action: 'Split this long note into focused linked notes or add a map-of-content section',
-        reason: 'Very long notes are harder to navigate, summarize, and connect precisely.',
-        detail: `${largeCharacters} characters`
+        action: copy.largeAction(),
+        reason: copy.largeReason(),
+        detail: copy.largeDetail(largeCharacters)
       })
     }
 
@@ -325,9 +411,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 50,
-        action: `Fill missing properties: ${missingProperties.join(', ')}`,
-        reason: 'Consistent metadata makes Bases, filters, and Agent planning more reliable.',
-        detail: `Missing properties: ${missingProperties.join(', ')}`
+        action: copy.missingPropertyAction(missingProperties),
+        reason: copy.missingPropertyReason(),
+        detail: copy.missingPropertyDetail(missingProperties)
       })
     }
 
@@ -338,9 +424,9 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         title: note.title,
         filePath: note.filePath,
         priority: 40 + bridge.score,
-        action: 'Review this synthesis note for summary, map-of-content links, or possible split',
-        reason: 'This note connects multiple folders or tag clusters.',
-        detail: `Folders: ${bridge.folders.join(', ')}; tags: ${bridge.tags.join(', ')}`
+        action: copy.bridgeAction(),
+        reason: copy.bridgeReason(),
+        detail: copy.bridgeDetail(bridge.folders, bridge.tags)
       })
     }
   }

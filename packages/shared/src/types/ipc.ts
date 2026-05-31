@@ -984,6 +984,7 @@ export interface IPCChannelMap {
       minCharacters?: number
       upcomingDays?: number
       requiredProperties?: string[]
+      language?: AppLanguage
     }
     result: {
       items: KnowledgeMaintenanceItem[]
@@ -998,6 +999,7 @@ export interface IPCChannelMap {
       action: MaintenanceApplyAction
       mode?: MaintenanceApplyMode
       payload?: Record<string, unknown>
+      language?: AppLanguage
     }
     result: MaintenanceApplyResult
   }

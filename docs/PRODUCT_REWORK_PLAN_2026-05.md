@@ -158,3 +158,4 @@ pnpm typecheck
 | 2026-05-30 | A5 长期上下文用户化命名 | 完成 | Related Context 改为 Context Pack，卡片增加 Why this 标签，设置页 long-context 标签与指标文案改为 Memory Ledger；中英文 i18n 已补齐，`pnpm typecheck` 通过 |
 | 2026-05-30 | A6 Agent 入口继续后置 | 完成 | 命令面板和官网将 Agent 主卖点改为 reviewable execution / 执行历史；能力保留在高级入口，`PRODUCT.md` 已追加决策记录，`pnpm typecheck` 通过 |
 | 2026-05-31 | A5 Memory Ledger 多语言收尾 | 完成 | 补齐 Memory Ledger / Context Pack 在工具状态、图谱生成状态、关系标签、引用解释和工具结果面板中的中英文文案；Context Pack 归档、关系 reason/evidence、长期主题 title/summary/keywords 会按当前 UI 语言请求 AI 生成，后台任务同步主进程语言状态；旧存量内容需刷新后更新；不运行 ESLint，使用 i18n JSON 校验、相关测试和 `pnpm typecheck` 验收 |
+| 2026-05-31 | 知识维护硬编码文案多语言 | 完成 | 维护队列的 action/reason/detail、修复结果 toast、预览摘要、路径错误和 `plan_knowledge_maintenance` 工具结果会按当前 UI 语言生成；Renderer 调用向主进程传递 language，IPC 缺省回落到主进程当前语言；保留服务直调默认英文以兼容既有测试；不运行 ESLint，使用相关测试和 `pnpm typecheck` 验收 |

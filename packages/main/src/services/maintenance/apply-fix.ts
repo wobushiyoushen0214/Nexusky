@@ -5,6 +5,7 @@ import matter from 'gray-matter'
 import { indexNote, removeNoteIndex } from '../indexer'
 import { notifyVaultFilesChanged } from '../../ipc/events'
 import type { KnowledgeMaintenanceItem } from '../ai/maintenance-queue'
+import type { AppLanguage } from '@shared/types/ipc'
 
 export type ApplyFixAction = 'open_note' | 'create_target' | 'mark_done' | 'archive' | 'add_alias'
 export type ApplyFixMode = 'preview' | 'apply' | 'undo'
@@ -15,6 +16,7 @@ export interface ApplyFixParams {
   action: ApplyFixAction
   mode?: ApplyFixMode
   payload?: Record<string, unknown>
+  language?: AppLanguage
 }
 
 export interface ApplyFixPreview {
@@ -58,6 +60,50 @@ interface MaintenanceUndoRecord extends MaintenanceMutation {
 
 const UNDO_TTL_MS = 24 * 60 * 60 * 1000
 
+function getApplyFixLanguage(params: ApplyFixParams): AppLanguage {
+  return params.language ?? 'en'
+}
+
+function getActionLabel(action: ApplyFixAction, language: AppLanguage): string {
+  if (language === 'en') return action
+  const labels: Record<ApplyFixAction, string> = {
+    open_note: '打开笔记',
+    create_target: '新建目标',
+    mark_done: '标记完成',
+    archive: '归档',
+    add_alias: '添加别名'
+  }
+  return labels[action]
+}
+
+function createApplyFixCopy(language: AppLanguage = 'en') {
+  const zh = language !== 'en'
+  return {
+    unsupportedAction: (action: string) => zh ? `不支持的维护操作：${action}` : `Unsupported maintenance action: ${action}`,
+    fileNotFound: (filePath: string) => zh ? `找不到文件：${filePath}` : `File not found: ${filePath}`,
+    openNote: (filePath: string) => zh ? `已打开 ${filePath}` : `Open ${filePath}`,
+    targetRequired: () => zh ? '需要提供 targetTitle' : 'targetTitle is required',
+    targetInvalid: () => zh ? 'targetTitle 必须包含有效字符' : 'targetTitle must contain valid characters',
+    targetExists: (filePath: string) => zh ? `笔记已存在：${filePath}` : `Note already exists: ${filePath}`,
+    created: (filePath: string) => zh ? `已创建 ${filePath}` : `Created ${filePath}`,
+    noOpenTask: () => zh ? '没有找到可标记完成的未完成任务' : 'No open task found to mark done',
+    markedDone: (filePath: string) => zh ? `已在 ${filePath} 中标记一项任务为完成` : `Marked a task as done in ${filePath}`,
+    alreadyArchived: () => zh ? '这篇笔记已经归档' : 'Note is already archived',
+    archived: (filePath: string) => zh ? `已归档 ${filePath}` : `Archived ${filePath}`,
+    aliasRequired: () => zh ? '需要提供 alias' : 'alias is required',
+    aliasExists: (alias: string) => zh ? `别名已存在：${alias}` : `Alias already present: ${alias}`,
+    aliasAdded: (alias: string, filePath: string) => zh ? `已将别名“${alias}”添加到 ${filePath}` : `Added alias "${alias}" to ${filePath}`,
+    fileChangedSincePreview: (filePath: string) => zh ? `预览后文件已变化：${filePath}` : `File changed since preview: ${filePath}`,
+    undoTokenRequired: () => zh ? '需要提供 undoToken' : 'undoToken is required',
+    invalidUndoToken: () => zh ? '无效的撤销令牌' : 'Invalid undo token',
+    undoRecordMissing: () => zh ? '撤销记录不存在或已过期' : 'Undo record not found or expired',
+    cannotUndoChanged: (filePath: string) => zh ? `无法撤销，因为修复后文件又发生了变化：${filePath}` : `Cannot undo because the file changed after the fix: ${filePath}`,
+    undone: (action: ApplyFixAction, filePath: string) => zh ? `已撤销 ${getActionLabel(action, language)}：${filePath}` : `Undid ${action} in ${filePath}`,
+    pathOutsideVault: () => zh ? '路径不在当前 vault 内' : 'Path is outside the current vault',
+    pathEscapesVault: () => zh ? '路径解析符号链接后逃离当前 vault' : 'Path escapes the current vault after resolving symlinks'
+  }
+}
+
 export function applyMaintenanceFix(params: ApplyFixParams): ApplyFixResult {
   if (params.mode === 'undo') return undoMaintenanceFix(params)
 
@@ -76,44 +122,46 @@ export function applyMaintenanceFix(params: ApplyFixParams): ApplyFixResult {
       return {
         ok: false,
         appliedAction: params.action,
-        resultMessage: `Unsupported maintenance action: ${params.action}`
+        resultMessage: createApplyFixCopy(getApplyFixLanguage(params)).unsupportedAction(params.action)
       }
   }
 }
 
 function applyOpenNote(params: ApplyFixParams): ApplyFixResult {
-  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath)
+  const copy = createApplyFixCopy(getApplyFixLanguage(params))
+  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath, getApplyFixLanguage(params))
   if (!existsSync(absolutePath)) {
     return {
       ok: false,
       appliedAction: 'open_note',
-      resultMessage: `File not found: ${params.item.filePath}`
+      resultMessage: copy.fileNotFound(params.item.filePath)
     }
   }
   return {
     ok: true,
     appliedAction: 'open_note',
-    resultMessage: `Open ${params.item.filePath}`,
+    resultMessage: copy.openNote(params.item.filePath),
     filePath: params.item.filePath
   }
 }
 
 function applyCreateTarget(params: ApplyFixParams): ApplyFixResult {
+  const copy = createApplyFixCopy(getApplyFixLanguage(params))
   const targetTitle = extractTargetTitle(params)
   if (!targetTitle) {
-    return { ok: false, appliedAction: 'create_target', resultMessage: 'targetTitle is required' }
+    return { ok: false, appliedAction: 'create_target', resultMessage: copy.targetRequired() }
   }
   const safeTitle = targetTitle.replace(/[\\/:*?"<>|]/g, ' ').trim()
   if (!safeTitle) {
-    return { ok: false, appliedAction: 'create_target', resultMessage: 'targetTitle must contain valid characters' }
+    return { ok: false, appliedAction: 'create_target', resultMessage: copy.targetInvalid() }
   }
   const targetRelative = `${safeTitle}.md`
-  const targetAbsolute = resolveVaultFile(params.vaultPath, targetRelative)
+  const targetAbsolute = resolveVaultFile(params.vaultPath, targetRelative, getApplyFixLanguage(params))
   if (existsSync(targetAbsolute)) {
     return {
       ok: false,
       appliedAction: 'create_target',
-      resultMessage: `Note already exists: ${targetRelative}`,
+      resultMessage: copy.targetExists(targetRelative),
       filePath: targetRelative
     }
   }
@@ -126,7 +174,7 @@ function applyCreateTarget(params: ApplyFixParams): ApplyFixResult {
     afterExists: true,
     afterContent: `# ${safeTitle}\n\n`,
     afterHash: hashContent(`# ${safeTitle}\n\n`),
-    resultMessage: `Created ${targetRelative}`
+    resultMessage: copy.created(targetRelative)
   })
 }
 
@@ -138,12 +186,13 @@ function extractTargetTitle(params: ApplyFixParams): string {
 }
 
 function applyMarkDone(params: ApplyFixParams): ApplyFixResult {
+  const copy = createApplyFixCopy(getApplyFixLanguage(params))
   const taskText = typeof params.payload?.taskText === 'string'
     ? (params.payload.taskText as string)
     : ''
-  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath)
+  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath, getApplyFixLanguage(params))
   if (!existsSync(absolutePath)) {
-    return { ok: false, appliedAction: 'mark_done', resultMessage: `File not found: ${params.item.filePath}` }
+    return { ok: false, appliedAction: 'mark_done', resultMessage: copy.fileNotFound(params.item.filePath) }
   }
   const original = readFileSync(absolutePath, 'utf-8')
   let updated = original
@@ -162,37 +211,39 @@ function applyMarkDone(params: ApplyFixParams): ApplyFixResult {
     })
   }
   if (!changed) {
-    return { ok: false, appliedAction: 'mark_done', resultMessage: 'No open task found to mark done' }
+    return { ok: false, appliedAction: 'mark_done', resultMessage: copy.noOpenTask() }
   }
-  return applyMutation(params, updateMutation('mark_done', params.item.filePath, absolutePath, original, updated, `Marked a task as done in ${params.item.filePath}`))
+  return applyMutation(params, updateMutation('mark_done', params.item.filePath, absolutePath, original, updated, copy.markedDone(params.item.filePath)))
 }
 
 function applyArchive(params: ApplyFixParams): ApplyFixResult {
-  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath)
+  const copy = createApplyFixCopy(getApplyFixLanguage(params))
+  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath, getApplyFixLanguage(params))
   if (!existsSync(absolutePath)) {
-    return { ok: false, appliedAction: 'archive', resultMessage: `File not found: ${params.item.filePath}` }
+    return { ok: false, appliedAction: 'archive', resultMessage: copy.fileNotFound(params.item.filePath) }
   }
   const original = readFileSync(absolutePath, 'utf-8')
   const parsed = matter(original)
   const frontmatter = parsed.data ?? {}
   if (frontmatter.archived === true) {
-    return { ok: false, appliedAction: 'archive', resultMessage: 'Note is already archived' }
+    return { ok: false, appliedAction: 'archive', resultMessage: copy.alreadyArchived() }
   }
   frontmatter.archived = true
   const next = matter.stringify(parsed.content, frontmatter)
-  return applyMutation(params, updateMutation('archive', params.item.filePath, absolutePath, original, next, `Archived ${params.item.filePath}`))
+  return applyMutation(params, updateMutation('archive', params.item.filePath, absolutePath, original, next, copy.archived(params.item.filePath)))
 }
 
 function applyAddAlias(params: ApplyFixParams): ApplyFixResult {
+  const copy = createApplyFixCopy(getApplyFixLanguage(params))
   const aliasInput = typeof params.payload?.alias === 'string'
     ? (params.payload.alias as string).trim()
     : ''
   if (!aliasInput) {
-    return { ok: false, appliedAction: 'add_alias', resultMessage: 'alias is required' }
+    return { ok: false, appliedAction: 'add_alias', resultMessage: copy.aliasRequired() }
   }
-  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath)
+  const absolutePath = resolveVaultFile(params.vaultPath, params.item.filePath, getApplyFixLanguage(params))
   if (!existsSync(absolutePath)) {
-    return { ok: false, appliedAction: 'add_alias', resultMessage: `File not found: ${params.item.filePath}` }
+    return { ok: false, appliedAction: 'add_alias', resultMessage: copy.fileNotFound(params.item.filePath) }
   }
   const original = readFileSync(absolutePath, 'utf-8')
   const parsed = matter(original)
@@ -204,14 +255,15 @@ function applyAddAlias(params: ApplyFixParams): ApplyFixResult {
       ? [aliases]
       : []
   if (existing.includes(aliasInput)) {
-    return { ok: false, appliedAction: 'add_alias', resultMessage: `Alias already present: ${aliasInput}` }
+    return { ok: false, appliedAction: 'add_alias', resultMessage: copy.aliasExists(aliasInput) }
   }
   frontmatter.aliases = [...existing, aliasInput]
   const next = matter.stringify(parsed.content, frontmatter)
-  return applyMutation(params, updateMutation('add_alias', params.item.filePath, absolutePath, original, next, `Added alias "${aliasInput}" to ${params.item.filePath}`))
+  return applyMutation(params, updateMutation('add_alias', params.item.filePath, absolutePath, original, next, copy.aliasAdded(aliasInput, params.item.filePath)))
 }
 
 function applyMutation(params: ApplyFixParams, mutation: MaintenanceMutation): ApplyFixResult {
+  const copy = createApplyFixCopy(getApplyFixLanguage(params))
   if (params.mode === 'preview') {
     return {
       ok: true,
@@ -229,7 +281,7 @@ function applyMutation(params: ApplyFixParams, mutation: MaintenanceMutation): A
     return {
       ok: false,
       appliedAction: mutation.action,
-      resultMessage: `File changed since preview: ${mutation.filePath}`,
+      resultMessage: copy.fileChangedSincePreview(mutation.filePath),
       filePath: mutation.filePath
     }
   }
@@ -248,25 +300,26 @@ function applyMutation(params: ApplyFixParams, mutation: MaintenanceMutation): A
 }
 
 function undoMaintenanceFix(params: ApplyFixParams): ApplyFixResult {
+  const copy = createApplyFixCopy(getApplyFixLanguage(params))
   const token = typeof params.payload?.undoToken === 'string' ? params.payload.undoToken : ''
-  if (!token) return { ok: false, appliedAction: params.action, resultMessage: 'undoToken is required' }
+  if (!token) return { ok: false, appliedAction: params.action, resultMessage: copy.undoTokenRequired() }
 
   let recordPath: string
   try {
     recordPath = undoRecordPath(params.vaultPath, token)
   } catch {
-    return { ok: false, appliedAction: params.action, resultMessage: 'Invalid undo token' }
+    return { ok: false, appliedAction: params.action, resultMessage: copy.invalidUndoToken() }
   }
   if (!existsSync(recordPath)) {
-    return { ok: false, appliedAction: params.action, resultMessage: 'Undo record not found or expired' }
+    return { ok: false, appliedAction: params.action, resultMessage: copy.undoRecordMissing() }
   }
 
   const record = JSON.parse(readFileSync(recordPath, 'utf-8')) as MaintenanceUndoRecord
   if (Date.now() > record.expiresAt) {
     try { unlinkSync(recordPath) } catch { /* best effort */ }
-    return { ok: false, appliedAction: record.action, resultMessage: 'Undo record not found or expired', filePath: record.filePath }
+    return { ok: false, appliedAction: record.action, resultMessage: copy.undoRecordMissing(), filePath: record.filePath }
   }
-  const absolutePath = resolveVaultFile(params.vaultPath, record.filePath)
+  const absolutePath = resolveVaultFile(params.vaultPath, record.filePath, getApplyFixLanguage(params))
   const currentExists = existsSync(absolutePath)
   const currentContent = currentExists ? readFileSync(absolutePath, 'utf-8') : null
   const currentHash = currentContent === null ? undefined : hashContent(currentContent)
@@ -274,7 +327,7 @@ function undoMaintenanceFix(params: ApplyFixParams): ApplyFixResult {
     return {
       ok: false,
       appliedAction: record.action,
-      resultMessage: `Cannot undo because the file changed after the fix: ${record.filePath}`,
+      resultMessage: copy.cannotUndoChanged(record.filePath),
       filePath: record.filePath
     }
   }
@@ -293,7 +346,7 @@ function undoMaintenanceFix(params: ApplyFixParams): ApplyFixResult {
   return {
     ok: true,
     appliedAction: record.action,
-    resultMessage: `Undid ${record.action} in ${record.filePath}`,
+    resultMessage: copy.undone(record.action, record.filePath),
     filePath: record.filePath
   }
 }
@@ -362,17 +415,18 @@ function moveToVaultTrash(vaultPath: string, absolutePath: string): void {
   writeFileSync(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
 }
 
-function resolveVaultFile(vaultPath: string, filePath: string): string {
-  return assertPathInsideVaultSync(resolve(vaultPath, filePath), vaultPath)
+function resolveVaultFile(vaultPath: string, filePath: string, language: AppLanguage = 'en'): string {
+  return assertPathInsideVaultSync(resolve(vaultPath, filePath), vaultPath, language)
 }
 
-function assertPathInsideVaultSync(filePath: string, vaultPath: string): string {
+function assertPathInsideVaultSync(filePath: string, vaultPath: string, language: AppLanguage = 'en'): string {
+  const copy = createApplyFixCopy(language)
   const requested = normalize(resolve(filePath))
   const normalizedVault = normalize(resolve(vaultPath))
-  if (!isPathInside(requested, normalizedVault)) throw new Error('Path is outside the current vault')
+  if (!isPathInside(requested, normalizedVault)) throw new Error(copy.pathOutsideVault())
   const realFile = realPathSafeSync(requested)
   const realVault = realPathSafeSync(normalizedVault)
-  if (!isPathInside(realFile, realVault)) throw new Error('Path escapes the current vault after resolving symlinks')
+  if (!isPathInside(realFile, realVault)) throw new Error(copy.pathEscapesVault())
   return realFile
 }
 

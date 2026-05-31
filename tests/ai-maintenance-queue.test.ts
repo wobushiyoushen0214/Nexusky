@@ -219,6 +219,57 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     })
   })
 
+  it('localizes visible maintenance queue copy with the requested language', () => {
+    const queue = buildKnowledgeMaintenanceQueue({
+      notes: [
+        { id: 'broken', title: 'Broken Source', filePath: 'Broken.md', updatedAt: 1700000000000 },
+        { id: 'overdue', title: 'Overdue Tasks', filePath: 'Overdue.md', updatedAt: 1700000000001 },
+        { id: 'memory', title: 'Memory Note', filePath: 'Memory.md', updatedAt: 1700000000002 }
+      ],
+      outgoingLinksByNoteId: new Map<string, OutgoingLinkIndex[]>([
+        ['broken', [{ targetTitle: 'Missing', line: 3, context: 'See [[Missing]]', resolved: false }]]
+      ]),
+      backlinkCountByNoteId: new Map([
+        ['broken', 1],
+        ['overdue', 1],
+        ['memory', 1]
+      ]),
+      unlinkedMentionCountByNoteId: new Map(),
+      openTaskCountByPath: new Map([
+        ['Overdue.md', 2]
+      ]),
+      elevatedTaskCountByPath: new Map([
+        ['Overdue.md', 2]
+      ]),
+      overdueTaskInfoByPath: new Map([
+        ['Overdue.md', { count: 2, earliestDue: '2026-05-18' }]
+      ]),
+      memoryStatusByNoteId: new Map([
+        ['memory', 'missing']
+      ]),
+      bridges: [],
+      language: 'zh-CN',
+      limit: 10
+    })
+
+    expect(queue.find((item) => item.type === 'fix_unresolved_link')).toMatchObject({
+      action: '处理或创建 [[Missing]]',
+      reason: '断开的双链会影响图谱导航和 AI 查找笔记。'
+    })
+    expect(queue.find((item) => item.type === 'review_overdue_tasks')).toMatchObject({
+      action: '检查这篇笔记中的 2 项逾期任务',
+      detail: '逾期任务：2；最早到期：2026-05-18'
+    })
+    expect(queue.find((item) => item.type === 'refresh_memory')).toMatchObject({
+      action: '为这篇笔记生成 AI 记忆账本',
+      detail: '记忆状态：缺失'
+    })
+    const visibleCopy = queue.map((item) => `${item.action}\n${item.reason}\n${item.detail}`).join('\n')
+    expect(visibleCopy).not.toContain('Resolve or create')
+    expect(visibleCopy).not.toContain('Review 2 overdue tasks')
+    expect(visibleCopy).not.toContain('Memory status')
+  })
+
   it('filters maintenance items by query', () => {
     const queue = buildKnowledgeMaintenanceQueue({
       notes: [{ id: 'a', title: 'Alpha', filePath: 'Alpha.md', updatedAt: 1700000000000 }],

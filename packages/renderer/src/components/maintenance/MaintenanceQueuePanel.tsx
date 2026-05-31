@@ -70,6 +70,7 @@ export function MaintenanceQueuePanel() {
   const content = useEditorStore((s) => s.content)
   const maintenancePanelSection = useUIStore((s) => s.maintenancePanelSection)
   const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
+  const language = useUIStore((s) => s.language)
   const [items, setItems] = useState<KnowledgeMaintenanceItem[]>([])
   const [counts, setCounts] = useState<Partial<Record<KnowledgeMaintenanceType, number>>>({})
   const [loading, setLoading] = useState(false)
@@ -84,7 +85,8 @@ export function MaintenanceQueuePanel() {
       const result = await window.api.invoke('maintenance:get-queue', {
         vaultPath,
         type: activeFilter === 'all' ? undefined : activeFilter,
-        limit: 200
+        limit: 200,
+        language
       })
       setItems(result.items)
       setCounts(result.counts as Partial<Record<KnowledgeMaintenanceType, number>>)
@@ -93,7 +95,7 @@ export function MaintenanceQueuePanel() {
     } finally {
       setLoading(false)
     }
-  }, [vaultPath, activeFilter])
+  }, [vaultPath, activeFilter, language])
 
   useEffect(() => {
     if (maintenancePanelSection !== 'queue') return
@@ -108,7 +110,7 @@ export function MaintenanceQueuePanel() {
   ) => {
     if (!vaultPath) return
     const applyPayload = expectedBeforeHash ? { ...(payload || {}), expectedBeforeHash } : payload
-    const result = await window.api.invoke('maintenance:apply-fix', { vaultPath, item, action, mode: 'apply', payload: applyPayload })
+    const result = await window.api.invoke('maintenance:apply-fix', { vaultPath, item, action, mode: 'apply', payload: applyPayload, language })
     if (!result.ok) {
       toast(result.resultMessage, 'error')
       return
@@ -119,7 +121,7 @@ export function MaintenanceQueuePanel() {
       await useEditorStore.getState().openFile(`${vaultPath}/${result.filePath}`)
     }
     void refresh()
-  }, [vaultPath, refresh])
+  }, [vaultPath, refresh, language])
 
   const previewFix = useCallback(async (item: KnowledgeMaintenanceItem, action: MaintenanceApplyAction, payload?: Record<string, unknown>) => {
     if (!vaultPath) return
@@ -128,13 +130,13 @@ export function MaintenanceQueuePanel() {
       return
     }
 
-    const result = await window.api.invoke('maintenance:apply-fix', { vaultPath, item, action, mode: 'preview', payload })
+    const result = await window.api.invoke('maintenance:apply-fix', { vaultPath, item, action, mode: 'preview', payload, language })
     if (!result.ok || !result.preview) {
       toast(result.resultMessage, 'error')
       return
     }
     setPendingPreview({ item, action, payload, preview: result.preview })
-  }, [vaultPath, runFix])
+  }, [vaultPath, runFix, language])
 
   const undoLastFix = useCallback(async () => {
     if (!vaultPath || !lastUndo) return
@@ -143,7 +145,8 @@ export function MaintenanceQueuePanel() {
       item: lastUndo.item,
       action: lastUndo.action,
       mode: 'undo',
-      payload: { undoToken: lastUndo.undoToken }
+      payload: { undoToken: lastUndo.undoToken },
+      language
     })
     if (!result.ok) {
       toast(result.resultMessage, 'error')
@@ -152,7 +155,7 @@ export function MaintenanceQueuePanel() {
     setLastUndo(null)
     toast(result.resultMessage, 'success')
     void refresh()
-  }, [vaultPath, lastUndo, refresh])
+  }, [vaultPath, lastUndo, refresh, language])
 
   const grouped = useMemo(() => items, [items])
   const priorityItems = useMemo(() => grouped.slice(0, 3), [grouped])

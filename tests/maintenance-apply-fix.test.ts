@@ -39,6 +39,28 @@ describe('applyMaintenanceFix', () => {
     expect(result.filePath).toBe('Demo.md')
   })
 
+  it('localizes open_note and mark_done result messages', async () => {
+    const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
+    writeFileSync(join(vaultPath, 'Demo.md'), '# Demo\n', 'utf-8')
+    writeFileSync(join(vaultPath, 'Tasks.md'), '# Tasks\n\n- [ ] Buy milk\n', 'utf-8')
+
+    const openResult = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem(),
+      action: 'open_note',
+      language: 'zh-CN'
+    })
+    const doneResult = applyMaintenanceFix({
+      vaultPath,
+      item: makeItem({ filePath: 'Tasks.md', type: 'review_open_tasks' }),
+      action: 'mark_done',
+      language: 'zh-CN'
+    })
+
+    expect(openResult.resultMessage).toBe('已打开 Demo.md')
+    expect(doneResult.resultMessage).toBe('已在 Tasks.md 中标记一项任务为完成')
+  })
+
   it('open_note reports an error when the file is missing', async () => {
     const { applyMaintenanceFix } = await import('../packages/main/src/services/maintenance/apply-fix')
     const result = applyMaintenanceFix({ vaultPath, item: makeItem({ filePath: 'Missing.md' }), action: 'open_note' })
