@@ -607,6 +607,17 @@ export interface KnowledgeMaintenanceItem {
   detail: string
 }
 
+export type MaintenanceScanState = 'pending' | 'partial' | 'complete' | 'error'
+
+export interface MaintenanceScanStatus {
+  state: MaintenanceScanState
+  completedTypes: KnowledgeMaintenanceType[]
+  pendingTypes: KnowledgeMaintenanceType[]
+  updatedAt: number
+  durationMs?: number
+  message?: string
+}
+
 export type MaintenanceApplyAction = 'open_note' | 'create_target' | 'mark_done' | 'archive' | 'add_alias'
 export type MaintenanceApplyMode = 'preview' | 'apply' | 'undo'
 
@@ -990,6 +1001,7 @@ export interface IPCChannelMap {
       items: KnowledgeMaintenanceItem[]
       total: number
       counts: Record<KnowledgeMaintenanceType, number>
+      scan: MaintenanceScanStatus
     }
   }
   'maintenance:apply-fix': {

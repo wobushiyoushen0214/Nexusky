@@ -160,6 +160,26 @@
       "count": "{{count}} 项任务",
       "remaining": "队列中还有 {{count}} 项"
     },
+    "scan": {
+      "pending": {
+        "label": "扫描中",
+        "detail": "正在检查当前视图的维护信号。"
+      },
+      "partial": {
+        "label": "部分结果可用",
+        "detail": "{{completed}}/{{total}} 个扫描分组已完成，{{pending}} 个仍在进行。"
+      },
+      "complete": {
+        "label": "更新于 {{time}}",
+        "detail": "已生成 {{count}} 个维护信号{{duration}}。"
+      },
+      "error": {
+        "label": "扫描失败",
+        "detail": "{{message}}",
+        "unknown": "未知错误"
+      },
+      "duration": "，耗时 {{duration}}"
+    },
     "filters": {
       "all": "全部",
       "fix_unresolved_link": "未解析链接",

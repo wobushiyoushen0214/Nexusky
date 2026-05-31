@@ -26,7 +26,14 @@ describe('maintenance IPC types', () => {
     const getResult: IPCChannelMap['maintenance:get-queue']['result'] = {
       items: [item],
       total: 1,
-      counts: { review_open_tasks: 1 } as never
+      counts: { review_open_tasks: 1 } as never,
+      scan: {
+        state: 'complete',
+        completedTypes: ['review_open_tasks'],
+        pendingTypes: [],
+        updatedAt: 1,
+        durationMs: 12
+      }
     }
     const applyParams: IPCChannelMap['maintenance:apply-fix']['params'] = {
       vaultPath: '/tmp/vault',
@@ -54,6 +61,7 @@ describe('maintenance IPC types', () => {
     expect(getParams.type).toBe('review_open_tasks')
     expect(getParams.language).toBe('zh-CN')
     expect(getResult.total).toBe(1)
+    expect(getResult.scan.state).toBe('complete')
     expect(applyParams.action).toBe('mark_done')
     expect(applyParams.mode).toBe('preview')
     expect(applyParams.language).toBe('zh-CN')

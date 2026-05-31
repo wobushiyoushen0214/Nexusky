@@ -111,6 +111,68 @@
   color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
 }
 
+.maintenance-panel__scan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-faint, rgba(255, 255, 255, 0.04));
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.maintenance-panel__scan-main {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.maintenance-panel__scan-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--text-tertiary);
+}
+
+.maintenance-panel__scan-label {
+  color: var(--text-secondary);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.maintenance-panel__scan-detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.maintenance-panel__scan.is-pending .maintenance-panel__scan-dot {
+  background: var(--accent);
+}
+
+.maintenance-panel__scan.is-partial .maintenance-panel__scan-dot {
+  background: oklch(75% 0.12 80);
+}
+
+.maintenance-panel__scan.is-complete .maintenance-panel__scan-dot {
+  background: oklch(72% 0.11 154);
+}
+
+.maintenance-panel__scan.is-error .maintenance-panel__scan-dot {
+  background: oklch(66% 0.16 23);
+}
+
+.maintenance-panel__scan.is-error .maintenance-panel__scan-label {
+  color: oklch(66% 0.16 23);
+}
+
 .maintenance-panel__body {
   flex: 1;
   overflow-y: auto;

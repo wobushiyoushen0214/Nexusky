@@ -21,7 +21,7 @@ import {
 import { readMemory } from '../memory'
 import { getAppLanguage } from '../app-language'
 import { getCachedVaultQuery } from '../db-query-cache'
-import type { AppLanguage } from '@shared/types/ipc'
+import type { AppLanguage, MaintenanceScanStatus } from '@shared/types/ipc'
 
 const MAINTENANCE_QUEUE_CACHE_TTL_MS = 60_000
 
@@ -62,6 +62,7 @@ export interface MaintenanceQueueResult {
   items: KnowledgeMaintenanceItem[]
   total: number
   counts: Record<KnowledgeMaintenanceType, number>
+  scan: MaintenanceScanStatus
 }
 
 export interface NormalizedMaintenanceQueueParams {
@@ -211,6 +212,7 @@ export function gatherMaintenanceItems(params: MaintenanceQueueParams): Maintena
 }
 
 function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams, notes: NoteIndex[]): MaintenanceQueueResult {
+  const startedAt = Date.now()
   const {
     vaultPath,
     query,
@@ -321,7 +323,19 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
   })
 
   const counts = countByType(items)
-  return { items, total: items.length, counts }
+  const finishedAt = Date.now()
+  return {
+    items,
+    total: items.length,
+    counts,
+    scan: {
+      state: 'complete',
+      completedTypes: type ? [type] : Array.from(KNOWLEDGE_MAINTENANCE_TYPES),
+      pendingTypes: [],
+      updatedAt: finishedAt,
+      durationMs: finishedAt - startedAt
+    }
+  }
 }
 
 function countByType(items: KnowledgeMaintenanceItem[]): Record<KnowledgeMaintenanceType, number> {

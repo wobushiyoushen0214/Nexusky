@@ -160,6 +160,26 @@
       "count": "{{count}} tasks",
       "remaining": "{{count}} more in the queue"
     },
+    "scan": {
+      "pending": {
+        "label": "Scanning",
+        "detail": "Checking maintenance signals for this view."
+      },
+      "partial": {
+        "label": "Partial results",
+        "detail": "{{completed}}/{{total}} scan groups ready, {{pending}} still running."
+      },
+      "complete": {
+        "label": "Updated {{time}}",
+        "detail": "{{count}} maintenance signals ready{{duration}}."
+      },
+      "error": {
+        "label": "Scan failed",
+        "detail": "{{message}}",
+        "unknown": "Unknown error"
+      },
+      "duration": " in {{duration}}"
+    },
     "filters": {
       "all": "All",
       "fix_unresolved_link": "Unresolved Links",

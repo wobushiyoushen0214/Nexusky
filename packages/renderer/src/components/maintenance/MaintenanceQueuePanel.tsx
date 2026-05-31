@@ -10,7 +10,8 @@ import type {
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
   MaintenanceApplyAction,
-  MaintenanceApplyPreview
+  MaintenanceApplyPreview,
+  MaintenanceScanStatus
 } from '@shared/types/ipc'
 import './maintenance.css'
 
@@ -50,6 +51,30 @@ const ACTIONS_BY_TYPE: Record<KnowledgeMaintenanceType, MaintenanceApplyAction[]
 }
 
 const MUTATING_ACTIONS = new Set<MaintenanceApplyAction>(['create_target', 'mark_done', 'archive', 'add_alias'])
+const MAINTENANCE_SCAN_TYPES = Object.keys(ACTIONS_BY_TYPE) as KnowledgeMaintenanceType[]
+
+function getPendingScanTypes(activeFilter: 'all' | KnowledgeMaintenanceType): KnowledgeMaintenanceType[] {
+  return activeFilter === 'all' ? MAINTENANCE_SCAN_TYPES : [activeFilter]
+}
+
+function createPendingScanStatus(activeFilter: 'all' | KnowledgeMaintenanceType): MaintenanceScanStatus {
+  return {
+    state: 'pending',
+    completedTypes: [],
+    pendingTypes: getPendingScanTypes(activeFilter),
+    updatedAt: Date.now()
+  }
+}
+
+function createErrorScanStatus(error: unknown): MaintenanceScanStatus {
+  return {
+    state: 'error',
+    completedTypes: [],
+    pendingTypes: [],
+    updatedAt: Date.now(),
+    message: error instanceof Error ? error.message : String(error)
+  }
+}
 
 function formatMaintenanceDateTime(value: string): string {
   const date = new Date(value)
@@ -68,6 +93,16 @@ function localizeMaintenanceGeneratedText(value: string, language: AppLanguage):
     return language === 'en' ? `Updated: ${formatted}` : `更新于：${formatted}`
   }
   return value
+}
+
+function formatMaintenanceTimestamp(value: number): string {
+  return formatMaintenanceDateTime(new Date(value).toISOString())
+}
+
+function formatScanDuration(value?: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return ''
+  if (value < 1000) return `${Math.round(value)}ms`
+  return `${(value / 1000).toFixed(1)}s`
 }
 
 interface PendingMaintenancePreview {
@@ -94,6 +129,7 @@ export function MaintenanceQueuePanel() {
   const [items, setItems] = useState<KnowledgeMaintenanceItem[]>([])
   const [counts, setCounts] = useState<Partial<Record<KnowledgeMaintenanceType, number>>>({})
   const [loading, setLoading] = useState(false)
+  const [scanStatus, setScanStatus] = useState<MaintenanceScanStatus | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
   const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
   const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
@@ -101,6 +137,7 @@ export function MaintenanceQueuePanel() {
   const refresh = useCallback(async () => {
     if (!vaultPath) return
     setLoading(true)
+    setScanStatus(createPendingScanStatus(activeFilter))
     try {
       const result = await window.api.invoke('maintenance:get-queue', {
         vaultPath,
@@ -110,7 +147,9 @@ export function MaintenanceQueuePanel() {
       })
       setItems(result.items)
       setCounts(result.counts as Partial<Record<KnowledgeMaintenanceType, number>>)
+      setScanStatus(result.scan)
     } catch (err) {
+      setScanStatus(createErrorScanStatus(err))
       toast(err instanceof Error ? err.message : String(err), 'error')
     } finally {
       setLoading(false)
@@ -249,6 +288,7 @@ export function MaintenanceQueuePanel() {
               )
             })}
           </div>
+          {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
           <div className="maintenance-panel__body">
             {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
             {vaultPath && grouped.length === 0 && !loading && (
@@ -302,6 +342,43 @@ export function MaintenanceQueuePanel() {
           }}
         />
       )}
+    </div>
+  )
+}
+
+interface MaintenanceScanStatusBarProps {
+  status: MaintenanceScanStatus
+  itemCount: number
+}
+
+function MaintenanceScanStatusBar({ status, itemCount }: MaintenanceScanStatusBarProps) {
+  const { t } = useTranslation()
+  const duration = formatScanDuration(status.durationMs)
+  const completed = status.completedTypes.length
+  const pending = status.pendingTypes.length
+  const total = completed + pending
+  const detail = status.state === 'error'
+    ? t('maintenance.scan.error.detail', { message: status.message || t('maintenance.scan.error.unknown') })
+    : status.state === 'partial'
+      ? t('maintenance.scan.partial.detail', { completed, pending, total })
+      : status.state === 'pending'
+        ? t('maintenance.scan.pending.detail')
+        : t('maintenance.scan.complete.detail', {
+          count: itemCount,
+          duration: duration ? t('maintenance.scan.duration', { duration }) : ''
+        })
+
+  return (
+    <div className={`maintenance-panel__scan is-${status.state}`} role={status.state === 'error' ? 'alert' : 'status'}>
+      <div className="maintenance-panel__scan-main">
+        <span className="maintenance-panel__scan-dot" aria-hidden="true" />
+        <span className="maintenance-panel__scan-label">
+          {status.state === 'complete'
+            ? t('maintenance.scan.complete.label', { time: formatMaintenanceTimestamp(status.updatedAt) })
+            : t(`maintenance.scan.${status.state}.label`)}
+        </span>
+      </div>
+      <span className="maintenance-panel__scan-detail">{detail}</span>
     </div>
   )
 }

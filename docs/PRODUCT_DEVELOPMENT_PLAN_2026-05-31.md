@@ -908,5 +908,6 @@ Phase 4 退出标准：
 | 日期 | 项目 | 状态 | 变更 | 验证 |
 | --- | --- | --- | --- | --- |
 | 2026-05-31 | A2.1 / S1.2 Maintenance cache key | 完成 | `gatherMaintenanceItems` 增加 60 秒结果缓存，cache key 包含 vault hash、索引文件签名（filePath / updatedAt / contentHash）、Memory Ledger 文件签名、扫描类型、UI 语言、当天日期、query hash、limit、`minCharacters`、`upcomingDays`、`requiredProperties`。失效依赖现有 `invalidateVaultQueryCache` 的索引/文件变更路径，memory 文件变化由 key 签名覆盖。 | `pnpm test -- tests/maintenance-cache-key.test.ts tests/db-query-cache.test.ts`；`pnpm typecheck` |
+| 2026-05-31 | S1.3 Maintenance scan status protocol | 完成 | `maintenance:get-queue` 返回 `scan` 元数据，覆盖 `pending` / `partial` / `complete` / `error` 状态、已完成/待完成扫描类型、更新时间和耗时；维护队列 UI 在过滤器下方展示扫描状态，刷新时先进入 pending，成功后展示 complete，异常时展示 error，并为后续 partial results 预留 UI 协议。 | `pnpm test -- tests/maintenance-queue-ipc.test.ts tests/maintenance-cache-key.test.ts tests/db-query-cache.test.ts`；`pnpm typecheck` |
 
-后续风险：这次完成的是维护扫描缓存键和同步结果缓存，不是 A2.2/A2.4 的分类型异步扫描与 partial results UI。不同 query/type 仍会生成独立缓存项，后续需要把底层扫描结果与前端过滤拆开，减少重复构建。
+后续风险：当前完成的是维护扫描缓存键、同步结果缓存和扫描状态协议，不是 A2.2/A2.4 的分类型异步扫描与真实 partial results。不同 query/type 仍会生成独立缓存项，后续需要把底层扫描结果与前端过滤拆开，减少重复构建。
