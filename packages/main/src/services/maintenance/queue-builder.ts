@@ -1,5 +1,6 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
+import { createHash } from 'crypto'
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
+import { join, resolve } from 'path'
 import {
   buildKnowledgeMaintenanceQueue,
   indexTasksByPath,
@@ -14,11 +15,15 @@ import {
   getBacklinks,
   getOutgoingLinks,
   getPropertyRows,
-  getUnlinkedMentions
+  getUnlinkedMentions,
+  type NoteIndex
 } from '../indexer'
 import { readMemory } from '../memory'
 import { getAppLanguage } from '../app-language'
+import { getCachedVaultQuery } from '../db-query-cache'
 import type { AppLanguage } from '@shared/types/ipc'
+
+const MAINTENANCE_QUEUE_CACHE_TTL_MS = 60_000
 
 const KNOWLEDGE_MAINTENANCE_TYPES = new Set<KnowledgeMaintenanceType>([
   'fix_unresolved_link',
@@ -59,10 +64,107 @@ export interface MaintenanceQueueResult {
   counts: Record<KnowledgeMaintenanceType, number>
 }
 
+export interface NormalizedMaintenanceQueueParams {
+  vaultPath: string
+  query: string
+  type?: KnowledgeMaintenanceType
+  limit: number
+  minCharacters: number
+  upcomingDays: number
+  requiredProperties: string[]
+  language: AppLanguage
+  todayIso: string
+}
+
+export interface MaintenanceQueueCacheKeyInput extends NormalizedMaintenanceQueueParams {
+  notes: Pick<NoteIndex, 'filePath' | 'updatedAt' | 'contentHash'>[]
+  memorySignature?: string
+}
+
 function normalizeType(value: unknown): KnowledgeMaintenanceType | undefined {
   if (typeof value !== 'string') return undefined
   const t = value.trim() as KnowledgeMaintenanceType
   return KNOWLEDGE_MAINTENANCE_TYPES.has(t) ? t : undefined
+}
+
+function normalizeMaintenanceQueueParams(params: MaintenanceQueueParams): NormalizedMaintenanceQueueParams {
+  return {
+    vaultPath: params.vaultPath,
+    query: (params.query ?? '').trim().toLowerCase(),
+    type: normalizeType(params.type),
+    limit: Math.max(1, Math.min(params.limit ?? 200, 500)),
+    language: params.language ?? getAppLanguage(),
+    minCharacters: Math.max(1000, Math.floor(params.minCharacters ?? 8000)),
+    upcomingDays: Math.min(30, Math.max(1, Math.floor(params.upcomingDays ?? 7))),
+    requiredProperties: Array.isArray(params.requiredProperties)
+      ? params.requiredProperties
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+      : [],
+    todayIso: localDateIso()
+  }
+}
+
+function hashText(value: string): string {
+  return createHash('sha256').update(value).digest('hex').slice(0, 16)
+}
+
+function hashJson(value: unknown): string {
+  return hashText(JSON.stringify(value))
+}
+
+function getVaultCacheId(vaultPath: string): string {
+  return hashText(resolve(vaultPath).replace(/\\/g, '/').toLowerCase())
+}
+
+function getNotesFileSignature(notes: Pick<NoteIndex, 'filePath' | 'updatedAt' | 'contentHash'>[]): string {
+  const files = notes
+    .map((note) => [note.filePath, note.updatedAt, note.contentHash || ''] as const)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+  return `${files.length}:${hashJson(files)}`
+}
+
+function getMaintenanceMemorySignature(vaultPath: string): string {
+  const dir = join(vaultPath, '.nexusky', 'memories')
+  if (!existsSync(dir)) return '0:none'
+
+  try {
+    const files: Array<readonly [string, number, number]> = []
+    for (const fileName of readdirSync(dir)) {
+      if (!fileName.endsWith('.json')) continue
+      try {
+        const stat = statSync(join(dir, fileName))
+        files.push([fileName, Math.floor(stat.mtimeMs), stat.size] as const)
+      } catch {
+        // Ignore memory files that disappear while the key is being built.
+      }
+    }
+    files.sort((a, b) => a[0].localeCompare(b[0]))
+    return `${files.length}:${hashJson(files)}`
+  } catch {
+    return 'unknown'
+  }
+}
+
+export function buildMaintenanceQueueCacheKey(input: MaintenanceQueueCacheKeyInput): string {
+  const requiredProperties = input.requiredProperties.map((value) => value.trim()).filter(Boolean)
+  return [
+    'maintenance-queue:v1',
+    `vault:${getVaultCacheId(input.vaultPath)}`,
+    `files:${getNotesFileSignature(input.notes)}`,
+    `memory:${input.memorySignature ?? getMaintenanceMemorySignature(input.vaultPath)}`,
+    `scan:${input.type ?? 'all'}`,
+    `language:${input.language}`,
+    `today:${input.todayIso}`,
+    `query:${hashText(input.query.trim().toLowerCase())}`,
+    `limit:${input.limit}`,
+    `settings:${hashJson({
+      minCharacters: input.minCharacters,
+      upcomingDays: input.upcomingDays,
+      requiredProperties
+    })}`
+  ].join('|')
 }
 
 function getPropertyTextValues(value: unknown): string[] {
@@ -92,23 +194,38 @@ function localDateIso(date = new Date()): string {
 }
 
 export function gatherMaintenanceItems(params: MaintenanceQueueParams): MaintenanceQueueResult {
-  const vaultPath = params.vaultPath
-  const query = (params.query ?? '').trim().toLowerCase()
-  const type = normalizeType(params.type)
-  const limit = Math.max(1, Math.min(params.limit ?? 200, 500))
-  const language = params.language ?? getAppLanguage()
-  const minCharacters = Math.max(1000, Math.floor(params.minCharacters ?? 8000))
-  const upcomingDays = Math.min(30, Math.max(1, Math.floor(params.upcomingDays ?? 7)))
-  const requiredProperties = Array.isArray(params.requiredProperties)
-    ? params.requiredProperties.filter((value): value is string => typeof value === 'string')
-    : []
+  const normalized = normalizeMaintenanceQueueParams(params)
+  const notes = getAllNotes(normalized.vaultPath)
+  const cacheKey = buildMaintenanceQueueCacheKey({
+    ...normalized,
+    notes,
+    memorySignature: getMaintenanceMemorySignature(normalized.vaultPath)
+  })
 
-  const notes = getAllNotes(vaultPath)
+  return getCachedVaultQuery(
+    normalized.vaultPath,
+    cacheKey,
+    () => gatherMaintenanceItemsUncached(normalized, notes),
+    MAINTENANCE_QUEUE_CACHE_TTL_MS
+  )
+}
+
+function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams, notes: NoteIndex[]): MaintenanceQueueResult {
+  const {
+    vaultPath,
+    query,
+    type,
+    limit,
+    language,
+    minCharacters,
+    upcomingDays,
+    requiredProperties,
+    todayIso
+  } = params
   const propertyRows = getPropertyRows(vaultPath)
   const propertyRowsByPath = new Map(propertyRows.map((row) => [row.filePath, row.properties]))
   const outgoingLinksByNoteId = new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
   const tasks = getAllTasks(vaultPath)
-  const todayIso = localDateIso()
   const taskIndex = indexTasksByPath(tasks, todayIso, upcomingDays)
 
   const emptyNotePaths = new Set<string>()

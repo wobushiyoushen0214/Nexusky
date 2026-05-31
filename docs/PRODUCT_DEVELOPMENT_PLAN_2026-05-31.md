@@ -902,3 +902,11 @@ Phase 4 退出标准：
 12. Sync / Publish / workflow packs 商业化。
 
 这条路线的关键是：先证明用户愿意把真实 vault 放进来，再证明用户愿意每周回来，最后再证明用户愿意为同步、发布和专业工作流付费。
+
+## 13. 执行记录
+
+| 日期 | 项目 | 状态 | 变更 | 验证 |
+| --- | --- | --- | --- | --- |
+| 2026-05-31 | A2.1 / S1.2 Maintenance cache key | 完成 | `gatherMaintenanceItems` 增加 60 秒结果缓存，cache key 包含 vault hash、索引文件签名（filePath / updatedAt / contentHash）、Memory Ledger 文件签名、扫描类型、UI 语言、当天日期、query hash、limit、`minCharacters`、`upcomingDays`、`requiredProperties`。失效依赖现有 `invalidateVaultQueryCache` 的索引/文件变更路径，memory 文件变化由 key 签名覆盖。 | `pnpm test -- tests/maintenance-cache-key.test.ts tests/db-query-cache.test.ts`；`pnpm typecheck` |
+
+后续风险：这次完成的是维护扫描缓存键和同步结果缓存，不是 A2.2/A2.4 的分类型异步扫描与 partial results UI。不同 query/type 仍会生成独立缓存项，后续需要把底层扫描结果与前端过滤拆开，减少重复构建。
