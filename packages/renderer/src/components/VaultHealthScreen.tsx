@@ -1,12 +1,29 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
+import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 
 interface VaultHealthScreenProps {
   vaultPath: string
   onDismiss: () => void
+}
+
+export function buildVaultHealthAskAiDraft(t: TFunction, summary: VaultHealthSummary | null): AICommandDraft {
+  return {
+    mode: 'chat',
+    agentMode: true,
+    prompt: t('vaultHealth.action.askAi.prompt', {
+      notes: summary?.noteCount ?? 0,
+      links: summary?.linkCount ?? 0,
+      unresolved: summary?.unresolvedLinkCount ?? 0,
+      orphans: summary?.orphanCount ?? 0,
+      tasks: summary?.openTaskCount ?? 0,
+      missingMemory: summary?.missingMemoryCount ?? 0
+    })
+  }
 }
 
 export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenProps) {
@@ -43,7 +60,7 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   }
 
   const askAi = async () => {
-    setRightPanel('chat')
+    queueAiCommandDraft(buildVaultHealthAskAiDraft(t, summary), () => setRightPanel('chat'))
     await dismiss()
   }
 

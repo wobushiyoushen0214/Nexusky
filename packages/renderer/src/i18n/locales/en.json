@@ -40,7 +40,8 @@
       "askAi": {
         "kicker": "Ask",
         "title": "Ask AI about your vault",
-        "desc": "Open the chat panel and let the assistant tour what's inside."
+        "desc": "Start a vault-wide question and cite the notes used.",
+        "prompt": "Give me a sourced tour of this vault. Use the local search/tools, cite the notes you use, and say clearly if no relevant notes are found. Current health: {{notes}} notes, {{links}} links, {{unresolved}} unresolved links, {{orphans}} isolated notes, {{tasks}} open tasks, {{missingMemory}} notes without Memory Ledger."
       },
       "fixLinks": {
         "kicker": "Repair",
@@ -157,6 +158,41 @@
       "context": "Context is too long for the selected model. Use a larger-context model or send less context.",
       "timeout": "Provider request timed out. Retry or switch to a faster endpoint.",
       "unknown": "AI request failed. Check provider settings and try again."
+    }
+  },
+  "chatMessages": {
+    "emptyTitleChat": "Choose an AI task",
+    "emptyTitleEdit": "Choose an editing task",
+    "emptyHint": "You can also type a question, or use @ to cite notes.",
+    "hints": {
+      "citedVaultQuestion": {
+        "title": "Ask with sources",
+        "detail": "Search the vault and cite matching notes",
+        "prompt": "What are the main themes in this vault? Cite the notes you used, and say clearly if no relevant notes are found."
+      },
+      "editCurrent": {
+        "title": "Improve current note",
+        "detail": "Prepare a reviewable structure and wording edit",
+        "prompt": "Improve the current note structure, heading hierarchy, and clarity while preserving the original facts."
+      },
+      "rewriteSelection": {
+        "title": "Rewrite selection",
+        "detail": "Select text in the editor, then refine it",
+        "prompt": "Rewrite the selected text so it is clearer and better suited for long-term knowledge base storage."
+      },
+      "batchNotes": {
+        "title": "Generate linked notes",
+        "detail": "Build a small linked knowledge base around a topic",
+        "prompt": "Generate 5 interlinked Markdown notes around a topic. Each note should have a clear title, summary, key points, and [[bidirectional links]]. Topic:"
+      },
+      "generateGraph": {
+        "title": "Generate graph",
+        "detail": "Analyze the current note and generate relations"
+      },
+      "mentionNote": {
+        "title": "@ cite a note",
+        "detail": "Use a specific note as context for this turn"
+      }
     }
   },
   "maintenance": {

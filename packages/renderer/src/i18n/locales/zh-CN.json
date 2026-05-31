@@ -40,7 +40,8 @@
       "askAi": {
         "kicker": "询问",
         "title": "问 AI 一个关于 vault 的问题",
-        "desc": "打开聊天面板，让助手带你回顾笔记空间。"
+        "desc": "发起一次全库问题，并引用用到的笔记来源。",
+        "prompt": "请对这个 vault 做一次带来源的快速导览。使用本地搜索或工具，引用你用到的笔记；如果没有找到相关笔记，请明确说明。当前 health：{{notes}} 篇笔记，{{links}} 条链接，{{unresolved}} 条未解析链接，{{orphans}} 篇孤立笔记，{{tasks}} 个未完成任务，{{missingMemory}} 篇缺少记忆账本。"
       },
       "fixLinks": {
         "kicker": "修复",
@@ -157,6 +158,41 @@
       "context": "上下文超过当前模型限制。换用更大上下文模型，或减少发送内容。",
       "timeout": "提供商请求超时。可重试或换用更快的接口。",
       "unknown": "AI 请求失败。检查提供商配置后重试。"
+    }
+  },
+  "chatMessages": {
+    "emptyTitleChat": "选择一个 AI 任务",
+    "emptyTitleEdit": "选择一个编辑任务",
+    "emptyHint": "也可以直接输入问题，或用 @ 引用笔记。",
+    "hints": {
+      "citedVaultQuestion": {
+        "title": "带来源提问",
+        "detail": "搜索 vault 并引用匹配笔记",
+        "prompt": "这个 vault 的主要主题是什么？请引用你用到的笔记；如果没有找到相关笔记，请明确说明。"
+      },
+      "editCurrent": {
+        "title": "优化当前笔记",
+        "detail": "生成结构和表达修改方案，确认后应用",
+        "prompt": "请优化当前笔记的结构、标题层级和表达清晰度，保留原有事实。"
+      },
+      "rewriteSelection": {
+        "title": "改写选中文本",
+        "detail": "先在编辑器选中文本，再让 AI 精修",
+        "prompt": "请改写选中文本，使表达更清晰、更适合知识库长期保存。"
+      },
+      "batchNotes": {
+        "title": "生成关联笔记",
+        "detail": "围绕一个主题搭建小型双链知识库",
+        "prompt": "请围绕一个主题生成 5 篇相互关联的 Markdown 笔记，每篇都有清晰标题、摘要、要点和 [[双向链接]]。主题是："
+      },
+      "generateGraph": {
+        "title": "生成知识图谱",
+        "detail": "分析当前笔记并生成关系图"
+      },
+      "mentionNote": {
+        "title": "@ 引用笔记",
+        "detail": "把指定笔记作为本轮上下文"
+      }
     }
   },
   "maintenance": {

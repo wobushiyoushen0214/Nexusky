@@ -1,5 +1,7 @@
-import { memo, useRef, useEffect } from 'react'
+import { memo, useMemo, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { renderMarkdown } from './MessageBubble'
+import { buildChatHints, queueAiCommandDraft } from './ai-command-draft'
 import type { Message } from './MessageBubble'
 
 interface ChatMessagesProps {
@@ -14,65 +16,11 @@ interface ChatMessagesProps {
   onContinue?: (msg: Message) => void
 }
 
-interface AICommandDraft {
-  prompt: string
-  mode?: 'chat' | 'edit'
-  agentMode?: boolean
-  attachSelection?: boolean
-  unboundEdit?: boolean
-  requiresCurrentNote?: boolean
-}
-
-interface ChatHint {
-  title: string
-  detail: string
-  mark: string
-  draft?: AICommandDraft
-  eventText?: string
-}
-
-const CHAT_HINTS: ChatHint[] = [
-  {
-    title: '基于知识库回答',
-    detail: '自动搜索相关笔记并带来源引用',
-    mark: 'AI',
-    draft: { mode: 'chat', agentMode: true, prompt: '请基于当前知识库回答：' }
-  },
-  {
-    title: '优化当前笔记',
-    detail: '生成结构和表达修改方案，确认后应用',
-    mark: 'ED',
-    draft: { mode: 'edit', requiresCurrentNote: true, prompt: '请优化当前笔记的结构、标题层级和表达清晰度，保留原有事实。' }
-  },
-  {
-    title: '改写选中文本',
-    detail: '先在编辑器选中文本，再让 AI 精修',
-    mark: 'SE',
-    draft: { mode: 'edit', attachSelection: true, prompt: '请改写选中文本，使表达更清晰、更适合知识库长期保存。' }
-  },
-  {
-    title: '批量生成关联笔记',
-    detail: '用双向链接搭建一个主题知识库骨架',
-    mark: 'KB',
-    draft: { mode: 'edit', unboundEdit: true, prompt: '请围绕一个主题生成 5 篇相互关联的 Markdown 笔记，每篇都有清晰标题、摘要、要点和 [[双向链接]]。主题是：' }
-  },
-  {
-    title: '生成知识图谱',
-    detail: '分析当前笔记并生成关系图',
-    mark: 'KG',
-    eventText: '生成知识图谱'
-  },
-  {
-    title: '@ 引用笔记',
-    detail: '把指定笔记作为本轮上下文',
-    mark: '@',
-    eventText: '@ 引用笔记作为上下文'
-  }
-]
-
 export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, streamContent, editMode, editElapsed, editStreamContent, toolStatus, onRegenerate, onContinue }: ChatMessagesProps) {
+  const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
+  const chatHints = useMemo(() => buildChatHints(t), [t])
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -96,17 +44,17 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
     <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
       {messages.length === 0 && !isStreaming && (
         <div style={{ padding: '32px 16px' }}>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{editMode ? '选择一个编辑任务' : '选择一个 AI 任务'}</p>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16 }}>也可以直接输入问题，或用 @ 引用笔记。</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{editMode ? t('chatMessages.emptyTitleEdit') : t('chatMessages.emptyTitleChat')}</p>
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16 }}>{t('chatMessages.emptyHint')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {CHAT_HINTS.map((hint) => (
+            {chatHints.map((hint) => (
               <button
-                key={hint.title}
+                key={hint.id}
                 onClick={() => {
                   if (hint.draft) {
-                    window.dispatchEvent(new CustomEvent('ai-command-draft', { detail: hint.draft }))
+                    queueAiCommandDraft(hint.draft, () => {})
                   } else {
-                    window.dispatchEvent(new CustomEvent('chat-hint-click', { detail: hint.eventText }))
+                    window.dispatchEvent(new CustomEvent('chat-hint-click', { detail: hint.event }))
                   }
                 }}
                 style={{

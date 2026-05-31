@@ -11,6 +11,7 @@ import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
 import { formatAiToolStatus } from './tool-labels'
 import { getChatDraftStorageKey, normalizeChatDraft } from './chat-draft'
+import { PENDING_AI_DRAFT_STORAGE_KEY, type AICommandDraft } from './ai-command-draft'
 import { buildChatSessionTitleFromPrompt, shouldAutoRenameChatSession } from './chat-session-title'
 import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumentAttachmentFromExtracted, isSupportedAiDocumentName, type AiDocumentAttachment } from './document-attachment'
 import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
@@ -29,15 +30,6 @@ type BatchPlanItem = { title: string; done: boolean; failed?: boolean }
 type GenerateNotesResult = IPCChannelMap['ai:generate-notes']['result']
 type SharedBatchPlan = { id: string; items: BatchPlanItem[] }
 type PendingBatchPlan = { instruction: string; batches: GeneratedNoteBatchPlanItem[] }
-
-interface AICommandDraft {
-  prompt: string
-  mode?: 'chat' | 'edit'
-  agentMode?: boolean
-  attachSelection?: boolean
-  unboundEdit?: boolean
-  requiresCurrentNote?: boolean
-}
 
 const MAX_ATTACHED_NOTES = 20
 const MAX_ATTACHED_SELECTIONS = 8
@@ -401,18 +393,22 @@ export function ChatPanel() {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const text = (e as CustomEvent).detail
-      if (text === '@ 引用笔记作为上下文') { setInput('@'); inputRef.current?.focus() }
-      else if (text === '生成知识图谱') {
+      const detail = (e as CustomEvent).detail
+      if (detail === 'mention' || detail === '@ 引用笔记作为上下文') {
+        setInput('@')
+        inputRef.current?.focus()
+      } else if (detail === 'graph' || detail === '生成知识图谱') {
         const fp = useEditorStore.getState().currentFilePath
         if (fp) window.dispatchEvent(new CustomEvent('generate-graph', { detail: { path: fp, isDirectory: false } }))
-        else toast('请先打开一个笔记', 'info')
+        else toast(t('commandPalette.toasts.openNoteFirst'), 'info')
+      } else if (typeof detail === 'string') {
+        setInput(detail)
+        inputRef.current?.focus()
       }
-      else { setInput(text); inputRef.current?.focus() }
     }
     window.addEventListener('chat-hint-click', handler)
     return () => window.removeEventListener('chat-hint-click', handler)
-  }, [])
+  }, [t])
 
   const handleRegenerate = useCallback(async (msg: Message) => {
     if (isStreaming) return
@@ -625,15 +621,15 @@ export function ChatPanel() {
   }, [draftStorageKey, input])
 
   useEffect(() => {
-    const pending = safeGet('nexusky-pending-ai-draft')
+    const pending = safeGet(PENDING_AI_DRAFT_STORAGE_KEY)
     if (pending) {
-      safeRemove('nexusky-pending-ai-draft')
+      safeRemove(PENDING_AI_DRAFT_STORAGE_KEY)
       try {
         applyCommandDraft(JSON.parse(pending) as AICommandDraft)
       } catch {}
     }
     const handler = (e: Event) => {
-      safeRemove('nexusky-pending-ai-draft')
+      safeRemove(PENDING_AI_DRAFT_STORAGE_KEY)
       applyCommandDraft((e as CustomEvent<AICommandDraft>).detail)
     }
     window.addEventListener('ai-command-draft', handler)

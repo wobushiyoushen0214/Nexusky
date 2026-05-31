@@ -4,7 +4,7 @@ import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
-import { safeSet } from '../utils/storage'
+import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import { toolSurfaceCategoryToCommandCategory } from './tool-surface/tool-surface-category'
 import type { LocalPlugin, PluginPanel, ToolSurfaceEntry } from '@shared/types/ipc'
 
@@ -18,15 +18,6 @@ interface Command {
   shortcut?: string
   keywords?: string[]
   action: () => void
-}
-
-interface AICommandDraft {
-  prompt: string
-  mode?: 'chat' | 'edit'
-  agentMode?: boolean
-  attachSelection?: boolean
-  unboundEdit?: boolean
-  requiresCurrentNote?: boolean
 }
 
 interface CommandPaletteProps {
@@ -46,9 +37,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { vaultPath } = useVaultStore()
 
   const queueAiDraft = useCallback((draft: AICommandDraft) => {
-    safeSet('nexusky-pending-ai-draft', JSON.stringify(draft))
-    setRightPanel('chat')
-    window.dispatchEvent(new CustomEvent('ai-command-draft', { detail: draft }))
+    queueAiCommandDraft(draft, () => setRightPanel('chat'))
   }, [setRightPanel])
 
   const openPluginPanel = useCallback((plugin: LocalPlugin, panel: PluginPanel) => {
