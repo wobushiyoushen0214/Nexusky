@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -16,6 +17,7 @@ import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEd
 import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate, shouldApplyBatchProgressEvent } from './batch-operation'
 import { stopPendingBatchPlanContent } from './batch-progress'
 import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-stream'
+import { formatAiProviderError } from '../../utils/ai-provider-errors'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
@@ -57,29 +59,14 @@ function flattenMdFiles(entries: FileEntry[]): { name: string; path: string }[] 
   return result
 }
 
-function friendlyError(raw: string): string {
-  if (!raw) return '请求失败，请稍后重试'
+function friendlyError(raw: string, t: TFunction): string {
+  if (!raw) return String(t('aiProviderErrors.empty'))
   // 屏蔽完整本地路径
   let msg = raw.replace(/\/[^\s]+\/(node_modules|app\.asar[^\s]*)/g, '<...>')
-  // 模式匹配常见错误
   if (/dlopen|incompatible architecture/i.test(msg)) {
-    return '应用架构不匹配，请下载与你的 Mac 处理器对应的版本（Apple Silicon 或 Intel）。'
+    return String(t('aiProviderErrors.localArchitecture'))
   }
-  if (/ECONNREFUSED|fetch failed|ENOTFOUND|getaddrinfo/i.test(msg)) {
-    return '无法连接到 AI 服务，请检查网络或 API Base URL 配置。'
-  }
-  if (/401|unauthorized|invalid api key/i.test(msg)) {
-    return 'API Key 无效或已过期，请在设置中检查。'
-  }
-  if (/429|rate limit/i.test(msg)) {
-    return '请求过于频繁，已被限流。请稍后重试。'
-  }
-  if (/timeout|timed out/i.test(msg)) {
-    return '请求超时，AI 服务响应过慢。'
-  }
-  // 截断过长的原始错误
-  if (msg.length > 200) msg = msg.slice(0, 200) + '...'
-  return msg
+  return formatAiProviderError(msg, t)
 }
 
 function estimateTokens(text: string): number {
@@ -207,7 +194,7 @@ export function ChatPanel() {
     setMessages((msgs) => [...msgs, msg])
     appendToDb(msg)
     return msg
-  }, [appendToDb])
+  }, [appendToDb, t])
 
   const addAttachedNote = useCallback((note: { title: string; filePath: string }) => {
     setAttachedNotes((prev) => {
@@ -347,14 +334,14 @@ export function ChatPanel() {
         setToolStatus(null)
         if (streamContentRef.current) {
           const partial = streamContentRef.current
-          const errMsg = friendlyError(event.content)
+          const errMsg = friendlyError(event.content, t)
           const partialMsg: Message = { id: Date.now().toString(), role: 'assistant', content: partial }
           const errorMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: `⚠️ ${errMsg}` }
           setMessages((msgs) => [...msgs, partialMsg, errorMsg])
           appendToDb(partialMsg)
           appendToDb(errorMsg)
         } else {
-          const errorMsg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content) }
+          const errorMsg: Message = { id: Date.now().toString(), role: 'assistant', content: friendlyError(event.content, t) }
           setMessages((msgs) => [...msgs, errorMsg])
           appendToDb(errorMsg)
         }
@@ -471,13 +458,13 @@ export function ChatPanel() {
         appendAssistantMessage('已停止。')
         return
       }
-      appendAssistantMessage(friendlyError(getErrorMessage(e)))
+      appendAssistantMessage(friendlyError(getErrorMessage(e), t))
       streamContentRef.current = ''
       setStreamContent('')
       pendingSourcesRef.current = []
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast, t])
 
   const handleContinue = useCallback(async (msg: Message) => {
     if (isStreaming) return
@@ -525,13 +512,13 @@ export function ChatPanel() {
         appendAssistantMessage('已停止。')
         return
       }
-      appendAssistantMessage(friendlyError(getErrorMessage(e)))
+      appendAssistantMessage(friendlyError(getErrorMessage(e), t))
       streamContentRef.current = ''
       setStreamContent('')
       pendingSourcesRef.current = []
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast, t])
 
   useEffect(() => {
     if (!showMention || !vaultPath) return
@@ -863,7 +850,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     try {
       result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir, requestId: operationId })
     } catch (e: unknown) {
-      result = { success: false, error: friendlyError(getErrorMessage(e)), files: [], failed: 0, total: 0, failedItems: [] }
+      result = { success: false, error: friendlyError(getErrorMessage(e), t), files: [], failed: 0, total: 0, failedItems: [] }
     } finally {
       cleanup()
     }
@@ -1260,7 +1247,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           finishStoppedGeneration()
           return
         }
-        appendAssistantMessage(friendlyError(getErrorMessage(e)))
+        appendAssistantMessage(friendlyError(getErrorMessage(e), t))
         streamContentRef.current = ''
         setStreamContent('')
         setIsStreaming(false)
@@ -1319,7 +1306,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 finishStoppedGeneration()
                 return
               }
-              appendAssistantMessage(friendlyError(getErrorMessage(e)))
+              appendAssistantMessage(friendlyError(getErrorMessage(e), t))
               streamContentRef.current = ''
               setStreamContent('')
               setIsStreaming(false)
@@ -1487,7 +1474,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           finishStoppedGeneration('已停止生成修改方案。')
           return
         }
-        appendAssistantMessage(friendlyError(getErrorMessage(e)))
+        appendAssistantMessage(friendlyError(getErrorMessage(e), t))
       }
       if (editTimerRef.current) clearInterval(editTimerRef.current)
       editTimerRef.current = null
@@ -1510,7 +1497,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         finishStoppedGeneration()
         return
       }
-      appendAssistantMessage(friendlyError(getErrorMessage(e)))
+      appendAssistantMessage(friendlyError(getErrorMessage(e), t))
       setStreamContent('')
       setIsStreaming(false)
     }
@@ -1532,7 +1519,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         return
       }
     } catch (e: unknown) {
-      appendAssistantMessage(`应用修改前无法确认文件状态: ${friendlyError(getErrorMessage(e))}`)
+      appendAssistantMessage(`应用修改前无法确认文件状态: ${friendlyError(getErrorMessage(e), t)}`)
       return
     }
 

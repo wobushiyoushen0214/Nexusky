@@ -145,6 +145,20 @@
   "aiWorkspace": {
     "noProviderToast": "Configure an AI provider to use chat, edit, or agent actions. Files, Search, Graph, Vault Health, and Maintenance still work without AI."
   },
+  "aiProviderErrors": {
+    "empty": "AI request failed. Try again or check provider settings.",
+    "localArchitecture": "The app architecture does not match this machine. Install the build for your processor.",
+    "withDetail": "{{message}} Provider detail: {{detail}}",
+    "kinds": {
+      "api_key": "API key or permission problem. Check the key, account access, and billing status.",
+      "model": "Model name problem. Choose a model supported by this provider.",
+      "network": "Network or Base URL problem. Check the endpoint, proxy, DNS, and local service status.",
+      "rate_limit": "Rate limit or quota problem. Wait, reduce request volume, or check quota and billing.",
+      "context": "Context is too long for the selected model. Use a larger-context model or send less context.",
+      "timeout": "Provider request timed out. Retry or switch to a faster endpoint.",
+      "unknown": "AI request failed. Check provider settings and try again."
+    }
+  },
   "maintenance": {
     "title": "Knowledge Maintenance",
     "tabs": {
@@ -927,6 +941,8 @@
       "configOk": "Required fields are present.",
       "connectionOk": "Connection is reachable.",
       "validateAction": "Test connection",
+      "connectionToastOk": "AI connection test passed.",
+      "connectionToastFailed": "AI connection test failed: {{message}}",
       "testing": "Testing...",
       "probeAction": "Test question",
       "probing": "Asking...",

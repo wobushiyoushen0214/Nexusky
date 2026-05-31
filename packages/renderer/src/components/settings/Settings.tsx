@@ -6,6 +6,7 @@ import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { getErrorMessage } from '../../utils/errors'
+import { classifyAiProviderError, formatAiProviderError, type AiProviderErrorKind } from '../../utils/ai-provider-errors'
 import { safeGet, safeSet } from '../../utils/storage'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCssSnippets, setEnabledSnippetNames } from '../../utils/css-snippets'
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
@@ -19,7 +20,7 @@ type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: s
 type CloudUser = { email: string } | null
 type SnippetView = CssSnippet & { enabled: boolean }
 type ThemePackageView = ThemePackage & { active: boolean }
-type ProviderSetupErrorKind = 'api_key' | 'model' | 'network' | 'rate_limit' | 'context' | 'timeout' | 'unknown'
+type ProviderSetupErrorKind = AiProviderErrorKind
 type ProviderTestResult = { ok: boolean; text: string; latencyMs?: number; model?: string; errorKind?: ProviderSetupErrorKind }
 
 const DEFAULT_MODELS: Record<string, string[]> = {
@@ -95,16 +96,7 @@ const inputStyle: React.CSSProperties = {
   transition: 'border-color 150ms',
 }
 
-export function classifyProviderSetupError(message: string): ProviderSetupErrorKind {
-  const lower = message.toLowerCase()
-  if (/abort|timeout|timed out|超时|中止/.test(lower)) return 'timeout'
-  if (/context|token|maximum|too long|上下文|过长/.test(lower)) return 'context'
-  if (/429|rate|quota|too many|limit|限流|频率|配额/.test(lower)) return 'rate_limit'
-  if (/401|403|unauthorized|forbidden|api key|apikey|invalid key|auth|认证|鉴权|密钥/.test(lower)) return 'api_key'
-  if (/model|模型|not found|404/.test(lower)) return 'model'
-  if (/network|fetch|econn|enotfound|etimedout|tls|socket|连接|网络/.test(lower)) return 'network'
-  return 'unknown'
-}
+export const classifyProviderSetupError = classifyAiProviderError
 
 function getProviderConfigIssue(config: ProviderConfig): 'name' | 'api_key' | 'base_url' | 'model' | null {
   if (!config.name.trim()) return 'name'
@@ -339,18 +331,26 @@ export function Settings({ open, onClose }: SettingsProps) {
     setValidationResult(null)
     try {
       const result = await window.api.invoke('ai:validate', { config: editing })
+      const message = result.error || t('settings.providerTest.unknownError')
+      const formattedMessage = formatAiProviderError(message, t)
       setValidationResult(result.ok
         ? { ok: true, text: t('settings.providerTest.connectionOk') }
         : {
           ok: false,
-          text: result.error || t('settings.providerTest.unknownError'),
-          errorKind: classifyProviderSetupError(result.error || '')
+          text: formattedMessage,
+          errorKind: classifyProviderSetupError(message)
         })
-      toast(result.ok ? 'AI 连接测试通过' : `AI 连接测试失败: ${result.error || '请检查配置'}`, result.ok ? 'success' : 'error')
+      toast(
+        result.ok
+          ? t('settings.providerTest.connectionToastOk')
+          : t('settings.providerTest.connectionToastFailed', { message: formattedMessage }),
+        result.ok ? 'success' : 'error'
+      )
     } catch (e: unknown) {
       const message = getErrorMessage(e, t('settings.providerTest.unknownError'))
-      setValidationResult({ ok: false, text: message, errorKind: classifyProviderSetupError(message) })
-      toast(`AI 连接测试失败: ${message}`, 'error')
+      const formattedMessage = formatAiProviderError(message, t)
+      setValidationResult({ ok: false, text: formattedMessage, errorKind: classifyProviderSetupError(message) })
+      toast(t('settings.providerTest.connectionToastFailed', { message: formattedMessage }), 'error')
     } finally {
       setTestingProvider(false)
     }
@@ -365,11 +365,12 @@ export function Settings({ open, onClose }: SettingsProps) {
       if (result.ok) {
         setProbeResult({ ok: true, text: result.answer, latencyMs: result.latencyMs, model: result.model })
       } else {
-        setProbeResult({ ok: false, text: result.error, errorKind: classifyProviderSetupError(result.error) })
+        const message = result.error || t('settings.providerTest.unknownError')
+        setProbeResult({ ok: false, text: formatAiProviderError(message, t), errorKind: classifyProviderSetupError(message) })
       }
     } catch (e: unknown) {
       const message = getErrorMessage(e, t('settings.providerTest.unknownError'))
-      setProbeResult({ ok: false, text: message, errorKind: classifyProviderSetupError(message) })
+      setProbeResult({ ok: false, text: formatAiProviderError(message, t), errorKind: classifyProviderSetupError(message) })
     } finally {
       setProbing(false)
       loadAiUsageSummary()
@@ -922,8 +923,7 @@ function ProviderSetupChecklist({ config, validationResult, probeResult, testing
   const resultDetail = (result: ProviderTestResult | null, fallback: string): string => {
     if (!result) return fallback
     if (result.ok) return result.text
-    const help = t(`settings.providerTest.errorKinds.${result.errorKind || 'unknown'}`)
-    return `${result.text} ${help}`
+    return result.text
   }
   const items: Array<{ key: string; label: string; status: ProviderChecklistStatus; detail: string }> = [
     {

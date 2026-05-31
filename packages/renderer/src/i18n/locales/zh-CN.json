@@ -145,6 +145,20 @@
   "aiWorkspace": {
     "noProviderToast": "配置 AI 提供商后才能使用对话、编辑或 Agent 动作。文件、搜索、图谱、Vault Health 和知识维护无需 AI 也可继续使用。"
   },
+  "aiProviderErrors": {
+    "empty": "AI 请求失败，请重试或检查提供商配置。",
+    "localArchitecture": "应用架构与当前设备不匹配，请安装适合当前处理器的版本。",
+    "withDetail": "{{message}} 提供商返回：{{detail}}",
+    "kinds": {
+      "api_key": "API Key 或权限问题。检查密钥、账号权限和计费状态。",
+      "model": "模型名称问题。请选择该提供商支持的模型。",
+      "network": "网络或 Base URL 问题。检查接口地址、代理、DNS 和本地服务状态。",
+      "rate_limit": "限流或额度问题。稍后重试、降低请求频率，或检查额度和计费。",
+      "context": "上下文超过当前模型限制。换用更大上下文模型，或减少发送内容。",
+      "timeout": "提供商请求超时。可重试或换用更快的接口。",
+      "unknown": "AI 请求失败。检查提供商配置后重试。"
+    }
+  },
   "maintenance": {
     "title": "知识维护",
     "tabs": {
@@ -927,6 +941,8 @@
       "configOk": "必填项已填写。",
       "connectionOk": "连接可用。",
       "validateAction": "测试连接",
+      "connectionToastOk": "AI 连接测试通过。",
+      "connectionToastFailed": "AI 连接测试失败：{{message}}",
       "testing": "测试中...",
       "probeAction": "测试问题",
       "probing": "提问中...",
