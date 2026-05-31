@@ -267,10 +267,13 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       action: '为这篇笔记生成 AI 记忆账本',
       detail: '记忆状态：缺失'
     })
-    expect(queue.find((item) => item.type === 'fill_empty_note')).toMatchObject({
+    const emptyItem = queue.find((item) => item.type === 'fill_empty_note')
+    expect(emptyItem).toMatchObject({
       action: '补全这篇空笔记，加入摘要、来源或下一步行动',
-      detail: '更新于：2023-11-14T22:13:20.003Z'
+      detail: expect.stringMatching(/^更新于：\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)
     })
+    expect(emptyItem?.detail).not.toContain('T')
+    expect(emptyItem?.detail).not.toContain('Z')
     const visibleCopy = queue.map((item) => `${item.action}\n${item.reason}\n${item.detail}`).join('\n')
     expect(visibleCopy).not.toContain('Resolve or create')
     expect(visibleCopy).not.toContain('Review 2 overdue tasks')

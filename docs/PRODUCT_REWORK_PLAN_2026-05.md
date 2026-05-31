@@ -160,3 +160,4 @@ pnpm typecheck
 | 2026-05-31 | A5 Memory Ledger 多语言收尾 | 完成 | 补齐 Memory Ledger / Context Pack 在工具状态、图谱生成状态、关系标签、引用解释和工具结果面板中的中英文文案；Context Pack 归档、关系 reason/evidence、长期主题 title/summary/keywords 会按当前 UI 语言请求 AI 生成，后台任务同步主进程语言状态；旧存量内容需刷新后更新；不运行 ESLint，使用 i18n JSON 校验、相关测试和 `pnpm typecheck` 验收 |
 | 2026-05-31 | 知识维护硬编码文案多语言 | 完成 | 维护队列的 action/reason/detail、修复结果 toast、预览摘要、路径错误和 `plan_knowledge_maintenance` 工具结果会按当前 UI 语言生成；Renderer 调用向主进程传递 language，IPC 缺省回落到主进程当前语言；保留服务直调默认英文以兼容既有测试；不运行 ESLint，使用相关测试和 `pnpm typecheck` 验收 |
 | 2026-05-31 | 知识维护 Updated 残留收尾 | 完成 | `gatherMaintenanceItems` 在没有显式 language 时改为读取主进程当前语言，知识维护卡片对旧路径返回的 `Updated: ...` 做中文兜底显示为 `更新于：...`；补充中文队列测试覆盖空笔记更新时间详情 |
+| 2026-05-31 | 知识维护更新时间格式可读化 | 完成 | 维护队列更新时间从 ISO 字符串改为本地可读格式 `YYYY-MM-DD HH:mm`，前端兜底会把旧的 `Updated: 2026-...T...Z` 或 `更新于：2026-...T...Z` 转换为同一格式；补充测试确保中文详情不再包含 `T` / `Z` |

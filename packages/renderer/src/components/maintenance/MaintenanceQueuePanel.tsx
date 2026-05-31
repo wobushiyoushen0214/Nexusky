@@ -51,9 +51,22 @@ const ACTIONS_BY_TYPE: Record<KnowledgeMaintenanceType, MaintenanceApplyAction[]
 
 const MUTATING_ACTIONS = new Set<MaintenanceApplyAction>(['create_target', 'mark_done', 'archive', 'add_alias'])
 
+function formatMaintenanceDateTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function localizeMaintenanceGeneratedText(value: string, language: AppLanguage): string {
-  if (language === 'en') return value
-  if (value.startsWith('Updated: ')) return `更新于：${value.slice('Updated: '.length)}`
+  if (value.startsWith('Updated: ')) {
+    const formatted = formatMaintenanceDateTime(value.slice('Updated: '.length))
+    return language === 'en' ? `Updated: ${formatted}` : `更新于：${formatted}`
+  }
+  if (value.startsWith('更新于：')) {
+    const formatted = formatMaintenanceDateTime(value.slice('更新于：'.length))
+    return language === 'en' ? `Updated: ${formatted}` : `更新于：${formatted}`
+  }
   return value
 }
 

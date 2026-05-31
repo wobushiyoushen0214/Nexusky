@@ -82,6 +82,14 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`): s
   return count === 1 ? singular : pluralForm
 }
 
+function formatDisplayDateTime(value: number): string | null {
+  if (!Number.isFinite(value)) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function createMaintenanceCopy(language: AppLanguage = 'en') {
   const zh = language !== 'en'
   const priorityLabel = (value?: 'highest' | 'high') => {
@@ -89,7 +97,10 @@ function createMaintenanceCopy(language: AppLanguage = 'en') {
     return value === 'highest' ? '最高' : value === 'high' ? '高' : ''
   }
   return {
-    updated: (updatedAt: number) => zh ? `更新于：${new Date(updatedAt).toISOString()}` : `Updated: ${new Date(updatedAt).toISOString()}`,
+    updated: (updatedAt: number) => {
+      const formatted = formatDisplayDateTime(updatedAt)
+      return zh ? `更新于：${formatted ?? '未知时间'}` : `Updated: ${formatted ?? 'unknown'}`
+    },
     resolveLinkAction: (targetTitle: string) => zh ? `处理或创建 [[${targetTitle}]]` : `Resolve or create [[${targetTitle}]]`,
     brokenLinkReason: () => zh ? '断开的双链会影响图谱导航和 AI 查找笔记。' : 'Broken wikilink blocks graph navigation and AI note lookup.',
     fillEmptyAction: () => zh ? '补全这篇空笔记，加入摘要、来源或下一步行动' : 'Fill this empty note with a summary, source, or next action',
