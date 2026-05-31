@@ -6,6 +6,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { RelatedContextPanel } from '../long-context/RelatedContextPanel'
 import type {
+  AppLanguage,
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
   MaintenanceApplyAction,
@@ -49,6 +50,12 @@ const ACTIONS_BY_TYPE: Record<KnowledgeMaintenanceType, MaintenanceApplyAction[]
 }
 
 const MUTATING_ACTIONS = new Set<MaintenanceApplyAction>(['create_target', 'mark_done', 'archive', 'add_alias'])
+
+function localizeMaintenanceGeneratedText(value: string, language: AppLanguage): string {
+  if (language === 'en') return value
+  if (value.startsWith('Updated: ')) return `更新于：${value.slice('Updated: '.length)}`
+  return value
+}
 
 interface PendingMaintenancePreview {
   item: KnowledgeMaintenanceItem
@@ -294,7 +301,9 @@ interface MaintenanceItemCardProps {
 
 function MaintenanceItemCard({ item, onAction, onFocusInBases }: MaintenanceItemCardProps) {
   const { t } = useTranslation()
+  const language = useUIStore((s) => s.language)
   const actions = ACTIONS_BY_TYPE[item.type] || ['open_note']
+  const detail = localizeMaintenanceGeneratedText(item.detail || item.reason, language)
   return (
     <div className="maintenance-card">
       <div className="maintenance-card__head">
@@ -302,7 +311,7 @@ function MaintenanceItemCard({ item, onAction, onFocusInBases }: MaintenanceItem
         <span className="maintenance-card__priority">{item.priority}</span>
       </div>
       <div className="maintenance-card__title">{item.title}</div>
-      <div className="maintenance-card__detail">{item.detail || item.reason}</div>
+      <div className="maintenance-card__detail">{detail}</div>
       <div className="maintenance-card__path">{item.filePath}</div>
       <div className="maintenance-card__actions">
         {actions.map((action) => (

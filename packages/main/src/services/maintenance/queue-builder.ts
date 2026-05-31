@@ -17,6 +17,7 @@ import {
   getUnlinkedMentions
 } from '../indexer'
 import { readMemory } from '../memory'
+import { getAppLanguage } from '../app-language'
 import type { AppLanguage } from '@shared/types/ipc'
 
 const KNOWLEDGE_MAINTENANCE_TYPES = new Set<KnowledgeMaintenanceType>([
@@ -95,6 +96,7 @@ export function gatherMaintenanceItems(params: MaintenanceQueueParams): Maintena
   const query = (params.query ?? '').trim().toLowerCase()
   const type = normalizeType(params.type)
   const limit = Math.max(1, Math.min(params.limit ?? 200, 500))
+  const language = params.language ?? getAppLanguage()
   const minCharacters = Math.max(1000, Math.floor(params.minCharacters ?? 8000))
   const upcomingDays = Math.min(30, Math.max(1, Math.floor(params.upcomingDays ?? 7)))
   const requiredProperties = Array.isArray(params.requiredProperties)
@@ -198,7 +200,7 @@ export function gatherMaintenanceItems(params: MaintenanceQueueParams): Maintena
     query,
     type,
     limit,
-    language: params.language
+    language
   })
 
   const counts = countByType(items)

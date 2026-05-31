@@ -224,7 +224,8 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       notes: [
         { id: 'broken', title: 'Broken Source', filePath: 'Broken.md', updatedAt: 1700000000000 },
         { id: 'overdue', title: 'Overdue Tasks', filePath: 'Overdue.md', updatedAt: 1700000000001 },
-        { id: 'memory', title: 'Memory Note', filePath: 'Memory.md', updatedAt: 1700000000002 }
+        { id: 'memory', title: 'Memory Note', filePath: 'Memory.md', updatedAt: 1700000000002 },
+        { id: 'blank', title: 'Blank', filePath: 'Blank.md', updatedAt: 1700000000003 }
       ],
       outgoingLinksByNoteId: new Map<string, OutgoingLinkIndex[]>([
         ['broken', [{ targetTitle: 'Missing', line: 3, context: 'See [[Missing]]', resolved: false }]]
@@ -232,7 +233,8 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       backlinkCountByNoteId: new Map([
         ['broken', 1],
         ['overdue', 1],
-        ['memory', 1]
+        ['memory', 1],
+        ['blank', 1]
       ]),
       unlinkedMentionCountByNoteId: new Map(),
       openTaskCountByPath: new Map([
@@ -247,6 +249,7 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       memoryStatusByNoteId: new Map([
         ['memory', 'missing']
       ]),
+      emptyNotePaths: new Set(['Blank.md']),
       bridges: [],
       language: 'zh-CN',
       limit: 10
@@ -264,10 +267,15 @@ describe('buildKnowledgeMaintenanceQueue', () => {
       action: '为这篇笔记生成 AI 记忆账本',
       detail: '记忆状态：缺失'
     })
+    expect(queue.find((item) => item.type === 'fill_empty_note')).toMatchObject({
+      action: '补全这篇空笔记，加入摘要、来源或下一步行动',
+      detail: '更新于：2023-11-14T22:13:20.003Z'
+    })
     const visibleCopy = queue.map((item) => `${item.action}\n${item.reason}\n${item.detail}`).join('\n')
     expect(visibleCopy).not.toContain('Resolve or create')
     expect(visibleCopy).not.toContain('Review 2 overdue tasks')
     expect(visibleCopy).not.toContain('Memory status')
+    expect(visibleCopy).not.toContain('Updated:')
   })
 
   it('filters maintenance items by query', () => {
