@@ -6,7 +6,7 @@ import { getDatabase } from './database'
 import matter from 'gray-matter'
 import type { GraphData, GraphEdge, GraphEdgeLinkType, GraphMode, GraphNode, PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
-import { invalidateVaultQueryCache } from './db-query-cache'
+import { invalidateVaultQueryCache, invalidateVaultQueryCacheForIndexedFile } from './db-query-cache'
 
 const WIKILINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
 const DATAVIEW_FIELD_REGEX = /^\s*(?:[-*+]\s+(?:\[[^\]\r\n]?\]\s+)?)?([^:\n]+?)::\s*(.*?)\s*$/
@@ -237,7 +237,7 @@ export function indexNote(vaultPath: string, filePath: string): string {
 
   transaction()
   resolveLinks(db, id, title, aliases)
-  invalidateVaultQueryCache(vaultPath)
+  invalidateVaultQueryCacheForIndexedFile(vaultPath, { noteId: id, filePath: relPath })
   return id
 }
 
@@ -252,7 +252,7 @@ export function removeNoteIndex(vaultPath: string, filePath: string): string | n
     db.prepare('DELETE FROM notes_fts_map WHERE note_id = ?').run(note.id)
   }
   db.prepare('DELETE FROM notes WHERE file_path = ?').run(relPath)
-  invalidateVaultQueryCache(vaultPath)
+  invalidateVaultQueryCacheForIndexedFile(vaultPath, { noteId: note.id, filePath: relPath })
   return note.id
 }
 

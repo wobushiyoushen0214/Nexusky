@@ -34,15 +34,40 @@ export function getCachedVaultQuery<T>(vaultPath: string, key: string, loader: (
   return value
 }
 
-export function invalidateVaultQueryCache(vaultPath?: string): void {
+export function invalidateVaultQueryCache(vaultPath?: string): number {
   if (!vaultPath) {
+    const deleted = cache.size
     cache.clear()
-    return
+    return deleted
   }
+  return invalidateVaultQueryCacheWhere(vaultPath, () => true)
+}
+
+export function invalidateVaultQueryCacheWhere(vaultPath: string, predicate: (key: string) => boolean): number {
   const prefix = `${vaultPath}::`
+  let deleted = 0
   for (const key of cache.keys()) {
-    if (key.startsWith(prefix)) cache.delete(key)
+    if (!key.startsWith(prefix)) continue
+    const scopedKey = key.slice(prefix.length)
+    if (!predicate(scopedKey)) continue
+    cache.delete(key)
+    deleted += 1
   }
+  return deleted
+}
+
+export function invalidateVaultQueryCacheForIndexedFile(
+  vaultPath: string,
+  params: { noteId?: string; filePath?: string } = {}
+): number {
+  return invalidateVaultQueryCacheWhere(vaultPath, (key) => {
+    if (key === 'all-notes' || key === 'property-rows' || key === 'tags') return true
+    if (key.startsWith('recent:') || key.startsWith('tag:') || key.startsWith('graph:')) return true
+    if (params.noteId && key === `outgoing:${params.noteId}`) return true
+    if (key.startsWith('backlinks:') || key.startsWith('unlinked:')) return true
+    if (key.startsWith('maintenance-queue:')) return true
+    return false
+  })
 }
 
 export function getDbQueryCacheStats(): { entries: number } {
