@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
-import { basename, dirname, isAbsolute, join, relative, resolve } from 'path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'path'
 import { createHash } from 'crypto'
+import matter from 'gray-matter'
 import { indexNote, removeNoteIndex } from '../indexer'
 import { runAgentTool } from './tool-runner'
 import { isAllowedAgentTool, isWriteStepKind, type AgentStepKind } from './step-kinds'
@@ -101,6 +102,20 @@ async function dispatchStep(step: AgentStepRecord, params: ExecuteStepParams, al
       return runTaskUpdate(step, params)
     case 'note_edit':
       return runNoteEdit(step, params)
+    case 'move_file':
+      return runMoveFile(step, params)
+    case 'rename_file':
+      return runRenameFile(step, params)
+    case 'delete_file':
+      return runDeleteFile(step, params)
+    case 'apply_tag':
+      return runApplyTag(step, params)
+    case 'update_frontmatter':
+      return runUpdateFrontmatter(step, params)
+    case 'create_link':
+      return runCreateLink(step, params)
+    case 'merge_notes':
+      return runMergeNotes(step, params)
     default:
       return { status: 'failed', error: `unknown_step_kind: ${step.kind}` }
   }
@@ -218,6 +233,207 @@ async function runNoteEdit(step: AgentStepRecord, params: ExecuteStepParams): Pr
   return { status: 'completed', preview, content: proposed }
 }
 
+async function runMoveFile(step: AgentStepRecord, params: ExecuteStepParams): Promise<ExecuteStepResult> {
+  const sourceRel = getPathArg(step.args, ['sourcePath', 'fromPath', 'filePath', 'path'])
+  const targetRel = getPathArg(step.args, ['targetPath', 'toPath', 'newPath'])
+  if (!sourceRel || !targetRel) return { status: 'failed', error: 'missing_move_target' }
+  const sourcePath = resolveVaultPath(params.vaultPath, sourceRel)
+  const targetPath = resolveVaultPath(params.vaultPath, targetRel)
+  if (!sourcePath || !targetPath) return { status: 'failed', error: 'invalid_target_path' }
+  if (!existsSync(sourcePath)) return { status: 'failed', error: 'file_not_found' }
+  if (existsSync(targetPath)) return { status: 'failed', error: 'target_file_exists' }
+  const preview = formatPreview(`Move file: ${sourceRel} -> ${targetRel}`, `Source: ${sourceRel}\nTarget: ${targetRel}\nRisk: updates the file path only.`)
+  if (params.dryRun) return { status: 'completed', preview }
+
+  mkdirSync(dirname(targetPath), { recursive: true })
+  renameSync(sourcePath, targetPath)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'move_file', sourcePath: sourceRel, targetPath: targetRel, movedHash: hashContent(readFileSync(targetPath, 'utf-8')) }
+  })
+  removeNoteIndex(params.vaultPath, sourcePath)
+  safeIndex(params.vaultPath, targetPath)
+  return { status: 'completed', preview }
+}
+
+async function runRenameFile(step: AgentStepRecord, params: ExecuteStepParams): Promise<ExecuteStepResult> {
+  const sourceRel = getPathArg(step.args, ['sourcePath', 'fromPath', 'filePath', 'path'])
+  const targetRel = resolveRenameTarget(sourceRel, step.args)
+  if (!sourceRel || !targetRel) return { status: 'failed', error: 'missing_rename_target' }
+  const sourcePath = resolveVaultPath(params.vaultPath, sourceRel)
+  const targetPath = resolveVaultPath(params.vaultPath, targetRel)
+  if (!sourcePath || !targetPath) return { status: 'failed', error: 'invalid_target_path' }
+  if (!existsSync(sourcePath)) return { status: 'failed', error: 'file_not_found' }
+  if (existsSync(targetPath)) return { status: 'failed', error: 'target_file_exists' }
+
+  const linkUpdates = collectWikilinkUpdates(params.vaultPath, sourceRel, targetRel)
+  const preview = formatPreview(
+    `Rename file: ${sourceRel} -> ${targetRel}`,
+    [
+      `File: ${sourceRel} -> ${targetRel}`,
+      `Link updates: ${linkUpdates.length}`,
+      ...linkUpdates.slice(0, 8).map((update) => `- ${update.relPath}`)
+    ].join('\n')
+  )
+  if (params.dryRun) return { status: 'completed', preview }
+
+  mkdirSync(dirname(targetPath), { recursive: true })
+  renameSync(sourcePath, targetPath)
+  const afterHashes: { filePath: string; hash: string }[] = []
+  for (const update of linkUpdates) {
+    const writePath = update.relPath === sourceRel ? targetPath : update.absPath
+    writeFileSync(writePath, update.nextContent, 'utf-8')
+    afterHashes.push({ filePath: update.relPath === sourceRel ? targetRel : update.relPath, hash: hashContent(update.nextContent) })
+    safeIndex(params.vaultPath, writePath)
+  }
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: {
+      kind: 'rename_file',
+      sourcePath: sourceRel,
+      targetPath: targetRel,
+      movedHash: hashContent(readFileSync(targetPath, 'utf-8')),
+      previousContents: linkUpdates.map((update) => ({ filePath: update.relPath, content: update.previousContent })),
+      afterHashes
+    }
+  })
+  removeNoteIndex(params.vaultPath, sourcePath)
+  safeIndex(params.vaultPath, targetPath)
+  return { status: 'completed', preview }
+}
+
+async function runDeleteFile(step: AgentStepRecord, params: ExecuteStepParams): Promise<ExecuteStepResult> {
+  const relPath = getPathArg(step.args, ['filePath', 'path'])
+  if (!relPath) return { status: 'failed', error: 'missing_file_path' }
+  const targetPath = resolveVaultPath(params.vaultPath, relPath)
+  if (!targetPath) return { status: 'failed', error: 'invalid_target_path' }
+  if (!existsSync(targetPath)) return { status: 'failed', error: 'file_not_found' }
+  const preview = formatPreview(`Move file to trash: ${relPath}`, `The file will be moved to vault .trash and can be restored by run rollback.`)
+  if (params.dryRun) return { status: 'completed', preview }
+
+  const beforeHash = hashContent(readFileSync(targetPath, 'utf-8'))
+  const trashPath = moveFileToTrash(params.vaultPath, targetPath)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'delete_file', filePath: relPath, trashPath, beforeHash }
+  })
+  removeNoteIndex(params.vaultPath, targetPath)
+  return { status: 'completed', preview }
+}
+
+async function runApplyTag(step: AgentStepRecord, params: ExecuteStepParams): Promise<ExecuteStepResult> {
+  const relPath = getPathArg(step.args, ['filePath', 'path'])
+  const tag = getStringArg(step.args, 'tag').replace(/^#/, '').trim()
+  if (!relPath || !tag) return { status: 'failed', error: 'missing_tag_target' }
+  const targetPath = resolveVaultPath(params.vaultPath, relPath)
+  if (!targetPath || !existsSync(targetPath)) return { status: 'failed', error: 'file_not_found' }
+  const previousContent = readFileSync(targetPath, 'utf-8')
+  const parsed = matter(previousContent)
+  const data = { ...(parsed.data || {}) }
+  const tags = normalizeTags(data.tags)
+  if (!tags.includes(tag)) tags.push(tag)
+  data.tags = tags
+  const nextContent = matter.stringify(parsed.content, data)
+  const preview = formatDiffPreview(previousContent, nextContent, relPath)
+  if (params.dryRun) return { status: 'completed', preview, content: nextContent }
+  writeFileSync(targetPath, nextContent, 'utf-8')
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'apply_tag', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
+  })
+  safeIndex(params.vaultPath, targetPath)
+  return { status: 'completed', preview, content: nextContent }
+}
+
+async function runUpdateFrontmatter(step: AgentStepRecord, params: ExecuteStepParams): Promise<ExecuteStepResult> {
+  const relPath = getPathArg(step.args, ['filePath', 'path'])
+  const patch = getObjectArg(step.args, 'properties') || getObjectArg(step.args, 'patch')
+  if (!relPath || !patch) return { status: 'failed', error: 'missing_frontmatter_patch' }
+  const targetPath = resolveVaultPath(params.vaultPath, relPath)
+  if (!targetPath || !existsSync(targetPath)) return { status: 'failed', error: 'file_not_found' }
+  const previousContent = readFileSync(targetPath, 'utf-8')
+  const parsed = matter(previousContent)
+  const data = { ...(parsed.data || {}) }
+  for (const [key, value] of Object.entries(patch)) {
+    if (!isSafeFrontmatterKey(key)) continue
+    if (value === null) delete data[key]
+    else data[key] = sanitizeFrontmatterValue(value)
+  }
+  const nextContent = matter.stringify(parsed.content, data)
+  const preview = formatDiffPreview(previousContent, nextContent, relPath)
+  if (params.dryRun) return { status: 'completed', preview, content: nextContent }
+  writeFileSync(targetPath, nextContent, 'utf-8')
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'update_frontmatter', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
+  })
+  safeIndex(params.vaultPath, targetPath)
+  return { status: 'completed', preview, content: nextContent }
+}
+
+async function runCreateLink(step: AgentStepRecord, params: ExecuteStepParams): Promise<ExecuteStepResult> {
+  const relPath = getPathArg(step.args, ['filePath', 'sourcePath', 'path'])
+  const target = getStringArg(step.args, 'targetTitle') || getStringArg(step.args, 'targetPath')
+  const anchorText = getStringArg(step.args, 'anchorText')
+  if (!relPath || !target) return { status: 'failed', error: 'missing_link_target' }
+  const targetPath = resolveVaultPath(params.vaultPath, relPath)
+  if (!targetPath || !existsSync(targetPath)) return { status: 'failed', error: 'file_not_found' }
+  const previousContent = readFileSync(targetPath, 'utf-8')
+  const wikiTarget = normalizeWikiTarget(target)
+  if (hasWikiLinkTo(previousContent, wikiTarget)) return { status: 'failed', error: 'duplicate_link' }
+  const link = anchorText && previousContent.includes(anchorText)
+    ? `[[${wikiTarget}|${anchorText}]]`
+    : `[[${wikiTarget}]]`
+  const nextContent = anchorText && previousContent.includes(anchorText)
+    ? previousContent.replace(anchorText, link)
+    : `${previousContent.replace(/\s+$/g, '')}\n\nRelated: ${link}\n`
+  const preview = formatDiffPreview(previousContent, nextContent, relPath)
+  if (params.dryRun) return { status: 'completed', preview, content: nextContent }
+  writeFileSync(targetPath, nextContent, 'utf-8')
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'create_link', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
+  })
+  safeIndex(params.vaultPath, targetPath)
+  return { status: 'completed', preview, content: nextContent }
+}
+
+async function runMergeNotes(step: AgentStepRecord, params: ExecuteStepParams): Promise<ExecuteStepResult> {
+  const sourcePaths = getStringArrayArg(step.args, 'sourcePaths')
+  const targetRel = getPathArg(step.args, ['targetPath', 'filePath'])
+  if (sourcePaths.length < 2 || !targetRel) return { status: 'failed', error: 'missing_merge_targets' }
+  const sources = sourcePaths.map((relPath) => ({ relPath, absPath: resolveVaultPath(params.vaultPath, relPath) }))
+  if (sources.some((source) => !source.absPath || !existsSync(source.absPath))) return { status: 'failed', error: 'file_not_found' }
+  const targetPath = resolveVaultPath(params.vaultPath, targetRel)
+  if (!targetPath) return { status: 'failed', error: 'invalid_target_path' }
+  const targetExists = existsSync(targetPath)
+  const previousTargetContent = targetExists ? readFileSync(targetPath, 'utf-8') : null
+  const merged = buildMergedNoteContent(sources as { relPath: string; absPath: string }[], targetRel, previousTargetContent)
+  const preview = formatPreview(
+    `Merge notes into ${targetRel}`,
+    [`Sources:`, ...sourcePaths.map((source) => `- ${source}`), '', truncate(merged, 1200)].join('\n')
+  )
+  if (params.dryRun) return { status: 'completed', preview, content: merged }
+  if (step.args.confirmHighRisk !== true) return { status: 'failed', error: 'high_risk_requires_confirmation' }
+
+  mkdirSync(dirname(targetPath), { recursive: true })
+  writeFileSync(targetPath, merged, 'utf-8')
+  const trashedSources: { filePath: string; trashPath: string; beforeHash: string }[] = []
+  for (const source of sources as { relPath: string; absPath: string }[]) {
+    if (source.relPath === targetRel) continue
+    const beforeHash = hashContent(readFileSync(source.absPath, 'utf-8'))
+    const trashPath = moveFileToTrash(params.vaultPath, source.absPath)
+    trashedSources.push({ filePath: source.relPath, trashPath, beforeHash })
+    removeNoteIndex(params.vaultPath, source.absPath)
+  }
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: {
+      kind: 'merge_notes',
+      targetPath: targetRel,
+      beforeTargetExists: targetExists,
+      beforeTargetContent: previousTargetContent,
+      afterHash: hashContent(merged),
+      trashedSources
+    }
+  })
+  safeIndex(params.vaultPath, targetPath)
+  return { status: 'completed', preview, content: merged }
+}
+
 export async function runAgentToFinish(params: { vaultPath: string; runId: string; signal?: AbortSignal }): Promise<void> {
   const snapshot = getAgentRun(params.vaultPath, params.runId)
   if (!snapshot) return
@@ -256,7 +472,13 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
   const data = getAgentStepRollbackData(vaultPath, runId, stepIndex)
   if (!data) return { ok: false, error: 'rollback_data_missing' }
   const kind = data.kind as string | undefined
-  const relPath = typeof data.filePath === 'string' ? data.filePath : null
+  const relPath = typeof data.filePath === 'string'
+    ? data.filePath
+    : typeof data.targetPath === 'string'
+      ? data.targetPath
+      : typeof data.sourcePath === 'string'
+        ? data.sourcePath
+        : null
   if (!relPath) return { ok: false, error: 'rollback_target_missing' }
   const targetPath = resolveVaultPath(vaultPath, relPath)
   if (!targetPath) return { ok: false, error: 'invalid_target_path' }
@@ -274,7 +496,13 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
         moveCreatedFileToTrash(vaultPath, targetPath)
       }
       removeNoteIndex(vaultPath, targetPath)
-    } else if (kind === 'file_write' || kind === 'note_edit') {
+    } else if (
+      kind === 'file_write'
+      || kind === 'note_edit'
+      || kind === 'apply_tag'
+      || kind === 'update_frontmatter'
+      || kind === 'create_link'
+    ) {
       // Never truncate to empty on a missing/corrupt baseline — abort instead.
       if (typeof data.previousContent !== 'string') return { ok: false, error: 'rollback_data_invalid' }
       // Don't clobber edits the user made after the agent wrote: only restore if
@@ -285,6 +513,97 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
         if (current !== afterHash) return { ok: false, error: 'file_modified_since_write' }
       }
       writeFileSync(targetPath, data.previousContent, 'utf-8')
+    } else if (kind === 'move_file') {
+      const sourceRel = typeof data.sourcePath === 'string' ? data.sourcePath : null
+      const targetRel = typeof data.targetPath === 'string' ? data.targetPath : relPath
+      if (!sourceRel || !targetRel) return { ok: false, error: 'rollback_data_invalid' }
+      const movedPath = resolveVaultPath(vaultPath, targetRel)
+      const originalPath = resolveVaultPath(vaultPath, sourceRel)
+      if (!movedPath || !originalPath) return { ok: false, error: 'invalid_target_path' }
+      if (!existsSync(movedPath)) return { ok: false, error: 'moved_file_missing' }
+      if (existsSync(originalPath)) return { ok: false, error: 'rollback_target_exists' }
+      const movedHash = typeof data.movedHash === 'string' ? data.movedHash : null
+      if (movedHash && hashContent(readFileSync(movedPath, 'utf-8')) !== movedHash) {
+        return { ok: false, error: 'file_modified_since_move' }
+      }
+      mkdirSync(dirname(originalPath), { recursive: true })
+      renameSync(movedPath, originalPath)
+      removeNoteIndex(vaultPath, movedPath)
+      safeIndex(vaultPath, originalPath)
+    } else if (kind === 'rename_file') {
+      const sourceRel = typeof data.sourcePath === 'string' ? data.sourcePath : null
+      const targetRel = typeof data.targetPath === 'string' ? data.targetPath : relPath
+      if (!sourceRel || !targetRel) return { ok: false, error: 'rollback_data_invalid' }
+      const renamedPath = resolveVaultPath(vaultPath, targetRel)
+      const originalPath = resolveVaultPath(vaultPath, sourceRel)
+      if (!renamedPath || !originalPath) return { ok: false, error: 'invalid_target_path' }
+      if (!existsSync(renamedPath)) return { ok: false, error: 'renamed_file_missing' }
+      if (existsSync(originalPath)) return { ok: false, error: 'rollback_target_exists' }
+      const movedHash = typeof data.movedHash === 'string' ? data.movedHash : null
+      if (movedHash && hashContent(readFileSync(renamedPath, 'utf-8')) !== movedHash) {
+        return { ok: false, error: 'file_modified_since_rename' }
+      }
+      mkdirSync(dirname(originalPath), { recursive: true })
+      renameSync(renamedPath, originalPath)
+      const previousContents = Array.isArray(data.previousContents) ? data.previousContents : []
+      for (const entry of previousContents) {
+        if (!entry || typeof entry !== 'object') continue
+        const filePath = typeof (entry as Record<string, unknown>).filePath === 'string'
+          ? (entry as Record<string, unknown>).filePath as string
+          : ''
+        const content = typeof (entry as Record<string, unknown>).content === 'string'
+          ? (entry as Record<string, unknown>).content as string
+          : null
+        if (!filePath || content === null) continue
+        const restorePath = resolveVaultPath(vaultPath, filePath)
+        if (!restorePath) continue
+        writeFileSync(restorePath, content, 'utf-8')
+        safeIndex(vaultPath, restorePath)
+      }
+      removeNoteIndex(vaultPath, renamedPath)
+      safeIndex(vaultPath, originalPath)
+    } else if (kind === 'delete_file') {
+      const trashRel = typeof data.trashPath === 'string' ? data.trashPath : null
+      if (!trashRel) return { ok: false, error: 'rollback_data_invalid' }
+      const trashPath = resolveVaultPath(vaultPath, trashRel)
+      if (!trashPath || !existsSync(trashPath)) return { ok: false, error: 'trash_file_missing' }
+      if (existsSync(targetPath)) return { ok: false, error: 'rollback_target_exists' }
+      mkdirSync(dirname(targetPath), { recursive: true })
+      renameSync(trashPath, targetPath)
+      safeIndex(vaultPath, targetPath)
+    } else if (kind === 'merge_notes') {
+      const targetRel = typeof data.targetPath === 'string' ? data.targetPath : relPath
+      const mergeTargetPath = resolveVaultPath(vaultPath, targetRel)
+      if (!mergeTargetPath) return { ok: false, error: 'invalid_target_path' }
+      const afterHash = typeof data.afterHash === 'string' ? data.afterHash : null
+      if (afterHash && existsSync(mergeTargetPath) && hashContent(readFileSync(mergeTargetPath, 'utf-8')) !== afterHash) {
+        return { ok: false, error: 'file_modified_since_merge' }
+      }
+      if (data.beforeTargetExists === true) {
+        if (typeof data.beforeTargetContent !== 'string') return { ok: false, error: 'rollback_data_invalid' }
+        writeFileSync(mergeTargetPath, data.beforeTargetContent, 'utf-8')
+        safeIndex(vaultPath, mergeTargetPath)
+      } else if (existsSync(mergeTargetPath)) {
+        moveFileToTrash(vaultPath, mergeTargetPath)
+        removeNoteIndex(vaultPath, mergeTargetPath)
+      }
+      const trashedSources = Array.isArray(data.trashedSources) ? data.trashedSources : []
+      for (const entry of trashedSources) {
+        if (!entry || typeof entry !== 'object') continue
+        const filePath = typeof (entry as Record<string, unknown>).filePath === 'string'
+          ? (entry as Record<string, unknown>).filePath as string
+          : ''
+        const trashPathRel = typeof (entry as Record<string, unknown>).trashPath === 'string'
+          ? (entry as Record<string, unknown>).trashPath as string
+          : ''
+        if (!filePath || !trashPathRel) continue
+        const sourcePath = resolveVaultPath(vaultPath, filePath)
+        const trashPath = resolveVaultPath(vaultPath, trashPathRel)
+        if (!sourcePath || !trashPath || !existsSync(trashPath) || existsSync(sourcePath)) continue
+        mkdirSync(dirname(sourcePath), { recursive: true })
+        renameSync(trashPath, sourcePath)
+        safeIndex(vaultPath, sourcePath)
+      }
     } else if (kind === 'task_update') {
       const prevLine = typeof data.previousLine === 'string' ? data.previousLine : null
       const line = typeof data.line === 'number' ? data.line : Number(data.line)
@@ -306,7 +625,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
   updateAgentStep(vaultPath, runId, stepIndex, { status: 'rolled_back', completedAt: nowSeconds() })
-  if (kind !== 'file_create') safeIndex(vaultPath, targetPath)
+  if (kind !== 'file_create' && kind !== 'move_file' && kind !== 'rename_file' && kind !== 'delete_file' && kind !== 'merge_notes') safeIndex(vaultPath, targetPath)
   return { ok: true }
 }
 
@@ -346,6 +665,10 @@ function safeIndex(vaultPath: string, filePath: string): void {
 }
 
 function moveCreatedFileToTrash(vaultPath: string, targetPath: string): void {
+  moveFileToTrash(vaultPath, targetPath)
+}
+
+function moveFileToTrash(vaultPath: string, targetPath: string): string {
   const trashDir = join(vaultPath, '.trash')
   mkdirSync(trashDir, { recursive: true })
   const timestamp = Date.now()
@@ -354,11 +677,137 @@ function moveCreatedFileToTrash(vaultPath: string, targetPath: string): void {
   renameSync(targetPath, trashPath)
   const originalPath = relative(vaultPath, targetPath).replace(/\\/g, '/')
   writeFileSync(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
+  return relative(vaultPath, trashPath).replace(/\\/g, '/')
+}
+
+function getPathArg(args: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = getStringArg(args, key).trim()
+    if (value) return value.replace(/\\/g, '/').replace(/^\/+/, '')
+  }
+  return ''
 }
 
 function getStringArg(args: Record<string, unknown>, key: string): string {
   const value = args?.[key]
   return typeof value === 'string' ? value : ''
+}
+
+function getObjectArg(args: Record<string, unknown>, key: string): Record<string, unknown> | null {
+  const value = args?.[key]
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+}
+
+function getStringArrayArg(args: Record<string, unknown>, key: string): string[] {
+  const value = args?.[key]
+  if (!Array.isArray(value)) return []
+  return value.map((item) => typeof item === 'string' ? item.trim().replace(/\\/g, '/').replace(/^\/+/, '') : '').filter(Boolean)
+}
+
+function resolveRenameTarget(sourceRel: string, args: Record<string, unknown>): string {
+  const explicit = getPathArg(args, ['targetPath', 'toPath', 'newPath'])
+  if (explicit) return explicit
+  const newName = getStringArg(args, 'newName').trim()
+  if (!sourceRel || !newName) return ''
+  const extension = extname(sourceRel) || '.md'
+  const safeName = newName.replace(/[\\/:*?"<>|]/g, ' ').trim()
+  if (!safeName) return ''
+  const dir = dirname(sourceRel).replace(/\\/g, '/')
+  return (dir && dir !== '.') ? `${dir}/${safeName}${extension}` : `${safeName}${extension}`
+}
+
+interface WikilinkUpdate {
+  relPath: string
+  absPath: string
+  previousContent: string
+  nextContent: string
+}
+
+function collectWikilinkUpdates(vaultPath: string, sourceRel: string, targetRel: string): WikilinkUpdate[] {
+  const oldTitle = basename(sourceRel, extname(sourceRel))
+  const oldPath = sourceRel.replace(/\.md$/i, '')
+  const newTitle = basename(targetRel, extname(targetRel))
+  const updates: WikilinkUpdate[] = []
+  for (const absPath of listMarkdownFiles(vaultPath)) {
+    const previousContent = readFileSync(absPath, 'utf-8')
+    const nextContent = previousContent.replace(/\[\[([^\]|#]+)(#[^\]|]*)?(\|[^\]]*)?\]\]/g, (match, rawTarget, heading = '', alias = '') => {
+      const normalized = normalizeWikiTarget(rawTarget)
+      if (normalized !== oldTitle && normalized !== oldPath) return match
+      return `[[${newTitle}${heading}${alias}]]`
+    })
+    if (nextContent !== previousContent) {
+      updates.push({
+        relPath: relative(vaultPath, absPath).replace(/\\/g, '/'),
+        absPath,
+        previousContent,
+        nextContent
+      })
+    }
+  }
+  return updates
+}
+
+function listMarkdownFiles(root: string): string[] {
+  const result: string[] = []
+  const visit = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === '.git' || entry.name === '.trash' || entry.name === '.nexusky' || entry.name === 'node_modules') continue
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) visit(full)
+      else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) result.push(full)
+    }
+  }
+  visit(root)
+  return result
+}
+
+function normalizeTags(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item).replace(/^#/, '').trim()).filter(Boolean)
+  if (typeof value === 'string') {
+    return value.split(/[,\s]+/).map((item) => item.replace(/^#/, '').trim()).filter(Boolean)
+  }
+  return []
+}
+
+function isSafeFrontmatterKey(key: string): boolean {
+  return /^[A-Za-z0-9_-]{1,64}$/.test(key)
+}
+
+function sanitizeFrontmatterValue(value: unknown): unknown {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')
+      .slice(0, 50)
+  }
+  return String(value)
+}
+
+function normalizeWikiTarget(value: string): string {
+  const trimmed = value.trim().replace(/\\/g, '/').replace(/\.md$/i, '')
+  return basename(trimmed, extname(trimmed)) || trimmed
+}
+
+function hasWikiLinkTo(content: string, target: string): boolean {
+  const normalizedTarget = normalizeWikiTarget(target)
+  const pattern = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]/g
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(content))) {
+    if (normalizeWikiTarget(match[1]) === normalizedTarget) return true
+  }
+  return false
+}
+
+function buildMergedNoteContent(sources: { relPath: string; absPath: string }[], targetRel: string, previousTargetContent: string | null): string {
+  const parts: string[] = []
+  if (previousTargetContent?.trim()) parts.push(previousTargetContent.trim())
+  for (const source of sources) {
+    const content = readFileSync(source.absPath, 'utf-8').trim()
+    if (!content) continue
+    if (source.relPath === targetRel && previousTargetContent !== null) continue
+    parts.push([`## From ${source.relPath}`, '', content].join('\n'))
+  }
+  return `${parts.join('\n\n')}\n`
 }
 
 function formatPreview(title: string, body: string): string {

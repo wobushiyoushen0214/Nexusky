@@ -9,6 +9,7 @@ import type {
   AppLanguage,
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
+  LongContextCognitiveReviewResult,
   MaintenanceApplyAction,
   MaintenanceApplyPreview,
   MaintenanceScanGroup,
@@ -81,6 +82,24 @@ const MAINTENANCE_SCAN_GROUP_BY_TYPE = new Map<KnowledgeMaintenanceType, Mainten
 )
 
 type MaintenanceCounts = Partial<Record<KnowledgeMaintenanceType, number>>
+
+export function buildMaintenanceAgentGoal(items: KnowledgeMaintenanceItem[], limit = 3): { goal: string; description: string } {
+  const selected = items.slice(0, Math.max(1, limit))
+  const lines = selected.map((item, index) => [
+    `${index + 1}. ${item.type}: ${item.title}`,
+    `   file: ${item.filePath}`,
+    `   priority: ${item.priority}`,
+    `   why: ${item.reason || item.detail || item.action}`
+  ].join('\n'))
+  return {
+    goal: `Safely execute a maintenance batch for ${selected.length} high-priority item${selected.length === 1 ? '' : 's'}`,
+    description: [
+      'Use preview-first Agent steps. Read affected notes before writing, prefer structured step kinds such as create_link, apply_tag, update_frontmatter, rename_file, or task_update, and keep every write rollbackable.',
+      '',
+      ...lines
+    ].join('\n')
+  }
+}
 
 export function getMaintenanceScanGroupsForFilter(activeFilter: 'all' | KnowledgeMaintenanceType): MaintenanceScanGroup[] {
   if (activeFilter === 'all') return [...MAINTENANCE_SCAN_GROUPS]
@@ -188,9 +207,13 @@ export function MaintenanceQueuePanel() {
   const maintenancePanelSection = useUIStore((s) => s.maintenancePanelSection)
   const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
   const language = useUIStore((s) => s.language)
+  const sendToAgent = useUIStore((s) => s.sendToAgent)
   const [items, setItems] = useState<KnowledgeMaintenanceItem[]>([])
   const [counts, setCounts] = useState<Partial<Record<KnowledgeMaintenanceType, number>>>({})
   const [loading, setLoading] = useState(false)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewSaving, setReviewSaving] = useState(false)
+  const [weeklyReview, setWeeklyReview] = useState<LongContextCognitiveReviewResult | null>(null)
   const [scanStatus, setScanStatus] = useState<MaintenanceScanStatus | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
   const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
@@ -323,6 +346,34 @@ export function MaintenanceQueuePanel() {
     void refresh()
   }, [vaultPath, lastUndo, refresh, language])
 
+  const handOffBatchToAgent = useCallback(() => {
+    const candidates = items.slice(0, 3)
+    if (candidates.length === 0) {
+      toast(t('maintenance.agentBatch.empty'), 'info')
+      return
+    }
+    sendToAgent(buildMaintenanceAgentGoal(candidates, 3))
+  }, [items, sendToAgent, t])
+
+  const generateWeeklyReview = useCallback(async (write: boolean) => {
+    if (!vaultPath) return
+    if (write) setReviewSaving(true)
+    else setReviewLoading(true)
+    try {
+      const result = await window.api.invoke('long-context:generate-cognitive-review', { vaultPath, write })
+      setWeeklyReview(result)
+      if (write && result.filePath) {
+        toast(t('maintenance.weeklyReview.saved', { filePath: result.filePath }), 'success')
+        await useEditorStore.getState().openFile(`${vaultPath}/${result.filePath}`)
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), 'error')
+    } finally {
+      if (write) setReviewSaving(false)
+      else setReviewLoading(false)
+    }
+  }, [vaultPath, t])
+
   const grouped = useMemo(() => items, [items])
   const priorityItems = useMemo(() => grouped.slice(0, 3), [grouped])
   const remainingItems = useMemo(() => grouped.slice(priorityItems.length), [grouped, priorityItems.length])
@@ -348,6 +399,15 @@ export function MaintenanceQueuePanel() {
         </div>
         {maintenancePanelSection === 'queue' && (
           <div className="maintenance-panel__header-actions">
+            <button
+              type="button"
+              className="maintenance-panel__refresh"
+              onClick={handOffBatchToAgent}
+              disabled={!vaultPath || items.length === 0}
+              title={t('maintenance.agentBatch.title')}
+            >
+              {t('maintenance.agentBatch.action')}
+            </button>
             {lastUndo && (
               <button
                 type="button"
@@ -398,6 +458,15 @@ export function MaintenanceQueuePanel() {
           {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
           <div className="maintenance-panel__body">
             {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
+            {vaultPath && (
+              <WeeklyReviewPanel
+                review={weeklyReview}
+                loading={reviewLoading}
+                saving={reviewSaving}
+                onGenerate={() => void generateWeeklyReview(false)}
+                onSave={() => void generateWeeklyReview(true)}
+              />
+            )}
             {vaultPath && grouped.length === 0 && !loading && (
               <div className="maintenance-panel__empty">{t('maintenance.empty')}</div>
             )}
@@ -456,6 +525,48 @@ export function MaintenanceQueuePanel() {
 interface MaintenanceScanStatusBarProps {
   status: MaintenanceScanStatus
   itemCount: number
+}
+
+interface WeeklyReviewPanelProps {
+  review: LongContextCognitiveReviewResult | null
+  loading: boolean
+  saving: boolean
+  onGenerate: () => void
+  onSave: () => void
+}
+
+function WeeklyReviewPanel({ review, loading, saving, onGenerate, onSave }: WeeklyReviewPanelProps) {
+  const { t } = useTranslation()
+  const stats = review?.stats
+  return (
+    <section className="maintenance-weekly-review" aria-labelledby="maintenance-weekly-review-title">
+      <div className="maintenance-weekly-review__head">
+        <div>
+          <h3 id="maintenance-weekly-review-title">{t('maintenance.weeklyReview.title')}</h3>
+          <p>{t('maintenance.weeklyReview.desc')}</p>
+        </div>
+        <div className="maintenance-weekly-review__actions">
+          <button type="button" className="maintenance-card__btn" onClick={onGenerate} disabled={loading || saving}>
+            {loading ? t('maintenance.weeklyReview.generating') : t('maintenance.weeklyReview.generate')}
+          </button>
+          <button type="button" className="maintenance-card__btn" onClick={onSave} disabled={loading || saving}>
+            {saving ? t('maintenance.weeklyReview.saving') : t('maintenance.weeklyReview.save')}
+          </button>
+        </div>
+      </div>
+      {review && (
+        <>
+          <div className="maintenance-weekly-review__stats">
+            <span>{t('maintenance.weeklyReview.stats.relations', { count: stats?.newRelations ?? 0 })}</span>
+            <span>{t('maintenance.weeklyReview.stats.themes', { count: stats?.themeChanges ?? 0 })}</span>
+            <span>{t('maintenance.weeklyReview.stats.blockers', { count: stats?.blockers ?? 0 })}</span>
+            <span>{t('maintenance.weeklyReview.stats.resurfaced', { count: stats?.resurfacedContexts ?? 0 })}</span>
+          </div>
+          <pre className="maintenance-weekly-review__preview">{review.markdown}</pre>
+        </>
+      )}
+    </section>
+  )
 }
 
 function MaintenanceScanStatusBar({ status, itemCount }: MaintenanceScanStatusBarProps) {

@@ -130,7 +130,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
   const submitFeedback = useCallback(async (suggestion: LongContextSuggestion, feedbackType: LongContextFeedbackType) => {
     if (!vaultPath) return
     setFeedbackByRelation((prev) => ({ ...prev, [suggestion.relationId]: feedbackType }))
-    if (feedbackType === 'not_related' || feedbackType === 'dismissed') {
+    if (feedbackType === 'not_related' || feedbackType === 'dismissed' || feedbackType === 'snoozed') {
       setSuggestions((prev) => prev.filter((item) => item.relationId !== suggestion.relationId))
     }
     try {

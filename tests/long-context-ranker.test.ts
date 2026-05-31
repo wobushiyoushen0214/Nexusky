@@ -12,13 +12,15 @@ describe('long-context relation ranker', () => {
     now
   }
 
-  it('boosts useful feedback and lowers not_related feedback', () => {
+  it('boosts useful feedback and lowers negative feedback', () => {
     const base = rankRelation(baseInput)
     const useful = rankRelation({ ...baseInput, feedback: { useful: 1 } })
     const notRelated = rankRelation({ ...baseInput, feedback: { notRelated: 1 } })
+    const snoozed = rankRelation({ ...baseInput, feedback: { snoozed: 1 } })
 
     expect(useful).toBeGreaterThan(base)
     expect(notRelated).toBeLessThan(base)
+    expect(snoozed).toBeLessThan(base)
     expect(feedbackScore({ useful: 1, wrongReason: 1 })).toBe(0)
   })
 

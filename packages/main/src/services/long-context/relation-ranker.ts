@@ -1,6 +1,7 @@
 export interface RelationFeedbackCounts {
   useful?: number
   dismissed?: number
+  snoozed?: number
   notRelated?: number
   wrongReason?: number
 }
@@ -43,6 +44,7 @@ export function feedbackScore(feedback: RelationFeedbackCounts): number {
   return clamp(-1, 1,
     (feedback.useful || 0) * 0.25
     + (feedback.dismissed || 0) * -0.15
+    + (feedback.snoozed || 0) * -0.1
     + (feedback.notRelated || 0) * -0.5
     + (feedback.wrongReason || 0) * -0.25
   )

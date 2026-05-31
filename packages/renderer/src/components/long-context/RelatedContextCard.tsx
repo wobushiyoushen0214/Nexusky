@@ -58,6 +58,10 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
             <path d="M12 8v5" />
             <path d="M12 16h.01" />
           </IconButton>
+          <IconButton title={t('relatedContext.card.snooze')} active={feedback === 'snoozed'} onClick={() => onFeedback(suggestion, 'snoozed')}>
+            <circle cx="12" cy="12" r="8" />
+            <path d="M12 6v6l4 2" />
+          </IconButton>
           <IconButton title={t('relatedContext.card.dismiss')} onClick={() => onFeedback(suggestion, 'dismissed')}>
             <path d="M18 6L6 18" />
             <path d="M6 6l12 12" />

@@ -94,5 +94,11 @@ The product no longer exposes `Knowledge Space` as a standalone surface. The Act
 
 What stays: the underlying `CanvasView` layout engine still powers the explicit `Properties View` and `Timeline` surfaces. Reason: Graph is now the only relationship-map surface. Properties View answers "what metadata do my notes have?", and Timeline answers "what changed when?", so the generic spatial metaphor is unnecessary and confusing.
 
+### 2026-05-31 - Agent execution enters the maintenance loop
+
+Agent remains out of primary navigation, but it now has a concrete product role inside Knowledge Maintenance: the queue can hand off the highest-priority items as a reviewable Agent run. Reason: Agent should be discovered when execution is useful, not as a standalone promise. The workflow is maintenance item -> plan -> preview -> execute -> rollback, with structured step kinds for links, tags, frontmatter, file moves, trash, and merges.
+
+Weekly Cognitive Review also lives in the maintenance surface. Reason: the weekly return habit belongs near maintenance and context quality, not in a separate calendar or dashboard surface.
+
 
 

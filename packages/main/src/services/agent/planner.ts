@@ -150,6 +150,20 @@ function sanitizeRecord(input: Record<string, unknown>): Record<string, unknown>
 
 export function buildPlanPrompt(params: PlanAgentRunParams): ChatMessage[] {
   const tools = Array.from(ALLOWED_AGENT_TOOLS).join(', ')
+  const stepKinds = [
+    'tool_call',
+    'file_write',
+    'file_create',
+    'task_update',
+    'note_edit',
+    'move_file',
+    'rename_file',
+    'delete_file',
+    'apply_tag',
+    'update_frontmatter',
+    'create_link',
+    'merge_notes'
+  ].join(' | ')
   const goal = String(params.goal || '').trim().slice(0, 600)
   const description = params.description ? String(params.description).trim().slice(0, 600) : ''
   const context = params.context ? JSON.stringify(params.context).slice(0, 1500) : ''
@@ -160,7 +174,7 @@ export function buildPlanPrompt(params: PlanAgentRunParams): ChatMessage[] {
       content: [
         'You are designing a step-by-step plan to achieve a user goal in a personal knowledge base.',
         '',
-        'Allowed step kinds: tool_call | file_write | file_create | task_update | note_edit.',
+        `Allowed step kinds: ${stepKinds}.`,
         'Allowed tools for tool_call (whitelist):',
         tools,
         '',
@@ -169,9 +183,11 @@ export function buildPlanPrompt(params: PlanAgentRunParams): ChatMessage[] {
         '',
         'Hard rules (the response is rejected silently if any rule is violated):',
         `- At most ${MAX_STEPS} steps.`,
-        '- Every write step (file_write|file_create|task_update|note_edit) must be preceded by at least one tool_call read step.',
+        '- Every write step must be preceded by at least one tool_call read step.',
+        '- Prefer apply_tag, update_frontmatter, create_link, rename_file, and move_file over full file_write when the change is structured.',
+        '- delete_file moves files to the vault .trash folder; merge_notes is high risk and should normally be plan-only unless the user explicitly confirms execution.',
         '- dependsOn must only reference earlier step indices.',
-        '- Never include destructive operations (delete file, drop table, force-push, mass deletion).',
+        '- Never include destructive operations outside the allowed step kinds, drop table, force-push, or mass deletion.',
         '- Never invent tool names outside the whitelist.',
         '- description and expectedEffect must be concrete and non-empty.',
         '- If the goal is ambiguous, return fewer steps and put the missing information in rationale.'

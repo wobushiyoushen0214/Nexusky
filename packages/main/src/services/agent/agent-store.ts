@@ -12,7 +12,19 @@ export type AgentRunStatus =
   | 'failed'
   | 'cancelled'
 
-export type AgentStepKind = 'tool_call' | 'file_write' | 'file_create' | 'task_update' | 'note_edit'
+export type AgentStepKind =
+  | 'tool_call'
+  | 'file_write'
+  | 'file_create'
+  | 'task_update'
+  | 'note_edit'
+  | 'move_file'
+  | 'rename_file'
+  | 'delete_file'
+  | 'apply_tag'
+  | 'update_frontmatter'
+  | 'create_link'
+  | 'merge_notes'
 
 export type AgentStepStatus =
   | 'pending'

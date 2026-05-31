@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { SCHEMA_VERSION } from '../packages/main/src/services/database'
 
 describe('long-context schema', () => {
   let vaultPath: string
@@ -44,7 +45,7 @@ describe('long-context schema', () => {
       'theme_memberships',
       'relation_feedback'
     ]))
-    expect(db.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
+    expect(db.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: SCHEMA_VERSION })
 
     expect(indexNames(db, 'context_events')).toEqual(expect.arrayContaining([
       'idx_context_events_entity',
@@ -70,7 +71,7 @@ describe('long-context schema', () => {
     ]))
   })
 
-  it('migrates an existing schema 9 vault to schema 11 idempotently', async () => {
+  it('migrates an existing schema 9 vault to the current schema idempotently', async () => {
     const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
     const dbPath = join(vaultPath, '.nexusky', 'index.db')
     const oldDb = new Database(dbPath)
@@ -81,7 +82,7 @@ describe('long-context schema', () => {
     oldDb.close()
 
     const migratedDb = getDatabase(vaultPath)
-    expect(migratedDb.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
+    expect(migratedDb.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: SCHEMA_VERSION })
     expect(tableNames(migratedDb)).toEqual(expect.arrayContaining([
       'context_events',
       'ai_relations',
@@ -92,7 +93,7 @@ describe('long-context schema', () => {
 
     closeDatabase()
     expect(() => getDatabase(vaultPath)).not.toThrow()
-    expect(getDatabase(vaultPath).prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
+    expect(getDatabase(vaultPath).prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: SCHEMA_VERSION })
   })
 
   it('repairs partial long-context tables when schema_version is already current', async () => {

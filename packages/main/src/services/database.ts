@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-const SCHEMA_VERSION = 12
+export const SCHEMA_VERSION = 12
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db

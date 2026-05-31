@@ -2,7 +2,7 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：`cb6a1f3`（v0.5.0 后，含分组图谱钻取、相关上下文侧栏整合、属性/时间视图路由显示和官网首页重做）
+最后核对版本：v0.8.0 发布前（含 Cognitive Partner MVP、分组图谱钻取、相关上下文侧栏整合、属性/时间视图路由显示和官网首页重做）
 
 ## 1. 一句话理解
 
@@ -91,6 +91,8 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 - AI Agent 提供 `plan_knowledge_maintenance` 工具，把"未解析链接、空笔记、过期任务、今日到期、高优先级、计划/开始/阻塞/循环任务、即将到期、孤岛笔记、缺失属性、重复标题或别名、待复习笔记记忆、超长笔记、知识桥接"等问题统一汇总成可执行的维护队列。
 - `list_knowledge_bridges` 工具找出语义上的桥接笔记，配合 `suggest_note_links`、`connection-opportunities` 帮助补全跨主题链接。
 - 知识维护面板通过 `maintenance:*` IPC 获取队列并应用部分自动修复；同一右侧面板也整合了"相关上下文"页签，编辑器状态栏可一键打开当前笔记的长期上下文轮播。
+- 维护队列可把最高优先级事项批量交给独立 Agent run，生成可审查 plan、逐步 preview/execute，并支持整次回滚。
+- 维护队列内置每周认知复盘入口，可预览或保存 `.nexusky/reviews/*-cognitive-review.md`，作为长期上下文的每周回访理由。
 - 主动建议系统会基于长期上下文、主题接近、认知回顾和维护信号生成通知；通知中心支持单条打开/稍后/忽略，也支持一次性全部已读或全部删除。
 
 ## 4. 技术栈
@@ -373,7 +375,7 @@ AI 面板还支持：
 
 - `packages/main/src/services/agent/planner.ts` 生成结构化步骤计划。
 - `agent-store.ts` 持久化 `agent_runs` / `agent_steps`。
-- `executor.ts` 执行步骤，支持 dry run、暂停/恢复、取消、重试、跳过和回滚。
+- `executor.ts` 执行步骤，支持 dry run、暂停/恢复、取消、重试、跳过和回滚。写入 step kind 覆盖 `file_write`、`file_create`、`task_update`、`note_edit`、`move_file`、`rename_file`、`delete_file`、`apply_tag`、`update_frontmatter`、`create_link`、`merge_notes`；高风险合并默认只做 plan/dry run，除非显式确认。
 - `reflector.ts` 对运行结果生成反思摘要。
 - `packages/main/src/ipc/agent.ipc.ts` 注册 `agent:*` IPC，并通过 `agent:step-update` 事件推送步骤进度。
 - 前端 `AgentRunPanel` 展示运行列表、步骤状态、回滚与反思入口。
@@ -383,7 +385,7 @@ AI 面板还支持：
 长期上下文系统位于 `packages/main/src/services/long-context/`，用于把用户的编辑、搜索、AI 对话和图谱关系沉淀为可复用的上下文：
 
 - `context_events` 记录长期事件。
-- `relation-candidates` / `relation-classifier` / `relation-ranker` 发现、分类和排序 AI 关系。
+- `relation-candidates` / `relation-classifier` / `relation-ranker` 发现、分类和排序 AI 关系。用户反馈 `useful`、`not_related`、`wrong_reason`、`dismissed`、`snoozed` 会写入 `relation_feedback` 并影响后续排序。
 - `theme-extractor` 聚合长期主题，`context-pack-builder` 构造聊天可用的 hot/warm/cold 上下文包。
 - `background.ts` 负责后台分析，`long-context-prefs.ts` 负责偏好设置，`cognitive-review.ts` 生成认知回顾。
 - `RelatedContextPanel`、`LongContextDebugPanel` 和 `ChatSourceRow` 让用户查看相关上下文、调试 pack，并解释聊天来源为什么被引用；相关上下文面板支持 inline / top / side 布局，当前侧栏入口复用维护面板的 context 页签。
@@ -766,3 +768,12 @@ pnpm test
 - 左侧活动栏将维护入口设为默认可见，命令面板、activity bar registry、`ui-store` 和中英文 i18n 同步适配维护面板子页签。
 - README 被压缩为当前能力、技术栈、开发命令、文档入口和安全边界的高层入口；旧 `docs/FEATURES.md` 已移除，overview 和 README 不再引用它。
 - `website/` 首页重做为 Nexusky v0.5.0 官网与下载入口，使用 `public/product/icon.png`，展示本地 Markdown、长期上下文、AI 工具、图谱和下载链接；Next.js 中间件文件迁移为 `proxy.ts`，`website/README.md` 同步说明日志后台、环境变量和首页资产。
+
+### 22.12 v0.8 Cognitive Partner MVP 回写
+
+- Agent step kind 扩展到结构化文件维护：移动、重命名、移入 `.trash`、补标签、更新 frontmatter、创建 wikilink、合并笔记。新增写入均支持 dry run 预览和 rollback data，高风险合并默认要求显式确认。
+- 维护队列新增批量计划入口，可把当前最高优先级维护项交给 Agent run，形成 `Maintenance -> Agent plan -> preview -> execute -> rollback` 路径。
+- 维护队列新增 Weekly Cognitive Review，可预览或保存 `.nexusky/reviews/*-cognitive-review.md`，内容来自长期关系、主题变化、重复问题、阻塞项和重新浮现的上下文。
+- 关系反馈新增 `snoozed` 类型；Related Context card 现在支持 useful / not related / wrong reason / snooze / dismiss，反馈会写入 `relation_feedback` 并影响后续 ranking。
+- 新增 `docs/SEMANTIC_SEARCH_EVALUATION_2026-05-31.md`，明确 v0.8 不默认启用 embedding，先用 fixture 对 keyword / FTS / local embedding / remote embedding / hybrid 做评估，并写清远程 embedding 的数据外发边界。
+- 应用版本号推进到 `0.8.0`，对应 Phase 3 / Cognitive Partner MVP。

@@ -3,7 +3,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createAgentRun, getAgentStep, type AgentPlanStep } from '../packages/main/src/services/agent/agent-store'
-import { executeAgentStep, rollbackAgentStep } from '../packages/main/src/services/agent/executor'
+import { executeAgentStep, rollbackAgentRun, rollbackAgentStep } from '../packages/main/src/services/agent/executor'
 
 function planWithRead(extra: AgentPlanStep[] = []): AgentPlanStep[] {
   return [
@@ -241,5 +241,106 @@ describe('agent executor', () => {
     expect(rollback.ok).toBe(false)
     expect(rollback.error).toBe('file_modified_since_write')
     expect(readFileSync(join(vaultPath, 'W.md'), 'utf-8')).toBe('user precious edit')
+  })
+
+  it('expanded maintenance step kinds all support dry-run previews', async () => {
+    mkdirSync(join(vaultPath, 'Folder'), { recursive: true })
+    writeFileSync(join(vaultPath, 'A.md'), 'A mentions old text\n', 'utf-8')
+    writeFileSync(join(vaultPath, 'Move.md'), 'move me', 'utf-8')
+    writeFileSync(join(vaultPath, 'Rename.md'), 'rename me', 'utf-8')
+    writeFileSync(join(vaultPath, 'Delete.md'), 'delete me', 'utf-8')
+    writeFileSync(join(vaultPath, 'Merge 1.md'), 'one', 'utf-8')
+    writeFileSync(join(vaultPath, 'Merge 2.md'), 'two', 'utf-8')
+
+    const runId = createAgentRun({
+      vaultPath,
+      goal: 'g',
+      plan: planWithRead([
+        { index: 0, kind: 'move_file', args: { sourcePath: 'Move.md', targetPath: 'Folder/Move.md' }, description: 'move', expectedEffect: 'moved', dependsOn: [0] },
+        { index: 0, kind: 'rename_file', args: { sourcePath: 'Rename.md', targetPath: 'Renamed.md' }, description: 'rename', expectedEffect: 'renamed', dependsOn: [0] },
+        { index: 0, kind: 'delete_file', args: { filePath: 'Delete.md' }, description: 'trash', expectedEffect: 'trashed', dependsOn: [0] },
+        { index: 0, kind: 'apply_tag', args: { filePath: 'A.md', tag: 'phase3' }, description: 'tag', expectedEffect: 'tagged', dependsOn: [0] },
+        { index: 0, kind: 'update_frontmatter', args: { filePath: 'A.md', properties: { status: 'active' } }, description: 'frontmatter', expectedEffect: 'status set', dependsOn: [0] },
+        { index: 0, kind: 'create_link', args: { filePath: 'A.md', targetTitle: 'Target' }, description: 'link', expectedEffect: 'linked', dependsOn: [0] },
+        { index: 0, kind: 'merge_notes', args: { sourcePaths: ['Merge 1.md', 'Merge 2.md'], targetPath: 'Merged.md' }, description: 'merge', expectedEffect: 'merged preview', dependsOn: [0] }
+      ]),
+      rationale: ''
+    })
+    const { updateAgentStep } = await import('../packages/main/src/services/agent/agent-store')
+    updateAgentStep(vaultPath, runId, 0, { status: 'completed' })
+
+    for (const stepIndex of [1, 2, 3, 4, 5, 6, 7]) {
+      const result = await executeAgentStep({ vaultPath, runId, stepIndex, dryRun: true })
+      expect(result.status).toBe('completed')
+      expect(result.preview).toBeTruthy()
+    }
+
+    expect(existsSync(join(vaultPath, 'Folder', 'Move.md'))).toBe(false)
+    expect(existsSync(join(vaultPath, 'Delete.md'))).toBe(true)
+    expect(readFileSync(join(vaultPath, 'A.md'), 'utf-8')).toBe('A mentions old text\n')
+  })
+
+  it('structured note maintenance steps write and rollback as one run', async () => {
+    writeFileSync(join(vaultPath, 'A.md'), 'A mentions topic\n', 'utf-8')
+    const runId = createAgentRun({
+      vaultPath,
+      goal: 'g',
+      plan: planWithRead([
+        { index: 0, kind: 'apply_tag', args: { filePath: 'A.md', tag: 'phase3' }, description: 'tag', expectedEffect: 'tagged', dependsOn: [0] },
+        { index: 0, kind: 'update_frontmatter', args: { filePath: 'A.md', properties: { status: 'active' } }, description: 'frontmatter', expectedEffect: 'status set', dependsOn: [0] },
+        { index: 0, kind: 'create_link', args: { filePath: 'A.md', targetTitle: 'Target' }, description: 'link', expectedEffect: 'linked', dependsOn: [0] }
+      ]),
+      rationale: ''
+    })
+    const { updateAgentStep } = await import('../packages/main/src/services/agent/agent-store')
+    updateAgentStep(vaultPath, runId, 0, { status: 'completed' })
+
+    await executeAgentStep({ vaultPath, runId, stepIndex: 1, dryRun: false })
+    await executeAgentStep({ vaultPath, runId, stepIndex: 2, dryRun: false })
+    await executeAgentStep({ vaultPath, runId, stepIndex: 3, dryRun: false })
+
+    const changed = readFileSync(join(vaultPath, 'A.md'), 'utf-8')
+    expect(changed).toContain('phase3')
+    expect(changed).toContain('status: active')
+    expect(changed).toContain('[[Target]]')
+
+    const rollback = rollbackAgentRun(vaultPath, runId)
+    expect(rollback.ok).toBe(true)
+    expect(rollback.rolledBack).toBe(3)
+    expect(readFileSync(join(vaultPath, 'A.md'), 'utf-8')).toBe('A mentions topic\n')
+  })
+
+  it('move, rename, and delete steps can be rolled back', async () => {
+    writeFileSync(join(vaultPath, 'Move.md'), 'move me', 'utf-8')
+    writeFileSync(join(vaultPath, 'Rename.md'), 'rename me', 'utf-8')
+    writeFileSync(join(vaultPath, 'Linker.md'), 'See [[Rename]]', 'utf-8')
+    writeFileSync(join(vaultPath, 'Delete.md'), 'delete me', 'utf-8')
+    const runId = createAgentRun({
+      vaultPath,
+      goal: 'g',
+      plan: planWithRead([
+        { index: 0, kind: 'move_file', args: { sourcePath: 'Move.md', targetPath: 'Moved.md' }, description: 'move', expectedEffect: 'moved', dependsOn: [0] },
+        { index: 0, kind: 'rename_file', args: { sourcePath: 'Rename.md', targetPath: 'Renamed.md' }, description: 'rename', expectedEffect: 'renamed', dependsOn: [0] },
+        { index: 0, kind: 'delete_file', args: { filePath: 'Delete.md' }, description: 'trash', expectedEffect: 'trashed', dependsOn: [0] }
+      ]),
+      rationale: ''
+    })
+    const { updateAgentStep } = await import('../packages/main/src/services/agent/agent-store')
+    updateAgentStep(vaultPath, runId, 0, { status: 'completed' })
+
+    await executeAgentStep({ vaultPath, runId, stepIndex: 1, dryRun: false })
+    await executeAgentStep({ vaultPath, runId, stepIndex: 2, dryRun: false })
+    await executeAgentStep({ vaultPath, runId, stepIndex: 3, dryRun: false })
+    expect(existsSync(join(vaultPath, 'Moved.md'))).toBe(true)
+    expect(existsSync(join(vaultPath, 'Renamed.md'))).toBe(true)
+    expect(existsSync(join(vaultPath, 'Delete.md'))).toBe(false)
+    expect(readFileSync(join(vaultPath, 'Linker.md'), 'utf-8')).toBe('See [[Renamed]]')
+
+    const rollback = rollbackAgentRun(vaultPath, runId)
+    expect(rollback.ok).toBe(true)
+    expect(existsSync(join(vaultPath, 'Move.md'))).toBe(true)
+    expect(existsSync(join(vaultPath, 'Rename.md'))).toBe(true)
+    expect(existsSync(join(vaultPath, 'Delete.md'))).toBe(true)
+    expect(readFileSync(join(vaultPath, 'Linker.md'), 'utf-8')).toBe('See [[Rename]]')
   })
 })

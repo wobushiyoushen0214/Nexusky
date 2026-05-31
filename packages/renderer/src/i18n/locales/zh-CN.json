@@ -207,6 +207,26 @@
     "empty": "暂无待办项",
     "contextEmpty": "打开一篇笔记后查看相关上下文。",
     "noVault": "请先打开一个 vault",
+    "agentBatch": {
+      "title": "把优先维护项交给 Agent 生成可审查计划",
+      "action": "批量计划",
+      "empty": "暂无可交给 Agent 的维护项。"
+    },
+    "weeklyReview": {
+      "title": "每周认知复盘",
+      "desc": "基于关系、主题、重复问题、阻塞项和重新浮现的上下文生成有证据的复盘。",
+      "generate": "预览",
+      "generating": "生成中...",
+      "save": "保存笔记",
+      "saving": "保存中...",
+      "saved": "已保存 {{filePath}}",
+      "stats": {
+        "relations": "{{count}} 个关系",
+        "themes": "{{count}} 个主题",
+        "blockers": "{{count}} 个阻塞",
+        "resurfaced": "{{count}} 个重现上下文"
+      }
+    },
     "today": {
       "title": "先做这几件",
       "desc": "队列已按影响排序。先处理几件小任务，让 vault 变轻一点。",
@@ -506,6 +526,7 @@
       "useful": "有用",
       "notRelated": "不相关",
       "wrongReason": "原因不对",
+      "snooze": "稍后",
       "dismiss": "忽略"
     }
   },

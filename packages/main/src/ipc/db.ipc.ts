@@ -182,7 +182,7 @@ interface IndexedTaskRow {
 const RELATION_TYPES = new Set<KanbanRelationType>(['blocks', 'depends_on', 'related'])
 const FLASHCARD_RATINGS = new Set<FlashcardReviewRating>(['again', 'hard', 'good', 'easy'])
 const LONG_CONTEXT_ENTITY_TYPES = new Set<LongContextEntityType>(['note', 'task', 'chat'])
-const LONG_CONTEXT_FEEDBACK_TYPES = new Set<LongContextFeedbackType>(['useful', 'not_related', 'wrong_reason', 'dismissed'])
+const LONG_CONTEXT_FEEDBACK_TYPES = new Set<LongContextFeedbackType>(['useful', 'not_related', 'wrong_reason', 'dismissed', 'snoozed'])
 const searchIndexJobs = new Map<string, SearchIndexJobStatus>()
 
 function runIndexVaultWorker(vaultPath: string, onProgress: (progress: VaultIndexProgress) => void): Promise<VaultIndexResult> {

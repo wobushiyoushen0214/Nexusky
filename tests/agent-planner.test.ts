@@ -75,6 +75,19 @@ describe('agent planner', () => {
       expect(plan[1].dependsOn).toEqual([0])
     })
 
+    it('accepts structured maintenance step kinds after a read step', () => {
+      const raw = JSON.stringify({
+        steps: [
+          { index: 0, kind: 'tool_call', toolName: 'read_current_note', args: { filePath: 'A.md' }, description: 'read A', expectedEffect: 'content snapshot', dependsOn: [] },
+          { index: 1, kind: 'apply_tag', args: { filePath: 'A.md', tag: 'project' }, description: 'tag A', expectedEffect: 'A has a project tag', dependsOn: [0] },
+          { index: 2, kind: 'create_link', args: { filePath: 'A.md', targetTitle: 'B' }, description: 'link A to B', expectedEffect: 'A links to B', dependsOn: [0] },
+          { index: 3, kind: 'update_frontmatter', args: { filePath: 'A.md', properties: { status: 'active' } }, description: 'set status', expectedEffect: 'status is active', dependsOn: [0] }
+        ]
+      })
+      const { plan } = parsePlanResponse(raw)
+      expect(plan.map((step) => step.kind)).toEqual(['tool_call', 'apply_tag', 'create_link', 'update_frontmatter'])
+    })
+
     it('caps the plan at 12 steps', () => {
       const steps: unknown[] = []
       steps.push({ index: 0, kind: 'tool_call', toolName: 'search_notes', args: { query: 'x' }, description: 'read', expectedEffect: 'list', dependsOn: [] })
@@ -119,6 +132,7 @@ describe('agent planner', () => {
       const messages = buildPlanPrompt({ goal: 'x' })
       const system = messages.find((m) => m.role === 'system')!
       expect(system.content).toContain('list_orphan_notes')
+      expect(system.content).toContain('update_frontmatter')
       expect(system.content).toContain('strict JSON')
     })
   })

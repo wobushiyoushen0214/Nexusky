@@ -1,9 +1,34 @@
 import { TOOL_SURFACE_REGISTRY } from '../tool-surface/registry'
 
-export const AGENT_STEP_KINDS = ['tool_call', 'file_write', 'file_create', 'task_update', 'note_edit'] as const
+export const AGENT_STEP_KINDS = [
+  'tool_call',
+  'file_write',
+  'file_create',
+  'task_update',
+  'note_edit',
+  'move_file',
+  'rename_file',
+  'delete_file',
+  'apply_tag',
+  'update_frontmatter',
+  'create_link',
+  'merge_notes'
+] as const
 export type AgentStepKind = typeof AGENT_STEP_KINDS[number]
 
-const WRITE_KINDS = new Set<AgentStepKind>(['file_write', 'file_create', 'task_update', 'note_edit'])
+const WRITE_KINDS = new Set<AgentStepKind>([
+  'file_write',
+  'file_create',
+  'task_update',
+  'note_edit',
+  'move_file',
+  'rename_file',
+  'delete_file',
+  'apply_tag',
+  'update_frontmatter',
+  'create_link',
+  'merge_notes'
+])
 const ALLOWED_STEP_KINDS = new Set<string>(AGENT_STEP_KINDS)
 
 export const ALLOWED_AGENT_TOOLS: ReadonlySet<string> = new Set(TOOL_SURFACE_REGISTRY.map((entry) => entry.name))

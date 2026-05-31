@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { SCHEMA_VERSION } from '../packages/main/src/services/database'
 
 describe('proactive schema', () => {
   let vaultPath: string
@@ -43,7 +44,7 @@ describe('proactive schema', () => {
     const db = getDatabase(vaultPath)
 
     expect(tableNames(db)).toEqual(expect.arrayContaining(['proactive_suggestions']))
-    expect(db.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
+    expect(db.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: SCHEMA_VERSION })
 
     expect(columnNames(db, 'proactive_suggestions')).toEqual(expect.arrayContaining([
       'id',
@@ -74,7 +75,7 @@ describe('proactive schema', () => {
     expect(uniqueIndexes(db, 'proactive_suggestions')).toContain('idx_proactive_signature')
   })
 
-  it('migrates an existing schema 9 vault to schema 11 idempotently', async () => {
+  it('migrates an existing schema 9 vault to the current schema idempotently', async () => {
     const { getDatabase, closeDatabase } = await import('../packages/main/src/services/database')
     const dbPath = join(vaultPath, '.nexusky', 'index.db')
     const oldDb = new Database(dbPath)
@@ -85,7 +86,7 @@ describe('proactive schema', () => {
     oldDb.close()
 
     const migratedDb = getDatabase(vaultPath)
-    expect(migratedDb.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
+    expect(migratedDb.prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: SCHEMA_VERSION })
     expect(tableNames(migratedDb)).toEqual(expect.arrayContaining(['proactive_suggestions']))
     expect(indexNames(migratedDb, 'proactive_suggestions')).toEqual(expect.arrayContaining([
       'idx_proactive_signature',
@@ -95,7 +96,7 @@ describe('proactive schema', () => {
 
     closeDatabase()
     expect(() => getDatabase(vaultPath)).not.toThrow()
-    expect(getDatabase(vaultPath).prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: 11 })
+    expect(getDatabase(vaultPath).prepare('SELECT version FROM schema_version LIMIT 1').get()).toEqual({ version: SCHEMA_VERSION })
   })
 
   it('repairs missing proactive_suggestions columns when schema_version is already current', async () => {

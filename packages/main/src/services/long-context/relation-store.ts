@@ -8,7 +8,7 @@ import type { RelationType } from './relation-classifier'
 import { getLongContextPrefs } from './long-context-prefs'
 
 export type RelationStatus = 'active' | 'dismissed' | 'archived' | 'wrong'
-export type RelationFeedbackType = 'useful' | 'not_related' | 'wrong_reason' | 'dismissed'
+export type RelationFeedbackType = 'useful' | 'not_related' | 'wrong_reason' | 'dismissed' | 'snoozed'
 
 export interface UpsertRelationInput {
   sourceType: EntityType
@@ -323,6 +323,7 @@ function getFeedbackCounts(db: Database.Database, relationId: string): RelationF
   for (const row of rows) {
     if (row.feedbackType === 'useful') counts.useful = row.count
     if (row.feedbackType === 'dismissed') counts.dismissed = row.count
+    if (row.feedbackType === 'snoozed') counts.snoozed = row.count
     if (row.feedbackType === 'not_related') counts.notRelated = row.count
     if (row.feedbackType === 'wrong_reason') counts.wrongReason = row.count
   }
@@ -372,6 +373,7 @@ function nextStatusForFeedback(current: RelationStatus, feedbackType: RelationFe
 function adjustScoreForFeedback(score: number, feedbackType: RelationFeedbackType): number {
   if (feedbackType === 'useful') return Number(clamp01(score + 0.25).toFixed(4))
   if (feedbackType === 'dismissed') return Number(clamp01(score - 0.15).toFixed(4))
+  if (feedbackType === 'snoozed') return Number(clamp01(score - 0.1).toFixed(4))
   if (feedbackType === 'not_related') return Number(clamp01(score - 0.5).toFixed(4))
   if (feedbackType === 'wrong_reason') return Number(clamp01(score - 0.25).toFixed(4))
   return score
@@ -380,6 +382,7 @@ function adjustScoreForFeedback(score: number, feedbackType: RelationFeedbackTyp
 function applyFeedbackAndStatusPenalty(score: number, status: RelationStatus, feedback: RelationFeedbackCounts): number {
   let nextScore = score
   if (status === 'dismissed' || feedback.dismissed) nextScore -= 0.15
+  if (feedback.snoozed) nextScore -= 0.1
   if (status === 'wrong' || feedback.notRelated) nextScore -= 0.5
   if (feedback.wrongReason) nextScore -= 0.25
   return Number(clamp01(nextScore).toFixed(4))

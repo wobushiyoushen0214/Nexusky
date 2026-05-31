@@ -82,6 +82,22 @@ describe('long-context relation store', () => {
     })
   })
 
+  it('snoozed relation feedback is stored and lowers future ranking without marking the relation wrong', async () => {
+    const { getDatabase } = await import('../packages/main/src/services/database')
+    const relationId = upsertRelation(vaultPath, relation('snooze-note', 'Snooze'))
+    const before = getContextSuggestions({ vaultPath, entityType: 'note', entityId: 'current-note', limit: 3 })
+      .find((item) => item.relationId === relationId)!
+
+    submitRelationFeedback({ vaultPath, relationId, feedbackType: 'snoozed' })
+
+    const row = getDatabase(vaultPath).prepare('SELECT status, score FROM ai_relations WHERE id = ?').get(relationId) as { status: string; score: number }
+    expect(row.status).toBe('active')
+    expect(row.score).toBeLessThan(before.score)
+    expect(getDatabase(vaultPath).prepare('SELECT feedback_type as feedbackType FROM relation_feedback WHERE relation_id = ?').get(relationId)).toEqual({
+      feedbackType: 'snoozed'
+    })
+  })
+
   it('returns a clear error when feedback targets a missing relation', () => {
     expect(() => submitRelationFeedback({ vaultPath, relationId: 'missing', feedbackType: 'useful' })).toThrow('Relation not found: missing')
   })

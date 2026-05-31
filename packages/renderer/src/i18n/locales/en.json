@@ -207,6 +207,26 @@
     "empty": "Nothing to do",
     "contextEmpty": "Open a note to view related context.",
     "noVault": "Open a vault first",
+    "agentBatch": {
+      "title": "Send the top maintenance items to Agent for a reviewable plan",
+      "action": "Batch plan",
+      "empty": "No maintenance items to hand off."
+    },
+    "weeklyReview": {
+      "title": "Weekly cognitive review",
+      "desc": "Generate an evidence-backed review from relations, themes, repeated questions, blockers, and resurfaced context.",
+      "generate": "Preview",
+      "generating": "Generating...",
+      "save": "Save note",
+      "saving": "Saving...",
+      "saved": "Saved {{filePath}}",
+      "stats": {
+        "relations": "{{count}} relations",
+        "themes": "{{count}} themes",
+        "blockers": "{{count}} blockers",
+        "resurfaced": "{{count}} resurfaced"
+      }
+    },
     "today": {
       "title": "Start with these",
       "desc": "The queue is sorted by impact. Handle a few small items, then continue when the vault feels lighter.",
@@ -506,6 +526,7 @@
       "useful": "Useful",
       "notRelated": "Not related",
       "wrongReason": "Wrong reason",
+      "snooze": "Snooze",
       "dismiss": "Dismiss"
     }
   },

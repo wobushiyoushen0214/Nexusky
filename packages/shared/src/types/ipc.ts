@@ -361,7 +361,7 @@ export type LongContextRelationType =
   | 'supports_goal'
   | 'conflicts_with'
 
-export type LongContextFeedbackType = 'useful' | 'not_related' | 'wrong_reason' | 'dismissed'
+export type LongContextFeedbackType = 'useful' | 'not_related' | 'wrong_reason' | 'dismissed' | 'snoozed'
 
 export interface LongContextSuggestion {
   relationId: string
@@ -1047,7 +1047,19 @@ export interface IPCChannelMap {
 export type IPCChannel = keyof IPCChannelMap
 
 export type AgentRunStatus = 'pending' | 'planning' | 'awaiting_user' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
-export type AgentStepKind = 'tool_call' | 'file_write' | 'file_create' | 'task_update' | 'note_edit'
+export type AgentStepKind =
+  | 'tool_call'
+  | 'file_write'
+  | 'file_create'
+  | 'task_update'
+  | 'note_edit'
+  | 'move_file'
+  | 'rename_file'
+  | 'delete_file'
+  | 'apply_tag'
+  | 'update_frontmatter'
+  | 'create_link'
+  | 'merge_notes'
 export type AgentStepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | 'rolled_back'
 
 export interface AgentPlanStep {

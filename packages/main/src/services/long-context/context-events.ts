@@ -136,7 +136,7 @@ export function getLongContextMetrics(params: {
     if (row.eventType === 'relation_feedback_submitted') {
       feedbackType = getMetadataString(row.metadataJson, 'feedbackType')
       if (feedbackType === 'useful') counts.suggestionUseful += 1
-      if (feedbackType === 'dismissed') counts.suggestionDismissed += 1
+      if (feedbackType === 'dismissed' || feedbackType === 'snoozed') counts.suggestionDismissed += 1
       if (feedbackType === 'not_related') counts.suggestionNotRelated += 1
     }
 

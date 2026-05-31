@@ -186,6 +186,75 @@
   color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
 }
 
+.maintenance-weekly-review {
+  margin: 8px 10px 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+}
+
+.maintenance-weekly-review__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.maintenance-weekly-review__head h3 {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.maintenance-weekly-review__head p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.maintenance-weekly-review__actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.maintenance-weekly-review__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.maintenance-weekly-review__stats span {
+  padding: 2px 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.maintenance-weekly-review__preview {
+  max-height: 180px;
+  margin: 10px 0 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--border-faint, rgba(255, 255, 255, 0.04));
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .maintenance-panel__today {
   margin: 8px 10px 12px;
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
@@ -313,6 +382,16 @@
 .maintenance-card__btn:hover {
   background: var(--bg-hover-strong, rgba(255, 255, 255, 0.08));
   color: var(--text-primary);
+}
+
+.maintenance-card__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.maintenance-card__btn:hover:disabled {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .maintenance-preview {
