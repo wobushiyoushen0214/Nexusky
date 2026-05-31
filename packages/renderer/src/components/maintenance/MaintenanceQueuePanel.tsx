@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -11,6 +11,7 @@ import type {
   KnowledgeMaintenanceType,
   MaintenanceApplyAction,
   MaintenanceApplyPreview,
+  MaintenanceScanGroup,
   MaintenanceScanStatus
 } from '@shared/types/ipc'
 import './maintenance.css'
@@ -52,6 +53,65 @@ const ACTIONS_BY_TYPE: Record<KnowledgeMaintenanceType, MaintenanceApplyAction[]
 
 const MUTATING_ACTIONS = new Set<MaintenanceApplyAction>(['create_target', 'mark_done', 'archive', 'add_alias'])
 const MAINTENANCE_SCAN_TYPES = Object.keys(ACTIONS_BY_TYPE) as KnowledgeMaintenanceType[]
+const MAINTENANCE_SCAN_GROUPS: MaintenanceScanGroup[] = ['links', 'tasks', 'properties', 'memory', 'structure', 'bridge']
+
+const MAINTENANCE_TYPES_BY_SCAN_GROUP: Record<MaintenanceScanGroup, KnowledgeMaintenanceType[]> = {
+  links: ['fix_unresolved_link', 'connect_orphan', 'link_unlinked_reference'],
+  tasks: [
+    'review_overdue_tasks',
+    'review_due_today_tasks',
+    'review_high_priority_tasks',
+    'review_scheduled_tasks',
+    'review_started_tasks',
+    'review_blocked_tasks',
+    'review_recurring_tasks',
+    'review_upcoming_tasks',
+    'review_open_tasks'
+  ],
+  properties: ['resolve_duplicate_alias', 'fill_missing_property'],
+  memory: ['refresh_memory'],
+  structure: ['fill_empty_note', 'resolve_duplicate_title', 'split_large_note'],
+  bridge: ['maintain_bridge']
+}
+
+const MAINTENANCE_SCAN_GROUP_BY_TYPE = new Map<KnowledgeMaintenanceType, MaintenanceScanGroup>(
+  MAINTENANCE_SCAN_GROUPS.flatMap((group) =>
+    MAINTENANCE_TYPES_BY_SCAN_GROUP[group].map((type) => [type, group] as const)
+  )
+)
+
+type MaintenanceCounts = Partial<Record<KnowledgeMaintenanceType, number>>
+
+export function getMaintenanceScanGroupsForFilter(activeFilter: 'all' | KnowledgeMaintenanceType): MaintenanceScanGroup[] {
+  if (activeFilter === 'all') return [...MAINTENANCE_SCAN_GROUPS]
+  const group = MAINTENANCE_SCAN_GROUP_BY_TYPE.get(activeFilter)
+  return group ? [group] : [...MAINTENANCE_SCAN_GROUPS]
+}
+
+function getMaintenanceScanTypesForGroups(scanGroups: MaintenanceScanGroup[]): KnowledgeMaintenanceType[] {
+  const types = new Set<KnowledgeMaintenanceType>()
+  for (const group of scanGroups) {
+    for (const type of MAINTENANCE_TYPES_BY_SCAN_GROUP[group]) types.add(type)
+  }
+  return Array.from(types)
+}
+
+function mergeMaintenanceCounts(base: MaintenanceCounts, next: MaintenanceCounts): MaintenanceCounts {
+  const merged = { ...base }
+  for (const type of MAINTENANCE_SCAN_TYPES) {
+    const count = next[type]
+    if (typeof count === 'number') merged[type] = (merged[type] ?? 0) + count
+  }
+  return merged
+}
+
+function mergeMaintenanceTypes(base: KnowledgeMaintenanceType[], next: KnowledgeMaintenanceType[]): KnowledgeMaintenanceType[] {
+  return Array.from(new Set([...base, ...next]))
+}
+
+function sortMaintenanceItems(items: KnowledgeMaintenanceItem[]): KnowledgeMaintenanceItem[] {
+  return [...items].sort((a, b) => b.priority - a.priority || a.filePath.localeCompare(b.filePath) || a.action.localeCompare(b.action))
+}
 
 function getPendingScanTypes(activeFilter: 'all' | KnowledgeMaintenanceType): KnowledgeMaintenanceType[] {
   return activeFilter === 'all' ? MAINTENANCE_SCAN_TYPES : [activeFilter]
@@ -62,6 +122,8 @@ function createPendingScanStatus(activeFilter: 'all' | KnowledgeMaintenanceType)
     state: 'pending',
     completedTypes: [],
     pendingTypes: getPendingScanTypes(activeFilter),
+    completedGroups: [],
+    pendingGroups: getMaintenanceScanGroupsForFilter(activeFilter),
     updatedAt: Date.now()
   }
 }
@@ -133,26 +195,71 @@ export function MaintenanceQueuePanel() {
   const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
   const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
   const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
+  const refreshSeq = useRef(0)
 
   const refresh = useCallback(async () => {
     if (!vaultPath) return
+    const seq = refreshSeq.current + 1
+    refreshSeq.current = seq
+    const isCurrentRefresh = () => refreshSeq.current === seq
+    const scanGroups = getMaintenanceScanGroupsForFilter(activeFilter)
+    const startedAt = Date.now()
     setLoading(true)
+    setItems([])
+    setCounts({})
     setScanStatus(createPendingScanStatus(activeFilter))
     try {
-      const result = await window.api.invoke('maintenance:get-queue', {
-        vaultPath,
-        type: activeFilter === 'all' ? undefined : activeFilter,
-        limit: 200,
-        language
-      })
-      setItems(result.items)
-      setCounts(result.counts as Partial<Record<KnowledgeMaintenanceType, number>>)
-      setScanStatus(result.scan)
+      if (activeFilter !== 'all') {
+        const result = await window.api.invoke('maintenance:get-queue', {
+          vaultPath,
+          type: activeFilter,
+          scanGroups,
+          limit: 200,
+          language
+        })
+        if (!isCurrentRefresh()) return
+        setItems(result.items)
+        setCounts(result.counts as MaintenanceCounts)
+        setScanStatus(result.scan)
+        return
+      }
+
+      let nextItems: KnowledgeMaintenanceItem[] = []
+      let nextCounts: MaintenanceCounts = {}
+      let completedTypes: KnowledgeMaintenanceType[] = []
+      for (let index = 0; index < scanGroups.length; index += 1) {
+        const group = scanGroups[index]
+        const result = await window.api.invoke('maintenance:get-queue', {
+          vaultPath,
+          scanGroups: [group],
+          limit: 200,
+          language
+        })
+        if (!isCurrentRefresh()) return
+        nextItems = sortMaintenanceItems([...nextItems, ...result.items]).slice(0, 200)
+        nextCounts = mergeMaintenanceCounts(nextCounts, result.counts as MaintenanceCounts)
+        completedTypes = mergeMaintenanceTypes(completedTypes, result.scan.completedTypes)
+
+        const completedGroups = scanGroups.slice(0, index + 1)
+        const pendingGroups = scanGroups.slice(index + 1)
+        setItems(nextItems)
+        setCounts(nextCounts)
+        setScanStatus({
+          state: pendingGroups.length > 0 ? 'partial' : 'complete',
+          completedTypes,
+          pendingTypes: getMaintenanceScanTypesForGroups(pendingGroups),
+          completedGroups,
+          pendingGroups,
+          updatedAt: Date.now(),
+          durationMs: Date.now() - startedAt
+        })
+      }
     } catch (err) {
+      if (!isCurrentRefresh()) return
       setScanStatus(createErrorScanStatus(err))
       toast(err instanceof Error ? err.message : String(err), 'error')
     } finally {
-      setLoading(false)
+      if (isCurrentRefresh()) setLoading(false)
     }
   }, [vaultPath, activeFilter, language])
 
@@ -354,8 +461,8 @@ interface MaintenanceScanStatusBarProps {
 function MaintenanceScanStatusBar({ status, itemCount }: MaintenanceScanStatusBarProps) {
   const { t } = useTranslation()
   const duration = formatScanDuration(status.durationMs)
-  const completed = status.completedTypes.length
-  const pending = status.pendingTypes.length
+  const completed = status.completedGroups?.length ?? status.completedTypes.length
+  const pending = status.pendingGroups?.length ?? status.pendingTypes.length
   const total = completed + pending
   const detail = status.state === 'error'
     ? t('maintenance.scan.error.detail', { message: status.message || t('maintenance.scan.error.unknown') })
