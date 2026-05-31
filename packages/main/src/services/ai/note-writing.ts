@@ -1,4 +1,7 @@
-export function buildGeneratedNoteSystemPrompt(): string {
+import type { AppLanguage } from '@shared/types/ipc'
+import { getAiOutputLanguageInstruction } from './language'
+
+export function buildGeneratedNoteSystemPrompt(language: AppLanguage = 'zh-CN'): string {
   return `你是一个知识库笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。
 
 规则：
@@ -7,7 +10,9 @@ export function buildGeneratedNoteSystemPrompt(): string {
 3. 链接必须使用给定的笔记标题，不要编造未给出的标题作为 wikilink
 4. 不要在末尾追加“相关笔记”“延伸阅读”这类罗列链接的小节
 5. 内容包含分节、要点，结构清晰
-6. 只输出 Markdown 内容，不要其他解释`
+6. 只输出 Markdown 内容，不要其他解释
+
+${getAiOutputLanguageInstruction(language)}`
 }
 
 export function buildGeneratedNoteUserPrompt(title: string, brief: string, siblingTitles: string[]): string {

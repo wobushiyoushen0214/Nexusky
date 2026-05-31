@@ -4,13 +4,16 @@ import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-s
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { startAiTask, finishAiTask } from '../../services/ai-task-control'
 import { consumeStream } from '../streams/consume-stream'
+import { resolveAppLanguage } from '../../services/app-language'
+import { getAiOutputLanguageInstruction } from '../../services/ai/language'
+import type { AppLanguage } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
 }
 
 export function registerAiEditHandlers(): void {
-  ipcMain.handle('ai:edit', async (event, params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }) => {
+  ipcMain.handle('ai:edit', async (event, params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[]; language?: AppLanguage }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, error: '未配置 AI 提供商' }
     const configError = aiManager.validateConfig(config)
@@ -19,6 +22,7 @@ export function registerAiEditHandlers(): void {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在' }
 
+    const language = resolveAppLanguage(params.language)
     const stylePrompt = formatWritingStylePrompt(analyzeWritingStyle(params.fileContent))
     const systemPrompt = `You are a Markdown note editor. You receive the original note content and a modification instruction, then output the modified complete file.
 
@@ -35,7 +39,9 @@ Output the modified complete Markdown text directly. The first character of your
 - Do NOT introduce new [[wikilinks]] unless the user explicitly asks. Preserve existing wikilinks as-is. Never invent wikilink targets.
 - NEVER wrap output in \`\`\`markdown or any code fence
 - NEVER prepend or append explanations, confirmations, or extra blank lines
-</constraints>${stylePrompt ? `\n\n<writing_style>\n${stylePrompt}\n</writing_style>` : ''}`
+</constraints>
+
+${getAiOutputLanguageInstruction(language)}${stylePrompt ? `\n\n<writing_style>\n${stylePrompt}\n</writing_style>` : ''}`
 
     let fileContent = params.fileContent
     const TOKEN_LIMIT = 12000

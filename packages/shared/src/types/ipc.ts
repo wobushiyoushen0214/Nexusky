@@ -865,14 +865,14 @@ export interface IPCChannelMap {
   'db:auto-infer-tfidf-links': { params: { vaultPath: string; force?: boolean }; result: { success: boolean; added?: number; skipped?: boolean; error?: string } }
   'ai:generate-memories': { params: { vaultPath: string }; result: { success: boolean; generated: number; skipped: number; failed: number; total: number; totalNotes?: number; limited?: boolean; error?: string } }
   'ai:list-ollama-models': { params: { baseUrl?: string }; result: string[] }
-  'ai:suggest-tags': { params: { content: string; existingTags: string[] }; result: string[] }
-  'ai:summarize': { params: { content: string }; result: string }
-  'ai:generate-flashcards': { params: { content: string; title?: string; maxCards?: number }; result: { success: boolean; cards: GeneratedFlashcard[]; markdown?: string; error?: string } }
+  'ai:suggest-tags': { params: { content: string; existingTags: string[]; language?: AppLanguage }; result: string[] }
+  'ai:summarize': { params: { content: string; language?: AppLanguage }; result: string }
+  'ai:generate-flashcards': { params: { content: string; title?: string; maxCards?: number; language?: AppLanguage }; result: { success: boolean; cards: GeneratedFlashcard[]; markdown?: string; error?: string } }
   'ai:detect-local-config': { params: undefined; result: { importable: number; imported: number; existing: number; skipped?: string[] } }
-  'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[] }; result: { success: boolean; content?: string; error?: string } }
-  'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string }; result: { success: boolean; content?: string; error?: string } }
-  'ai:plan-note-batches': { params: { instruction: string; existingDirs?: string[] }; result: { success: boolean; batches: GeneratedNoteBatchPlanItem[]; error?: string } }
-  'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number }; result: { success: boolean; files: string[]; failed: number; total: number; failedItems: GeneratedNoteFailure[]; error?: string } }
+  'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[]; language?: AppLanguage }; result: { success: boolean; content?: string; error?: string } }
+  'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string; language?: AppLanguage }; result: { success: boolean; content?: string; error?: string } }
+  'ai:plan-note-batches': { params: { instruction: string; existingDirs?: string[]; language?: AppLanguage }; result: { success: boolean; batches: GeneratedNoteBatchPlanItem[]; error?: string } }
+  'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number; language?: AppLanguage }; result: { success: boolean; files: string[]; failed: number; total: number; failedItems: GeneratedNoteFailure[]; error?: string } }
   'file:import-obsidian': { params: { vaultPath: string }; result: { imported: number; converted: number; indexed: number; canceled?: boolean } }
   'file:import-readwise': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }
   'file:import-pocket': { params: { sourcePath?: string; vaultPath: string }; result: { imported: number; skipped: number; indexed: number; canceled?: boolean } }

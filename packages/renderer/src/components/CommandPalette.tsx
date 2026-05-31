@@ -32,7 +32,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
   const [toolSurfaceEntries, setToolSurfaceEntries] = useState<ToolSurfaceEntry[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
-  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection } = useUIStore()
+  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection, language } = useUIStore()
   const { saveFile, currentFilePath, content } = useEditorStore()
   const { vaultPath } = useVaultStore()
 
@@ -130,7 +130,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       if (!requireCurrentNote() || !content) return
       const { toast } = await import('../stores/toast-store')
       toast(t('commandPalette.toasts.summarizing'), 'info')
-      const summary = await window.api.invoke('ai:summarize', { content })
+      const summary = await window.api.invoke('ai:summarize', { content, language })
       if (summary) {
         const newContent = `> ${summary}\n\n${content}`
         useEditorStore.getState().setContent(newContent)

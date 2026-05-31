@@ -5,13 +5,16 @@ import { aiManager } from '../../services/ai'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { startAiTask, finishAiTask } from '../../services/ai-task-control'
 import { consumeStream } from '../streams/consume-stream'
+import { resolveAppLanguage } from '../../services/app-language'
+import { getAiOutputLanguageInstruction } from '../../services/ai/language'
+import type { AppLanguage } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
 }
 
 export function registerAiGraphHandlers(): void {
-  ipcMain.handle('ai:generate-graph', async (event, params: { filePaths: string[]; vaultPath: string }) => {
+  ipcMain.handle('ai:generate-graph', async (event, params: { filePaths: string[]; vaultPath: string; language?: AppLanguage }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { success: false, error: '窗口不存在' }
 
@@ -36,6 +39,7 @@ export function registerAiGraphHandlers(): void {
 
     if (!filesContent) return { success: false, error: '无法读取文件内容' }
 
+    const language = resolveAppLanguage(params.language)
     const systemPrompt = `Analyze knowledge relationships between notes and output a Mermaid graph. Output graph TD syntax directly — the first line must be "graph TD".
 
 <format>
@@ -55,7 +59,9 @@ graph TD
     A[React Hooks] -->|foundation| B[useState]
     A -->|advanced| C[Custom Hooks]
     B -->|applies| C
-</example>`
+</example>
+
+${getAiOutputLanguageInstruction(language)} Use that language for node labels and relationship labels when appropriate.`
 
     const provider = aiManager.getProvider(config)
     const windowId = window.id

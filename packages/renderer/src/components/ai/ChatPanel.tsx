@@ -844,7 +844,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
     let result: GenerateNotesResult
     try {
-      result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir, requestId: operationId })
+      result = await window.api.invoke('ai:generate-notes', { instruction, vaultPath: vaultPath!, targetDir, requestId: operationId, language })
     } catch (e: unknown) {
       result = { success: false, error: friendlyError(getErrorMessage(e), t), files: [], failed: 0, total: 0, failedItems: [] }
     } finally {
@@ -1332,7 +1332,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             try {
               const planned = await window.api.invoke('ai:plan-note-batches', {
                 instruction: batchInstruction,
-                existingDirs: dirs
+                existingDirs: dirs,
+                language
               })
               if (planned.success && planned.batches.length > 0) {
                 plannedBatches = planned.batches
@@ -1440,7 +1441,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           fileContent,
           filePath: filePath || '(新文件)',
           images: sentImages.length > 0 ? sentImages : undefined,
-          history: editHistory.length > 0 ? editHistory : undefined
+          history: editHistory.length > 0 ? editHistory : undefined,
+          language
         })
         setAttachedImages([])
         setAttachedSelections([])

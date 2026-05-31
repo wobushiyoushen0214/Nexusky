@@ -14,13 +14,16 @@ import { getDatabase } from '../../services/database'
 import { refreshInferredLinksFromMemory } from '../../services/memory-links'
 import { generateMemory, readMemory } from '../../services/memory'
 import { logger } from '../../services/logger'
+import { resolveAppLanguage } from '../../services/app-language'
+import { getJsonValueLanguageInstruction } from '../../services/ai/language'
+import type { AppLanguage } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
 }
 
 export function registerAiNotesHandlers(): void {
-ipcMain.handle('ai:plan-note-batches', async (event, params: { instruction: string; existingDirs?: string[] }) => {
+ipcMain.handle('ai:plan-note-batches', async (event, params: { instruction: string; existingDirs?: string[]; language?: AppLanguage }) => {
   const window = BrowserWindow.fromWebContents(event.sender)
   if (!window) return { success: false, error: '窗口不存在', batches: [] }
 
@@ -32,6 +35,7 @@ ipcMain.handle('ai:plan-note-batches', async (event, params: { instruction: stri
   const windowId = window.id
   const controller = startAiTask(windowId)
   const provider = aiManager.getProvider(config)
+  const language = resolveAppLanguage(params.language)
   const existingDirs = (params.existingDirs || []).filter((dir) => typeof dir === 'string' && dir.trim()).slice(0, 100)
 
   let planResult = ''
@@ -51,7 +55,8 @@ ipcMain.handle('ai:plan-note-batches', async (event, params: { instruction: stri
 3. 如果用户没有给每个目录的数量，默认每个目录 5 篇。
 4. 如果用户明确说放在不同目录中，不要返回单个总目录。
 5. 目录名应是主题本身，例如 React、Vue、Laravel、Django；不要使用“开发框架 1”这类占位名。
-6. 只输出 JSON，不要解释。` },
+6. 只输出 JSON，不要解释。
+${getJsonValueLanguageInstruction(language)}` },
         { role: 'user', content: `已有目录（可复用，不必强制使用）：\n${existingDirs.length > 0 ? existingDirs.map((dir) => `- ${dir}`).join('\n') : '(无)'}\n\n用户请求：\n${params.instruction}` }
       ], controller.signal),
       { signal: controller.signal }
@@ -85,7 +90,7 @@ ipcMain.handle('ai:plan-note-batches', async (event, params: { instruction: stri
   }
 })
 
-ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number }) => {
+ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number; language?: AppLanguage }) => {
   const window = BrowserWindow.fromWebContents(event.sender)
   if (!window) return { success: false, error: '窗口不存在', files: [] }
 
@@ -101,6 +106,7 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
   }
 
   const provider = aiManager.getProvider(config)
+  const language = resolveAppLanguage(params.language)
 
   // Step 1: Ask AI to plan the notes
   sendProgress({ stage: 'planning', message: '正在规划笔记结构...' })
@@ -113,7 +119,8 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
 输出格式为 JSON 数组，每项包含 title（文件标题）和 brief（一句话描述内容方向）。
 重要：title 是纯笔记标题，绝对不要包含目录名、路径前缀或分类前缀（例如不要写"react/Hooks入门"或"reactHooks入门"，直接写"Hooks入门"）。
 只输出 JSON，不要其他文字。示例：
-[{"title":"React Hooks 入门","brief":"介绍 useState、useEffect 等基础 Hook"},{"title":"自定义 Hook","brief":"如何封装可复用的自定义 Hook"}]` },
+[{"title":"React Hooks 入门","brief":"介绍 useState、useEffect 等基础 Hook"},{"title":"自定义 Hook","brief":"如何封装可复用的自定义 Hook"}]
+${getJsonValueLanguageInstruction(language)}` },
         { role: 'user', content: params.instruction }
       ], controller.signal),
       { signal: controller.signal }
@@ -183,7 +190,7 @@ ipcMain.handle('ai:generate-notes', async (event, params: { instruction: string;
     try {
       const { text, errorChunk } = await consumeStream(
         provider.chatStream([
-          { role: 'system', content: buildGeneratedNoteSystemPrompt() },
+          { role: 'system', content: buildGeneratedNoteSystemPrompt(language) },
           { role: 'user', content: buildGeneratedNoteUserPrompt(safeNames[i], item.brief, siblingTitles) }
         ], controller.signal),
         { signal: controller.signal }

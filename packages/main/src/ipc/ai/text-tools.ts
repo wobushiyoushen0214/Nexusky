@@ -3,21 +3,25 @@ import { aiManager } from '../../services/ai'
 import { formatFlashcardsMarkdown, normalizeGeneratedFlashcards } from '../../services/ai/flashcards'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { consumeStream } from '../streams/consume-stream'
+import { resolveAppLanguage } from '../../services/app-language'
+import { getAiOutputLanguageInstruction, getJsonValueLanguageInstruction } from '../../services/ai/language'
+import type { AppLanguage } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
 }
 
 export function registerAiTextToolHandlers(): void {
-  ipcMain.handle('ai:summarize', async (_event, params: { content: string }) => {
+  ipcMain.handle('ai:summarize', async (_event, params: { content: string; language?: AppLanguage }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return ''
     if (aiManager.validateConfig(config)) return ''
     try {
+      const language = resolveAppLanguage(params.language)
       const provider = aiManager.getProvider(config)
       const { text: result, errorChunk } = await consumeStream(
         provider.chatStream([
-          { role: 'system', content: '为以下笔记生成一段简洁的摘要（2-3句话）。只输出摘要内容，不要前缀。' },
+          { role: 'system', content: `为以下笔记生成一段简洁的摘要（2-3句话）。只输出摘要内容，不要前缀。\n${getAiOutputLanguageInstruction(language)}` },
           { role: 'user', content: params.content.slice(0, 3000) }
         ])
       )
@@ -28,13 +32,14 @@ export function registerAiTextToolHandlers(): void {
     }
   })
 
-  ipcMain.handle('ai:generate-flashcards', async (_event, params: { content: string; title?: string; maxCards?: number }) => {
+  ipcMain.handle('ai:generate-flashcards', async (_event, params: { content: string; title?: string; maxCards?: number; language?: AppLanguage }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return { success: false, cards: [], error: '未配置 AI 提供商' }
     const configError = aiManager.validateConfig(config)
     if (configError) return { success: false, cards: [], error: configError }
 
     try {
+      const language = resolveAppLanguage(params.language)
       const provider = aiManager.getProvider(config)
       const { text: result, errorChunk } = await consumeStream(
         provider.chatStream([
@@ -50,7 +55,8 @@ Rules:
 - Mix basic Q/A and cloze cards when useful.
 - Test durable concepts, definitions, distinctions, workflows, and gotchas.
 - Avoid trivia, duplicate cards, and cards that require missing context.
-- Keep each front/cloze under 80 words and each back under 120 words.`
+- Keep each front/cloze under 80 words and each back under 120 words.
+- ${getJsonValueLanguageInstruction(language)}`
           },
           { role: 'user', content: params.content.slice(0, 8000) }
         ], undefined, { temperature: 0.2 })
@@ -65,16 +71,17 @@ Rules:
     }
   })
 
-  ipcMain.handle('ai:suggest-tags', async (_event, params: { content: string; existingTags: string[] }) => {
+  ipcMain.handle('ai:suggest-tags', async (_event, params: { content: string; existingTags: string[]; language?: AppLanguage }) => {
     const config = aiManager.getActiveConfig()
     if (!config) return []
     if (aiManager.validateConfig(config)) return []
 
     try {
+      const language = resolveAppLanguage(params.language)
       const provider = aiManager.getProvider(config)
       const { text: result, errorChunk } = await consumeStream(
         provider.chatStream([
-          { role: 'system', content: `你是一个标签建议助手。根据笔记内容建议 2-4 个标签。只输出标签，用逗号分隔，不要 # 前缀，不要解释。已有标签: ${params.existingTags.join(', ')}` },
+          { role: 'system', content: `你是一个标签建议助手。根据笔记内容建议 2-4 个标签。只输出标签，用逗号分隔，不要 # 前缀，不要解释。已有标签: ${params.existingTags.join(', ')}\n${getAiOutputLanguageInstruction(language)}` },
           { role: 'user', content: params.content.slice(0, 2000) }
         ])
       )

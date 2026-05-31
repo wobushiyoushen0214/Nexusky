@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
+import { useUIStore } from '../stores/ui-store'
 import { toast } from '../stores/toast-store'
 import { isCancellationError } from '../utils/errors'
 
@@ -15,6 +16,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
   const [progress, setProgress] = useState('')
   const [result, setResult] = useState('')
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const language = useUIStore((s) => s.language)
   const progressRef = useRef('')
   const generatingRef = useRef(false)
 
@@ -38,7 +40,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
     setProgress('')
     setResult('')
     progressRef.current = ''
-    const res = await window.api.invoke('ai:generate-graph', { filePaths, vaultPath })
+    const res = await window.api.invoke('ai:generate-graph', { filePaths, vaultPath, language })
     if (res.success && res.content) {
       setResult(res.content)
     } else if (isCancellationError(res.error)) {
