@@ -1,9 +1,10 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Settings, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
+import { Settings, NoAiModePanel, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
+import i18n from '../packages/renderer/src/i18n'
 
 describe('accessibility component semantics', () => {
   afterEach(() => {
@@ -62,6 +63,25 @@ describe('accessibility component semantics', () => {
     expect(classifyProviderSetupError('maximum context length exceeded')).toBe('context')
     expect(classifyProviderSetupError('Request timed out')).toBe('timeout')
     expect(classifyProviderSetupError('unexpected provider failure')).toBe('unknown')
+  })
+
+  it('explains which workflows remain available without an AI provider', async () => {
+    await i18n.changeLanguage('en')
+
+    const html = renderToStaticMarkup(createElement(NoAiModePanel))
+
+    expect(NO_AI_MODE_LOCAL_FEATURES).toEqual(['files', 'search', 'graph', 'vaultHealth', 'maintenance'])
+    expect(NO_AI_MODE_PROVIDER_FEATURES).toEqual(['chat', 'edit', 'agent', 'memory'])
+    expect(html).toContain('No AI provider configured')
+    expect(html).toContain('Files')
+    expect(html).toContain('Search')
+    expect(html).toContain('Graph')
+    expect(html).toContain('Vault Health')
+    expect(html).toContain('Maintenance')
+    expect(html).toContain('Chat answers')
+    expect(html).toContain('AI edit')
+    expect(html).toContain('Agent actions')
+    expect(html).toContain('Memory generation')
   })
 })
 

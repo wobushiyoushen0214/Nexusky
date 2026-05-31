@@ -142,6 +142,9 @@
     "maintenance": "Knowledge Maintenance",
     "agent": "Execution History"
   },
+  "aiWorkspace": {
+    "noProviderToast": "Configure an AI provider to use chat, edit, or agent actions. Files, Search, Graph, Vault Health, and Maintenance still work without AI."
+  },
   "maintenance": {
     "title": "Knowledge Maintenance",
     "tabs": {
@@ -893,6 +896,26 @@
       "title": "Language",
       "zhCN": "简体中文",
       "en": "English"
+    },
+    "noAiMode": {
+      "title": "No AI provider configured",
+      "description": "You can keep using the local vault. Add a provider only when you want AI chat, editing, or agent actions.",
+      "badge": "Local mode",
+      "localAvailable": "Still available",
+      "requiresProvider": "Needs a provider",
+      "localFeatures": {
+        "files": "Files",
+        "search": "Search",
+        "graph": "Graph",
+        "vaultHealth": "Vault Health",
+        "maintenance": "Maintenance"
+      },
+      "providerFeatures": {
+        "chat": "Chat answers",
+        "edit": "AI edit",
+        "agent": "Agent actions",
+        "memory": "Memory generation"
+      }
     },
     "providerTest": {
       "title": "Setup checks",

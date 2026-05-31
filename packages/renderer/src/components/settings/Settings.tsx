@@ -79,6 +79,8 @@ const SETTINGS_FOCUSABLE_SELECTOR = [
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])'
 ].join(',')
+export const NO_AI_MODE_LOCAL_FEATURES = ['files', 'search', 'graph', 'vaultHealth', 'maintenance'] as const
+export const NO_AI_MODE_PROVIDER_FEATURES = ['chat', 'edit', 'agent', 'memory'] as const
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -487,6 +489,10 @@ export function Settings({ open, onClose }: SettingsProps) {
               onRefresh={loadAiUsageSummary}
             />
 
+            {providers.length === 0 && !editing && (
+              <NoAiModePanel />
+            )}
+
             {/* Quick presets */}
             {providers.length === 0 && !editing && (
               <div style={{ marginBottom: 16 }}>
@@ -831,6 +837,71 @@ function AIUsageSummaryPanel({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+export function NoAiModePanel() {
+  const { t } = useTranslation()
+
+  return (
+    <section
+      aria-label={t('settings.noAiMode.title')}
+      style={{ marginBottom: 16, padding: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-primary)', marginBottom: 3 }}>
+            {t('settings.noAiMode.title')}
+          </div>
+          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', maxWidth: 520 }}>
+            {t('settings.noAiMode.description')}
+          </p>
+        </div>
+        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: 999, border: '1px solid var(--border-subtle)', fontSize: 10, color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>
+          {t('settings.noAiMode.badge')}
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        <NoAiModeFeatureGroup
+          title={t('settings.noAiMode.localAvailable')}
+          featureKeys={NO_AI_MODE_LOCAL_FEATURES}
+          translationPrefix="settings.noAiMode.localFeatures"
+        />
+        <NoAiModeFeatureGroup
+          title={t('settings.noAiMode.requiresProvider')}
+          featureKeys={NO_AI_MODE_PROVIDER_FEATURES}
+          translationPrefix="settings.noAiMode.providerFeatures"
+        />
+      </div>
+    </section>
+  )
+}
+
+function NoAiModeFeatureGroup({
+  title,
+  featureKeys,
+  translationPrefix
+}: {
+  title: string
+  featureKeys: readonly string[]
+  translationPrefix: string
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ marginBottom: 6, fontSize: 10, fontWeight: 650, color: 'var(--text-secondary)' }}>{title}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {featureKeys.map((feature) => (
+          <span
+            key={feature}
+            style={{ padding: '3px 7px', borderRadius: 999, border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', fontSize: 10, lineHeight: 1.2 }}
+          >
+            {t(`${translationPrefix}.${feature}`)}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
@@ -96,6 +97,7 @@ function estimateTokens(text: string): number {
 }
 
 export function ChatPanel() {
+  const { t } = useTranslation()
   const [messages, setMessages] = useState<Message[]>([])
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -141,6 +143,9 @@ export function ChatPanel() {
     setEditMode(v)
     safeSet('nexusky-chat-edit-mode', v ? '1' : '0')
   }
+  const showNoAiProviderToast = useCallback(() => {
+    toast(t('aiWorkspace.noProviderToast'), 'error')
+  }, [t])
   const [editTarget, setEditTarget] = useState<string | null>(null)
   const [editResult, setEditResult] = useState<{ content: string; original: string; filePath: string } | null>(null)
   const [editHistory, setEditHistory] = useState<string[]>([])
@@ -436,7 +441,7 @@ export function ChatPanel() {
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
-      toast('请先在设置中配置 AI 提供商', 'error')
+      showNoAiProviderToast()
       return
     }
 
@@ -472,7 +477,7 @@ export function ChatPanel() {
       pendingSourcesRef.current = []
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast])
 
   const handleContinue = useCallback(async (msg: Message) => {
     if (isStreaming) return
@@ -488,7 +493,7 @@ export function ChatPanel() {
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
-      toast('请先在设置中配置 AI 提供商', 'error')
+      showNoAiProviderToast()
       return
     }
 
@@ -526,7 +531,7 @@ export function ChatPanel() {
       pendingSourcesRef.current = []
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast])
 
   useEffect(() => {
     if (!showMention || !vaultPath) return
@@ -1147,7 +1152,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
-      toast('请先在设置中配置 AI 提供商', 'error')
+      showNoAiProviderToast()
       return
     }
 

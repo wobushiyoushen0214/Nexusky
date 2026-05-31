@@ -142,6 +142,9 @@
     "maintenance": "知识维护",
     "agent": "执行历史"
   },
+  "aiWorkspace": {
+    "noProviderToast": "配置 AI 提供商后才能使用对话、编辑或 Agent 动作。文件、搜索、图谱、Vault Health 和知识维护无需 AI 也可继续使用。"
+  },
   "maintenance": {
     "title": "知识维护",
     "tabs": {
@@ -893,6 +896,26 @@
       "title": "语言",
       "zhCN": "简体中文",
       "en": "English"
+    },
+    "noAiMode": {
+      "title": "未配置 AI 提供商",
+      "description": "你仍可继续使用本地 vault。只有需要 AI 对话、编辑或 Agent 动作时才需要添加提供商。",
+      "badge": "本地模式",
+      "localAvailable": "仍可使用",
+      "requiresProvider": "需要提供商",
+      "localFeatures": {
+        "files": "文件",
+        "search": "搜索",
+        "graph": "图谱",
+        "vaultHealth": "Vault Health",
+        "maintenance": "知识维护"
+      },
+      "providerFeatures": {
+        "chat": "对话回答",
+        "edit": "AI 编辑",
+        "agent": "Agent 动作",
+        "memory": "记忆生成"
+      }
     },
     "providerTest": {
       "title": "配置检查",
