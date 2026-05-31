@@ -21,6 +21,7 @@ describe('maintenance IPC types', () => {
       type: 'review_open_tasks',
       query: '',
       limit: 50,
+      scanGroups: ['tasks'],
       language: 'zh-CN'
     }
     const getResult: IPCChannelMap['maintenance:get-queue']['result'] = {
@@ -31,6 +32,8 @@ describe('maintenance IPC types', () => {
         state: 'complete',
         completedTypes: ['review_open_tasks'],
         pendingTypes: [],
+        completedGroups: ['tasks'],
+        pendingGroups: [],
         updatedAt: 1,
         durationMs: 12
       }
@@ -59,9 +62,11 @@ describe('maintenance IPC types', () => {
     }
 
     expect(getParams.type).toBe('review_open_tasks')
+    expect(getParams.scanGroups).toEqual(['tasks'])
     expect(getParams.language).toBe('zh-CN')
     expect(getResult.total).toBe(1)
     expect(getResult.scan.state).toBe('complete')
+    expect(getResult.scan.completedGroups).toEqual(['tasks'])
     expect(applyParams.action).toBe('mark_done')
     expect(applyParams.mode).toBe('preview')
     expect(applyParams.language).toBe('zh-CN')

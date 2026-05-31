@@ -325,6 +325,27 @@ describe('buildKnowledgeMaintenanceQueue', () => {
     expect(queue[0]).toMatchObject({ title: 'Beta', type: 'link_unlinked_reference' })
   })
 
+  it('filters maintenance items to enabled scan types', () => {
+    const queue = buildKnowledgeMaintenanceQueue({
+      notes: [
+        { id: 'a', title: 'Alpha', filePath: 'Alpha.md', updatedAt: 1700000000000 },
+        { id: 'b', title: 'Beta', filePath: 'Beta.md', updatedAt: 1700000000000 }
+      ],
+      outgoingLinksByNoteId: new Map([
+        ['a', [{ targetTitle: 'Missing', line: 1, context: '[[Missing]]', resolved: false }]]
+      ]),
+      backlinkCountByNoteId: new Map([['a', 1], ['b', 0]]),
+      unlinkedMentionCountByNoteId: new Map([['b', 2]]),
+      memoryStatusByNoteId: new Map([['a', 'missing']]),
+      bridges: [],
+      enabledTypes: ['refresh_memory'],
+      limit: 10
+    })
+
+    expect(queue).toHaveLength(1)
+    expect(queue[0]).toMatchObject({ title: 'Alpha', type: 'refresh_memory' })
+  })
+
   it('queues scheduled tasks separately from general open tasks', () => {
     const queue = buildKnowledgeMaintenanceQueue({
       notes: [

@@ -72,6 +72,7 @@ interface KnowledgeMaintenanceQueueOptions {
   recurringTaskInfoByPath?: Map<string, RecurringTaskInfo>
   upcomingTaskInfoByPath?: Map<string, DueTaskInfo>
   bridges: KnowledgeBridgeNoteResult[]
+  enabledTypes?: KnowledgeMaintenanceType[]
   query?: string
   type?: KnowledgeMaintenanceType
   limit?: number
@@ -167,6 +168,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
   const items: KnowledgeMaintenanceItem[] = []
   const query = (options.query || '').trim().toLowerCase()
   const type = options.type
+  const enabledTypes = options.enabledTypes ? new Set(options.enabledTypes) : null
   const bridgeByPath = new Map(options.bridges.map((bridge) => [bridge.filePath, bridge]))
   const copy = createMaintenanceCopy(options.language ?? 'en')
 
@@ -444,6 +446,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
 
   return items
     .filter((item) => {
+      if (enabledTypes && !enabledTypes.has(item.type)) return false
       if (type && item.type !== type) return false
       if (!query) return true
       return [item.title, item.filePath, item.action, item.reason, item.detail, item.type].some((value) => value.toLowerCase().includes(query))

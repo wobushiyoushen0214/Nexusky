@@ -9,6 +9,7 @@ const baseInput: MaintenanceQueueCacheKeyInput = {
   minCharacters: 8000,
   upcomingDays: 7,
   requiredProperties: ['status', 'summary'],
+  scanGroups: ['links'],
   language: 'en',
   todayIso: '2026-05-31',
   memorySignature: '1:memory',
@@ -30,11 +31,12 @@ describe('maintenance queue cache key', () => {
     expect(first).toBe(second)
     expect(first).toContain('maintenance-queue:v1')
     expect(first).toContain('scan:fix_unresolved_link')
+    expect(first).toContain('groups:links')
     expect(first).toContain('language:en')
     expect(first).toContain('today:2026-05-31')
   })
 
-  it('changes when file mtimes, scan type, language, settings, or memory state change', () => {
+  it('changes when file mtimes, scan type, scan groups, language, settings, or memory state change', () => {
     const base = buildMaintenanceQueueCacheKey(baseInput)
 
     expect(buildMaintenanceQueueCacheKey({
@@ -45,6 +47,7 @@ describe('maintenance queue cache key', () => {
       ]
     })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, type: 'review_open_tasks' })).not.toBe(base)
+    expect(buildMaintenanceQueueCacheKey({ ...baseInput, scanGroups: ['tasks'] })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, language: 'zh-CN' })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, upcomingDays: 14 })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, memorySignature: '2:memory' })).not.toBe(base)

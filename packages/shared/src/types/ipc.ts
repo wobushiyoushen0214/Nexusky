@@ -597,6 +597,8 @@ export type KnowledgeMaintenanceType =
   | 'fill_missing_property'
   | 'maintain_bridge'
 
+export type MaintenanceScanGroup = 'links' | 'tasks' | 'properties' | 'memory' | 'structure' | 'bridge'
+
 export interface KnowledgeMaintenanceItem {
   type: KnowledgeMaintenanceType
   title: string
@@ -613,6 +615,8 @@ export interface MaintenanceScanStatus {
   state: MaintenanceScanState
   completedTypes: KnowledgeMaintenanceType[]
   pendingTypes: KnowledgeMaintenanceType[]
+  completedGroups?: MaintenanceScanGroup[]
+  pendingGroups?: MaintenanceScanGroup[]
   updatedAt: number
   durationMs?: number
   message?: string
@@ -995,6 +999,7 @@ export interface IPCChannelMap {
       minCharacters?: number
       upcomingDays?: number
       requiredProperties?: string[]
+      scanGroups?: MaintenanceScanGroup[]
       language?: AppLanguage
     }
     result: {

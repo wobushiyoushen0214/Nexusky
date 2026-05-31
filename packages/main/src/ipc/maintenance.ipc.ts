@@ -6,7 +6,8 @@ import type {
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
   MaintenanceApplyAction,
-  MaintenanceApplyMode
+  MaintenanceApplyMode,
+  MaintenanceScanGroup
 } from '@shared/types/ipc'
 import { resolveAppLanguage } from '../services/app-language'
 
@@ -19,6 +20,7 @@ export function registerMaintenanceIPC(): void {
     minCharacters?: number
     upcomingDays?: number
     requiredProperties?: string[]
+    scanGroups?: MaintenanceScanGroup[]
     language?: AppLanguage
   }) => {
     return gatherMaintenanceItems({
@@ -29,6 +31,7 @@ export function registerMaintenanceIPC(): void {
       minCharacters: params.minCharacters,
       upcomingDays: params.upcomingDays,
       requiredProperties: params.requiredProperties,
+      scanGroups: params.scanGroups,
       language: resolveAppLanguage(params.language)
     })
   })
