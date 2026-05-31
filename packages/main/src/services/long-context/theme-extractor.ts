@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
-import type { LongTermTheme, LongTermThemeMembership } from '@shared/types/ipc'
+import type { AppLanguage, LongTermTheme, LongTermThemeMembership } from '@shared/types/ipc'
 import { getDatabase } from '../database'
 import { aiManager } from '../ai'
 import type { ChatMessage, ChatOptions, ChatStreamEvent } from '../ai'
@@ -23,6 +23,7 @@ export interface ExtractLongTermThemesParams {
   changedEntityIds?: string[]
   limit?: number
   provider?: ThemeExtractorProvider
+  language?: AppLanguage
 }
 
 interface RelationThemeRow {
@@ -82,7 +83,7 @@ export async function extractLongTermThemes(params: ExtractLongTermThemesParams)
   let updated = 0
 
   for (const candidate of candidates) {
-    const draft = await generateThemeDraft(candidate, params.provider)
+    const draft = await generateThemeDraft(candidate, params.provider, params.language)
     const result = upsertTheme(db, candidate, draft)
     if (result.status === 'created') {
       created += 1
@@ -202,7 +203,7 @@ function getThemeMemberships(db: Database.Database, themeId: string): LongTermTh
   }))
 }
 
-function buildThemeExtractionPrompt(candidate: ThemeCandidate): ChatMessage[] {
+function buildThemeExtractionPrompt(candidate: ThemeCandidate, language: AppLanguage = 'zh-CN'): ChatMessage[] {
   const relations = candidate.relations.slice(0, 8).map((relation) => ({
     sourceTitle: relation.sourceTitle,
     targetTitle: relation.targetTitle,
@@ -219,7 +220,10 @@ function buildThemeExtractionPrompt(candidate: ThemeCandidate): ChatMessage[] {
         'Return strict JSON only.',
         'Do not output Markdown or extra explanation.',
         'Evidence must be grounded in the provided relations.',
-        'Return one object: {"title":"...","summary":"...","keywords":["..."],"confidence":0.0}.'
+        'Return one object: {"title":"...","summary":"...","keywords":["..."],"confidence":0.0}.',
+        language === 'en'
+          ? 'Write title, summary, and keywords in English.'
+          : 'Write title, summary, and keywords in Simplified Chinese.'
       ].join('\n')
     },
     {
@@ -328,20 +332,20 @@ function addThemeEntity(
   entityMap.set(key, existing)
 }
 
-async function generateThemeDraft(candidate: ThemeCandidate, provider?: ThemeExtractorProvider): Promise<ThemeDraft> {
+async function generateThemeDraft(candidate: ThemeCandidate, provider?: ThemeExtractorProvider, language: AppLanguage = 'zh-CN'): Promise<ThemeDraft> {
   const activeProvider = provider || getActiveProvider()
-  if (!activeProvider) return fallbackThemeDraft(candidate)
+  if (!activeProvider) return fallbackThemeDraft(candidate, language)
 
   let response = ''
   try {
-    for await (const event of activeProvider.chatStream(buildThemeExtractionPrompt(candidate), undefined, { temperature: 0 })) {
+    for await (const event of activeProvider.chatStream(buildThemeExtractionPrompt(candidate, language), undefined, { temperature: 0 })) {
       if (event.type === 'text') response += event.content
-      if (event.type === 'error') return fallbackThemeDraft(candidate)
+      if (event.type === 'error') return fallbackThemeDraft(candidate, language)
     }
     const parsed = extractJsonFromText<Partial<ThemeDraft>>(response, 'object')
-    return normalizeThemeDraft(parsed, candidate)
+    return normalizeThemeDraft(parsed, candidate, language)
   } catch {
-    return fallbackThemeDraft(candidate)
+    return fallbackThemeDraft(candidate, language)
   }
 }
 
@@ -411,18 +415,20 @@ function upsertTheme(db: Database.Database, candidate: ThemeCandidate, draft: Th
   return { id, title, status: existing ? 'updated' : 'created' }
 }
 
-function fallbackThemeDraft(candidate: ThemeCandidate): ThemeDraft {
+function fallbackThemeDraft(candidate: ThemeCandidate, language: AppLanguage = 'zh-CN'): ThemeDraft {
   const keyword = candidate.keyword.replace(/[-_]/g, ' ')
   return {
-    title: toTitleCase(keyword),
-    summary: `Recurring theme across ${candidate.entityMap.size} related knowledge items.`,
+    title: language === 'en' ? toTitleCase(keyword) : keyword,
+    summary: language === 'en'
+      ? `Recurring theme across ${candidate.entityMap.size} related knowledge items.`
+      : `跨 ${candidate.entityMap.size} 个相关知识条目反复出现的主题。`,
     keywords: [candidate.keyword],
     confidence: 0.72
   }
 }
 
-function normalizeThemeDraft(parsed: Partial<ThemeDraft>, candidate: ThemeCandidate): ThemeDraft {
-  const fallback = fallbackThemeDraft(candidate)
+function normalizeThemeDraft(parsed: Partial<ThemeDraft>, candidate: ThemeCandidate, language: AppLanguage): ThemeDraft {
+  const fallback = fallbackThemeDraft(candidate, language)
   const title = typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim().slice(0, 120) : fallback.title
   const summary = typeof parsed.summary === 'string' && parsed.summary.trim() ? parsed.summary.trim().slice(0, 600) : fallback.summary
   const keywords = Array.isArray(parsed.keywords)

@@ -3,6 +3,8 @@ import { BrowserWindow, ipcMain, app } from 'electron'
 import { isVersionNewer } from './version'
 import { getTelemetryPrefs, logger, setTelemetryPrefs } from './logger'
 import { safeOpenExternal } from './external-url'
+import { setAppLanguage } from './app-language'
+import type { AppLanguage } from '@shared/types/ipc'
 
 let updateAvailable = false
 
@@ -70,6 +72,10 @@ export function setupAutoUpdater(): void {
 
   ipcMain.handle('app:get-version', () => {
     return app.getVersion()
+  })
+
+  ipcMain.handle('app:set-language', (_event, params: { language?: AppLanguage }) => {
+    return { language: setAppLanguage(params?.language) }
   })
 
   ipcMain.handle('app:open-external', async (_event, params: { url: string }) => {

@@ -1,6 +1,7 @@
 import { aiManager } from '../ai'
 import type { ChatMessage, ChatOptions, ChatStreamEvent } from '../ai'
 import { extractJsonFromText } from '../ai/json'
+import type { AppLanguage } from '@shared/types/ipc'
 
 export const LONG_CONTEXT_RELATION_TYPES = [
   'related_to',
@@ -41,6 +42,7 @@ export interface RelationClassifierProvider {
 export interface ClassifyRelationOptions {
   provider?: RelationClassifierProvider
   signal?: AbortSignal
+  language?: AppLanguage
 }
 
 const MIN_PERSIST_CONFIDENCE = 0.65
@@ -59,7 +61,7 @@ export async function classifyRelation(
 
   let response = ''
   try {
-    for await (const event of provider.chatStream(buildRelationClassificationPrompt(input), options.signal, { temperature: 0 })) {
+    for await (const event of provider.chatStream(buildRelationClassificationPrompt(input, options.language), options.signal, { temperature: 0 })) {
       if (event.type === 'text') response += event.content
       if (event.type === 'error') return fallbackClassification()
     }
@@ -70,7 +72,7 @@ export async function classifyRelation(
   return parseRelationClassification(response)
 }
 
-export function buildRelationClassificationPrompt(input: RelationClassificationInput): ChatMessage[] {
+export function buildRelationClassificationPrompt(input: RelationClassificationInput, language: AppLanguage = 'zh-CN'): ChatMessage[] {
   const payload = {
     current: {
       title: trimText(input.current.title, 300),
@@ -109,7 +111,10 @@ export function buildRelationClassificationPrompt(input: RelationClassificationI
         '- Evidence must be grounded in the given content.',
         '- If there is no concrete evidence, set confidence below 0.4.',
         '- Do not infer personal facts unless they are explicit.',
-        '- Prefer repeated_pattern only when both items show a recurring behavior, problem, or theme.'
+        '- Prefer repeated_pattern only when both items show a recurring behavior, problem, or theme.',
+        language === 'en'
+          ? '- Write reason and evidence in English.'
+          : '- Write reason and evidence in Simplified Chinese.'
       ].join('\n')
     },
     {

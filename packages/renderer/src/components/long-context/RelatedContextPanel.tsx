@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useVaultStore } from '../../stores/vault-store'
+import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import type { LongContextFeedbackType, LongContextSuggestion, NoteSearchResult } from '@shared/types/ipc'
@@ -34,6 +35,7 @@ function isCarouselPlacement(placement: RelatedContextPanelPlacement): boolean {
 export function RelatedContextPanel({ currentFilePath, content, placement = 'inline' }: RelatedContextPanelProps) {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const language = useUIStore((s) => s.language)
   const [noteId, setNoteId] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<LongContextSuggestion[]>([])
   const [feedbackByRelation, setFeedbackByRelation] = useState<Record<string, LongContextFeedbackType>>({})
@@ -85,7 +87,8 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
         entityId: noteId,
         content: contentRef.current,
         limit: 3,
-        refresh
+        refresh,
+        language
       })
       setSuggestions(rows)
       setState('idle')
@@ -93,7 +96,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       setError(getErrorMessage(err, t('relatedContext.loadFailed')))
       setState('error')
     }
-  }, [vaultPath, noteId, t])
+  }, [vaultPath, noteId, language, t])
 
   useEffect(() => {
     if (!noteId) return

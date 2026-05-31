@@ -178,8 +178,8 @@ P2（演进期）：
 - [ ] Maintenance queue 缓存 + 异步化
 - [ ] ChatPanel / CanvasView / GraphView 子组件拆分
 - [ ] db.ipc.ts 按域拆分
-- [ ] Memory Ledger + Context Pack 用户化
-- [ ] Why this? 来源解释
+- [x] Memory Ledger + Context Pack 用户化 *(2026-05-31: Memory Ledger / Context Pack 的工具状态、图谱生成状态、关系标签、引用解释和工具结果面板已补齐中英文 i18n；Context Pack 归档、关系 reason/evidence、长期主题 title/summary/keywords 已接入当前 UI 语言，旧存量内容需刷新后更新)*
+- [x] Why this? 来源解释 *(2026-05-31: 引用来源弹层继续保留 Why this，并补齐关系类型、评分、置信度的本地化显示)*
 - [x] 主动建议阈值可配置 *(2026-05-28: `proactive-policy.ts` 新增 `ProactiveTriggerThresholds`，`evaluateTriggers` 接受可注入阈值；prefs 持久化 + ProactivePreferences 暴露 5 个阈值滑块；旧 prefs 自动 backfill 默认值)*
 
 ### P2（3-6 个月）

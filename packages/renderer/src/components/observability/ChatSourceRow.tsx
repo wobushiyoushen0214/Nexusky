@@ -4,6 +4,7 @@ import type { ChatSource, LongContextSuggestion, LongTermTheme } from '@shared/t
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
+import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 
 interface ChatSourceRowProps {
   index: number
@@ -129,10 +130,10 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
               {result.relations.slice(0, 8).map((r) => (
                 <div key={r.relationId} style={{ marginBottom: 6 }}>
                   <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
-                    {r.relationType} → {r.targetTitle}
+                    {getRelationTypeLabel(r.relationType, t)} → {r.targetTitle}
                   </div>
                   <div style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>
-                    score={r.score.toFixed(2)}, confidence={Math.round(r.confidence * 100)}%
+                    {t('citationLookup.score')}={r.score.toFixed(2)}, {t('citationLookup.confidence')}={Math.round(r.confidence * 100)}%
                   </div>
                   {r.reason && <div style={{ marginTop: 2 }}>{r.reason}</div>}
                   {r.targetPath && (

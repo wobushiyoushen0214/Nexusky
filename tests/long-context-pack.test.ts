@@ -78,7 +78,8 @@ describe('long-context context pack builder', () => {
       tokenBudget: 600,
       hotLimit: 1,
       warmLimit: 1,
-      coldLimit: 2
+      coldLimit: 2,
+      language: 'en'
     })
 
     expect(pack.estimatedTokens).toBeLessThanOrEqual(pack.tokenBudget)
@@ -90,5 +91,23 @@ describe('long-context context pack builder', () => {
     expect(pack.systemText).toContain('Cold Memory')
     expect(pack.systemText).toContain('evidence:')
     expect(pack.sources.map((source) => source.filePath)).toEqual(expect.arrayContaining(['Tool.md', 'Current.md']))
+  })
+
+  it('formats archived context in Simplified Chinese when requested', () => {
+    const pack = buildLongContextPack({
+      vaultPath,
+      currentFilePath: join(vaultPath, 'Current.md'),
+      tokenBudget: 600,
+      hotLimit: 1,
+      warmLimit: 1,
+      coldLimit: 2,
+      language: 'zh-CN'
+    })
+
+    expect(pack.systemText).toContain('活跃记忆')
+    expect(pack.systemText).toContain('邻近记忆')
+    expect(pack.systemText).toContain('归档记忆')
+    expect(pack.systemText).toContain('证据:')
+    expect(pack.systemText).not.toContain('supports_goal')
   })
 })

@@ -1,3 +1,5 @@
+import i18n from '../../i18n'
+
 function getTextArg(args: Record<string, unknown>, key: string): string {
   const value = args[key]
   return typeof value === 'string' ? value.trim() : ''
@@ -11,117 +13,74 @@ function appendDetail(label: string, detail: string): string {
   return detail ? `${label}: ${truncateDetail(detail)}` : label
 }
 
-export function formatAiToolStatus(name: string, args: Record<string, unknown> = {}): string {
-  switch (name) {
-    case 'search_notes':
-      return appendDetail('搜索笔记', getTextArg(args, 'query'))
-    case 'read_note':
-      return appendDetail('读取笔记', getTextArg(args, 'title'))
-    case 'read_current_note':
-      return '读取当前笔记'
-    case 'read_current_note_properties':
-      return '读取当前笔记属性'
-    case 'read_note_lines':
-      return appendDetail('读取笔记行号', getTextArg(args, 'title'))
-    case 'read_current_note_lines':
-      return '读取当前笔记行号'
-    case 'find_text_in_note':
-      return appendDetail('在笔记内查找', getTextArg(args, 'query') || getTextArg(args, 'title'))
-    case 'find_text_in_current_note':
-      return appendDetail('在当前笔记内查找', getTextArg(args, 'query'))
-    case 'list_note_links':
-      return appendDetail('读取笔记链接', getTextArg(args, 'title'))
-    case 'list_current_note_links':
-      return '读取当前笔记链接'
-    case 'summarize_current_note_links':
-      return '汇总当前笔记关系'
-    case 'list_current_note_unlinked_references':
-      return '查找当前笔记未链接引用'
-    case 'list_note_headings':
-      return appendDetail('读取笔记目录', getTextArg(args, 'title'))
-    case 'list_current_note_headings':
-      return '读取当前笔记目录'
-    case 'list_note_blocks':
-      return appendDetail('读取块引用', getTextArg(args, 'title'))
-    case 'list_current_note_blocks':
-      return '读取当前笔记块引用'
-    case 'find_similar_notes':
-      return appendDetail('查找相似笔记', getTextArg(args, 'query'))
-    case 'find_memory_related_notes':
-      return appendDetail('查找记忆关联', getTextArg(args, 'query'))
-    case 'find_connection_opportunities':
-      return appendDetail('查找连接机会', getTextArg(args, 'query'))
-    case 'list_note_memories':
-      return appendDetail('浏览笔记记忆', getTextArg(args, 'query'))
-    case 'read_note_memory':
-      return appendDetail('读取笔记记忆', getTextArg(args, 'title'))
-    case 'read_current_note_memory':
-      return '读取当前笔记记忆'
-    case 'get_memory_overview':
-      return '汇总记忆覆盖'
-    case 'list_memory_folders':
-      return appendDetail('汇总记忆文件夹', getTextArg(args, 'query'))
-    case 'list_memory_terms':
-      return appendDetail('汇总记忆概念', getTextArg(args, 'query') || getTextArg(args, 'type'))
-    case 'list_memory_term_pairs':
-      return appendDetail('分析概念共现', getTextArg(args, 'query') || getTextArg(args, 'type'))
-    case 'list_notes_by_memory_term':
-      return appendDetail('按记忆概念找笔记', getTextArg(args, 'term'))
-    case 'list_notes_missing_memory':
-      return appendDetail('检查缺失记忆', getTextArg(args, 'status'))
-    case 'get_vault_overview':
-      return '汇总知识库'
-    case 'list_tasks':
-      return appendDetail('查询任务', getTextArg(args, 'query') || getTextArg(args, 'status'))
-    case 'list_current_note_tasks':
-      return appendDetail('查询当前笔记任务', getTextArg(args, 'query') || getTextArg(args, 'status'))
-    case 'list_tags':
-      return appendDetail('查询标签', getTextArg(args, 'query'))
-    case 'list_folders':
-      return appendDetail('查询文件夹', getTextArg(args, 'query'))
-    case 'list_notes_by_folder':
-      return appendDetail('列出文件夹笔记', getTextArg(args, 'folder'))
-    case 'list_notes_by_tag':
-      return appendDetail('列出标签笔记', getTextArg(args, 'tag'))
-    case 'list_properties':
-      return appendDetail('查询属性', getTextArg(args, 'query'))
-    case 'list_notes_by_property':
-      return appendDetail('按属性找笔记', getTextArg(args, 'key'))
-    case 'list_property_values':
-      return appendDetail('统计属性取值', getTextArg(args, 'key'))
-    case 'list_notes_missing_property':
-      return appendDetail('检查缺失属性', getTextArg(args, 'key'))
-    case 'list_recent_notes':
-      return appendDetail('查看最近笔记', getTextArg(args, 'query'))
-    case 'list_unresolved_links':
-      return appendDetail('检查断链', getTextArg(args, 'query'))
-    case 'list_orphan_notes':
-      return appendDetail('检查孤岛笔记', getTextArg(args, 'query'))
-    case 'list_unreferenced_notes':
-      return appendDetail('检查无反链笔记', getTextArg(args, 'query'))
-    case 'list_dead_end_notes':
-      return appendDetail('检查终点笔记', getTextArg(args, 'query'))
-    case 'list_link_hubs':
-      return appendDetail('分析链接枢纽', getTextArg(args, 'mode'))
-    case 'list_knowledge_bridges':
-      return appendDetail('分析知识桥梁', getTextArg(args, 'query'))
-    case 'plan_knowledge_maintenance':
-      return appendDetail('规划知识维护', getTextArg(args, 'query'))
-    case 'list_untagged_notes':
-      return appendDetail('检查无标签笔记', getTextArg(args, 'query'))
-    case 'list_empty_notes':
-      return appendDetail('检查空笔记', getTextArg(args, 'query'))
-    case 'list_large_notes':
-      return appendDetail('检查长笔记', getTextArg(args, 'query'))
-    case 'list_duplicate_note_titles':
-      return appendDetail('检查重复标题', getTextArg(args, 'query'))
-    case 'list_duplicate_aliases':
-      return appendDetail('检查重复 alias', getTextArg(args, 'query'))
-    case 'create_note':
-      return '请求创建笔记'
-    case 'edit_note':
-      return '请求修改笔记'
-    default:
-      return name || '调用工具'
+const TOOL_STATUS_DETAIL_KEYS: Record<string, string[]> = {
+  search_notes: ['query'],
+  read_note: ['title'],
+  read_current_note: [],
+  read_current_note_properties: [],
+  read_note_lines: ['title'],
+  read_current_note_lines: [],
+  find_text_in_note: ['query', 'title'],
+  find_text_in_current_note: ['query'],
+  list_note_links: ['title'],
+  list_current_note_links: [],
+  summarize_current_note_links: [],
+  list_current_note_unlinked_references: [],
+  list_note_headings: ['title'],
+  list_current_note_headings: [],
+  list_note_blocks: ['title'],
+  list_current_note_blocks: [],
+  find_similar_notes: ['query'],
+  find_memory_related_notes: ['query'],
+  find_connection_opportunities: ['query'],
+  list_note_memories: ['query'],
+  read_note_memory: ['title'],
+  read_current_note_memory: [],
+  get_memory_overview: [],
+  list_memory_folders: ['query'],
+  list_memory_terms: ['query', 'type'],
+  list_memory_term_pairs: ['query', 'type'],
+  list_notes_by_memory_term: ['term'],
+  list_notes_missing_memory: ['status'],
+  get_vault_overview: [],
+  list_tasks: ['query', 'status'],
+  list_current_note_tasks: ['query', 'status'],
+  list_tags: ['query'],
+  list_folders: ['query'],
+  list_notes_by_folder: ['folder'],
+  list_notes_by_tag: ['tag'],
+  list_properties: ['query'],
+  list_notes_by_property: ['key'],
+  list_property_values: ['key'],
+  list_notes_missing_property: ['key'],
+  list_recent_notes: ['query'],
+  list_unresolved_links: ['query'],
+  list_orphan_notes: ['query'],
+  list_unreferenced_notes: ['query'],
+  list_dead_end_notes: ['query'],
+  list_link_hubs: ['mode'],
+  list_knowledge_bridges: ['query'],
+  plan_knowledge_maintenance: ['query'],
+  list_untagged_notes: ['query'],
+  list_empty_notes: ['query'],
+  list_large_notes: ['query'],
+  list_duplicate_note_titles: ['query'],
+  list_duplicate_aliases: ['query'],
+  create_note: [],
+  edit_note: []
+}
+
+function getFirstTextArg(args: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = getTextArg(args, key)
+    if (value) return value
   }
+  return ''
+}
+
+export function formatAiToolStatus(name: string, args: Record<string, unknown> = {}): string {
+  const detailKeys = TOOL_STATUS_DETAIL_KEYS[name]
+  if (!detailKeys) return name || String(i18n.t('aiToolStatus.unknown'))
+  const label = String(i18n.t(`aiToolStatus.tools.${name}`, { defaultValue: name }))
+  return appendDetail(label, getFirstTextArg(args, detailKeys))
 }

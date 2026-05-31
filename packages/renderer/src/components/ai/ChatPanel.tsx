@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { ChatMessages } from './ChatMessages'
@@ -98,6 +99,7 @@ export function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([])
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
+  const language = useUIStore((s) => s.language)
   const pendingSourcesRef = useRef<ChatSource[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -449,9 +451,9 @@ export function ChatPanel() {
     const chatMessages = await buildChatMessages(remaining)
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath, language })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath })
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath, language })
       }
     } catch (e: unknown) {
       if (isCancellationError(e) || batchCancelledRef.current) {
@@ -470,7 +472,7 @@ export function ChatPanel() {
       pendingSourcesRef.current = []
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, appendAssistantMessage])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage])
 
   const handleContinue = useCallback(async (msg: Message) => {
     if (isStreaming) return
@@ -503,9 +505,9 @@ export function ChatPanel() {
     chatMessages.push({ role: 'assistant', content: msg.content })
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath, language })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath })
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath, language })
       }
     } catch (e: unknown) {
       if (isCancellationError(e) || batchCancelledRef.current) {
@@ -524,7 +526,7 @@ export function ChatPanel() {
       pendingSourcesRef.current = []
       setIsStreaming(false)
     }
-  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, appendAssistantMessage])
+  }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage])
 
   useEffect(() => {
     if (!showMention || !vaultPath) return
@@ -1244,9 +1246,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setToolStatus(agentMode ? 'Agent 正在处理...' : '正在生成回答...')
         const attachedChatMessages = applyChatAttachments(chatMessages, userMsg.content, contextPrefix, sentImages)
         if (agentMode) {
-          await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath, currentFilePath })
+          await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath, currentFilePath, language })
         } else {
-          await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath, currentFilePath })
+          await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath, currentFilePath, language })
         }
       } catch (e: unknown) {
         if (isCancellationError(e) || batchCancelledRef.current) {
@@ -1306,7 +1308,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           if (editIntent === 'chat') {
             try {
               setToolStatus('正在生成回答...')
-              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath, currentFilePath })
+              await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath, currentFilePath, language })
             } catch (e: unknown) {
               if (isCancellationError(e) || batchCancelledRef.current) {
                 finishStoppedGeneration()
@@ -1494,9 +1496,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const chatMessages = applyChatAttachments(await buildChatMessages(allMessages), userMsg.content, contextPrefix, sentImages)
     try {
       if (agentMode && vaultPath) {
-        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath })
+        await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath, language })
       } else {
-        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath })
+        await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath, language })
       }
     } catch (e: unknown) {
       if (isCancellationError(e) || batchCancelledRef.current) {

@@ -471,6 +471,7 @@ export interface LongContextUserPrefs {
 }
 
 export type LongContextMemoryTier = 'hot' | 'warm' | 'cold'
+export type AppLanguage = 'zh-CN' | 'en'
 
 export interface LongContextPackItemPayload {
   tier: LongContextMemoryTier
@@ -707,6 +708,7 @@ export interface IPCChannelMap {
       content?: string
       limit?: number
       refresh?: boolean
+      language?: AppLanguage
     }
     result: LongContextSuggestion[]
   }
@@ -717,6 +719,7 @@ export interface IPCChannelMap {
       entityId: string
       content?: string
       limit?: number
+      language?: AppLanguage
     }
     result: {
       discovered: number
@@ -742,6 +745,7 @@ export interface IPCChannelMap {
   'long-context:run-theme-extraction': {
     params: {
       vaultPath: string
+      language?: AppLanguage
     }
     result: {
       created: number
@@ -795,6 +799,7 @@ export interface IPCChannelMap {
       vaultPath: string
       currentFilePath?: string | null
       tokenBudget?: number
+      language?: AppLanguage
     }
     result: LongContextInspection
   }
@@ -831,8 +836,8 @@ export interface IPCChannelMap {
       | { ok: true; answer: string; latencyMs: number; model: string }
       | { ok: false; error: string }
   }
-  'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }; result: void }
-  'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null }; result: void }
+  'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null; language?: AppLanguage }; result: void }
+  'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null; language?: AppLanguage }; result: void }
   'ai:detect-intent': { params: { messages: IPCChatMessage[]; intents?: string[]; intentContext?: string }; result: { intent?: string } }
   'ai:stop': { params: undefined; result: void }
   'ai:complete': { params: { text: string; system?: string; temperature?: number; taskKey?: string; styleSource?: string }; result: string }
@@ -907,6 +912,7 @@ export interface IPCChannelMap {
   'updater:download': { params: undefined; result: void }
   'updater:install': { params: undefined; result: void }
   'app:get-version': { params: undefined; result: string }
+  'app:set-language': { params: { language?: AppLanguage }; result: { language: AppLanguage } }
   'app:open-external': { params: { url: string }; result: void }
   'telemetry:get-prefs': { params: undefined; result: { enabled: boolean } }
   'telemetry:set-prefs': { params: { enabled: boolean }; result: { enabled: boolean } }

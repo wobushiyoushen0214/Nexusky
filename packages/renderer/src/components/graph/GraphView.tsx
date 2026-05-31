@@ -796,11 +796,11 @@ export function GraphView() {
       if (silentMemoryRefreshRef.current) return
       if (aiStopRequestedRef.current) return
       if (data.state === 'done') return
-      const title = data.title ? `：${data.title}` : ''
-      setIndexStatus(`正在生成记忆 ${data.current}/${data.total}${title}`)
+      const title = data.title ? t('graph.memory.progressTitle', { title: data.title }) : ''
+      setIndexStatus(t('graph.memory.progress', { current: data.current, total: data.total, title }))
     })
     return () => cleanup()
-  }, [])
+  }, [t])
 
   const runGlobalInference = async () => {
     if (!vaultPath) return
@@ -1387,7 +1387,7 @@ export function GraphView() {
         onStopAi={() => {
           aiStopRequestedRef.current = true
           window.api.invoke('ai:stop', undefined).catch(() => {})
-          setIndexStatus('已请求停止 AI 任务')
+          setIndexStatus(t('graph.memory.stopRequested'))
         }}
         onBackToEditor={() => setMainView('editor')}
       />

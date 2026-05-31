@@ -4,6 +4,7 @@ import { findRelationCandidates, type EntityType } from './relation-candidates'
 import { classifyRelation, shouldPersistRelationClassification, type RelationClassifierProvider } from './relation-classifier'
 import { getContextSuggestions, upsertRelation, type ContextSuggestion } from './relation-store'
 import { getLongContextPrefs } from './long-context-prefs'
+import type { AppLanguage } from '@shared/types/ipc'
 
 export interface LongContextEntitySnapshot {
   title: string
@@ -19,6 +20,7 @@ export interface DiscoverLongContextRelationsParams {
   limit?: number
   provider?: RelationClassifierProvider
   signal?: AbortSignal
+  language?: AppLanguage
 }
 
 export interface DiscoverLongContextRelationsResult {
@@ -63,7 +65,8 @@ export async function discoverLongContextRelations(
       signals: candidate.signals
     }, {
       provider: params.provider,
-      signal: params.signal
+      signal: params.signal,
+      language: params.language
     })
     if (!shouldPersistRelationClassification(classification, prefs.confidenceThreshold)) continue
 

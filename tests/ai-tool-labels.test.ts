@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import i18n from '../packages/renderer/src/i18n'
 import { formatAiToolStatus } from '../packages/renderer/src/components/ai/tool-labels'
 
 describe('AI tool status labels', () => {
+  afterEach(async () => {
+    await i18n.changeLanguage('zh-CN')
+  })
+
   it('adds useful detail for note search and reads', () => {
     expect(formatAiToolStatus('search_notes', { query: 'project roadmap' })).toBe('搜索笔记: project roadmap')
     expect(formatAiToolStatus('read_note', { title: 'Plans/Launch.md' })).toBe('读取笔记: Plans/Launch.md')
@@ -14,7 +19,7 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('list_current_note_unlinked_references')).toBe('查找当前笔记未链接引用')
     expect(formatAiToolStatus('list_current_note_headings')).toBe('读取当前笔记目录')
     expect(formatAiToolStatus('list_current_note_blocks')).toBe('读取当前笔记块引用')
-    expect(formatAiToolStatus('read_current_note_memory')).toBe('读取当前笔记记忆')
+    expect(formatAiToolStatus('read_current_note_memory')).toBe('读取当前笔记记忆账本')
     expect(formatAiToolStatus('list_current_note_tasks', { status: 'open' })).toBe('查询当前笔记任务: open')
   })
 
@@ -22,9 +27,17 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('find_connection_opportunities', { query: 'graph' })).toBe('查找连接机会: graph')
     expect(formatAiToolStatus('list_knowledge_bridges', { query: 'research' })).toBe('分析知识桥梁: research')
     expect(formatAiToolStatus('plan_knowledge_maintenance', { query: 'broken' })).toBe('规划知识维护: broken')
-    expect(formatAiToolStatus('list_memory_term_pairs', { type: 'mixed' })).toBe('分析概念共现: mixed')
+    expect(formatAiToolStatus('list_memory_term_pairs', { type: 'mixed' })).toBe('分析记忆账本概念共现: mixed')
     expect(formatAiToolStatus('list_notes_by_property', { key: 'status' })).toBe('按属性找笔记: status')
     expect(formatAiToolStatus('get_vault_overview')).toBe('汇总知识库')
+  })
+
+  it('uses the active locale for Memory Ledger tool status labels', async () => {
+    await i18n.changeLanguage('en')
+
+    expect(formatAiToolStatus('read_current_note_memory')).toBe('Read current note Memory Ledger')
+    expect(formatAiToolStatus('list_memory_folders', { query: 'Projects' })).toBe('Summarize Memory Ledger folders: Projects')
+    expect(formatAiToolStatus('')).toBe('Calling tool')
   })
 
   it('falls back to the raw tool name when unknown', () => {

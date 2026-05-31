@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import type { LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextUserPrefs } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
+import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Sparkline } from './Sparkline'
 import './observability.css'
 
@@ -15,6 +17,7 @@ export function LongContextDebugPanel() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
+  const language = useUIStore((s) => s.language)
   const [inspection, setInspection] = useState<LongContextInspection | null>(null)
   const [metrics, setMetrics] = useState<LongContextMetrics | null>(null)
   const [prefs, setPrefs] = useState<LongContextUserPrefs | null>(null)
@@ -28,7 +31,7 @@ export function LongContextDebugPanel() {
     setLoading(true)
     try {
       const [inspectionRes, metricsRes, prefsRes] = await Promise.all([
-        window.api.invoke('long-context:inspect-pack', { vaultPath, currentFilePath }),
+        window.api.invoke('long-context:inspect-pack', { vaultPath, currentFilePath, language }),
         window.api.invoke('long-context:get-metrics', { vaultPath }),
         window.api.invoke('long-context:get-prefs', undefined)
       ])
@@ -41,7 +44,7 @@ export function LongContextDebugPanel() {
     } finally {
       setLoading(false)
     }
-  }, [vaultPath, currentFilePath])
+  }, [vaultPath, currentFilePath, language])
 
   useEffect(() => {
     void refresh()
@@ -200,7 +203,7 @@ function PackItemCard({ item }: { item: LongContextPackItemPayload }) {
     <div className="long-context-debug-panel__pack-item">
       <div className="long-context-debug-panel__pack-item-title">{item.title}</div>
       <div className="long-context-debug-panel__pack-item-meta">
-        {item.relationType && <span>{item.relationType} · </span>}
+        {item.relationType && <span>{getRelationTypeLabel(item.relationType, t)} · </span>}
         {typeof item.confidence === 'number' && <span>{t('longContextDebug.packItem.confidence')} {Math.round(item.confidence * 100)}% · </span>}
         {typeof item.score === 'number' && <span>{t('longContextDebug.packItem.score')} {item.score.toFixed(2)}</span>}
         {item.droppedReason && <span> · {t(`longContextDebug.droppedReason.${item.droppedReason}`)}</span>}

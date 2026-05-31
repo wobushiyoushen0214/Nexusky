@@ -80,6 +80,27 @@ describe('long-context theme extractor', () => {
     expect(membershipCount.count).toBe(3)
   })
 
+  it('asks the theme extractor to write durable theme text in the active language', async () => {
+    let systemPrompt = ''
+    const provider: ThemeExtractorProvider = {
+      async *chatStream(messages: ChatMessage[], _signal?: AbortSignal, _options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
+        systemPrompt = String(messages[0].content)
+        yield {
+          type: 'text',
+          content: '{"title":"自动化工作流","summary":"这些笔记反复连接 AI 自动化与外部工具编排。","keywords":["AI 自动化","工具编排"],"confidence":0.9}'
+        }
+      }
+    }
+    await insertRelation('r1', 'n1', 'n2', now - 10 * 86_400, now - 9 * 86_400)
+    await insertRelation('r2', 'n2', 'n3', now - 8 * 86_400, now)
+
+    const result = await extractLongTermThemes({ vaultPath, limit: 1, provider, language: 'zh-CN' })
+
+    expect(result).toEqual({ created: 1, updated: 0 })
+    expect(systemPrompt).toContain('Write title, summary, and keywords in Simplified Chinese')
+    expect(getLongTermThemes(vaultPath)[0].title).toBe('自动化工作流')
+  })
+
   it('does not create a theme with fewer than three evidence entities', async () => {
     await insertRelation('r1', 'n1', 'n2', now - 10 * 86_400, now)
 

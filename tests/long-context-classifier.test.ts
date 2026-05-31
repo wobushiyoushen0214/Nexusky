@@ -22,6 +22,17 @@ describe('long-context relation classifier', () => {
     expect(String(messages[1].content)).toContain('"signals"')
   })
 
+  it('asks the classifier to write reasons and evidence in the active language', () => {
+    const input = {
+      current: { title: 'Current', content: 'Working on AI automation workflows.' },
+      candidate: { title: 'MCP Notes', content: 'Notes about MCP tool calling.' },
+      signals: ['tag:ai']
+    }
+
+    expect(String(buildRelationClassificationPrompt(input, 'zh-CN')[0].content)).toContain('Write reason and evidence in Simplified Chinese')
+    expect(String(buildRelationClassificationPrompt(input, 'en')[0].content)).toContain('Write reason and evidence in English')
+  })
+
   it('recovers JSON from surrounding text and validates a persistable supports_goal relation', () => {
     const classification = parseRelationClassification([
       'Here is the result:',

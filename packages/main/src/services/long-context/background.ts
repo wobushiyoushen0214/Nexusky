@@ -11,6 +11,8 @@ import type { EntityType } from './relation-candidates'
 import type { RelationClassifierProvider } from './relation-classifier'
 import { runProactiveCycle } from '../proactive/proactive-orchestrator'
 import { pruneExpired, deleteExpiredSuggestions } from '../proactive/proactive-store'
+import { getAppLanguage } from '../app-language'
+import type { AppLanguage } from '@shared/types/ipc'
 
 export interface LongContextAnalysisJob {
   vaultPath: string
@@ -19,6 +21,7 @@ export interface LongContextAnalysisJob {
   content?: string
   eventType?: LongContextEventType
   trigger?: string
+  language?: AppLanguage
 }
 
 interface QueueState {
@@ -53,6 +56,7 @@ export interface RunVaultLongContextMaintenanceParams {
   now?: number
   relationProvider?: RelationClassifierProvider
   themeProvider?: ThemeExtractorProvider
+  language?: AppLanguage
 }
 
 export interface VaultLongContextMaintenanceResult {
@@ -104,6 +108,7 @@ export function scheduleIndexedNoteLongContext(params: {
   filePath: string
   eventType?: 'note_created' | 'note_updated'
   trigger?: string
+  language?: AppLanguage
 }): void {
   const note = getIndexedNote(params.vaultPath, params.filePath)
   if (!note) return
@@ -114,7 +119,8 @@ export function scheduleIndexedNoteLongContext(params: {
     entityId: note.id,
     content,
     eventType: params.eventType || 'note_updated',
-    trigger: params.trigger || 'index'
+    trigger: params.trigger || 'index',
+    language: params.language
   })
 }
 
@@ -141,6 +147,7 @@ export async function runVaultLongContextMaintenance(
   `).all(limit) as { id: string; filePath: string }[]
 
   let analyzed = 0
+  const language = params.language ?? getAppLanguage()
   for (const row of rows) {
     const absolutePath = join(params.vaultPath, row.filePath)
     const result = await runLongContextBackgroundCycle({
@@ -152,7 +159,8 @@ export async function runVaultLongContextMaintenance(
       recordEvent: false,
       now: params.now,
       relationProvider: params.relationProvider,
-      themeProvider: params.themeProvider
+      themeProvider: params.themeProvider,
+      language
     })
     if (result.eventRecorded || result.discovery.discovered > 0) analyzed += 1
   }
@@ -198,6 +206,7 @@ export async function runLongContextBackgroundCycle(
 ): Promise<LongContextBackgroundCycleResult> {
   const db = getDatabase(params.vaultPath)
   const now = params.now ?? unixNow()
+  const language = params.language ?? getAppLanguage()
   const snapshot = getLongContextEntitySnapshot(db, params.entityType, params.entityId, params.content)
 
   let eventRecorded = false
@@ -222,7 +231,8 @@ export async function runLongContextBackgroundCycle(
     entityId: params.entityId,
     content: params.content,
     limit: params.limit || 10,
-    provider: params.relationProvider
+    provider: params.relationProvider,
+    language
   })
 
   const refresh = refreshRelationScores({
@@ -239,7 +249,8 @@ export async function runLongContextBackgroundCycle(
     entityId: params.entityId,
     now,
     force: Boolean(params.forceThemeExtraction),
-    provider: params.themeProvider
+    provider: params.themeProvider,
+    language
   })
 
   const review = maybeGenerateCognitiveReview({
@@ -321,6 +332,7 @@ async function maybeExtractThemes(params: {
   now: number
   force: boolean
   provider?: ThemeExtractorProvider
+  language: AppLanguage
 }): Promise<ThemeExtractionResult> {
   if (!params.force && !shouldExtractThemes(params.vaultPath, params.now)) {
     return { created: 0, updated: 0 }
@@ -328,7 +340,8 @@ async function maybeExtractThemes(params: {
   const result = await extractLongTermThemes({
     vaultPath: params.vaultPath,
     changedEntityIds: params.entityType === 'note' ? [params.entityId] : undefined,
-    provider: params.provider
+    provider: params.provider,
+    language: params.language
   })
   recordContextEvent({
     vaultPath: params.vaultPath,

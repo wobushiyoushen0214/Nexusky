@@ -101,21 +101,26 @@ export function GraphPanel(props: GraphPanelProps) {
   const handleGenerateMemories = async () => {
     if (!vaultPath) return
     onStartAi()
-    setIndexStatus('正在生成记忆文件...')
+    setIndexStatus(t('graph.memory.generating'))
     try {
       const result = await window.api.invoke('ai:generate-memories', { vaultPath })
       if (result.success) {
-        const failedText = result.failed ? `，失败 ${result.failed} 篇` : ''
-        const scopeText = result.limited ? `（本次处理最近 ${result.total}/${result.totalNotes} 篇）` : ''
-        setIndexStatus(`记忆生成完成：新增 ${result.generated} 篇，跳过 ${result.skipped} 篇${failedText}${scopeText}`)
+        const failedText = result.failed ? t('graph.memory.failedFragment', { failed: result.failed }) : ''
+        const scopeText = result.limited ? t('graph.memory.scopeFragment', { total: result.total, totalNotes: result.totalNotes }) : ''
+        setIndexStatus(t('graph.memory.done', {
+          generated: result.generated,
+          skipped: result.skipped,
+          failedText,
+          scopeText
+        }))
         window.dispatchEvent(new CustomEvent('graph-data-updated'))
       } else if (result.error && isCancellationError(result.error)) {
-        setIndexStatus('已停止记忆生成')
+        setIndexStatus(t('graph.memory.stopped'))
       } else {
-        setIndexStatus(result.error || '记忆生成已停止')
+        setIndexStatus(result.error || t('graph.memory.stopped'))
       }
     } catch (e: unknown) {
-      setIndexStatus(isCancellationError(e) ? '已停止记忆生成' : getErrorMessage(e, '记忆生成已停止'))
+      setIndexStatus(isCancellationError(e) ? t('graph.memory.stopped') : getErrorMessage(e, t('graph.memory.stopped')))
     }
     setTimeout(() => setIndexStatus(null), 5000)
   }
@@ -306,7 +311,7 @@ export function GraphPanel(props: GraphPanelProps) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.4V11h3a3 3 0 0 1 3 3v1"/><path d="M6 11V9.4C4.8 8.8 4 7.5 4 6a4 4 0 0 1 8 0"/><rect x="2" y="17" width="8" height="5" rx="1"/><rect x="14" y="17" width="8" height="5" rx="1"/>
                 </svg>
-                生成记忆
+                {t('graph.memory.generate')}
               </button>
               {indexStatus && (
                 <button
@@ -314,7 +319,7 @@ export function GraphPanel(props: GraphPanelProps) {
                   style={{ marginTop: 8 }}
                   onClick={onStopAi}
                 >
-                  停止
+                  {t('common.stop')}
                 </button>
               )}
               {indexStatus && (

@@ -107,6 +107,11 @@ function applyDocumentLanguage(lang: Language): void {
   document.documentElement.lang = lang
 }
 
+function syncLanguageToMain(lang: Language): void {
+  if (typeof window === 'undefined' || !window.api?.invoke) return
+  window.api.invoke('app:set-language', { language: lang }).catch(() => {})
+}
+
 function applyTheme(theme: Theme) {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', theme)
@@ -297,6 +302,7 @@ if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', initialTheme)
   applyAccentColor(initialAccentColor)
   applyDocumentLanguage(initialLanguage)
+  syncLanguageToMain(initialLanguage)
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -409,6 +415,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     i18n.changeLanguage(next)
     applyDocumentLanguage(next)
     safeSet('nexusky-language', next)
+    syncLanguageToMain(next)
     set({ language: next })
   },
   setGraphMode: (mode) => {

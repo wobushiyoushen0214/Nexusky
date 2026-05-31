@@ -105,7 +105,18 @@
     "connections": "{{count}} 连接",
     "backToEditor": "返回编辑器",
     "inferGlobal": "推断跨目录关联",
-    "reindex": "重建索引"
+    "reindex": "重建索引",
+    "memory": {
+      "generate": "生成记忆账本",
+      "generating": "正在生成记忆账本...",
+      "progress": "正在生成记忆账本 {{current}}/{{total}}{{title}}",
+      "progressTitle": "：{{title}}",
+      "done": "记忆账本生成完成：新增 {{generated}} 篇，跳过 {{skipped}} 篇{{failedText}}{{scopeText}}",
+      "failedFragment": "，失败 {{failed}} 篇",
+      "scopeFragment": "（本次处理最近 {{total}}/{{totalNotes}} 篇）",
+      "stopped": "已停止记忆账本生成",
+      "stopRequested": "已请求停止 AI 任务"
+    }
   },
   "activityBar": {
     "files": "文件",
@@ -211,10 +222,24 @@
   "citationLookup": {
     "why": "为什么引用此项？",
     "loading": "加载中...",
-    "empty": "未找到 Memory Ledger 关系",
+    "empty": "未找到记忆账本关系",
     "relations": "为什么是它",
     "themes": "主题",
+    "score": "评分",
+    "confidence": "置信度",
     "openTarget": "打开关联笔记"
+  },
+  "longContext": {
+    "relationType": {
+      "related_to": "相关",
+      "caused_by": "成因",
+      "evolved_from": "演化",
+      "blocked_by": "阻塞",
+      "inspired_by": "启发",
+      "repeated_pattern": "模式",
+      "supports_goal": "目标",
+      "conflicts_with": "冲突"
+    }
   },
   "agent": {
     "title": "执行历史",
@@ -274,10 +299,69 @@
       "goalRequired": "请填写任务目标"
     }
   },
+  "aiToolStatus": {
+    "unknown": "调用工具",
+    "tools": {
+      "search_notes": "搜索笔记",
+      "read_note": "读取笔记",
+      "read_current_note": "读取当前笔记",
+      "read_current_note_properties": "读取当前笔记属性",
+      "read_note_lines": "读取笔记行号",
+      "read_current_note_lines": "读取当前笔记行号",
+      "find_text_in_note": "在笔记内查找",
+      "find_text_in_current_note": "在当前笔记内查找",
+      "list_note_links": "读取笔记链接",
+      "list_current_note_links": "读取当前笔记链接",
+      "summarize_current_note_links": "汇总当前笔记关系",
+      "list_current_note_unlinked_references": "查找当前笔记未链接引用",
+      "list_note_headings": "读取笔记目录",
+      "list_current_note_headings": "读取当前笔记目录",
+      "list_note_blocks": "读取块引用",
+      "list_current_note_blocks": "读取当前笔记块引用",
+      "find_similar_notes": "查找相似笔记",
+      "find_memory_related_notes": "查找记忆账本关联",
+      "find_connection_opportunities": "查找连接机会",
+      "list_note_memories": "浏览记忆账本",
+      "read_note_memory": "读取笔记记忆账本",
+      "read_current_note_memory": "读取当前笔记记忆账本",
+      "get_memory_overview": "汇总记忆账本覆盖",
+      "list_memory_folders": "汇总记忆账本文件夹",
+      "list_memory_terms": "汇总记忆账本概念",
+      "list_memory_term_pairs": "分析记忆账本概念共现",
+      "list_notes_by_memory_term": "按记忆账本概念找笔记",
+      "list_notes_missing_memory": "检查缺失记忆账本",
+      "get_vault_overview": "汇总知识库",
+      "list_tasks": "查询任务",
+      "list_current_note_tasks": "查询当前笔记任务",
+      "list_tags": "查询标签",
+      "list_folders": "查询文件夹",
+      "list_notes_by_folder": "列出文件夹笔记",
+      "list_notes_by_tag": "列出标签笔记",
+      "list_properties": "查询属性",
+      "list_notes_by_property": "按属性找笔记",
+      "list_property_values": "统计属性取值",
+      "list_notes_missing_property": "检查缺失属性",
+      "list_recent_notes": "查看最近笔记",
+      "list_unresolved_links": "检查断链",
+      "list_orphan_notes": "检查孤岛笔记",
+      "list_unreferenced_notes": "检查无反链笔记",
+      "list_dead_end_notes": "检查终点笔记",
+      "list_link_hubs": "分析链接枢纽",
+      "list_knowledge_bridges": "分析知识桥梁",
+      "plan_knowledge_maintenance": "规划知识维护",
+      "list_untagged_notes": "检查无标签笔记",
+      "list_empty_notes": "检查空笔记",
+      "list_large_notes": "检查长笔记",
+      "list_duplicate_note_titles": "检查重复标题",
+      "list_duplicate_aliases": "检查重复 alias",
+      "create_note": "请求创建笔记",
+      "edit_note": "请求修改笔记"
+    }
+  },
   "longContextDebug": {
-    "inspector": "Context Pack",
-    "metrics": "Memory Ledger 反馈",
-    "tuning": "记忆设置",
+    "inspector": "上下文包",
+    "metrics": "记忆账本反馈",
+    "tuning": "记忆账本设置",
     "loading": "加载中...",
     "saving": "保存中...",
     "save": "保存",
@@ -321,26 +405,26 @@
       "tokenBudget": "Token 预算",
       "decayHalfLifeDays": "衰减半衰期 (天)",
       "topN": "编辑器建议数",
-      "hotLimit": "活跃记忆上限",
-      "warmLimit": "邻近记忆上限",
-      "coldLimit": "归档记忆上限",
+      "hotLimit": "活跃记忆账本上限",
+      "warmLimit": "邻近记忆账本上限",
+      "coldLimit": "归档记忆账本上限",
       "archiveAfterDays": "归档冷却天数"
     }
   },
   "relatedContext": {
-    "label": "Context Pack",
+    "label": "上下文包",
     "count": "{{count}} 条建议",
     "countCarousel": "{{current}}/{{total}} 条建议",
-    "loading": "正在读取记忆",
+    "loading": "正在读取记忆账本",
     "error": "需要处理",
     "empty": "0 条建议",
-    "loadFailed": "Context Pack 加载失败",
+    "loadFailed": "上下文包加载失败",
     "feedbackFailed": "反馈保存失败",
     "retry": "重试",
     "nav": {
       "previous": "上一条建议",
       "next": "下一条建议",
-      "refresh": "刷新 Context Pack"
+      "refresh": "刷新上下文包"
     },
     "card": {
       "whyThis": "为什么是它",
@@ -351,6 +435,10 @@
       "wrongReason": "原因不对",
       "dismiss": "忽略"
     }
+  },
+  "toolSurface": {
+    "copy": "复制",
+    "sources": "来源"
   },
   "editor": {
     "properties": "属性",
@@ -418,7 +506,7 @@
       "timeline": { "label": "打开时间线", "description": "按创建或更新时间回看笔记活动" },
       "graphCurrent": { "label": "为当前笔记生成 AI 图谱", "description": "基于当前笔记推断概念关系" },
       "inferLinks": { "label": "推断全库语义链接", "description": "补齐隐含关联并刷新知识图谱" },
-      "memoryIndex": { "label": "生成 AI 记忆索引", "description": "为长期知识关联生成笔记级记忆" },
+      "memoryIndex": { "label": "生成记忆账本", "description": "为长期知识关联生成笔记级记忆" },
       "sync": { "label": "云端同步" },
       "pull": { "label": "从云端拉取" },
       "exportPdf": { "label": "导出 PDF" },
@@ -428,7 +516,7 @@
       "outline": { "label": "打开文档大纲" },
       "properties": { "label": "打开笔记属性", "description": "编辑 title、aliases、tags、cssclasses" },
       "settings": { "label": "打开设置" },
-      "viewContextPack": { "label": "查看上下文包", "description": "查看 Hot / Warm / Cold 三层记忆、token 占用与调参" },
+      "viewContextPack": { "label": "查看上下文包", "description": "查看活跃 / 邻近 / 归档三层记忆账本、token 占用与调参" },
       "openAgent": { "label": "查看执行历史", "description": "高级入口：检查已保存的计划、步骤、反思和回滚记录" },
       "openMaintenance": { "label": "打开知识维护队列", "description": "查看未解析链接、孤立笔记、未完任务等可一键修复项" },
       "newWindow": { "label": "打开新窗口", "description": "新建一个独立 Nexusky 窗口，可并行查看不同视图" },
@@ -440,7 +528,7 @@
     "toolSurface": {
       "search_notes": { "label": "搜索笔记", "description": "在知识库中按关键词搜索相关笔记" },
       "find_similar_notes": { "label": "查找相似笔记", "description": "为当前笔记寻找词法相似的其他笔记" },
-      "find_memory_related_notes": { "label": "查找记忆相关笔记", "description": "基于当前笔记记忆术语查找相关条目" },
+      "find_memory_related_notes": { "label": "查找记忆账本关联", "description": "基于当前笔记的记忆账本术语查找相关条目" },
       "find_connection_opportunities": { "label": "发现关联机会", "description": "为当前笔记推荐潜在的关联点" },
       "read_current_note": { "label": "读取当前笔记", "description": "把当前笔记内容输出到结果面板" },
       "read_current_note_properties": { "label": "查看当前笔记属性", "description": "展示 frontmatter 和 inline 字段" },
@@ -455,11 +543,11 @@
       "list_dead_end_notes": { "label": "列出死路笔记", "description": "找出没有任何出链的笔记" },
       "list_link_hubs": { "label": "列出链接枢纽", "description": "找出连接最多的笔记" },
       "list_knowledge_bridges": { "label": "列出知识桥梁", "description": "找出连接不同领域的关键笔记" },
-      "get_memory_overview": { "label": "记忆概览", "description": "查看记忆库的总体统计" },
-      "list_memory_folders": { "label": "列出记忆文件夹", "description": "按文件夹浏览记忆" },
-      "list_memory_terms": { "label": "列出记忆术语", "description": "浏览记忆中的所有术语" },
-      "list_notes_missing_memory": { "label": "列出缺失记忆的笔记", "description": "找出尚未生成记忆的笔记" },
-      "read_current_note_memory": { "label": "读取当前笔记的记忆", "description": "查看当前笔记关联的记忆条目" },
+      "get_memory_overview": { "label": "记忆账本概览", "description": "查看记忆账本的总体统计" },
+      "list_memory_folders": { "label": "列出记忆账本文件夹", "description": "按文件夹浏览记忆账本覆盖情况" },
+      "list_memory_terms": { "label": "列出记忆账本术语", "description": "浏览记忆账本中的所有术语" },
+      "list_notes_missing_memory": { "label": "列出缺失记忆账本的笔记", "description": "找出尚未生成记忆账本的笔记" },
+      "read_current_note_memory": { "label": "读取当前笔记的记忆账本", "description": "查看当前笔记关联的记忆账本条目" },
       "list_tasks": { "label": "列出全部任务", "description": "查看知识库内所有任务" },
       "list_current_note_tasks": { "label": "列出当前笔记的任务", "description": "查看当前笔记的待办" },
       "plan_knowledge_maintenance": { "label": "规划知识维护", "description": "生成知识库维护建议清单" }
@@ -485,9 +573,9 @@
       "inferringLinks": "正在推断全库语义链接...",
       "linksAdded": "已新增 {{count}} 条语义链接",
       "inferLinksFailed": "语义链接推断失败",
-      "generatingMemories": "正在生成 AI 记忆索引...",
-      "memoriesDone": "完成: 新增 {{generated}}，跳过 {{skipped}}，失败 {{failed}}",
-      "memoriesFailed": "AI 记忆索引生成失败",
+      "generatingMemories": "正在生成记忆账本...",
+      "memoriesDone": "记忆账本生成完成: 新增 {{generated}}，跳过 {{skipped}}，失败 {{failed}}",
+      "memoriesFailed": "记忆账本生成失败",
       "pluginsInstalled": "已安装 {{count}} 个插件",
       "pluginsAlreadyInstalled": "精选插件已全部安装",
       "exportingPdf": "正在导出 PDF...",
@@ -721,6 +809,7 @@
     "pluginPanelEmpty": "未选择插件面板",
     "pluginPanelNoContent": "该插件面板没有声明内容。",
     "editorPlaceholder": "开始写作...",
+    "stop": "停止",
     "syncDone": "同步完成: ↑{{pushed}} ↓{{pulled}}",
     "syncError": "同步出错: {{error}}",
     "syncFailed": "同步失败: {{error}}"
@@ -734,7 +823,7 @@
       "plugins": "插件",
       "keys": "快捷键",
       "proactive": "主动建议",
-      "long-context": "Memory Ledger"
+      "long-context": "记忆账本"
     },
     "theme": {
       "title": "主题",

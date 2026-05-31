@@ -29,7 +29,8 @@ import { buildLongContextPack, type LongContextPackItem } from '../services/long
 import { runProactiveCycle } from '../services/proactive/proactive-orchestrator'
 import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
-import type { ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextRelationRefreshResult, LongContextRelationType, LongContextSuggestion, LongContextUserPrefs, LongTermTheme, SearchIndexStatus } from '@shared/types/ipc'
+import type { AppLanguage, ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextRelationRefreshResult, LongContextRelationType, LongContextSuggestion, LongContextUserPrefs, LongTermTheme, SearchIndexStatus } from '@shared/types/ipc'
+import { resolveAppLanguage } from '../services/app-language'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
 type KanbanTaskInput = KanbanAiPlan['tasks'][number]
@@ -720,6 +721,7 @@ export function registerDbIPC(): void {
     content?: string
     limit?: number
     refresh?: boolean
+    language?: AppLanguage
   }) => {
     ensureNonEmptyString(params?.vaultPath, 'long-context:get-suggestions.vaultPath')
     const entityType = ensureLongContextEntityType(params?.entityType, 'long-context:get-suggestions.entityType')
@@ -733,7 +735,8 @@ export function registerDbIPC(): void {
         entityType,
         entityId: params.entityId,
         content,
-        limit
+        limit,
+        language: resolveAppLanguage(params.language)
       })).suggestions
     } else {
       suggestions = getContextSuggestions({
@@ -758,6 +761,7 @@ export function registerDbIPC(): void {
     entityId: string
     content?: string
     limit?: number
+    language?: AppLanguage
   }) => {
     ensureNonEmptyString(params?.vaultPath, 'long-context:discover-relations.vaultPath')
     const entityType = ensureLongContextEntityType(params?.entityType, 'long-context:discover-relations.entityType')
@@ -768,7 +772,8 @@ export function registerDbIPC(): void {
       entityType,
       entityId: params.entityId,
       content,
-      limit: params.limit
+      limit: params.limit,
+      language: resolveAppLanguage(params.language)
     })
     recordSuggestionShownEvents({
       vaultPath: params.vaultPath,
@@ -815,9 +820,10 @@ export function registerDbIPC(): void {
 
   ipcMain.handle('long-context:run-theme-extraction', async (_event, params: {
     vaultPath: string
+    language?: AppLanguage
   }) => {
     ensureNonEmptyString(params?.vaultPath, 'long-context:run-theme-extraction.vaultPath')
-    return extractLongTermThemes({ vaultPath: params.vaultPath })
+    return extractLongTermThemes({ vaultPath: params.vaultPath, language: resolveAppLanguage(params.language) })
   })
 
   ipcMain.handle('long-context:refresh-relations', async (_event, params: {
@@ -933,6 +939,7 @@ export function registerDbIPC(): void {
     vaultPath: string
     currentFilePath?: string | null
     tokenBudget?: number
+    language?: AppLanguage
   }) => {
     ensureNonEmptyString(params?.vaultPath, 'long-context:inspect-pack.vaultPath')
     const currentFilePath = ensureOptionalBoundedString(params?.currentFilePath ?? undefined, 'long-context:inspect-pack.currentFilePath', MAX_PATH_LENGTH)
@@ -942,7 +949,8 @@ export function registerDbIPC(): void {
     const pack = buildLongContextPack({
       vaultPath: params.vaultPath,
       currentFilePath: currentFilePath ?? null,
-      tokenBudget
+      tokenBudget,
+      language: resolveAppLanguage(params.language)
     })
     return {
       pack: {
