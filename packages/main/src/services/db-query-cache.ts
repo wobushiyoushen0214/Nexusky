@@ -3,6 +3,12 @@ interface CacheEntry<T> {
   expiresAt: number
 }
 
+export interface CachedVaultQueryResult<T> {
+  value: T
+  cacheHit: boolean
+  durationMs: number
+}
+
 const DEFAULT_TTL_MS = 3000
 const MAX_CACHE_ENTRIES = 200
 const cache = new Map<string, CacheEntry<unknown>>()
@@ -20,18 +26,28 @@ function trimCache(): void {
 }
 
 export function getCachedVaultQuery<T>(vaultPath: string, key: string, loader: () => T, ttlMs = DEFAULT_TTL_MS): T {
+  return getCachedVaultQueryWithStats(vaultPath, key, loader, ttlMs).value
+}
+
+export function getCachedVaultQueryWithStats<T>(
+  vaultPath: string,
+  key: string,
+  loader: () => T,
+  ttlMs = DEFAULT_TTL_MS
+): CachedVaultQueryResult<T> {
+  const startedAt = Date.now()
   const cacheKey = makeKey(vaultPath, key)
   const now = Date.now()
   const hit = cache.get(cacheKey) as CacheEntry<T> | undefined
   if (hit && hit.expiresAt > now) {
     cache.delete(cacheKey)
     cache.set(cacheKey, hit)
-    return hit.value
+    return { value: hit.value, cacheHit: true, durationMs: Date.now() - startedAt }
   }
   const value = loader()
   cache.set(cacheKey, { value, expiresAt: now + ttlMs })
   trimCache()
-  return value
+  return { value, cacheHit: false, durationMs: Date.now() - startedAt }
 }
 
 export function invalidateVaultQueryCache(vaultPath?: string): number {

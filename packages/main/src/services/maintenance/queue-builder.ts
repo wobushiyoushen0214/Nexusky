@@ -20,10 +20,13 @@ import {
 } from '../indexer'
 import { readMemory } from '../memory'
 import { getAppLanguage } from '../app-language'
-import { getCachedVaultQuery } from '../db-query-cache'
+import { getCachedVaultQueryWithStats } from '../db-query-cache'
+import { logger } from '../logger'
 import type { AppLanguage, MaintenanceScanGroup, MaintenanceScanStatus } from '@shared/types/ipc'
 
 const MAINTENANCE_QUEUE_CACHE_TTL_MS = 60_000
+const MAINTENANCE_QUEUE_SLOW_SCAN_MS = 1500
+const MAINTENANCE_QUEUE_TIMEOUT_MS = 5000
 
 const KNOWLEDGE_MAINTENANCE_TYPES = new Set<KnowledgeMaintenanceType>([
   'fix_unresolved_link',
@@ -183,6 +186,58 @@ function getVaultCacheId(vaultPath: string): string {
   return hashText(resolve(vaultPath).replace(/\\/g, '/').toLowerCase())
 }
 
+const maintenanceQueuePerfStats = {
+  requests: 0,
+  cacheHits: 0
+}
+
+function getMaintenanceScanTimeoutType(durationMs: number): 'none' | 'slow' | 'timeout' {
+  if (durationMs >= MAINTENANCE_QUEUE_TIMEOUT_MS) return 'timeout'
+  if (durationMs >= MAINTENANCE_QUEUE_SLOW_SCAN_MS) return 'slow'
+  return 'none'
+}
+
+function recordMaintenanceQueuePerformance(input: {
+  vaultPath: string
+  cacheHit: boolean
+  cacheDurationMs: number
+  requestDurationMs: number
+  scanDurationMs?: number
+  notesCount: number
+  itemCount: number
+  type?: KnowledgeMaintenanceType
+  scanGroups: MaintenanceScanGroup[]
+  language: AppLanguage
+  query: string
+  limit: number
+}): void {
+  maintenanceQueuePerfStats.requests += 1
+  if (input.cacheHit) maintenanceQueuePerfStats.cacheHits += 1
+  const cacheHitRatio = maintenanceQueuePerfStats.requests === 0
+    ? 0
+    : Number((maintenanceQueuePerfStats.cacheHits / maintenanceQueuePerfStats.requests).toFixed(3))
+
+  logger.info('Maintenance queue scan performance', {
+    vaultId: getVaultCacheId(input.vaultPath),
+    cacheHit: input.cacheHit,
+    cacheHitRatio,
+    cacheHits: maintenanceQueuePerfStats.cacheHits,
+    cacheMisses: maintenanceQueuePerfStats.requests - maintenanceQueuePerfStats.cacheHits,
+    requestDurationMs: Math.round(input.requestDurationMs),
+    cacheDurationMs: Math.round(input.cacheDurationMs),
+    scanDurationMs: typeof input.scanDurationMs === 'number' ? Math.round(input.scanDurationMs) : null,
+    timeoutType: getMaintenanceScanTimeoutType(input.requestDurationMs),
+    notesCount: input.notesCount,
+    itemCount: input.itemCount,
+    scanType: input.type ?? 'all',
+    scanGroups: input.scanGroups,
+    language: input.language,
+    queryHash: hashText(input.query),
+    queryLength: input.query.length,
+    limit: input.limit
+  })
+}
+
 function getNotesFileSignature(notes: Pick<NoteIndex, 'filePath' | 'updatedAt' | 'contentHash'>[]): string {
   const files = notes
     .map((note) => [note.filePath, note.updatedAt, note.contentHash || ''] as const)
@@ -260,6 +315,7 @@ function localDateIso(date = new Date()): string {
 }
 
 export function gatherMaintenanceItems(params: MaintenanceQueueParams): MaintenanceQueueResult {
+  const requestStartedAt = Date.now()
   const normalized = normalizeMaintenanceQueueParams(params)
   const notes = getAllNotes(normalized.vaultPath)
   const cacheKey = buildMaintenanceQueueCacheKey({
@@ -268,12 +324,45 @@ export function gatherMaintenanceItems(params: MaintenanceQueueParams): Maintena
     memorySignature: getMaintenanceMemorySignature(normalized.vaultPath)
   })
 
-  return getCachedVaultQuery(
-    normalized.vaultPath,
-    cacheKey,
-    () => gatherMaintenanceItemsUncached(normalized, notes),
-    MAINTENANCE_QUEUE_CACHE_TTL_MS
-  )
+  try {
+    const cached = getCachedVaultQueryWithStats(
+      normalized.vaultPath,
+      cacheKey,
+      () => gatherMaintenanceItemsUncached(normalized, notes),
+      MAINTENANCE_QUEUE_CACHE_TTL_MS
+    )
+    recordMaintenanceQueuePerformance({
+      vaultPath: normalized.vaultPath,
+      cacheHit: cached.cacheHit,
+      cacheDurationMs: cached.durationMs,
+      requestDurationMs: Date.now() - requestStartedAt,
+      scanDurationMs: cached.value.scan.durationMs,
+      notesCount: notes.length,
+      itemCount: cached.value.total,
+      type: normalized.type,
+      scanGroups: normalized.scanGroups,
+      language: normalized.language,
+      query: normalized.query,
+      limit: normalized.limit
+    })
+    return cached.value
+  } catch (error) {
+    const requestDurationMs = Date.now() - requestStartedAt
+    logger.warn('Maintenance queue scan failed', {
+      vaultId: getVaultCacheId(normalized.vaultPath),
+      requestDurationMs: Math.round(requestDurationMs),
+      timeoutType: getMaintenanceScanTimeoutType(requestDurationMs),
+      notesCount: notes.length,
+      scanType: normalized.type ?? 'all',
+      scanGroups: normalized.scanGroups,
+      language: normalized.language,
+      queryHash: hashText(normalized.query),
+      queryLength: normalized.query.length,
+      limit: normalized.limit,
+      error: error instanceof Error ? error.message : String(error)
+    })
+    throw error
+  }
 }
 
 function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams, notes: NoteIndex[]): MaintenanceQueueResult {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCachedVaultQuery, getDbQueryCacheStats, invalidateVaultQueryCache, invalidateVaultQueryCacheForIndexedFile } from '../packages/main/src/services/db-query-cache'
+import { getCachedVaultQuery, getCachedVaultQueryWithStats, getDbQueryCacheStats, invalidateVaultQueryCache, invalidateVaultQueryCacheForIndexedFile } from '../packages/main/src/services/db-query-cache'
 
 describe('database query cache', () => {
   it('returns cached values within the ttl', () => {
@@ -17,6 +17,28 @@ describe('database query cache', () => {
 
     expect(first).toBe(second)
     expect(first.count).toBe(1)
+    expect(calls).toBe(1)
+  })
+
+  it('reports cache hit metadata for instrumented callers', () => {
+    invalidateVaultQueryCache()
+    let calls = 0
+
+    const first = getCachedVaultQueryWithStats('/vault/a', 'instrumented', () => {
+      calls += 1
+      return { count: calls }
+    }, 1000)
+    const second = getCachedVaultQueryWithStats('/vault/a', 'instrumented', () => {
+      calls += 1
+      return { count: calls }
+    }, 1000)
+
+    expect(first.cacheHit).toBe(false)
+    expect(second.cacheHit).toBe(true)
+    expect(first.value.count).toBe(1)
+    expect(second.value).toBe(first.value)
+    expect(first.durationMs).toBeGreaterThanOrEqual(0)
+    expect(second.durationMs).toBeGreaterThanOrEqual(0)
     expect(calls).toBe(1)
   })
 
