@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Settings, NoAiModePanel, CloudSyncHealthPanel, CloudSyncConflictList, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
+import { getTrashReasonLabel } from '../packages/renderer/src/components/TrashPanel'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
 import i18n from '../packages/renderer/src/i18n'
@@ -116,6 +117,7 @@ describe('accessibility component semantics', () => {
     expect(html).toContain('timeout')
     expect(html).toContain('↑4 ↓2')
     expect(html).toContain('3 queued')
+    expect(html).toContain('Sync overwrites save the previous Markdown version to History')
   })
 
   it('explains cloud sync conflicts before presenting resolution actions', async () => {
@@ -143,6 +145,11 @@ describe('accessibility component semantics', () => {
     expect(html).toContain('title="aaaabbbbccccddddeeeeffff00001111"')
     expect(html).toContain('Keep local')
     expect(html).toContain('Pull remote')
+  })
+
+  it('labels files that were moved to trash by sync deletion recovery', () => {
+    expect(getTrashReasonLabel('sync_remote_delete')).toBe('同步删除')
+    expect(getTrashReasonLabel(undefined)).toBeNull()
   })
 })
 

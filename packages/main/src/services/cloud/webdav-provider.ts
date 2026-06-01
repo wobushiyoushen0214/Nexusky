@@ -8,6 +8,7 @@ import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
+import { saveVersionSnapshot } from '../version-recovery'
 
 export interface WebDavConfig {
   url: string
@@ -163,6 +164,9 @@ export class WebDavSyncProvider implements SyncProvider {
     if (!res.ok) return false
     const content = Buffer.from(await res.arrayBuffer())
     const fullPath = join(vaultPath, relPath)
+    if (existsSync(fullPath)) {
+      saveVersionSnapshot(vaultPath, fullPath)
+    }
     mkdirSync(dirname(fullPath), { recursive: true })
     writeFileSync(fullPath, content)
     return true

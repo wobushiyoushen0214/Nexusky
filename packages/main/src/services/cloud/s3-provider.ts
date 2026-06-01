@@ -7,6 +7,7 @@ import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
+import { saveVersionSnapshot } from '../version-recovery'
 
 export interface S3Config {
   endpoint: string
@@ -170,6 +171,9 @@ export class S3SyncProvider implements SyncProvider {
     const res = await s3Fetch(config, 'GET', buildS3ObjectUrl(config, relPath))
     if (!res.ok) return false
     const fullPath = join(vaultPath, relPath)
+    if (existsSync(fullPath)) {
+      saveVersionSnapshot(vaultPath, fullPath)
+    }
     mkdirSync(dirname(fullPath), { recursive: true })
     writeFileSync(fullPath, Buffer.from(await res.arrayBuffer()))
     return true

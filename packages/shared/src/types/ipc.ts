@@ -12,6 +12,7 @@ export interface TrashEntry {
   originalPath?: string
   path: string
   deletedAt?: number
+  reason?: string
 }
 
 export interface NoteSearchResult {

@@ -1,8 +1,9 @@
 import { createHash } from 'crypto'
-import { existsSync, readFileSync, statSync, unlinkSync } from 'fs'
+import { existsSync, readFileSync, statSync } from 'fs'
 import { join, relative } from 'path'
 import { logger } from '../logger'
 import type { LocalFileInfo, SyncPlan } from './sync-reconcile'
+import { moveFileToVaultTrash } from '../version-recovery'
 
 /** The subset of a provider needed to apply a sync plan. */
 export interface SyncPlanExecutor {
@@ -88,9 +89,13 @@ export async function executeSyncPlan(
     try {
       const full = join(vaultPath, relPath)
       if (existsSync(full)) {
-        unlinkSync(full)
-        outcome.deletedLocal++
-        logger.info('Sync removed local file (deleted on another device)', { relPath })
+        const trashPath = moveFileToVaultTrash(vaultPath, full, 'sync_remote_delete')
+        if (trashPath) {
+          outcome.deletedLocal++
+          logger.info('Sync moved local file to trash (deleted on another device)', { relPath })
+        } else {
+          outcome.errors.push(`delete local failed: ${relPath}`)
+        }
       }
     } catch {
       outcome.errors.push(`delete local failed: ${relPath}`)

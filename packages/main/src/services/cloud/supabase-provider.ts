@@ -8,6 +8,7 @@ import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
+import { saveVersionSnapshot } from '../version-recovery'
 
 interface NoteSyncRow {
   file_path: string
@@ -105,6 +106,9 @@ export class SupabaseSyncProvider implements SyncProvider {
 
     const content = Buffer.from(await data.arrayBuffer())
     const fullPath = join(vaultPath, relPath)
+    if (existsSync(fullPath)) {
+      saveVersionSnapshot(vaultPath, fullPath)
+    }
     mkdirSync(dirname(fullPath), { recursive: true })
     writeFileSync(fullPath, content)
     return true

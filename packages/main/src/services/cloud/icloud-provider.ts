@@ -8,6 +8,7 @@ import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 import { collectSyncLocalFiles } from './sync-files'
+import { saveVersionSnapshot } from '../version-recovery'
 
 const ICLOUD_CONTAINER = 'iCloud~com~nexusky~notes'
 
@@ -75,6 +76,9 @@ export class ICloudSyncProvider implements SyncProvider {
     if (!existsSync(srcPath)) return false
 
     const destPath = join(vaultPath, relPath)
+    if (existsSync(destPath)) {
+      saveVersionSnapshot(vaultPath, destPath)
+    }
     mkdirSync(dirname(destPath), { recursive: true })
     copyFileSync(srcPath, destPath)
     return true

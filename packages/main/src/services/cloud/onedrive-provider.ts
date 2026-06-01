@@ -10,6 +10,7 @@ import { readManifest, writeManifest } from './sync-manifest'
 import { planSync, manifestFromLocal } from './sync-reconcile'
 import { executeSyncPlan, toLocalFileInfos } from './sync-execute'
 import { collectSyncLocalFiles, getSyncContentType, shouldSyncRelPath } from './sync-files'
+import { saveVersionSnapshot } from '../version-recovery'
 
 export interface OneDriveConfig {
   clientId: string
@@ -229,6 +230,9 @@ export class OneDriveSyncProvider implements SyncProvider {
       const content = await graphRequest<Buffer>(`/me/drive/root:${encodedPath}:/content`, { raw: true })
 
       const fullPath = join(vaultPath, relPath)
+      if (existsSync(fullPath)) {
+        saveVersionSnapshot(vaultPath, fullPath)
+      }
       mkdirSync(dirname(fullPath), { recursive: true })
       writeFileSync(fullPath, content)
       return true

@@ -9,6 +9,11 @@ interface TrashPanelProps {
   onClose: () => void
 }
 
+export function getTrashReasonLabel(reason?: string): string | null {
+  if (reason === 'sync_remote_delete') return '同步删除'
+  return null
+}
+
 export function TrashPanel({ open, onClose }: TrashPanelProps) {
   const [items, setItems] = useState<TrashEntry[]>([])
   const [emptyConfirmOpen, setEmptyConfirmOpen] = useState(false)
@@ -65,9 +70,14 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
               <p style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>回收站为空</p>
             ) : (
               items.map((item) => (
-                <div key={item.path} style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
-                  <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalName}</span>
+                <div key={item.path} style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalName}</span>
+                      {getTrashReasonLabel(item.reason) && (
+                        <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--text-tertiary)' }}>{getTrashReasonLabel(item.reason)}</span>
+                      )}
+                    </span>
                     {item.originalPath && (
                       <span style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalPath}</span>
                     )}

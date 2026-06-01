@@ -1017,6 +1017,7 @@
       "pendingValue": "↑{{pushed}} ↓{{pulled}}",
       "queueValue": "{{count}} queued",
       "conflictPending": "{{count}} conflicts pending",
+      "recoveryHint": "Sync overwrites save the previous Markdown version to History. Files removed by sync are moved to Trash before deletion.",
       "syncComplete": "Sync complete: ↑{{pushed}} ↓{{pulled}}",
       "pullComplete": "Pull complete: ↓{{pulled}}",
       "syncConflict": "Sync finished with ↑{{pushed}} ↓{{pulled}} and {{count}} conflicts to resolve.",

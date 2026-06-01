@@ -956,6 +956,9 @@ export function CloudSyncHealthPanel({
         <SyncHealthStat label={t('settings.cloudSync.lastError')} value={failureValue} detail={queueValue} />
         <SyncHealthStat label={t('settings.cloudSync.transfers')} value={transferValue} detail={queueValue} />
       </div>
+      <div style={{ marginTop: 10, padding: '7px 9px', borderRadius: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', fontSize: 10, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>
+        {t('settings.cloudSync.recoveryHint')}
+      </div>
     </section>
   )
 }

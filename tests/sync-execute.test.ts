@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -35,7 +35,7 @@ describe('executeSyncPlan', () => {
     expect(calls.del).toEqual(['c.md'])
   })
 
-  it('deletes local files referenced by deleteLocal', async () => {
+  it('moves local files referenced by deleteLocal to vault trash for recovery', async () => {
     const target = join(vaultPath, 'old.md')
     writeFileSync(target, 'bye')
     const provider = {
@@ -47,6 +47,11 @@ describe('executeSyncPlan', () => {
     const outcome = await executeSyncPlan(vaultPath, plan, provider)
     expect(existsSync(target)).toBe(false)
     expect(outcome.deletedLocal).toBe(1)
+    const trashDir = join(vaultPath, '.trash')
+    const trashed = readdirSync(trashDir).find((entry) => entry.endsWith('_old.md'))
+    expect(trashed).toBeTruthy()
+    expect(readFileSync(join(trashDir, trashed!), 'utf-8')).toBe('bye')
+    expect(readFileSync(join(trashDir, `${trashed}.json`), 'utf-8')).toContain('"reason":"sync_remote_delete"')
   })
 
   it('records an error when an operation fails', async () => {

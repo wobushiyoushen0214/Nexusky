@@ -13,37 +13,11 @@ import { isPathInsideVault, assertPathInsideVault } from './file-path'
 import { assertPathInsideCurrentVault, requireCurrentVaultPath } from './vault-guard'
 import { ensureNonEmptyString, ensureSafeFileName } from './validators'
 import { notifyVaultFilesChanged } from './events'
+import { saveVersionSnapshot } from '../services/version-recovery'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
 async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> {
-  try {
-    await access(filePath)
-    const content = await readFile(filePath, 'utf-8')
-    const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-    const historyDir = join(vaultPath, '.history', dirname(relPath))
-    await mkdir(historyDir, { recursive: true })
-    const name = basename(filePath, '.md')
-
-    const entries = await readdir(historyDir)
-    const snapshots = entries.filter((e) => e.startsWith(name + '_') && e.endsWith('.md')).sort()
-
-    if (snapshots.length > 0) {
-      const latestPath = join(historyDir, snapshots[snapshots.length - 1])
-      const latestContent = await readFile(latestPath, 'utf-8')
-      if (latestContent === content) return
-    }
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const snapshotPath = join(historyDir, `${name}_${timestamp}.md`)
-    await writeFile(snapshotPath, content, 'utf-8')
-
-    if (snapshots.length >= 50) {
-      const toDelete = snapshots.slice(0, snapshots.length - 49)
-      for (const f of toDelete) {
-        await rm(join(historyDir, f), { force: true })
-      }
-    }
-  } catch {}
+  saveVersionSnapshot(vaultPath, filePath)
 }
 
 async function pathExists(filePath: string): Promise<boolean> {
@@ -262,20 +236,21 @@ export function registerFileIPC(): void {
       const entries = await readdir(trashDir)
       const trashEntries: TrashEntry[] = []
       for (const e of entries
-        .filter((e) => e.endsWith('.md'))
+        .filter((e) => !e.endsWith('.json'))
         .sort()
         .reverse()) {
         const trashPath = join(trashDir, e)
-        let metadata: { originalPath?: string; deletedAt?: number } = {}
+        let metadata: { originalPath?: string; deletedAt?: number; reason?: string } = {}
         try {
-          metadata = JSON.parse(await readFile(`${trashPath}.json`, 'utf-8')) as { originalPath?: string; deletedAt?: number }
+          metadata = JSON.parse(await readFile(`${trashPath}.json`, 'utf-8')) as { originalPath?: string; deletedAt?: number; reason?: string }
         } catch {}
         trashEntries.push({
           fileName: e,
           originalName: metadata.originalPath?.split('/').pop() || parseTrashOriginalName(e),
           originalPath: metadata.originalPath,
           path: trashPath,
-          deletedAt: metadata.deletedAt
+          deletedAt: metadata.deletedAt,
+          reason: metadata.reason
         })
       }
       return trashEntries
