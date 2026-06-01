@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPublishWikilinkLookup, expandPublishTransclusions, filterPublishCandidatesByScope, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
+import { buildPublishWikilinkLookup, collectPublishPreviewIssues, expandPublishTransclusions, filterPublishCandidatesByScope, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
 
 describe('publish wikilink lookup', () => {
   it('resolves published wikilinks by title, filename, nested path, heading, and case variant', () => {
@@ -137,5 +137,44 @@ describe('publish wikilink lookup', () => {
     ])
 
     expect(resolvePublishAssetReferences('![[duplicate.png]]', 'Writing/Public.md', assets)).toEqual(['Writing/duplicate.png'])
+    expect(resolvePublishAssetTargetPath('assets/local.png', 'Writing/Public.md', assets)).toBe('Writing/assets/local.png')
+  })
+
+  it('resolves local markdown links and alias-style markdown links for published notes', () => {
+    const lookup = buildPublishWikilinkLookup([
+      { title: 'Target Note', relPath: 'Writing/Target Note.md', href: 'Writing/Target Note.html', aliases: ['Alias Target'] },
+      { title: 'Index', relPath: 'Index.md', href: 'Index.html' }
+    ])
+    const published = ['Writing/Public.md', 'Writing/Target Note.md', 'Index.md']
+
+    expect(resolvePublishMarkdownLinkHref('Target Note.md#Details', 'Writing/Public.md', lookup, published)).toEqual({ href: 'Writing/Target Note.html#Details', missing: false })
+    expect(resolvePublishMarkdownLinkHref('/Index.md', 'Writing/Public.md', lookup, published)).toEqual({ href: 'Index.html', missing: false })
+    expect(resolvePublishMarkdownLinkHref('Alias Target', 'Writing/Public.md', lookup, published)).toEqual({ href: 'Writing/Target Note.html', missing: false })
+    expect(resolvePublishMarkdownLinkHref('Missing Note', 'Writing/Public.md', lookup, published)).toEqual({ href: '#', missing: true })
+    expect(resolvePublishMarkdownLinkHref('assets/local.png', 'Writing/Public.md', lookup, published)).toEqual({ href: 'assets/local.png', missing: false })
+  })
+
+  it('collects publish preview link and missing asset issues per note', () => {
+    const lookup = buildPublishWikilinkLookup([
+      { title: 'Target', relPath: 'Target.md', href: 'Target.html' },
+      { title: 'Local', relPath: 'Folder/Local.md', href: 'Folder/Local.html' }
+    ])
+    const preview = collectPublishPreviewIssues({
+      title: 'Source',
+      relPath: 'Folder/Source.md',
+      body: [
+        '# Source',
+        'See [[Target]], [local](Local.md), [missing](Missing Note), and [[Gone]].',
+        '![Logo](assets/logo.png)',
+        '![Missing](assets/missing.png)'
+      ].join('\n')
+    }, lookup, ['Target.md', 'Folder/Local.md', 'Folder/Source.md'], ['Folder/assets/logo.png'])
+
+    expect(preview.linkCount).toBe(4)
+    expect(preview.missingLinks.map((item) => `${item.kind}:${item.target}:${item.line}`)).toEqual([
+      'markdown:Missing Note:2',
+      'wikilink:Gone:2'
+    ])
+    expect(preview.missingAssets.map((item) => `${item.target}:${item.line}`)).toEqual(['assets/missing.png:4'])
   })
 })

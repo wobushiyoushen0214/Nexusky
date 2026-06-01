@@ -1,6 +1,6 @@
 import { basename, posix } from 'path'
 import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
-import type { PublishScope } from '@shared/types/ipc'
+import type { PublishPreviewAssetIssue, PublishPreviewLinkIssue, PublishScope } from '@shared/types/ipc'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading } from './ai/note-lookup'
 
 export interface PublishWikilinkNote {
@@ -25,6 +25,11 @@ export interface PublishCandidate {
   aliases?: string[]
   body?: string
   properties?: Record<string, unknown>
+}
+
+export interface PublishLocalLinkResolution {
+  href: string
+  missing: boolean
 }
 
 const SKIPPED_PUBLISH_ENTRIES = new Set(['.obsidian', '.nexusky', '.trash', '.git', '.DS_Store'])
@@ -75,6 +80,51 @@ export function resolvePublishWikilinkHref(lookup: PublishWikilinkLookup, target
   const normalized = normalizePublishWikilinkTarget(target)
   if (!normalized) return '#'
   return lookup.exact.get(normalized) || lookup.caseInsensitive.get(normalized.toLowerCase()) || '#'
+}
+
+export function resolvePublishLocalMarkdownHref(
+  rawTarget: string,
+  noteRelPath: string,
+  publishedNoteRelPaths: string[]
+): PublishLocalLinkResolution {
+  const target = normalizeMarkdownLinkTarget(rawTarget)
+  if (!target || isExternalPublishLink(target)) return { href: rawTarget, missing: false }
+
+  const [pathPart, fragmentPart] = splitMarkdownLinkFragment(target)
+  if (!pathPart) return { href: target, missing: false }
+  if (!isPublishNoteLinkTarget(pathPart)) return { href: target, missing: false }
+  const published = new Set(publishedNoteRelPaths.map(normalizePublishScopePath).filter(Boolean))
+  const noteDir = posix.dirname(normalizePublishScopePath(noteRelPath))
+  const normalizedTarget = normalizePublishScopePath(pathPart)
+  const candidates = buildPublishNotePathCandidates(normalizedTarget, noteDir, pathPart.startsWith('/'))
+
+  for (const candidate of candidates) {
+    if (!published.has(candidate)) continue
+    const href = candidate.replace(/\.md$/i, '.html') + (fragmentPart ? `#${fragmentPart}` : '')
+    return { href, missing: false }
+  }
+
+  return { href: '#', missing: true }
+}
+
+export function resolvePublishMarkdownLinkHref(
+  rawTarget: string,
+  noteRelPath: string,
+  lookup: PublishWikilinkLookup,
+  publishedNoteRelPaths: string[]
+): PublishLocalLinkResolution {
+  const target = normalizeMarkdownLinkTarget(rawTarget)
+  if (!target || isExternalPublishLink(target)) return { href: rawTarget, missing: false }
+
+  const [pathPart] = splitMarkdownLinkFragment(target)
+  if (!isPublishNoteLinkTarget(pathPart)) return { href: target, missing: false }
+  const local = resolvePublishLocalMarkdownHref(rawTarget, noteRelPath, publishedNoteRelPaths)
+  if (!local.missing) return local
+
+  const wikiHref = resolvePublishWikilinkHref(lookup, pathPart)
+  if (wikiHref !== '#') return { href: wikiHref, missing: false }
+
+  return { href: '#', missing: true }
 }
 
 export function normalizePublishAliases(frontmatter: Record<string, unknown>): string[] {
@@ -187,6 +237,88 @@ export function resolvePublishAssetReferences(markdown: string, noteRelPath: str
   return Array.from(references).sort()
 }
 
+export function resolvePublishAssetTargetPath(rawTarget: string, noteRelPath: string, availableAssetRelPaths: string[]): string | null {
+  const available = new Set(availableAssetRelPaths.map(normalizePublishScopePath).filter(Boolean))
+  const byBasename = new Map<string, Set<string>>()
+  for (const relPath of available) {
+    const key = basename(relPath).toLowerCase()
+    byBasename.set(key, new Set([...(byBasename.get(key) || []), relPath]))
+  }
+  return resolvePublishAssetTarget(rawTarget, noteRelPath, available, byBasename)
+}
+
+export function collectPublishPreviewIssues(
+  note: Pick<PublishCandidate, 'relPath' | 'title' | 'body'>,
+  lookup: PublishWikilinkLookup,
+  publishedNoteRelPaths: string[],
+  availableAssetRelPaths: string[]
+): { linkCount: number; missingLinks: PublishPreviewLinkIssue[]; missingAssets: PublishPreviewAssetIssue[] } {
+  const missingLinks: PublishPreviewLinkIssue[] = []
+  const missingAssets: PublishPreviewAssetIssue[] = []
+  let linkCount = 0
+  const lines = (note.body || '').split('\n')
+  const availableAssets = createPublishAssetLookup(availableAssetRelPaths)
+
+  for (const [index, line] of lines.entries()) {
+    const lineNumber = index + 1
+
+    for (const match of line.matchAll(/(?<!!)\[([^\]]+)\]\(([^)\r\n]+)\)/g)) {
+      const rawTarget = String(match[2])
+      const target = normalizeMarkdownLinkTarget(rawTarget)
+      if (!target || isExternalPublishLink(target)) continue
+      const [pathPart] = splitMarkdownLinkFragment(target)
+      if (!isPublishNoteLinkTarget(pathPart)) continue
+      linkCount += 1
+      const resolved = resolvePublishMarkdownLinkHref(rawTarget, note.relPath, lookup, publishedNoteRelPaths)
+      if (resolved.missing) {
+        missingLinks.push({
+          sourceTitle: note.title,
+          sourcePath: note.relPath,
+          target,
+          label: String(match[1]).trim() || undefined,
+          line: lineNumber,
+          context: line.trim().slice(0, 220),
+          kind: 'markdown'
+        })
+      }
+    }
+
+    for (const match of line.matchAll(/(?<!!)\[\[([^\]]+)\]\]/g)) {
+      const rawTarget = String(match[1])
+      const [target, label] = rawTarget.split('|')
+      const normalizedTarget = normalizePublishWikilinkTarget(target)
+      if (!normalizedTarget) continue
+      linkCount += 1
+      if (resolvePublishWikilinkHref(lookup, target) === '#') {
+        missingLinks.push({
+          sourceTitle: note.title,
+          sourcePath: note.relPath,
+          target: normalizedTarget,
+          label: label?.trim() || undefined,
+          line: lineNumber,
+          context: line.trim().slice(0, 220),
+          kind: 'wikilink'
+        })
+      }
+    }
+
+    for (const target of collectPublishAssetTargetsFromLine(line)) {
+      const resolved = resolvePublishAssetTarget(target, note.relPath, availableAssets.available, availableAssets.byBasename)
+      if (!resolved) {
+        missingAssets.push({
+          sourceTitle: note.title,
+          sourcePath: note.relPath,
+          target: normalizeMarkdownLinkTarget(target) || target.trim(),
+          line: lineNumber,
+          context: line.trim().slice(0, 220)
+        })
+      }
+    }
+  }
+
+  return { linkCount, missingLinks, missingAssets }
+}
+
 function normalizePublishWikilinkTarget(target: string): string {
   return stripObsidianLinkFragment(target)
     .trim()
@@ -202,6 +334,46 @@ function stripObsidianLinkFragment(target: string): string {
 
 function normalizePublishScopePath(path: string): string {
   return path.trim().replace(/\\/g, '/').replace(/^\.?\//, '').replace(/\/+$/g, '')
+}
+
+function normalizeMarkdownLinkTarget(rawTarget: string): string {
+  let target = rawTarget.trim().replace(/^<(.+)>$/, '$1').replace(/^['"]|['"]$/g, '')
+  target = target.replace(/\s+['"].*['"]$/, '')
+  try {
+    target = decodeURIComponent(target)
+  } catch {}
+  return target.trim()
+}
+
+function splitMarkdownLinkFragment(target: string): [string, string] {
+  const [pathPart, ...fragments] = target.split('#')
+  return [pathPart.split('?')[0].trim(), fragments.join('#').trim()]
+}
+
+function isExternalPublishLink(target: string): boolean {
+  return /^(?:https?:|data:|mailto:|#)/i.test(target)
+}
+
+function isPublishNoteLinkTarget(pathPart: string): boolean {
+  const extension = posix.extname(pathPart).toLowerCase()
+  return extension === '' || extension === '.md'
+}
+
+function buildPublishNotePathCandidates(normalizedTarget: string, noteDir: string, absolute: boolean): string[] {
+  const candidates = new Set<string>()
+  const addCandidate = (value: string) => {
+    const normalized = normalizePublishScopePath(value)
+    if (!normalized) return
+    candidates.add(normalized)
+    if (!/\.md$/i.test(normalized)) candidates.add(normalizePublishScopePath(`${normalized}.md`))
+  }
+
+  addCandidate(normalizedTarget)
+  if (!absolute) {
+    addCandidate(posix.join(noteDir === '.' ? '' : noteDir, normalizedTarget))
+  }
+
+  return Array.from(candidates)
 }
 
 function normalizePublishScopeTag(tag: string): string {
@@ -234,13 +406,9 @@ function resolvePublishAssetTarget(
   available: Set<string>,
   byBasename: Map<string, Set<string>>
 ): string | null {
-  let target = rawTarget.trim().replace(/^<(.+)>$/, '$1').replace(/^['"]|['"]$/g, '')
-  target = target.replace(/\s+['"].*['"]$/, '')
+  let target = normalizeMarkdownLinkTarget(rawTarget)
   if (!target || /^(?:https?:|data:|mailto:|#)/i.test(target)) return null
   target = target.split('#')[0].split('?')[0].trim()
-  try {
-    target = decodeURIComponent(target)
-  } catch {}
   if (!target || /\.md$/i.test(target)) return null
 
   const normalizedNotePath = normalizePublishScopePath(noteRelPath)
@@ -264,4 +432,25 @@ function resolvePublishAssetTarget(
   }
 
   return null
+}
+
+function createPublishAssetLookup(availableAssetRelPaths: string[]): { available: Set<string>; byBasename: Map<string, Set<string>> } {
+  const available = new Set(availableAssetRelPaths.map(normalizePublishScopePath).filter(Boolean))
+  const byBasename = new Map<string, Set<string>>()
+  for (const relPath of available) {
+    const key = basename(relPath).toLowerCase()
+    byBasename.set(key, new Set([...(byBasename.get(key) || []), relPath]))
+  }
+  return { available, byBasename }
+}
+
+function collectPublishAssetTargetsFromLine(line: string): string[] {
+  const targets: string[] = []
+  for (const match of line.matchAll(/!\[[^\]]*\]\(([^)\r\n]+)\)/g)) {
+    targets.push(String(match[1]))
+  }
+  for (const match of line.matchAll(/!\[\[([^\]]+)\]\]/g)) {
+    targets.push(String(match[1]).split('|')[0].split('#')[0])
+  }
+  return targets
 }

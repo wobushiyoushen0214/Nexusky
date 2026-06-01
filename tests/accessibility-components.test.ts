@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Settings, NoAiModePanel, CloudSyncHealthPanel, CloudSyncBoundaryNotice, CloudSyncConflictList, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
-import { PublishScopeDialog, buildPublishScope } from '../packages/renderer/src/components/PublishScopeDialog'
+import { PublishScopeDialog, buildPublishScope, summarizePublishPreview } from '../packages/renderer/src/components/PublishScopeDialog'
 import { getTrashReasonLabel } from '../packages/renderer/src/components/TrashPanel'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
@@ -171,7 +171,9 @@ describe('accessibility component semantics', () => {
     expect(html).toContain('role="dialog"')
     expect(html).toContain('aria-modal="true"')
     expect(html).toContain('id="publish-scope-dialog-title"')
-    expect(html).toContain('Publish scope')
+    expect(html).toContain('Publish preview')
+    expect(html).toContain('Preview')
+    expect(html).toContain('Preview is required before publishing')
     expect(html).toContain('Entire vault')
     expect(html).toContain('Folder')
     expect(html).toContain('Tag')
@@ -185,6 +187,34 @@ describe('accessibility component semantics', () => {
     expect(buildPublishScope('tag', '', '#publish', '', '')).toEqual({ type: 'tag', tag: 'publish' })
     expect(buildPublishScope('property', '', '', ' published ', ' true ')).toEqual({ type: 'property', key: 'published', value: 'true' })
     expect(buildPublishScope('property', '', '', 'published', '')).toEqual({ type: 'property', key: 'published' })
+  })
+
+  it('summarizes publish preview counts for confirmation copy', () => {
+    expect(summarizePublishPreview(null)).toEqual({ notes: 0, assets: 0, links: 0, issues: 0 })
+    expect(summarizePublishPreview({
+      scopeLabel: '全部 vault',
+      notes: [
+        { title: 'One', relPath: 'One.md', href: 'One.html', linkCount: 2, missingLinkCount: 1 },
+        { title: 'Two', relPath: 'Two.md', href: 'Two.html', linkCount: 1, missingLinkCount: 0 }
+      ],
+      assets: ['assets/logo.png'],
+      linkCount: 3,
+      missingLinks: [{
+        sourceTitle: 'One',
+        sourcePath: 'One.md',
+        target: 'Missing',
+        line: 2,
+        context: 'See [[Missing]]',
+        kind: 'wikilink'
+      }],
+      missingAssets: [{
+        sourceTitle: 'Two',
+        sourcePath: 'Two.md',
+        target: 'assets/missing.png',
+        line: 4,
+        context: '![Missing](assets/missing.png)'
+      }]
+    })).toEqual({ notes: 2, assets: 1, links: 3, issues: 2 })
   })
 })
 

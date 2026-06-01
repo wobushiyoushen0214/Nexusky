@@ -39,6 +39,41 @@ export type PublishScope =
   | { type: 'tag'; tag: string }
   | { type: 'property'; key: string; value?: string }
 
+export interface PublishPreviewNote {
+  title: string
+  relPath: string
+  href: string
+  linkCount: number
+  missingLinkCount: number
+}
+
+export interface PublishPreviewLinkIssue {
+  sourceTitle: string
+  sourcePath: string
+  target: string
+  label?: string
+  line: number
+  context: string
+  kind: 'wikilink' | 'markdown'
+}
+
+export interface PublishPreviewAssetIssue {
+  sourceTitle: string
+  sourcePath: string
+  target: string
+  line: number
+  context: string
+}
+
+export interface PublishPreviewResult {
+  scopeLabel: string
+  notes: PublishPreviewNote[]
+  assets: string[]
+  linkCount: number
+  missingLinks: PublishPreviewLinkIssue[]
+  missingAssets: PublishPreviewAssetIssue[]
+}
+
 export interface PluginCommand {
   id: string
   title: string
@@ -700,6 +735,7 @@ export interface IPCChannelMap {
   'export:html': { params: { content: string; title: string }; result: boolean }
   'export:pdf': { params: { content: string; title: string }; result: boolean }
   'export:share': { params: { content: string; title: string }; result: string }
+  'export:preview-publish-vault': { params: { vaultPath: string; scope?: PublishScope }; result: PublishPreviewResult }
   'export:publish-vault': { params: { vaultPath: string; scope?: PublishScope }; result: { ok: boolean; outputPath?: string; files: number } }
   'vault:select': { params: undefined; result: string | null }
   'vault:create': { params: { name: string }; result: string | null }

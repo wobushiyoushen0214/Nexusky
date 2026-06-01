@@ -1,14 +1,24 @@
 import { ipcMain, dialog, BrowserWindow, clipboard, shell } from 'electron'
 import { copyFile, mkdir, readdir, readFile, writeFile } from 'fs/promises'
-import { basename, dirname, extname, join, relative, posix } from 'path'
+import { basename, dirname, join, relative, posix } from 'path'
 import matter from 'gray-matter'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import { buildPublishWikilinkLookup, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishScopeLabel, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishWikilinkLookup } from '../services/publish'
+import { buildPublishWikilinkLookup, collectPublishPreviewIssues, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishScopeLabel, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishWikilinkLookup } from '../services/publish'
 import { getPropertyRows } from '../services/indexer'
-import type { PublishScope } from '@shared/types/ipc'
+import type { PublishPreviewResult, PublishScope } from '@shared/types/ipc'
+
+interface PublishBuildNote extends PublishCandidate {
+  href: string
+  body: string
+}
+
+interface PublishPreviewData extends PublishPreviewResult {
+  allFiles: string[]
+  publishNotes: PublishBuildNote[]
+}
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -145,6 +155,12 @@ ${markdownToHtml(params.content)}
     return html
   })
 
+  ipcMain.handle('export:preview-publish-vault', async (event, params: { vaultPath: string; scope?: PublishScope }) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return { scopeLabel: '全部 vault', notes: [], assets: [], linkCount: 0, missingLinks: [], missingAssets: [] }
+    return toRendererPublishPreview(await buildPublishPreview(params.vaultPath, params.scope))
+  })
+
   ipcMain.handle('export:publish-vault', async (event, params: { vaultPath: string; scope?: PublishScope }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { ok: false, files: 0 }
@@ -156,7 +172,8 @@ ${markdownToHtml(params.content)}
     if (result.canceled || !result.filePaths[0]) return { ok: false, files: 0 }
 
     const outputPath = result.filePaths[0]
-    const files = await collectPublishFilesForScope(params.vaultPath, params.scope)
+    const preview = await buildPublishPreview(params.vaultPath, params.scope)
+    const files = await collectPublishFilesForScope(params.vaultPath, params.scope, preview)
     const markdownFiles = files.filter((file) => file.endsWith('.md'))
     const assetFiles = files.filter((file) => !file.endsWith('.md'))
     const notes = await Promise.all(markdownFiles.map(async (relPath) => {
@@ -193,7 +210,32 @@ ${markdownToHtml(params.content)}
         aliases: item.aliases,
         href: relativeHref(note.href, item.href)
       })))
-      await writeFile(dest, renderPublishPage(note.title, markdownToHtml(expandPublishTransclusions(note.body, notes), pageLookup), notes, note.href, searchIndex), 'utf-8')
+      const absoluteLookup = buildPublishWikilinkLookup(notes.map((item) => ({
+        title: item.title,
+        relPath: item.relPath,
+        aliases: item.aliases,
+        href: item.href
+      })))
+      const publishedNoteRelPaths = notes.map((item) => item.relPath)
+      const html = markdownToHtml(
+        expandPublishTransclusions(note.body, notes),
+        pageLookup,
+        (target) => {
+          const resolved = resolvePublishMarkdownLinkHref(target, note.relPath, absoluteLookup, publishedNoteRelPaths)
+          if (!isInternalPublishHtmlHref(resolved.href)) {
+            const assetHref = resolvePublishAssetTargetPath(target, note.relPath, assetFiles)
+            if (assetHref) return relativeHref(note.href, assetHref)
+            return resolved.href
+          }
+          const [hrefPath, ...fragments] = resolved.href.split('#')
+          return relativeHref(note.href, hrefPath) + (fragments.length > 0 ? `#${fragments.join('#')}` : '')
+        },
+        (target) => {
+          const assetHref = resolvePublishAssetTargetPath(target, note.relPath, assetFiles)
+          return assetHref ? relativeHref(note.href, assetHref) : null
+        }
+      )
+      await writeFile(dest, renderPublishPage(note.title, html, notes, note.href, searchIndex), 'utf-8')
     }
 
     await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes, searchIndex, getPublishScopeLabel(params.scope)), 'utf-8')
@@ -202,7 +244,12 @@ ${markdownToHtml(params.content)}
   })
 }
 
-function markdownToHtml(md: string, wikilinkLookup: PublishWikilinkLookup = buildPublishWikilinkLookup([])): string {
+function markdownToHtml(
+  md: string,
+  wikilinkLookup: PublishWikilinkLookup = buildPublishWikilinkLookup([]),
+  markdownLinkResolver?: (target: string) => string,
+  assetLinkResolver?: (target: string) => string | null
+): string {
   let html = renderMarkdownHighlights(renderMarkdownCallouts(renderMarkdownFootnotes(stripMarkdownComments(md))))
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -212,9 +259,14 @@ function markdownToHtml(md: string, wikilinkLookup: PublishWikilinkLookup = buil
     .replace(/`(.+?)`/g, '<code>$1</code>')
     .replace(/^\> (.+)$/gm, '<blockquote>$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target, label) => {
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, label, target) => `<img src="${assetLinkResolver?.(String(target)) || target}" alt="${label}">`)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, target) => `<a href="${markdownLinkResolver ? markdownLinkResolver(String(target)) : target}">${label}</a>`)
+    .replace(/!\[\[([^\]]+)\]\]/g, (match, rawTarget) => {
+      const target = String(rawTarget).split('|')[0].split('#')[0]
+      const href = assetLinkResolver?.(target)
+      return href ? `<img src="${href}" alt="${basename(target)}">` : match
+    })
+    .replace(/(?<!!)\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target, label) => {
       const href = resolvePublishWikilinkHref(wikilinkLookup, String(target))
       return `<a href="${href}">${label || target}</a>`
     })
@@ -245,42 +297,101 @@ async function collectPublishFiles(root: string, dir = root): Promise<string[]> 
   return result
 }
 
-async function collectPublishFilesForScope(root: string, scope?: PublishScope): Promise<string[]> {
-  const files = await collectPublishFiles(root)
+async function collectPublishFilesForScope(root: string, scope?: PublishScope, preview?: PublishPreviewData): Promise<string[]> {
+  const data = preview || await buildPublishPreview(root, scope)
+  const files = data.allFiles
   if (!scope || scope.type === 'all') return files
 
+  const scopedNotes = data.publishNotes
+  const noteRelPaths = new Set(scopedNotes.map((note) => note.relPath))
+  const scopedAssets = new Set(data.assets)
+
+  return files.filter((file) => noteRelPaths.has(file) || scopedAssets.has(file))
+}
+
+async function buildPublishPreview(root: string, scope?: PublishScope): Promise<PublishPreviewData> {
+  const files = await collectPublishFiles(root)
   const markdownFiles = files.filter((file) => file.endsWith('.md'))
   const assetFiles = files.filter((file) => !file.endsWith('.md'))
   const propertiesByPath = new Map(getPropertyRows(root).map((row) => [row.filePath, row.properties]))
-  const candidates: PublishCandidate[] = await Promise.all(markdownFiles.map(async (relPath) => {
+  const candidates: PublishBuildNote[] = await Promise.all(markdownFiles.map(async (relPath) => {
     const content = await readFile(join(root, relPath), 'utf-8')
     const parsed = matter(content)
+    const body = parsed.content
     return {
       relPath,
-      title: extractMarkdownTitle(parsed.content, relPath),
+      href: relPath.replace(/\.md$/i, '.html'),
+      title: extractMarkdownTitle(body, relPath),
       aliases: normalizePublishAliases(parsed.data),
-      body: parsed.content,
+      body,
       properties: propertiesByPath.get(relPath) || parsed.data
     }
   }))
   const scopedNotes = filterPublishCandidatesByScope(candidates, scope)
-  const noteRelPaths = new Set(scopedNotes.map((note) => note.relPath))
+  const publishedNoteRelPaths = scopedNotes.map((note) => note.relPath)
 
   const scopedAssets = new Set<string>()
-  if (scope.type === 'folder') {
-    const scopedAssetCandidates = filterPublishCandidatesByScope(
-      assetFiles.map((relPath) => ({ relPath, title: basename(relPath) })),
-      scope
-    )
-    for (const asset of scopedAssetCandidates) scopedAssets.add(asset.relPath)
-  }
-  for (const note of scopedNotes) {
-    for (const asset of resolvePublishAssetReferences(note.body || '', note.relPath, assetFiles)) {
-      scopedAssets.add(asset)
+  if (!scope || scope.type === 'all') {
+    for (const asset of assetFiles) scopedAssets.add(asset)
+  } else {
+    if (scope.type === 'folder') {
+      const scopedAssetCandidates = filterPublishCandidatesByScope(
+        assetFiles.map((relPath) => ({ relPath, title: basename(relPath) })),
+        scope
+      )
+      for (const asset of scopedAssetCandidates) scopedAssets.add(asset.relPath)
+    }
+    for (const note of scopedNotes) {
+      for (const asset of resolvePublishAssetReferences(note.body, note.relPath, assetFiles)) {
+        scopedAssets.add(asset)
+      }
     }
   }
 
-  return files.filter((file) => noteRelPaths.has(file) || scopedAssets.has(file))
+  const lookup = buildPublishWikilinkLookup(scopedNotes.map((note) => ({
+    title: note.title,
+    relPath: note.relPath,
+    aliases: note.aliases,
+    href: note.href
+  })))
+  let linkCount = 0
+  const missingLinks: PublishPreviewResult['missingLinks'] = []
+  const missingAssets: PublishPreviewResult['missingAssets'] = []
+  const notes = scopedNotes.map((note) => {
+    const issues = collectPublishPreviewIssues(note, lookup, publishedNoteRelPaths, assetFiles)
+    linkCount += issues.linkCount
+    missingLinks.push(...issues.missingLinks)
+    missingAssets.push(...issues.missingAssets)
+    return {
+      title: note.title,
+      relPath: note.relPath,
+      href: note.href,
+      linkCount: issues.linkCount,
+      missingLinkCount: issues.missingLinks.length
+    }
+  })
+
+  return {
+    allFiles: files,
+    publishNotes: scopedNotes,
+    scopeLabel: getPublishScopeLabel(scope),
+    notes,
+    assets: Array.from(scopedAssets).sort((a, b) => a.localeCompare(b)),
+    linkCount,
+    missingLinks,
+    missingAssets
+  }
+}
+
+function toRendererPublishPreview(preview: PublishPreviewData): PublishPreviewResult {
+  return {
+    scopeLabel: preview.scopeLabel,
+    notes: preview.notes,
+    assets: preview.assets,
+    linkCount: preview.linkCount,
+    missingLinks: preview.missingLinks,
+    missingAssets: preview.missingAssets
+  }
 }
 
 function extractMarkdownTitle(content: string, relPath: string): string {
@@ -316,6 +427,10 @@ function relativeHref(fromHref: string, toHref: string): string {
   const fromDir = posix.dirname(fromHref)
   const rel = fromDir === '.' ? toHref : posix.relative(fromDir, toHref)
   return rel || posix.basename(toHref)
+}
+
+function isInternalPublishHtmlHref(href: string): boolean {
+  return !/^(?:https?:|data:|mailto:|#)/i.test(href) && /\.html(?:#.*)?$/i.test(href)
 }
 
 function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], searchIndex: { title: string; href: string; path: string; text: string }[], scopeLabel = 'all'): string {
