@@ -74,6 +74,15 @@ export interface PublishPreviewResult {
   missingAssets: PublishPreviewAssetIssue[]
 }
 
+export interface PublishResult {
+  ok: boolean
+  outputPath?: string
+  files: number
+  updatedFiles?: number
+  skippedFiles?: number
+  removedFiles?: number
+}
+
 export interface PluginCommand {
   id: string
   title: string
@@ -736,7 +745,7 @@ export interface IPCChannelMap {
   'export:pdf': { params: { content: string; title: string }; result: boolean }
   'export:share': { params: { content: string; title: string }; result: string }
   'export:preview-publish-vault': { params: { vaultPath: string; scope?: PublishScope }; result: PublishPreviewResult }
-  'export:publish-vault': { params: { vaultPath: string; scope?: PublishScope }; result: { ok: boolean; outputPath?: string; files: number } }
+  'export:publish-vault': { params: { vaultPath: string; scope?: PublishScope }; result: PublishResult }
   'vault:select': { params: undefined; result: string | null }
   'vault:create': { params: { name: string }; result: string | null }
   'vault:get': { params: undefined; result: string | null }

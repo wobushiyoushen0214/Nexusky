@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPublishWikilinkLookup, collectPublishPreviewIssues, expandPublishTransclusions, filterPublishCandidatesByScope, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
+import { buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
 
 describe('publish wikilink lookup', () => {
   it('resolves published wikilinks by title, filename, nested path, heading, and case variant', () => {
@@ -176,5 +176,49 @@ describe('publish wikilink lookup', () => {
       'wikilink:Gone:2'
     ])
     expect(preview.missingAssets.map((item) => `${item.target}:${item.line}`)).toEqual(['assets/missing.png:4'])
+  })
+
+  it('builds an incremental publish plan and manifest for changed, unchanged, and removed outputs', () => {
+    const initial = createPublishIncrementalPlan([
+      { relPath: 'index.html', content: '<html>index</html>' },
+      { relPath: 'site-data.js', content: 'window.__NEXUSKY_SEARCH__ = [];' },
+      { relPath: 'notes/alpha.html', content: '<html>alpha</html>' },
+      { relPath: 'assets/logo.png', content: Buffer.from('logo') }
+    ])
+
+    expect(initial.changed.map((item) => item.relPath)).toEqual(['index.html', 'site-data.js', 'notes/alpha.html', 'assets/logo.png'])
+    expect(initial.unchanged).toEqual([])
+    expect(initial.removed).toEqual([])
+
+    const roundtrip = parsePublishManifest(serializePublishManifest(initial.manifest))
+    expect(roundtrip).toEqual(initial.manifest)
+
+    const next = createPublishIncrementalPlan([
+      { relPath: 'index.html', content: '<html>index</html>' },
+      { relPath: 'site-data.js', content: 'window.__NEXUSKY_SEARCH__ = [{"title":"Alpha"}];' },
+      { relPath: 'notes/alpha.html', content: '<html>alpha v2</html>' }
+    ], initial.manifest)
+
+    expect(next.changed.map((item) => item.relPath)).toEqual(['site-data.js', 'notes/alpha.html'])
+    expect(next.unchanged).toEqual(['index.html'])
+    expect(next.removed).toEqual(['assets/logo.png'])
+  })
+
+  it('keeps unchanged note pages skipped when only shared publish data changes', () => {
+    const previous = createPublishIncrementalPlan([
+      { relPath: 'index.html', content: '<html>index with Alpha</html>' },
+      { relPath: 'site-data.js', content: 'window.__NEXUSKY_NAV__=[{"title":"Alpha"}];' },
+      { relPath: 'notes/alpha.html', content: '<html><nav class="site-nav"></nav><main>alpha</main></html>' }
+    ])
+
+    const next = createPublishIncrementalPlan([
+      { relPath: 'index.html', content: '<html>index with Alpha and Beta</html>' },
+      { relPath: 'site-data.js', content: 'window.__NEXUSKY_NAV__=[{"title":"Alpha"},{"title":"Beta"}];' },
+      { relPath: 'notes/alpha.html', content: '<html><nav class="site-nav"></nav><main>alpha</main></html>' },
+      { relPath: 'notes/beta.html', content: '<html><nav class="site-nav"></nav><main>beta</main></html>' }
+    ], previous.manifest)
+
+    expect(next.changed.map((item) => item.relPath)).toEqual(['index.html', 'site-data.js', 'notes/beta.html'])
+    expect(next.unchanged).toEqual(['notes/alpha.html'])
   })
 })

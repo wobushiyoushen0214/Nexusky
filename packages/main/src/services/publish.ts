@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { basename, posix } from 'path'
 import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
 import type { PublishPreviewAssetIssue, PublishPreviewLinkIssue, PublishScope } from '@shared/types/ipc'
@@ -32,7 +33,26 @@ export interface PublishLocalLinkResolution {
   missing: boolean
 }
 
+export interface PublishManifestEntry {
+  hash: string
+}
+
+export type PublishManifest = Record<string, PublishManifestEntry>
+
+export interface PublishOutputFile {
+  relPath: string
+  content: string | Buffer
+}
+
+export interface PublishIncrementalPlan {
+  changed: PublishOutputFile[]
+  unchanged: string[]
+  removed: string[]
+  manifest: PublishManifest
+}
+
 const SKIPPED_PUBLISH_ENTRIES = new Set(['.obsidian', '.nexusky', '.trash', '.git', '.DS_Store'])
+export const PUBLISH_MANIFEST_REL_PATH = '.nexusky-publish-manifest.json'
 
 export function shouldPublishVaultEntry(name: string): boolean {
   return !SKIPPED_PUBLISH_ENTRIES.has(name)
@@ -319,6 +339,60 @@ export function collectPublishPreviewIssues(
   return { linkCount, missingLinks, missingAssets }
 }
 
+export function createPublishIncrementalPlan(outputs: PublishOutputFile[], previousManifest: PublishManifest = {}): PublishIncrementalPlan {
+  const manifest: PublishManifest = {}
+  const changed: PublishOutputFile[] = []
+  const unchanged: string[] = []
+  const currentPaths = new Set<string>()
+
+  for (const output of outputs) {
+    const relPath = normalizePublishOutputPath(output.relPath)
+    if (!relPath || relPath === PUBLISH_MANIFEST_REL_PATH) continue
+    currentPaths.add(relPath)
+    const hash = hashPublishOutput(output.content)
+    manifest[relPath] = { hash }
+    if (previousManifest[relPath]?.hash === hash) {
+      unchanged.push(relPath)
+    } else {
+      changed.push({ relPath, content: output.content })
+    }
+  }
+
+  const removed = Object.keys(previousManifest)
+    .map(normalizePublishOutputPath)
+    .filter((relPath) => relPath && relPath !== PUBLISH_MANIFEST_REL_PATH && !currentPaths.has(relPath))
+    .sort((a, b) => a.localeCompare(b))
+
+  return {
+    changed,
+    unchanged: unchanged.sort((a, b) => a.localeCompare(b)),
+    removed,
+    manifest
+  }
+}
+
+export function serializePublishManifest(manifest: PublishManifest): string {
+  const ordered: PublishManifest = {}
+  for (const relPath of Object.keys(manifest).sort((a, b) => a.localeCompare(b))) {
+    ordered[relPath] = manifest[relPath]
+  }
+  return `${JSON.stringify({ version: 1, files: ordered }, null, 2)}\n`
+}
+
+export function parsePublishManifest(raw: string): PublishManifest {
+  const parsed = JSON.parse(raw) as { files?: unknown }
+  if (!parsed || typeof parsed !== 'object' || !parsed.files || typeof parsed.files !== 'object') return {}
+  const manifest: PublishManifest = {}
+  for (const [key, value] of Object.entries(parsed.files as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object') continue
+    const hash = (value as { hash?: unknown }).hash
+    const relPath = normalizePublishOutputPath(key)
+    if (!relPath || typeof hash !== 'string' || !hash) continue
+    manifest[relPath] = { hash }
+  }
+  return manifest
+}
+
 function normalizePublishWikilinkTarget(target: string): string {
   return stripObsidianLinkFragment(target)
     .trim()
@@ -453,4 +527,14 @@ function collectPublishAssetTargetsFromLine(line: string): string[] {
     targets.push(String(match[1]).split('|')[0].split('#')[0])
   }
   return targets
+}
+
+function normalizePublishOutputPath(path: string): string {
+  const normalized = posix.normalize(path.trim().replace(/\\/g, '/').replace(/^\.?\//, ''))
+  if (!normalized || normalized === '.' || normalized.startsWith('../') || normalized === '..' || posix.isAbsolute(normalized)) return ''
+  return normalized
+}
+
+function hashPublishOutput(content: string | Buffer): string {
+  return createHash('sha256').update(content).digest('hex')
 }

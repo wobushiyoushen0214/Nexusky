@@ -1,12 +1,12 @@
 import { ipcMain, dialog, BrowserWindow, clipboard, shell } from 'electron'
-import { copyFile, mkdir, readdir, readFile, writeFile } from 'fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile } from 'fs/promises'
 import { basename, dirname, join, relative, posix } from 'path'
 import matter from 'gray-matter'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import { buildPublishWikilinkLookup, collectPublishPreviewIssues, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishScopeLabel, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishWikilinkLookup } from '../services/publish'
+import { PUBLISH_MANIFEST_REL_PATH, buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishScopeLabel, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishOutputFile, type PublishWikilinkLookup } from '../services/publish'
 import { getPropertyRows } from '../services/indexer'
 import type { PublishPreviewResult, PublishScope } from '@shared/types/ipc'
 
@@ -195,15 +195,9 @@ ${markdownToHtml(params.content)}
       text: toPublishSearchText(expandPublishTransclusions(note.body, notes)).slice(0, 4000)
     }))
 
-    for (const asset of assetFiles) {
-      const dest = join(outputPath, asset)
-      await mkdir(dirname(dest), { recursive: true })
-      await copyFile(join(params.vaultPath, asset), dest)
-    }
+    const outputs: PublishOutputFile[] = []
 
     for (const note of notes) {
-      const dest = join(outputPath, note.href)
-      await mkdir(dirname(dest), { recursive: true })
       const pageLookup = buildPublishWikilinkLookup(notes.map((item) => ({
         title: item.title,
         relPath: item.relPath,
@@ -235,13 +229,41 @@ ${markdownToHtml(params.content)}
           return assetHref ? relativeHref(note.href, assetHref) : null
         }
       )
-      await writeFile(dest, renderPublishPage(note.title, html, notes, note.href, searchIndex), 'utf-8')
+      outputs.push({ relPath: note.href, content: renderPublishPage(note.title, html, note.href) })
     }
 
-    await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes, searchIndex, getPublishScopeLabel(params.scope)), 'utf-8')
+    outputs.push({ relPath: 'index.html', content: renderPublishIndex(notes, getPublishScopeLabel(params.scope)) })
+    outputs.push({ relPath: 'site-data.js', content: renderPublishSiteData(notes, searchIndex) })
+
+    for (const asset of assetFiles) {
+      outputs.push({ relPath: asset, content: await readFile(join(params.vaultPath, asset)) })
+    }
+
+    const previousManifest = await readPublishManifest(outputPath)
+    const plan = createPublishIncrementalPlan(outputs, previousManifest)
+
+    for (const relPath of plan.removed) {
+      await rm(join(outputPath, relPath), { force: true })
+    }
+
+    for (const output of plan.changed) {
+      const dest = join(outputPath, output.relPath)
+      await mkdir(dirname(dest), { recursive: true })
+      await writeFile(dest, output.content)
+    }
+
+    await writeFile(join(outputPath, PUBLISH_MANIFEST_REL_PATH), serializePublishManifest(plan.manifest), 'utf-8')
     shell.showItemInFolder(join(outputPath, 'index.html'))
-    return { ok: true, outputPath, files: notes.length }
+    return { ok: true, outputPath, files: notes.length, updatedFiles: plan.changed.length, skippedFiles: plan.unchanged.length, removedFiles: plan.removed.length }
   })
+}
+
+async function readPublishManifest(outputPath: string) {
+  try {
+    return parsePublishManifest(await readFile(join(outputPath, PUBLISH_MANIFEST_REL_PATH), 'utf-8'))
+  } catch {
+    return {}
+  }
 }
 
 function markdownToHtml(
@@ -402,7 +424,7 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] || ch)
 }
 
-function renderPublishPage(title: string, bodyHtml: string, notes: { title: string; href: string }[], currentHref: string, searchIndex: { title: string; href: string; path: string; text: string }[]): string {
+function renderPublishPage(title: string, bodyHtml: string, currentHref: string): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -414,11 +436,12 @@ ${publishStyles()}
 <body>
 <aside>
   <a class="brand" href="${relativeHref(currentHref, 'index.html')}">Nexusky</a>
-  ${renderPublishSearch(searchIndex, currentHref)}
-  ${notes.map((note) => `<a href="${relativeHref(currentHref, note.href)}">${note.title}</a>`).join('\n  ')}
+  ${renderPublishSearch()}
+  <nav class="site-nav" data-current-href="${escapeHtml(currentHref)}"></nav>
 </aside>
 <main>${bodyHtml}</main>
-${publishSearchScript(searchIndex, currentHref)}
+<script src="${relativeHref(currentHref, 'site-data.js')}"></script>
+${publishSearchScript(currentHref)}
 </body>
 </html>`
 }
@@ -433,7 +456,7 @@ function isInternalPublishHtmlHref(href: string): boolean {
   return !/^(?:https?:|data:|mailto:|#)/i.test(href) && /\.html(?:#.*)?$/i.test(href)
 }
 
-function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], searchIndex: { title: string; href: string; path: string; text: string }[], scopeLabel = 'all'): string {
+function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], scopeLabel = 'all'): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -445,7 +468,7 @@ ${publishStyles()}
 <body>
 <aside>
   <a class="brand" href="index.html">Nexusky</a>
-  ${renderPublishSearch(searchIndex, 'index.html')}
+  ${renderPublishSearch()}
 </aside>
 <main>
   <h1>知识库索引</h1>
@@ -454,24 +477,35 @@ ${publishStyles()}
     ${notes.map((note) => `<a class="index-card" href="${note.href}"><strong>${note.title}</strong><span>${note.relPath}</span></a>`).join('\n    ')}
   </div>
 </main>
-${publishSearchScript(searchIndex, 'index.html')}
+<script src="site-data.js"></script>
+${publishSearchScript('index.html')}
 </body>
 </html>`
 }
 
-function renderPublishSearch(_searchIndex: { title: string; href: string; path: string; text: string }[], _currentHref: string): string {
+function renderPublishSearch(): string {
   return `<div class="site-search">
   <input id="site-search-input" type="search" placeholder="搜索知识库..." autocomplete="off">
   <div id="site-search-results" class="site-search-results"></div>
 </div>`
 }
 
-function publishSearchScript(searchIndex: { title: string; href: string; path: string; text: string }[], currentHref: string): string {
+function renderPublishSiteData(notes: { title: string; href: string }[], searchIndex: { title: string; href: string; path: string; text: string }[]): string {
+  return [
+    `window.__NEXUSKY_NAV__ = ${JSON.stringify(notes.map((note) => ({ title: note.title, href: note.href }))).replace(/</g, '\\u003c')};`,
+    `window.__NEXUSKY_SEARCH__ = ${JSON.stringify(searchIndex).replace(/</g, '\\u003c')};`,
+    ''
+  ].join('\n')
+}
+
+function publishSearchScript(currentHref: string): string {
   return `<script>
-window.__NEXUSKY_SEARCH__ = ${JSON.stringify(searchIndex).replace(/</g, '\\u003c')};
 (function () {
   const input = document.getElementById('site-search-input');
   const results = document.getElementById('site-search-results');
+  const search = Array.isArray(window.__NEXUSKY_SEARCH__) ? window.__NEXUSKY_SEARCH__ : [];
+  const nav = document.querySelector('.site-nav');
+  const navItems = Array.isArray(window.__NEXUSKY_NAV__) ? window.__NEXUSKY_NAV__ : [];
   if (!input || !results) return;
   const fromDir = ${JSON.stringify(posix.dirname(currentHref))};
   function rel(href) {
@@ -486,10 +520,15 @@ window.__NEXUSKY_SEARCH__ = ${JSON.stringify(searchIndex).replace(/</g, '\\u003c
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
     });
   }
+  if (nav) {
+    nav.innerHTML = navItems.map(function (item) {
+      return '<a href="' + rel(item.href) + '"><span>' + escapeHtml(item.title) + '</span></a>';
+    }).join('');
+  }
   input.addEventListener('input', function () {
     const q = input.value.trim().toLowerCase();
     if (!q) { results.innerHTML = ''; return; }
-    const matches = window.__NEXUSKY_SEARCH__.filter(function (item) {
+    const matches = search.filter(function (item) {
       return (item.title + ' ' + item.path + ' ' + item.text).toLowerCase().includes(q);
     }).slice(0, 8);
     results.innerHTML = matches.length ? matches.map(function (item) {
