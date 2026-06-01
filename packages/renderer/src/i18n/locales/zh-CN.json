@@ -988,6 +988,41 @@
         "memory": "记忆生成"
       }
     },
+    "cloudSync": {
+      "title": "同步健康",
+      "description": "查看当前云端后端的最后同步、失败原因和待处理传输。",
+      "refresh": "刷新",
+      "refreshing": "刷新中...",
+      "provider": "后端",
+      "status": "状态",
+      "lastSync": "最后同步",
+      "lastError": "失败原因",
+      "transfers": "待上传 / 下载",
+      "queue": "离线队列",
+      "noData": "还没有同步数据。",
+      "noFailure": "暂无失败记录。",
+      "notSynced": "尚未同步。",
+      "configured": "已配置",
+      "notConfigured": "未配置",
+      "direction": {
+        "sync": "双向同步",
+        "pull": "从云端拉取"
+      },
+      "statusValues": {
+        "idle": "空闲",
+        "ok": "健康",
+        "conflict": "需处理",
+        "error": "错误"
+      },
+      "pendingValue": "↑{{pushed}} ↓{{pulled}}",
+      "queueValue": "{{count}} 个待处理",
+      "conflictPending": "{{count}} 个冲突待处理",
+      "syncComplete": "同步完成: ↑{{pushed}} ↓{{pulled}}",
+      "pullComplete": "拉取完成: ↓{{pulled}}",
+      "syncConflict": "同步完成: ↑{{pushed}} ↓{{pulled}}，还有 {{count}} 个冲突待解决。",
+      "resolveConflictFailed": "解决 {{path}} 冲突失败。",
+      "syncUnknownError": "未知同步错误"
+    },
     "providerTest": {
       "title": "配置检查",
       "optional": "保存前可选",

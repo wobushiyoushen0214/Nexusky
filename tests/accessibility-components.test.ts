@@ -1,10 +1,11 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Settings, NoAiModePanel, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
+import { Settings, NoAiModePanel, CloudSyncHealthPanel, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
 import i18n from '../packages/renderer/src/i18n'
+import type { CloudSyncHealth } from '../packages/shared/src/types/ipc'
 
 describe('accessibility component semantics', () => {
   afterEach(() => {
@@ -82,6 +83,39 @@ describe('accessibility component semantics', () => {
     expect(html).toContain('AI edit')
     expect(html).toContain('Agent actions')
     expect(html).toContain('Memory generation')
+  })
+
+  it('summarizes cloud sync health with provider, failure, and transfer counts', async () => {
+    await i18n.changeLanguage('en')
+
+    const health: CloudSyncHealth = {
+      activeProvider: 'webdav',
+      activeProviderName: 'WebDAV',
+      activeProviderConfigured: true,
+      offlineQueueSize: 3,
+      status: 'error',
+      lastRunAt: Date.UTC(2026, 5, 1, 8, 30),
+      lastDirection: 'sync',
+      total: 6,
+      pushed: 4,
+      pulled: 2,
+      conflicts: 0,
+      errors: 1,
+      lastError: 'timeout'
+    }
+    const html = renderToStaticMarkup(createElement(CloudSyncHealthPanel, {
+      health,
+      loading: false,
+      onRefresh: () => {}
+    }))
+
+    expect(html).toContain('Sync health')
+    expect(html).toContain('WebDAV')
+    expect(html).toContain('Error')
+    expect(html).toContain('Failure reason')
+    expect(html).toContain('timeout')
+    expect(html).toContain('↑4 ↓2')
+    expect(html).toContain('3 queued')
   })
 })
 

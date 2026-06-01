@@ -645,6 +645,24 @@ export interface MaintenanceApplyResult {
   undoExpiresAt?: number
 }
 
+export type CloudSyncHealthStatus = 'idle' | 'ok' | 'conflict' | 'error'
+
+export interface CloudSyncHealth {
+  activeProvider: string
+  activeProviderName: string
+  activeProviderConfigured: boolean
+  offlineQueueSize: number
+  status: CloudSyncHealthStatus
+  lastRunAt: number | null
+  lastDirection: 'sync' | 'pull' | null
+  total: number
+  pushed: number
+  pulled: number
+  conflicts: number
+  errors: number
+  lastError: string | null
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -899,6 +917,7 @@ export interface IPCChannelMap {
   'cloud:sign-up': { params: { email: string; password: string }; result: { success: boolean; error?: string } }
   'cloud:sign-out': { params: undefined; result: void }
   'cloud:get-user': { params: undefined; result: { email: string } | null }
+  'cloud:get-sync-health': { params: { vaultPath?: string } | undefined; result: CloudSyncHealth }
   'cloud:sync': { params: { vaultPath: string }; result: { total: number; pushed: number; pulled: number; conflicts: { path: string; localHash: string; remoteHash: string; remoteUpdatedAt: string }[]; errors: string[] } }
   'cloud:push-file': { params: { vaultPath: string; filePath: string }; result: boolean }
   'cloud:pull-file': { params: { vaultPath: string; relPath: string }; result: boolean }

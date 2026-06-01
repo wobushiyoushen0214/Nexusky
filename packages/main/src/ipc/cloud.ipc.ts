@@ -8,6 +8,7 @@ import {
   pullFile,
   syncAll,
   pullAll,
+  getSyncHealth,
   pushIndex,
   pullIndex,
   syncIndex,
@@ -66,6 +67,10 @@ export function registerCloudIPC(): void {
 
   ipcMain.handle('cloud:get-user', async () => {
     return getUser()
+  })
+
+  ipcMain.handle('cloud:get-sync-health', (_event, params?: { vaultPath?: string }) => {
+    return getSyncHealth(params?.vaultPath)
   })
 
   ipcMain.handle('cloud:sync', async (event, params: { vaultPath: string }) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { THEME_IDS, useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
@@ -12,7 +12,7 @@ import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCss
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
 import { ProactivePreferencesTab } from '../proactive/ProactivePreferences'
 import { LongContextDebugPanel } from '../observability/LongContextDebugPanel'
-import type { AIProviderConfig, AIUsageSummary, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
+import type { AIProviderConfig, AIUsageSummary, CloudSyncHealth, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
@@ -842,6 +842,128 @@ function AIUsageSummaryPanel({
   )
 }
 
+const SYNC_STATUS_TONES: Record<CloudSyncHealth['status'], string> = {
+  idle: 'var(--text-tertiary)',
+  ok: 'oklch(72% 0.11 154)',
+  conflict: 'oklch(78% 0.14 82)',
+  error: 'oklch(66% 0.16 23)'
+}
+type SyncNoticeTone = 'neutral' | 'success' | 'warning' | 'error'
+const SYNC_NOTICE_COLORS: Record<SyncNoticeTone, string> = {
+  neutral: 'var(--text-tertiary)',
+  success: 'oklch(72% 0.11 154)',
+  warning: 'oklch(78% 0.14 82)',
+  error: 'oklch(66% 0.16 23)'
+}
+
+function formatSyncTimestamp(value: number | null, locale?: string): string {
+  if (!value) return ''
+  return new Intl.DateTimeFormat(locale || undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(new Date(value))
+}
+
+function getSyncFailureText(health: CloudSyncHealth, t: (key: string, options?: Record<string, unknown>) => unknown): string {
+  if (health.lastError) return health.lastError
+  if (health.status === 'conflict') return String(t('settings.cloudSync.conflictPending', { count: health.conflicts }))
+  if (health.status === 'error') return String(t('settings.cloudSync.syncUnknownError'))
+  return String(t('settings.cloudSync.noFailure'))
+}
+
+export function CloudSyncHealthPanel({
+  health,
+  loading,
+  onRefresh
+}: {
+  health: CloudSyncHealth | null
+  loading: boolean
+  onRefresh: () => void
+}) {
+  const { t, i18n } = useTranslation()
+  const tone = health ? SYNC_STATUS_TONES[health.status] : 'var(--text-tertiary)'
+  const statusLabel = health
+    ? t(`settings.cloudSync.statusValues.${health.status}`)
+    : t('settings.cloudSync.noData')
+  const providerLabel = health
+    ? `${health.activeProviderName} · ${health.activeProviderConfigured ? t('settings.cloudSync.configured') : t('settings.cloudSync.notConfigured')}`
+    : t('settings.cloudSync.noData')
+  const lastSyncValue = health?.lastRunAt
+    ? formatSyncTimestamp(health.lastRunAt, i18n.resolvedLanguage || i18n.language)
+    : t('settings.cloudSync.notSynced')
+  const lastSyncDetail = health?.lastDirection
+    ? t(`settings.cloudSync.direction.${health.lastDirection}`)
+    : t('settings.cloudSync.noData')
+  const failureValue = health ? getSyncFailureText(health, t) : t('settings.cloudSync.noData')
+  const transferValue = health
+    ? t('settings.cloudSync.pendingValue', { pushed: health.pushed, pulled: health.pulled })
+    : '—'
+  const queueValue = health
+    ? t('settings.cloudSync.queueValue', { count: health.offlineQueueSize })
+    : '—'
+
+  return (
+    <section
+      aria-label={t('settings.cloudSync.title')}
+      style={{ marginBottom: 16, padding: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-primary)', marginBottom: 3 }}>
+            {t('settings.cloudSync.title')}
+          </div>
+          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', maxWidth: 520 }}>
+            {t('settings.cloudSync.description')}
+          </p>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          style={{ height: 24, padding: '0 8px', fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.65 : 1 }}
+        >
+          {loading ? t('settings.cloudSync.refreshing') : t('settings.cloudSync.refresh')}
+        </button>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, minWidth: 0, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('settings.cloudSync.provider')}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{providerLabel}</span>
+        <span style={{ padding: '2px 7px', borderRadius: 999, border: `1px solid ${tone}33`, fontSize: 10, color: tone, background: 'var(--bg-elevated)' }}>
+          {statusLabel}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{queueValue}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+        <SyncHealthStat label={t('settings.cloudSync.lastSync')} value={lastSyncValue} detail={lastSyncDetail} />
+        <SyncHealthStat
+          label={t('settings.cloudSync.status')}
+          value={statusLabel}
+          detail={health ? (health.activeProviderConfigured ? t('settings.cloudSync.configured') : t('settings.cloudSync.notConfigured')) : t('settings.cloudSync.noData')}
+        />
+        <SyncHealthStat label={t('settings.cloudSync.lastError')} value={failureValue} detail={queueValue} />
+        <SyncHealthStat label={t('settings.cloudSync.transfers')} value={transferValue} detail={queueValue} />
+      </div>
+    </section>
+  )
+}
+
+function SyncHealthStat({
+  label,
+  value,
+  detail
+}: {
+  label: string
+  value: string
+  detail: string
+}) {
+  return (
+    <div style={{ minWidth: 0, padding: '9px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+      <div style={{ fontSize: 10, fontWeight: 650, color: 'var(--text-tertiary)', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+      <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</div>
+    </div>
+  )
+}
+
 export function NoAiModePanel() {
   const { t } = useTranslation()
 
@@ -989,10 +1111,15 @@ interface CloudTabProps {
 }
 
 function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputStyle }: CloudTabProps) {
+  const { t } = useTranslation()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
   const [activeProvider, setActiveProvider] = useState<string>('supabase')
   const [providers, setProviders] = useState<{ type: string; name: string; configured: boolean }[]>([])
+  const [syncHealth, setSyncHealth] = useState<CloudSyncHealth | null>(null)
+  const [syncHealthLoading, setSyncHealthLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
+  const [syncMsgTone, setSyncMsgTone] = useState<SyncNoticeTone>('neutral')
   const [conflicts, setConflicts] = useState<Array<{ path: string; localHash: string; remoteHash: string; remoteUpdatedAt: string }>>([])
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
   const [onedriveConfig, setOnedriveConfig] = useState({ clientId: '', folder: '/Nexusky' })
@@ -1011,27 +1138,58 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
     window.api.invoke('cloud:get-icloud-path', undefined).then(setIcloudPath)
   }, [])
 
+  const loadSyncHealth = useCallback(async () => {
+    setSyncHealthLoading(true)
+    try {
+      const currentVaultPath = vaultPath || await window.api.invoke('vault:get', undefined)
+      const health = await window.api.invoke('cloud:get-sync-health', currentVaultPath ? { vaultPath: currentVaultPath } : undefined)
+      setSyncHealth(health)
+      return health
+    } finally {
+      setSyncHealthLoading(false)
+    }
+  }, [vaultPath])
+
+  useEffect(() => {
+    void loadSyncHealth().catch(() => {})
+  }, [loadSyncHealth])
+
+  const showSyncMessage = useCallback((message: string, tone: SyncNoticeTone) => {
+    setSyncMsg(message)
+    setSyncMsgTone(tone)
+  }, [])
+
   const switchProvider = async (type: string) => {
     setActiveProvider(type)
     await window.api.invoke('cloud:set-sync-provider', { provider: type })
+    await loadSyncHealth().catch(() => {})
   }
 
   const handleSync = async () => {
     setSyncing(true)
-    setSyncMsg('')
+    showSyncMessage('', 'neutral')
     setConflicts([])
     const vaultPath = await window.api.invoke('vault:get', undefined)
-    if (!vaultPath) { setSyncing(false); return }
-    const result = await window.api.invoke('cloud:sync', { vaultPath })
-    if (result.errors.length === 0 && result.conflicts.length === 0) {
-      setSyncMsg(`同步完成: ${result.total} 个文件, 推送 ${result.pushed}, 拉取 ${result.pulled}`)
-    } else if (result.conflicts.length > 0) {
-      setConflicts(result.conflicts)
-      setSyncMsg(`同步完成（推送 ${result.pushed}, 拉取 ${result.pulled}），${result.conflicts.length} 个文件需要手动解决冲突`)
-    } else {
-      setSyncMsg(`有 ${result.errors.length} 个错误: ${result.errors[0]}`)
+    if (!vaultPath) {
+      setSyncing(false)
+      return
     }
-    setSyncing(false)
+    try {
+      const result = await window.api.invoke('cloud:sync', { vaultPath })
+      if (result.errors.length === 0 && result.conflicts.length === 0) {
+        showSyncMessage(t('settings.cloudSync.syncComplete', { pushed: result.pushed, pulled: result.pulled }), 'success')
+      } else if (result.conflicts.length > 0) {
+        setConflicts(result.conflicts)
+        showSyncMessage(t('settings.cloudSync.syncConflict', { pushed: result.pushed, pulled: result.pulled, count: result.conflicts.length }), 'warning')
+      } else {
+        showSyncMessage(t('common.syncFailed', { error: result.errors[0] || t('settings.cloudSync.syncUnknownError') }), 'error')
+      }
+    } catch (error: unknown) {
+      showSyncMessage(t('common.syncFailed', { error: getErrorMessage(error, t('settings.cloudSync.syncUnknownError')) }), 'error')
+    } finally {
+      setSyncing(false)
+      await loadSyncHealth().catch(() => {})
+    }
   }
 
   const handleResolveConflict = async (path: string, resolution: 'local' | 'remote') => {
@@ -1043,8 +1201,11 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       if (ok) {
         setConflicts((prev) => prev.filter((c) => c.path !== path))
       } else {
-        setSyncMsg(`解决冲突失败: ${path}`)
+        showSyncMessage(t('settings.cloudSync.resolveConflictFailed', { path }), 'error')
       }
+      await loadSyncHealth().catch(() => {})
+    } catch (error: unknown) {
+      showSyncMessage(t('common.syncFailed', { error: getErrorMessage(error, t('settings.cloudSync.syncUnknownError')) }), 'error')
     } finally {
       setResolvingPath(null)
     }
@@ -1052,16 +1213,26 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
 
   const handlePull = async () => {
     setSyncing(true)
-    setSyncMsg('')
+    showSyncMessage('', 'neutral')
+    setConflicts([])
     const vaultPath = await window.api.invoke('vault:get', undefined)
-    if (!vaultPath) { setSyncing(false); return }
-    const result = await window.api.invoke('cloud:pull-all', { vaultPath })
-    if (result.errors.length === 0) {
-      setSyncMsg(`拉取完成: 共 ${result.total} 个远端文件, 拉取 ${result.pulled} 个`)
-    } else {
-      setSyncMsg(`有 ${result.errors.length} 个错误: ${result.errors[0]}`)
+    if (!vaultPath) {
+      setSyncing(false)
+      return
     }
-    setSyncing(false)
+    try {
+      const result = await window.api.invoke('cloud:pull-all', { vaultPath })
+      if (result.errors.length === 0) {
+        showSyncMessage(t('settings.cloudSync.pullComplete', { pulled: result.pulled }), 'success')
+      } else {
+        showSyncMessage(t('common.syncFailed', { error: result.errors[0] || t('settings.cloudSync.syncUnknownError') }), 'error')
+      }
+    } catch (error: unknown) {
+      showSyncMessage(t('common.syncFailed', { error: getErrorMessage(error, t('settings.cloudSync.syncUnknownError')) }), 'error')
+    } finally {
+      setSyncing(false)
+      await loadSyncHealth().catch(() => {})
+    }
   }
 
   const providerBtnStyle = (active: boolean): React.CSSProperties => ({
@@ -1084,6 +1255,12 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <CloudSyncHealthPanel
+        health={syncHealth}
+        loading={syncHealthLoading || syncing}
+        onRefresh={() => { void loadSyncHealth().catch(() => {}) }}
+      />
+
       {/* Provider selector */}
       <div>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>同步后端</span>
@@ -1410,7 +1587,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           </button>
         </div>
         {syncMsg && (
-          <p style={{ marginTop: 10, fontSize: 11, color: syncMsg.includes('错误') ? '#f87171' : 'var(--text-tertiary)', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-base)' }}>
+          <p style={{ marginTop: 10, fontSize: 11, color: SYNC_NOTICE_COLORS[syncMsgTone], padding: '8px 10px', borderRadius: 6, background: 'var(--bg-base)' }}>
             {syncMsg}
           </p>
         )}

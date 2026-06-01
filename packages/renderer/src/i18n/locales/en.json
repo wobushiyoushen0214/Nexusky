@@ -988,6 +988,41 @@
         "memory": "Memory generation"
       }
     },
+    "cloudSync": {
+      "title": "Sync health",
+      "description": "Check the latest sync, failure reason, and queued transfers for the active cloud backend.",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "provider": "Provider",
+      "status": "Status",
+      "lastSync": "Last sync",
+      "lastError": "Failure reason",
+      "transfers": "Pending upload / download",
+      "queue": "Offline queue",
+      "noData": "No sync data yet.",
+      "noFailure": "No failure recorded.",
+      "notSynced": "Not synced yet.",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "direction": {
+        "sync": "Two-way sync",
+        "pull": "Pull from cloud"
+      },
+      "statusValues": {
+        "idle": "Idle",
+        "ok": "Healthy",
+        "conflict": "Needs review",
+        "error": "Error"
+      },
+      "pendingValue": "↑{{pushed}} ↓{{pulled}}",
+      "queueValue": "{{count}} queued",
+      "conflictPending": "{{count}} conflicts pending",
+      "syncComplete": "Sync complete: ↑{{pushed}} ↓{{pulled}}",
+      "pullComplete": "Pull complete: ↓{{pulled}}",
+      "syncConflict": "Sync finished with ↑{{pushed}} ↓{{pulled}} and {{count}} conflicts to resolve.",
+      "resolveConflictFailed": "Failed to resolve conflict for {{path}}.",
+      "syncUnknownError": "Unknown sync error"
+    },
     "providerTest": {
       "title": "Setup checks",
       "optional": "optional before save",

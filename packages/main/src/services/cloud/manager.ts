@@ -9,6 +9,8 @@ import { join } from 'path'
 import { existsSync, readFileSync, statSync } from 'fs'
 import { closeDatabase } from '../database'
 import { decideSyncSide, md5 } from './conflict-detection'
+import type { CloudSyncHealth, CloudSyncHealthStatus } from '@shared/types/ipc'
+import { getErrorMessage } from '../../../../shared/src/utils/errors'
 
 const offlineQueue: { vaultPath: string; filePath: string }[] =
   (store.get('offlineQueue') as { vaultPath: string; filePath: string }[] | undefined) || []
@@ -77,6 +79,76 @@ export function getAllProviders(): { type: SyncProviderType; name: string; confi
   }))
 }
 
+function getSyncHealthStoreKey(vaultPath?: string): string {
+  return vaultPath ? `syncHealth:${vaultPath}` : 'syncHealth:global'
+}
+
+function normalizeSyncHealthStatus(result?: SyncResult): CloudSyncHealthStatus {
+  if (!result) return 'idle'
+  if (result.errors.length > 0) return 'error'
+  if (result.conflicts.length > 0) return 'conflict'
+  return 'ok'
+}
+
+function syncErrorResult(error: unknown, fallback: string): SyncResult {
+  return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: [getErrorMessage(error, fallback)] }
+}
+
+function defaultSyncHealth(vaultPath?: string): CloudSyncHealth {
+  const activeProvider = getActiveProviderType()
+  const provider = providers.get(activeProvider)
+  return {
+    activeProvider,
+    activeProviderName: provider?.name || activeProvider,
+    activeProviderConfigured: !!provider?.isConfigured(),
+    offlineQueueSize: getOfflineQueueSize(),
+    status: 'idle',
+    lastRunAt: null,
+    lastDirection: null,
+    total: 0,
+    pushed: 0,
+    pulled: 0,
+    conflicts: 0,
+    errors: 0,
+    lastError: null,
+    ...(store.get(getSyncHealthStoreKey(vaultPath)) as Partial<CloudSyncHealth> | undefined)
+  }
+}
+
+export function getSyncHealth(vaultPath?: string): CloudSyncHealth {
+  const health = defaultSyncHealth(vaultPath)
+  const activeProvider = getActiveProviderType()
+  const provider = providers.get(activeProvider)
+  return {
+    ...health,
+    activeProvider,
+    activeProviderName: provider?.name || activeProvider,
+    activeProviderConfigured: !!provider?.isConfigured(),
+    offlineQueueSize: getOfflineQueueSize()
+  }
+}
+
+function recordSyncHealth(vaultPath: string, direction: 'sync' | 'pull', result: SyncResult): void {
+  const activeProvider = getActiveProviderType()
+  const provider = providers.get(activeProvider)
+  const health: CloudSyncHealth = {
+    activeProvider,
+    activeProviderName: provider?.name || activeProvider,
+    activeProviderConfigured: !!provider?.isConfigured(),
+    offlineQueueSize: getOfflineQueueSize(),
+    status: normalizeSyncHealthStatus(result),
+    lastRunAt: Date.now(),
+    lastDirection: direction,
+    total: result.total,
+    pushed: result.pushed,
+    pulled: result.pulled,
+    conflicts: result.conflicts.length,
+    errors: result.errors.length,
+    lastError: result.errors[0] || null
+  }
+  store.set(getSyncHealthStoreKey(vaultPath), health)
+}
+
 export function getSyncExclude(): string[] {
   return (store.get('syncExclude') as string[]) || []
 }
@@ -117,14 +189,30 @@ export async function pullFile(vaultPath: string, relPath: string): Promise<bool
 
 export async function syncAll(vaultPath: string): Promise<SyncResult> {
   const provider = getActiveProvider()
-  if (!provider) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置同步后端'] }
-  return provider.syncAll(vaultPath)
+  let result: SyncResult
+  try {
+    result = provider
+      ? await provider.syncAll(vaultPath)
+      : { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置同步后端'] }
+  } catch (error: unknown) {
+    result = syncErrorResult(error, '同步失败')
+  }
+  recordSyncHealth(vaultPath, 'sync', result)
+  return result
 }
 
 export async function pullAll(vaultPath: string): Promise<SyncResult> {
   const provider = getActiveProvider()
-  if (!provider) return { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置同步后端'] }
-  return provider.pullAll(vaultPath)
+  let result: SyncResult
+  try {
+    result = provider
+      ? await provider.pullAll(vaultPath)
+      : { total: 0, pushed: 0, pulled: 0, conflicts: [], errors: ['未配置同步后端'] }
+  } catch (error: unknown) {
+    result = syncErrorResult(error, '拉取失败')
+  }
+  recordSyncHealth(vaultPath, 'pull', result)
+  return result
 }
 
 export async function pushIndex(vaultPath: string): Promise<boolean> {
