@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Settings, NoAiModePanel, CloudSyncHealthPanel, CloudSyncConflictList, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
+import { Settings, NoAiModePanel, CloudSyncHealthPanel, CloudSyncBoundaryNotice, CloudSyncConflictList, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
 import { getTrashReasonLabel } from '../packages/renderer/src/components/TrashPanel'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
@@ -118,6 +118,16 @@ describe('accessibility component semantics', () => {
     expect(html).toContain('↑4 ↓2')
     expect(html).toContain('3 queued')
     expect(html).toContain('Sync overwrites save the previous Markdown version to History')
+  })
+
+  it('states the free boundary for local and bring-your-own sync', async () => {
+    await i18n.changeLanguage('en')
+
+    const html = renderToStaticMarkup(createElement(CloudSyncBoundaryNotice))
+
+    expect(html).toContain('What stays free')
+    expect(html).toContain('Local vaults and bring-your-own sync stay free')
+    expect(html).toContain('managed sync / backup remains a future paid add-on')
   })
 
   it('explains cloud sync conflicts before presenting resolution actions', async () => {

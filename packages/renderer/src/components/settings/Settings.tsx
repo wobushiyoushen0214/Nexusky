@@ -981,6 +981,21 @@ function SyncHealthStat({
   )
 }
 
+export function CloudSyncBoundaryNotice() {
+  const { t } = useTranslation()
+
+  return (
+    <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+      <div style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-primary)', marginBottom: 4 }}>
+        {t('settings.cloudSync.boundaryTitle')}
+      </div>
+      <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', maxWidth: 560 }}>
+        {t('settings.cloudSync.boundaryHint')}
+      </p>
+    </div>
+  )
+}
+
 export function CloudSyncConflictList({
   conflicts,
   resolvingPath,
@@ -1402,9 +1417,11 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
         onRefresh={() => { void loadSyncHealth().catch(() => {}) }}
       />
 
+      <CloudSyncBoundaryNotice />
+
       {/* Provider selector */}
       <div>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>同步后端</span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>{t('settings.cloudSync.providerSelectorTitle')}</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => switchProvider('supabase')} style={providerBtnStyle(activeProvider === 'supabase')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
