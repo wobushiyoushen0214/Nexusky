@@ -415,7 +415,14 @@ function tableColumns(db: Database.Database, tableName: string): Set<string> {
 function ensureColumn(db: Database.Database, tableName: string, columnName: string, definition: string): void {
   if (!tableExists(db, tableName)) return
   if (tableColumns(db, tableName).has(columnName)) return
-  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`)
+  try {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`)
+  } catch (error) {
+    if (error instanceof Error && /duplicate column name/i.test(error.message)) {
+      return
+    }
+    throw error
+  }
 }
 
 function repairExistingSchema(db: Database.Database): void {
