@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPublishWikilinkLookup, expandPublishTransclusions, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
+import { buildPublishWikilinkLookup, expandPublishTransclusions, filterPublishCandidatesByScope, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
 
 describe('publish wikilink lookup', () => {
   it('resolves published wikilinks by title, filename, nested path, heading, and case variant', () => {
@@ -100,5 +100,42 @@ describe('publish wikilink lookup', () => {
     expect(searchText).toContain('Selected detail')
     expect(searchText).toContain('Block text')
     expect(searchText).not.toContain('Hidden detail')
+  })
+
+  it('filters publish candidates by folder, tag, and property scopes', () => {
+    const candidates = [
+      { relPath: 'Writing/Public.md', title: 'Public', properties: { tags: ['publish'], status: 'ready', published: true } },
+      { relPath: 'Writing/Draft.md', title: 'Draft', properties: { tags: ['draft'], status: 'draft', published: false } },
+      { relPath: 'Research/Index.md', title: 'Index', properties: { tags: ['publish'], status: 'ready' } }
+    ]
+
+    expect(filterPublishCandidatesByScope(candidates, { type: 'folder', folderPath: 'Writing' }).map((item) => item.relPath)).toEqual(['Writing/Public.md', 'Writing/Draft.md'])
+    expect(filterPublishCandidatesByScope(candidates, { type: 'tag', tag: '#publish' }).map((item) => item.relPath)).toEqual(['Writing/Public.md', 'Research/Index.md'])
+    expect(filterPublishCandidatesByScope(candidates, { type: 'property', key: 'published', value: 'true' }).map((item) => item.relPath)).toEqual(['Writing/Public.md'])
+    expect(filterPublishCandidatesByScope(candidates, { type: 'property', key: 'status' }).map((item) => item.relPath)).toEqual(['Writing/Public.md', 'Writing/Draft.md', 'Research/Index.md'])
+  })
+
+  it('resolves local publish asset references from markdown and Obsidian embeds', () => {
+    const assets = [
+      'Writing/assets/local.png',
+      'assets/global.svg',
+      '.attachments/diagram.png',
+      'Other/duplicate.png',
+      'Writing/duplicate.png'
+    ]
+
+    expect(resolvePublishAssetReferences([
+      '![Local](assets/local.png)',
+      '![Global](/assets/global.svg)',
+      '![[diagram.png]]',
+      '![Remote](https://example.com/remote.png)',
+      '![Missing](missing.png)'
+    ].join('\n'), 'Writing/Public.md', assets)).toEqual([
+      '.attachments/diagram.png',
+      'Writing/assets/local.png',
+      'assets/global.svg'
+    ])
+
+    expect(resolvePublishAssetReferences('![[duplicate.png]]', 'Writing/Public.md', assets)).toEqual(['Writing/duplicate.png'])
   })
 })

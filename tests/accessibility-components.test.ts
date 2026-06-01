@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Settings, NoAiModePanel, CloudSyncHealthPanel, CloudSyncBoundaryNotice, CloudSyncConflictList, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
+import { PublishScopeDialog, buildPublishScope } from '../packages/renderer/src/components/PublishScopeDialog'
 import { getTrashReasonLabel } from '../packages/renderer/src/components/TrashPanel'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
@@ -160,6 +161,30 @@ describe('accessibility component semantics', () => {
   it('labels files that were moved to trash by sync deletion recovery', () => {
     expect(getTrashReasonLabel('sync_remote_delete')).toBe('同步删除')
     expect(getTrashReasonLabel(undefined)).toBeNull()
+  })
+
+  it('renders publish scope selection with accessible dialog labels', async () => {
+    await i18n.changeLanguage('en')
+
+    const html = renderToStaticMarkup(createElement(PublishScopeDialog, { open: true, onClose: () => {} }))
+
+    expect(html).toContain('role="dialog"')
+    expect(html).toContain('aria-modal="true"')
+    expect(html).toContain('id="publish-scope-dialog-title"')
+    expect(html).toContain('Publish scope')
+    expect(html).toContain('Entire vault')
+    expect(html).toContain('Folder')
+    expect(html).toContain('Tag')
+    expect(html).toContain('Property')
+    expect(html).not.toContain('commandPalette.publishScope')
+  })
+
+  it('builds structured publish scopes from the dialog input state', () => {
+    expect(buildPublishScope('all', '', '', '', '')).toEqual({ type: 'all' })
+    expect(buildPublishScope('folder', ' Writing/Series ', '', '', '')).toEqual({ type: 'folder', folderPath: 'Writing/Series' })
+    expect(buildPublishScope('tag', '', '#publish', '', '')).toEqual({ type: 'tag', tag: 'publish' })
+    expect(buildPublishScope('property', '', '', ' published ', ' true ')).toEqual({ type: 'property', key: 'published', value: 'true' })
+    expect(buildPublishScope('property', '', '', 'published', '')).toEqual({ type: 'property', key: 'published' })
   })
 })
 

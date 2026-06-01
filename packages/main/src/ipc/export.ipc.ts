@@ -6,7 +6,9 @@ import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import { buildPublishWikilinkLookup, expandPublishTransclusions, normalizePublishAliases, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishWikilinkLookup } from '../services/publish'
+import { buildPublishWikilinkLookup, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishScopeLabel, normalizePublishAliases, resolvePublishAssetReferences, resolvePublishWikilinkHref, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishWikilinkLookup } from '../services/publish'
+import { getPropertyRows } from '../services/indexer'
+import type { PublishScope } from '@shared/types/ipc'
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -143,7 +145,7 @@ ${markdownToHtml(params.content)}
     return html
   })
 
-  ipcMain.handle('export:publish-vault', async (event, params: { vaultPath: string }) => {
+  ipcMain.handle('export:publish-vault', async (event, params: { vaultPath: string; scope?: PublishScope }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { ok: false, files: 0 }
 
@@ -154,7 +156,7 @@ ${markdownToHtml(params.content)}
     if (result.canceled || !result.filePaths[0]) return { ok: false, files: 0 }
 
     const outputPath = result.filePaths[0]
-    const files = await collectPublishFiles(params.vaultPath)
+    const files = await collectPublishFilesForScope(params.vaultPath, params.scope)
     const markdownFiles = files.filter((file) => file.endsWith('.md'))
     const assetFiles = files.filter((file) => !file.endsWith('.md'))
     const notes = await Promise.all(markdownFiles.map(async (relPath) => {
@@ -194,7 +196,7 @@ ${markdownToHtml(params.content)}
       await writeFile(dest, renderPublishPage(note.title, markdownToHtml(expandPublishTransclusions(note.body, notes), pageLookup), notes, note.href, searchIndex), 'utf-8')
     }
 
-    await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes, searchIndex), 'utf-8')
+    await writeFile(join(outputPath, 'index.html'), renderPublishIndex(notes, searchIndex, getPublishScopeLabel(params.scope)), 'utf-8')
     shell.showItemInFolder(join(outputPath, 'index.html'))
     return { ok: true, outputPath, files: notes.length }
   })
@@ -243,8 +245,50 @@ async function collectPublishFiles(root: string, dir = root): Promise<string[]> 
   return result
 }
 
+async function collectPublishFilesForScope(root: string, scope?: PublishScope): Promise<string[]> {
+  const files = await collectPublishFiles(root)
+  if (!scope || scope.type === 'all') return files
+
+  const markdownFiles = files.filter((file) => file.endsWith('.md'))
+  const assetFiles = files.filter((file) => !file.endsWith('.md'))
+  const propertiesByPath = new Map(getPropertyRows(root).map((row) => [row.filePath, row.properties]))
+  const candidates: PublishCandidate[] = await Promise.all(markdownFiles.map(async (relPath) => {
+    const content = await readFile(join(root, relPath), 'utf-8')
+    const parsed = matter(content)
+    return {
+      relPath,
+      title: extractMarkdownTitle(parsed.content, relPath),
+      aliases: normalizePublishAliases(parsed.data),
+      body: parsed.content,
+      properties: propertiesByPath.get(relPath) || parsed.data
+    }
+  }))
+  const scopedNotes = filterPublishCandidatesByScope(candidates, scope)
+  const noteRelPaths = new Set(scopedNotes.map((note) => note.relPath))
+
+  const scopedAssets = new Set<string>()
+  if (scope.type === 'folder') {
+    const scopedAssetCandidates = filterPublishCandidatesByScope(
+      assetFiles.map((relPath) => ({ relPath, title: basename(relPath) })),
+      scope
+    )
+    for (const asset of scopedAssetCandidates) scopedAssets.add(asset.relPath)
+  }
+  for (const note of scopedNotes) {
+    for (const asset of resolvePublishAssetReferences(note.body || '', note.relPath, assetFiles)) {
+      scopedAssets.add(asset)
+    }
+  }
+
+  return files.filter((file) => noteRelPaths.has(file) || scopedAssets.has(file))
+}
+
 function extractMarkdownTitle(content: string, relPath: string): string {
   return content.match(/^#\s+(.+)$/m)?.[1]?.trim() || basename(relPath, '.md')
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] || ch)
 }
 
 function renderPublishPage(title: string, bodyHtml: string, notes: { title: string; href: string }[], currentHref: string, searchIndex: { title: string; href: string; path: string; text: string }[]): string {
@@ -274,7 +318,7 @@ function relativeHref(fromHref: string, toHref: string): string {
   return rel || posix.basename(toHref)
 }
 
-function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], searchIndex: { title: string; href: string; path: string; text: string }[]): string {
+function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], searchIndex: { title: string; href: string; path: string; text: string }[], scopeLabel = 'all'): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -290,7 +334,7 @@ ${publishStyles()}
 </aside>
 <main>
   <h1>知识库索引</h1>
-  <p class="muted">${notes.length} 篇已发布笔记</p>
+  <p class="muted">${notes.length} 篇已发布笔记 · ${escapeHtml(scopeLabel)}</p>
   <div class="index-list">
     ${notes.map((note) => `<a class="index-card" href="${note.href}"><strong>${note.title}</strong><span>${note.relPath}</span></a>`).join('\n    ')}
   </div>

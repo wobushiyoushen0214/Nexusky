@@ -32,7 +32,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
   const [toolSurfaceEntries, setToolSurfaceEntries] = useState<ToolSurfaceEntry[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
-  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection, language } = useUIStore()
+  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection, setPublishScopeOpen, language } = useUIStore()
   const { saveFile, currentFilePath, content } = useEditorStore()
   const { vaultPath } = useVaultStore()
 
@@ -203,11 +203,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       await window.api.invoke('export:html', { content, title })
       toast(t('commandPalette.toasts.htmlDone'), 'success')
     }},
-    { id: 'publish-vault', category: 'export', label: t('commandPalette.commands.publishVault.label'), description: t('commandPalette.commands.publishVault.description'), keywords: ['publish', 'site', 'html', 'obsidian'], action: async () => {
+    { id: 'publish-vault', category: 'export', label: t('commandPalette.commands.publishVault.label'), description: t('commandPalette.commands.publishVault.description'), keywords: ['publish', 'site', 'html', 'obsidian'], action: () => {
       if (!vaultPath) return
-      const { toast } = await import('../stores/toast-store')
-      const result = await window.api.invoke('export:publish-vault', { vaultPath })
-      if (result.ok) toast(t('commandPalette.toasts.publishDone', { count: result.files }), 'success')
+      setPublishScopeOpen(true)
     }},
     { id: 'share', category: 'export', label: t('commandPalette.commands.share.label'), keywords: ['share'], action: async () => {
       const filePath = currentFilePath
@@ -273,7 +271,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         }
       }
     })),
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, toolSurfaceEntries, t])
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection, setPublishScopeOpen, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, toolSurfaceEntries, t])
 
   const filtered = query.trim()
     ? commands.filter((c) => {

@@ -605,7 +605,7 @@
       "pull": { "label": "Pull from cloud" },
       "exportPdf": { "label": "Export PDF" },
       "exportHtml": { "label": "Export HTML" },
-      "publishVault": { "label": "Publish vault static site", "description": "Export the whole vault as deployable HTML" },
+      "publishVault": { "label": "Publish vault static site", "description": "Choose a folder, tag, or property scope before exporting deployable HTML" },
       "share": { "label": "Share note (copy HTML)" },
       "outline": { "label": "Open document outline" },
       "properties": { "label": "Open note properties", "description": "Edit title, aliases, tags, and cssclasses" },
@@ -675,7 +675,29 @@
       "exportingPdf": "Exporting PDF...",
       "pdfDone": "PDF export complete",
       "htmlDone": "HTML export complete",
-      "publishDone": "Published {{count}} notes"
+      "publishDone": "Published {{count}} notes",
+      "publishFailed": "Failed to publish vault"
+    },
+    "publishScope": {
+      "title": "Publish scope",
+      "description": "Pick the part of the vault you want to publish. The published site keeps its own index and search.",
+      "types": {
+        "all": { "label": "Entire vault", "hint": "Publish every Markdown note and asset." },
+        "folder": { "label": "Folder", "hint": "Publish one folder subtree and its local assets." },
+        "tag": { "label": "Tag", "hint": "Publish notes that carry the selected tag." },
+        "property": { "label": "Property", "hint": "Publish notes that match a property key and optional value." }
+      },
+      "folderLabel": "Folder path",
+      "folderPlaceholder": "e.g. Writing/Series",
+      "tagLabel": "Tag",
+      "tagPlaceholder": "e.g. publish",
+      "propertyKeyLabel": "Property key",
+      "propertyKeyPlaceholder": "e.g. published",
+      "propertyValueLabel": "Property value",
+      "propertyValuePlaceholder": "Optional value filter",
+      "publish": "Publish",
+      "publishing": "Publishing...",
+      "cancel": "Cancel"
     }
   },
   "bases": {

@@ -48,6 +48,7 @@ interface UIState {
   settingsInitialTab: string | null
   searchOpen: boolean
   commandPaletteOpen: boolean
+  publishScopeOpen: boolean
   theme: Theme
   accentColor: string | null
   language: Language
@@ -66,6 +67,7 @@ interface UIState {
   setSidebarWidthScope: (scope: string) => void
   setRightPanelWidth: (width: number) => void
   setCommandPaletteOpen: (open: boolean) => void
+  setPublishScopeOpen: (open: boolean) => void
   resizeSidebar: (delta: number) => void
   resizeRightPanel: (delta: number) => void
   setQuickSwitcherOpen: (open: boolean) => void
@@ -320,6 +322,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   settingsInitialTab: null,
   searchOpen: false,
   commandPaletteOpen: false,
+  publishScopeOpen: false,
   theme: initialTheme,
   accentColor: initialAccentColor,
   language: initialLanguage,
@@ -391,6 +394,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setSettingsInitialTab: (tab) => set({ settingsInitialTab: tab }),
   setSearchOpen: (open) => set({ searchOpen: open }),
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+  setPublishScopeOpen: (open) => set({ publishScopeOpen: open }),
   setTheme: (theme) => { applyTheme(theme); set({ theme }) },
   setAccentColor: (color) => {
     const normalized = normalizeHexColor(color)

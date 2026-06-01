@@ -39,6 +39,7 @@ const TagsPanel = lazy(() => import('./components/TagsPanel').then((m) => ({ def
 const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => ({ default: m.HistoryPanel })))
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
+const PublishScopeDialog = lazy(() => import('./components/PublishScopeDialog').then((m) => ({ default: m.PublishScopeDialog })))
 const MaintenanceQueuePanel = lazy(() => import('./components/maintenance/MaintenanceQueuePanel').then((m) => ({ default: m.MaintenanceQueuePanel })))
 const AgentRunPanel = lazy(() => import('./components/agent/AgentRunPanel').then((m) => ({ default: m.AgentRunPanel })))
 
@@ -83,7 +84,7 @@ export default function App() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const loadVault = useVaultStore((s) => s.loadVault)
-  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore(
+  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, publishScopeOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setPublishScopeOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore(
     useShallow((s) => ({
       rightPanel: s.rightPanel,
       sidebarCollapsed: s.sidebarCollapsed,
@@ -95,6 +96,7 @@ export default function App() {
       settingsOpen: s.settingsOpen,
       searchOpen: s.searchOpen,
       commandPaletteOpen: s.commandPaletteOpen,
+      publishScopeOpen: s.publishScopeOpen,
       toggleRightPanel: s.toggleRightPanel,
       toggleSidebar: s.toggleSidebar,
       toggleFocusMode: s.toggleFocusMode,
@@ -104,6 +106,7 @@ export default function App() {
       setSettingsOpen: s.setSettingsOpen,
       setSearchOpen: s.setSearchOpen,
       setCommandPaletteOpen: s.setCommandPaletteOpen,
+      setPublishScopeOpen: s.setPublishScopeOpen,
       setMainView: s.setMainView,
       setRightPanel: s.setRightPanel,
       setWorkspaceScope: s.setWorkspaceScope,
@@ -504,6 +507,7 @@ export default function App() {
         {settingsOpen && <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
         {searchOpen && <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />}
         {commandPaletteOpen && <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />}
+        {publishScopeOpen && <PublishScopeDialog open={publishScopeOpen} onClose={() => setPublishScopeOpen(false)} />}
         {trashOpen && <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />}
       </Suspense>
       <ToastContainer />
