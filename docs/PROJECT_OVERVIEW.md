@@ -2,7 +2,7 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：v0.8.1 发布前（v0.8.0 功能范围 + release CI pnpm setup 修复；含 Cognitive Partner MVP、分组图谱钻取、相关上下文侧栏整合、属性/时间视图路由显示和官网首页重做）
+最后核对版本：v0.8.2 发布前（v0.8.0 功能范围 + release CI pnpm setup 修复 + 无证书打包恢复；含 Cognitive Partner MVP、分组图谱钻取、相关上下文侧栏整合、属性/时间视图路由显示和官网首页重做）
 
 ## 1. 一句话理解
 
@@ -776,4 +776,4 @@ pnpm test
 - 维护队列新增 Weekly Cognitive Review，可预览或保存 `.nexusky/reviews/*-cognitive-review.md`，内容来自长期关系、主题变化、重复问题、阻塞项和重新浮现的上下文。
 - 关系反馈新增 `snoozed` 类型；Related Context card 现在支持 useful / not related / wrong reason / snooze / dismiss，反馈会写入 `relation_feedback` 并影响后续 ranking。
 - 新增 `docs/SEMANTIC_SEARCH_EVALUATION_2026-05-31.md`，明确 v0.8 不默认启用 embedding，先用 fixture 对 keyword / FTS / local embedding / remote embedding / hybrid 做评估，并写清远程 embedding 的数据外发边界。
-- 应用版本号推进到 `0.8.1`；功能范围对应 Phase 3 / Cognitive Partner MVP，补丁版本携带 release CI 的 pnpm setup 修复。
+- 应用版本号推进到 `0.8.2`；功能范围对应 Phase 3 / Cognitive Partner MVP，补丁版本携带 release CI 的 pnpm setup 修复和无证书打包恢复。

@@ -11,12 +11,13 @@ files:
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**/*
+afterPack: ./scripts/afterPack.js
 publish:
   provider: github
   releaseType: release
 win:
-  forceCodeSigning: true
-  verifyUpdateCodeSignature: true
+  sign: false
+  verifyUpdateCodeSignature: false
   target:
     - target: nsis
       arch: [x64]
@@ -26,8 +27,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
 mac:
-  forceCodeSigning: true
-  notarize: true
+  identity: null
+  notarize: false
   target:
     - target: dmg
       arch: [arm64, x64]

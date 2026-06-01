@@ -19,37 +19,35 @@ describe('workflow configuration', () => {
     expect(installs.every((line) => line.includes('--frozen-lockfile'))).toBe(true)
   })
 
-  it('requires signed and notarized mac auto-update artifacts', () => {
+  it('allows mac release artifacts without Developer ID secrets', () => {
     const build = readFileSync('.github/workflows/build.yml', 'utf-8')
     const builder = readFileSync('electron-builder.yml', 'utf-8')
 
-    expect(builder).toContain('forceCodeSigning: true')
-    expect(builder).toContain('notarize: true')
+    expect(builder).toContain('identity: null')
+    expect(builder).toContain('notarize: false')
     expect(builder).toContain('target: zip')
-    expect(builder).not.toContain('identity: null')
-    expect(builder).not.toContain('afterPack:')
-    expect(existsSync('scripts/afterPack.js')).toBe(false)
+    expect(builder).toContain('afterPack: ./scripts/afterPack.js')
+    expect(existsSync('scripts/afterPack.js')).toBe(true)
 
     expect(build).toContain('pnpm exec electron-builder --mac --x64 --publish always')
     expect(build).toContain('pnpm exec electron-builder --mac --arm64 --publish always')
-    expect(build).toContain('MAC_CSC_LINK')
-    expect(build).toContain('MAC_CSC_KEY_PASSWORD')
-    expect(build).toContain('APPLE_API_KEY')
-    expect(build).toContain('APPLE_API_KEY_ID')
-    expect(build).toContain('APPLE_API_ISSUER')
+    expect(build).not.toContain('MAC_CSC_LINK')
+    expect(build).not.toContain('MAC_CSC_KEY_PASSWORD')
+    expect(build).not.toContain('APPLE_API_KEY')
+    expect(build).not.toContain('APPLE_API_KEY_ID')
+    expect(build).not.toContain('APPLE_API_ISSUER')
     expect(build).toContain('dist/latest-mac.yml')
   })
 
-  it('requires signed Windows release artifacts', () => {
+  it('allows unsigned Windows release artifacts', () => {
     const build = readFileSync('.github/workflows/build.yml', 'utf-8')
     const builder = readFileSync('electron-builder.yml', 'utf-8')
 
-    expect(builder).toContain('forceCodeSigning: true')
-    expect(builder).toContain('verifyUpdateCodeSignature: true')
-    expect(builder).not.toContain('sign: false')
+    expect(builder).toContain('sign: false')
+    expect(builder).toContain('verifyUpdateCodeSignature: false')
     expect(build).toContain('pnpm exec electron-builder --win nsis --x64 --publish always')
-    expect(build).toContain('WIN_CSC_LINK')
-    expect(build).toContain('WIN_CSC_KEY_PASSWORD')
+    expect(build).not.toContain('WIN_CSC_LINK')
+    expect(build).not.toContain('WIN_CSC_KEY_PASSWORD')
   })
 
   it('declares the runtime package manager and engine range', () => {
