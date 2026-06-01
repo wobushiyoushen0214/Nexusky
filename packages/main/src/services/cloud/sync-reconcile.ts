@@ -67,6 +67,7 @@ export function planSync(args: {
         plan.conflicts.push({
           path,
           localHash: local.hash,
+          localUpdatedAt: new Date(local.mtimeMs).toISOString(),
           remoteHash: remote.hash,
           remoteUpdatedAt: remote.updatedAt
         })

@@ -1,11 +1,11 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Settings, NoAiModePanel, CloudSyncHealthPanel, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
+import { Settings, NoAiModePanel, CloudSyncHealthPanel, CloudSyncConflictList, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
 import i18n from '../packages/renderer/src/i18n'
-import type { CloudSyncHealth } from '../packages/shared/src/types/ipc'
+import type { CloudSyncConflict, CloudSyncHealth } from '../packages/shared/src/types/ipc'
 
 describe('accessibility component semantics', () => {
   afterEach(() => {
@@ -116,6 +116,33 @@ describe('accessibility component semantics', () => {
     expect(html).toContain('timeout')
     expect(html).toContain('↑4 ↓2')
     expect(html).toContain('3 queued')
+  })
+
+  it('explains cloud sync conflicts before presenting resolution actions', async () => {
+    await i18n.changeLanguage('en')
+
+    const conflicts: CloudSyncConflict[] = [{
+      path: 'Projects/Roadmap.md',
+      localHash: '11112222333344445555666677778888',
+      localUpdatedAt: '2026-06-01T08:30:00.000Z',
+      remoteHash: 'aaaabbbbccccddddeeeeffff00001111',
+      remoteUpdatedAt: '2026-06-01T08:30:03.000Z'
+    }]
+    const html = renderToStaticMarkup(createElement(CloudSyncConflictList, {
+      conflicts,
+      resolvingPath: null,
+      onResolve: () => {}
+    }))
+
+    expect(html).toContain('Conflict recovery')
+    expect(html).toContain('Both copies changed')
+    expect(html).toContain('Projects/Roadmap.md')
+    expect(html).toContain('Local updated')
+    expect(html).toContain('Remote updated')
+    expect(html).toContain('title="2026-06-01T08:30:00.000Z"')
+    expect(html).toContain('title="aaaabbbbccccddddeeeeffff00001111"')
+    expect(html).toContain('Keep local')
+    expect(html).toContain('Pull remote')
   })
 })
 

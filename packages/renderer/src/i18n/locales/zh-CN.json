@@ -1021,7 +1021,25 @@
       "pullComplete": "拉取完成: ↓{{pulled}}",
       "syncConflict": "同步完成: ↑{{pushed}} ↓{{pulled}}，还有 {{count}} 个冲突待解决。",
       "resolveConflictFailed": "解决 {{path}} 冲突失败。",
-      "syncUnknownError": "未知同步错误"
+      "syncUnknownError": "未知同步错误",
+      "conflicts": {
+        "title": "冲突恢复",
+        "description": "本地和远端都在合并窗口内发生了修改。先查看时间和哈希，再选择要保留的一侧。",
+        "explanation": "保留本地会把当前 vault 中的文件写回后端；拉取远端会用远端版本覆盖本地文件。",
+        "count": "{{count}} 个文件待处理",
+        "local": "本地",
+        "remote": "远端",
+        "localUpdated": "本地修改：{{value}}",
+        "remoteUpdated": "远端修改：{{value}}",
+        "localHash": "本地哈希：{{hash}}",
+        "remoteHash": "远端哈希：{{hash}}",
+        "keepLocal": "保留本地",
+        "pullRemote": "拉取远端",
+        "keepLocalHint": "把当前 vault 文件写回同步后端。",
+        "pullRemoteHint": "用远端版本覆盖本地文件。",
+        "resolveSuccessLocal": "已保留 {{path}} 的本地版本。",
+        "resolveSuccessRemote": "已拉取 {{path}} 的远端版本。"
+      }
     },
     "providerTest": {
       "title": "配置检查",

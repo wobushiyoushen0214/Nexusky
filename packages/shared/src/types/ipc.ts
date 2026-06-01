@@ -663,6 +663,14 @@ export interface CloudSyncHealth {
   lastError: string | null
 }
 
+export interface CloudSyncConflict {
+  path: string
+  localHash: string
+  localUpdatedAt: string
+  remoteHash: string
+  remoteUpdatedAt: string
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
@@ -918,10 +926,10 @@ export interface IPCChannelMap {
   'cloud:sign-out': { params: undefined; result: void }
   'cloud:get-user': { params: undefined; result: { email: string } | null }
   'cloud:get-sync-health': { params: { vaultPath?: string } | undefined; result: CloudSyncHealth }
-  'cloud:sync': { params: { vaultPath: string }; result: { total: number; pushed: number; pulled: number; conflicts: { path: string; localHash: string; remoteHash: string; remoteUpdatedAt: string }[]; errors: string[] } }
+  'cloud:sync': { params: { vaultPath: string }; result: { total: number; pushed: number; pulled: number; conflicts: CloudSyncConflict[]; errors: string[] } }
   'cloud:push-file': { params: { vaultPath: string; filePath: string }; result: boolean }
   'cloud:pull-file': { params: { vaultPath: string; relPath: string }; result: boolean }
-  'cloud:pull-all': { params: { vaultPath: string }; result: { total: number; pushed: number; pulled: number; conflicts: { path: string; localHash: string; remoteHash: string; remoteUpdatedAt: string }[]; errors: string[] } }
+  'cloud:pull-all': { params: { vaultPath: string }; result: { total: number; pushed: number; pulled: number; conflicts: CloudSyncConflict[]; errors: string[] } }
   'cloud:get-sync-provider': { params: undefined; result: string }
   'cloud:set-sync-provider': { params: { provider: string }; result: void }
   'cloud:get-all-providers': { params: undefined; result: { type: string; name: string; configured: boolean }[] }

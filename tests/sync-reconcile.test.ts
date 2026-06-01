@@ -103,6 +103,8 @@ describe('planSync', () => {
     })
     expect(plan.conflicts).toHaveLength(1)
     expect(plan.conflicts[0].path).toBe('c.md')
+    expect(plan.conflicts[0].localUpdatedAt).toBe(new Date(T0_MS + 1000).toISOString())
+    expect(plan.conflicts[0].remoteUpdatedAt).toBe(T0)
     expect(plan.push).toEqual([])
     expect(plan.pull).toEqual([])
   })

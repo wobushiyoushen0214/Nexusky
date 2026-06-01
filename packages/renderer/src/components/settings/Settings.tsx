@@ -12,7 +12,7 @@ import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCss
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
 import { ProactivePreferencesTab } from '../proactive/ProactivePreferences'
 import { LongContextDebugPanel } from '../observability/LongContextDebugPanel'
-import type { AIProviderConfig, AIUsageSummary, CloudSyncHealth, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
+import type { AIProviderConfig, AIUsageSummary, CloudSyncConflict, CloudSyncHealth, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
@@ -864,6 +864,20 @@ function formatSyncTimestamp(value: number | null, locale?: string): string {
   }).format(new Date(value))
 }
 
+function formatSyncConflictTimestamp(value: string, locale?: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(locale || undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date)
+}
+
+function formatSyncConflictHash(value: string): string {
+  if (value.length <= 12) return value
+  return `${value.slice(0, 8)}...${value.slice(-4)}`
+}
+
 function getSyncFailureText(health: CloudSyncHealth, t: (key: string, options?: Record<string, unknown>) => unknown): string {
   if (health.lastError) return health.lastError
   if (health.status === 'conflict') return String(t('settings.cloudSync.conflictPending', { count: health.conflicts }))
@@ -960,6 +974,124 @@ function SyncHealthStat({
       <div style={{ fontSize: 10, fontWeight: 650, color: 'var(--text-tertiary)', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
       <div style={{ marginTop: 4, fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</div>
+    </div>
+  )
+}
+
+export function CloudSyncConflictList({
+  conflicts,
+  resolvingPath,
+  onResolve
+}: {
+  conflicts: CloudSyncConflict[]
+  resolvingPath: string | null
+  onResolve: (path: string, resolution: 'local' | 'remote') => void
+}) {
+  const { t, i18n } = useTranslation()
+
+  if (conflicts.length === 0) return null
+
+  return (
+    <section
+      aria-label={t('settings.cloudSync.conflicts.title')}
+      style={{ marginTop: 12, padding: 12, borderRadius: 8, border: '1px solid #f59e0b66', background: 'var(--bg-base)' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 650, color: '#f59e0b', marginBottom: 4 }}>
+            {t('settings.cloudSync.conflicts.title')}
+          </div>
+          <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', maxWidth: 560 }}>
+            {t('settings.cloudSync.conflicts.description')}
+          </p>
+        </div>
+        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: 999, border: '1px solid #f59e0b55', color: '#f59e0b', background: 'rgba(245,158,11,0.08)', fontSize: 10 }}>
+          {t('settings.cloudSync.conflicts.count', { count: conflicts.length })}
+        </span>
+      </div>
+
+      <div style={{ marginBottom: 10, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+        {t('settings.cloudSync.conflicts.explanation')}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {conflicts.map((conflict) => {
+          const busy = resolvingPath === conflict.path
+          return (
+            <div
+              key={conflict.path}
+              style={{ padding: 10, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    title={conflict.path}
+                    style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {conflict.path}
+                  </div>
+                  <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                    <SyncConflictStat
+                      label={t('settings.cloudSync.conflicts.local')}
+                      updatedLabel={t('settings.cloudSync.conflicts.localUpdated', { value: formatSyncConflictTimestamp(conflict.localUpdatedAt, i18n.resolvedLanguage || i18n.language) })}
+                      updatedValue={conflict.localUpdatedAt}
+                      hashLabel={t('settings.cloudSync.conflicts.localHash', { hash: formatSyncConflictHash(conflict.localHash) })}
+                      hashValue={conflict.localHash}
+                    />
+                    <SyncConflictStat
+                      label={t('settings.cloudSync.conflicts.remote')}
+                      updatedLabel={t('settings.cloudSync.conflicts.remoteUpdated', { value: formatSyncConflictTimestamp(conflict.remoteUpdatedAt, i18n.resolvedLanguage || i18n.language) })}
+                      updatedValue={conflict.remoteUpdatedAt}
+                      hashLabel={t('settings.cloudSync.conflicts.remoteHash', { hash: formatSyncConflictHash(conflict.remoteHash) })}
+                      hashValue={conflict.remoteHash}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => onResolve(conflict.path, 'local')}
+                    disabled={busy}
+                    title={t('settings.cloudSync.conflicts.keepLocalHint')}
+                    style={{ height: 28, padding: '0 10px', fontSize: 11, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: 6, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1, fontWeight: 500 }}
+                  >
+                    {t('settings.cloudSync.conflicts.keepLocal')}
+                  </button>
+                  <button
+                    onClick={() => onResolve(conflict.path, 'remote')}
+                    disabled={busy}
+                    title={t('settings.cloudSync.conflicts.pullRemoteHint')}
+                    style={{ height: 28, padding: '0 10px', fontSize: 11, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1, fontWeight: 500 }}
+                  >
+                    {t('settings.cloudSync.conflicts.pullRemote')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function SyncConflictStat({
+  label,
+  updatedLabel,
+  updatedValue,
+  hashLabel,
+  hashValue
+}: {
+  label: string
+  updatedLabel: string
+  updatedValue: string
+  hashLabel: string
+  hashValue: string
+}) {
+  return (
+    <div style={{ minWidth: 0, padding: 8, borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+      <div style={{ fontSize: 10, fontWeight: 650, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }} title={updatedValue}>{updatedLabel}</div>
+      <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }} title={hashValue}>{hashLabel}</div>
     </div>
   )
 }
@@ -1120,7 +1252,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
   const [syncMsgTone, setSyncMsgTone] = useState<SyncNoticeTone>('neutral')
-  const [conflicts, setConflicts] = useState<Array<{ path: string; localHash: string; remoteHash: string; remoteUpdatedAt: string }>>([])
+  const [conflicts, setConflicts] = useState<CloudSyncConflict[]>([])
   const [resolvingPath, setResolvingPath] = useState<string | null>(null)
   const [onedriveConfig, setOnedriveConfig] = useState({ clientId: '', folder: '/Nexusky' })
   const [webdavConfig, setWebdavConfig] = useState({ url: '', username: '', password: '', folder: '/Nexusky', hasPassword: false })
@@ -1199,6 +1331,12 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
     try {
       const ok = await window.api.invoke('cloud:resolve-conflict', { vaultPath, path, resolution })
       if (ok) {
+        showSyncMessage(
+          resolution === 'local'
+            ? t('settings.cloudSync.conflicts.resolveSuccessLocal', { path })
+            : t('settings.cloudSync.conflicts.resolveSuccessRemote', { path }),
+          'success'
+        )
         setConflicts((prev) => prev.filter((c) => c.path !== path))
       } else {
         showSyncMessage(t('settings.cloudSync.resolveConflictFailed', { path }), 'error')
@@ -1591,37 +1729,11 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
             {syncMsg}
           </p>
         )}
-        {conflicts.length > 0 && (
-          <div style={{ marginTop: 12, padding: 10, borderRadius: 6, background: 'var(--bg-base)', border: '1px solid #f59e0b66' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', marginBottom: 8 }}>
-              {conflicts.length} 个文件需要解决冲突
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 10 }}>
-              本地和远端在 5 秒抖动内同时被修改，无法判断哪一边是较新版本。请逐个选择保留本地或拉取远端。
-            </div>
-            {conflicts.map((c) => (
-              <div key={c.path} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border-soft)' }}>
-                <span style={{ flex: 1, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.path}>
-                  {c.path}
-                </span>
-                <button
-                  onClick={() => handleResolveConflict(c.path, 'local')}
-                  disabled={resolvingPath === c.path}
-                  style={{ height: 24, padding: '0 8px', fontSize: 11, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: 4, cursor: resolvingPath === c.path ? 'wait' : 'pointer', opacity: resolvingPath === c.path ? 0.6 : 1 }}
-                >
-                  保留本地
-                </button>
-                <button
-                  onClick={() => handleResolveConflict(c.path, 'remote')}
-                  disabled={resolvingPath === c.path}
-                  style={{ height: 24, padding: '0 8px', fontSize: 11, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 4, cursor: resolvingPath === c.path ? 'wait' : 'pointer', opacity: resolvingPath === c.path ? 0.6 : 1 }}
-                >
-                  拉取远端
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <CloudSyncConflictList
+          conflicts={conflicts}
+          resolvingPath={resolvingPath}
+          onResolve={handleResolveConflict}
+        />
       </div>
     </div>
   )

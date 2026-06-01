@@ -1021,7 +1021,25 @@
       "pullComplete": "Pull complete: ↓{{pulled}}",
       "syncConflict": "Sync finished with ↑{{pushed}} ↓{{pulled}} and {{count}} conflicts to resolve.",
       "resolveConflictFailed": "Failed to resolve conflict for {{path}}.",
-      "syncUnknownError": "Unknown sync error"
+      "syncUnknownError": "Unknown sync error",
+      "conflicts": {
+        "title": "Conflict recovery",
+        "description": "Both copies changed in the merge window. Review the timestamps and hashes, then keep the version you want.",
+        "explanation": "Keep local pushes the current vault copy back to the backend. Pull remote replaces the local file with the remote copy.",
+        "count": "{{count}} files need review",
+        "local": "Local",
+        "remote": "Remote",
+        "localUpdated": "Local updated: {{value}}",
+        "remoteUpdated": "Remote updated: {{value}}",
+        "localHash": "Local hash: {{hash}}",
+        "remoteHash": "Remote hash: {{hash}}",
+        "keepLocal": "Keep local",
+        "pullRemote": "Pull remote",
+        "keepLocalHint": "Writes the vault copy back to the backend.",
+        "pullRemoteHint": "Overwrites the local file with the remote version.",
+        "resolveSuccessLocal": "Kept the local version of {{path}}.",
+        "resolveSuccessRemote": "Pulled the remote version of {{path}}."
+      }
     },
     "providerTest": {
       "title": "Setup checks",

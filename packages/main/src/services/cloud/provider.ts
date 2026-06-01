@@ -9,6 +9,7 @@ export interface SyncFileInfo {
 export interface SyncConflict {
   path: string
   localHash: string
+  localUpdatedAt: string
   remoteHash: string
   remoteUpdatedAt: string
 }
