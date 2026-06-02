@@ -42,6 +42,7 @@ Use this vault to test literature notes, source notes, digest writing, and weekl
 - [ ] Add a stable citation key to each literature note.
 - [ ] Resolve the draft question about peer-to-peer sync costs.
 - [ ] Decide whether this topic belongs in a public publish folder.
+- Review [[Maintenance/Workflow Rules]] before adding more research notes.
 `
       },
       {
@@ -202,6 +203,7 @@ This vault models a small essay project: brief, source notes, draft fragments, a
 - [ ] Decide which notes should be tagged publish.
 - [ ] Link each source note to at least one draft section.
 - [ ] Move unresolved claims into a fact-check list before publishing.
+- Review [[Maintenance/Workflow Rules]] before expanding the draft.
 `
       },
       {
@@ -359,6 +361,7 @@ This vault demonstrates ADRs, debug notes, API notes, and weekly engineering rev
 - [ ] Link every debug note to an ADR or API note.
 - [ ] Mark resolved incidents with status done.
 - [ ] Promote repeated debug findings into an ADR update.
+- Review [[Maintenance/Workflow Rules]] before opening another investigation.
 `
       },
       {
@@ -513,6 +516,7 @@ This vault demonstrates course notes, concept notes, practice tasks, and weekly 
 - [ ] Add links from every lesson to one concept note.
 - [ ] Move questions from lessons into practice notes.
 - [ ] Review open tasks at the end of the week.
+- Review [[Maintenance/Workflow Rules]] before adding another lesson.
 `
       },
       {

@@ -1,6 +1,7 @@
 import { access, mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { getWorkflowSampleVault, type WorkflowSampleVaultId } from '../../../shared/src/workflow-samples'
+import { getWorkflowSampleSupportFiles } from '../../../shared/src/workflow-sample-support'
 import { indexNote } from './indexer'
 
 export interface CreateWorkflowSampleVaultResult {
@@ -16,8 +17,9 @@ export async function createWorkflowSampleVault(parentDir: string, id: WorkflowS
   const vaultPath = await uniqueVaultPath(parentDir, sample.defaultVaultName)
   await mkdir(vaultPath, { recursive: true })
   let indexed = 0
+  const files = [...sample.files, ...getWorkflowSampleSupportFiles(id)]
 
-  for (const file of sample.files) {
+  for (const file of files) {
     const targetPath = join(vaultPath, ...file.path.split('/'))
     await mkdir(dirname(targetPath), { recursive: true })
     await writeFile(targetPath, file.content, 'utf-8')
@@ -31,7 +33,7 @@ export async function createWorkflowSampleVault(parentDir: string, id: WorkflowS
 
   return {
     vaultPath,
-    files: sample.files.length,
+    files: files.length,
     indexed
   }
 }
