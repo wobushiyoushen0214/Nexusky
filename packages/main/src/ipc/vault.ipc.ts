@@ -7,6 +7,8 @@ import { syncIndex } from '../services/cloud/manager'
 import { closeDatabase } from '../services/database'
 import { invalidateVaultQueryCache } from '../services/db-query-cache'
 import { scanVaultHealth } from '../services/vault-health'
+import { createWorkflowSampleVault } from '../services/workflow-samples'
+import type { WorkflowSampleVaultId } from '@shared/types/ipc'
 
 function addToRecentVaults(vaultPath: string): void {
   const recent = (store.get('recentVaults') as string[]) || []
@@ -62,6 +64,25 @@ export function registerVaultIPC(): void {
     addToRecentVaults(vaultPath)
     startWatching(vaultPath)
     return vaultPath
+  })
+
+  ipcMain.handle('vault:create-sample', async (_event, params: { sampleId: WorkflowSampleVaultId }) => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: '选择示例 vault 存放位置'
+    })
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    resetVaultRuntimeState()
+    const created = await createWorkflowSampleVault(result.filePaths[0], params.sampleId)
+    if (!created) return null
+
+    store.set('vaultPath', created.vaultPath)
+    addToRecentVaults(created.vaultPath)
+    startWatching(created.vaultPath)
+    return created
   })
 
   ipcMain.handle('vault:get', () => {

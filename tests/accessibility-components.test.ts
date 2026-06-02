@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Settings, NoAiModePanel, CloudSyncHealthPanel, CloudSyncBoundaryNotice, CloudSyncConflictList, NO_AI_MODE_LOCAL_FEATURES, NO_AI_MODE_PROVIDER_FEATURES, classifyProviderSetupError, getSettingsDialogTabTarget } from '../packages/renderer/src/components/settings/Settings'
 import { PublishScopeDialog, buildPublishScope, summarizePublishPreview } from '../packages/renderer/src/components/PublishScopeDialog'
+import { WelcomeScreen } from '../packages/renderer/src/components/WelcomeScreen'
 import { getTrashReasonLabel } from '../packages/renderer/src/components/TrashPanel'
 import { ToastViewport } from '../packages/renderer/src/components/Toast'
 import { useToastStore } from '../packages/renderer/src/stores/toast-store'
@@ -161,6 +162,24 @@ describe('accessibility component semantics', () => {
   it('labels files that were moved to trash by sync deletion recovery', () => {
     expect(getTrashReasonLabel('sync_remote_delete')).toBe('同步删除')
     expect(getTrashReasonLabel(undefined)).toBeNull()
+  })
+
+  it('renders workflow sample vault actions on the welcome screen', async () => {
+    await i18n.changeLanguage('en')
+    const target = new EventTarget()
+    Object.defineProperty(globalThis, 'window', {
+      value: Object.assign(target, { api: { invoke: vi.fn().mockResolvedValue([]) } }),
+      configurable: true
+    })
+
+    const html = renderToStaticMarkup(createElement(WelcomeScreen))
+
+    expect(html).toContain('Workflow samples')
+    expect(html).toContain('Research')
+    expect(html).toContain('Writing')
+    expect(html).toContain('Developer')
+    expect(html).toContain('Learning')
+    expect(html).toContain('Create a sample vault with real notes')
   })
 
   it('renders publish scope selection with accessible dialog labels', async () => {

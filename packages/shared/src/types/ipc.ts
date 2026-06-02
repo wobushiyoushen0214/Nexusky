@@ -1,3 +1,6 @@
+import type { WorkflowSampleVaultId } from '../workflow-samples'
+export type { WorkflowSampleVaultId } from '../workflow-samples'
+
 export interface FileEntry {
   name: string
   path: string
@@ -99,6 +102,12 @@ export interface PublishUnpublishResult {
   ok: boolean
   outputPath?: string
   removedFiles: number
+}
+
+export interface WorkflowSampleVaultCreateResult {
+  vaultPath: string
+  files: number
+  indexed: number
 }
 
 export interface PluginCommand {
@@ -768,6 +777,7 @@ export interface IPCChannelMap {
   'export:unpublish-vault': { params: { vaultPath: string; outputPath?: string }; result: PublishUnpublishResult }
   'vault:select': { params: undefined; result: string | null }
   'vault:create': { params: { name: string }; result: string | null }
+  'vault:create-sample': { params: { sampleId: WorkflowSampleVaultId }; result: WorkflowSampleVaultCreateResult | null }
   'vault:get': { params: undefined; result: string | null }
   'vault:get-recent': { params: undefined; result: string[] }
   'vault:clear-current': { params: undefined; result: void }

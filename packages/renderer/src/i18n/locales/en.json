@@ -66,6 +66,30 @@
       "create": "Create a vault",
       "open": "Open an existing folder"
     },
+    "samples": {
+      "label": "Workflow samples",
+      "description": "Create a sample vault with real notes for research, writing, development, or learning.",
+      "open": "Create",
+      "creating": "Creating...",
+      "failed": "Failed to create sample vault",
+      "created": "Created sample vault at {{path}} with {{files}} files",
+      "research": {
+        "title": "Research",
+        "description": "Literature notes, source notes, digest writing, and weekly review."
+      },
+      "writing": {
+        "title": "Writing",
+        "description": "Essay brief, source notes, draft fragments, and revision review."
+      },
+      "developer": {
+        "title": "Developer",
+        "description": "ADRs, debug notes, API notes, and engineering review."
+      },
+      "learning": {
+        "title": "Learning",
+        "description": "Lesson notes, concepts, practice drills, and weekly review."
+      }
+    },
     "create": {
       "placeholder": "Vault name",
       "confirm": "Choose location and create",

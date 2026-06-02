@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
 import { getErrorMessage } from '../utils/errors'
-import type { FileEntry } from '@shared/types/ipc'
+import type { FileEntry, WorkflowSampleVaultId, WorkflowSampleVaultCreateResult } from '@shared/types/ipc'
 
 export const VAULT_FILES_REFRESHED_EVENT = 'nexusky:vault-files-refreshed'
 
@@ -20,6 +20,7 @@ interface VaultState {
   setFiles: (files: FileEntry[]) => void
   selectVault: () => Promise<void>
   createVault: (name: string) => Promise<void>
+  createSampleVault: (sampleId: WorkflowSampleVaultId) => Promise<WorkflowSampleVaultCreateResult | null>
   loadVault: () => Promise<void>
   refreshFiles: (changedPaths?: string[]) => Promise<void>
   indexVault: () => Promise<void>
@@ -68,6 +69,16 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       await get().refreshFiles()
       await get().indexVault()
     }
+  },
+
+  createSampleVault: async (sampleId: WorkflowSampleVaultId) => {
+    const result = await window.api.invoke('vault:create-sample', { sampleId })
+    if (result?.vaultPath) {
+      get().setVaultPath(result.vaultPath)
+      await get().refreshFiles()
+      await get().indexVault()
+    }
+    return result
   },
 
   loadVault: async () => {

@@ -66,6 +66,30 @@
       "create": "创建 vault",
       "open": "打开已有文件夹"
     },
+    "samples": {
+      "label": "工作流样例",
+      "description": "创建带有真实笔记的样例 vault，分别对应研究、写作、开发和学习。",
+      "open": "创建",
+      "creating": "创建中...",
+      "failed": "创建样例 vault 失败",
+      "created": "已创建样例 vault：{{path}}，共 {{files}} 个文件",
+      "research": {
+        "title": "研究",
+        "description": "文献笔记、来源笔记、摘要和周复盘。"
+      },
+      "writing": {
+        "title": "写作",
+        "description": "选题、来源、草稿片段和修订复盘。"
+      },
+      "developer": {
+        "title": "开发",
+        "description": "ADR、调试笔记、API 笔记和工程复盘。"
+      },
+      "learning": {
+        "title": "学习",
+        "description": "课程笔记、概念、练习和周复盘。"
+      }
+    },
     "create": {
       "placeholder": "Vault 名称",
       "confirm": "选择位置并创建",

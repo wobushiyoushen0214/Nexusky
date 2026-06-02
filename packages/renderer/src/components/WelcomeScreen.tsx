@@ -1,11 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../stores/vault-store'
+import { toast } from '../stores/toast-store'
+import type { WorkflowSampleVaultId } from '@shared/types/ipc'
+import { getErrorMessage } from '../utils/errors'
+import { SAMPLE_WORKFLOW_VAULTS } from '../../../shared/src/workflow-samples'
 
 export function WelcomeScreen() {
   const { t } = useTranslation()
-  const { selectVault, createVault } = useVaultStore()
+  const { selectVault, createVault, createSampleVault } = useVaultStore()
   const [isCreating, setIsCreating] = useState(false)
+  const [creatingSample, setCreatingSample] = useState<WorkflowSampleVaultId | null>(null)
   const [vaultName, setVaultName] = useState('')
   const [recentVaults, setRecentVaults] = useState<string[]>([])
 
@@ -21,6 +26,20 @@ export function WelcomeScreen() {
     setVaultName('')
   }
 
+  const handleCreateSample = async (sampleId: WorkflowSampleVaultId) => {
+    setCreatingSample(sampleId)
+    try {
+      const result = await createSampleVault(sampleId)
+      if (result?.vaultPath) {
+        toast(t('welcome.samples.created', { path: result.vaultPath, files: result.files }), 'success')
+      }
+    } catch (error) {
+      toast(getErrorMessage(error, t('welcome.samples.failed')), 'error')
+    } finally {
+      setCreatingSample(null)
+    }
+  }
+
   const handleOpenRecent = async (path: string) => {
     const { setVaultPath, refreshFiles, indexVault } = useVaultStore.getState()
     setVaultPath(path)
@@ -29,8 +48,8 @@ export function WelcomeScreen() {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', gap: 28, padding: '48px 24px' }}>
-      <div style={{ width: 'min(420px, 100%)', textAlign: 'center' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', gap: 22, padding: '48px 24px' }}>
+      <div style={{ width: 'min(620px, 100%)', textAlign: 'center' }}>
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--accent)' }}>
             <path d="M12 3L2 7l10 4 10-4-10-4z" fill="currentColor" opacity="0.9" />
@@ -50,6 +69,50 @@ export function WelcomeScreen() {
           <WelcomeSignal>{t('welcome.signal.review')}</WelcomeSignal>
         </div>
       </div>
+
+      <section style={{ width: 'min(620px, 100%)', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', padding: 16, display: 'grid', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {t('welcome.samples.label')}
+            </div>
+            <div style={{ marginTop: 4, fontSize: 13, color: 'var(--text-secondary)' }}>
+              {t('welcome.samples.description')}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          {SAMPLE_WORKFLOW_VAULTS.map((sample) => (
+            <button
+              key={sample.id}
+              type="button"
+              onClick={() => handleCreateSample(sample.id)}
+              disabled={creatingSample !== null}
+              style={{
+                minHeight: 88,
+                padding: 14,
+                borderRadius: 8,
+                border: '1px solid var(--border-default)',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-primary)',
+                textAlign: 'left',
+                cursor: creatingSample ? 'wait' : 'pointer',
+                opacity: creatingSample && creatingSample !== sample.id ? 0.6 : 1
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{t(`welcome.samples.${sample.id}.title`)}</div>
+                  <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>{t(`welcome.samples.${sample.id}.description`)}</div>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 11, color: 'var(--accent-text)', background: 'var(--accent-muted)', borderRadius: 999, padding: '3px 8px' }}>
+                  {creatingSample === sample.id ? t('welcome.samples.creating') : t('welcome.samples.open')}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
 
       {isCreating ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(320px, 100%)' }}>
