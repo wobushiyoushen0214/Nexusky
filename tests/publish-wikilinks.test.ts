@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
+import { buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishAccessOutputs, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishRobotsMeta, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
 
 describe('publish wikilink lookup', () => {
   it('resolves published wikilinks by title, filename, nested path, heading, and case variant', () => {
@@ -220,5 +220,16 @@ describe('publish wikilink lookup', () => {
 
     expect(next.changed.map((item) => item.relPath)).toEqual(['index.html', 'site-data.js', 'notes/beta.html'])
     expect(next.unchanged).toEqual(['notes/alpha.html'])
+  })
+
+  it('generates publish access control files and noindex metadata for private exports', () => {
+    expect(createPublishAccessOutputs('public')).toEqual([
+      { relPath: 'robots.txt', content: 'User-agent: *\nAllow: /\n' },
+      expect.objectContaining({ relPath: 'access.json', content: expect.stringContaining('"mode": "public"') })
+    ])
+    expect(createPublishAccessOutputs('private')[0]).toEqual({ relPath: 'robots.txt', content: 'User-agent: *\nDisallow: /\n' })
+    expect(createPublishAccessOutputs('private')[1]).toEqual(expect.objectContaining({ relPath: 'access.json', content: expect.stringContaining('"mode": "private"') }))
+    expect(getPublishRobotsMeta('private')).toBe('<meta name="robots" content="noindex,nofollow">')
+    expect(getPublishRobotsMeta('public')).toBe('')
   })
 })

@@ -1,7 +1,7 @@
 import { createHash } from 'crypto'
 import { basename, posix } from 'path'
 import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
-import type { PublishPreviewAssetIssue, PublishPreviewLinkIssue, PublishScope } from '@shared/types/ipc'
+import type { PublishAccessMode, PublishPreviewAssetIssue, PublishPreviewLinkIssue, PublishScope } from '@shared/types/ipc'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading } from './ai/note-lookup'
 
 export interface PublishWikilinkNote {
@@ -42,6 +42,11 @@ export type PublishManifest = Record<string, PublishManifestEntry>
 export interface PublishOutputFile {
   relPath: string
   content: string | Buffer
+}
+
+export interface PublishAccessFile {
+  relPath: string
+  content: string
 }
 
 export interface PublishIncrementalPlan {
@@ -391,6 +396,36 @@ export function parsePublishManifest(raw: string): PublishManifest {
     manifest[relPath] = { hash }
   }
   return manifest
+}
+
+export function createPublishAccessOutputs(access: PublishAccessMode = 'public'): PublishAccessFile[] {
+  const privateMode = access === 'private'
+  const accessJson = [
+    '{',
+    `  "mode": "${privateMode ? 'private' : 'public'}",`,
+    `  "indexed": ${privateMode ? 'false' : 'true'},`,
+    `  "note": ${JSON.stringify(privateMode
+      ? 'Static export marked noindex. Host access control must be configured on the hosting provider.'
+      : 'Static export allows indexing unless the hosting provider applies stricter rules.')}`,
+    '}',
+    ''
+  ].join('\n')
+  return [
+    {
+      relPath: 'robots.txt',
+      content: privateMode
+        ? 'User-agent: *\nDisallow: /\n'
+        : 'User-agent: *\nAllow: /\n'
+    },
+    {
+      relPath: 'access.json',
+      content: accessJson
+    }
+  ]
+}
+
+export function getPublishRobotsMeta(access: PublishAccessMode = 'public'): string {
+  return access === 'private' ? '<meta name="robots" content="noindex,nofollow">' : ''
 }
 
 function normalizePublishWikilinkTarget(target: string): string {

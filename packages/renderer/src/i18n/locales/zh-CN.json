@@ -677,7 +677,9 @@
       "htmlDone": "HTML 导出完成",
       "publishDone": "已发布 {{count}} 篇笔记",
       "publishPreviewFailed": "生成发布预览失败",
-      "publishFailed": "发布知识库失败"
+      "publishFailed": "发布知识库失败",
+      "unpublishDone": "已撤回生成站点文件，移除 {{count}} 个文件",
+      "unpublishFailed": "撤回发布失败"
     },
     "publishScope": {
       "title": "发布预览",
@@ -719,7 +721,19 @@
       },
       "publish": "发布",
       "publishing": "发布中...",
-      "cancel": "取消"
+      "cancel": "取消",
+      "accessLabel": "访问模式",
+      "accessBoundary": "静态导出的访问仍取决于托管方。公开模式保持可被索引，私有模式会给生成站点加上 noindex 和 robots 屏蔽。",
+      "currentTarget": "上次发布目标",
+      "targetSummary": "{{count}} 篇笔记，{{scope}}",
+      "unpublish": "撤回发布",
+      "unpublishConfirmTitle": "撤回这次发布？",
+      "unpublishConfirmMessage": "这会删除 {{path}} 中生成的发布文件，并清除已保存的发布目标。",
+      "unpublishConfirm": "移除导出",
+      "access": {
+        "public": { "label": "公开", "hint": "生成页面可被索引，除非托管方施加更严格规则。" },
+        "private": { "label": "私有", "hint": "生成页面会带上 noindex 和 robots 屏蔽。" }
+      }
     }
   },
   "bases": {

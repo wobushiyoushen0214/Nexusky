@@ -6,9 +6,10 @@ import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import { PUBLISH_MANIFEST_REL_PATH, buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishScopeLabel, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishOutputFile, type PublishWikilinkLookup } from '../services/publish'
+import { PUBLISH_MANIFEST_REL_PATH, buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishAccessOutputs, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishRobotsMeta, getPublishScopeLabel, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishOutputFile, type PublishWikilinkLookup } from '../services/publish'
 import { getPropertyRows } from '../services/indexer'
-import type { PublishPreviewResult, PublishScope } from '@shared/types/ipc'
+import { store } from '../services/store'
+import type { PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
 
 interface PublishBuildNote extends PublishCandidate {
   href: string
@@ -19,6 +20,8 @@ interface PublishPreviewData extends PublishPreviewResult {
   allFiles: string[]
   publishNotes: PublishBuildNote[]
 }
+
+const PUBLISH_TARGETS_STORE_KEY = 'publishTargets'
 
 export function registerExportIPC(): void {
   ipcMain.handle('export:html', async (event, params: { content: string; title: string }) => {
@@ -161,7 +164,11 @@ ${markdownToHtml(params.content)}
     return toRendererPublishPreview(await buildPublishPreview(params.vaultPath, params.scope))
   })
 
-  ipcMain.handle('export:publish-vault', async (event, params: { vaultPath: string; scope?: PublishScope }) => {
+  ipcMain.handle('export:get-publish-target', async (_event, params: { vaultPath: string }) => {
+    return getStoredPublishTarget(params.vaultPath)
+  })
+
+  ipcMain.handle('export:publish-vault', async (event, params: { vaultPath: string; scope?: PublishScope; access?: PublishAccessMode }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return { ok: false, files: 0 }
 
@@ -172,6 +179,7 @@ ${markdownToHtml(params.content)}
     if (result.canceled || !result.filePaths[0]) return { ok: false, files: 0 }
 
     const outputPath = result.filePaths[0]
+    const access = params.access || 'public'
     const preview = await buildPublishPreview(params.vaultPath, params.scope)
     const files = await collectPublishFilesForScope(params.vaultPath, params.scope, preview)
     const markdownFiles = files.filter((file) => file.endsWith('.md'))
@@ -229,11 +237,15 @@ ${markdownToHtml(params.content)}
           return assetHref ? relativeHref(note.href, assetHref) : null
         }
       )
-      outputs.push({ relPath: note.href, content: renderPublishPage(note.title, html, note.href) })
+      outputs.push({ relPath: note.href, content: renderPublishPage(note.title, html, note.href, access) })
     }
 
-    outputs.push({ relPath: 'index.html', content: renderPublishIndex(notes, getPublishScopeLabel(params.scope)) })
+    const scopeLabel = getPublishScopeLabel(params.scope)
+    outputs.push({ relPath: 'index.html', content: renderPublishIndex(notes, scopeLabel, access) })
     outputs.push({ relPath: 'site-data.js', content: renderPublishSiteData(notes, searchIndex) })
+    for (const accessFile of createPublishAccessOutputs(access)) {
+      outputs.push(accessFile)
+    }
 
     for (const asset of assetFiles) {
       outputs.push({ relPath: asset, content: await readFile(join(params.vaultPath, asset)) })
@@ -253,9 +265,50 @@ ${markdownToHtml(params.content)}
     }
 
     await writeFile(join(outputPath, PUBLISH_MANIFEST_REL_PATH), serializePublishManifest(plan.manifest), 'utf-8')
+    setStoredPublishTarget(params.vaultPath, {
+      outputPath,
+      files: notes.length,
+      scopeLabel,
+      access,
+      publishedAt: Date.now()
+    })
     shell.showItemInFolder(join(outputPath, 'index.html'))
-    return { ok: true, outputPath, files: notes.length, updatedFiles: plan.changed.length, skippedFiles: plan.unchanged.length, removedFiles: plan.removed.length }
+    return { ok: true, outputPath, files: notes.length, scopeLabel, access, updatedFiles: plan.changed.length, skippedFiles: plan.unchanged.length, removedFiles: plan.removed.length }
   })
+
+  ipcMain.handle('export:unpublish-vault', async (_event, params: { vaultPath: string; outputPath?: string }) => {
+    const target = params.outputPath ? { outputPath: params.outputPath } : getStoredPublishTarget(params.vaultPath)
+    if (!target?.outputPath) return { ok: false, removedFiles: 0 }
+
+    const previousManifest = await readPublishManifest(target.outputPath)
+    const relPaths = Object.keys(previousManifest)
+    let removedFiles = 0
+    for (const relPath of relPaths) {
+      await rm(join(target.outputPath, relPath), { force: true })
+      removedFiles += 1
+    }
+    await rm(join(target.outputPath, PUBLISH_MANIFEST_REL_PATH), { force: true })
+    clearStoredPublishTarget(params.vaultPath)
+    return { ok: true, outputPath: target.outputPath, removedFiles }
+  })
+}
+
+function getStoredPublishTarget(vaultPath: string): PublishTarget | null {
+  const targets = (store.get(PUBLISH_TARGETS_STORE_KEY) as Record<string, PublishTarget> | undefined) || {}
+  const target = targets[vaultPath]
+  if (!target?.outputPath) return null
+  return target
+}
+
+function setStoredPublishTarget(vaultPath: string, target: PublishTarget): void {
+  const targets = (store.get(PUBLISH_TARGETS_STORE_KEY) as Record<string, PublishTarget> | undefined) || {}
+  store.set(PUBLISH_TARGETS_STORE_KEY, { ...targets, [vaultPath]: target })
+}
+
+function clearStoredPublishTarget(vaultPath: string): void {
+  const targets = { ...((store.get(PUBLISH_TARGETS_STORE_KEY) as Record<string, PublishTarget> | undefined) || {}) }
+  delete targets[vaultPath]
+  store.set(PUBLISH_TARGETS_STORE_KEY, targets)
 }
 
 async function readPublishManifest(outputPath: string) {
@@ -424,12 +477,13 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] || ch)
 }
 
-function renderPublishPage(title: string, bodyHtml: string, currentHref: string): string {
+function renderPublishPage(title: string, bodyHtml: string, currentHref: string, access: PublishAccessMode = 'public'): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${getPublishRobotsMeta(access)}
 <title>${title} — Nexusky Publish</title>
 ${publishStyles()}
 </head>
@@ -456,12 +510,13 @@ function isInternalPublishHtmlHref(href: string): boolean {
   return !/^(?:https?:|data:|mailto:|#)/i.test(href) && /\.html(?:#.*)?$/i.test(href)
 }
 
-function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], scopeLabel = 'all'): string {
+function renderPublishIndex(notes: { title: string; href: string; relPath: string }[], scopeLabel = 'all', access: PublishAccessMode = 'public'): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${getPublishRobotsMeta(access)}
 <title>Nexusky Publish</title>
 ${publishStyles()}
 </head>

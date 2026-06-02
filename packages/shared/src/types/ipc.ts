@@ -39,6 +39,16 @@ export type PublishScope =
   | { type: 'tag'; tag: string }
   | { type: 'property'; key: string; value?: string }
 
+export type PublishAccessMode = 'public' | 'private'
+
+export interface PublishTarget {
+  outputPath: string
+  files: number
+  scopeLabel: string
+  access: PublishAccessMode
+  publishedAt: number
+}
+
 export interface PublishPreviewNote {
   title: string
   relPath: string
@@ -78,9 +88,17 @@ export interface PublishResult {
   ok: boolean
   outputPath?: string
   files: number
+  scopeLabel?: string
+  access?: PublishAccessMode
   updatedFiles?: number
   skippedFiles?: number
   removedFiles?: number
+}
+
+export interface PublishUnpublishResult {
+  ok: boolean
+  outputPath?: string
+  removedFiles: number
 }
 
 export interface PluginCommand {
@@ -745,7 +763,9 @@ export interface IPCChannelMap {
   'export:pdf': { params: { content: string; title: string }; result: boolean }
   'export:share': { params: { content: string; title: string }; result: string }
   'export:preview-publish-vault': { params: { vaultPath: string; scope?: PublishScope }; result: PublishPreviewResult }
-  'export:publish-vault': { params: { vaultPath: string; scope?: PublishScope }; result: PublishResult }
+  'export:get-publish-target': { params: { vaultPath: string }; result: PublishTarget | null }
+  'export:publish-vault': { params: { vaultPath: string; scope?: PublishScope; access?: PublishAccessMode }; result: PublishResult }
+  'export:unpublish-vault': { params: { vaultPath: string; outputPath?: string }; result: PublishUnpublishResult }
   'vault:select': { params: undefined; result: string | null }
   'vault:create': { params: { name: string }; result: string | null }
   'vault:get': { params: undefined; result: string | null }

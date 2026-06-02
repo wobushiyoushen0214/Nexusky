@@ -677,7 +677,9 @@
       "htmlDone": "HTML export complete",
       "publishDone": "Published {{count}} notes",
       "publishPreviewFailed": "Failed to prepare publish preview",
-      "publishFailed": "Failed to publish vault"
+      "publishFailed": "Failed to publish vault",
+      "unpublishDone": "Unpublished generated site files: {{count}} removed",
+      "unpublishFailed": "Failed to unpublish vault"
     },
     "publishScope": {
       "title": "Publish preview",
@@ -719,7 +721,19 @@
       },
       "publish": "Publish",
       "publishing": "Publishing...",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "accessLabel": "Access mode",
+      "accessBoundary": "Static export access still depends on the hosting provider. Public mode keeps the export indexable, private mode adds noindex and robots blocking for the generated site.",
+      "currentTarget": "Last publish target",
+      "targetSummary": "{{count}} notes, {{scope}}",
+      "unpublish": "Unpublish",
+      "unpublishConfirmTitle": "Unpublish this export?",
+      "unpublishConfirmMessage": "This removes the generated publish files from {{path}} and clears the saved publish target.",
+      "unpublishConfirm": "Remove export",
+      "access": {
+        "public": { "label": "Public", "hint": "Generated pages can be indexed unless the host applies stricter rules." },
+        "private": { "label": "Private", "hint": "Generated pages include noindex and robots blocking." }
+      }
     }
   },
   "bases": {

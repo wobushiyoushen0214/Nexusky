@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { getErrorMessage } from '../utils/errors'
-import type { FileEntry, PropertyTableRow, PublishPreviewResult, PublishScope } from '@shared/types/ipc'
+import { ConfirmModal } from './ConfirmModal'
+import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
 
 type PublishScopeType = PublishScope['type']
 
@@ -24,8 +25,12 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
   const [tags, setTags] = useState<{ name: string; count: number }[]>([])
   const [propertyRows, setPropertyRows] = useState<PropertyTableRow[]>([])
   const [preview, setPreview] = useState<PublishPreviewResult | null>(null)
+  const [access, setAccess] = useState<PublishAccessMode>('public')
+  const [target, setTarget] = useState<PublishTarget | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [unpublishing, setUnpublishing] = useState(false)
+  const [confirmUnpublish, setConfirmUnpublish] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
   const overlayPointerDownRef = useRef(false)
 
@@ -37,8 +42,11 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
     setPropertyKey('')
     setPropertyValue('')
     setPreview(null)
+    setAccess('public')
     setPreviewing(false)
     setPublishing(false)
+    setUnpublishing(false)
+    setConfirmUnpublish(false)
     const timer = window.setTimeout(() => dialogRef.current?.querySelector<HTMLButtonElement>('button[data-primary="true"]')?.focus(), 50)
     return () => window.clearTimeout(timer)
   }, [open])
@@ -47,6 +55,10 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
     if (!open || !vaultPath) return
     window.api.invoke('db:get-tags', { vaultPath }).then(setTags).catch(() => setTags([]))
     window.api.invoke('db:get-property-rows', { vaultPath }).then(setPropertyRows).catch(() => setPropertyRows([]))
+    window.api.invoke('export:get-publish-target', { vaultPath }).then((storedTarget) => {
+      setTarget(storedTarget)
+      if (storedTarget?.access) setAccess(storedTarget.access)
+    }).catch(() => setTarget(null))
   }, [open, vaultPath])
 
   useEffect(() => {
@@ -87,8 +99,9 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
     || (scopeType === 'tag' && tag.trim().length > 0)
     || (scopeType === 'property' && propertyKey.trim().length > 0)
   )
-  const canPreview = scopeReady && !previewing && !publishing
-  const canPublish = scopeReady && !!preview && preview.notes.length > 0 && !previewing && !publishing
+  const canPreview = scopeReady && !previewing && !publishing && !unpublishing
+  const canPublish = scopeReady && !!preview && preview.notes.length > 0 && !previewing && !publishing && !unpublishing
+  const canUnpublish = !!vaultPath && !!target && !previewing && !publishing && !unpublishing
   const hasIssues = (preview?.missingLinks.length || 0) > 0 || (preview?.missingAssets.length || 0) > 0
 
   const handlePreview = async () => {
@@ -109,7 +122,7 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
     const scope = buildPublishScope(scopeType, folderPath, tag, propertyKey, propertyValue)
     setPublishing(true)
     try {
-      const result = await window.api.invoke('export:publish-vault', { vaultPath, scope })
+      const result = await window.api.invoke('export:publish-vault', { vaultPath, scope, access })
       if (result.ok) {
         toast(t('commandPalette.toasts.publishDone', { count: result.files }), 'success')
         onClose()
@@ -118,6 +131,23 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
       toast(getErrorMessage(error, t('commandPalette.toasts.publishFailed')), 'error')
     } finally {
       setPublishing(false)
+    }
+  }
+
+  const handleUnpublish = async () => {
+    if (!vaultPath || !target || !canUnpublish) return
+    setConfirmUnpublish(false)
+    setUnpublishing(true)
+    try {
+      const result = await window.api.invoke('export:unpublish-vault', { vaultPath })
+      if (result.ok) {
+        setTarget(null)
+        toast(t('commandPalette.toasts.unpublishDone', { count: result.removedFiles }), 'success')
+      }
+    } catch (error) {
+      toast(getErrorMessage(error, t('commandPalette.toasts.unpublishFailed')), 'error')
+    } finally {
+      setUnpublishing(false)
     }
   }
 
@@ -151,6 +181,10 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
 
         <div style={{ padding: 18, overflow: 'auto', display: 'grid', gridTemplateColumns: 'minmax(260px, 0.82fr) minmax(320px, 1fr)', gap: 16 }}>
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {target && (
+              <PublishTargetPanel target={target} disabled={!canUnpublish} onUnpublish={() => setConfirmUnpublish(true)} />
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {(['all', 'folder', 'tag', 'property'] as PublishScopeType[]).map((type) => {
                 const selected = scopeType === type
@@ -213,6 +247,8 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
               </div>
             )}
 
+            <AccessModeControl value={access} onChange={setAccess} />
+
             <button type="button" onClick={handlePreview} disabled={!canPreview} style={{ ...primaryButtonStyle, width: 'fit-content', opacity: canPreview ? 1 : 0.55, cursor: canPreview ? 'pointer' : 'not-allowed' }}>
               {previewing ? t('commandPalette.publishScope.previewing') : t('commandPalette.publishScope.preview')}
             </button>
@@ -226,13 +262,23 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
             {preview ? (hasIssues ? t('commandPalette.publishScope.issueHint') : t('commandPalette.publishScope.readyHint')) : t('commandPalette.publishScope.previewRequired')}
           </span>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button type="button" onClick={onClose} disabled={publishing || previewing} style={secondaryButtonStyle}>{t('commandPalette.publishScope.cancel')}</button>
+            <button type="button" onClick={onClose} disabled={publishing || previewing || unpublishing} style={secondaryButtonStyle}>{t('commandPalette.publishScope.cancel')}</button>
             <button type="button" onClick={handlePublish} disabled={!canPublish} style={{ ...primaryButtonStyle, opacity: canPublish ? 1 : 0.55, cursor: canPublish ? 'pointer' : 'not-allowed' }}>
               {publishing ? t('commandPalette.publishScope.publishing') : t('commandPalette.publishScope.publish')}
             </button>
           </div>
         </div>
       </div>
+      <ConfirmModal
+        open={confirmUnpublish}
+        title={t('commandPalette.publishScope.unpublishConfirmTitle')}
+        message={t('commandPalette.publishScope.unpublishConfirmMessage', { path: target?.outputPath || '' })}
+        confirmText={t('commandPalette.publishScope.unpublishConfirm')}
+        cancelText={t('commandPalette.publishScope.cancel')}
+        danger
+        onConfirm={handleUnpublish}
+        onCancel={() => setConfirmUnpublish(false)}
+      />
     </div>
   )
 }
@@ -320,6 +366,62 @@ function PublishPreviewPanel({ preview, loading, hasIssues }: { preview: Publish
           ))}
         </PreviewList>
       </div>
+    </section>
+  )
+}
+
+function PublishTargetPanel({ target, disabled, onUnpublish }: { target: PublishTarget; disabled: boolean; onUnpublish: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <section style={{ padding: 10, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('commandPalette.publishScope.currentTarget')}</div>
+          <div title={target.outputPath} style={{ marginTop: 3, fontSize: 11, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.outputPath}</div>
+        </div>
+        <button type="button" onClick={onUnpublish} disabled={disabled} style={{ ...dangerButtonStyle, opacity: disabled ? 0.55 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
+          {t('commandPalette.publishScope.unpublish')}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <span style={pillStyle}>{t(`commandPalette.publishScope.access.${target.access}.label`)}</span>
+        <span style={pillStyle}>{t('commandPalette.publishScope.targetSummary', { count: target.files, scope: target.scopeLabel })}</span>
+      </div>
+    </section>
+  )
+}
+
+function AccessModeControl({ value, onChange }: { value: PublishAccessMode; onChange: (value: PublishAccessMode) => void }) {
+  const { t } = useTranslation()
+  return (
+    <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('commandPalette.publishScope.accessLabel')}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {(['public', 'private'] as PublishAccessMode[]).map((mode) => {
+          const selected = value === mode
+          return (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onChange(mode)}
+              style={{
+                minHeight: 54,
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: selected ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                background: selected ? 'var(--accent-muted)' : 'var(--bg-surface)',
+                color: selected ? 'var(--accent-text)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{t(`commandPalette.publishScope.access.${mode}.label`)}</span>
+              <span style={{ display: 'block', marginTop: 3, fontSize: 11, lineHeight: 1.35, color: selected ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>{t(`commandPalette.publishScope.access.${mode}.hint`)}</span>
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ fontSize: 10.5, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>{t('commandPalette.publishScope.accessBoundary')}</div>
     </section>
   )
 }
@@ -452,4 +554,26 @@ const primaryButtonStyle: React.CSSProperties = {
   color: 'white',
   fontSize: 12,
   fontWeight: 600
+}
+
+const dangerButtonStyle: React.CSSProperties = {
+  padding: '6px 10px',
+  borderRadius: 6,
+  border: '1px solid rgba(220, 38, 38, 0.35)',
+  background: 'rgba(220, 38, 38, 0.1)',
+  color: '#dc2626',
+  fontSize: 11,
+  fontWeight: 700
+}
+
+const pillStyle: React.CSSProperties = {
+  padding: '3px 7px',
+  borderRadius: 999,
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-tertiary)',
+  fontSize: 10.5,
+  maxWidth: '100%',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap'
 }
