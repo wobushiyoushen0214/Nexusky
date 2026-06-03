@@ -317,6 +317,25 @@
       "archive": "归档",
       "add_alias": "添加别名"
     },
+    "feedback": {
+      "label": "维护反馈",
+      "done": "完成",
+      "snoozed": "稍后",
+      "skipped": "跳过",
+      "not_relevant": "不相关",
+      "title": {
+        "done": "隐藏这条维护项，直到它的内容发生变化",
+        "snoozed": "7 天后再显示这条维护项",
+        "skipped": "跳过这条维护项",
+        "not_relevant": "标记为不相关并隐藏"
+      },
+      "toast": {
+        "done": "已标记完成。",
+        "snoozed": "已延后 7 天。",
+        "skipped": "已跳过。",
+        "not_relevant": "已标记为不相关。"
+      }
+    },
     "jumps": {
       "focusInBases": "在属性视图定位",
       "focusInBasesTitle": "在属性视图定位此笔记，便于编辑属性后再回来刷新"

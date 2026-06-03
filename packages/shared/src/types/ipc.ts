@@ -702,6 +702,7 @@ export interface MaintenanceScanStatus {
 
 export type MaintenanceApplyAction = 'open_note' | 'create_target' | 'mark_done' | 'archive' | 'add_alias'
 export type MaintenanceApplyMode = 'preview' | 'apply' | 'undo'
+export type MaintenanceFeedbackStatus = 'done' | 'skipped' | 'snoozed' | 'not_relevant'
 
 export interface MaintenanceApplyPreview {
   filePath: string
@@ -721,6 +722,13 @@ export interface MaintenanceApplyResult {
   preview?: MaintenanceApplyPreview
   undoToken?: string
   undoExpiresAt?: number
+}
+
+export interface MaintenanceFeedbackResult {
+  ok: true
+  signature: string
+  status: MaintenanceFeedbackStatus
+  snoozeUntil: number | null
 }
 
 export type CloudSyncHealthStatus = 'idle' | 'ok' | 'conflict' | 'error'
@@ -1128,6 +1136,15 @@ export interface IPCChannelMap {
       language?: AppLanguage
     }
     result: MaintenanceApplyResult
+  }
+  'maintenance:record-feedback': {
+    params: {
+      vaultPath: string
+      item: KnowledgeMaintenanceItem
+      status: MaintenanceFeedbackStatus
+      snoozeUntil?: number | null
+    }
+    result: MaintenanceFeedbackResult
   }
   'agent:plan': {
     params: { vaultPath: string; goal: string; description?: string; context?: Record<string, unknown>; dryRun?: boolean }

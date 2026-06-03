@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-export const SCHEMA_VERSION = 12
+export const SCHEMA_VERSION = 13
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -207,6 +207,7 @@ function initSchema(db: Database.Database): void {
   createLongContextSchema(db)
   createProactiveSchema(db)
   createAgentSchema(db)
+  createMaintenanceFeedbackSchema(db)
 }
 
 function createAgentSchema(db: Database.Database): void {
@@ -294,6 +295,33 @@ function createProactiveSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_proactive_entity
       ON proactive_suggestions(entity_type, entity_id, status);
+  `)
+}
+
+function createMaintenanceFeedbackSchema(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS maintenance_feedback (
+      id TEXT PRIMARY KEY,
+      signature TEXT NOT NULL,
+      item_type TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      action TEXT NOT NULL DEFAULT '',
+      detail TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL CHECK (status IN ('done', 'skipped', 'snoozed', 'not_relevant')),
+      snooze_until INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_maintenance_feedback_signature
+      ON maintenance_feedback(signature);
+
+    CREATE INDEX IF NOT EXISTS idx_maintenance_feedback_status
+      ON maintenance_feedback(status, snooze_until, updated_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_maintenance_feedback_file
+      ON maintenance_feedback(file_path, item_type);
   `)
 }
 
@@ -554,6 +582,18 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'proactive_suggestions', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'proactive_suggestions', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
 
+  ensureColumn(db, 'maintenance_feedback', 'id', "id TEXT DEFAULT ''")
+  ensureColumn(db, 'maintenance_feedback', 'signature', "signature TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'maintenance_feedback', 'item_type', "item_type TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'maintenance_feedback', 'file_path', "file_path TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'maintenance_feedback', 'title', "title TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'maintenance_feedback', 'action', "action TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'maintenance_feedback', 'detail', "detail TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, 'maintenance_feedback', 'status', "status TEXT NOT NULL DEFAULT 'skipped'")
+  ensureColumn(db, 'maintenance_feedback', 'snooze_until', 'snooze_until INTEGER')
+  ensureColumn(db, 'maintenance_feedback', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'maintenance_feedback', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
   if (tableExists(db, 'links') && tableExists(db, 'notes') && tableColumns(db, 'links').has('source_note_id')) {
     db.exec("DELETE FROM links WHERE source_note_id = '' OR source_note_id NOT IN (SELECT id FROM notes)")
   }
@@ -695,6 +735,10 @@ const migrations: Migration[] = [
   (db) => {
     ensureColumn(db, 'notes', 'properties_json', "properties_json TEXT NOT NULL DEFAULT '{}'")
     ensureColumn(db, 'notes', 'properties_version', 'properties_version INTEGER NOT NULL DEFAULT 0')
+  },
+  // Migration 13: persisted maintenance item feedback
+  (db) => {
+    createMaintenanceFeedbackSchema(db)
   }
 ]
 

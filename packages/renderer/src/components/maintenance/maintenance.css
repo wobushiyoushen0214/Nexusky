@@ -368,6 +368,13 @@
   margin-top: 4px;
 }
 
+.maintenance-card__feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
 .maintenance-card__btn {
   padding: 4px 10px;
   font-size: 11px;
@@ -382,6 +389,19 @@
 .maintenance-card__btn:hover {
   background: var(--bg-hover-strong, rgba(255, 255, 255, 0.08));
   color: var(--text-primary);
+}
+
+.maintenance-card__btn--quiet {
+  padding: 3px 8px;
+  background: transparent;
+  color: var(--text-tertiary);
+  border-color: var(--border-faint, rgba(255, 255, 255, 0.04));
+}
+
+.maintenance-card__btn--quiet:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
 }
 
 .maintenance-card__btn:disabled {

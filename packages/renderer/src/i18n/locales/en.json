@@ -317,6 +317,25 @@
       "archive": "Archive",
       "add_alias": "Add Alias"
     },
+    "feedback": {
+      "label": "Maintenance feedback",
+      "done": "Done",
+      "snoozed": "Snooze",
+      "skipped": "Skip",
+      "not_relevant": "Not relevant",
+      "title": {
+        "done": "Hide this maintenance item until its content changes",
+        "snoozed": "Show this maintenance item again in 7 days",
+        "skipped": "Skip this maintenance item",
+        "not_relevant": "Mark this maintenance item as not relevant and hide it"
+      },
+      "toast": {
+        "done": "Marked done.",
+        "snoozed": "Snoozed for 7 days.",
+        "skipped": "Skipped.",
+        "not_relevant": "Marked not relevant."
+      }
+    },
     "jumps": {
       "focusInBases": "Locate in properties",
       "focusInBasesTitle": "Open the properties view focused on this note so you can edit properties, then come back to refresh."

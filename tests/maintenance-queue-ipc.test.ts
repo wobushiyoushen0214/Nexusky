@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type {
   IPCChannelMap,
   KnowledgeMaintenanceItem,
-  MaintenanceApplyResult
+  MaintenanceApplyResult,
+  MaintenanceFeedbackResult
 } from '../packages/shared/src/types/ipc'
 
 describe('maintenance IPC types', () => {
@@ -60,6 +61,18 @@ describe('maintenance IPC types', () => {
         createsFile: false
       }
     }
+    const feedbackParams: IPCChannelMap['maintenance:record-feedback']['params'] = {
+      vaultPath: '/tmp/vault',
+      item,
+      status: 'snoozed',
+      snoozeUntil: 1770000000
+    }
+    const feedbackResult: MaintenanceFeedbackResult = {
+      ok: true,
+      signature: 'sig',
+      status: 'snoozed',
+      snoozeUntil: 1770000000
+    }
 
     expect(getParams.type).toBe('review_open_tasks')
     expect(getParams.scanGroups).toEqual(['tasks'])
@@ -72,5 +85,8 @@ describe('maintenance IPC types', () => {
     expect(applyParams.language).toBe('zh-CN')
     expect(applyResult.appliedAction).toBe('mark_done')
     expect(applyResult.preview?.createsFile).toBe(false)
+    expect(feedbackParams.status).toBe('snoozed')
+    expect(feedbackResult.ok).toBe(true)
+    expect(feedbackResult.snoozeUntil).toBe(1770000000)
   })
 })

@@ -22,6 +22,7 @@ import { readMemory } from '../memory'
 import { getAppLanguage } from '../app-language'
 import { getCachedVaultQueryWithStats } from '../db-query-cache'
 import { logger } from '../logger'
+import { filterMaintenanceItemsByFeedback, getMaintenanceFeedbackSignature } from './feedback'
 import type { AppLanguage, MaintenanceScanGroup, MaintenanceScanStatus } from '@shared/types/ipc'
 
 const MAINTENANCE_QUEUE_CACHE_TTL_MS = 60_000
@@ -112,6 +113,7 @@ export interface NormalizedMaintenanceQueueParams {
 export interface MaintenanceQueueCacheKeyInput extends NormalizedMaintenanceQueueParams {
   notes: Pick<NoteIndex, 'filePath' | 'updatedAt' | 'contentHash'>[]
   memorySignature?: string
+  feedbackSignature?: string
 }
 
 function normalizeType(value: unknown): KnowledgeMaintenanceType | undefined {
@@ -274,6 +276,7 @@ export function buildMaintenanceQueueCacheKey(input: MaintenanceQueueCacheKeyInp
     `vault:${getVaultCacheId(input.vaultPath)}`,
     `files:${getNotesFileSignature(input.notes)}`,
     `memory:${input.memorySignature ?? getMaintenanceMemorySignature(input.vaultPath)}`,
+    `feedback:${input.feedbackSignature ?? getMaintenanceFeedbackSignature(input.vaultPath)}`,
     `scan:${input.type ?? 'all'}`,
     `groups:${input.scanGroups.join(',')}`,
     `language:${input.language}`,
@@ -321,7 +324,8 @@ export function gatherMaintenanceItems(params: MaintenanceQueueParams): Maintena
   const cacheKey = buildMaintenanceQueueCacheKey({
     ...normalized,
     notes,
-    memorySignature: getMaintenanceMemorySignature(normalized.vaultPath)
+    memorySignature: getMaintenanceMemorySignature(normalized.vaultPath),
+    feedbackSignature: getMaintenanceFeedbackSignature(normalized.vaultPath)
   })
 
   try {
@@ -472,7 +476,8 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
     })
     : []
 
-  const items = buildKnowledgeMaintenanceQueue({
+  const rawLimit = Math.min(500, Math.max(limit, limit * 3))
+  const rawItems = buildKnowledgeMaintenanceQueue({
     notes,
     outgoingLinksByNoteId,
     backlinkCountByNoteId: needsLinks
@@ -508,9 +513,10 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
     enabledTypes,
     query,
     type,
-    limit,
+    limit: rawLimit,
     language
   })
+  const items = filterMaintenanceItemsByFeedback(vaultPath, rawItems).slice(0, limit)
 
   const counts = countByType(items)
   const finishedAt = Date.now()

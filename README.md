@@ -89,6 +89,7 @@ pnpm -C website run build
 - [P0 修复工单](docs/P0_FIX_TICKETS_2026-05.md)：数据安全、安全链和 P1 速修工单。
 - [Web Clipper](docs/WEB_CLIPPER.md)：浏览器剪藏扩展和本地接口说明。
 - [本地插件 API](docs/PLUGIN_COMMANDS.md)：声明式插件命令、面板和编辑器扩展格式。
+- [产品未来发展与功能升级](docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md)：基于 v0.8.2 当前状态的下一阶段产品方向、现有功能升级、路线图和指标体系。
 - [产品策略分析](docs/PRODUCT_STRATEGY_ANALYSIS.md)：产品方向、目标用户和体验策略。
 - [历史项目审计](docs/PROJECT_AUDIT.md)：早期工程审计记录和历史问题背景。
 

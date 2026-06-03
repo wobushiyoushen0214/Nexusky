@@ -9,6 +9,7 @@ import type {
   AppLanguage,
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
+  MaintenanceFeedbackStatus,
   LongContextCognitiveReviewResult,
   MaintenanceApplyAction,
   MaintenanceApplyPreview,
@@ -346,6 +347,20 @@ export function MaintenanceQueuePanel() {
     void refresh()
   }, [vaultPath, lastUndo, refresh, language])
 
+  const recordFeedback = useCallback(async (item: KnowledgeMaintenanceItem, status: MaintenanceFeedbackStatus) => {
+    if (!vaultPath) return
+    const snoozeUntil = status === 'snoozed'
+      ? Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+      : null
+    try {
+      await window.api.invoke('maintenance:record-feedback', { vaultPath, item, status, snoozeUntil })
+      toast(t(`maintenance.feedback.toast.${status}`), 'success')
+      void refresh()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), 'error')
+    }
+  }, [vaultPath, refresh, t])
+
   const handOffBatchToAgent = useCallback(() => {
     const candidates = items.slice(0, 3)
     if (candidates.length === 0) {
@@ -485,6 +500,7 @@ export function MaintenanceQueuePanel() {
                       key={`${item.filePath}-${item.type}-priority-${idx}`}
                       item={item}
                       onAction={(action) => void previewFix(item, action)}
+                      onFeedback={(status) => void recordFeedback(item, status)}
                       onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
                     />
                   ))}
@@ -501,6 +517,7 @@ export function MaintenanceQueuePanel() {
                 key={`${item.filePath}-${item.type}-rest-${idx}`}
                 item={item}
                 onAction={(action) => void previewFix(item, action)}
+                onFeedback={(status) => void recordFeedback(item, status)}
                 onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
               />
             ))}
@@ -604,10 +621,11 @@ function MaintenanceScanStatusBar({ status, itemCount }: MaintenanceScanStatusBa
 interface MaintenanceItemCardProps {
   item: KnowledgeMaintenanceItem
   onAction: (action: MaintenanceApplyAction) => void
+  onFeedback: (status: MaintenanceFeedbackStatus) => void
   onFocusInBases: () => void
 }
 
-function MaintenanceItemCard({ item, onAction, onFocusInBases }: MaintenanceItemCardProps) {
+function MaintenanceItemCard({ item, onAction, onFeedback, onFocusInBases }: MaintenanceItemCardProps) {
   const { t } = useTranslation()
   const language = useUIStore((s) => s.language)
   const actions = ACTIONS_BY_TYPE[item.type] || ['open_note']
@@ -639,6 +657,40 @@ function MaintenanceItemCard({ item, onAction, onFocusInBases }: MaintenanceItem
           title={t('maintenance.jumps.focusInBasesTitle')}
         >
           {t('maintenance.jumps.focusInBases')}
+        </button>
+      </div>
+      <div className="maintenance-card__feedback" aria-label={t('maintenance.feedback.label')}>
+        <button
+          type="button"
+          className="maintenance-card__btn maintenance-card__btn--quiet"
+          onClick={() => onFeedback('done')}
+          title={t('maintenance.feedback.title.done')}
+        >
+          {t('maintenance.feedback.done')}
+        </button>
+        <button
+          type="button"
+          className="maintenance-card__btn maintenance-card__btn--quiet"
+          onClick={() => onFeedback('snoozed')}
+          title={t('maintenance.feedback.title.snoozed')}
+        >
+          {t('maintenance.feedback.snoozed')}
+        </button>
+        <button
+          type="button"
+          className="maintenance-card__btn maintenance-card__btn--quiet"
+          onClick={() => onFeedback('skipped')}
+          title={t('maintenance.feedback.title.skipped')}
+        >
+          {t('maintenance.feedback.skipped')}
+        </button>
+        <button
+          type="button"
+          className="maintenance-card__btn maintenance-card__btn--quiet"
+          onClick={() => onFeedback('not_relevant')}
+          title={t('maintenance.feedback.title.not_relevant')}
+        >
+          {t('maintenance.feedback.not_relevant')}
         </button>
       </div>
     </div>

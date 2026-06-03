@@ -13,6 +13,7 @@ const baseInput: MaintenanceQueueCacheKeyInput = {
   language: 'en',
   todayIso: '2026-05-31',
   memorySignature: '1:memory',
+  feedbackSignature: '0:feedback',
   notes: [
     { filePath: 'B.md', updatedAt: 2000, contentHash: 'hash-b' },
     { filePath: 'A.md', updatedAt: 1000, contentHash: 'hash-a' }
@@ -51,5 +52,6 @@ describe('maintenance queue cache key', () => {
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, language: 'zh-CN' })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, upcomingDays: 14 })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, memorySignature: '2:memory' })).not.toBe(base)
+    expect(buildMaintenanceQueueCacheKey({ ...baseInput, feedbackSignature: '1:feedback' })).not.toBe(base)
   })
 })
