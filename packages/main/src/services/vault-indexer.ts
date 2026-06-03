@@ -1,7 +1,7 @@
 import { readdirSync } from 'fs'
 import { extname, join } from 'path'
 import { getDatabase } from './database'
-import { indexNote } from './indexer'
+import { indexNote, resolveAllLinks } from './indexer'
 import { invalidateVaultQueryCache } from './db-query-cache'
 
 export interface VaultIndexProgress {
@@ -63,7 +63,7 @@ export async function indexVault(vaultPath: string, onProgress?: (progress: Vaul
   for (let i = 0; i < files.length; i += batchSize) {
     const batch = files.slice(i, i + batchSize)
     for (const file of batch) {
-      indexNote(vaultPath, file)
+      indexNote(vaultPath, file, { resolveLinks: false })
     }
     onProgress?.({ current: Math.min(i + batchSize, files.length), total: files.length })
     if (i + batchSize < files.length) {
@@ -73,5 +73,6 @@ export async function indexVault(vaultPath: string, onProgress?: (progress: Vaul
 
   if (files.length === 0) onProgress?.({ current: 0, total: 0 })
   cleanupStaleNoteIndexes(vaultPath, files)
+  resolveAllLinks(vaultPath)
   return { indexed: files.length }
 }

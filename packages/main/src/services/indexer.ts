@@ -171,7 +171,7 @@ function updateIndexedNotePathReferences(stmts: IndexerStatements, noteId: strin
   stmts.updateThemeMembershipPath.run(relPath, noteId)
 }
 
-export function indexNote(vaultPath: string, filePath: string): string {
+export function indexNote(vaultPath: string, filePath: string, options: { resolveLinks?: boolean } = {}): string {
   const db = getDatabase(vaultPath)
   const relPath = relative(vaultPath, filePath).replace(/\\/g, '/')
   const rawContent = readFileSync(filePath, 'utf-8')
@@ -236,7 +236,9 @@ export function indexNote(vaultPath: string, filePath: string): string {
   })
 
   transaction()
-  resolveLinks(db, id, title, aliases)
+  if (options.resolveLinks !== false) {
+    resolveLinks(db, id, title, aliases)
+  }
   invalidateVaultQueryCacheForIndexedFile(vaultPath, { noteId: id, filePath: relPath })
   return id
 }
@@ -1035,23 +1037,48 @@ function createMentionContext(content: string, index: number): string {
 
 export function resolveAllLinks(vaultPath: string): void {
   const db = getDatabase(vaultPath)
-  db.prepare(`
-    UPDATE links SET target_note_id = (
-      SELECT id FROM notes WHERE title = links.target_title
-      UNION
-      SELECT id FROM notes WHERE ${NOTE_FILE_TITLE_SQL} = links.target_title
-      UNION
-      SELECT id FROM notes WHERE ${NOTE_PATH_TARGET_SQL} = links.target_title
-      UNION
-      SELECT note_id FROM note_aliases WHERE alias = links.target_title
-      LIMIT 1
-    )
-    WHERE target_note_id IS NULL
-  `).run()
-  db.prepare(`
-    UPDATE links SET target_note_id = (${CASE_INSENSITIVE_LINK_TARGET_SQL})
-    WHERE NOT EXISTS (${EXACT_LINK_TARGET_EXISTS_SQL})
-  `).run()
+  const { exactTargets, caseInsensitiveTargets } = buildLinkTargetMaps(db)
+  const links = db.prepare(`
+    SELECT l.id, l.target_title as targetTitle
+    FROM links l
+    LEFT JOIN notes n ON n.id = l.target_note_id
+    WHERE l.target_note_id IS NULL OR n.id IS NULL
+  `).all() as { id: number; targetTitle: string }[]
+  const update = db.prepare('UPDATE links SET target_note_id = ? WHERE id = ?')
+  const transaction = db.transaction(() => {
+    for (const link of links) {
+      const exact = exactTargets.get(link.targetTitle)
+      const targetId = exact || caseInsensitiveTargets.get(link.targetTitle.toLowerCase())
+      if (targetId) update.run(targetId, link.id)
+    }
+  })
+  transaction()
+}
+
+function buildLinkTargetMaps(db: Database.Database): { exactTargets: Map<string, string>; caseInsensitiveTargets: Map<string, string> } {
+  const exactTargets = new Map<string, string>()
+  const caseInsensitiveTargets = new Map<string, string>()
+  const addTarget = (key: string, noteId: string) => {
+    const normalized = key.trim()
+    if (!normalized) return
+    if (!exactTargets.has(normalized)) exactTargets.set(normalized, noteId)
+    const lower = normalized.toLowerCase()
+    if (!caseInsensitiveTargets.has(lower)) caseInsensitiveTargets.set(lower, noteId)
+  }
+
+  const notes = db.prepare('SELECT id, title, file_path as filePath FROM notes').all() as { id: string; title: string; filePath: string }[]
+  for (const note of notes) {
+    addTarget(note.title, note.id)
+    addTarget(basename(note.filePath, '.md'), note.id)
+    addTarget(normalizeNotePathTarget(note.filePath), note.id)
+  }
+
+  const aliases = db.prepare('SELECT note_id as noteId, alias FROM note_aliases').all() as { noteId: string; alias: string }[]
+  for (const alias of aliases) {
+    addTarget(alias.alias, alias.noteId)
+  }
+
+  return { exactTargets, caseInsensitiveTargets }
 }
 
 function resolveLinks(db: Database.Database, noteId: string, noteTitle: string, noteAliases: string[] = []): void {

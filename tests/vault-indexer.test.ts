@@ -32,7 +32,7 @@ describe('vault indexer service', () => {
   })
 
   it('indexes a vault and removes stale note rows', async () => {
-    const { getAllNotes } = await import('../packages/main/src/services/indexer')
+    const { getAllNotes, getOutgoingLinks } = await import('../packages/main/src/services/indexer')
     const { indexVault } = await import('../packages/main/src/services/vault-indexer')
     const first = join(vaultPath, 'First.md')
     const second = join(vaultPath, 'Second.md')
@@ -41,7 +41,10 @@ describe('vault indexer service', () => {
 
     const progress: { current: number; total: number }[] = []
     expect(await indexVault(vaultPath, (event) => progress.push(event))).toEqual({ indexed: 2 })
-    expect(getAllNotes(vaultPath).map((note) => note.title).sort()).toEqual(['First', 'Second'])
+    const notes = getAllNotes(vaultPath)
+    const firstNote = notes.find((note) => note.title === 'First')
+    expect(notes.map((note) => note.title).sort()).toEqual(['First', 'Second'])
+    expect(firstNote ? getOutgoingLinks(vaultPath, firstNote.id)[0]?.resolved : false).toBe(true)
     expect(progress.at(-1)).toEqual({ current: 2, total: 2 })
 
     unlinkSync(second)

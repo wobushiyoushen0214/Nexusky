@@ -29,6 +29,7 @@
         "dist": "electron-vite build && electron-builder",
         "dist:win": "electron-vite build && electron-builder --win",
         "cli": "node scripts/nexusky-cli.mjs",
+        "fixture:large-vault": "node scripts/create-large-vault-fixture.mjs",
         "typecheck": "tsc -p packages/shared/tsconfig.json --noEmit && tsc -p packages/main/tsconfig.json --noEmit && tsc -p packages/renderer/tsconfig.json --noEmit",
         "lint": "eslint . --ext .ts,.tsx",
         "test": "node scripts/vitest-electron.mjs run",
