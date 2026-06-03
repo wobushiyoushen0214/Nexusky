@@ -77,6 +77,9 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   const repairSignalCount = summary
     ? summary.unresolvedLinkCount + summary.orphanCount + summary.duplicateTitleCount
     : 0
+  const scoreDragFactors = summary
+    ? summary.scoreFactors.filter((factor) => factor.impact > 0).sort((a, b) => b.impact - a.impact).slice(0, 3)
+    : []
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)', padding: '56px 32px' }}>
@@ -147,6 +150,32 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
                 <SignalLabel>{t('vaultHealth.hero.signal.local')}</SignalLabel>
                 <SignalLabel>{t('vaultHealth.hero.signal.review')}</SignalLabel>
                 <SignalLabel>{t('vaultHealth.hero.signal.context')}</SignalLabel>
+              </div>
+              <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(120px, 160px) minmax(0, 1fr)', gap: 14, alignItems: 'stretch' }}>
+                <div style={{ padding: '12px 14px', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>{t('vaultHealth.score.label')}</div>
+                  <div style={{ fontSize: 32, lineHeight: 1, fontWeight: 700, color: 'var(--text-primary)' }}>{summary.score}</div>
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('vaultHealth.score.outOf')}</div>
+                </div>
+                <div style={{ minWidth: 0, padding: '12px 14px', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>{t('vaultHealth.score.why')}</div>
+                  {scoreDragFactors.length > 0 ? (
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {scoreDragFactors.map((factor) => (
+                        <div key={factor.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', fontSize: 12 }}>
+                          <span style={{ minWidth: 0, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t(`vaultHealth.score.factor.${factor.id}`)}
+                          </span>
+                          <span style={{ color: factor.status === 'bad' ? '#f87171' : '#f59e0b', fontWeight: 600 }}>
+                            {t('vaultHealth.score.impact', { impact: factor.impact })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('vaultHealth.score.noIssues')}</div>
+                  )}
+                </div>
               </div>
             </div>
 

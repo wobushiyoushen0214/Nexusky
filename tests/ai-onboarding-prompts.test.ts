@@ -12,7 +12,11 @@ const summary: VaultHealthSummary = {
   openTaskCount: 5,
   duplicateTitleCount: 1,
   missingMemoryCount: 4,
-  staleNoteCount: 6
+  staleNoteCount: 6,
+  score: 72,
+  scannedAt: 1_800_000_000,
+  scoreFactors: [],
+  trend: []
 }
 
 describe('AI onboarding prompts', () => {

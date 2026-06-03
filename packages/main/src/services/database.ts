@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-export const SCHEMA_VERSION = 13
+export const SCHEMA_VERSION = 14
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -208,6 +208,7 @@ function initSchema(db: Database.Database): void {
   createProactiveSchema(db)
   createAgentSchema(db)
   createMaintenanceFeedbackSchema(db)
+  createVaultHealthSnapshotSchema(db)
 }
 
 function createAgentSchema(db: Database.Database): void {
@@ -322,6 +323,21 @@ function createMaintenanceFeedbackSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_maintenance_feedback_file
       ON maintenance_feedback(file_path, item_type);
+  `)
+}
+
+function createVaultHealthSnapshotSchema(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS vault_health_snapshots (
+      snapshot_date TEXT PRIMARY KEY,
+      score INTEGER NOT NULL,
+      summary_json TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_vault_health_snapshots_updated
+      ON vault_health_snapshots(updated_at DESC);
   `)
 }
 
@@ -594,6 +610,12 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'maintenance_feedback', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'maintenance_feedback', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
 
+  ensureColumn(db, 'vault_health_snapshots', 'snapshot_date', "snapshot_date TEXT DEFAULT ''")
+  ensureColumn(db, 'vault_health_snapshots', 'score', 'score INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'vault_health_snapshots', 'summary_json', "summary_json TEXT NOT NULL DEFAULT '{}'")
+  ensureColumn(db, 'vault_health_snapshots', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
+  ensureColumn(db, 'vault_health_snapshots', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+
   if (tableExists(db, 'links') && tableExists(db, 'notes') && tableColumns(db, 'links').has('source_note_id')) {
     db.exec("DELETE FROM links WHERE source_note_id = '' OR source_note_id NOT IN (SELECT id FROM notes)")
   }
@@ -739,6 +761,10 @@ const migrations: Migration[] = [
   // Migration 13: persisted maintenance item feedback
   (db) => {
     createMaintenanceFeedbackSchema(db)
+  },
+  // Migration 14: vault health score snapshots
+  (db) => {
+    createVaultHealthSnapshotSchema(db)
   }
 ]
 

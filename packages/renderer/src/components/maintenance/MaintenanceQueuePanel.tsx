@@ -14,7 +14,8 @@ import type {
   MaintenanceApplyAction,
   MaintenanceApplyPreview,
   MaintenanceScanGroup,
-  MaintenanceScanStatus
+  MaintenanceScanStatus,
+  VaultHealthSummary
 } from '@shared/types/ipc'
 import './maintenance.css'
 
@@ -216,6 +217,7 @@ export function MaintenanceQueuePanel() {
   const [reviewSaving, setReviewSaving] = useState(false)
   const [weeklyReview, setWeeklyReview] = useState<LongContextCognitiveReviewResult | null>(null)
   const [scanStatus, setScanStatus] = useState<MaintenanceScanStatus | null>(null)
+  const [healthSummary, setHealthSummary] = useState<VaultHealthSummary | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
   const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
   const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
@@ -231,8 +233,16 @@ export function MaintenanceQueuePanel() {
     setLoading(true)
     setItems([])
     setCounts({})
+    setHealthSummary(null)
     setScanStatus(createPendingScanStatus(activeFilter))
     try {
+      window.api.invoke('vault:health-scan', { vaultPath })
+        .then((summary) => {
+          if (isCurrentRefresh()) setHealthSummary(summary)
+        })
+        .catch(() => {
+          if (isCurrentRefresh()) setHealthSummary(null)
+        })
       if (activeFilter !== 'all') {
         const result = await window.api.invoke('maintenance:get-queue', {
           vaultPath,
@@ -473,6 +483,7 @@ export function MaintenanceQueuePanel() {
           {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
           <div className="maintenance-panel__body">
             {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
+            {vaultPath && healthSummary && <MaintenanceHealthTrendPanel summary={healthSummary} />}
             {vaultPath && (
               <WeeklyReviewPanel
                 review={weeklyReview}
@@ -550,6 +561,65 @@ interface WeeklyReviewPanelProps {
   saving: boolean
   onGenerate: () => void
   onSave: () => void
+}
+
+function MaintenanceHealthTrendPanel({ summary }: { summary: VaultHealthSummary }) {
+  const { t } = useTranslation()
+  const trend = summary.trend
+  const previous = trend.length > 1 ? trend[trend.length - 2] : null
+  const delta = previous ? summary.score - previous.score : null
+  const dragFactors = summary.scoreFactors
+    .filter((factor) => factor.impact > 0)
+    .sort((a, b) => b.impact - a.impact)
+    .slice(0, 2)
+  const deltaKey = delta == null
+    ? 'empty'
+    : delta > 0
+      ? 'up'
+      : delta < 0
+        ? 'down'
+        : 'flat'
+
+  return (
+    <section className="maintenance-health-trend" aria-labelledby="maintenance-health-trend-title">
+      <div className="maintenance-health-trend__head">
+        <div>
+          <h3 id="maintenance-health-trend-title">{t('maintenance.healthTrend.title')}</h3>
+          <p>{t('maintenance.healthTrend.desc')}</p>
+        </div>
+        <div className="maintenance-health-trend__score">
+          <span>{summary.score}</span>
+          <small>{t('maintenance.healthTrend.score')}</small>
+        </div>
+      </div>
+      <div className="maintenance-health-trend__bars" aria-label={t('maintenance.healthTrend.chartLabel')}>
+        {trend.map((point) => (
+          <div key={`${point.weekStart}:${point.snapshotDate}`} className="maintenance-health-trend__bar-wrap" title={`${point.snapshotDate}: ${point.score}`}>
+            <span className="maintenance-health-trend__bar" style={{ height: `${Math.max(8, point.score)}%` }} />
+            <span className="maintenance-health-trend__week">{point.weekStart.slice(5)}</span>
+          </div>
+        ))}
+      </div>
+      <div className={`maintenance-health-trend__delta is-${deltaKey}`}>
+        {delta == null
+          ? t('maintenance.healthTrend.delta.empty')
+          : delta > 0
+            ? t('maintenance.healthTrend.delta.up', { delta })
+            : delta < 0
+              ? t('maintenance.healthTrend.delta.down', { delta: Math.abs(delta) })
+              : t('maintenance.healthTrend.delta.flat')}
+      </div>
+      <div className="maintenance-health-trend__factors">
+        {dragFactors.length > 0
+          ? dragFactors.map((factor) => (
+            <span key={factor.id}>
+              {t(`vaultHealth.score.factor.${factor.id}`)} · {t('vaultHealth.score.impact', { impact: factor.impact })}
+            </span>
+          ))
+          : <span>{t('vaultHealth.score.noIssues')}</span>}
+      </div>
+    </section>
+  )
 }
 
 function WeeklyReviewPanel({ review, loading, saving, onGenerate, onSave }: WeeklyReviewPanelProps) {

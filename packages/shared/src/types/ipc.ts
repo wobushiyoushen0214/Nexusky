@@ -673,6 +673,30 @@ export interface VaultHealthSummary {
   duplicateTitleCount: number
   missingMemoryCount: number
   staleNoteCount: number
+  score: number
+  scannedAt: number
+  scoreFactors: VaultHealthScoreFactor[]
+  trend: VaultHealthTrendPoint[]
+}
+
+export type VaultHealthScoreFactorId = 'links' | 'tasks' | 'memory' | 'structure' | 'freshness' | 'sync'
+
+export interface VaultHealthScoreFactor {
+  id: VaultHealthScoreFactorId
+  score: number
+  weight: number
+  impact: number
+  issueCount: number
+  status: 'good' | 'warn' | 'bad'
+}
+
+export interface VaultHealthTrendPoint {
+  weekStart: string
+  snapshotDate: string
+  scannedAt: number
+  score: number
+  noteCount: number
+  repairSignalCount: number
 }
 
 export interface ProactiveUserPrefs {

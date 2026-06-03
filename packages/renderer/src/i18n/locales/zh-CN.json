@@ -36,6 +36,21 @@
       "missingMemory": "无记忆笔记",
       "staleNotes": "60 天未动笔记"
     },
+    "score": {
+      "label": "健康分",
+      "outOf": "/ 100",
+      "why": "主要扣分原因",
+      "impact": "-{{impact}} 分",
+      "noIssues": "没有明显扣分项",
+      "factor": {
+        "links": "链接质量",
+        "tasks": "任务负担",
+        "memory": "记忆覆盖",
+        "structure": "结构密度",
+        "freshness": "内容新鲜度",
+        "sync": "同步健康"
+      }
+    },
     "action": {
       "askAi": {
         "kicker": "询问",
@@ -249,6 +264,18 @@
         "themes": "{{count}} 个主题",
         "blockers": "{{count}} 个阻塞",
         "resurfaced": "{{count}} 个重现上下文"
+      }
+    },
+    "healthTrend": {
+      "title": "Vault Health 趋势",
+      "desc": "最近 8 周的每周快照，用来确认维护是否真的让知识库变轻。",
+      "score": "/100",
+      "chartLabel": "最近 8 周健康分趋势",
+      "delta": {
+        "up": "较上一周提升 {{delta}} 分。",
+        "down": "较上一周下降 {{delta}} 分。",
+        "flat": "与上一周持平。",
+        "empty": "积累一周后会显示变化。"
       }
     },
     "today": {

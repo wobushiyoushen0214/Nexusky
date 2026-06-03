@@ -36,6 +36,21 @@
       "missingMemory": "Notes without memory",
       "staleNotes": "Notes untouched >60d"
     },
+    "score": {
+      "label": "Health score",
+      "outOf": "/ 100",
+      "why": "Main score drivers",
+      "impact": "-{{impact}} pts",
+      "noIssues": "No major score drag",
+      "factor": {
+        "links": "Link quality",
+        "tasks": "Task load",
+        "memory": "Memory coverage",
+        "structure": "Structure density",
+        "freshness": "Content freshness",
+        "sync": "Sync health"
+      }
+    },
     "action": {
       "askAi": {
         "kicker": "Ask",
@@ -249,6 +264,18 @@
         "themes": "{{count}} themes",
         "blockers": "{{count}} blockers",
         "resurfaced": "{{count}} resurfaced"
+      }
+    },
+    "healthTrend": {
+      "title": "Vault Health trend",
+      "desc": "Weekly snapshots from the last 8 weeks so maintenance progress is visible.",
+      "score": "/100",
+      "chartLabel": "Health score trend for the last 8 weeks",
+      "delta": {
+        "up": "Up {{delta}} point(s) from last week.",
+        "down": "Down {{delta}} point(s) from last week.",
+        "flat": "Unchanged from last week.",
+        "empty": "Changes appear after a week of snapshots."
       }
     },
     "today": {

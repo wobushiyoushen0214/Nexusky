@@ -194,6 +194,125 @@
   background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
 }
 
+.maintenance-health-trend {
+  margin: 8px 10px 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+}
+
+.maintenance-health-trend__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.maintenance-health-trend__head h3 {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.maintenance-health-trend__head p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.maintenance-health-trend__score {
+  min-width: 54px;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.maintenance-health-trend__score span {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.maintenance-health-trend__score small {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.maintenance-health-trend__bars {
+  height: 52px;
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(16px, 1fr));
+  align-items: end;
+  gap: 5px;
+}
+
+.maintenance-health-trend__bar-wrap {
+  min-width: 0;
+  height: 52px;
+  display: grid;
+  grid-template-rows: 1fr 12px;
+  align-items: end;
+  gap: 3px;
+}
+
+.maintenance-health-trend__bar {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 35%, var(--bg-hover)));
+}
+
+.maintenance-health-trend__week {
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 9px;
+  line-height: 1;
+  text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.maintenance-health-trend__delta {
+  margin-top: 9px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.maintenance-health-trend__delta.is-up {
+  color: oklch(72% 0.11 154);
+}
+
+.maintenance-health-trend__delta.is-down {
+  color: oklch(66% 0.16 23);
+}
+
+.maintenance-health-trend__factors {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.maintenance-health-trend__factors span {
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 5px;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .maintenance-weekly-review__head {
   display: flex;
   align-items: flex-start;
