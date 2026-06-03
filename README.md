@@ -87,6 +87,7 @@ pnpm -C website run build
 - [产品上下文](PRODUCT.md)：当前产品取舍、ActivityBar 调整、Canvas/Kanban/Agent 入口决策。
 - [项目分析与修复记录](docs/PROJECT_ANALYSIS_2026-05.md)：当前缺陷清单、优先级和修复进度。
 - [P0 修复工单](docs/P0_FIX_TICKETS_2026-05.md)：数据安全、安全链和 P1 速修工单。
+- [迁移指南](docs/MIGRATION_GUIDE.md)：Markdown/Obsidian vault 安全打开、备份、忽略规则和 AI 数据边界。
 - [Web Clipper](docs/WEB_CLIPPER.md)：浏览器剪藏扩展和本地接口说明。
 - [本地插件 API](docs/PLUGIN_COMMANDS.md)：声明式插件命令、面板和编辑器扩展格式。
 - [产品未来发展与功能升级](docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md)：基于 v0.8.2 当前状态的下一阶段产品方向、现有功能升级、路线图和指标体系。

@@ -156,6 +156,7 @@ export default function Home() {
         </a>
         <div className="nav-links">
           <a href="#workflows">Workflows</a>
+          <a href="/migration-guide">Migration guide</a>
           <a href="#boundary">Boundary</a>
           <a href="#download">Download</a>
           <a href={`https://github.com/${githubRepo}`}>GitHub</a>
@@ -187,6 +188,10 @@ export default function Home() {
             <a className="button secondary" href={`https://github.com/${githubRepo}`}>
               <Code2 aria-hidden="true" />
               View source
+            </a>
+            <a className="button secondary" href="/migration-guide">
+              <ShieldCheck aria-hidden="true" />
+              Migration guide
             </a>
           </div>
         </div>
@@ -409,6 +414,9 @@ export default function Home() {
         <span>Nexusky v{currentVersion}</span>
         <a href={`https://github.com/${githubRepo}/releases`}>
           Releases <ArrowRight aria-hidden="true" />
+        </a>
+        <a href="/migration-guide">
+          Migration guide <ArrowRight aria-hidden="true" />
         </a>
       </footer>
     </main>

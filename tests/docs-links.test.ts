@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs'
 import { dirname, join, normalize } from 'path'
 import { describe, expect, it } from 'vitest'
 
-const DOCS_WITH_LOCAL_LINKS = ['README.md', 'docs/PROJECT_OVERVIEW.md']
+const DOCS_WITH_LOCAL_LINKS = ['README.md', 'docs/PROJECT_OVERVIEW.md', 'docs/MIGRATION_GUIDE.md']
 
 describe('documentation links', () => {
   it('keeps local markdown links resolvable', () => {
