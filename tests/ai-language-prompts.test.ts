@@ -25,6 +25,13 @@ describe('AI language prompts', () => {
       filePath: 'Draft.md',
       language: 'en'
     }
+    const applyEditParams: IPCChannelMap['ai:apply-edit']['params'] = {
+      filePath: '/vault/Draft.md',
+      content: '# Draft\n\nDone',
+      vaultPath: '/vault',
+      expectedBeforeHash: 'before',
+      allowCreate: false
+    }
     const graphParams: IPCChannelMap['ai:generate-graph']['params'] = {
       vaultPath: '/vault',
       filePaths: ['/vault/A.md'],
@@ -37,6 +44,7 @@ describe('AI language prompts', () => {
     }
 
     expect(editParams.language).toBe('en')
+    expect(applyEditParams.expectedBeforeHash).toBe('before')
     expect(graphParams.language).toBe('zh-CN')
     expect(noteParams.language).toBe('en')
   })

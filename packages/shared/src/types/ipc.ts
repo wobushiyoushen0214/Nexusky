@@ -807,6 +807,15 @@ export interface MaintenanceFeedbackResult {
   snoozeUntil: number | null
 }
 
+export interface AiApplyEditResult {
+  success: boolean
+  filePath?: string
+  beforeHash?: string
+  afterHash?: string
+  created?: boolean
+  error?: string
+}
+
 export type CloudSyncHealthStatus = 'idle' | 'ok' | 'conflict' | 'error'
 
 export interface CloudSyncHealth {
@@ -1062,7 +1071,8 @@ export interface IPCChannelMap {
   'ai:summarize': { params: { content: string; language?: AppLanguage }; result: string }
   'ai:generate-flashcards': { params: { content: string; title?: string; maxCards?: number; language?: AppLanguage }; result: { success: boolean; cards: GeneratedFlashcard[]; markdown?: string; error?: string } }
   'ai:detect-local-config': { params: undefined; result: { importable: number; imported: number; existing: number; skipped?: string[] } }
-  'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[]; language?: AppLanguage }; result: { success: boolean; content?: string; error?: string } }
+  'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[]; language?: AppLanguage }; result: { success: boolean; content?: string; beforeHash?: string; error?: string } }
+  'ai:apply-edit': { params: { filePath: string; content: string; vaultPath?: string; expectedBeforeHash?: string; allowCreate?: boolean }; result: AiApplyEditResult }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string; language?: AppLanguage }; result: { success: boolean; content?: string; error?: string } }
   'ai:plan-note-batches': { params: { instruction: string; existingDirs?: string[]; language?: AppLanguage }; result: { success: boolean; batches: GeneratedNoteBatchPlanItem[]; error?: string } }
   'ai:generate-notes': { params: { instruction: string; vaultPath: string; targetDir?: string; requestId?: number; language?: AppLanguage }; result: { success: boolean; files: string[]; failed: number; total: number; failedItems: GeneratedNoteFailure[]; error?: string } }

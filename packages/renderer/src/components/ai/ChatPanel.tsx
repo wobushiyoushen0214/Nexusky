@@ -30,6 +30,13 @@ type BatchPlanItem = { title: string; done: boolean; failed?: boolean }
 type GenerateNotesResult = IPCChannelMap['ai:generate-notes']['result']
 type SharedBatchPlan = { id: string; items: BatchPlanItem[] }
 type PendingBatchPlan = { instruction: string; batches: GeneratedNoteBatchPlanItem[] }
+type AiEditResult = {
+  content: string
+  original: string
+  filePath: string
+  expectedBeforeHash?: string
+  createsFile?: boolean
+}
 
 const MAX_ATTACHED_NOTES = 20
 const MAX_ATTACHED_SELECTIONS = 8
@@ -246,7 +253,7 @@ export function ChatPanel() {
     toast(t('aiWorkspace.noProviderToast'), 'error')
   }, [t])
   const [editTarget, setEditTarget] = useState<string | null>(null)
-  const [editResult, setEditResult] = useState<{ content: string; original: string; filePath: string } | null>(null)
+  const [editResult, setEditResult] = useState<AiEditResult | null>(null)
   const [editHistory, setEditHistory] = useState<string[]>([])
   const [attachedImages, setAttachedImages] = useState<string[]>([])
   const [attachedDocuments, setAttachedDocuments] = useState<AiDocumentAttachment[]>([])
@@ -1646,19 +1653,19 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         setAttachedSelections([])
         if (result.success && result.content) {
           setEditHistory((prev) => [...prev, userMsg.content])
-          if (!filePath && vaultPath) {
+          if (!filePath) {
+            if (!vaultPath) {
+              appendAssistantMessage('需要先打开知识库才能创建新笔记。')
+              return
+            }
             const titleMatch = result.content.match(/^#\s+(.+)$/m)
             const title = titleMatch ? titleMatch[1].trim().replace(/[\\/:*?"<>|]/g, '') : '新笔记'
             const newPath = await getAvailableNotePath(vaultPath, title)
-            await window.api.invoke('file:create', { path: newPath, content: result.content, vaultPath })
-            await useVaultStore.getState().refreshFiles()
-            await useEditorStore.getState().openFile(newPath)
-            const createdTitle = newPath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || title
-            const msg: Message = { id: Date.now().toString(), role: 'assistant', content: `已创建笔记「${createdTitle}」并打开。` }
-            setMessages((msgs) => [...msgs, msg])
-            appendToDb(msg)
+            setEditResult({ content: result.content, original: '', filePath: newPath, createsFile: true })
+            setEditPreviewMode('preview')
+            appendAssistantMessage('已生成新笔记草稿，请查看下方预览并确认创建。')
           } else {
-            setEditResult({ content: result.content, original: fileContent, filePath: filePath })
+            setEditResult({ content: result.content, original: fileContent, filePath, expectedBeforeHash: result.beforeHash })
             setEditPreviewMode('diff')
             appendAssistantMessage('已生成修改方案，请查看下方预览并确认应用。')
           }
@@ -1704,24 +1711,39 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const store = useEditorStore.getState()
     const tabIndex = store.tabs.findIndex((t) => t.path === editResult.filePath)
     const openTab = tabIndex >= 0 ? store.tabs[tabIndex] : null
-    if (openTab?.isDirty && openTab.content !== editResult.original) {
+    if (!editResult.createsFile && openTab?.isDirty && openTab.content !== editResult.original) {
       appendAssistantMessage('目标笔记已有未保存修改。为避免覆盖，请先保存或重新生成修改方案。')
       return
     }
-    try {
-      const latestContent = await window.api.invoke('file:read', { path: editResult.filePath })
-      if (latestContent !== editResult.original) {
-        appendAssistantMessage('目标笔记已在生成后发生变化。为避免覆盖，请重新生成修改方案。')
+    if (!editResult.createsFile) {
+      try {
+        const latestContent = await window.api.invoke('file:read', { path: editResult.filePath })
+        if (latestContent !== editResult.original) {
+          appendAssistantMessage('目标笔记已在生成后发生变化。为避免覆盖，请重新生成修改方案。')
+          return
+        }
+      } catch (e: unknown) {
+        appendAssistantMessage(`应用修改前无法确认文件状态: ${friendlyError(getErrorMessage(e), t)}`)
         return
       }
-    } catch (e: unknown) {
-      appendAssistantMessage(`应用修改前无法确认文件状态: ${friendlyError(getErrorMessage(e), t)}`)
+    }
+
+    const applied = await window.api.invoke('ai:apply-edit', {
+      filePath: editResult.filePath,
+      content: editResult.content,
+      vaultPath: vaultPath || undefined,
+      expectedBeforeHash: editResult.expectedBeforeHash,
+      allowCreate: editResult.createsFile
+    })
+    if (!applied.success) {
+      appendAssistantMessage(`应用修改失败: ${applied.error || '未知错误'}`)
       return
     }
 
-    await window.api.invoke('file:write', { path: editResult.filePath, content: editResult.content, vaultPath: vaultPath || undefined })
-    await useVaultStore.getState().refreshFiles()
-    if (tabIndex >= 0) {
+    await useVaultStore.getState().refreshFiles([editResult.filePath])
+    if (editResult.createsFile) {
+      await store.openFile(editResult.filePath)
+    } else if (tabIndex >= 0) {
       const tabs = [...store.tabs]
       tabs[tabIndex] = { ...tabs[tabIndex], content: editResult.content, isDirty: false }
       const isActive = tabIndex === store.activeTabIndex
@@ -1738,7 +1760,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const appliedFile = editResult.filePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
     setEditResult(null)
     setEditPreviewExpanded(false)
-    appendAssistantMessage(`已应用修改到「${appliedFile}」。`)
+    appendAssistantMessage(editResult.createsFile ? `已创建笔记「${appliedFile}」并打开。` : `已应用修改到「${appliedFile}」。`)
   }
 
   const handleImagePaste = (e: React.ClipboardEvent) => {

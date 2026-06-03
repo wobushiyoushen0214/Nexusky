@@ -2,7 +2,7 @@ import { createHash } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
 import { indexNote, removeNoteIndex } from './indexer'
-import { moveFileToVaultTrash } from './version-recovery'
+import { moveFileToVaultTrash, saveVersionSnapshot } from './version-recovery'
 
 export interface VaultFileMutation {
   filePath: string
@@ -80,6 +80,9 @@ export function previewVaultFileMutation(mutation: VaultFileMutation, summary: s
 export function applyVaultFileMutation(vaultPath: string, mutation: VaultFileMutation): void {
   if (mutation.afterExists && mutation.afterContent !== null) {
     mkdirSync(dirname(mutation.absolutePath), { recursive: true })
+    if (mutation.beforeExists) {
+      saveVersionSnapshot(vaultPath, mutation.absolutePath)
+    }
     writeFileSync(mutation.absolutePath, mutation.afterContent, 'utf-8')
     safeIndex(vaultPath, mutation.absolutePath)
     return

@@ -1,8 +1,16 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from 'fs'
 import { basename, dirname, join, relative } from 'path'
 
+function realPathOrOriginal(path: string): string {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
+}
+
 function vaultRelPath(vaultPath: string, filePath: string): string {
-  return relative(vaultPath, filePath).replace(/\\/g, '/')
+  return relative(realPathOrOriginal(vaultPath), realPathOrOriginal(filePath)).replace(/\\/g, '/')
 }
 
 export function saveVersionSnapshot(vaultPath: string, filePath: string): string | null {
@@ -50,12 +58,12 @@ export function moveFileToVaultTrash(vaultPath: string, filePath: string, reason
     mkdirSync(trashDir, { recursive: true })
 
     const fileName = basename(filePath)
+    const originalPath = vaultRelPath(vaultPath, filePath)
     const timestamp = Date.now()
     const rand = Math.random().toString(36).slice(2, 6)
     const trashPath = join(trashDir, `${timestamp}_${rand}_${fileName}`)
     renameSync(filePath, trashPath)
 
-    const originalPath = vaultRelPath(vaultPath, filePath)
     writeFileSync(`${trashPath}.json`, JSON.stringify({
       originalPath,
       deletedAt: timestamp,

@@ -6,6 +6,9 @@ import { startAiTask, finishAiTask } from '../../services/ai-task-control'
 import { consumeStream } from '../streams/consume-stream'
 import { resolveAppLanguage } from '../../services/app-language'
 import { getAiOutputLanguageInstruction } from '../../services/ai/language'
+import { applyAiEditMutation } from '../../services/ai/edit-application'
+import { hashContent } from '../../services/vault-mutation'
+import { requireCurrentVaultPath } from '../vault-guard'
 import type { AppLanguage } from '@shared/types/ipc'
 
 function getErrorMessage(error: unknown): string {
@@ -93,7 +96,7 @@ ${getAiOutputLanguageInstruction(language)}${stylePrompt ? `\n\n<writing_style>\
       if (aborted) return { success: false, error: '已取消' }
       const trimmed = result.trim()
       if (!trimmed) return { success: false, error: 'AI 未返回有效内容，请检查 API Key 配置' }
-      return { success: true, content: trimmed }
+      return { success: true, content: trimmed, beforeHash: hashContent(params.fileContent) }
     } catch (err: unknown) {
       if (controller.signal.aborted) return { success: false, error: '已取消' }
       return { success: false, error: getErrorMessage(err) }
@@ -102,6 +105,21 @@ ${getAiOutputLanguageInstruction(language)}${stylePrompt ? `\n\n<writing_style>\
         window.webContents.send('ai:edit-stream', { type: 'done' })
       }
       finishAiTask(windowId, controller)
+    }
+  })
+
+  ipcMain.handle('ai:apply-edit', async (_event, params: { filePath: string; content: string; vaultPath?: string; expectedBeforeHash?: string; allowCreate?: boolean }) => {
+    try {
+      const vaultPath = await requireCurrentVaultPath(params.vaultPath)
+      return applyAiEditMutation({
+        vaultPath,
+        filePath: params.filePath,
+        content: params.content,
+        expectedBeforeHash: params.expectedBeforeHash,
+        allowCreate: params.allowCreate
+      })
+    } catch (err: unknown) {
+      return { success: false, error: getErrorMessage(err) }
     }
   })
 }
