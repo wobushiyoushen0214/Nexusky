@@ -4,8 +4,10 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import type { ChatSource } from '@shared/types/ipc'
 import { useEditorStore } from '../../stores/editor-store'
+import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
+import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import './tool-result-panel.css'
 
 interface ToolSurfaceResultDetail {
@@ -20,6 +22,7 @@ export function ToolResultPanel() {
   const [result, setResult] = useState<ToolSurfaceResultDetail | null>(null)
   const [copying, setCopying] = useState(false)
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const setMainView = useUIStore((s) => s.setMainView)
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -86,8 +89,13 @@ export function ToolResultPanel() {
                 type="button"
                 className="tool-result-panel__source"
                 onClick={() => {
-                  if (!vaultPath) return
-                  void useEditorStore.getState().openFile(`${vaultPath}/${source.filePath}`)
+                  const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
+                  if (!fullPath) return
+                  const target = buildChatSourceNavigationTarget(source)
+                  setMainView('editor')
+                  const editorStore = useEditorStore.getState()
+                  if (target) void editorStore.openFileAt(fullPath, target)
+                  else void editorStore.openFile(fullPath)
                 }}
                 title={source.filePath}
               >

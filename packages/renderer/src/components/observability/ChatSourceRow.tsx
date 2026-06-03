@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import type { ChatSource, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
+import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 
 interface ChatSourceRowProps {
@@ -14,16 +16,21 @@ interface ChatSourceRowProps {
 export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const setMainView = useUIStore((s) => s.setMainView)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ relations: LongContextSuggestion[]; themes: LongTermTheme[]; found: boolean } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const openSourceFile = useCallback(() => {
-    if (!source.filePath || !vaultPath) return
-    const full = source.filePath.startsWith(vaultPath) ? source.filePath : `${vaultPath}/${source.filePath}`
-    void useEditorStore.getState().openFile(full)
-  }, [source.filePath, vaultPath])
+    const full = resolveVaultSourcePath(vaultPath, source.filePath)
+    if (!full) return
+    const target = buildChatSourceNavigationTarget(source)
+    setMainView('editor')
+    const editorStore = useEditorStore.getState()
+    if (target) void editorStore.openFileAt(full, target)
+    else void editorStore.openFile(full)
+  }, [source, setMainView, vaultPath])
 
   const fetchLookup = useCallback(async () => {
     if (!vaultPath || !source.filePath) return
@@ -75,9 +82,28 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
         gap: 4,
         cursor: source.filePath ? 'pointer' : 'default'
       }}>
-        <span onClick={openSourceFile} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <button
+          type="button"
+          onClick={openSourceFile}
+          disabled={!source.filePath}
+          title={t('citationLookup.openSource')}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            border: 'none',
+            background: 'transparent',
+            color: 'inherit',
+            textAlign: 'left',
+            padding: 0,
+            font: 'inherit',
+            cursor: source.filePath ? 'pointer' : 'default'
+          }}
+        >
           [{index + 1}] {source.title}
-        </span>
+        </button>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); handleToggle() }}
@@ -140,8 +166,9 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        if (!vaultPath) return
-                        const full = r.targetPath!.startsWith(vaultPath) ? r.targetPath! : `${vaultPath}/${r.targetPath}`
+                        const full = resolveVaultSourcePath(vaultPath, r.targetPath!)
+                        if (!full) return
+                        setMainView('editor')
                         void useEditorStore.getState().openFile(full)
                       }}
                       style={{ marginTop: 2, fontSize: 10, color: 'var(--accent-text)', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}

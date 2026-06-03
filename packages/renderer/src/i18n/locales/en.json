@@ -390,6 +390,7 @@
     "themes": "Themes",
     "score": "score",
     "confidence": "confidence",
+    "openSource": "Open source",
     "openTarget": "Open related note"
   },
   "longContext": {

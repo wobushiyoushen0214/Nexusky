@@ -287,6 +287,10 @@ export interface ChatSource {
   filePath: string
   chunk: string
   score: number
+  line?: number
+  endLine?: number
+  heading?: string
+  blockId?: string
 }
 
 export type AIOutboundPreviewMode = 'chat' | 'agent'

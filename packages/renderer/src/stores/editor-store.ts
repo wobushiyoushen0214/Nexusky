@@ -11,6 +11,18 @@ interface Tab {
   pinned?: boolean
 }
 
+export interface EditorNavigationTarget {
+  id: string
+  path: string
+  line?: number
+  endLine?: number
+  heading?: string
+  blockId?: string
+  snippet?: string
+}
+
+export type EditorNavigationTargetInput = Omit<EditorNavigationTarget, 'id' | 'path'>
+
 interface EditorState {
   tabs: Tab[]
   activeTabIndex: number
@@ -20,10 +32,13 @@ interface EditorState {
   recentFiles: string[]
   splitPath: string | null
   splitContent: string | null
+  pendingNavigationTarget: EditorNavigationTarget | null
   setContent: (content: string) => void
   setCurrentFile: (path: string | null) => void
   setDirty: (dirty: boolean) => void
   openFile: (path: string) => Promise<void>
+  openFileAt: (path: string, target?: EditorNavigationTargetInput) => Promise<void>
+  consumeNavigationTarget: (path: string) => EditorNavigationTarget | null
   closeTab: (index: number) => Promise<void>
   closeOtherTabs: (index: number) => void
   closeTabsToRight: (index: number) => void
@@ -39,6 +54,15 @@ interface EditorState {
 
 let openFileLock = false
 
+function normalizeEditorPath(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
+function hasNavigationTarget(target?: EditorNavigationTargetInput): target is EditorNavigationTargetInput {
+  if (!target) return false
+  return Boolean(target.line || target.endLine || target.heading || target.blockId || target.snippet)
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   tabs: [],
   activeTabIndex: -1,
@@ -48,6 +72,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   recentFiles: safeGetJSON<string[]>('nexusky-recent', []),
   splitPath: null,
   splitContent: null,
+  pendingNavigationTarget: null,
 
   setCurrentFile: (path) => set({ currentFilePath: path }),
   setContent: (content) => {
@@ -118,6 +143,33 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } finally {
       openFileLock = false
     }
+  },
+
+  openFileAt: async (path, target) => {
+    const navigationId = `${Date.now()}:${Math.random().toString(36).slice(2)}`
+    if (hasNavigationTarget(target)) {
+      set({ pendingNavigationTarget: { ...target, id: navigationId, path } })
+    } else {
+      set({ pendingNavigationTarget: null })
+    }
+
+    await get().openFile(path)
+
+    const pending = get().pendingNavigationTarget
+    if (
+      pending?.id === navigationId &&
+      get().currentFilePath?.replace(/\\/g, '/') !== path.replace(/\\/g, '/')
+    ) {
+      set({ pendingNavigationTarget: null })
+    }
+  },
+
+  consumeNavigationTarget: (path) => {
+    const pending = get().pendingNavigationTarget
+    if (!pending) return null
+    if (normalizeEditorPath(pending.path) !== normalizeEditorPath(path)) return null
+    set({ pendingNavigationTarget: null })
+    return pending
   },
 
   closeTab: async (index) => {

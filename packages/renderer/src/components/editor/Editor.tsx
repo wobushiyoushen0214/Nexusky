@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditor, EditorContent } from '@tiptap/react'
+import type { Editor as TiptapEditor } from '@tiptap/core'
 import { EditorState as ProseMirrorEditorState } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -36,10 +37,12 @@ import { getErrorMessage } from '../../utils/errors'
 import { FindReplace } from './FindReplace'
 import { TagBar } from './TagBar'
 import { MermaidRenderer } from './MermaidRenderer'
+import { findMarkdownLineForBlockId, findMarkdownLineForHeading, findMarkdownLineForSnippet, normalizeSourceNavigationText } from '../../utils/source-navigation'
 import { normalizeObsidianLinkTarget, parseObsidianLinkReference, selectMarkdownReferenceContent, stripMarkdownFrontmatter, type ObsidianLinkReference } from '../../utils/obsidian-link'
 import { mergeEditorMarkdownContent } from '../../utils/markdown-roundtrip'
 import { matchesShortcut } from '../../utils/shortcuts'
 import type { NoteSearchResult } from '@shared/types/ipc'
+import type { EditorNavigationTarget } from '../../stores/editor-store'
 
 function stripFrontmatter(content: string): string {
   return stripMarkdownFrontmatter(content)
@@ -89,12 +92,110 @@ class LRUCache<K, V> {
   }
 }
 
+function isNavigationTargetForFile(target: EditorNavigationTarget | null, filePath: string | null): target is EditorNavigationTarget {
+  if (!target || !filePath) return false
+  return target.path.replace(/\\/g, '/') === filePath.replace(/\\/g, '/')
+}
+
+function getPositionForMarkdownLine(editor: TiptapEditor, line: number): number {
+  const targetLine = Math.max(1, Math.floor(line))
+  let currentLine = 1
+  let targetPos = -1
+  let fallbackPos = 1
+
+  editor.state.doc.descendants((node, pos) => {
+    if (targetPos >= 0) return false
+    if (!node.isTextblock) return true
+    const lineCount = Math.max(1, node.textContent.split('\n').length)
+    if (currentLine + lineCount - 1 >= targetLine) {
+      targetPos = pos + 1
+      return false
+    }
+    currentLine += lineCount
+    fallbackPos = pos + node.nodeSize
+    return false
+  })
+
+  return Math.min(Math.max(targetPos >= 0 ? targetPos : fallbackPos, 1), Math.max(editor.state.doc.content.size, 1))
+}
+
+function findTextBlockPositionForSnippet(editor: TiptapEditor, snippet: string): number {
+  const normalizedSnippet = normalizeSourceNavigationText(snippet)
+  if (normalizedSnippet.length < 8) return -1
+  const needles = Array.from(new Set([
+    normalizedSnippet,
+    normalizedSnippet.slice(0, 180),
+    normalizedSnippet.split(' ').slice(0, 28).join(' ')
+  ])).filter((item) => item.length >= 8)
+
+  let targetPos = -1
+  editor.state.doc.descendants((node, pos) => {
+    if (targetPos >= 0) return false
+    if (!node.isTextblock) return true
+    const text = normalizeSourceNavigationText(node.textContent)
+    if (text.length < 8) return true
+    if (needles.some((needle) => text.includes(needle) || (needle.includes(text) && text.length >= 16))) {
+      targetPos = pos + 1
+      return false
+    }
+    return true
+  })
+  return targetPos
+}
+
+function scrollEditorPositionIntoView(editor: TiptapEditor, container: HTMLElement | null, pos: number): void {
+  const safePos = Math.min(Math.max(pos, 1), Math.max(editor.state.doc.content.size, 1))
+  editor.commands.focus()
+  editor.commands.setTextSelection(safePos)
+
+  window.setTimeout(() => {
+    try {
+      const domAtPos = editor.view.domAtPos(safePos)
+      const el = domAtPos.node instanceof HTMLElement
+        ? domAtPos.node
+        : domAtPos.node.parentElement
+      if (!el) return
+      if (!container) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+      const elRect = el.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      const targetScroll = container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 2 + elRect.height / 2
+      container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' })
+    } catch {}
+  }, 50)
+}
+
+function navigateToSourceTarget(editor: TiptapEditor, container: HTMLElement | null, target: EditorNavigationTarget, markdownContent: string): boolean {
+  let line = target.line || target.endLine
+  if (!line && target.blockId) line = findMarkdownLineForBlockId(markdownContent, target.blockId) || undefined
+  if (!line && target.heading) line = findMarkdownLineForHeading(markdownContent, target.heading) || undefined
+
+  let targetPos = line ? getPositionForMarkdownLine(editor, line) : -1
+  if (targetPos < 0 && target.snippet) {
+    targetPos = findTextBlockPositionForSnippet(editor, target.snippet)
+  }
+  if (targetPos < 0 && target.snippet) {
+    const snippetLine = findMarkdownLineForSnippet(markdownContent, target.snippet)
+    if (snippetLine) targetPos = getPositionForMarkdownLine(editor, snippetLine)
+  }
+  if (targetPos < 0 && target.heading) {
+    targetPos = findTextBlockPositionForSnippet(editor, target.heading)
+  }
+  if (targetPos < 0) return false
+  scrollEditorPositionIntoView(editor, container, targetPos)
+  return true
+}
+
 export function Editor() {
   const { t } = useTranslation()
   const content = useEditorStore((s) => s.content)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const setContent = useEditorStore((s) => s.setContent)
   const isDirty = useEditorStore((s) => s.isDirty)
+  const pendingNavigationTarget = useEditorStore((s) => s.pendingNavigationTarget)
+  const consumeNavigationTarget = useEditorStore((s) => s.consumeNavigationTarget)
   const editorVaultPath = useVaultStore((s) => s.vaultPath)
   const tabs = useEditorStore((s) => s.tabs)
   const activeTabIndex = useEditorStore((s) => s.activeTabIndex)
@@ -256,6 +357,19 @@ export function Editor() {
       serializedBodyRef.current = editor.storage.markdown.getMarkdown()
     }
   }, [currentFilePath])
+
+  useEffect(() => {
+    const activePath = currentFilePath
+    if (!editor || !activePath || !isNavigationTargetForFile(pendingNavigationTarget, activePath)) return
+    const target = consumeNavigationTarget(activePath)
+    if (!target) return
+
+    const timer = window.setTimeout(() => {
+      navigateToSourceTarget(editor, editorAreaRef.current, target, useEditorStore.getState().content)
+    }, 90)
+
+    return () => window.clearTimeout(timer)
+  }, [editor, currentFilePath, pendingNavigationTarget?.id, consumeNavigationTarget])
 
   useEffect(() => {
     if (!editor) return
