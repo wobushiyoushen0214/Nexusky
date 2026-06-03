@@ -100,5 +100,10 @@ Agent remains out of primary navigation, but it now has a concrete product role 
 
 Weekly Cognitive Review also lives in the maintenance surface. Reason: the weekly return habit belongs near maintenance and context quality, not in a separate calendar or dashboard surface.
 
+### 2026-06-03 - Website leads with vault health, not abstract AI
+
+The public homepage now starts with a vault health demo: open a Markdown vault, see the health score, handle three prioritized maintenance actions, and ask with sources. Reason: the product promise should be the trust loop from the development plan, not a generic AI knowledge-base headline.
+
+Workflow packs are framed as activation aids, not paid gates. Research, Writing, Developer, and Learning samples should help users understand a healthy vault quickly. Local vaults, sample vaults, search, graph, Vault Health, Maintenance, bring-your-own AI providers, and bring-your-own sync remain the default path. Managed sync, hosted backup, and hosted publish remain future paid add-on candidates only after recovery and trust boundaries are strong.
 
 

@@ -4,6 +4,7 @@ import {
   Boxes,
   Brain,
   Check,
+  CircleDollarSign,
   Code2,
   Download,
   Files,
@@ -13,11 +14,11 @@ import {
   Network,
   PanelRight,
   Search,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import Image from "next/image";
 
-const currentVersion = "0.5.0";
+const currentVersion = "0.8.2";
 const githubRepo = "wobushiyoushen0214/Nexusky";
 const releaseBase = `https://github.com/${githubRepo}/releases/latest/download`;
 
@@ -47,17 +48,17 @@ const downloads = [
 const pillars = [
   {
     icon: HardDrive,
-    title: "Local-first vault",
-    text: "Markdown files stay in your folder. SQLite indexes links, tasks, properties and search state without replacing your notes.",
+    title: "Local-first vault health",
+    text: "Markdown files stay in your folder while Nexusky indexes links, tasks, properties and stale context into a practical health report.",
   },
   {
     icon: Brain,
-    title: "Long-term context",
-    text: "Hot, warm and cold context packs bring old work back into AI chat with relation types, evidence and feedback.",
+    title: "Explainable long memory",
+    text: "Hot, warm and cold context packs bring old work back into AI chat with relation types, evidence, reasons and feedback.",
   },
   {
     icon: Bot,
-    title: "AI tools with boundaries",
+    title: "AI with review boundaries",
     text: "Chat, edit, batch writing and maintenance tools operate through typed IPC, source context and preview-first workflows.",
   },
   {
@@ -68,10 +69,10 @@ const pillars = [
 ];
 
 const workflows = [
-  "Write Markdown with TipTap, wikilinks, frontmatter, callouts, math and Mermaid.",
-  "Ask AI across the vault with source citations and long-context explanations.",
-  "Find orphan notes, unresolved links, stale tasks and bridge notes from the maintenance queue.",
-  "Sync or publish with Supabase, iCloud, OneDrive, WebDAV, S3, HTML and PDF.",
+  "Open a real Markdown vault and get a health report before configuring any AI provider.",
+  "Handle the top three maintenance actions with reasons, impact counts and preview-first writes.",
+  "Ask the vault a question and see the notes, memories and reasons that shaped the answer.",
+  "Start from Research, Writing, Developer or Learning sample vaults with templates and maintenance rules.",
 ];
 
 const stack = [
@@ -83,36 +84,100 @@ const stack = [
   "Vitest",
 ];
 
+const healthActions = [
+  {
+    label: "Repair unresolved links",
+    detail: "7 notes reference missing targets",
+    tone: "accent",
+  },
+  {
+    label: "Review orphan notes",
+    detail: "14 notes are not connected to active themes",
+    tone: "blue",
+  },
+  {
+    label: "Refresh stale memories",
+    detail: "2 memory entries need new evidence",
+    tone: "amber",
+  },
+];
+
+const workflowPacks = [
+  {
+    name: "Research",
+    detail: "Sources, literature notes, digest tasks and weekly review prompts.",
+  },
+  {
+    name: "Writing",
+    detail: "Ideas, drafts, structure notes, publish-ready metadata and review rules.",
+  },
+  {
+    name: "Developer",
+    detail: "ADR, debug logs, API notes, release review and decision maintenance.",
+  },
+  {
+    name: "Learning",
+    detail: "Lessons, practice notes, exercises, summaries and spaced review context.",
+  },
+];
+
+const boundaryItems = [
+  {
+    icon: HardDrive,
+    title: "Free local workspace",
+    text: "Local vaults, sample vaults, search, graph, health and BYO provider setup remain the default product path.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Bring-your-own sync",
+    text: "iCloud, OneDrive, WebDAV, S3 and Supabase stay framed as user-controlled infrastructure.",
+  },
+  {
+    icon: CircleDollarSign,
+    title: "Future paid add-ons",
+    text: "Managed sync, hosted backup and hosted publish are commercial candidates only after recovery and trust are strong.",
+  },
+];
+
 export default function Home() {
   return (
     <main className="site-shell">
       <nav className="topbar" aria-label="Primary navigation">
         <a className="brand" href="#top" aria-label="Nexusky home">
-          <Image
+          <img
             src="/product/icon.png"
             alt=""
             className="brand-mark"
             width={1024}
             height={1024}
-            priority
+            loading="eager"
           />
           <span>Nexusky</span>
         </a>
         <div className="nav-links">
           <a href="#workflows">Workflows</a>
+          <a href="#boundary">Boundary</a>
           <a href="#download">Download</a>
           <a href={`https://github.com/${githubRepo}`}>GitHub</a>
         </div>
       </nav>
 
       <section id="top" className="hero" aria-labelledby="hero-title">
-        <div className="hero-veil" aria-hidden="true" />
+        <div className="hero-asset" aria-hidden="true">
+          <img
+            src="/product/icon.png"
+            alt=""
+            width={1024}
+            height={1024}
+            loading="eager"
+          />
+        </div>
         <div className="hero-copy">
-          <p className="eyebrow">Local Markdown. Long memory. Inspectable AI.</p>
+          <p className="eyebrow">Local Markdown. Vault health first.</p>
           <h1 id="hero-title">Nexusky</h1>
           <p className="hero-lede">
-            A desktop knowledge base where your Markdown vault remains the source of truth, while AI
-            helps search, connect, maintain and explain the thinking inside it.
+            A desktop knowledge base that opens a real Markdown vault, shows what needs care,
+            and lets AI answer with sources only after the local structure is visible.
           </p>
           <div className="hero-actions" aria-label="Primary actions">
             <a className="button primary" href="#download">
@@ -125,11 +190,50 @@ export default function Home() {
             </a>
           </div>
         </div>
-        <div className="hero-strip" aria-label="Product highlights">
-          <span>Markdown vault</span>
-          <span>SQLite index</span>
-          <span>Reviewable actions</span>
-          <span>Long-context graph</span>
+        <div className="hero-demo" aria-label="Vault health demo">
+          <div className="demo-sidebar">
+            <strong>research-vault</strong>
+            <span className="sidebar-item active">Vault Health</span>
+            <span className="sidebar-item">Files</span>
+            <span className="sidebar-item">Search</span>
+            <span className="sidebar-item">Graph</span>
+            <span className="sidebar-item">AI Chat</span>
+          </div>
+          <div className="demo-main">
+            <div className="demo-toolbar">
+              <span>Vault Health</span>
+              <small>Updated 2 min ago</small>
+            </div>
+            <div className="health-score">
+              <span className="score-ring">82</span>
+              <div>
+                <strong>Today, fix these 3 things first</strong>
+                <p>Sorted by impact, confidence and whether the write path has a preview.</p>
+              </div>
+            </div>
+            <div className="action-list">
+              {healthActions.map((action) => (
+                <div className={`health-action ${action.tone}`} key={action.label}>
+                  <span />
+                  <div>
+                    <strong>{action.label}</strong>
+                    <small>{action.detail}</small>
+                  </div>
+                  <span className="demo-action-button">Preview</span>
+                </div>
+              ))}
+            </div>
+            <div className="source-answer">
+              <div>
+                <Sparkles aria-hidden="true" />
+                <strong>Ask with sources</strong>
+              </div>
+              <p>
+                “Which notes explain the synthesis workflow?” Nexusky searches the vault,
+                attaches source snippets, and says when no relevant note is found.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -140,8 +244,8 @@ export default function Home() {
         </div>
         <p>
           Nexusky is not a cloud notebook and not a chat window bolted onto files. It treats the
-          filesystem as the durable layer, then builds fast local indexes, structured AI tools,
-          proactive suggestions and visible evidence around it.
+          filesystem as the durable layer, then builds fast local indexes, health tasks, structured
+          AI tools, proactive suggestions and visible evidence around it.
         </p>
       </section>
 
@@ -157,8 +261,8 @@ export default function Home() {
 
       <section id="workflows" className="section product-band">
         <div className="product-copy">
-          <p className="section-kicker">Daily surface</p>
-          <h2>One workspace for notes, graph, AI and maintenance.</h2>
+          <p className="section-kicker">Workflow packs</p>
+          <h2>Start with a real sample vault, then keep it healthy.</h2>
           <ul className="check-list">
             {workflows.map((item) => (
               <li key={item}>
@@ -168,27 +272,14 @@ export default function Home() {
             ))}
           </ul>
         </div>
-        <aside className="workflow-panel" aria-label="Nexusky workflow map">
-          <div className="workflow-node primary">
-            <span>01</span>
-            <strong>Vault</strong>
-            <small>Markdown files stay portable on disk.</small>
-          </div>
-          <div className="workflow-node">
-            <span>02</span>
-            <strong>Index</strong>
-            <small>SQLite tracks links, properties, tasks and FTS.</small>
-          </div>
-          <div className="workflow-node">
-            <span>03</span>
-            <strong>Context</strong>
-            <small>Relations and themes become AI context packs.</small>
-          </div>
-          <div className="workflow-node">
-            <span>04</span>
-            <strong>Action</strong>
-            <small>Tools, previews and maintenance queues stay reviewable.</small>
-          </div>
+        <aside className="workflow-panel" aria-label="Nexusky workflow packs">
+          {workflowPacks.map((pack, index) => (
+            <div className={`workflow-node ${index === 0 ? "primary" : ""}`} key={pack.name}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{pack.name}</strong>
+              <small>{pack.detail}</small>
+            </div>
+          ))}
         </aside>
       </section>
 
@@ -213,6 +304,27 @@ export default function Home() {
           <h3>Private by default</h3>
           <p>Secrets use Electron safeStorage when available; AI and sync only talk to providers you configure.</p>
         </article>
+      </section>
+
+      <section id="boundary" className="section boundary-band" aria-labelledby="boundary-title">
+        <div className="product-copy">
+          <p className="section-kicker">Commercial boundary</p>
+          <h2 id="boundary-title">The core vault loop stays local and usable.</h2>
+          <p>
+            Professional workflow packs should make the first ten minutes clearer, not hide the
+            local-first product behind subscriptions. Paid infrastructure belongs to hosted sync,
+            hosted backup and hosted publishing once recovery behavior is trustworthy.
+          </p>
+        </div>
+        <div className="boundary-grid">
+          {boundaryItems.map((item) => (
+            <article key={item.title}>
+              <item.icon aria-hidden="true" />
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="section graph-band">
