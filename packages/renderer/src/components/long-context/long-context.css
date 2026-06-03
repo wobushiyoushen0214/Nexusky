@@ -130,6 +130,183 @@
   display: none;
 }
 
+.related-context-pack {
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 62%, transparent);
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+}
+
+.related-context-pack__summary {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.related-context-pack__summary:hover {
+  background: color-mix(in srgb, var(--bg-hover) 78%, transparent);
+}
+
+.related-context-pack__summary-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.related-context-pack__summary-title {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.related-context-pack__summary-counts {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.related-context-pack__summary-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.related-context-pack__chevron {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.related-context-pack.is-expanded .related-context-pack__chevron {
+  transform: rotate(180deg);
+}
+
+.related-context-pack__body {
+  padding: 0 12px 12px;
+  display: grid;
+  gap: 9px;
+}
+
+.related-context-pack__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.related-context-pack__tab {
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.related-context-pack__tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.related-context-pack__tab.is-active {
+  color: var(--accent-text);
+  background: var(--accent-muted);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border-subtle));
+}
+
+.related-context-pack__tab span {
+  color: var(--text-tertiary);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.related-context-pack__items {
+  display: grid;
+  gap: 7px;
+}
+
+.related-context-pack__item {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 76%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-elevated) 62%, transparent);
+}
+
+.related-context-pack__item-header {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.related-context-pack__item-title {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.related-context-pack__item-meta {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.related-context-pack__item-reason {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.related-context-pack__item-evidence {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.related-context-pack__item-evidence span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.related-context-pack__empty,
+.related-context-pack__dropped {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .related-context-card {
   padding: 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 62%, transparent);
@@ -320,5 +497,22 @@
 
   .long-context-badge {
     width: fit-content;
+  }
+
+  .related-context-pack__summary {
+    align-items: flex-start;
+  }
+
+  .related-context-pack__summary-meta {
+    padding-top: 1px;
+  }
+
+  .related-context-pack__item-header {
+    display: grid;
+    gap: 3px;
+  }
+
+  .related-context-pack__item-meta {
+    white-space: normal;
   }
 }

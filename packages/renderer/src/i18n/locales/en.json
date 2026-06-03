@@ -585,6 +585,22 @@
     "loadFailed": "Context Pack failed to load",
     "feedbackFailed": "Could not save feedback",
     "retry": "Retry",
+    "pack": {
+      "title": "AI memory sent with chat",
+      "summary": "Active {{hot}} · Nearby {{warm}} · Archive {{cold}}",
+      "tokens": "{{used}}/{{budget}} tokens",
+      "empty": "No memory",
+      "tiers": "Context Pack tiers",
+      "emptyTier": "Nothing in this tier",
+      "dropped": "{{count}} excluded by token budget",
+      "confidence": "{{value}}% conf",
+      "score": "{{value}} score",
+      "tier": {
+        "hot": "Active",
+        "warm": "Nearby",
+        "cold": "Archive"
+      }
+    },
     "nav": {
       "previous": "Previous suggestion",
       "next": "Next suggestion",

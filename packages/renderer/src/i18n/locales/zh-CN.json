@@ -585,6 +585,22 @@
     "loadFailed": "上下文包加载失败",
     "feedbackFailed": "反馈保存失败",
     "retry": "重试",
+    "pack": {
+      "title": "Chat 会带上的 AI 记忆",
+      "summary": "活跃 {{hot}} · 邻近 {{warm}} · 归档 {{cold}}",
+      "tokens": "{{used}}/{{budget}} tokens",
+      "empty": "暂无记忆",
+      "tiers": "上下文包层级",
+      "emptyTier": "此层级暂无内容",
+      "dropped": "{{count}} 条因 token 预算未采用",
+      "confidence": "{{value}}% 置信",
+      "score": "{{value}} 评分",
+      "tier": {
+        "hot": "活跃",
+        "warm": "邻近",
+        "cold": "归档"
+      }
+    },
     "nav": {
       "previous": "上一条建议",
       "next": "下一条建议",
