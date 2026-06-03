@@ -403,7 +403,12 @@ function mergeSearchCandidates(
   return Array.from(byKey.values()).sort((a, b) => b.score - a.score)
 }
 
-export async function lexicalSearch(vaultPath: string, query: string, topK = 10): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
+export async function lexicalSearch(
+  vaultPath: string,
+  query: string,
+  topK = 10,
+  options: { rerank?: boolean } = {}
+): Promise<{ noteId: string; title: string; filePath: string; chunk: string; score: number }[]> {
   const candidates = mergeSearchCandidates(
     tfidfSearch(vaultPath, query, topK * 3),
     keywordFallbackSearch(vaultPath, query, topK * 3)
@@ -420,6 +425,7 @@ export async function lexicalSearch(vaultPath: string, query: string, topK = 10)
   }
 
   if (deduped.length <= 1) return deduped.slice(0, topK)
+  if (options.rerank === false) return deduped.slice(0, topK)
 
   const topScore = deduped[0].score
   const secondScore = deduped[1].score

@@ -573,4 +573,5 @@ Nexusky 下一阶段的成功不取决于再增加多少功能，而取决于能
 
 | 日期 | 项目 | 状态 | 变更 | 验证 |
 | --- | --- | --- | --- | --- |
+| 2026-06-03 | P0-1 Chat/Agent 请求前外发内容预览 | 完成 | 新增 `ai:preview-outbound` IPC 和本地 preview builder；Chat 输入区新增“外发预览”入口，首次发送会先展示 Provider、模式、附件/图片数量、检索到的 note snippets、长期上下文 Hot/Warm/Cold 数量、Agent 工具定义提示和约 token 数，用户确认后才继续现有 Chat/Agent 发送流程；预览阶段检索使用 local-only 模式，不提前触发 AI rerank 或对话摘要压缩。 | `pnpm test -- tests/ai-outbound-preview.test.ts tests/retrieved-notes-context.test.ts tests/ai-system-context.test.ts`；`pnpm typecheck` |
 | 2026-06-03 | P0-2 Maintenance 反馈状态持久化 | 完成 | 新增 `maintenance_feedback` SQLite 表和 `maintenance:record-feedback` IPC；维护队列支持 `done`、`skipped`、`snoozed`、`not_relevant` 四种反馈，队列扫描会自动过滤已完成、跳过、不相关和未到期的稍后事项；反馈签名进入维护队列缓存键，点击后不会被旧缓存重新带回；Maintenance 卡片新增完成、稍后、跳过、不相关按钮，并补齐中英文文案。 | `pnpm test -- tests/maintenance-feedback.test.ts tests/maintenance-cache-key.test.ts tests/maintenance-queue-ipc.test.ts tests/proactive-schema.test.ts tests/long-context-schema.test.ts`；`pnpm typecheck` |

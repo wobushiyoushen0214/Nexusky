@@ -289,6 +289,54 @@ export interface ChatSource {
   score: number
 }
 
+export type AIOutboundPreviewMode = 'chat' | 'agent'
+
+export type AIOutboundPreviewSnippetKind = 'prompt' | 'client_context' | 'attachment' | 'retrieved_note' | 'long_context'
+
+export interface AIOutboundPreviewSnippet {
+  kind: AIOutboundPreviewSnippetKind
+  title: string
+  preview: string
+  filePath?: string
+  score?: number
+  chars?: number
+}
+
+export interface AIOutboundPreview {
+  mode: AIOutboundPreviewMode
+  provider: {
+    id: string
+    name: string
+    type: AIProviderConfig['type']
+    model: string
+    localOnly: boolean
+  } | null
+  messageCount: number
+  systemMessageCount: number
+  userMessageCount: number
+  imageCount: number
+  estimatedTokens: number
+  currentFilePath?: string | null
+  promptPreview: string
+  clientContextSnippets: AIOutboundPreviewSnippet[]
+  attachmentSnippets: AIOutboundPreviewSnippet[]
+  retrievedNoteSnippets: AIOutboundPreviewSnippet[]
+  longContext: {
+    hot: number
+    warm: number
+    cold: number
+    dropped: number
+    sources: number
+    estimatedTokens: number
+    snippets: AIOutboundPreviewSnippet[]
+  }
+  toolAccess?: {
+    toolCount: number
+    toolNames: string[]
+  }
+  warnings: string[]
+}
+
 export type ChatHistoryRole = 'user' | 'assistant'
 
 export interface ChatHistoryEntry {
@@ -969,6 +1017,7 @@ export interface IPCChannelMap {
   }
   'ai:chat': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null; language?: AppLanguage }; result: void }
   'ai:chat-agent': { params: { messages: IPCChatMessage[]; vaultPath?: string; systemPrompt?: string; currentFilePath?: string | null; language?: AppLanguage }; result: void }
+  'ai:preview-outbound': { params: { messages: IPCChatMessage[]; vaultPath?: string; currentFilePath?: string | null; language?: AppLanguage; mode?: AIOutboundPreviewMode }; result: AIOutboundPreview }
   'ai:detect-intent': { params: { messages: IPCChatMessage[]; intents?: string[]; intentContext?: string }; result: { intent?: string } }
   'ai:stop': { params: undefined; result: void }
   'ai:complete': { params: { text: string; system?: string; temperature?: number; taskKey?: string; styleSource?: string }; result: string }

@@ -22,7 +22,7 @@ import { formatAiProviderError } from '../../utils/ai-provider-errors'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
-import type { ChatContentPart, ChatSource, GeneratedNoteBatchPlanItem, IPCChannelMap, IPCChatMessage } from '@shared/types/ipc'
+import type { AIOutboundPreview, AIOutboundPreviewSnippet, ChatContentPart, ChatSource, GeneratedNoteBatchPlanItem, IPCChannelMap, IPCChatMessage } from '@shared/types/ipc'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
@@ -38,6 +38,126 @@ const MAX_ATTACHED_DOCUMENTS = 8
 const MAX_IMAGE_DATA_URL_LENGTH = 6_000_000
 const MAX_ATTACHMENT_CONTEXT_CHARS = 60_000
 const SELECTION_CHAR_LIMIT = 2000
+
+function OutboundPreviewPanel({
+  preview,
+  loading,
+  onConfirm,
+  onCancel
+}: {
+  preview: AIOutboundPreview | null
+  loading: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const snippets: AIOutboundPreviewSnippet[] = preview
+    ? [
+      ...preview.attachmentSnippets,
+      ...preview.retrievedNoteSnippets,
+      ...preview.longContext.snippets
+    ].slice(0, 8)
+    : []
+  const longContextCount = preview ? preview.longContext.hot + preview.longContext.warm + preview.longContext.cold : 0
+
+  return (
+    <div style={{ padding: '8px 14px 0', flexShrink: 0 }}>
+      <div style={{ background: 'var(--bg-base)', border: '1px solid var(--accent-muted)', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ padding: '9px 11px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>外发内容预览</div>
+            <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {loading && !preview
+                ? '正在从本地索引生成预览...'
+                : preview?.provider
+                  ? `${preview.provider.name} · ${preview.provider.model || '默认模型'}`
+                  : '未配置 Provider'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={onConfirm}
+              disabled={!preview || loading || !preview.provider}
+              style={{ height: 26, padding: '0 10px', fontSize: 11, background: preview && !loading && preview.provider ? 'var(--accent)' : 'var(--bg-hover)', color: preview && !loading && preview.provider ? '#fff' : 'var(--text-tertiary)', border: 'none', borderRadius: 5, cursor: preview && !loading && preview.provider ? 'pointer' : 'default', fontWeight: 500, whiteSpace: 'nowrap' }}
+            >
+              确认发送
+            </button>
+            <button
+              onClick={onCancel}
+              style={{ height: 26, padding: '0 9px', fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}
+            >
+              取消
+            </button>
+          </div>
+        </div>
+        {preview && (
+          <div style={{ padding: '9px 11px', display: 'grid', gap: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <PreviewMetric label="模式" value={preview.mode === 'agent' ? 'Agent' : 'Chat'} />
+              <PreviewMetric label="附件" value={`${preview.attachmentSnippets.length + preview.imageCount}`} />
+              <PreviewMetric label="检索片段" value={`${preview.retrievedNoteSnippets.length}`} />
+              <PreviewMetric label="长期上下文" value={`${longContextCount}`} />
+              <PreviewMetric label="约 tokens" value={`~${preview.estimatedTokens > 1000 ? `${(preview.estimatedTokens / 1000).toFixed(1)}k` : preview.estimatedTokens}`} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.45, maxHeight: 36, overflow: 'hidden' }}>
+              <span style={{ color: 'var(--text-tertiary)' }}>问题：</span>{preview.promptPreview || '仅发送附件内容'}
+            </div>
+            {snippets.length > 0 && (
+              <div style={{ display: 'grid', gap: 5, maxHeight: 140, overflowY: 'auto' }}>
+                {snippets.map((snippet, index) => (
+                  <PreviewSnippetRow key={`${snippet.kind}:${snippet.title}:${snippet.filePath || index}`} snippet={snippet} />
+                ))}
+              </div>
+            )}
+            {preview.toolAccess && (
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45 }}>
+                Agent 工具：{preview.toolAccess.toolNames.join(', ')}
+              </div>
+            )}
+            {preview.warnings.length > 0 && (
+              <div style={{ display: 'grid', gap: 3 }}>
+                {preview.warnings.map((warning, index) => (
+                  <div key={`${index}:${warning}`} style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45 }}>
+                    {warning}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PreviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <span style={{ height: 22, padding: '0 7px', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 5 }}>
+      <span style={{ color: 'var(--text-tertiary)' }}>{label}</span>
+      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{value}</span>
+    </span>
+  )
+}
+
+function PreviewSnippetRow({ snippet }: { snippet: AIOutboundPreviewSnippet }) {
+  const label = snippet.kind === 'retrieved_note'
+    ? '检索'
+    : snippet.kind === 'long_context'
+      ? '记忆'
+      : snippet.kind === 'attachment'
+        ? '附件'
+        : '上下文'
+  return (
+    <div style={{ minWidth: 0, padding: '6px 8px', display: 'grid', gap: 3, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6 }}>
+      <div style={{ display: 'flex', gap: 6, minWidth: 0, alignItems: 'center' }}>
+        <span style={{ fontSize: 10, color: 'var(--accent-text)', fontWeight: 600, flexShrink: 0 }}>{label}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{snippet.title}</span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {snippet.preview}
+      </div>
+    </div>
+  )
+}
 
 function flattenMdFiles(entries: FileEntry[]): { name: string; path: string }[] {
   const result: { name: string; path: string }[] = []
@@ -144,6 +264,10 @@ export function ChatPanel() {
   const activeBatchPlanMsgIdsRef = useRef<Set<string>>(new Set())
   const [pendingBatch, setPendingBatch] = useState<{ instruction: string } | null>(null)
   const [pendingBatchPlan, setPendingBatchPlan] = useState<PendingBatchPlan | null>(null)
+  const [outboundPreview, setOutboundPreview] = useState<AIOutboundPreview | null>(null)
+  const [outboundPreviewLoading, setOutboundPreviewLoading] = useState(false)
+  const outboundPreviewRequestRef = useRef(0)
+  const skipOutboundPreviewRef = useRef(false)
   const [folderOptions, setFolderOptions] = useState<string[]>([])
   const [editUnbound, setEditUnbound] = useState(false)
   const draftStorageKey = useMemo(() => getChatDraftStorageKey(vaultPath, currentSessionId), [vaultPath, currentSessionId])
@@ -155,6 +279,11 @@ export function ChatPanel() {
     }
     return total
   }, [messages])
+
+  useEffect(() => {
+    outboundPreviewRequestRef.current += 1
+    setOutboundPreview(null)
+  }, [input, attachedNotes, attachedSelections, attachedImages, attachedDocuments, editMode, agentMode, currentFilePath, vaultPath, language])
 
   useEffect(() => {
     if (!vaultPath) return
@@ -648,7 +777,8 @@ export function ChatPanel() {
     }
   }
 
-  const buildChatMessages = async (allMessages: Message[]): Promise<IPCChatMessage[]> => {
+  const buildChatMessages = async (allMessages: Message[], options: { allowAiSummary?: boolean } = {}): Promise<IPCChatMessage[]> => {
+    const allowAiSummary = options.allowAiSummary ?? true
     const currentNoteContext = getCurrentNoteContextMessage()
     if (allMessages.length <= TOKEN_THRESHOLD) {
       return [
@@ -660,6 +790,16 @@ export function ChatPanel() {
     const recentMessages = allMessages.slice(-RECENT_KEEP)
     const oldMessages = allMessages.slice(0, -RECENT_KEEP)
     const oldCount = oldMessages.length
+
+    if (!allowAiSummary) {
+      const summary = contextSummaryRef.current
+        || oldMessages.slice(-RECENT_KEEP).map((m) => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content.slice(0, 160)}`).join('\n')
+      return [
+        ...(currentNoteContext ? [currentNoteContext] : []),
+        { role: 'system', content: `Below is a local preview summary of prior conversation. Continue based on this context:\n${summary}` },
+        ...recentMessages.map((m) => ({ role: m.role, content: m.content }))
+      ]
+    }
 
     // Cache hit: if we already summarized this many old messages, reuse the summary
     // Only regenerate when new messages have rolled into the "old" window
@@ -1032,7 +1172,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     executeBatchGenerate(pendingBatch.instruction, targetDir)
   }
 
-  const collectAttachmentContext = async (): Promise<string> => {
+  const collectAttachmentContext = async (options: { clear?: boolean } = {}): Promise<string> => {
     let contextPrefix = ''
     let remaining = MAX_ATTACHMENT_CONTEXT_CHARS
     let truncated = false
@@ -1064,19 +1204,19 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           appendContext(`[笔记: ${note.title}]`, content)
         } catch {}
       }
-      setAttachedNotes([])
+      if (options.clear !== false) setAttachedNotes([])
     }
     if (attachedSelections.length > 0) {
       for (const sel of attachedSelections) {
         appendContext(`[选中片段: ${sel.source}]`, sel.text)
       }
-      setAttachedSelections([])
+      if (options.clear !== false) setAttachedSelections([])
     }
     if (attachedDocuments.length > 0) {
       appendContext('[文档附件]', buildDocumentAttachmentContext(attachedDocuments))
-      setAttachedDocuments([])
+      if (options.clear !== false) setAttachedDocuments([])
     }
-    if (truncated) {
+    if (truncated && options.clear !== false) {
       toast('引用内容过长，已自动截断后发送', 'info')
     }
     return contextPrefix
@@ -1102,6 +1242,55 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       }
     }
     return nextMessages
+  }
+
+  const prepareOutboundPreview = async (): Promise<void> => {
+    const hasPendingAttachments = attachedNotes.length > 0 || attachedSelections.length > 0 || attachedImages.length > 0 || attachedDocuments.length > 0
+    if (editMode || (!input.trim() && !hasPendingAttachments) || outboundPreviewLoading) return
+
+    const requestId = ++outboundPreviewRequestRef.current
+    setOutboundPreview(null)
+    setOutboundPreviewLoading(true)
+    try {
+      const providers = await window.api.invoke('ai:get-providers', undefined)
+      if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
+        showNoAiProviderToast()
+        return
+      }
+
+      const userContent = input.trim() || '请分析附件内容。'
+      const sentImages = [...attachedImages]
+      const contextPrefix = await collectAttachmentContext({ clear: false })
+      const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userContent }
+      const previewMessages = applyChatAttachments(
+        await buildChatMessages([...messages, userMsg], { allowAiSummary: false }),
+        userMsg.content,
+        contextPrefix,
+        sentImages
+      )
+      const preview = await window.api.invoke('ai:preview-outbound', {
+        messages: previewMessages,
+        vaultPath: vaultPath || undefined,
+        currentFilePath,
+        language,
+        mode: agentMode && vaultPath ? 'agent' : 'chat'
+      })
+      if (requestId !== outboundPreviewRequestRef.current) return
+      const warnings = [...preview.warnings]
+      if ([...messages, userMsg].length > TOKEN_THRESHOLD && !contextSummaryRef.current) {
+        warnings.push('长对话会在确认后先压缩历史摘要；该摘要也会发送给 Provider。')
+      }
+      setOutboundPreview({ ...preview, warnings })
+    } catch (e: unknown) {
+      if (requestId === outboundPreviewRequestRef.current) {
+        setOutboundPreview(null)
+        toast(`外发预览生成失败: ${friendlyError(getErrorMessage(e), t)}`, 'error')
+      }
+    } finally {
+      if (requestId === outboundPreviewRequestRef.current) {
+        setOutboundPreviewLoading(false)
+      }
+    }
   }
 
   const getAvailableNotePath = async (baseDir: string, title: string): Promise<string> => {
@@ -1131,6 +1320,15 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         appendToDb(msg)
         setStreamContent('')
       }
+    }
+
+    if (!editMode && !skipOutboundPreviewRef.current) {
+      if (!outboundPreview) await prepareOutboundPreview()
+      return
+    }
+    if (skipOutboundPreviewRef.current) {
+      skipOutboundPreviewRef.current = false
+      setOutboundPreview(null)
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
@@ -1996,6 +2194,23 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         </div>
       )}
 
+      {(outboundPreview || outboundPreviewLoading) && (
+        <OutboundPreviewPanel
+          preview={outboundPreview}
+          loading={outboundPreviewLoading}
+          onConfirm={() => {
+            skipOutboundPreviewRef.current = true
+            setOutboundPreview(null)
+            void handleSend()
+          }}
+          onCancel={() => {
+            outboundPreviewRequestRef.current += 1
+            setOutboundPreview(null)
+            setOutboundPreviewLoading(false)
+          }}
+        />
+      )}
+
       {/* Input */}
       <div style={{ padding: '10px 14px 14px', flexShrink: 0 }}>
         <div style={{
@@ -2158,13 +2373,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               </button>
               <button
                 onClick={handleSend}
-                disabled={!canSend}
+                disabled={!canSend || outboundPreviewLoading}
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: canSend ? 'var(--accent)' : 'transparent',
-                  color: canSend ? '#fff' : 'var(--text-tertiary)',
+                  background: canSend && !outboundPreviewLoading ? 'var(--accent)' : 'transparent',
+                  color: canSend && !outboundPreviewLoading ? '#fff' : 'var(--text-tertiary)',
                   border: 'none', borderRadius: 8,
-                  cursor: canSend ? 'pointer' : 'default',
+                  cursor: canSend && !outboundPreviewLoading ? 'pointer' : 'default',
                   transition: 'background 150ms, color 150ms',
                   flexShrink: 0,
                 }}
@@ -2213,6 +2428,26 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
                 Agent
+              </button>
+            )}
+            {!editMode && (
+              <button
+                onClick={() => { void prepareOutboundPreview() }}
+                disabled={!canSend || outboundPreviewLoading}
+                style={{
+                  height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5,
+                  cursor: canSend && !outboundPreviewLoading ? 'pointer' : 'default',
+                  background: outboundPreview ? 'var(--accent-muted)' : 'transparent',
+                  color: outboundPreview ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                  border: 'none',
+                  opacity: canSend ? 1 : 0.5,
+                  transition: 'all 100ms',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+                title="查看本次会发送什么"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                外发预览
               </button>
             )}
             <div style={{ flex: 1 }} />

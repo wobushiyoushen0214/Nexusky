@@ -18,10 +18,11 @@ import { registerAiEditHandlers } from './ai/edit'
 import { registerAiCompleteHandlers } from './ai/complete'
 import { registerAiGraphHandlers } from './ai/graph'
 import { registerAiNotesHandlers } from './ai/notes'
-import type { AppLanguage, ChatSource } from '@shared/types/ipc'
+import type { AIOutboundPreviewMode, AppLanguage, ChatSource } from '@shared/types/ipc'
 import { RETRIEVED_NOTES_POLICY, wrapRetrievedNotes } from '../services/ai/retrieved-notes-context'
 import { resolveAppLanguage } from '../services/app-language'
 import { getAiOutputLanguageInstruction } from '../services/ai/language'
+import { buildAIOutboundPreview, chatContentToPreviewText } from '../services/ai/outbound-preview'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
@@ -56,6 +57,40 @@ export function registerAiIPC(): void {
   registerAiCompleteHandlers()
   registerAiGraphHandlers()
   registerAiNotesHandlers()
+
+  ipcMain.handle('ai:preview-outbound', async (_event, params: { messages: ChatMessage[]; vaultPath?: string; currentFilePath?: string | null; language?: AppLanguage; mode?: AIOutboundPreviewMode }) => {
+    const language = resolveAppLanguage(params.language)
+    const mode = params.mode || 'chat'
+    const provider = aiManager.getActiveConfig()
+    const providerError = provider ? aiManager.validateConfig(provider) : null
+    const longContextPack = buildLongContextPackSafely(params.vaultPath, params.currentFilePath, language)
+    let retrievedNotes: { title: string; filePath: string; chunk: string; score: number }[] = []
+
+    if (mode === 'chat' && params.vaultPath) {
+      const lastUserMsg = [...params.messages].reverse().find((m) => m.role === 'user')
+      const queryText = lastUserMsg ? chatContentToPreviewText(lastUserMsg.content) : ''
+      if (queryText.trim()) {
+        try {
+          retrievedNotes = await lexicalSearch(params.vaultPath, queryText, 5, { rerank: false })
+        } catch (error) {
+          logger.warn('Failed to build outbound preview retrieval snippets', { error: getErrorMessage(error) })
+        }
+      }
+    }
+
+    return buildAIOutboundPreview({
+      messages: params.messages,
+      mode,
+      provider,
+      providerError,
+      vaultPath: params.vaultPath,
+      currentFilePath: params.currentFilePath,
+      language,
+      retrievedNotes,
+      longContextPack,
+      toolNames: mode === 'agent' ? AGENT_TOOLS.map((tool) => tool.function.name) : undefined
+    })
+  })
 
   ipcMain.handle('ai:detect-intent', async (event, params: { messages: ChatMessage[]; intents?: string[]; intentContext?: string }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
