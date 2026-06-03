@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
-import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'path'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import { basename, dirname, extname, join, relative } from 'path'
 import { createHash } from 'crypto'
 import matter from 'gray-matter'
 import { indexNote, removeNoteIndex } from '../indexer'
 import { applyVaultFileMutation, createVaultFileCreateMutation, createVaultFileUpdateMutation } from '../vault-mutation'
+import { collectWikilinkUpdates, deleteVaultPath, moveVaultPath, renameVaultMarkdownWithLinkUpdates, resolveVaultPath } from '../file-operation-mutation'
 import { runAgentTool } from './tool-runner'
 import { isAllowedAgentTool, isWriteStepKind, type AgentStepKind } from './step-kinds'
 import {
@@ -264,13 +265,18 @@ async function runMoveFile(step: AgentStepRecord, params: ExecuteStepParams): Pr
   const preview = formatPreview(`Move file: ${sourceRel} -> ${targetRel}`, `Source: ${sourceRel}\nTarget: ${targetRel}\nRisk: updates the file path only.`)
   if (params.dryRun) return { status: 'completed', preview }
 
-  mkdirSync(dirname(targetPath), { recursive: true })
-  renameSync(sourcePath, targetPath)
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'move_file', sourcePath: sourceRel, targetPath: targetRel, movedHash: hashContent(readFileSync(targetPath, 'utf-8')) }
+  const moved = await moveVaultPath({
+    vaultPath: params.vaultPath,
+    sourcePath,
+    targetPath,
+    kind: 'move',
+    source: 'agent',
+    reason: 'agent_move_file'
   })
-  removeNoteIndex(params.vaultPath, sourcePath)
-  safeIndex(params.vaultPath, targetPath)
+  if (!moved.ok) return { status: 'failed', error: moved.error || 'move_failed' }
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'move_file', sourcePath: sourceRel, targetPath: targetRel, movedHash: moved.hash }
+  })
   return { status: 'completed', preview }
 }
 
@@ -295,33 +301,24 @@ async function runRenameFile(step: AgentStepRecord, params: ExecuteStepParams): 
   )
   if (params.dryRun) return { status: 'completed', preview }
 
-  mkdirSync(dirname(targetPath), { recursive: true })
-  renameSync(sourcePath, targetPath)
-  const afterHashes: { filePath: string; hash: string }[] = []
-  for (const update of linkUpdates) {
-    const writePath = update.relPath === sourceRel ? targetPath : update.absPath
-    const writeRelPath = update.relPath === sourceRel ? targetRel : update.relPath
-    const mutation = createVaultFileUpdateMutation({
-      filePath: writeRelPath,
-      absolutePath: writePath,
-      beforeContent: update.previousContent,
-      afterContent: update.nextContent
-    })
-    applyVaultFileMutation(params.vaultPath, mutation)
-    afterHashes.push({ filePath: writeRelPath, hash: mutation.afterHash || hashContent(update.nextContent) })
-  }
+  const renamed = await renameVaultMarkdownWithLinkUpdates({
+    vaultPath: params.vaultPath,
+    sourcePath,
+    targetPath,
+    source: 'agent',
+    reason: 'agent_rename_file'
+  })
+  if (!renamed.ok) return { status: 'failed', error: renamed.error || 'rename_failed' }
   updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
     rollbackData: {
       kind: 'rename_file',
       sourcePath: sourceRel,
       targetPath: targetRel,
-      movedHash: hashContent(readFileSync(targetPath, 'utf-8')),
-      previousContents: linkUpdates.map((update) => ({ filePath: update.relPath, content: update.previousContent })),
-      afterHashes
+      movedHash: renamed.hash,
+      previousContents: renamed.linkUpdates.map((update) => ({ filePath: update.relPath, content: update.previousContent })),
+      afterHashes: renamed.afterHashes
     }
   })
-  removeNoteIndex(params.vaultPath, sourcePath)
-  safeIndex(params.vaultPath, targetPath)
   return { status: 'completed', preview }
 }
 
@@ -334,12 +331,16 @@ async function runDeleteFile(step: AgentStepRecord, params: ExecuteStepParams): 
   const preview = formatPreview(`Move file to trash: ${relPath}`, `The file will be moved to vault .trash and can be restored by run rollback.`)
   if (params.dryRun) return { status: 'completed', preview }
 
-  const beforeHash = hashContent(readFileSync(targetPath, 'utf-8'))
-  const trashPath = moveFileToTrash(params.vaultPath, targetPath)
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'delete_file', filePath: relPath, trashPath, beforeHash }
+  const deleted = await deleteVaultPath({
+    vaultPath: params.vaultPath,
+    filePath: targetPath,
+    source: 'agent',
+    reason: 'agent_delete_file'
   })
-  removeNoteIndex(params.vaultPath, targetPath)
+  if (!deleted.ok || !deleted.trashRelPath) return { status: 'failed', error: deleted.error || 'delete_failed' }
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'delete_file', filePath: relPath, trashPath: deleted.trashRelPath, beforeHash: deleted.hash }
+  })
   return { status: 'completed', preview }
 }
 
@@ -466,10 +467,14 @@ async function runMergeNotes(step: AgentStepRecord, params: ExecuteStepParams): 
   const trashedSources: { filePath: string; trashPath: string; beforeHash: string }[] = []
   for (const source of sources as { relPath: string; absPath: string }[]) {
     if (source.relPath === targetRel) continue
-    const beforeHash = hashContent(readFileSync(source.absPath, 'utf-8'))
-    const trashPath = moveFileToTrash(params.vaultPath, source.absPath)
-    trashedSources.push({ filePath: source.relPath, trashPath, beforeHash })
-    removeNoteIndex(params.vaultPath, source.absPath)
+    const deleted = await deleteVaultPath({
+      vaultPath: params.vaultPath,
+      filePath: source.absPath,
+      source: 'agent',
+      reason: 'agent_merge_source'
+    })
+    if (!deleted.ok || !deleted.trashRelPath) return { status: 'failed', error: deleted.error || 'merge_delete_failed' }
+    trashedSources.push({ filePath: source.relPath, trashPath: deleted.trashRelPath, beforeHash: deleted.hash || '' })
   }
   updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
     rollbackData: {
@@ -571,7 +576,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
       if (!existsSync(movedPath)) return { ok: false, error: 'moved_file_missing' }
       if (existsSync(originalPath)) return { ok: false, error: 'rollback_target_exists' }
       const movedHash = typeof data.movedHash === 'string' ? data.movedHash : null
-      if (movedHash && hashContent(readFileSync(movedPath, 'utf-8')) !== movedHash) {
+      if (movedHash && !contentMatchesStoredHash(readFileSync(movedPath, 'utf-8'), movedHash)) {
         return { ok: false, error: 'file_modified_since_move' }
       }
       mkdirSync(dirname(originalPath), { recursive: true })
@@ -588,12 +593,39 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
       if (!existsSync(renamedPath)) return { ok: false, error: 'renamed_file_missing' }
       if (existsSync(originalPath)) return { ok: false, error: 'rollback_target_exists' }
       const movedHash = typeof data.movedHash === 'string' ? data.movedHash : null
-      if (movedHash && hashContent(readFileSync(renamedPath, 'utf-8')) !== movedHash) {
+      if (movedHash && !contentMatchesStoredHash(readFileSync(renamedPath, 'utf-8'), movedHash)) {
         return { ok: false, error: 'file_modified_since_rename' }
+      }
+      const previousContents = Array.isArray(data.previousContents) ? data.previousContents : []
+      const afterHashByPath = new Map<string, string>()
+      if (Array.isArray(data.afterHashes)) {
+        for (const entry of data.afterHashes) {
+          if (!entry || typeof entry !== 'object') continue
+          const filePath = typeof (entry as Record<string, unknown>).filePath === 'string'
+            ? (entry as Record<string, unknown>).filePath as string
+            : ''
+          const hash = typeof (entry as Record<string, unknown>).hash === 'string'
+            ? (entry as Record<string, unknown>).hash as string
+            : ''
+          if (filePath && hash) afterHashByPath.set(filePath, hash)
+        }
+      }
+      for (const entry of previousContents) {
+        if (!entry || typeof entry !== 'object') continue
+        const filePath = typeof (entry as Record<string, unknown>).filePath === 'string'
+          ? (entry as Record<string, unknown>).filePath as string
+          : ''
+        if (!filePath) continue
+        const currentRelPath = filePath === sourceRel ? targetRel : filePath
+        const currentPath = resolveVaultPath(vaultPath, currentRelPath)
+        const expectedHash = afterHashByPath.get(currentRelPath)
+        if (!currentPath || !existsSync(currentPath)) return { ok: false, error: 'rollback_link_update_missing' }
+        if (expectedHash && !contentMatchesStoredHash(readFileSync(currentPath, 'utf-8'), expectedHash)) {
+          return { ok: false, error: 'link_modified_since_rename' }
+        }
       }
       mkdirSync(dirname(originalPath), { recursive: true })
       renameSync(renamedPath, originalPath)
-      const previousContents = Array.isArray(data.previousContents) ? data.previousContents : []
       for (const entry of previousContents) {
         if (!entry || typeof entry !== 'object') continue
         const filePath = typeof (entry as Record<string, unknown>).filePath === 'string'
@@ -691,19 +723,6 @@ export function rollbackAgentRun(vaultPath: string, runId: string): { ok: boolea
   return { ok: errors.length === 0, rolledBack, errors }
 }
 
-function resolveVaultPath(vaultPath: string, relPath: string): string | null {
-  const normalized = relPath.replace(/\\/g, '/').replace(/^\/+/, '')
-  if (isAbsolute(normalized)) {
-    const rel = relative(vaultPath, normalized)
-    if (rel.startsWith('..') || isAbsolute(rel)) return null
-    return resolve(normalized)
-  }
-  const full = resolve(join(vaultPath, normalized))
-  const rel = relative(vaultPath, full)
-  if (rel.startsWith('..') || isAbsolute(rel)) return null
-  return full
-}
-
 function safeIndex(vaultPath: string, filePath: string): void {
   try {
     indexNote(vaultPath, filePath)
@@ -762,51 +781,6 @@ function resolveRenameTarget(sourceRel: string, args: Record<string, unknown>): 
   if (!safeName) return ''
   const dir = dirname(sourceRel).replace(/\\/g, '/')
   return (dir && dir !== '.') ? `${dir}/${safeName}${extension}` : `${safeName}${extension}`
-}
-
-interface WikilinkUpdate {
-  relPath: string
-  absPath: string
-  previousContent: string
-  nextContent: string
-}
-
-function collectWikilinkUpdates(vaultPath: string, sourceRel: string, targetRel: string): WikilinkUpdate[] {
-  const oldTitle = basename(sourceRel, extname(sourceRel))
-  const oldPath = sourceRel.replace(/\.md$/i, '')
-  const newTitle = basename(targetRel, extname(targetRel))
-  const updates: WikilinkUpdate[] = []
-  for (const absPath of listMarkdownFiles(vaultPath)) {
-    const previousContent = readFileSync(absPath, 'utf-8')
-    const nextContent = previousContent.replace(/\[\[([^\]|#]+)(#[^\]|]*)?(\|[^\]]*)?\]\]/g, (match, rawTarget, heading = '', alias = '') => {
-      const normalized = normalizeWikiTarget(rawTarget)
-      if (normalized !== oldTitle && normalized !== oldPath) return match
-      return `[[${newTitle}${heading}${alias}]]`
-    })
-    if (nextContent !== previousContent) {
-      updates.push({
-        relPath: relative(vaultPath, absPath).replace(/\\/g, '/'),
-        absPath,
-        previousContent,
-        nextContent
-      })
-    }
-  }
-  return updates
-}
-
-function listMarkdownFiles(root: string): string[] {
-  const result: string[] = []
-  const visit = (dir: string) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === '.git' || entry.name === '.trash' || entry.name === '.nexusky' || entry.name === 'node_modules') continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) visit(full)
-      else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) result.push(full)
-    }
-  }
-  visit(root)
-  return result
 }
 
 function normalizeTags(value: unknown): string[] {

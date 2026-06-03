@@ -3,7 +3,6 @@ import { readFile, writeFile, mkdir, rename, rm, stat, access } from 'fs/promise
 import { readdir } from 'fs/promises'
 import { join, dirname, extname, relative, basename } from 'path'
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
-import { getDatabase } from '../services/database'
 import { indexNote } from '../services/indexer'
 import { importObsidianVault } from '../services/obsidian-importer'
 import { importNotionExport } from '../services/notion-importer'
@@ -15,6 +14,7 @@ import { ensureNonEmptyString, ensureSafeFileName } from './validators'
 import { notifyVaultFilesChanged } from './events'
 import { saveVersionSnapshot } from '../services/version-recovery'
 import { applyVaultContentMutation, readVaultFileWithHash } from '../services/file-content-mutation'
+import { deleteVaultPath, renameVaultMarkdownWithLinkUpdates } from '../services/file-operation-mutation'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
@@ -143,36 +143,28 @@ export function registerFileIPC(): void {
 
   ipcMain.handle('file:delete', async (_event, params: { path: string; vaultPath?: string }) => {
     ensureNonEmptyString(params?.path, 'file:delete.path')
-    const { vaultPath, filePath } = await assertPathInsideCurrentVault(params.path, params.vaultPath)
-    const trashDir = join(vaultPath, '.trash')
-    await mkdir(trashDir, { recursive: true })
-    const fileName = filePath.split(/[\\/]/).pop() || 'file'
-    const timestamp = Date.now()
-    const rand = Math.random().toString(36).slice(2, 6)
-    const trashPath = join(trashDir, `${timestamp}_${rand}_${fileName}`)
-    await rename(filePath, trashPath)
-    const originalPath = relative(vaultPath, filePath).replace(/\\/g, '/')
-    await writeFile(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
-    notifyVaultFilesChanged([filePath])
+    const vaultPath = await requireCurrentVaultPath(params.vaultPath)
+    const result = await deleteVaultPath({
+      vaultPath,
+      filePath: params.path,
+      source: 'file_ipc',
+      reason: 'file_delete'
+    })
+    if (!result.ok) throw new Error(result.error || '删除失败')
   })
 
   ipcMain.handle('file:rename', async (_event, params: { oldPath: string; newPath: string; vaultPath?: string }) => {
     ensureNonEmptyString(params?.oldPath, 'file:rename.oldPath')
     ensureNonEmptyString(params?.newPath, 'file:rename.newPath')
     const vaultPath = await requireCurrentVaultPath(params.vaultPath)
-    const oldPath = await assertPathInsideVault(params.oldPath, vaultPath)
-    const newPath = await assertPathInsideVault(params.newPath, vaultPath)
-    await mkdir(dirname(newPath), { recursive: true })
-    await rename(oldPath, newPath)
-
-    if (oldPath.endsWith('.md') && newPath.endsWith('.md')) {
-      const oldName = oldPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
-      const newName = newPath.split(/[\\/]/).pop()!.replace(/\.md$/, '')
-      if (oldName !== newName) {
-        await updateWikilinks(vaultPath, oldName, newName)
-      }
-    }
-    notifyVaultFilesChanged([oldPath, newPath])
+    const result = await renameVaultMarkdownWithLinkUpdates({
+      vaultPath,
+      sourcePath: params.oldPath,
+      targetPath: params.newPath,
+      source: 'file_ipc',
+      reason: 'file_rename'
+    })
+    if (!result.ok) throw new Error(result.error || '重命名失败')
   })
 
   ipcMain.handle('file:save-image', async (_event, params: { vaultPath: string; imageData: string; fileName: string }) => {
@@ -438,57 +430,4 @@ async function listDirectoryShallow(dirPath: string): Promise<FileEntry[]> {
   })
 
   return result
-}
-
-async function updateWikilinks(vaultPath: string, oldName: string, newName: string): Promise<void> {
-  const pattern = new RegExp(`\\[\\[${oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g')
-  const replacement = `[[${newName}]]`
-
-  try {
-    const db = getDatabase(vaultPath)
-    const rows = db.prepare(`
-      SELECT DISTINCT n.file_path
-      FROM links l
-      JOIN notes n ON n.id = l.source_note_id
-      WHERE l.target_title = ?
-    `).all(oldName) as { file_path: string }[]
-
-    for (const row of rows) {
-      const fullPath = join(vaultPath, row.file_path)
-      const content = await readFile(fullPath, 'utf-8')
-      if (pattern.test(content)) {
-        pattern.lastIndex = 0
-        const updated = content.replace(pattern, replacement)
-        await writeFile(fullPath, updated, 'utf-8')
-      }
-    }
-  } catch {
-    // Fallback: walk the vault if DB query fails
-    await updateWikilinksFallback(vaultPath, oldName, newName)
-  }
-}
-
-async function updateWikilinksFallback(vaultPath: string, oldName: string, newName: string): Promise<void> {
-  const pattern = new RegExp(`\\[\\[${oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\]`, 'g')
-  const replacement = `[[${newName}]]`
-
-  async function walk(dir: string): Promise<void> {
-    const entries = await readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.name.startsWith('.')) continue
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) {
-        await walk(full)
-      } else if (extname(entry.name) === '.md') {
-        const content = await readFile(full, 'utf-8')
-        if (pattern.test(content)) {
-          pattern.lastIndex = 0
-          const updated = content.replace(pattern, replacement)
-          await writeFile(full, updated, 'utf-8')
-        }
-      }
-    }
-  }
-
-  await walk(vaultPath)
 }
