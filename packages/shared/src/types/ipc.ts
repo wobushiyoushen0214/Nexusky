@@ -816,6 +816,21 @@ export interface AiApplyEditResult {
   error?: string
 }
 
+export interface FileReadWithHashResult {
+  filePath: string
+  content: string
+  hash: string
+}
+
+export interface FileApplyContentMutationResult {
+  success: boolean
+  filePath?: string
+  beforeHash?: string
+  afterHash?: string
+  created?: boolean
+  error?: string
+}
+
 export type CloudSyncHealthStatus = 'idle' | 'ok' | 'conflict' | 'error'
 
 export interface CloudSyncHealth {
@@ -844,9 +859,11 @@ export interface CloudSyncConflict {
 
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
+  'file:read-with-hash': { params: { path: string; vaultPath?: string }; result: FileReadWithHashResult }
   'file:extract-document-text': { params: { path: string }; result: ExtractedDocumentText }
   'file:stat': { params: { path: string }; result: { size: number; mtime: number } }
   'file:write': { params: { path: string; content: string; vaultPath?: string }; result: void }
+  'file:apply-content-mutation': { params: { path: string; content: string; vaultPath?: string; expectedBeforeHash?: string; allowCreate?: boolean }; result: FileApplyContentMutationResult }
   'file:list': { params: { dirPath: string }; result: FileEntry[] }
   'file:list-shallow': { params: { dirPath: string }; result: FileEntry[] }
   'file:create': { params: { path: string; content?: string; vaultPath?: string }; result: void }

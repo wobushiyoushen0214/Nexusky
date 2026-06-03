@@ -14,6 +14,8 @@ import { assertPathInsideCurrentVault, requireCurrentVaultPath } from './vault-g
 import { ensureNonEmptyString, ensureSafeFileName } from './validators'
 import { notifyVaultFilesChanged } from './events'
 import { saveVersionSnapshot } from '../services/version-recovery'
+import { applyVaultContentMutation, readVaultFileWithHash } from '../services/file-content-mutation'
+import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import type { FileEntry, TrashEntry } from '@shared/types/ipc'
 
 async function saveSnapshot(filePath: string, vaultPath: string): Promise<void> {
@@ -55,6 +57,12 @@ export function registerFileIPC(): void {
     return readFile(filePath, 'utf-8')
   })
 
+  ipcMain.handle('file:read-with-hash', async (_event, params: { path: string; vaultPath?: string }) => {
+    ensureNonEmptyString(params?.path, 'file:read-with-hash.path')
+    const vaultPath = await requireCurrentVaultPath(params.vaultPath)
+    return readVaultFileWithHash(vaultPath, params.path)
+  })
+
   ipcMain.handle('file:extract-document-text', async (_event, params: { path: string }) => {
     const { filePath } = await assertPathInsideCurrentVault(params.path)
     return extractDocumentTextFromBuffer(filePath, await readFile(filePath))
@@ -86,6 +94,25 @@ export function registerFileIPC(): void {
       writeNotifyPaths.clear()
       writeNotifyTimer = null
     }, 120)
+  })
+
+  ipcMain.handle('file:apply-content-mutation', async (_event, params: { path: string; content: string; vaultPath?: string; expectedBeforeHash?: string; allowCreate?: boolean }) => {
+    try {
+      ensureNonEmptyString(params?.path, 'file:apply-content-mutation.path')
+      if (typeof params?.content !== 'string') {
+        throw new Error('Invalid IPC payload: file:apply-content-mutation.content must be a string')
+      }
+      const vaultPath = await requireCurrentVaultPath(params.vaultPath)
+      return applyVaultContentMutation({
+        vaultPath,
+        filePath: params.path,
+        content: params.content,
+        expectedBeforeHash: params.expectedBeforeHash,
+        allowCreate: params.allowCreate
+      })
+    } catch (err: unknown) {
+      return { success: false, error: getErrorMessageShared(err, '应用文件修改失败') }
+    }
   })
 
   ipcMain.handle('file:list', async (_event, params: { dirPath: string }) => {

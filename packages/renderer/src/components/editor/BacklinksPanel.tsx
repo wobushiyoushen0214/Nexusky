@@ -53,13 +53,19 @@ export function BacklinksPanel() {
     if (!vaultPath) return
     try {
       const path = `${vaultPath}/${item.sourcePath}`
-      const content = await window.api.invoke('file:read', { path })
-      const next = linkPlainMentionAtLine(content, item.line, item.mention)
+      const read = await window.api.invoke('file:read-with-hash', { path, vaultPath })
+      const next = linkPlainMentionAtLine(read.content, item.line, item.mention)
       if (!next.changed) {
         toast(`未找到可转换的提及「${item.mention}」`, 'info')
         return
       }
-      await window.api.invoke('file:write', { path, content: next.content, vaultPath })
+      const applied = await window.api.invoke('file:apply-content-mutation', {
+        path,
+        content: next.content,
+        vaultPath,
+        expectedBeforeHash: read.hash
+      })
+      if (!applied.success) throw new Error(applied.error || '应用文件修改失败')
       await loadLinks()
       toast(`已转为链接: [[${item.mention}]]`, 'success')
     } catch {
@@ -81,10 +87,16 @@ export function BacklinksPanel() {
       let changedCount = 0
       for (const [sourcePath, items] of grouped) {
         const path = `${vaultPath}/${sourcePath}`
-        const content = await window.api.invoke('file:read', { path })
-        const next = linkPlainMentionsAtLines(content, items.map((item) => ({ line: item.line, mention: item.mention })))
+        const read = await window.api.invoke('file:read-with-hash', { path, vaultPath })
+        const next = linkPlainMentionsAtLines(read.content, items.map((item) => ({ line: item.line, mention: item.mention })))
         if (next.changedCount === 0) continue
-        await window.api.invoke('file:write', { path, content: next.content, vaultPath })
+        const applied = await window.api.invoke('file:apply-content-mutation', {
+          path,
+          content: next.content,
+          vaultPath,
+          expectedBeforeHash: read.hash
+        })
+        if (!applied.success) throw new Error(applied.error || '应用文件修改失败')
         changedCount += next.changedCount
       }
 
@@ -179,12 +191,20 @@ function OutgoingSection({
     const title = item.targetTitle.trim().replace(/[\\/:*?"<>|]/g, '')
     if (!title) return
     const path = await getAvailableNotePath(vaultPath, title)
-    await window.api.invoke('file:create', { path, content: `# ${title}\n\n`, vaultPath })
-    await window.api.invoke('db:index-file', { vaultPath, filePath: path })
-    await refreshFiles()
-    await openFile(path)
-    const { toast } = await import('../../stores/toast-store')
-    toast(`已创建笔记「${title}」`, 'success')
+    try {
+      const applied = await window.api.invoke('file:apply-content-mutation', {
+        path,
+        content: `# ${title}\n\n`,
+        vaultPath,
+        allowCreate: true
+      })
+      if (!applied.success) throw new Error(applied.error || '创建笔记失败')
+      await refreshFiles()
+      await openFile(path)
+      toast(`已创建笔记「${title}」`, 'success')
+    } catch {
+      toast('创建目标笔记失败', 'error')
+    }
   }
 
   const jumpToSourceLine = async (item: OutgoingLinkResult) => {
