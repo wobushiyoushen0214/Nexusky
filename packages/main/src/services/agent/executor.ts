@@ -3,6 +3,7 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { createHash } from 'crypto'
 import matter from 'gray-matter'
 import { indexNote, removeNoteIndex } from '../indexer'
+import { applyVaultFileMutation, createVaultFileCreateMutation, createVaultFileUpdateMutation } from '../vault-mutation'
 import { runAgentTool } from './tool-runner'
 import { isAllowedAgentTool, isWriteStepKind, type AgentStepKind } from './step-kinds'
 import {
@@ -145,12 +146,15 @@ async function runFileCreate(step: AgentStepRecord, params: ExecuteStepParams): 
   if (existsSync(targetPath)) {
     return { status: 'failed', error: 'file_exists' }
   }
-  mkdirSync(dirname(targetPath), { recursive: true })
-  writeFileSync(targetPath, content, 'utf-8')
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'file_create', filePath: relPath, createdHash: hashContent(content) }
+  const mutation = createVaultFileCreateMutation({
+    filePath: relPath,
+    absolutePath: targetPath,
+    afterContent: content
   })
-  safeIndex(params.vaultPath, targetPath)
+  applyVaultFileMutation(params.vaultPath, mutation)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'file_create', filePath: relPath, createdHash: mutation.afterHash }
+  })
   return { status: 'completed', preview, content }
 }
 
@@ -167,11 +171,16 @@ async function runFileWrite(step: AgentStepRecord, params: ExecuteStepParams): P
   if (params.dryRun) {
     return { status: 'completed', preview, content: nextContent }
   }
-  writeFileSync(targetPath, nextContent, 'utf-8')
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'file_write', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
+  const mutation = createVaultFileUpdateMutation({
+    filePath: relPath,
+    absolutePath: targetPath,
+    beforeContent: previousContent,
+    afterContent: nextContent
   })
-  safeIndex(params.vaultPath, targetPath)
+  applyVaultFileMutation(params.vaultPath, mutation)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'file_write', filePath: relPath, previousContent, afterHash: mutation.afterHash }
+  })
   return { status: 'completed', preview, content: nextContent }
 }
 
@@ -198,11 +207,16 @@ async function runTaskUpdate(step: AgentStepRecord, params: ExecuteStepParams): 
   if (params.dryRun) {
     return { status: 'completed', preview, content: nextContent }
   }
-  writeFileSync(targetPath, nextContent, 'utf-8')
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'task_update', filePath: relPath, line: idx + 1, previousLine, afterHash: hashContent(nextContent) }
+  const mutation = createVaultFileUpdateMutation({
+    filePath: relPath,
+    absolutePath: targetPath,
+    beforeContent: original,
+    afterContent: nextContent
   })
-  safeIndex(params.vaultPath, targetPath)
+  applyVaultFileMutation(params.vaultPath, mutation)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'task_update', filePath: relPath, line: idx + 1, previousLine, afterHash: mutation.afterHash }
+  })
   return { status: 'completed', preview, content: nextContent }
 }
 
@@ -225,11 +239,16 @@ async function runNoteEdit(step: AgentStepRecord, params: ExecuteStepParams): Pr
   if (params.dryRun) {
     return { status: 'completed', preview, content: proposed }
   }
-  writeFileSync(targetPath, proposed, 'utf-8')
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'note_edit', filePath: relPath, previousContent, afterHash: hashContent(proposed) }
+  const mutation = createVaultFileUpdateMutation({
+    filePath: relPath,
+    absolutePath: targetPath,
+    beforeContent: previousContent,
+    afterContent: proposed
   })
-  safeIndex(params.vaultPath, targetPath)
+  applyVaultFileMutation(params.vaultPath, mutation)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'note_edit', filePath: relPath, previousContent, afterHash: mutation.afterHash }
+  })
   return { status: 'completed', preview, content: proposed }
 }
 
@@ -281,9 +300,15 @@ async function runRenameFile(step: AgentStepRecord, params: ExecuteStepParams): 
   const afterHashes: { filePath: string; hash: string }[] = []
   for (const update of linkUpdates) {
     const writePath = update.relPath === sourceRel ? targetPath : update.absPath
-    writeFileSync(writePath, update.nextContent, 'utf-8')
-    afterHashes.push({ filePath: update.relPath === sourceRel ? targetRel : update.relPath, hash: hashContent(update.nextContent) })
-    safeIndex(params.vaultPath, writePath)
+    const writeRelPath = update.relPath === sourceRel ? targetRel : update.relPath
+    const mutation = createVaultFileUpdateMutation({
+      filePath: writeRelPath,
+      absolutePath: writePath,
+      beforeContent: update.previousContent,
+      afterContent: update.nextContent
+    })
+    applyVaultFileMutation(params.vaultPath, mutation)
+    afterHashes.push({ filePath: writeRelPath, hash: mutation.afterHash || hashContent(update.nextContent) })
   }
   updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
     rollbackData: {
@@ -333,11 +358,16 @@ async function runApplyTag(step: AgentStepRecord, params: ExecuteStepParams): Pr
   const nextContent = matter.stringify(parsed.content, data)
   const preview = formatDiffPreview(previousContent, nextContent, relPath)
   if (params.dryRun) return { status: 'completed', preview, content: nextContent }
-  writeFileSync(targetPath, nextContent, 'utf-8')
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'apply_tag', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
+  const mutation = createVaultFileUpdateMutation({
+    filePath: relPath,
+    absolutePath: targetPath,
+    beforeContent: previousContent,
+    afterContent: nextContent
   })
-  safeIndex(params.vaultPath, targetPath)
+  applyVaultFileMutation(params.vaultPath, mutation)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'apply_tag', filePath: relPath, previousContent, afterHash: mutation.afterHash }
+  })
   return { status: 'completed', preview, content: nextContent }
 }
 
@@ -358,11 +388,16 @@ async function runUpdateFrontmatter(step: AgentStepRecord, params: ExecuteStepPa
   const nextContent = matter.stringify(parsed.content, data)
   const preview = formatDiffPreview(previousContent, nextContent, relPath)
   if (params.dryRun) return { status: 'completed', preview, content: nextContent }
-  writeFileSync(targetPath, nextContent, 'utf-8')
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'update_frontmatter', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
+  const mutation = createVaultFileUpdateMutation({
+    filePath: relPath,
+    absolutePath: targetPath,
+    beforeContent: previousContent,
+    afterContent: nextContent
   })
-  safeIndex(params.vaultPath, targetPath)
+  applyVaultFileMutation(params.vaultPath, mutation)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'update_frontmatter', filePath: relPath, previousContent, afterHash: mutation.afterHash }
+  })
   return { status: 'completed', preview, content: nextContent }
 }
 
@@ -384,11 +419,16 @@ async function runCreateLink(step: AgentStepRecord, params: ExecuteStepParams): 
     : `${previousContent.replace(/\s+$/g, '')}\n\nRelated: ${link}\n`
   const preview = formatDiffPreview(previousContent, nextContent, relPath)
   if (params.dryRun) return { status: 'completed', preview, content: nextContent }
-  writeFileSync(targetPath, nextContent, 'utf-8')
-  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
-    rollbackData: { kind: 'create_link', filePath: relPath, previousContent, afterHash: hashContent(nextContent) }
+  const mutation = createVaultFileUpdateMutation({
+    filePath: relPath,
+    absolutePath: targetPath,
+    beforeContent: previousContent,
+    afterContent: nextContent
   })
-  safeIndex(params.vaultPath, targetPath)
+  applyVaultFileMutation(params.vaultPath, mutation)
+  updateAgentStep(params.vaultPath, params.runId, params.stepIndex, {
+    rollbackData: { kind: 'create_link', filePath: relPath, previousContent, afterHash: mutation.afterHash }
+  })
   return { status: 'completed', preview, content: nextContent }
 }
 
@@ -410,8 +450,19 @@ async function runMergeNotes(step: AgentStepRecord, params: ExecuteStepParams): 
   if (params.dryRun) return { status: 'completed', preview, content: merged }
   if (step.args.confirmHighRisk !== true) return { status: 'failed', error: 'high_risk_requires_confirmation' }
 
-  mkdirSync(dirname(targetPath), { recursive: true })
-  writeFileSync(targetPath, merged, 'utf-8')
+  const targetMutation = targetExists
+    ? createVaultFileUpdateMutation({
+      filePath: targetRel,
+      absolutePath: targetPath,
+      beforeContent: previousTargetContent ?? '',
+      afterContent: merged
+    })
+    : createVaultFileCreateMutation({
+      filePath: targetRel,
+      absolutePath: targetPath,
+      afterContent: merged
+    })
+  applyVaultFileMutation(params.vaultPath, targetMutation)
   const trashedSources: { filePath: string; trashPath: string; beforeHash: string }[] = []
   for (const source of sources as { relPath: string; absPath: string }[]) {
     if (source.relPath === targetRel) continue
@@ -426,11 +477,10 @@ async function runMergeNotes(step: AgentStepRecord, params: ExecuteStepParams): 
       targetPath: targetRel,
       beforeTargetExists: targetExists,
       beforeTargetContent: previousTargetContent,
-      afterHash: hashContent(merged),
+      afterHash: targetMutation.afterHash,
       trashedSources
     }
   })
-  safeIndex(params.vaultPath, targetPath)
   return { status: 'completed', preview, content: merged }
 }
 
@@ -490,8 +540,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
         // refuse rather than silently wiping their changes.
         const createdHash = typeof data.createdHash === 'string' ? data.createdHash : null
         if (createdHash) {
-          const current = createHash('md5').update(readFileSync(targetPath)).digest('hex')
-          if (current !== createdHash) return { ok: false, error: 'file_modified_since_create' }
+          if (!contentMatchesStoredHash(readFileSync(targetPath, 'utf-8'), createdHash)) return { ok: false, error: 'file_modified_since_create' }
         }
         moveCreatedFileToTrash(vaultPath, targetPath)
       }
@@ -509,8 +558,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
       // the file is still exactly the agent's version.
       const afterHash = typeof data.afterHash === 'string' ? data.afterHash : null
       if (afterHash && existsSync(targetPath)) {
-        const current = createHash('md5').update(readFileSync(targetPath)).digest('hex')
-        if (current !== afterHash) return { ok: false, error: 'file_modified_since_write' }
+        if (!contentMatchesStoredHash(readFileSync(targetPath, 'utf-8'), afterHash)) return { ok: false, error: 'file_modified_since_write' }
       }
       writeFileSync(targetPath, data.previousContent, 'utf-8')
     } else if (kind === 'move_file') {
@@ -576,7 +624,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
       const mergeTargetPath = resolveVaultPath(vaultPath, targetRel)
       if (!mergeTargetPath) return { ok: false, error: 'invalid_target_path' }
       const afterHash = typeof data.afterHash === 'string' ? data.afterHash : null
-      if (afterHash && existsSync(mergeTargetPath) && hashContent(readFileSync(mergeTargetPath, 'utf-8')) !== afterHash) {
+      if (afterHash && existsSync(mergeTargetPath) && !contentMatchesStoredHash(readFileSync(mergeTargetPath, 'utf-8'), afterHash)) {
         return { ok: false, error: 'file_modified_since_merge' }
       }
       if (data.beforeTargetExists === true) {
@@ -610,7 +658,7 @@ export function rollbackAgentStep(vaultPath: string, runId: string, stepIndex: n
       if (prevLine === null || !Number.isFinite(line)) return { ok: false, error: 'rollback_data_invalid' }
       const original = readFileSync(targetPath, 'utf-8')
       const afterHash = typeof data.afterHash === 'string' ? data.afterHash : null
-      if (afterHash && createHash('md5').update(original, 'utf-8').digest('hex') !== afterHash) {
+      if (afterHash && !contentMatchesStoredHash(original, afterHash)) {
         return { ok: false, error: 'file_modified_since_write' }
       }
       const lines = original.split(/\r?\n/)
@@ -832,6 +880,14 @@ function nowSeconds(): number {
 
 function hashContent(content: string): string {
   return createHash('md5').update(content, 'utf-8').digest('hex')
+}
+
+function hashContentSha256(content: string): string {
+  return createHash('sha256').update(content, 'utf-8').digest('hex')
+}
+
+function contentMatchesStoredHash(content: string, expectedHash: string): boolean {
+  return hashContent(content) === expectedHash || hashContentSha256(content) === expectedHash
 }
 
 export function isWriteStep(kind: AgentStepKind): boolean {

@@ -1,11 +1,11 @@
-import { createHash, randomUUID } from 'crypto'
-import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'fs'
-import { basename, dirname, isAbsolute, join, normalize, relative, resolve } from 'path'
+import { randomUUID } from 'crypto'
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'fs'
+import { dirname, isAbsolute, join, normalize, relative, resolve } from 'path'
 import matter from 'gray-matter'
-import { indexNote, removeNoteIndex } from '../indexer'
 import { notifyVaultFilesChanged } from '../../ipc/events'
 import type { KnowledgeMaintenanceItem } from '../ai/maintenance-queue'
 import type { AppLanguage } from '@shared/types/ipc'
+import { applyVaultFileMutation, createVaultFileCreateMutation, createVaultFileUpdateMutation, hashContent, previewVaultFileMutation, restoreVaultFileMutationBeforeState, type VaultFileMutation } from '../vault-mutation'
 
 export type ApplyFixAction = 'open_note' | 'create_target' | 'mark_done' | 'archive' | 'add_alias'
 export type ApplyFixMode = 'preview' | 'apply' | 'undo'
@@ -39,16 +39,8 @@ export interface ApplyFixResult {
   undoExpiresAt?: number
 }
 
-interface MaintenanceMutation {
+interface MaintenanceMutation extends VaultFileMutation {
   action: ApplyFixAction
-  filePath: string
-  absolutePath: string
-  beforeExists: boolean
-  beforeContent: string | null
-  beforeHash?: string
-  afterExists: boolean
-  afterContent: string | null
-  afterHash?: string
   resultMessage: string
 }
 
@@ -167,14 +159,12 @@ function applyCreateTarget(params: ApplyFixParams): ApplyFixResult {
   }
   return applyMutation(params, {
     action: 'create_target',
-    filePath: targetRelative,
-    absolutePath: targetAbsolute,
-    beforeExists: false,
-    beforeContent: null,
-    afterExists: true,
-    afterContent: `# ${safeTitle}\n\n`,
-    afterHash: hashContent(`# ${safeTitle}\n\n`),
-    resultMessage: copy.created(targetRelative)
+    resultMessage: copy.created(targetRelative),
+    ...createVaultFileCreateMutation({
+      filePath: targetRelative,
+      absolutePath: targetAbsolute,
+      afterContent: `# ${safeTitle}\n\n`
+    })
   })
 }
 
@@ -286,7 +276,7 @@ function applyMutation(params: ApplyFixParams, mutation: MaintenanceMutation): A
     }
   }
 
-  applyMutationToDisk(params.vaultPath, mutation)
+  applyVaultFileMutation(params.vaultPath, mutation)
   const undo = writeUndoRecord(params.vaultPath, mutation)
   notifyVaultFilesChanged([mutation.absolutePath])
   return {
@@ -332,14 +322,7 @@ function undoMaintenanceFix(params: ApplyFixParams): ApplyFixResult {
     }
   }
 
-  if (record.beforeExists) {
-    mkdirSync(dirname(absolutePath), { recursive: true })
-    writeFileSync(absolutePath, record.beforeContent ?? '', 'utf-8')
-    try { indexNote(params.vaultPath, absolutePath) } catch { /* best effort */ }
-  } else if (currentExists) {
-    moveToVaultTrash(params.vaultPath, absolutePath)
-    try { removeNoteIndex(params.vaultPath, absolutePath) } catch { /* best effort */ }
-  }
+  restoreVaultFileMutationBeforeState(params.vaultPath, { ...record, absolutePath })
 
   try { unlinkSync(recordPath) } catch { /* best effort */ }
   notifyVaultFilesChanged([absolutePath])
@@ -351,38 +334,21 @@ function undoMaintenanceFix(params: ApplyFixParams): ApplyFixResult {
   }
 }
 
-function applyMutationToDisk(vaultPath: string, mutation: MaintenanceMutation): void {
-  if (!mutation.afterExists || mutation.afterContent === null) return
-  mkdirSync(dirname(mutation.absolutePath), { recursive: true })
-  writeFileSync(mutation.absolutePath, mutation.afterContent, 'utf-8')
-  try { indexNote(vaultPath, mutation.absolutePath) } catch { /* best effort */ }
-}
-
 function updateMutation(action: ApplyFixAction, filePath: string, absolutePath: string, before: string, after: string, resultMessage: string): MaintenanceMutation {
   return {
     action,
-    filePath,
-    absolutePath,
-    beforeExists: true,
-    beforeContent: before,
-    beforeHash: hashContent(before),
-    afterExists: true,
-    afterContent: after,
-    afterHash: hashContent(after),
-    resultMessage
+    resultMessage,
+    ...createVaultFileUpdateMutation({
+      filePath,
+      absolutePath,
+      beforeContent: before,
+      afterContent: after
+    })
   }
 }
 
 function mutationPreview(mutation: MaintenanceMutation): ApplyFixPreview {
-  return {
-    filePath: mutation.filePath,
-    summary: mutation.resultMessage,
-    before: mutation.beforeContent,
-    after: mutation.afterContent,
-    beforeHash: mutation.beforeHash,
-    afterHash: mutation.afterHash,
-    createsFile: !mutation.beforeExists && mutation.afterExists
-  }
+  return previewVaultFileMutation(mutation, mutation.resultMessage)
 }
 
 function writeUndoRecord(vaultPath: string, mutation: MaintenanceMutation): { token: string; expiresAt: number } {
@@ -402,17 +368,6 @@ function undoDir(vaultPath: string): string {
 function undoRecordPath(vaultPath: string, token: string): string {
   if (!/^[\da-f-]{36}$/i.test(token)) throw new Error('Invalid undo token')
   return assertPathInsideVaultSync(join(undoDir(vaultPath), `${token}.json`), undoDir(vaultPath))
-}
-
-function moveToVaultTrash(vaultPath: string, absolutePath: string): void {
-  const trashDir = join(vaultPath, '.trash')
-  mkdirSync(trashDir, { recursive: true })
-  const timestamp = Date.now()
-  const rand = Math.random().toString(36).slice(2, 6)
-  const trashPath = join(trashDir, `${timestamp}_${rand}_${basename(absolutePath)}`)
-  renameSync(absolutePath, trashPath)
-  const originalPath = relative(vaultPath, absolutePath).replace(/\\/g, '/')
-  writeFileSync(`${trashPath}.json`, JSON.stringify({ originalPath, deletedAt: timestamp }), 'utf-8')
 }
 
 function resolveVaultFile(vaultPath: string, filePath: string, language: AppLanguage = 'en'): string {
@@ -458,8 +413,4 @@ function resolveExistingAncestorSync(filePath: string): string {
 function isPathInside(filePath: string, vaultPath: string): boolean {
   const relPath = relative(vaultPath, filePath)
   return relPath === '' || (!relPath.startsWith('..') && !isAbsolute(relPath))
-}
-
-function hashContent(content: string): string {
-  return createHash('sha256').update(content).digest('hex')
 }
