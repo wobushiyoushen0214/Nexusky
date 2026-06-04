@@ -149,3 +149,7 @@ The retired Reader Inbox component file remains as a holder for imported-reading
 ### 2026-06-04 - Public homepage names explainable context
 
 The homepage now describes Nexusky as a desktop vault workbench and names the long-memory section `Explainable context` instead of `Cognitive partner direction`. Reason: public copy should point to concrete vault behavior, source-grounded answers, and Context Pack evidence instead of asking visitors to buy an abstract AI-partner framing.
+
+### 2026-06-04 - Empty states describe vault evidence
+
+Maintenance, Context Pack, and Memory Ledger empty states now explain what is absent in the current vault instead of using generic `Nothing to do`, `0 suggestions`, or `No memory` copy. Reason: empty states should reinforce the trusted maintenance loop: the app looked at local vault signals and either found work to review or found no explainable evidence yet.

@@ -654,7 +654,7 @@ export function formatSimilarNotesToolResult(pairs: AiSimilarNotePairResult[]): 
 }
 
 export function formatMemoryRelatedNotesToolResult(pairs: AiMemoryRelatedNotePairResult[]): string {
-  if (pairs.length === 0) return 'No memory-related notes found.'
+  if (pairs.length === 0) return 'No Memory Ledger related notes found in this vault.'
   return pairs.map((pair, index) => [
     `${index + 1}. **${pair.sourceTitle}** -> **${pair.targetTitle}**`,
     `Source: ${pair.sourcePath}`,
@@ -718,7 +718,7 @@ export function formatMissingMemoryNotesToolResult(notes: AiMissingMemoryNoteRes
 }
 
 export function formatMemoryTermsToolResult(terms: AiMemoryTermSummary[]): string {
-  if (terms.length === 0) return 'No memory terms found.'
+  if (terms.length === 0) return 'No Memory Ledger terms found in this vault.'
   return terms.map((term, index) => [
     `${index + 1}. ${term.term} (${term.type}, ${term.count})`,
     `Examples: ${term.samplePaths.length > 0 ? term.samplePaths.join(', ') : '(none)'}`
@@ -753,7 +753,7 @@ export function formatMemoryOverviewToolResult(overview: AiMemoryOverview): stri
 }
 
 export function formatMemoryFoldersToolResult(folders: AiMemoryFolderSummary[]): string {
-  if (folders.length === 0) return 'No memory folders found.'
+  if (folders.length === 0) return 'No Memory Ledger folder coverage found in this vault.'
   return folders.map((folder, index) => {
     const covered = folder.current + folder.stale
     const coverage = folder.notes > 0 ? `${Math.round((covered / folder.notes) * 100)}%` : '0%'
@@ -768,7 +768,7 @@ export function formatMemoryFoldersToolResult(folders: AiMemoryFolderSummary[]):
 }
 
 export function formatMemoryTermPairsToolResult(pairs: AiMemoryTermPairSummary[]): string {
-  if (pairs.length === 0) return 'No memory term pairs found.'
+  if (pairs.length === 0) return 'No Memory Ledger term pairs found in this vault.'
   return pairs.map((pair, index) => [
     `${index + 1}. ${pair.first} + ${pair.second} (${pair.type}, ${pair.count})`,
     `Examples: ${pair.samplePaths.length > 0 ? pair.samplePaths.join(', ') : '(none)'}`

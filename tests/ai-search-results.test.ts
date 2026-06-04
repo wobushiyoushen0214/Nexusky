@@ -479,7 +479,7 @@ describe('formatMemoryRelatedNotesToolResult', () => {
   })
 
   it('marks empty memory-related note results explicitly', () => {
-    expect(formatMemoryRelatedNotesToolResult([])).toBe('No memory-related notes found.')
+    expect(formatMemoryRelatedNotesToolResult([])).toBe('No Memory Ledger related notes found in this vault.')
   })
 })
 
@@ -627,7 +627,7 @@ describe('formatMemoryTermsToolResult', () => {
   })
 
   it('marks empty memory terms explicitly', () => {
-    expect(formatMemoryTermsToolResult([])).toBe('No memory terms found.')
+    expect(formatMemoryTermsToolResult([])).toBe('No Memory Ledger terms found in this vault.')
   })
 })
 
@@ -679,7 +679,7 @@ describe('formatMemoryFoldersToolResult', () => {
   })
 
   it('marks empty memory folder results explicitly', () => {
-    expect(formatMemoryFoldersToolResult([])).toBe('No memory folders found.')
+    expect(formatMemoryFoldersToolResult([])).toBe('No Memory Ledger folder coverage found in this vault.')
   })
 })
 
@@ -694,7 +694,7 @@ describe('formatMemoryTermPairsToolResult', () => {
   })
 
   it('marks empty memory term pair results explicitly', () => {
-    expect(formatMemoryTermPairsToolResult([])).toBe('No memory term pairs found.')
+    expect(formatMemoryTermPairsToolResult([])).toBe('No Memory Ledger term pairs found in this vault.')
   })
 })
 

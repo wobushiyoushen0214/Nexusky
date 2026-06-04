@@ -204,7 +204,7 @@ export async function executeToolCall(
       const notesById = new Map(getAllNotes(vaultPath).map((note) => [note.id, note]))
       const memories = readAllMemories(vaultPath)
       if (memories.length < 2) {
-        return { content: 'No note memories found. Generate note memories before using find_memory_related_notes.' }
+        return { content: 'No Memory Ledger entries found in this vault. Generate note memories before using find_memory_related_notes.' }
       }
       const pairs = findRelatedByMemory(vaultPath, Math.max(3, limit))
         .map((pair) => {
@@ -550,7 +550,7 @@ export async function executeToolCall(
       const indexedNote = getAllNotes(vaultPath).find((item) => item.filePath === note.filePath)
       if (!indexedNote) return { content: `未找到笔记「${note.title}」的索引记录。` }
       const memory = readMemory(vaultPath, indexedNote.id)
-      if (!memory) return { content: `No memory found for ${note.title} (${note.filePath}).` }
+      if (!memory) return { content: `No Memory Ledger entry found for ${note.title} (${note.filePath}).` }
       const status = memory.contentHash === indexedNote.contentHash ? 'current' : 'stale'
       return {
         content: formatReadNoteMemoryToolResult({
