@@ -1,6 +1,6 @@
 # Nexusky
 
-Nexusky 是一个本地优先的 AI 知识库桌面应用。它把普通 Markdown 文件夹作为真实数据源，用 SQLite 建立索引，用 Electron + React 提供编辑、搜索、图谱、任务和 AI 工作流。
+Nexusky 是一个本地优先的 AI 知识库桌面应用。它把普通 Markdown 文件夹作为真实数据源，用 SQLite 建立索引，用 Electron + React 提供编辑、搜索、图谱、维护和可信 AI 工作流。
 
 核心目标很直接：让你的笔记可以长期保存在自己控制的文件系统里，同时让 AI 能在需要时读取、连接、维护和解释这些知识。
 
@@ -8,11 +8,11 @@ Nexusky 是一个本地优先的 AI 知识库桌面应用。它把普通 Markdow
 
 - **本地 Markdown vault**：笔记、附件和私有元数据都在本地文件夹中，SQLite 只做索引和派生状态。
 - **编辑器与 Obsidian 兼容**：TipTap 富文本编辑，支持 wikilink、frontmatter、Dataview inline 字段、Tasks 插件日期、callout、脚注、嵌入、KaTeX 和 Mermaid。
-- **知识网络**：反链、出链、未链接提及、知识图谱、知识空间和属性数据库围绕同一个 vault 运转。
-- **AI 工作台**：支持 OpenAI、Claude、Ollama、自定义 OpenAI 兼容接口和 Codex CLI；提供 RAG 问答、AI 编辑、批量笔记生成、闪卡和 Agent 工具。
+- **知识网络**：反链、出链、未链接提及、知识图谱、属性视图和时间线围绕同一个 vault 运转。
+- **AI 工作台**：支持 OpenAI、Claude、Ollama、自定义 OpenAI 兼容接口和 Codex CLI；提供 RAG 问答、AI 编辑、批量笔记生成和可审查维护执行。
 - **长期上下文**：系统会沉淀关系、主题和认知复盘，把 Hot / Warm / Cold context 注入 AI 对话，并解释来源。
 - **主动建议与维护队列**：基于长期上下文、任务、孤岛笔记、断链和重复标题等信号，生成可处理的维护建议。
-- **任务与看板**：从 Markdown task list 抽取任务，也支持独立看板、任务关系和 AI 预览式写入。
+- **Markdown 任务与维护信号**：从 task list、frontmatter、链接和长期上下文中抽取维护候选，独立看板仅保留历史数据兼容。
 - **导入、剪藏、同步与发布**：支持 Obsidian、Notion、Readwise、Pocket、Web Clipper、Supabase、iCloud、OneDrive、WebDAV、S3、HTML/PDF 导出和静态站点发布。
 
 ## 技术栈

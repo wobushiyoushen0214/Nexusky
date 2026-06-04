@@ -6,7 +6,7 @@
 
 ## 1. 一句话理解
 
-Nexusky 是一个 Electron 桌面端、本地优先的 Markdown 知识库笔记应用。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、Agent、编辑、批量生成、长期上下文、本地相关检索、知识图谱、看板、闪卡、阅读收件箱和主动建议等工作流中接入多种 AI Provider。
+Nexusky 是一个 Electron 桌面端、本地优先的 Markdown 知识库笔记应用。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、编辑、批量生成、长期上下文、本地相关检索、知识图谱、维护队列、导入剪藏、同步发布和主动建议等工作流中接入多种 AI Provider。
 
 ## 2. 产品定位
 
@@ -51,27 +51,26 @@ Nexusky 的核心目标是让用户在本地文件夹中长期维护知识资产
 
 ### 3.3 AI 对话与 AI 编辑
 
-右侧 AI 面板提供聊天、RAG、Agent、编辑和批量生成笔记能力。
+右侧 AI 面板提供聊天、RAG、编辑和批量生成笔记能力。Agent 不作为独立主卖点，只作为维护、批量整理和发布前检查的可审查执行路径。
 
 主要模式：
 
 - 普通聊天：回答问题，可自动检索相关笔记作为上下文。
-- Agent 模式：可调用工具搜索、读取、巡检知识库。
+- Agent 执行：通过 Maintenance 或高级对话路径生成可审查 plan，逐步 preview/execute，并支持 rollback。
 - 编辑模式：可生成新笔记或对当前笔记生成修改方案，用户预览后应用。
 - 批量生成：AI 先识别批量意图，再规划目录和主题，逐目录生成多篇 Markdown 笔记。
 - 附件上下文：可附加笔记、选区、图片和文档。
 
-### 3.4 搜索、阅读和复习
+### 3.4 搜索、导入和资料消化
 
-Nexusky 不只处理用户手写笔记，也能导入外部阅读材料并帮助复习。
+Nexusky 不只处理用户手写笔记，也能导入外部资料并把它们纳入同一个 Markdown vault。
 
 能力包括：
 
 - 全文搜索和本地词法相关检索。
 - Notion、Readwise、Pocket 导入。
-- 阅读收件箱按来源、状态、关键词筛选。
-- 命令面板从笔记生成摘要或闪卡。
-- 闪卡复习面板按 SRS 字段调度到期卡片。
+- Web Clipper 把网页剪藏保存为 Markdown。
+- 导入资料进入 Files、Search、Graph、Maintenance 和长期上下文路径，不再作为独立阅读收件箱主入口。
 
 ### 3.5 同步与发布
 
@@ -82,7 +81,7 @@ Nexusky 以本地优先为基础，同时支持多个同步/导出方向：
 - 整个 vault 发布为静态 HTML 站点。
 - 浏览器扩展 Web Clipper 把网页剪藏保存为 Markdown。
 
-### 3.6 任务管理、看板、知识维护与主动建议
+### 3.6 Markdown 任务、知识维护与主动建议
 
 围绕 vault 中的 Markdown 任务列表，Nexusky 提供任务级别的工作流：
 
@@ -126,7 +125,7 @@ packages/
   renderer/             React 渲染进程
     src/
       App.tsx           应用壳、布局、全局事件、主视图/右面板装配
-      components/       编辑器、侧边栏、AI、图谱、看板、设置等 UI
+      components/       编辑器、侧边栏、AI、图谱、维护、设置等 UI
       stores/           Zustand 状态
       utils/            前端工具函数
       i18n/             国际化文案
@@ -260,13 +259,13 @@ main/services/*
 | `vault:*` | 选择、创建、读取、清空当前 vault 和最近 vault |
 | `db:*` | 索引、搜索、图谱、反链、属性、对话历史、本地检索状态 |
 | `flashcards:*` | 历史闪卡兼容：到期队列和评分写回 IPC 仍保留，但渲染层已不再暴露闪卡复习入口 |
-| `kanban:*` | 看板列、任务、关系、AI 分析、AI 任务拆解、AI 笔记转看板、按笔记任务批量导入和 AI plan 预览 |
-| `ai:*` | Provider、聊天、Agent 工具执行、工具面板 surface、编辑、批量笔记、摘要、闪卡、标签、语音转写 |
+| `kanban:*` | 历史看板兼容：列、任务、关系和 AI plan 预览 IPC 暂时保留，但渲染层已不再暴露独立看板 surface |
+| `ai:*` | Provider、聊天、Agent 工具执行、工具面板 surface、编辑、批量笔记、摘要、历史闪卡生成兼容、标签、语音转写 |
 | `maintenance:*` | 知识维护队列查询和自动修复应用 |
 | `proactive:*` | 主动建议列表、单条响应、批量已读/删除、偏好设置和调试运行 |
 | `agent:*` | Agent 规划、运行控制、步骤重试/跳过/回滚、运行列表和反思 |
 | `template:*` | 内置/市场/社区模板；`template:daily-note` 暂时保留兼容，但渲染层已不再暴露今日笔记入口 |
-| `plugins:*` | 本地插件和插件市场 |
+| `plugins:*` | 本地插件和本地内置 marketplace 元数据；不联网下载或执行远程插件 |
 | `cloud:*` | 云配置、登录、同步、各 Provider 配置、索引同步 |
 | `export:*` | HTML、PDF、分享、发布站点 |
 | `updater:*` | 更新检查、下载、安装 |
