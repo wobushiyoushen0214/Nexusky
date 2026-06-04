@@ -32,7 +32,7 @@ Each query records top 5 results for keyword, FTS, embedding, and hybrid routes.
 
 ## Provider Abstraction Draft
 
-Embedding providers should follow a small interface:
+Embedding providers now have a small service-layer interface in `packages/main/src/services/semantic-search.ts`:
 
 ```ts
 interface EmbeddingProvider {
@@ -46,6 +46,13 @@ interface EmbeddingProvider {
 
 Provider selection must stay independent from chat provider selection. Remote embedding providers must expose request preview text counts before first use.
 
+The implemented evaluation harness includes:
+
+- `buildEmbeddingRequestPreview`, which reports provider name, locality, text item count, character count, estimated tokens, whether note text leaves the device, and whether vectors will be stored.
+- `rankCandidatesByEmbeddings`, which ranks supplied candidates from provider-returned vectors and rejects dimension mismatches.
+- `fuseEmbeddingAndLexicalResults`, which combines lexical and embedding ranks with reciprocal rank fusion for hybrid evaluation.
+- `evaluateSemanticRetrieval`, which returns preview, embedding results, and hybrid results without changing the default search path.
+
 ## Privacy Boundary
 
 Local embedding sends no note text outside the vault.
@@ -55,3 +62,5 @@ Remote embedding sends selected note chunks, titles, and limited metadata to the
 ## Phase 3 Outcome
 
 For v0.8, the accepted outcome is an evaluation path and privacy contract, not a shipped semantic search surface. This keeps the cognitive partner loop focused on explainable maintenance, review, feedback-driven ranking, and safe execution.
+
+As of 2026-06-04, the evaluation path is code-backed but still not default-on. Real local or remote embedding providers can be plugged into the harness for fixture evaluation, but Chat/RAG continues to use keyword/FTS/local lexical retrieval unless a future explicit opt-in surface is added.
