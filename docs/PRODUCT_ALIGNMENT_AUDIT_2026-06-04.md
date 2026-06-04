@@ -143,3 +143,19 @@
 - root package description 改为 `Local-first Markdown vault workbench`。
 - `tests/website-homepage.test.ts` 增加 metadata 合同断言，禁止回到 `Local-first AI knowledge base` 或 `AI-powered knowledge base`。
 - `PRODUCT.md` 追加记录公共 metadata 边界。
+
+## 10. 追加审查：Legacy Reader 英文文案中的 Knowledge Space 残留
+
+2026-06-04 追加检查范围：Reader 兼容组件、英文/中文 locale 和已移除的 Generic Knowledge Space 入口。
+
+### 发现
+
+- 中文 Reader 文案已经把定位动作写成“在属性视图定位”。
+- 英文 Reader 文案仍写 `Locate in knowledge space`。
+- 英文 triage reason 仍说带标签条目可放入 `knowledge space`。
+
+### 修复
+
+- 英文 `reader.openInSpace` 改为 `Locate in properties view`。
+- 英文 tagged triage reason 改为在 properties view 整理。
+- 不改 Reader 兼容组件结构；本次只清理已经移除的 Generic Knowledge Space 用户心智残留。

@@ -993,7 +993,7 @@
     "triageReason": {
       "unread": "This item has not been processed yet, so it belongs at the front of the reading flow.",
       "read": "This item has already been read. The next useful step is connecting it to a project, topic, or durable note.",
-      "tagged": "Existing tags point to a topic, so it is ready to be placed into the knowledge space.",
+      "tagged": "Existing tags point to a topic, so it is ready to be organized in the properties view.",
       "source": "A source URL is available, making this a good item to reopen later for verification or capture.",
       "later": "No clear status is present yet, so it is parked without interrupting the current reading flow.",
       "archived": "This item is archived and stays out of the default processing queue."
@@ -1013,7 +1013,7 @@
     "nextItem": "Next item",
     "completeNext": "Complete and next",
     "openItem": "Open item",
-    "openInSpace": "Locate in knowledge space",
+    "openInSpace": "Locate in properties view",
     "markRead": "Mark read",
     "markUnread": "Mark unread",
     "markVisibleRead": "Mark visible read",
