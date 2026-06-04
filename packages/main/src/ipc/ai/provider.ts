@@ -4,7 +4,8 @@ import { aiManager, AIProviderConfig } from '../../services/ai'
 import { store } from '../../services/store'
 import { listOllamaModels } from '../../services/ai/ollama-provider'
 import { transcribeAudio, type TranscribeAudioParams } from '../../services/ai/transcription'
-import { clearAIUsageRecords, getAIUsageSummary, listAIUsageRecords, type AIUsageQuery } from '../../services/ai/usage'
+import { clearAIUsageRecords, getAICostBudget, getAIUsageSummary, listAIUsageRecords, setAICostBudget, type AIUsageQuery } from '../../services/ai/usage'
+import type { AICostBudget } from '@shared/types/ipc'
 
 function getStoredProviders(): AIProviderConfig[] {
   return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
@@ -81,6 +82,14 @@ export function registerAiProviderHandlers(): void {
 
   ipcMain.handle('ai:clear-usage-records', () => {
     return clearAIUsageRecords()
+  })
+
+  ipcMain.handle('ai:get-cost-budget', () => {
+    return getAICostBudget()
+  })
+
+  ipcMain.handle('ai:set-cost-budget', (_event, params: AICostBudget) => {
+    return setAICostBudget(params)
   })
 
   ipcMain.handle('ai:validate', async (_event, params: { config: AIProviderConfig }) => {

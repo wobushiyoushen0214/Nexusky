@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { store } from '../store'
 import type {
+  AICostBudget,
   AIUsageProviderSummary,
   AIUsageRecord,
   AIUsageSource,
@@ -11,6 +12,8 @@ import type { AIProviderConfig, ChatMessage, ChatStreamEvent, ChatUsageMeta, Too
 
 export const AI_USAGE_STORE_KEY = 'aiUsageRecords'
 export const AI_USAGE_MAX_RECORDS = 1000
+export const AI_COST_BUDGET_STORE_KEY = 'aiCostBudget'
+export const DEFAULT_AI_COST_BUDGET: AICostBudget = { warnAtPercent: 80 }
 
 export interface AIUsageQuery {
   since?: number
@@ -68,6 +71,18 @@ export function estimateMessagesTokens(messages: ChatMessage[]): number {
 export function normalizeCostRate(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return undefined
   return value
+}
+
+export function normalizeAICostBudget(value: unknown): AICostBudget {
+  const item = value && typeof value === 'object' ? value as Partial<AICostBudget> : {}
+  const monthlyUsd = normalizeCostRate(item.monthlyUsd)
+  const warnAtPercentValue = typeof item.warnAtPercent === 'number' && Number.isFinite(item.warnAtPercent)
+    ? item.warnAtPercent
+    : DEFAULT_AI_COST_BUDGET.warnAtPercent
+  return {
+    monthlyUsd: monthlyUsd && monthlyUsd > 0 ? monthlyUsd : undefined,
+    warnAtPercent: Math.max(1, Math.min(100, Math.round(warnAtPercentValue)))
+  }
 }
 
 export function calculateEstimatedCostUsd(
@@ -207,6 +222,16 @@ export function listAIUsageRecords(query: AIUsageQuery = {}): AIUsageRecord[] {
 
 export function getAIUsageSummary(query: AIUsageQuery = {}): AIUsageSummary {
   return summarizeUsageRecords(normalizeUsageRecords(store.get(AI_USAGE_STORE_KEY)), query)
+}
+
+export function getAICostBudget(): AICostBudget {
+  return normalizeAICostBudget(store.get(AI_COST_BUDGET_STORE_KEY))
+}
+
+export function setAICostBudget(value: AICostBudget): AICostBudget {
+  const budget = normalizeAICostBudget(value)
+  store.set(AI_COST_BUDGET_STORE_KEY, budget)
+  return budget
 }
 
 export function clearAIUsageRecords(): { cleared: number } {

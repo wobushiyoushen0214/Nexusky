@@ -320,6 +320,7 @@ export interface AIOutboundPreview {
   userMessageCount: number
   imageCount: number
   estimatedTokens: number
+  cost: AIOutboundPreviewCost
   currentFilePath?: string | null
   promptPreview: string
   clientContextSnippets: AIOutboundPreviewSnippet[]
@@ -339,6 +340,27 @@ export interface AIOutboundPreview {
     toolNames: string[]
   }
   warnings: string[]
+}
+
+export type AICostBudgetStatus = 'none' | 'ok' | 'near' | 'over' | 'unknown'
+
+export interface AICostBudget {
+  monthlyUsd?: number
+  warnAtPercent: number
+}
+
+export interface AIOutboundPreviewCost {
+  estimatedInputTokens: number
+  estimatedOutputTokens: number
+  estimatedCostUsd: number | null
+  inputCostPer1MTokens?: number
+  outputCostPer1MTokens?: number
+  monthlyBudgetUsd?: number
+  monthlyCostUsd: number
+  projectedMonthlyCostUsd: number | null
+  budgetUsagePercent: number | null
+  budgetStatus: AICostBudgetStatus
+  unknownCostRecords: number
 }
 
 export type ChatHistoryRole = 'user' | 'assistant'
@@ -1062,6 +1084,8 @@ export interface IPCChannelMap {
   'ai:get-usage-summary': { params: { since?: number; until?: number }; result: AIUsageSummary }
   'ai:list-usage-records': { params: { since?: number; until?: number; limit?: number }; result: AIUsageRecord[] }
   'ai:clear-usage-records': { params: undefined; result: { cleared: number } }
+  'ai:get-cost-budget': { params: undefined; result: AICostBudget }
+  'ai:set-cost-budget': { params: AICostBudget; result: AICostBudget }
   'ai:validate': { params: { config: AIProviderConfig }; result: AIProviderValidationResult }
   'ai:probe-question': {
     params: { config?: AIProviderConfig; question?: string }

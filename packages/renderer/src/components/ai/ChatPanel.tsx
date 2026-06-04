@@ -46,6 +46,26 @@ const MAX_IMAGE_DATA_URL_LENGTH = 6_000_000
 const MAX_ATTACHMENT_CONTEXT_CHARS = 60_000
 const SELECTION_CHAR_LIMIT = 2000
 
+function formatPreviewUsd(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: value > 0 && value < 0.01 ? 4 : 2,
+    maximumFractionDigits: value > 0 && value < 0.01 ? 4 : 2
+  }).format(value)
+}
+
+function formatPreviewTokens(value: number): string {
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}k`
+  return String(value)
+}
+
+function formatPreviewCost(preview: AIOutboundPreview): string {
+  if (preview.provider?.localOnly) return '本地'
+  if (preview.cost.estimatedCostUsd == null) return '未计价'
+  return `~${formatPreviewUsd(preview.cost.estimatedCostUsd)}`
+}
+
 function OutboundPreviewPanel({
   preview,
   loading,
@@ -103,8 +123,23 @@ function OutboundPreviewPanel({
               <PreviewMetric label="附件" value={`${preview.attachmentSnippets.length + preview.imageCount}`} />
               <PreviewMetric label="检索片段" value={`${preview.retrievedNoteSnippets.length}`} />
               <PreviewMetric label="长期上下文" value={`${longContextCount}`} />
-              <PreviewMetric label="约 tokens" value={`~${preview.estimatedTokens > 1000 ? `${(preview.estimatedTokens / 1000).toFixed(1)}k` : preview.estimatedTokens}`} />
+              <PreviewMetric label="约 tokens" value={`~${formatPreviewTokens(preview.estimatedTokens)} + ${formatPreviewTokens(preview.cost.estimatedOutputTokens)} 输出`} />
+              <PreviewMetric label="预计成本" value={formatPreviewCost(preview)} />
+              {preview.cost.monthlyBudgetUsd && (
+                <PreviewMetric
+                  label="月预算"
+                  value={`${preview.cost.projectedMonthlyCostUsd == null ? '未知' : formatPreviewUsd(preview.cost.projectedMonthlyCostUsd)} / ${formatPreviewUsd(preview.cost.monthlyBudgetUsd)}`}
+                />
+              )}
             </div>
+            {preview.cost.monthlyBudgetUsd && (
+              <div style={{ fontSize: 11, color: preview.cost.budgetStatus === 'over' ? '#f87171' : preview.cost.budgetStatus === 'near' ? 'oklch(78% 0.14 82)' : 'var(--text-tertiary)', lineHeight: 1.45 }}>
+                本月已用 {formatPreviewUsd(preview.cost.monthlyCostUsd)}
+                {preview.cost.projectedMonthlyCostUsd != null ? `，本次后约 ${formatPreviewUsd(preview.cost.projectedMonthlyCostUsd)}` : '，本次成本未知'}
+                {preview.cost.budgetUsagePercent != null ? `（${Math.round(preview.cost.budgetUsagePercent)}%）` : ''}
+                {preview.cost.unknownCostRecords > 0 ? `；另有 ${preview.cost.unknownCostRecords} 条历史记录未计价` : ''}
+              </div>
+            )}
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.45, maxHeight: 36, overflow: 'hidden' }}>
               <span style={{ color: 'var(--text-tertiary)' }}>问题：</span>{preview.promptPreview || '仅发送附件内容'}
             </div>

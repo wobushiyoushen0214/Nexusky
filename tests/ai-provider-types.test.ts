@@ -134,10 +134,13 @@ describe('AI provider shared types', () => {
       estimatedCostUsd: 0.006
     }]
     const clearResult: IPCChannelMap['ai:clear-usage-records']['result'] = { cleared: 1 }
+    const budget: IPCChannelMap['ai:get-cost-budget']['result'] = { monthlyUsd: 10, warnAtPercent: 80 }
+    const saveBudget: IPCChannelMap['ai:set-cost-budget']['params'] = budget
 
     expect(summary.totalTokens).toBe(1500)
     expect(records[0].source).toBe('chat')
     expect(clearResult.cleared).toBe(1)
+    expect(saveBudget.monthlyUsd).toBe(10)
   })
 
   it('exposes ai:probe-question with a discriminated union result', () => {

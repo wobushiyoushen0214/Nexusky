@@ -12,7 +12,7 @@ import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCss
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
 import { ProactivePreferencesTab } from '../proactive/ProactivePreferences'
 import { LongContextDebugPanel } from '../observability/LongContextDebugPanel'
-import type { AIProviderConfig, AIUsageSummary, CloudSyncConflict, CloudSyncHealth, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
+import type { AICostBudget, AIProviderConfig, AIUsageSummary, CloudSyncConflict, CloudSyncHealth, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
@@ -172,6 +172,7 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [probeResult, setProbeResult] = useState<ProviderTestResult | null>(null)
   const [aiUsageSummary, setAiUsageSummary] = useState<AIUsageSummary | null>(null)
   const [aiUsageLoading, setAiUsageLoading] = useState(false)
+  const [aiCostBudget, setAiCostBudget] = useState<AICostBudget | null>(null)
   const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false, hasSupabaseKey: false, hasServiceRoleKey: false })
   const [cloudUser, setCloudUser] = useState<CloudUser>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
@@ -189,6 +190,15 @@ export function Settings({ open, onClose }: SettingsProps) {
       setAiUsageSummary(null)
     } finally {
       setAiUsageLoading(false)
+    }
+  }
+
+  const loadAiCostBudget = async () => {
+    try {
+      const budget = await window.api.invoke('ai:get-cost-budget', undefined)
+      setAiCostBudget(budget)
+    } catch {
+      setAiCostBudget(null)
     }
   }
 
@@ -220,6 +230,7 @@ export function Settings({ open, onClose }: SettingsProps) {
       })
       window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
       loadAiUsageSummary()
+      loadAiCostBudget()
     }
   }, [open])
 
@@ -384,6 +395,16 @@ export function Settings({ open, onClose }: SettingsProps) {
     toast(`已激活: ${provider?.name || 'AI 提供商'}`, 'success')
   }
 
+  const handleSaveAiCostBudget = async (budget: AICostBudget) => {
+    try {
+      const saved = await window.api.invoke('ai:set-cost-budget', budget)
+      setAiCostBudget(saved)
+      toast('AI 月预算已保存', 'success')
+    } catch (error) {
+      toast(`AI 月预算保存失败: ${getErrorMessage(error)}`, 'error')
+    }
+  }
+
   if (!open) return null
 
   return (
@@ -486,8 +507,10 @@ export function Settings({ open, onClose }: SettingsProps) {
 
             <AIUsageSummaryPanel
               summary={aiUsageSummary}
+              budget={aiCostBudget}
               loading={aiUsageLoading}
               onRefresh={loadAiUsageSummary}
+              onSaveBudget={handleSaveAiCostBudget}
             />
 
             {providers.length === 0 && !editing && (
@@ -789,17 +812,36 @@ export function Settings({ open, onClose }: SettingsProps) {
 
 function AIUsageSummaryPanel({
   summary,
+  budget,
   loading,
-  onRefresh
+  onRefresh,
+  onSaveBudget
 }: {
   summary: AIUsageSummary | null
+  budget: AICostBudget | null
   loading: boolean
   onRefresh: () => void
+  onSaveBudget: (budget: AICostBudget) => void | Promise<void>
 }) {
   const providerRows = summary?.byProvider.slice(0, 3) || []
   const costLabel = summary
     ? `${formatUsd(summary.estimatedCostUsd)}${summary.unknownCostRecords > 0 ? ` + ${summary.unknownCostRecords} 条未计价` : ''}`
     : '-'
+  const [budgetInput, setBudgetInput] = useState('')
+  const [warnAtPercent, setWarnAtPercent] = useState(80)
+
+  useEffect(() => {
+    setBudgetInput(budget?.monthlyUsd ? String(budget.monthlyUsd) : '')
+    setWarnAtPercent(budget?.warnAtPercent ?? 80)
+  }, [budget])
+
+  const saveBudget = () => {
+    const parsed = Number(budgetInput)
+    void onSaveBudget({
+      monthlyUsd: Number.isFinite(parsed) && parsed > 0 ? parsed : undefined,
+      warnAtPercent
+    })
+  }
 
   return (
     <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
@@ -826,6 +868,35 @@ function AIUsageSummaryPanel({
           <span style={{ display: 'block', fontSize: 10, color: 'var(--text-tertiary)' }}>成本</span>
           <span style={{ display: 'block', marginTop: 2, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{costLabel}</span>
         </div>
+      </div>
+      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <label style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>月预算 USD</label>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={budgetInput}
+          onChange={(event) => setBudgetInput(event.target.value)}
+          placeholder="不限制"
+          style={{ width: 92, height: 24, padding: '0 7px', fontSize: 11, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, outline: 'none' }}
+        />
+        <label style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>提醒</label>
+        <select
+          value={warnAtPercent}
+          onChange={(event) => setWarnAtPercent(Number(event.target.value))}
+          style={{ height: 24, padding: '0 6px', fontSize: 11, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 4, outline: 'none' }}
+        >
+          <option value={70}>70%</option>
+          <option value={80}>80%</option>
+          <option value={90}>90%</option>
+          <option value={100}>100%</option>
+        </select>
+        <button
+          onClick={saveBudget}
+          style={{ height: 24, padding: '0 8px', fontSize: 11, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer' }}
+        >
+          保存预算
+        </button>
       </div>
       {providerRows.length > 0 && (
         <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>

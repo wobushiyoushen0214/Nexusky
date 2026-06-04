@@ -103,4 +103,41 @@ Alpha note body.
     expect(preview.warnings.some((warning) => warning.includes('Agent 模式'))).toBe(true)
     expect(preview.retrievedNoteSnippets).toHaveLength(0)
   })
+
+  it('estimates request cost and monthly budget status before sending', () => {
+    const preview = buildAIOutboundPreview({
+      mode: 'chat',
+      provider: {
+        ...provider,
+        inputCostPer1MTokens: 2,
+        outputCostPer1MTokens: 8
+      },
+      messages: [
+        { role: 'system', content: 'Be concise.' },
+        { role: 'user', content: 'Summarize the attached notes and suggest next steps.' }
+      ],
+      usageSummary: {
+        since: 100,
+        records: 2,
+        inputTokens: 1000,
+        outputTokens: 400,
+        totalTokens: 1400,
+        estimatedCostUsd: 4.95,
+        unknownCostRecords: 0,
+        byProvider: []
+      },
+      costBudget: {
+        monthlyUsd: 4.95,
+        warnAtPercent: 80
+      },
+      language: 'en'
+    })
+
+    expect(preview.cost.estimatedInputTokens).toBeGreaterThan(0)
+    expect(preview.cost.estimatedOutputTokens).toBeGreaterThan(0)
+    expect(preview.cost.estimatedCostUsd).toBeGreaterThan(0)
+    expect(preview.cost.monthlyBudgetUsd).toBe(4.95)
+    expect(preview.cost.budgetStatus).toBe('over')
+    expect(preview.warnings.some((warning) => warning.includes('over budget'))).toBe(true)
+  })
 })

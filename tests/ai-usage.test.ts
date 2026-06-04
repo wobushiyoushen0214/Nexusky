@@ -13,6 +13,7 @@ vi.mock('../packages/main/src/services/store', () => ({
 }))
 
 import {
+  AI_COST_BUDGET_STORE_KEY,
   AI_USAGE_STORE_KEY,
   appendUsageRecord,
   buildAIUsageRecord,
@@ -20,6 +21,9 @@ import {
   clearAIUsageRecords,
   estimateMessagesTokens,
   filterUsageRecords,
+  getAICostBudget,
+  normalizeAICostBudget,
+  setAICostBudget,
   summarizeUsageRecords,
   trackAIUsageStream
 } from '../packages/main/src/services/ai/usage'
@@ -165,5 +169,16 @@ describe('AI usage tracking', () => {
     storeData.set(AI_USAGE_STORE_KEY, [one, two])
     expect(clearAIUsageRecords()).toEqual({ cleared: 2 })
     expect(storeData.get(AI_USAGE_STORE_KEY)).toEqual([])
+  })
+
+  it('normalizes and persists monthly AI cost budgets', () => {
+    expect(normalizeAICostBudget({ monthlyUsd: -1, warnAtPercent: 200 })).toEqual({ monthlyUsd: undefined, warnAtPercent: 100 })
+    expect(normalizeAICostBudget({ monthlyUsd: 12.5, warnAtPercent: 75.4 })).toEqual({ monthlyUsd: 12.5, warnAtPercent: 75 })
+
+    const saved = setAICostBudget({ monthlyUsd: 8, warnAtPercent: 90 })
+
+    expect(saved).toEqual({ monthlyUsd: 8, warnAtPercent: 90 })
+    expect(storeData.get(AI_COST_BUDGET_STORE_KEY)).toEqual(saved)
+    expect(getAICostBudget()).toEqual(saved)
   })
 })

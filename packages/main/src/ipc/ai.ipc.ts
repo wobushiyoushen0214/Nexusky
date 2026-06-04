@@ -23,6 +23,7 @@ import { RETRIEVED_NOTES_POLICY, wrapRetrievedNotes } from '../services/ai/retri
 import { resolveAppLanguage } from '../services/app-language'
 import { getAiOutputLanguageInstruction } from '../services/ai/language'
 import { buildAIOutboundPreview, chatContentToPreviewText } from '../services/ai/outbound-preview'
+import { getAICostBudget, getAIUsageSummary } from '../services/ai/usage'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
@@ -47,6 +48,11 @@ function buildLongContextPackSafely(vaultPath?: string, currentFilePath?: string
     logger.warn('Failed to build long-context pack', { error: getErrorMessage(error) })
     return null
   }
+}
+
+function currentMonthSince(): number {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1).getTime()
 }
 
 
@@ -88,7 +94,9 @@ export function registerAiIPC(): void {
       language,
       retrievedNotes,
       longContextPack,
-      toolNames: mode === 'agent' ? AGENT_TOOLS.map((tool) => tool.function.name) : undefined
+      toolNames: mode === 'agent' ? AGENT_TOOLS.map((tool) => tool.function.name) : undefined,
+      usageSummary: getAIUsageSummary({ since: currentMonthSince() }),
+      costBudget: getAICostBudget()
     })
   })
 

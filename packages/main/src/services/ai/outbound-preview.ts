@@ -1,6 +1,7 @@
-import type { AIProviderConfig, AppLanguage, AIOutboundPreview, AIOutboundPreviewMode, AIOutboundPreviewSnippet } from '@shared/types/ipc'
+import type { AICostBudget, AIProviderConfig, AIUsageSummary, AppLanguage, AIOutboundPreview, AIOutboundPreviewCost, AIOutboundPreviewMode, AIOutboundPreviewSnippet } from '@shared/types/ipc'
 import type { ChatMessage } from './base-provider'
 import type { LongContextPack, LongContextPackItem } from '../long-context/context-pack-builder'
+import { calculateEstimatedCostUsd, normalizeCostRate } from './usage'
 
 export interface RetrievedNotePreview {
   title: string
@@ -20,6 +21,8 @@ interface BuildAIOutboundPreviewParams {
   retrievedNotes?: RetrievedNotePreview[]
   longContextPack?: LongContextPack | null
   toolNames?: string[]
+  usageSummary?: AIUsageSummary | null
+  costBudget?: AICostBudget | null
 }
 
 const SNIPPET_LIMIT = 280
@@ -61,7 +64,16 @@ export function buildAIOutboundPreview(params: BuildAIOutboundPreviewParams): AI
   const messageTextTokens = textMessages.reduce((sum, message) => sum + estimateStringTokens(message.text), 0)
   const retrievedTokens = retrievedNotes.reduce((sum, note) => sum + estimateStringTokens(note.chunk), 0)
   const longContextTokens = longContextPack?.estimatedTokens || 0
-  const warnings = buildWarnings(params, retrievedNoteSnippets, imageCount)
+  const estimatedInputTokens = messageTextTokens + retrievedTokens + longContextTokens
+  const estimatedOutputTokens = estimatePreviewOutputTokens(estimatedInputTokens, mode)
+  const cost = buildOutboundPreviewCost({
+    provider: params.provider,
+    estimatedInputTokens,
+    estimatedOutputTokens,
+    usageSummary: params.usageSummary,
+    costBudget: params.costBudget
+  })
+  const warnings = buildWarnings(params, retrievedNoteSnippets, imageCount, cost)
 
   return {
     mode,
@@ -78,7 +90,8 @@ export function buildAIOutboundPreview(params: BuildAIOutboundPreviewParams): AI
     systemMessageCount: messages.filter((message) => message.role === 'system').length,
     userMessageCount: messages.filter((message) => message.role === 'user').length,
     imageCount,
-    estimatedTokens: messageTextTokens + retrievedTokens + longContextTokens,
+    estimatedTokens: estimatedInputTokens,
+    cost,
     currentFilePath: params.currentFilePath,
     promptPreview: truncatePreview(promptPreview || lastUserText, SNIPPET_LIMIT),
     clientContextSnippets,
@@ -101,6 +114,60 @@ export function buildAIOutboundPreview(params: BuildAIOutboundPreviewParams): AI
       : undefined,
     warnings
   }
+}
+
+function estimatePreviewOutputTokens(inputTokens: number, mode: AIOutboundPreviewMode): number {
+  const baseline = mode === 'agent' ? 900 : 600
+  return Math.max(200, Math.min(4000, Math.round(Math.max(baseline, inputTokens * 0.35))))
+}
+
+function buildOutboundPreviewCost(params: {
+  provider: AIProviderConfig | null
+  estimatedInputTokens: number
+  estimatedOutputTokens: number
+  usageSummary?: AIUsageSummary | null
+  costBudget?: AICostBudget | null
+}): AIOutboundPreviewCost {
+  const inputCostPer1MTokens = normalizeCostRate(params.provider?.inputCostPer1MTokens)
+  const outputCostPer1MTokens = normalizeCostRate(params.provider?.outputCostPer1MTokens)
+  const estimatedCostUsd = params.provider
+    ? calculateEstimatedCostUsd(params.estimatedInputTokens, params.estimatedOutputTokens, params.provider)
+    : null
+  const monthlyBudgetUsd = normalizeCostRate(params.costBudget?.monthlyUsd)
+  const monthlyCostUsd = Math.max(0, params.usageSummary?.estimatedCostUsd ?? 0)
+  const projectedMonthlyCostUsd = estimatedCostUsd == null ? null : monthlyCostUsd + estimatedCostUsd
+  const warnAtPercent = params.costBudget?.warnAtPercent ?? 80
+  const budgetUsagePercent = monthlyBudgetUsd && projectedMonthlyCostUsd != null
+    ? (projectedMonthlyCostUsd / monthlyBudgetUsd) * 100
+    : null
+  const budgetStatus = getBudgetStatus(monthlyBudgetUsd, budgetUsagePercent, estimatedCostUsd, warnAtPercent)
+
+  return {
+    estimatedInputTokens: params.estimatedInputTokens,
+    estimatedOutputTokens: params.estimatedOutputTokens,
+    estimatedCostUsd,
+    inputCostPer1MTokens,
+    outputCostPer1MTokens,
+    monthlyBudgetUsd: monthlyBudgetUsd && monthlyBudgetUsd > 0 ? monthlyBudgetUsd : undefined,
+    monthlyCostUsd,
+    projectedMonthlyCostUsd,
+    budgetUsagePercent,
+    budgetStatus,
+    unknownCostRecords: params.usageSummary?.unknownCostRecords ?? 0
+  }
+}
+
+function getBudgetStatus(
+  monthlyBudgetUsd: number | undefined,
+  budgetUsagePercent: number | null,
+  estimatedCostUsd: number | null,
+  warnAtPercent: number
+): AIOutboundPreviewCost['budgetStatus'] {
+  if (!monthlyBudgetUsd || monthlyBudgetUsd <= 0) return 'none'
+  if (estimatedCostUsd == null || budgetUsagePercent == null) return 'unknown'
+  if (budgetUsagePercent > 100) return 'over'
+  if (budgetUsagePercent >= warnAtPercent) return 'near'
+  return 'ok'
 }
 
 export function chatContentToPreviewText(content: ChatMessage['content']): string {
@@ -170,7 +237,8 @@ export function estimateStringTokens(text: string): number {
 function buildWarnings(
   params: BuildAIOutboundPreviewParams,
   retrievedNoteSnippets: AIOutboundPreviewSnippet[],
-  imageCount: number
+  imageCount: number,
+  cost: AIOutboundPreviewCost
 ): string[] {
   const warnings: string[] = []
   if (!params.provider) {
@@ -192,6 +260,20 @@ function buildWarnings(
     warnings.push(params.language === 'en'
       ? `${imageCount} image(s) will be sent as multimodal input.`
       : `${imageCount} 张图片会作为多模态输入发送。`)
+  }
+  if (params.provider && cost.estimatedCostUsd === null && params.provider.type !== 'ollama') {
+    warnings.push(params.language === 'en'
+      ? 'Provider pricing is not configured, so this preview can estimate tokens but not cost.'
+      : '当前 Provider 未配置价格，本次只能估算 tokens，不能估算成本。')
+  }
+  if (cost.budgetStatus === 'over') {
+    warnings.push(params.language === 'en'
+      ? 'This request may push the monthly AI cost over budget.'
+      : '本次请求可能使本月 AI 成本超过预算。')
+  } else if (cost.budgetStatus === 'near') {
+    warnings.push(params.language === 'en'
+      ? 'This request may bring the monthly AI cost close to the budget.'
+      : '本次请求可能使本月 AI 成本接近预算。')
   }
   return warnings
 }
