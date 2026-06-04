@@ -12,6 +12,11 @@ describe('website homepage copy contract', () => {
     const source = readFileSync(pagePath, 'utf8')
 
     expect(source).toContain('const currentVersion = "0.8.3"')
+    expect(source).toContain('Nexusky-Setup-${currentVersion}.exe')
+    expect(source).toContain('Nexusky-${currentVersion}-arm64.dmg')
+    expect(source).toContain('Nexusky-${currentVersion}.dmg')
+    expect(source).toContain('Nexusky-${currentVersion}.AppImage')
+    expect(source).not.toContain('Nexusky-${currentVersion}-x64.dmg')
     expect(source).toContain('Vault Health')
     expect(source).toContain('desktop vault workbench')
     expect(source).toContain('Today, fix these 3 things first')

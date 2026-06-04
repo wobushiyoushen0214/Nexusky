@@ -35,7 +35,7 @@ const downloads = [
   },
   {
     platform: "macOS Intel",
-    file: `Nexusky-${currentVersion}-x64.dmg`,
+    file: `Nexusky-${currentVersion}.dmg`,
     detail: "macOS 12+ for Intel Macs",
   },
   {
