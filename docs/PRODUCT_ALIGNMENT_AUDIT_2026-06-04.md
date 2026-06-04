@@ -125,3 +125,21 @@
 - 正文改为 full-text search + local relevance ranking，并明确不需要把 vault 发给 provider。
 - `tests/website-homepage.test.ts` 增加合同断言，禁止首页重新出现 `Semantic search` 或 `semantic ranking`。
 - `PRODUCT.md` 追加记录默认搜索命名边界。
+
+## 9. 追加审查：公共元数据叙事边界
+
+2026-06-04 追加检查范围：官网 metadata、root package metadata、首页叙事和当前路线图。
+
+### 发现
+
+- 官网 `<title>` 仍写 `Local-first AI knowledge base`。
+- root `package.json` 仍写 `AI-powered knowledge base note-taking app`。
+- 路线图已明确首页和 README 应减少抽象 `AI knowledge base`，优先讲 real Markdown vault、Vault Health、sources 和 preview-first writes。
+
+### 修复
+
+- 官网 title 改为 `Nexusky - Local Markdown vault workbench`。
+- 官网 description 改为 Markdown vault health、sourced AI、graph 和 reviewable maintenance。
+- root package description 改为 `Local-first Markdown vault workbench`。
+- `tests/website-homepage.test.ts` 增加 metadata 合同断言，禁止回到 `Local-first AI knowledge base` 或 `AI-powered knowledge base`。
+- `PRODUCT.md` 追加记录公共 metadata 边界。

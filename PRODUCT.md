@@ -129,3 +129,7 @@ Properties View remains a Markdown/frontmatter view, not an object database surf
 ### 2026-06-04 - Default search copy names local relevance, not semantic search
 
 The public website now describes the default search path as full-text search plus local relevance ranking. True embedding or hybrid semantic retrieval remains an evaluation/opt-in direction, not a default user promise. Reason: default search should match the actual local FTS and lexical-ranking behavior without implying hidden embedding or provider-backed semantic search.
+
+### 2026-06-04 - Public metadata follows the vault workbench story
+
+Website metadata and the root package description now name Nexusky as a local Markdown vault workbench rather than an AI-powered knowledge base. Reason: public snippets should match the product's first promise: open a real vault, inspect health, ask with sources, and preview writes before AI changes files.

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nexusky — Local-first AI knowledge base",
+  title: "Nexusky - Local Markdown vault workbench",
   description:
-    "A local-first desktop knowledge base for Markdown vaults, long-context AI, graphs and reviewable maintenance workflows.",
+    "A local-first desktop workbench for Markdown vault health, sourced AI, graphs and reviewable maintenance workflows.",
 };
 
 export default function RootLayout({

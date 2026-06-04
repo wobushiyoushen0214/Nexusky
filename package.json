@@ -2,7 +2,7 @@
     "name": "nexusky",
     "version": "0.8.2",
     "private": true,
-    "description": "AI-powered knowledge base note-taking app",
+    "description": "Local-first Markdown vault workbench",
     "author": "Nexusky",
     "repository": {
         "type": "git",

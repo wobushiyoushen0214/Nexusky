@@ -3,7 +3,9 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const pagePath = fileURLToPath(new URL('../website/src/app/page.tsx', import.meta.url))
+const layoutPath = fileURLToPath(new URL('../website/src/app/layout.tsx', import.meta.url))
 const migrationPagePath = fileURLToPath(new URL('../website/src/app/migration-guide/page.tsx', import.meta.url))
+const packagePath = fileURLToPath(new URL('../package.json', import.meta.url))
 
 describe('website homepage copy contract', () => {
   it('leads with the vault health demo, workflow packs, and commercial boundary', () => {
@@ -46,5 +48,16 @@ describe('website homepage copy contract', () => {
     expect(source).toContain('AI calls can include')
     expect(source).toContain('outbound preview')
     expect(source).toContain('Preview first, recover locally')
+  })
+
+  it('keeps public metadata anchored on the local Markdown vault', () => {
+    const layoutSource = readFileSync(layoutPath, 'utf8')
+    const packageSource = readFileSync(packagePath, 'utf8')
+
+    expect(layoutSource).toContain('Nexusky - Local Markdown vault workbench')
+    expect(layoutSource).toContain('Markdown vault health')
+    expect(packageSource).toContain('Local-first Markdown vault workbench')
+    expect(layoutSource).not.toContain('Local-first AI knowledge base')
+    expect(packageSource).not.toContain('AI-powered knowledge base')
   })
 })
