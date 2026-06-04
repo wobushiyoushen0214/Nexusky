@@ -177,7 +177,7 @@ export default function Home() {
           <p className="eyebrow">Local Markdown. Vault health first.</p>
           <h1 id="hero-title">Nexusky</h1>
           <p className="hero-lede">
-            A desktop knowledge base that opens a real Markdown vault, shows what needs care,
+            A desktop vault workbench that opens a real Markdown vault, shows what needs care,
             and lets AI answer with sources only after the local structure is visible.
           </p>
           <div className="hero-actions" aria-label="Primary actions">
@@ -354,11 +354,11 @@ export default function Home() {
           </div>
         </div>
         <div className="product-copy">
-          <p className="section-kicker">Cognitive partner direction</p>
-          <h2>Designed to show why AI brought something back.</h2>
+          <p className="section-kicker">Explainable context</p>
+          <h2>Designed to show why a note came back.</h2>
           <p>
             Long-context relations carry reason, confidence, evidence and feedback. Proactive suggestions
-            can be opened, snoozed or dismissed, and the observability panel shows what entered the context pack.
+            can be opened, snoozed or dismissed, and Context Pack details show what an answer was allowed to use.
           </p>
           <div className="signal-row">
             <span>

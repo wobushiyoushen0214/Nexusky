@@ -145,3 +145,7 @@ Plugin and template bundled examples now use local-pack IPC names, types, render
 ### 2026-06-04 - Imported reading helpers stay compatibility-only
 
 The retired Reader Inbox component file remains as a holder for imported-reading helpers and tests, but it is not imported by `App`, ActivityBar, or the Command Palette. Any generated digest output now uses `imported-reading` / `Imported Reading Digest` language instead of `reader-inbox` / `Reader Inbox`. Reason: Readwise, Pocket, and Notion imports still produce useful Markdown notes, but the product should not imply a standalone reading inbox is part of the current core loop.
+
+### 2026-06-04 - Public homepage names explainable context
+
+The homepage now describes Nexusky as a desktop vault workbench and names the long-memory section `Explainable context` instead of `Cognitive partner direction`. Reason: public copy should point to concrete vault behavior, source-grounded answers, and Context Pack evidence instead of asking visitors to buy an abstract AI-partner framing.

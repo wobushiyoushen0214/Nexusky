@@ -13,6 +13,7 @@ describe('website homepage copy contract', () => {
 
     expect(source).toContain('const currentVersion = "0.8.2"')
     expect(source).toContain('Vault Health')
+    expect(source).toContain('desktop vault workbench')
     expect(source).toContain('Today, fix these 3 things first')
     expect(source).toContain('Repair unresolved links')
     expect(source).toContain('Ask with sources')
@@ -28,12 +29,16 @@ describe('website homepage copy contract', () => {
     expect(source).toContain('local vault checks')
     expect(source).toContain('Local search')
     expect(source).toContain('local relevance ranking')
+    expect(source).toContain('Explainable context')
+    expect(source).toContain('Designed to show why a note came back.')
     expect(source).toContain('/migration-guide')
     expect(source).not.toContain('0.5.0')
     expect(source).not.toContain('Tool Surface')
     expect(source).not.toContain('high-value vault tools')
     expect(source).not.toContain('Semantic search')
     expect(source).not.toContain('semantic ranking')
+    expect(source).not.toContain('desktop knowledge base')
+    expect(source).not.toContain('Cognitive partner direction')
   })
 
   it('publishes a migration guide with backup, ignore rules, and AI boundaries', () => {
