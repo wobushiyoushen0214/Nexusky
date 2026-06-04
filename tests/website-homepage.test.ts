@@ -11,7 +11,7 @@ describe('website homepage copy contract', () => {
   it('leads with the vault health demo, workflow packs, and commercial boundary', () => {
     const source = readFileSync(pagePath, 'utf8')
 
-    expect(source).toContain('const currentVersion = "0.8.2"')
+    expect(source).toContain('const currentVersion = "0.8.3"')
     expect(source).toContain('Vault Health')
     expect(source).toContain('desktop vault workbench')
     expect(source).toContain('Today, fix these 3 things first')

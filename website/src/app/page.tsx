@@ -18,7 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const currentVersion = "0.8.2";
+const currentVersion = "0.8.3";
 const githubRepo = "wobushiyoushen0214/Nexusky";
 const releaseBase = `https://github.com/${githubRepo}/releases/latest/download`;
 
