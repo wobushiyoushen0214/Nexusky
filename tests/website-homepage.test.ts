@@ -22,8 +22,12 @@ describe('website homepage copy contract', () => {
     expect(source).toContain('Commercial boundary')
     expect(source).toContain('Free local workspace')
     expect(source).toContain('Future paid add-ons')
+    expect(source).toContain('Command Palette')
+    expect(source).toContain('local vault checks')
     expect(source).toContain('/migration-guide')
     expect(source).not.toContain('0.5.0')
+    expect(source).not.toContain('Tool Surface')
+    expect(source).not.toContain('high-value vault tools')
   })
 
   it('publishes a migration guide with backup, ignore rules, and AI boundaries', () => {

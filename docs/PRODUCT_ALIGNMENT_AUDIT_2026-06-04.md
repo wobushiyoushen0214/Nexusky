@@ -82,7 +82,25 @@
 - 历史策略分析文档不会被误读为当前路线图。
 - Focused tests 覆盖 AI onboarding draft、外发预览文案和插件 API；TypeScript typecheck 通过。
 
-## 6. 修复记录
+## 6. 追加审查：属性视图和工具入口边界
+
+2026-06-04 追加检查范围：属性视图、metadata / schema / collection / database 相关文案、Command Palette、官网能力区和当前路线图。
+
+### 发现
+
+- Properties View 的实际 UI 文案已主要收束到 frontmatter、属性、标签、别名和写回 Markdown。
+- Command Palette 的 Properties View 隐藏关键词仍包含 `database`，会把属性视图带回数据库心智。
+- 官网能力区把直接命令称为 `Tool Surface`，正文说 `high-value vault tools`，容易把工具入口抬成产品主能力。
+- 未来路线图中 `Properties 变成轻量数据库视图` 的旧措辞与 Markdown/source-of-truth 边界冲突。
+
+### 修复
+
+- Properties View 命令关键词改为 `properties`、`frontmatter`、`metadata`、`obsidian`。
+- 官网能力区标题改为 `Command Palette`，正文改为本地 vault 检查，保留无需 chat/token 的价值但不宣传工具平台。
+- 路线图改为 `Properties 扩展为 Markdown 属性视图`。
+- `PRODUCT.md` 追加记录这条产品边界。
+
+## 7. 修复记录
 
 2026-06-04 已完成：
 
@@ -90,3 +108,4 @@
 - Command Palette、Vault Health、Chat 空状态和 Reader 历史 digest 的来源问答 draft 显式使用普通 chat。
 - Settings 插件页、命令面板 i18n、插件文档和项目全景文档改为“本地内置包”。
 - `docs/PRODUCT_STRATEGY_ANALYSIS.md` 顶部标记为历史快照，不再承担当前路线图职责。
+- Properties View、Command Palette、官网能力区和路线图文案已收束到 Markdown 属性视图与普通命令入口，不再使用数据库或 Tool Surface 心智锚点。

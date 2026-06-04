@@ -121,3 +121,7 @@ Vault Health's Ask AI prompt now asks for local search plus Context Pack, not lo
 ### 2026-06-04 - Vault tools are provider-capability driven
 
 The Chat `Vault tools` control now follows the active provider's `capabilities.toolCalling`. If no provider is enabled, no vault is open, or the active provider cannot call tools, the control stays disabled and stored tool mode is cleared only after provider capability has been checked. Reason: users should not discover provider limits only after sending a request, and unsupported providers should keep the default cited-answer path.
+
+### 2026-06-04 - Properties and command surfaces stay under Markdown boundaries
+
+Properties View remains a Markdown/frontmatter view, not an object database surface. The command palette now finds it through properties, frontmatter, metadata, and Obsidian terms instead of `database`. The public website also names direct non-chat actions as Command Palette checks, not a top-level Tool Surface. Reason: Properties and direct commands should support the vault workflow without making users learn a database or tool-platform mental model.

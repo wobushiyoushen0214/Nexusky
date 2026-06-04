@@ -291,8 +291,8 @@ export default function Home() {
       <section className="system-grid" aria-label="System capabilities">
         <article>
           <PanelRight aria-hidden="true" />
-          <h3>Tool Surface</h3>
-          <p>Direct commands expose high-value vault tools without spending tokens or entering chat.</p>
+          <h3>Command Palette</h3>
+          <p>Direct commands expose local vault checks without spending tokens or entering chat.</p>
         </article>
         <article>
           <GitBranch aria-hidden="true" />
