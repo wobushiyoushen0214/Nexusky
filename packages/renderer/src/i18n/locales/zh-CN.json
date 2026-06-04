@@ -56,7 +56,7 @@
         "kicker": "询问",
         "title": "问 AI 一个关于 vault 的问题",
         "desc": "发起一次全库问题，并引用用到的笔记来源。",
-        "prompt": "请对这个 vault 做一次带来源的快速导览。使用本地搜索或工具，引用你用到的笔记；如果没有找到相关笔记，请明确说明。当前 health：{{notes}} 篇笔记，{{links}} 条链接，{{unresolved}} 条未解析链接，{{orphans}} 篇孤立笔记，{{tasks}} 个未完成任务，{{missingMemory}} 篇缺少记忆账本。"
+        "prompt": "请对这个 vault 做一次带来源的快速导览。使用本地搜索和上下文包，引用你用到的笔记；如果没有找到相关笔记，请明确说明。当前 health：{{notes}} 篇笔记，{{links}} 条链接，{{unresolved}} 条未解析链接，{{orphans}} 篇孤立笔记，{{tasks}} 个未完成任务，{{missingMemory}} 篇缺少记忆账本。"
       },
       "fixLinks": {
         "kicker": "修复",
@@ -203,7 +203,7 @@
     "agent": "执行历史"
   },
   "aiWorkspace": {
-    "noProviderToast": "配置 AI 提供商后才能使用对话、编辑或 Agent 动作。文件、搜索、图谱、Vault Health 和知识维护无需 AI 也可继续使用。"
+    "noProviderToast": "配置 AI 提供商后才能使用对话、编辑或 Vault 工具。文件、搜索、图谱、Vault Health 和知识维护无需 AI 也可继续使用。"
   },
   "aiProviderErrors": {
     "empty": "AI 请求失败，请重试或检查提供商配置。",
@@ -1135,7 +1135,7 @@
     },
     "noAiMode": {
       "title": "未配置 AI 提供商",
-      "description": "你仍可继续使用本地 vault。只有需要 AI 对话、编辑或 Agent 动作时才需要添加提供商。",
+      "description": "你仍可继续使用本地 vault。只有需要 AI 对话、编辑、Vault 工具或可审查执行时才需要添加提供商。",
       "badge": "本地模式",
       "localAvailable": "仍可使用",
       "requiresProvider": "需要提供商",
@@ -1149,7 +1149,7 @@
       "providerFeatures": {
         "chat": "对话回答",
         "edit": "AI 编辑",
-        "agent": "Agent 动作",
+        "tools": "Vault 工具",
         "memory": "记忆生成"
       }
     },

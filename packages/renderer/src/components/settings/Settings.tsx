@@ -81,7 +81,7 @@ const SETTINGS_FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])'
 ].join(',')
 export const NO_AI_MODE_LOCAL_FEATURES = ['files', 'search', 'graph', 'vaultHealth', 'maintenance'] as const
-export const NO_AI_MODE_PROVIDER_FEATURES = ['chat', 'edit', 'agent', 'memory'] as const
+export const NO_AI_MODE_PROVIDER_FEATURES = ['chat', 'edit', 'tools', 'memory'] as const
 
 const inputStyle: React.CSSProperties = {
   width: '100%',

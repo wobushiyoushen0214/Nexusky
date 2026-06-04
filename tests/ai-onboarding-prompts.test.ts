@@ -28,6 +28,8 @@ describe('AI onboarding prompts', () => {
     expect(draft.mode).toBe('chat')
     expect(draft.agentMode).toBe(false)
     expect(draft.prompt).toContain('sourced tour')
+    expect(draft.prompt).toContain('local search')
+    expect(draft.prompt).not.toContain('search/tools')
     expect(draft.prompt).toContain('cite the notes')
     expect(draft.prompt).toContain('14 notes')
     expect(draft.prompt).toContain('3 unresolved links')

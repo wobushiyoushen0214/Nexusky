@@ -112,3 +112,8 @@ Chat opens in normal cited-answer mode by default. Vault Health Ask AI, the Comm
 
 Agent/tool calling remains available as an opt-in `Vault tools` control inside Chat and as the reviewable Maintenance -> Agent execution path. Local bundled plugin/template packs are described as bundled local packs, not as a marketplace.
 
+### 2026-06-04 - No-AI boundaries name Vault tools, not Agent actions
+
+No-AI copy now says local Files, Search, Graph, Vault Health, and Maintenance remain available without a provider. Provider-required work is described as AI chat, AI edit, Vault tools, Memory generation, or reviewable execution. Reason: the product boundary should explain capability requirements without re-promoting Agent as the default mental model.
+
+Vault Health's Ask AI prompt now asks for local search plus Context Pack, not local search/tools, because the action uses ordinary cited chat.

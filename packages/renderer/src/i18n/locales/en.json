@@ -56,7 +56,7 @@
         "kicker": "Ask",
         "title": "Ask AI about your vault",
         "desc": "Start a vault-wide question and cite the notes used.",
-        "prompt": "Give me a sourced tour of this vault. Use the local search/tools, cite the notes you use, and say clearly if no relevant notes are found. Current health: {{notes}} notes, {{links}} links, {{unresolved}} unresolved links, {{orphans}} isolated notes, {{tasks}} open tasks, {{missingMemory}} notes without Memory Ledger."
+        "prompt": "Give me a sourced tour of this vault. Use local search and the Context Pack, cite the notes you use, and say clearly if no relevant notes are found. Current health: {{notes}} notes, {{links}} links, {{unresolved}} unresolved links, {{orphans}} isolated notes, {{tasks}} open tasks, {{missingMemory}} notes without Memory Ledger."
       },
       "fixLinks": {
         "kicker": "Repair",
@@ -203,7 +203,7 @@
     "agent": "Execution History"
   },
   "aiWorkspace": {
-    "noProviderToast": "Configure an AI provider to use chat, edit, or agent actions. Files, Search, Graph, Vault Health, and Maintenance still work without AI."
+    "noProviderToast": "Configure an AI provider to use chat, edit, or Vault tools. Files, Search, Graph, Vault Health, and Maintenance still work without AI."
   },
   "aiProviderErrors": {
     "empty": "AI request failed. Try again or check provider settings.",
@@ -1135,7 +1135,7 @@
     },
     "noAiMode": {
       "title": "No AI provider configured",
-      "description": "You can keep using the local vault. Add a provider only when you want AI chat, editing, or agent actions.",
+      "description": "You can keep using the local vault. Add a provider only when you want AI chat, editing, Vault tools, or reviewable execution.",
       "badge": "Local mode",
       "localAvailable": "Still available",
       "requiresProvider": "Needs a provider",
@@ -1149,7 +1149,7 @@
       "providerFeatures": {
         "chat": "Chat answers",
         "edit": "AI edit",
-        "agent": "Agent actions",
+        "tools": "Vault tools",
         "memory": "Memory generation"
       }
     },

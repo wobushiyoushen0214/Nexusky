@@ -75,7 +75,7 @@ describe('accessibility component semantics', () => {
     const html = renderToStaticMarkup(createElement(NoAiModePanel))
 
     expect(NO_AI_MODE_LOCAL_FEATURES).toEqual(['files', 'search', 'graph', 'vaultHealth', 'maintenance'])
-    expect(NO_AI_MODE_PROVIDER_FEATURES).toEqual(['chat', 'edit', 'agent', 'memory'])
+    expect(NO_AI_MODE_PROVIDER_FEATURES).toEqual(['chat', 'edit', 'tools', 'memory'])
     expect(html).toContain('No AI provider configured')
     expect(html).toContain('Files')
     expect(html).toContain('Search')
@@ -84,7 +84,7 @@ describe('accessibility component semantics', () => {
     expect(html).toContain('Maintenance')
     expect(html).toContain('Chat answers')
     expect(html).toContain('AI edit')
-    expect(html).toContain('Agent actions')
+    expect(html).toContain('Vault tools')
     expect(html).toContain('Memory generation')
   })
 
