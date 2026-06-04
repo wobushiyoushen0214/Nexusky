@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_GRAPH_DISPLAY_STATE,
+  buildGraphMaintenanceSignals,
   buildGraphRelationLinkCountMap,
+  getGraphMaintenanceFocusNodeIds,
   getGraphCanvasWorld,
   getGraphFolderNodeId,
   getGraphNodeGroupId,
   getStableGraphGroupIndex,
   isGraphCrossClusterRelation,
   isGraphLabelHidden,
+  isGraphNodeHiddenByMaintenanceFocus,
   isGraphNodeHiddenByDisplay,
   isGraphNodeHiddenByGroup,
   seedGraphNodeFallbackPositions,
@@ -141,6 +144,86 @@ describe('graph UI layout helpers', () => {
     expect(counts.get('note-a')).toBe(1)
     expect(counts.get('note-b')).toBe(2)
     expect(counts.get('note-c')).toBe(1)
+  })
+
+  it('summarizes graph maintenance signals from relation edges', () => {
+    const signals = buildGraphMaintenanceSignals({
+      nodes: [
+        { id: 'folder-research', title: 'Research', type: 'folder' },
+        { id: 'folder-writing', title: 'Writing', type: 'folder' },
+        { id: 'note-a', title: 'A', type: 'file', folder: 'Research' },
+        { id: 'note-b', title: 'B', type: 'file', folder: 'Writing' },
+        { id: 'note-c', title: 'C', type: 'file', folder: 'Writing' },
+        { id: 'note-d', title: 'D', type: 'file', folder: 'Archive' },
+      ],
+      edges: [
+        { source: 'folder-research', target: 'note-a', linkType: 'folder' },
+        { source: 'folder-writing', target: 'note-b', linkType: 'folder' },
+        { source: 'note-a', target: 'note-b', linkType: 'explicit' },
+        { source: 'note-b', target: 'note-c', linkType: 'inferred' },
+      ],
+    })
+
+    expect(signals.orphanNoteCount).toBe(1)
+    expect([...signals.orphanNoteIds]).toEqual(['note-d'])
+    expect(signals.orphanSamples).toEqual(['D'])
+    expect(signals.crossFolderBridgeCount).toBe(1)
+    expect([...signals.crossFolderBridgeNodeIds].sort()).toEqual(['note-a', 'note-b'])
+    expect(signals.crossFolderBridgeSamples).toEqual(['A -> B'])
+    expect(signals.inferredRelationCount).toBe(1)
+    expect([...signals.inferredRelationNodeIds].sort()).toEqual(['note-b', 'note-c'])
+    expect(signals.inferredRelationSamples).toEqual(['B -> C'])
+  })
+
+  it('returns focused maintenance node ids for graph task views', () => {
+    const signals = buildGraphMaintenanceSignals({
+      nodes: [
+        { id: 'note-a', title: 'A', type: 'file', folder: 'Research' },
+        { id: 'note-b', title: 'B', type: 'file', folder: 'Writing' },
+        { id: 'note-c', title: 'C', type: 'file', folder: 'Writing' },
+        { id: 'note-d', title: 'D', type: 'file', folder: 'Archive' },
+      ],
+      edges: [
+        { source: 'note-a', target: 'note-b', linkType: 'explicit' },
+        { source: 'note-b', target: 'note-c', linkType: 'inferred' },
+      ],
+    })
+
+    expect(getGraphMaintenanceFocusNodeIds('all', signals)).toBeNull()
+    expect([...(getGraphMaintenanceFocusNodeIds('orphans', signals) ?? [])]).toEqual(['note-d'])
+    expect([...(getGraphMaintenanceFocusNodeIds('bridges', signals) ?? [])].sort()).toEqual(['note-a', 'note-b'])
+    expect([...(getGraphMaintenanceFocusNodeIds('inferred', signals) ?? [])].sort()).toEqual(['note-b', 'note-c'])
+  })
+
+  it('hides non-focused graph nodes while keeping folder context for focused notes', () => {
+    const focusedNodeIds = new Set(['note-a'])
+    const focusedGroupIds = new Set(['folder:Research'])
+
+    expect(isGraphNodeHiddenByMaintenanceFocus(
+      { id: 'note-a', type: 'file', group: 'folder:Research' },
+      focusedNodeIds,
+      focusedGroupIds
+    )).toBe(false)
+    expect(isGraphNodeHiddenByMaintenanceFocus(
+      { id: 'note-b', type: 'file', group: 'folder:Writing' },
+      focusedNodeIds,
+      focusedGroupIds
+    )).toBe(true)
+    expect(isGraphNodeHiddenByMaintenanceFocus(
+      { id: 'folder:Research', type: 'folder' },
+      focusedNodeIds,
+      focusedGroupIds
+    )).toBe(false)
+    expect(isGraphNodeHiddenByMaintenanceFocus(
+      { id: 'folder:Writing', type: 'folder' },
+      focusedNodeIds,
+      focusedGroupIds
+    )).toBe(true)
+    expect(isGraphNodeHiddenByMaintenanceFocus(
+      { id: 'note-b', type: 'file', group: 'folder:Writing' },
+      null,
+      focusedGroupIds
+    )).toBe(false)
   })
 
   it('recognizes explicit and inferred links across folder groups as graph relations', () => {

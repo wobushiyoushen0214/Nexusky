@@ -146,6 +146,26 @@
     "backToEditor": "Back to editor",
     "inferGlobal": "Infer cross-folder links",
     "reindex": "Rebuild index",
+    "maintenance": {
+      "title": "AI maintenance",
+      "all": "All",
+      "suggested": "AI suggests checking {{label}}: {{count}}",
+      "focused": "AI is focusing on {{label}}",
+      "collapse": "Collapse maintenance prompt",
+      "expand": "Show maintenance prompt",
+      "orphans": {
+        "label": "Orphans",
+        "hint": "Isolated notes"
+      },
+      "bridges": {
+        "label": "Bridge paths",
+        "hint": "Cross-folder relations"
+      },
+      "inferred": {
+        "label": "AI edges",
+        "hint": "Inferred relations"
+      }
+    },
     "memory": {
       "generate": "Generate Memory Ledger",
       "generating": "Building Memory Ledger...",

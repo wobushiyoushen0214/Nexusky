@@ -146,6 +146,26 @@
     "backToEditor": "返回编辑器",
     "inferGlobal": "推断跨目录关联",
     "reindex": "重建索引",
+    "maintenance": {
+      "title": "AI 维护提示",
+      "all": "全部",
+      "suggested": "AI 建议检查{{label}}：{{count}}",
+      "focused": "AI 正在聚焦{{label}}",
+      "collapse": "折叠维护提示",
+      "expand": "展开维护提示",
+      "orphans": {
+        "label": "孤岛",
+        "hint": "缺少关系的笔记"
+      },
+      "bridges": {
+        "label": "跨域桥接",
+        "hint": "跨目录关系"
+      },
+      "inferred": {
+        "label": "AI 推断",
+        "hint": "推断关系"
+      }
+    },
     "memory": {
       "generate": "生成记忆账本",
       "generating": "正在生成记忆账本...",

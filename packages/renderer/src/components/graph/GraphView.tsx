@@ -6,22 +6,27 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
+import { GraphMaintenanceNudge } from './GraphMaintenanceNudge'
 import { GraphPanel } from './GraphPanel'
 import { buildGraphGroupColorMap } from './graph-colors'
 import {
   DEFAULT_GRAPH_DISPLAY_STATE,
+  buildGraphMaintenanceSignals,
   buildGraphRelationLinkCountMap,
+  getGraphMaintenanceFocusNodeIds,
   getGraphCanvasWorld,
   getGraphFolderNodeId,
   getGraphNodeGroupId,
   getNodeRadius,
   isGraphCrossClusterRelation,
   isGraphLabelHidden,
+  isGraphNodeHiddenByMaintenanceFocus,
   isGraphNodeHiddenByDisplay,
   isGraphNodeHiddenByGroup,
   seedGraphNodeFallbackPositions,
   shouldUseGraphRasterRenderer,
   type GraphCanvasWorld,
+  type GraphMaintenanceFocus,
   type SimLink,
   type SimNode
 } from './graph-types'
@@ -646,6 +651,7 @@ export function GraphView() {
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const [indexStatus, setIndexStatus] = useState<string | null>(null)
   const [confirmInferOpen, setConfirmInferOpen] = useState(false)
+  const [maintenanceFocus, setMaintenanceFocus] = useState<GraphMaintenanceFocus>('all')
   const [hiddenGroupIds, setHiddenGroupIds] = useState<Set<string>>(() => new Set())
   const [zoomValue, setZoomValue] = useState(1)
   const [panning, setPanning] = useState<GraphPanState | null>(null)
@@ -699,6 +705,33 @@ export function GraphView() {
     })
     return buildGraphGroupColorMap([...seeds.values()])
   }, [graphData])
+
+  const maintenanceSignals = useMemo(
+    () => graphData ? buildGraphMaintenanceSignals(graphData) : null,
+    [graphData]
+  )
+
+  const maintenanceFocusNodeIds = useMemo(
+    () => maintenanceSignals ? getGraphMaintenanceFocusNodeIds(maintenanceFocus, maintenanceSignals) : null,
+    [maintenanceFocus, maintenanceSignals]
+  )
+
+  const handleSetMaintenanceFocus = useCallback((next: GraphMaintenanceFocus) => {
+    setMaintenanceFocus((current) => current === next ? 'all' : next)
+    if (next === 'orphans') {
+      setShowOrphans(true)
+      setMinLinks(0)
+    }
+    if (next === 'bridges') {
+      setShowExplicitEdges(true)
+      setShowInferredEdges(true)
+      setMinLinks(0)
+    }
+    if (next === 'inferred') {
+      setShowInferredEdges(true)
+      setMinLinks(0)
+    }
+  }, [])
 
   const loadGraph = useCallback(() => {
     if (!vaultPath) return
@@ -771,6 +804,11 @@ export function GraphView() {
       return changed ? next : current
     })
   }, [graphData, groupColorMap])
+
+  useEffect(() => {
+    if (maintenanceFocus === 'all' || maintenanceFocusNodeIds == null || maintenanceFocusNodeIds.size > 0) return
+    setMaintenanceFocus('all')
+  }, [maintenanceFocus, maintenanceFocusNodeIds])
 
   const toggleGroupVisibility = useCallback((groupId: string) => {
     setHiddenGroupIds((current) => {
@@ -1048,13 +1086,25 @@ export function GraphView() {
 
   const hiddenNodeIds = useMemo(() => {
     const hidden = new Set<string>()
+    const focusedGroupIds = new Set<string>()
+    if (maintenanceFocusNodeIds) {
+      layout.nodes.forEach((node) => {
+        if (node.type === 'file' && maintenanceFocusNodeIds.has(node.id) && node.group) {
+          focusedGroupIds.add(node.group)
+        }
+      })
+    }
     layout.nodes.forEach((node) => {
-      if (isGraphNodeHiddenByGroup(node, hiddenGroupIds) || isGraphNodeHiddenByDisplay(node, { showFolders, showOrphans, minLinks })) {
+      if (
+        isGraphNodeHiddenByGroup(node, hiddenGroupIds) ||
+        isGraphNodeHiddenByDisplay(node, { showFolders, showOrphans, minLinks }) ||
+        isGraphNodeHiddenByMaintenanceFocus(node, maintenanceFocusNodeIds, focusedGroupIds)
+      ) {
         hidden.add(node.id)
       }
     })
     return hidden
-  }, [hiddenGroupIds, layout.nodes, minLinks, showFolders, showOrphans])
+  }, [hiddenGroupIds, layout.nodes, maintenanceFocusNodeIds, minLinks, showFolders, showOrphans])
 
   const connectedNodeIds = useMemo(() => {
     const connected = new Set<string>()
@@ -1393,6 +1443,12 @@ export function GraphView() {
       />
 
       <div className="graph-canvas-stage">
+        <GraphMaintenanceNudge
+          signals={maintenanceSignals}
+          focus={maintenanceFocus}
+          onSetFocus={handleSetMaintenanceFocus}
+        />
+
         <div
           ref={viewportRef}
           className={`graph-canvas-viewport${panning ? ' is-panning' : ''}${usesRasterGraph ? ' uses-raster' : ''}${usesRasterGraph && hoveredNodeId ? ' has-node-hover' : ''}`}

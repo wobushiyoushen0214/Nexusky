@@ -43,6 +43,22 @@ export interface GraphDisplayState {
   showFolderEdges: boolean
 }
 
+export type GraphMaintenanceFocus = 'all' | 'orphans' | 'bridges' | 'inferred'
+
+export interface GraphMaintenanceSignals {
+  orphanNoteCount: number
+  orphanNoteIds: Set<string>
+  orphanSamples: string[]
+  crossFolderBridgeCount: number
+  crossFolderBridgeNodeIds: Set<string>
+  crossFolderBridgeSamples: string[]
+  inferredRelationCount: number
+  inferredRelationNodeIds: Set<string>
+  inferredRelationSamples: string[]
+}
+
+export const GRAPH_MAINTENANCE_FOCUS_ORDER: Array<Exclude<GraphMaintenanceFocus, 'all'>> = ['orphans', 'bridges', 'inferred']
+
 export const DEFAULT_GRAPH_DISPLAY_STATE: GraphDisplayState = {
   showLabels: true,
   showOrphans: true,
@@ -149,6 +165,83 @@ export function buildGraphRelationLinkCountMap(
     linkCountMap.set(edge.target, (linkCountMap.get(edge.target) || 0) + 1)
   })
   return linkCountMap
+}
+
+export function buildGraphMaintenanceSignals(graphData: {
+  nodes: Array<{ id: string; title: string; type: 'file' | 'folder'; folder?: string }>
+  edges: Array<{ source: string; target: string; linkType: GraphEdgeLinkType }>
+}): GraphMaintenanceSignals {
+  const fileNodes = graphData.nodes.filter((node) => node.type === 'file')
+  const nodeById = new Map(graphData.nodes.map((node) => [node.id, node]))
+  const relationLinks = graphData.edges.filter((edge) => edge.linkType !== 'folder')
+  const relationCountMap = buildGraphRelationLinkCountMap(graphData.edges)
+  const orphanNodes = fileNodes.filter((node) => (relationCountMap.get(node.id) || 0) === 0)
+  const crossFolderBridgeNodeIds = new Set<string>()
+  const crossFolderBridgeSamples: string[] = []
+  const inferredRelationNodeIds = new Set<string>()
+  const inferredRelationSamples: string[] = []
+  let crossFolderBridgeCount = 0
+  let inferredRelationCount = 0
+
+  for (const edge of relationLinks) {
+    const source = nodeById.get(edge.source)
+    const target = nodeById.get(edge.target)
+    if (!source || !target || source.type !== 'file' || target.type !== 'file') continue
+
+    if (edge.linkType === 'inferred') {
+      inferredRelationCount += 1
+      inferredRelationNodeIds.add(source.id)
+      inferredRelationNodeIds.add(target.id)
+      if (inferredRelationSamples.length < 3) {
+        inferredRelationSamples.push(`${source.title} -> ${target.title}`)
+      }
+    }
+
+    if (normalizeGraphFolder(source.folder) !== normalizeGraphFolder(target.folder)) {
+      crossFolderBridgeCount += 1
+      crossFolderBridgeNodeIds.add(source.id)
+      crossFolderBridgeNodeIds.add(target.id)
+      if (crossFolderBridgeSamples.length < 3) {
+        crossFolderBridgeSamples.push(`${source.title} -> ${target.title}`)
+      }
+    }
+  }
+
+  return {
+    orphanNoteCount: orphanNodes.length,
+    orphanNoteIds: new Set(orphanNodes.map((node) => node.id)),
+    orphanSamples: orphanNodes.slice(0, 3).map((node) => node.title),
+    crossFolderBridgeCount,
+    crossFolderBridgeNodeIds,
+    crossFolderBridgeSamples,
+    inferredRelationCount,
+    inferredRelationNodeIds,
+    inferredRelationSamples
+  }
+}
+
+export function getGraphMaintenanceFocusNodeIds(
+  focus: GraphMaintenanceFocus,
+  signals: GraphMaintenanceSignals,
+): ReadonlySet<string> | null {
+  if (focus === 'orphans') return signals.orphanNoteIds
+  if (focus === 'bridges') return signals.crossFolderBridgeNodeIds
+  if (focus === 'inferred') return signals.inferredRelationNodeIds
+  return null
+}
+
+export function isGraphNodeHiddenByMaintenanceFocus(
+  node: { id: string; type: 'file' | 'folder'; group?: string },
+  focusedNodeIds: ReadonlySet<string> | null,
+  focusedGroupIds: ReadonlySet<string>,
+): boolean {
+  if (!focusedNodeIds) return false
+  if (node.type === 'folder') return !focusedGroupIds.has(node.id)
+  return !focusedNodeIds.has(node.id)
+}
+
+function normalizeGraphFolder(value: string | undefined): string {
+  return (value || '.').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') || '.'
 }
 
 export function getGraphFolderNodeId(path: string): string {

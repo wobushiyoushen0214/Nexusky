@@ -455,6 +455,189 @@
   background: var(--bg-base);
 }
 
+.graph-maintenance-nudge,
+.graph-maintenance-nudge-chip {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 9;
+}
+
+.graph-maintenance-nudge {
+  max-width: min(620px, calc(100% - 180px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-subtle));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+}
+
+.graph-maintenance-nudge-main {
+  min-width: 170px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.graph-maintenance-nudge-badge {
+  height: 20px;
+  width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-elevated));
+  color: var(--text-primary);
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.graph-maintenance-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.graph-maintenance-nudge-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.graph-maintenance-nudge-title {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.graph-maintenance-nudge-sample {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.graph-maintenance-nudge-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.graph-maintenance-pill,
+.graph-maintenance-icon-button,
+.graph-maintenance-nudge-collapse,
+.graph-maintenance-nudge-chip {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+
+.graph-maintenance-pill {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 0 7px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.graph-maintenance-pill .graph-maintenance-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--text-tertiary);
+}
+
+.graph-maintenance-pill strong {
+  color: var(--text-primary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.graph-maintenance-pill:hover,
+.graph-maintenance-pill.active {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border-default));
+  background: var(--accent-muted);
+  color: var(--text-primary);
+}
+
+.graph-maintenance-pill:hover .graph-maintenance-icon,
+.graph-maintenance-pill.active .graph-maintenance-icon {
+  color: var(--text-primary);
+}
+
+.graph-maintenance-icon-button,
+.graph-maintenance-nudge-collapse {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.graph-maintenance-icon-button:hover,
+.graph-maintenance-nudge-collapse:hover,
+.graph-maintenance-nudge-chip:hover {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.graph-maintenance-nudge-chip {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 0 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.graph-maintenance-nudge-chip-count {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .graph-maintenance-nudge {
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .graph-maintenance-nudge-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .graph-maintenance-nudge-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 .graph-canvas-viewport {
   width: 100%;
   height: 100%;
