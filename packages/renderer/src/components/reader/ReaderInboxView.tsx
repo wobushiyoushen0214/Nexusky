@@ -684,7 +684,7 @@ export function ReaderInboxView() {
       }))
       const draft = {
         mode: 'chat' as const,
-        agentMode: true,
+        agentMode: false,
         prompt: createReaderDigestionPrompt(targetRows, Object.fromEntries(excerptEntries), maxRows)
       }
       safeSet('nexusky-pending-ai-draft', JSON.stringify(draft))

@@ -14,7 +14,7 @@ interface VaultHealthScreenProps {
 export function buildVaultHealthAskAiDraft(t: TFunction, summary: VaultHealthSummary | null): AICommandDraft {
   return {
     mode: 'chat',
-    agentMode: true,
+    agentMode: false,
     prompt: t('vaultHealth.action.askAi.prompt', {
       notes: summary?.noteCount ?? 0,
       links: summary?.linkCount ?? 0,

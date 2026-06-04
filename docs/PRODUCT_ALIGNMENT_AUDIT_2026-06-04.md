@@ -10,9 +10,9 @@
 
 | ID | 偏离点 | 状态 | 影响面 |
 | --- | --- | --- | --- |
-| A1 | Chat / Vault Health / 来源问答默认或显式进入 Agent 工具调用路径 | 待修复 | `ChatPanel.tsx`、`CommandPalette.tsx`、`VaultHealthScreen.tsx`、`ai-command-draft.ts`、Reader 历史组件 |
-| A2 | 用户可见文案仍使用“插件市场 / marketplace”描述本地内置包 | 待修复 | Settings 插件页、命令面板 i18n、插件文档、项目全景文档 |
-| A3 | 旧产品战略分析文档仍像当前说明一样列出 Reader、Kanban、Agent、marketplace 等横向能力 | 待修复 | `docs/PRODUCT_STRATEGY_ANALYSIS.md` |
+| A1 | Chat / Vault Health / 来源问答默认或显式进入 Agent 工具调用路径 | 已修复 | `ChatPanel.tsx`、`CommandPalette.tsx`、`VaultHealthScreen.tsx`、`ai-command-draft.ts`、Reader 历史组件 |
+| A2 | 用户可见文案仍使用“插件市场 / marketplace”描述本地内置包 | 已修复 | Settings 插件页、命令面板 i18n、插件文档、项目全景文档 |
+| A3 | 旧产品战略分析文档仍像当前说明一样列出 Reader、Kanban、Agent、marketplace 等横向能力 | 已修复 | `docs/PRODUCT_STRATEGY_ANALYSIS.md` |
 
 内部 IPC、类型名和函数名中的 `marketplace` 暂不作为偏离点处理，因为它们不是用户可见入口，立即重命名会扩大兼容和测试风险。后续如要清理，可在单独的内部命名迁移中处理。
 
@@ -81,3 +81,12 @@
 - 用户可见 UI 不再把本地内置插件包称为“插件市场”。
 - 历史策略分析文档不会被误读为当前路线图。
 - Focused tests 覆盖 AI onboarding draft、外发预览文案和插件 API；TypeScript typecheck 通过。
+
+## 6. 修复记录
+
+2026-06-04 已完成：
+
+- `ChatPanel` 新用户默认关闭工具调用；聊天开关改为“Vault 工具 / 工具”，外发预览显示 `Vault 工具`。
+- Command Palette、Vault Health、Chat 空状态和 Reader 历史 digest 的来源问答 draft 显式使用普通 chat。
+- Settings 插件页、命令面板 i18n、插件文档和项目全景文档改为“本地内置包”。
+- `docs/PRODUCT_STRATEGY_ANALYSIS.md` 顶部标记为历史快照，不再承担当前路线图职责。

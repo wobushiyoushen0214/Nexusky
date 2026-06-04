@@ -2,7 +2,7 @@
 
 Nexusky 会读取当前 vault 的 `.nexusky/plugins/*.json`。插件目前采用声明式 API：可以注册 AI 命令、只读插件面板和编辑器扩展能力描述，不执行任意本地脚本。
 
-设置页里的“精选插件市场”不是联网 marketplace。它只安装随应用内置的声明式 JSON 插件包，并把文件写入当前 vault 的 `.nexusky/plugins/`。每个 marketplace item 会暴露：
+设置页里的“本地内置插件包”只安装随应用提供的声明式 JSON 插件包，并把文件写入当前 vault 的 `.nexusky/plugins/`。每个内置包条目会暴露：
 
 - `source`: 当前为 `bundled_local`。
 - `permissions`: `ai_prompt`、`read_only_panel`、`editor_extension_declaration` 中的声明式能力。

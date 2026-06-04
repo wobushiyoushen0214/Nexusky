@@ -70,7 +70,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       await navigator.clipboard.writeText(`[[${title}]]`)
       toast(t('commandPalette.toasts.wikilinkCopied'), 'success')
     }},
-    { id: 'template-marketplace-pack', category: 'file', label: t('commandPalette.commands.templateMarketplacePack.label'), description: t('commandPalette.commands.templateMarketplacePack.description'), keywords: ['template', 'marketplace', 'community'], action: async () => {
+    { id: 'template-marketplace-pack', category: 'file', label: t('commandPalette.commands.templateMarketplacePack.label'), description: t('commandPalette.commands.templateMarketplacePack.description'), keywords: ['template', 'local', 'featured', 'pack'], action: async () => {
       const result = await window.api.invoke('template:install-marketplace-pack', undefined)
       const { toast } = await import('../stores/toast-store')
       toast(t('commandPalette.toasts.templatesInstalled', { count: result.installed }), result.installed > 0 ? 'success' : 'info')
@@ -121,7 +121,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     }},
     { id: 'search', category: 'search', label: t('commandPalette.commands.search.label'), shortcut: 'Ctrl+Shift+F', keywords: ['find', 'search'], action: () => setSearchOpen(true) },
     { id: 'chat', category: 'ai', label: t('commandPalette.commands.chat.label'), shortcut: 'Ctrl+L', description: t('commandPalette.commands.chat.description'), keywords: ['chat', 'agent'], action: () => setRightPanel('chat') },
-    { id: 'ai-rag', category: 'ai', label: t('commandPalette.commands.aiRag.label'), description: t('commandPalette.commands.aiRag.description'), keywords: ['rag', 'ask', 'agent'], action: () => queueAiDraft({ mode: 'chat', agentMode: true, prompt: t('commandPalette.prompts.rag') }) },
+    { id: 'ai-rag', category: 'ai', label: t('commandPalette.commands.aiRag.label'), description: t('commandPalette.commands.aiRag.description'), keywords: ['rag', 'ask', 'sources'], action: () => queueAiDraft({ mode: 'chat', agentMode: false, prompt: t('commandPalette.prompts.rag') }) },
     { id: 'ai-edit-current', category: 'ai', label: t('commandPalette.commands.aiEditCurrent.label'), description: t('commandPalette.commands.aiEditCurrent.description'), keywords: ['edit', 'rewrite'], action: () => { if (requireCurrentNote()) queueAiDraft({ mode: 'edit', requiresCurrentNote: true, prompt: t('commandPalette.prompts.editCurrent') }) } },
     { id: 'ai-rewrite-selection', category: 'ai', label: t('commandPalette.commands.aiRewriteSelection.label'), description: t('commandPalette.commands.aiRewriteSelection.description'), keywords: ['selection', 'rewrite'], action: () => queueAiDraft({ mode: 'edit', attachSelection: true, prompt: t('commandPalette.prompts.rewriteSelection') }) },
     { id: 'ai-new-note', category: 'ai', label: t('commandPalette.commands.aiNewNote.label'), description: t('commandPalette.commands.aiNewNote.description'), keywords: ['generate', 'create'], action: () => queueAiDraft({ mode: 'edit', unboundEdit: true, prompt: t('commandPalette.prompts.newNote') }) },
@@ -137,7 +137,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         toast(t('commandPalette.toasts.summaryInserted'), 'success')
       }
     }},
-    { id: 'plugin-marketplace-pack', category: 'plugin', label: t('commandPalette.commands.pluginMarketplacePack.label'), description: t('commandPalette.commands.pluginMarketplacePack.description'), keywords: ['plugin', 'marketplace', 'pack'], action: async () => {
+    { id: 'plugin-marketplace-pack', category: 'plugin', label: t('commandPalette.commands.pluginMarketplacePack.label'), description: t('commandPalette.commands.pluginMarketplacePack.description'), keywords: ['plugin', 'local', 'featured', 'pack'], action: async () => {
       if (!vaultPath) return
       const { toast } = await import('../stores/toast-store')
       const result = await window.api.invoke('plugins:install-marketplace-pack', { vaultPath })

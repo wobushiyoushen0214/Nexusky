@@ -119,7 +119,7 @@ function OutboundPreviewPanel({
         {preview && (
           <div style={{ padding: '9px 11px', display: 'grid', gap: 8 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <PreviewMetric label="模式" value={preview.mode === 'agent' ? 'Agent' : 'Chat'} />
+              <PreviewMetric label="模式" value={preview.mode === 'agent' ? 'Vault 工具' : 'Chat'} />
               <PreviewMetric label="附件" value={`${preview.attachmentSnippets.length + preview.imageCount}`} />
               <PreviewMetric label="检索片段" value={`${preview.retrievedNoteSnippets.length}`} />
               <PreviewMetric label="长期上下文" value={`${longContextCount}`} />
@@ -152,7 +152,7 @@ function OutboundPreviewPanel({
             )}
             {preview.toolAccess && (
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.45 }}>
-                Agent 工具：{preview.toolAccess.toolNames.join(', ')}
+                Vault 工具：{preview.toolAccess.toolNames.join(', ')}
               </div>
             )}
             {preview.warnings.length > 0 && (
@@ -254,7 +254,7 @@ export function ChatPanel() {
   const summarizedCountRef = useRef(0)
   const [toolStatus, setToolStatus] = useState<string | null>(null)
   const [agentMode, setAgentMode] = useState(() => {
-    return safeGet('nexusky-agent-mode') !== '0'
+    return safeGet('nexusky-agent-mode') === '1'
   })
   const updateAgentMode = (v: boolean) => {
     setAgentMode(v)
@@ -1471,7 +1471,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       }
 
       try {
-        setToolStatus(agentMode ? 'Agent 正在处理...' : '正在生成回答...')
+        setToolStatus(agentMode ? 'Vault 工具处理中...' : '正在生成回答...')
         const attachedChatMessages = applyChatAttachments(chatMessages, userMsg.content, contextPrefix, sentImages)
         if (agentMode) {
           await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath, currentFilePath, language })
@@ -2481,10 +2481,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   transition: 'all 100ms',
                   display: 'flex', alignItems: 'center', gap: 4,
                 }}
-                title={agentMode ? 'Agent 模式：AI 可搜索/读取笔记，修改请切换编辑模式' : '普通模式：仅对话'}
+                title={agentMode ? 'Vault 工具：AI 可按需搜索/读取笔记，修改请切换编辑模式' : '普通模式：使用本地检索和来源引用'}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
-                Agent
+                工具
               </button>
             )}
             {!editMode && (

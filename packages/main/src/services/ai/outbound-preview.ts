@@ -253,8 +253,8 @@ function buildWarnings(
   }
   if (params.mode === 'agent') {
     warnings.push(params.language === 'en'
-      ? 'Agent mode sends tool schemas first; notes read by tools will appear as sources during the run.'
-      : 'Agent 模式会先发送工具定义；后续工具读取到的笔记会在运行中作为来源显示。')
+      ? 'Vault tools send tool schemas first; notes read by tools will appear as sources during the run.'
+      : 'Vault 工具会先发送工具定义；后续工具读取到的笔记会在运行中作为来源显示。')
   }
   if (imageCount > 0) {
     warnings.push(params.language === 'en'

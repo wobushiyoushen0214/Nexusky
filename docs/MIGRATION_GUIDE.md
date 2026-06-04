@@ -55,7 +55,7 @@ Nexusky 的编辑器和索引已经覆盖常见 Obsidian/Markdown 结构：
 ## AI 数据边界
 
 - Vault Health、搜索、图谱和 Maintenance 扫描可以在没有 AI Provider 的情况下工作。
-- AI 请求会发送用户输入、被检索到的 note snippets、用户选择的附件/图片文本、长期上下文片段，以及 Agent 工具定义提示。
+- AI 请求会发送用户输入、被检索到的 note snippets、用户选择的附件/图片文本、长期上下文片段，以及开启 Vault 工具时的工具定义提示。
 - 请求前外发预览会在发送前展示这些内容摘要，确认后才进入 Chat/Agent 流程。
 - API Key 等敏感配置通过本地配置和 Electron `safeStorage` 处理；Nexusky 不把明文密钥写进 Markdown vault。
 - BYO sync 只会上传到你显式配置的后端；托管备份和托管发布仍是未来能力，不是当前迁移前提。

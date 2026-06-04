@@ -264,8 +264,8 @@ main/services/*
 | `maintenance:*` | 知识维护队列查询和自动修复应用 |
 | `proactive:*` | 主动建议列表、单条响应、批量已读/删除、偏好设置和调试运行 |
 | `agent:*` | Agent 规划、运行控制、步骤重试/跳过/回滚、运行列表和反思 |
-| `template:*` | 内置/市场/社区模板；`template:daily-note` 暂时保留兼容，但渲染层已不再暴露今日笔记入口 |
-| `plugins:*` | 本地插件和本地内置 marketplace 元数据；不联网下载或执行远程插件 |
+| `template:*` | 内置/本地包/社区模板；`template:daily-note` 暂时保留兼容，但渲染层已不再暴露今日笔记入口 |
+| `plugins:*` | 本地插件和本地内置包元数据；不联网下载或执行远程插件 |
 | `cloud:*` | 云配置、登录、同步、各 Provider 配置、索引同步 |
 | `export:*` | HTML、PDF、分享、发布站点 |
 | `updater:*` | 更新检查、下载、安装 |
@@ -500,7 +500,7 @@ Provider 文件：
 Nexusky 支持 vault 级可扩展内容：
 
 - 插件：`.nexusky/plugins/*.json`，由 `plugin.ipc.ts` 读取，命令可出现在命令面板并投递到 AI 工作台。
-- 模板：内置模板、市场模板、社区模板包，由 `template.ipc.ts` 管理。
+- 模板：内置模板、本地模板包、社区模板包，由 `template.ipc.ts` 管理。
 - 主题包和 CSS 片段：渲染进程启动或 vault 切换时通过 `theme-packages.ts`、`css-snippets.ts` 应用。
 
 ## 15. 安全与隐私边界

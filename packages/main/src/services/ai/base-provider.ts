@@ -101,5 +101,5 @@ export abstract class BaseAIProvider {
 
 export function buildToolCallingUnsupportedMessage(config: Pick<AIProviderConfig, 'name' | 'type'>): string {
   const providerName = config.name || config.type
-  return `${providerName} 不支持 Agent 工具调用。请切换到 OpenAI、OpenAI Responses、Claude 或兼容工具调用的提供商后再使用 Agent 模式。`
+  return `${providerName} 不支持 Vault 工具调用。请切换到 OpenAI、OpenAI Responses、Claude 或兼容工具调用的提供商后再开启 Vault 工具。`
 }

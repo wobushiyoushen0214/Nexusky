@@ -2583,7 +2583,7 @@ function PluginsTab() {
       <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
           <div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>精选插件市场</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>本地内置插件包</span>
             <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>安装内置本地插件包；不会联网下载，也不会执行任意脚本。</p>
           </div>
           <button

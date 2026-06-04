@@ -26,7 +26,7 @@ describe('AI onboarding prompts', () => {
     const draft = buildVaultHealthAskAiDraft(i18n.t.bind(i18n), summary)
 
     expect(draft.mode).toBe('chat')
-    expect(draft.agentMode).toBe(true)
+    expect(draft.agentMode).toBe(false)
     expect(draft.prompt).toContain('sourced tour')
     expect(draft.prompt).toContain('cite the notes')
     expect(draft.prompt).toContain('14 notes')
@@ -40,7 +40,7 @@ describe('AI onboarding prompts', () => {
 
     expect(firstHint.id).toBe('cited-vault-question')
     expect(firstHint.draft?.mode).toBe('chat')
-    expect(firstHint.draft?.agentMode).toBe(true)
+    expect(firstHint.draft?.agentMode).toBe(false)
     expect(firstHint.draft?.prompt).toContain('main themes')
     expect(firstHint.draft?.prompt).toContain('Cite the notes')
   })

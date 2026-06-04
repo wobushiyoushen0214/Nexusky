@@ -34,7 +34,7 @@ export function buildChatHints(t: TFunction): ChatHint[] {
       title: t('chatMessages.hints.citedVaultQuestion.title'),
       detail: t('chatMessages.hints.citedVaultQuestion.detail'),
       mark: 'AI',
-      draft: { mode: 'chat', agentMode: true, prompt: t('chatMessages.hints.citedVaultQuestion.prompt') }
+      draft: { mode: 'chat', agentMode: false, prompt: t('chatMessages.hints.citedVaultQuestion.prompt') }
     },
     {
       id: 'edit-current-note',

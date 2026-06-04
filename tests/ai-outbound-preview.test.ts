@@ -100,7 +100,7 @@ Alpha note body.
     })
 
     expect(preview.toolAccess).toEqual({ toolCount: 2, toolNames: ['search_notes', 'read_note'] })
-    expect(preview.warnings.some((warning) => warning.includes('Agent 模式'))).toBe(true)
+    expect(preview.warnings.some((warning) => warning.includes('Vault 工具'))).toBe(true)
     expect(preview.retrievedNoteSnippets).toHaveLength(0)
   })
 

@@ -106,4 +106,9 @@ The public homepage now starts with a vault health demo: open a Markdown vault, 
 
 Workflow packs are framed as activation aids, not paid gates. Research, Writing, Developer, and Learning samples should help users understand a healthy vault quickly. Local vaults, sample vaults, search, graph, Vault Health, Maintenance, bring-your-own AI providers, and bring-your-own sync remain the default path. Managed sync, hosted backup, and hosted publish remain future paid add-on candidates only after recovery and trust boundaries are strong.
 
+### 2026-06-04 - Sourced chat separated from Vault tools
+
+Chat opens in normal cited-answer mode by default. Vault Health Ask AI, the Command Palette sourced-question command, the first chat hint, and legacy Reader digest drafts now explicitly use ordinary RAG chat instead of Agent tool calling. Reason: `ai:chat` already performs local retrieval, source citation, and long-context injection; defaulting these prompts to Agent made the product feel like an automation agent instead of a trustworthy personal Markdown vault assistant.
+
+Agent/tool calling remains available as an opt-in `Vault tools` control inside Chat and as the reviewable Maintenance -> Agent execution path. Local bundled plugin/template packs are described as bundled local packs, not as a marketplace.
 

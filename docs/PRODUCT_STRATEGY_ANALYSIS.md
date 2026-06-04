@@ -4,6 +4,8 @@
 > 分析范围：根 Electron 桌面应用、`packages/main`、`packages/renderer`、`packages/shared`、`browser-extension`、`website`、`docs`、测试目录与现有产品文档。  
 > 目标：从产品视角扫描当前项目功能，分析优缺点，给出未来产品方向和可执行路线。
 
+> 历史快照提示：本文保留 2026-05-28 的功能扫描和当时判断，不再作为当前路线图或产品边界的权威来源。当前边界以 `PRODUCT.md`、`docs/PROJECT_OVERVIEW.md` 和 `docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md` 为准：Nexusky 聚焦本地 Markdown vault、维护闭环、可信 AI 和 preview-first 安全执行，不把 Reader、Kanban、Flashcards、独立 Agent、远程插件 marketplace、团队协作、完整移动编辑器或对象数据库作为当前主线。
+
 ## 1. 结论摘要
 
 Nexusky 当前已经不是一个普通 Markdown 编辑器，而是一个本地优先的 AI 知识工作台。它以 Markdown vault 为数据主权层，以 SQLite/FTS/关系索引为结构化层，以 AI Chat、Agent、长期上下文、维护队列、图谱、看板、阅读收件箱等能力作为智能层。
