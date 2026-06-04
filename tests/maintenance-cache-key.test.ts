@@ -9,6 +9,9 @@ const baseInput: MaintenanceQueueCacheKeyInput = {
   minCharacters: 8000,
   upcomingDays: 7,
   requiredProperties: ['status', 'summary'],
+  ignorePaths: ['Archive/**'],
+  workflowRulesSignature: '1:rules',
+  workflowRuleRequiredProperties: ['status'],
   scanGroups: ['links'],
   language: 'en',
   todayIso: '2026-05-31',
@@ -37,7 +40,7 @@ describe('maintenance queue cache key', () => {
     expect(first).toContain('today:2026-05-31')
   })
 
-  it('changes when file mtimes, scan type, scan groups, language, settings, or memory state change', () => {
+  it('changes when file mtimes, scan type, scan groups, language, settings, rules, or memory state change', () => {
     const base = buildMaintenanceQueueCacheKey(baseInput)
 
     expect(buildMaintenanceQueueCacheKey({
@@ -51,6 +54,8 @@ describe('maintenance queue cache key', () => {
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, scanGroups: ['tasks'] })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, language: 'zh-CN' })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, upcomingDays: 14 })).not.toBe(base)
+    expect(buildMaintenanceQueueCacheKey({ ...baseInput, ignorePaths: ['Archive/**', 'Private/**'] })).not.toBe(base)
+    expect(buildMaintenanceQueueCacheKey({ ...baseInput, workflowRulesSignature: '2:rules' })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, memorySignature: '2:memory' })).not.toBe(base)
     expect(buildMaintenanceQueueCacheKey({ ...baseInput, feedbackSignature: '1:feedback' })).not.toBe(base)
   })

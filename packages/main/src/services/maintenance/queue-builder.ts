@@ -23,6 +23,7 @@ import { getAppLanguage } from '../app-language'
 import { getCachedVaultQueryWithStats } from '../db-query-cache'
 import { logger } from '../logger'
 import { filterMaintenanceItemsByFeedback, getMaintenanceFeedbackSignature } from './feedback'
+import { isPathIgnoredByWorkflowRules, readMaintenanceWorkflowRules } from './workflow-rules'
 import type { AppLanguage, MaintenanceScanGroup, MaintenanceScanStatus } from '@shared/types/ipc'
 
 const MAINTENANCE_QUEUE_CACHE_TTL_MS = 60_000
@@ -105,6 +106,9 @@ export interface NormalizedMaintenanceQueueParams {
   minCharacters: number
   upcomingDays: number
   requiredProperties: string[]
+  ignorePaths: string[]
+  workflowRulesSignature: string
+  workflowRuleRequiredProperties: string[]
   scanGroups: MaintenanceScanGroup[]
   language: AppLanguage
   todayIso: string
@@ -157,20 +161,28 @@ function getEnabledMaintenanceTypes(scanGroups: MaintenanceScanGroup[], type?: K
 
 function normalizeMaintenanceQueueParams(params: MaintenanceQueueParams): NormalizedMaintenanceQueueParams {
   const type = normalizeType(params.type)
+  const workflowRules = readMaintenanceWorkflowRules(params.vaultPath)
+  const requestedRequiredProperties = Array.isArray(params.requiredProperties)
+    ? params.requiredProperties
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+    : []
+  const requiredProperties = Array.from(new Map(
+    [...workflowRules.requiredProperties, ...requestedRequiredProperties].map((value) => [value.toLowerCase(), value] as const)
+  ).values())
   return {
     vaultPath: params.vaultPath,
     query: (params.query ?? '').trim().toLowerCase(),
     type,
     limit: Math.max(1, Math.min(params.limit ?? 200, 500)),
     language: params.language ?? getAppLanguage(),
-    minCharacters: Math.max(1000, Math.floor(params.minCharacters ?? 8000)),
-    upcomingDays: Math.min(30, Math.max(1, Math.floor(params.upcomingDays ?? 7))),
-    requiredProperties: Array.isArray(params.requiredProperties)
-      ? params.requiredProperties
-        .filter((value): value is string => typeof value === 'string')
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
-      : [],
+    minCharacters: Math.max(1000, Math.floor(params.minCharacters ?? workflowRules.minCharacters ?? 8000)),
+    upcomingDays: Math.min(30, Math.max(1, Math.floor(params.upcomingDays ?? workflowRules.upcomingDays ?? 7))),
+    requiredProperties,
+    ignorePaths: workflowRules.ignorePaths,
+    workflowRulesSignature: workflowRules.signature,
+    workflowRuleRequiredProperties: workflowRules.requiredProperties,
     scanGroups: normalizeMaintenanceScanGroups(params.scanGroups, type),
     todayIso: localDateIso()
   }
@@ -277,6 +289,7 @@ export function buildMaintenanceQueueCacheKey(input: MaintenanceQueueCacheKeyInp
     `files:${getNotesFileSignature(input.notes)}`,
     `memory:${input.memorySignature ?? getMaintenanceMemorySignature(input.vaultPath)}`,
     `feedback:${input.feedbackSignature ?? getMaintenanceFeedbackSignature(input.vaultPath)}`,
+    `workflowRules:${input.workflowRulesSignature}`,
     `scan:${input.type ?? 'all'}`,
     `groups:${input.scanGroups.join(',')}`,
     `language:${input.language}`,
@@ -286,7 +299,8 @@ export function buildMaintenanceQueueCacheKey(input: MaintenanceQueueCacheKeyInp
     `settings:${hashJson({
       minCharacters: input.minCharacters,
       upcomingDays: input.upcomingDays,
-      requiredProperties
+      requiredProperties,
+      ignorePaths: input.ignorePaths
     })}`
   ].join('|')
 }
@@ -380,11 +394,17 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
     minCharacters,
     upcomingDays,
     requiredProperties,
+    ignorePaths,
+    workflowRuleRequiredProperties,
     scanGroups,
     todayIso
   } = params
   const scanGroupSet = new Set(scanGroups)
   const enabledTypes = getEnabledMaintenanceTypes(scanGroups, type)
+  const candidateNotes = ignorePaths.length > 0
+    ? notes.filter((note) => !isPathIgnoredByWorkflowRules(note.filePath, ignorePaths))
+    : notes
+  const candidateNotePaths = new Set(candidateNotes.map((note) => note.filePath))
   const needsLinks = scanGroupSet.has('links')
   const needsTasks = scanGroupSet.has('tasks')
   const needsProperties = scanGroupSet.has('properties')
@@ -395,11 +415,14 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
   const needsPropertyRows = needsProperties || needsBridge
 
   const propertyRows = needsPropertyRows ? getPropertyRows(vaultPath) : []
+  const scopedPropertyRows = candidateNotePaths.size === notes.length
+    ? propertyRows
+    : propertyRows.filter((row) => candidateNotePaths.has(row.filePath))
   const propertyRowsByPath = needsProperties
-    ? new Map(propertyRows.map((row) => [row.filePath, row.properties]))
+    ? new Map(scopedPropertyRows.map((row) => [row.filePath, row.properties]))
     : new Map<string, Record<string, unknown>>()
   const outgoingLinksByNoteId: Map<string, ReturnType<typeof getOutgoingLinks>> = needsOutgoingLinks
-    ? new Map(notes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
+    ? new Map(candidateNotes.map((note) => [note.id, getOutgoingLinks(vaultPath, note.id)]))
     : new Map()
   const taskIndex = needsTasks
     ? indexTasksByPath(getAllTasks(vaultPath), todayIso, upcomingDays)
@@ -408,7 +431,7 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
   const emptyNotePaths = new Set<string>()
   const largeNoteCharactersByPath = new Map<string, number>()
   if (needsStructure) {
-    for (const note of notes) {
+    for (const note of candidateNotes) {
       try {
         const content = readFileSync(join(vaultPath, note.filePath), 'utf-8')
         if (isEmptyMarkdownNote(content)) emptyNotePaths.add(note.filePath)
@@ -421,7 +444,7 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
 
   const titleGroups = new Map<string, { title: string; filePaths: string[] }>()
   if (needsStructure) {
-    for (const note of notes) {
+    for (const note of candidateNotes) {
       const key = note.title.trim().toLowerCase()
       if (!key) continue
       const group = titleGroups.get(key) || { title: note.title, filePaths: [] }
@@ -439,7 +462,7 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
 
   const aliasGroups = new Map<string, { alias: string; filePaths: string[] }>()
   if (needsProperties) {
-    for (const row of propertyRows) {
+    for (const row of scopedPropertyRows) {
       for (const alias of getPropertyTextValues(row.properties.aliases)) {
         const aliasKey = alias.toLowerCase()
         const group = aliasGroups.get(aliasKey) || { alias, filePaths: [] }
@@ -460,7 +483,7 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
 
   const missingPropertiesByPath = new Map<string, string[]>()
   if (needsProperties && requiredProperties.length > 0) {
-    for (const note of notes) {
+    for (const note of candidateNotes) {
       const properties = propertyRowsByPath.get(note.filePath) || {}
       const missing = requiredProperties.filter((key) => !hasNonEmptyProperty(properties, key))
       if (missing.length > 0) missingPropertiesByPath.set(note.filePath, missing)
@@ -469,25 +492,25 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
 
   const bridges = needsBridge
     ? findKnowledgeBridgeNotes({
-      notes,
+      notes: candidateNotes,
       outgoingLinksByNoteId,
-      propertyRows,
+      propertyRows: scopedPropertyRows,
       limit: Math.max(limit, 10)
     })
     : []
 
   const rawLimit = Math.min(500, Math.max(limit, limit * 3))
   const rawItems = buildKnowledgeMaintenanceQueue({
-    notes,
+    notes: candidateNotes,
     outgoingLinksByNoteId,
     backlinkCountByNoteId: needsLinks
-      ? new Map(notes.map((note) => [note.id, getBacklinks(vaultPath, note.id).length]))
+      ? new Map(candidateNotes.map((note) => [note.id, getBacklinks(vaultPath, note.id).length]))
       : new Map(),
     unlinkedMentionCountByNoteId: needsLinks
-      ? new Map(notes.map((note) => [note.id, getUnlinkedMentions(vaultPath, note.id).length]))
+      ? new Map(candidateNotes.map((note) => [note.id, getUnlinkedMentions(vaultPath, note.id).length]))
       : new Map(),
     memoryStatusByNoteId: needsMemory
-      ? new Map(notes.flatMap<[string, 'missing' | 'stale']>((note) => {
+      ? new Map(candidateNotes.flatMap<[string, 'missing' | 'stale']>((note) => {
         const memory = readMemory(vaultPath, note.id)
         if (!memory) return [[note.id, 'missing' as const]]
         if (memory.contentHash !== note.contentHash) return [[note.id, 'stale' as const]]
@@ -499,6 +522,7 @@ function gatherMaintenanceItemsUncached(params: NormalizedMaintenanceQueueParams
     emptyNotePaths,
     largeNoteCharactersByPath,
     missingPropertiesByPath,
+    missingPropertySource: workflowRuleRequiredProperties.length > 0 ? 'workflow_rules' : 'request',
     openTaskCountByPath: taskIndex?.openTaskCountByPath,
     elevatedTaskCountByPath: taskIndex?.elevatedTaskCountByPath,
     overdueTaskInfoByPath: taskIndex?.overdueTaskInfoByPath,

@@ -57,6 +57,7 @@ describe('workflow sample vaults', () => {
     expect(existsSync(adrPath)).toBe(true)
     expect(readFileSync(adrPath, 'utf-8')).toContain('type: adr')
     expect(readFileSync(join(first!.vaultPath, 'Maintenance', 'Workflow Rules.md'), 'utf-8')).toContain('## Health')
+    expect(readFileSync(join(first!.vaultPath, 'Maintenance', 'Workflow Rules.md'), 'utf-8')).toContain('requiredProperties:')
     const templatePack = JSON.parse(readFileSync(join(first!.vaultPath, '.nexusky', 'templates', 'developer.json'), 'utf-8')) as { templates: { id: string }[] }
     expect(templatePack.templates.map((template) => template.id)).toEqual(['developer-adr', 'developer-debug-note', 'developer-review'])
     expect(getAllNotes(first!.vaultPath).map((note) => note.filePath).sort()).toContain('API/Publish Export Contract.md')

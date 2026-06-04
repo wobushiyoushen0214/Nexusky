@@ -60,6 +60,7 @@ interface KnowledgeMaintenanceQueueOptions {
   emptyNotePaths?: Set<string>
   largeNoteCharactersByPath?: Map<string, number>
   missingPropertiesByPath?: Map<string, string[]>
+  missingPropertySource?: 'request' | 'workflow_rules'
   openTaskCountByPath?: Map<string, number>
   elevatedTaskCountByPath?: Map<string, number>
   overdueTaskCountByPath?: Map<string, number>
@@ -155,7 +156,9 @@ function createMaintenanceCopy(language: AppLanguage = 'en') {
     largeReason: () => zh ? '过长的笔记更难导航、总结，也更难精确建立连接。' : 'Very long notes are harder to navigate, summarize, and connect precisely.',
     largeDetail: (characters: number) => zh ? `${characters} 个字符` : `${characters} characters`,
     missingPropertyAction: (properties: string[]) => zh ? `补齐缺失属性：${properties.join(', ')}` : `Fill missing properties: ${properties.join(', ')}`,
-    missingPropertyReason: () => zh ? '一致的元数据能让属性视图、筛选和 Agent 规划更可靠。' : 'Consistent metadata makes Bases, filters, and Agent planning more reliable.',
+    missingPropertyReason: (source?: 'request' | 'workflow_rules') => source === 'workflow_rules'
+      ? (zh ? 'Workflow Rules 要求这些属性，补齐后维护队列、属性视图和 Agent 规划会更可靠。' : 'Workflow Rules require these properties so maintenance, Bases, and Agent planning stay reliable.')
+      : (zh ? '一致的元数据能让属性视图、筛选和 Agent 规划更可靠。' : 'Consistent metadata makes Bases, filters, and Agent planning more reliable.'),
     missingPropertyDetail: (properties: string[]) => zh ? `缺失属性：${properties.join(', ')}` : `Missing properties: ${properties.join(', ')}`,
     bridgeAction: () => zh ? '检查这篇综合笔记，补摘要、目录型链接，或判断是否需要拆分' : 'Review this synthesis note for summary, map-of-content links, or possible split',
     bridgeReason: () => zh ? '这篇笔记连接了多个文件夹或标签簇。' : 'This note connects multiple folders or tag clusters.',
@@ -425,7 +428,7 @@ export function buildKnowledgeMaintenanceQueue(options: KnowledgeMaintenanceQueu
         filePath: note.filePath,
         priority: 50,
         action: copy.missingPropertyAction(missingProperties),
-        reason: copy.missingPropertyReason(),
+        reason: copy.missingPropertyReason(options.missingPropertySource),
         detail: copy.missingPropertyDetail(missingProperties)
       })
     }

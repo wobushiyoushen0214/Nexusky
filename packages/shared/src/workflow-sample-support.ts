@@ -13,19 +13,50 @@ interface WorkflowTemplateDefinition {
   content: string
 }
 
+interface WorkflowMaintenanceRuleConfig {
+  requiredProperties: string[]
+  ignorePaths?: string[]
+  minCharacters?: number
+  upcomingDays?: number
+}
+
 function buildTemplatePack(author: string, tags: string[], templates: WorkflowTemplateDefinition[]): string {
   return `${JSON.stringify({ author, tags, templates }, null, 2)}\n`
 }
 
-function buildMaintenanceRules(title: string, healthChecks: string[], reviewChecks: string[], templateNames: string[]): string {
+function buildMaintenanceRules(
+  title: string,
+  healthChecks: string[],
+  reviewChecks: string[],
+  templateNames: string[],
+  config: WorkflowMaintenanceRuleConfig = {
+    requiredProperties: ['type', 'status', 'tags'],
+    ignorePaths: ['README.md'],
+    minCharacters: 8000,
+    upcomingDays: 7
+  }
+): string {
   return [
     '---',
     `title: ${title} Workflow Rules`,
     'type: maintenance-rules',
     'status: active',
     'tags: [workflow, maintenance, review]',
+    'maintenance:',
+    '  requiredProperties:',
+    ...config.requiredProperties.map((property) => `    - ${property}`),
+    '  ignorePaths:',
+    ...(config.ignorePaths ?? []).map((path) => `    - ${path}`),
+    `  minCharacters: ${config.minCharacters ?? 8000}`,
+    `  upcomingDays: ${config.upcomingDays ?? 7}`,
     '---',
     `# ${title} Workflow Rules`,
+    '',
+    '## Required Properties',
+    ...config.requiredProperties.map((property) => `- ${property}`),
+    '',
+    '## Ignore Paths',
+    ...(config.ignorePaths ?? []).map((path) => `- ${path}`),
     '',
     '## Health',
     ...healthChecks.map((line) => `- ${line}`),
