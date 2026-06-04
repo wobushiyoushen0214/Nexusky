@@ -6,6 +6,22 @@ import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 
+type VaultHealthNextStepId =
+  | 'askAi'
+  | 'fixLinks'
+  | 'reviewStructure'
+  | 'reviewTasks'
+  | 'reviewMemory'
+  | 'reviewStale'
+  | 'openMaintenance'
+  | 'browseGraph'
+
+interface VaultHealthNextStep {
+  id: VaultHealthNextStepId
+  count?: number
+  priority: number
+}
+
 interface VaultHealthScreenProps {
   vaultPath: string
   onDismiss: () => void
@@ -26,10 +42,43 @@ export function buildVaultHealthAskAiDraft(t: TFunction, summary: VaultHealthSum
   }
 }
 
+export function buildVaultHealthNextSteps(summary: VaultHealthSummary): VaultHealthNextStep[] {
+  const factorImpact = new Map(summary.scoreFactors.map((factor) => [factor.id, factor.impact]))
+  const signalSteps: VaultHealthNextStep[] = []
+  const addSignal = (
+    id: VaultHealthNextStepId,
+    count: number,
+    factorId: 'links' | 'tasks' | 'memory' | 'structure' | 'freshness'
+  ) => {
+    if (count <= 0) return
+    signalSteps.push({
+      id,
+      count,
+      priority: (factorImpact.get(factorId) ?? 0) * 1000 + count
+    })
+  }
+
+  addSignal('fixLinks', summary.unresolvedLinkCount, 'links')
+  addSignal('reviewStructure', summary.orphanCount + summary.duplicateTitleCount, 'structure')
+  addSignal('reviewTasks', summary.openTaskCount, 'tasks')
+  addSignal('reviewMemory', summary.missingMemoryCount, 'memory')
+  addSignal('reviewStale', summary.staleNoteCount, 'freshness')
+
+  const sortedSignals = signalSteps.sort((a, b) => b.priority - a.priority).slice(0, 3)
+  const fallbackSteps: VaultHealthNextStep[] = [
+    { id: 'askAi', priority: 0 },
+    { id: 'browseGraph', priority: 0 },
+    { id: 'openMaintenance', priority: 0 }
+  ]
+  return [...sortedSignals, ...fallbackSteps.filter((step) => !sortedSignals.some((signal) => signal.id === step.id))]
+    .slice(0, 3)
+}
+
 export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenProps) {
   const { t } = useTranslation()
   const setRightPanel = useUIStore((s) => s.setRightPanel)
   const setMainView = useUIStore((s) => s.setMainView)
+  const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
   const [summary, setSummary] = useState<VaultHealthSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -65,6 +114,7 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   }
 
   const openMaintenance = async () => {
+    setMaintenancePanelSection('queue')
     setRightPanel('maintenance')
     await dismiss()
   }
@@ -80,6 +130,19 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   const scoreDragFactors = summary
     ? summary.scoreFactors.filter((factor) => factor.impact > 0).sort((a, b) => b.impact - a.impact).slice(0, 3)
     : []
+  const nextSteps = summary ? buildVaultHealthNextSteps(summary) : []
+
+  const runNextStep = async (id: VaultHealthNextStepId) => {
+    if (id === 'askAi') {
+      await askAi()
+      return
+    }
+    if (id === 'browseGraph') {
+      await openGraph()
+      return
+    }
+    await openMaintenance()
+  }
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)', padding: '56px 32px' }}>
@@ -194,25 +257,15 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
               {t('vaultHealth.nextSteps')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <NextStepButton
-                kicker={t('vaultHealth.action.askAi.kicker')}
-                title={t('vaultHealth.action.askAi.title')}
-                desc={t('vaultHealth.action.askAi.desc')}
-                onClick={askAi}
-              />
-              <NextStepButton
-                kicker={t('vaultHealth.action.fixLinks.kicker')}
-                title={t('vaultHealth.action.fixLinks.title', { count: summary.unresolvedLinkCount })}
-                desc={t('vaultHealth.action.fixLinks.desc')}
-                onClick={openMaintenance}
-                disabled={summary.unresolvedLinkCount === 0}
-              />
-              <NextStepButton
-                kicker={t('vaultHealth.action.browseGraph.kicker')}
-                title={t('vaultHealth.action.browseGraph.title')}
-                desc={t('vaultHealth.action.browseGraph.desc')}
-                onClick={openGraph}
-              />
+              {nextSteps.map((step) => (
+                <NextStepButton
+                  key={step.id}
+                  kicker={t(`vaultHealth.action.${step.id}.kicker`)}
+                  title={t(`vaultHealth.action.${step.id}.title`, { count: step.count ?? 0 })}
+                  desc={t(`vaultHealth.action.${step.id}.desc`)}
+                  onClick={() => { void runNextStep(step.id) }}
+                />
+              ))}
             </div>
           </>
         )}

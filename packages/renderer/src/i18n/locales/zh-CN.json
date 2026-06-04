@@ -63,6 +63,31 @@
         "title": "修复 {{count}} 个未解析链接",
         "desc": "打开维护队列，集中处理失效的 wikilink。"
       },
+      "reviewStructure": {
+        "kicker": "审查",
+        "title": "审查 {{count}} 个结构信号",
+        "desc": "检查孤立笔记和重复标题，避免有用上下文被藏起来。"
+      },
+      "reviewTasks": {
+        "kicker": "任务",
+        "title": "审查 {{count}} 个未完成任务",
+        "desc": "打开维护队列，判断哪些任务仍然属于当前 vault。"
+      },
+      "reviewMemory": {
+        "kicker": "记忆",
+        "title": "审查 {{count}} 篇缺少记忆账本的笔记",
+        "desc": "查看哪些笔记还缺少可解释的长期上下文证据。"
+      },
+      "reviewStale": {
+        "kicker": "刷新",
+        "title": "审查 {{count}} 篇陈旧笔记",
+        "desc": "找到可能需要补链接、更新或归档的旧笔记。"
+      },
+      "openMaintenance": {
+        "kicker": "维护",
+        "title": "打开维护队列",
+        "desc": "审查当前 vault 信号，应用安全修复，或跳过不相关事项。"
+      },
       "browseGraph": {
         "kicker": "查看",
         "title": "浏览知识图谱",

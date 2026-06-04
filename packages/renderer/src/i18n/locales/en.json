@@ -63,6 +63,31 @@
         "title": "Resolve {{count}} unresolved links",
         "desc": "Open the maintenance queue and clean up broken wikilinks."
       },
+      "reviewStructure": {
+        "kicker": "Review",
+        "title": "Review {{count}} structure signals",
+        "desc": "Check isolated notes and duplicate titles before they hide useful context."
+      },
+      "reviewTasks": {
+        "kicker": "Tasks",
+        "title": "Review {{count}} open tasks",
+        "desc": "Open the maintenance queue and decide what still belongs in this vault."
+      },
+      "reviewMemory": {
+        "kicker": "Memory",
+        "title": "Review {{count}} notes without Memory Ledger",
+        "desc": "See which notes lack explainable long-context evidence."
+      },
+      "reviewStale": {
+        "kicker": "Refresh",
+        "title": "Review {{count}} stale notes",
+        "desc": "Find old notes that may need links, updates, or archiving."
+      },
+      "openMaintenance": {
+        "kicker": "Maintain",
+        "title": "Open the maintenance queue",
+        "desc": "Review the current vault signals, apply safe fixes, or dismiss what is not relevant."
+      },
       "browseGraph": {
         "kicker": "Map",
         "title": "Browse the knowledge graph",
