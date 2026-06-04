@@ -109,3 +109,19 @@
 - Settings 插件页、命令面板 i18n、插件文档和项目全景文档改为“本地内置包”。
 - `docs/PRODUCT_STRATEGY_ANALYSIS.md` 顶部标记为历史快照，不再承担当前路线图职责。
 - Properties View、Command Palette、官网能力区和路线图文案已收束到 Markdown 属性视图与普通命令入口，不再使用数据库或 Tool Surface 心智锚点。
+
+## 8. 追加审查：默认搜索命名边界
+
+2026-06-04 追加检查范围：官网能力区、默认搜索实现、embedding 评估文档和当前路线图。
+
+### 发现
+
+- 路线图已明确默认搜索是 keyword/FTS/本地词法相关检索，真 embedding 检索仍是评估和未来 opt-in 方向。
+- 官网能力区仍写 `Semantic search` 和 `local semantic ranking`，会让用户误以为默认搜索已经是 embedding 或 provider-backed 语义检索。
+
+### 修复
+
+- 官网能力区改为 `Local search`。
+- 正文改为 full-text search + local relevance ranking，并明确不需要把 vault 发给 provider。
+- `tests/website-homepage.test.ts` 增加合同断言，禁止首页重新出现 `Semantic search` 或 `semantic ranking`。
+- `PRODUCT.md` 追加记录默认搜索命名边界。

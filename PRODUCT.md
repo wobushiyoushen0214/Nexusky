@@ -125,3 +125,7 @@ The Chat `Vault tools` control now follows the active provider's `capabilities.t
 ### 2026-06-04 - Properties and command surfaces stay under Markdown boundaries
 
 Properties View remains a Markdown/frontmatter view, not an object database surface. The command palette now finds it through properties, frontmatter, metadata, and Obsidian terms instead of `database`. The public website also names direct non-chat actions as Command Palette checks, not a top-level Tool Surface. Reason: Properties and direct commands should support the vault workflow without making users learn a database or tool-platform mental model.
+
+### 2026-06-04 - Default search copy names local relevance, not semantic search
+
+The public website now describes the default search path as full-text search plus local relevance ranking. True embedding or hybrid semantic retrieval remains an evaluation/opt-in direction, not a default user promise. Reason: default search should match the actual local FTS and lexical-ranking behavior without implying hidden embedding or provider-backed semantic search.

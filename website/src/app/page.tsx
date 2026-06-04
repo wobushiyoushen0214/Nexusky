@@ -301,8 +301,8 @@ export default function Home() {
         </article>
         <article>
           <Search aria-hidden="true" />
-          <h3>Semantic search</h3>
-          <p>FTS and local semantic ranking keep weak matches discoverable while avoiding cloud lock-in.</p>
+          <h3>Local search</h3>
+          <p>Full-text search and local relevance ranking keep weak matches discoverable without sending your vault to a provider.</p>
         </article>
         <article>
           <LockKeyhole aria-hidden="true" />
