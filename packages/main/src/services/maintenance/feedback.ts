@@ -1,12 +1,17 @@
 import { createHash, randomUUID } from 'crypto'
 import { getDatabase } from '../database'
 import { invalidateVaultQueryCacheWhere } from '../db-query-cache'
-import type { KnowledgeMaintenanceItem, MaintenanceFeedbackStatus } from '@shared/types/ipc'
+import type { KnowledgeMaintenanceItem, MaintenanceFeedbackStatus, MaintenanceFeedbackSummary, MaintenanceFeedbackStatusCounts } from '@shared/types/ipc'
 
 interface MaintenanceFeedbackRow {
   signature: string
   status: MaintenanceFeedbackStatus
   snooze_until: number | null
+  updated_at: number
+}
+
+interface MaintenanceFeedbackSummaryRow {
+  status: MaintenanceFeedbackStatus
   updated_at: number
 }
 
@@ -140,9 +145,42 @@ export function getMaintenanceFeedbackSignature(vaultPath: string): string {
   return `${rows.length}:${hashJson(rows)}`
 }
 
+export function getMaintenanceFeedbackSummary(
+  vaultPath: string,
+  now = Math.floor(Date.now() / 1000)
+): MaintenanceFeedbackSummary {
+  const db = getDatabase(vaultPath)
+  const last7Days = createEmptyStatusCounts()
+  const last30Days = createEmptyStatusCounts()
+  const sevenDayCutoff = now - 7 * 24 * 60 * 60
+  const thirtyDayCutoff = now - 30 * 24 * 60 * 60
+  const rows = db.prepare(`
+    SELECT status, updated_at
+    FROM maintenance_feedback
+    WHERE updated_at >= ?
+  `).all(thirtyDayCutoff) as MaintenanceFeedbackSummaryRow[]
+
+  for (const row of rows) {
+    if (!isMaintenanceFeedbackStatus(row.status)) continue
+    last30Days[row.status] += 1
+    if (row.updated_at >= sevenDayCutoff) last7Days[row.status] += 1
+  }
+
+  return { last7Days, last30Days, updatedAt: now }
+}
+
 function isFeedbackActive(row: MaintenanceFeedbackRow, now: number): boolean {
   if (row.status === 'snoozed') return typeof row.snooze_until === 'number' && row.snooze_until > now
   return row.status === 'done' || row.status === 'skipped' || row.status === 'not_relevant'
+}
+
+function createEmptyStatusCounts(): MaintenanceFeedbackStatusCounts {
+  return {
+    done: 0,
+    skipped: 0,
+    snoozed: 0,
+    not_relevant: 0
+  }
 }
 
 function normalizeSnoozeUntil(value: number | null | undefined, now: number): number {

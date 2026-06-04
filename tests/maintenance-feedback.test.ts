@@ -68,4 +68,33 @@ describe('maintenance feedback', () => {
     expect(afterDone).not.toBe(empty)
     expect(afterSnooze).not.toBe(afterDone)
   })
+
+  it('summarizes recent maintenance feedback by 7 and 30 day windows', async () => {
+    const {
+      getMaintenanceFeedbackSummary,
+      recordMaintenanceFeedback
+    } = await import('../packages/main/src/services/maintenance/feedback')
+    const now = 1_800_000_000
+
+    recordMaintenanceFeedback({ vaultPath, item: makeItem({ title: 'Done' }), status: 'done', now: now - 2 * 24 * 60 * 60 })
+    recordMaintenanceFeedback({ vaultPath, item: makeItem({ title: 'Skipped' }), status: 'skipped', now: now - 8 * 24 * 60 * 60 })
+    recordMaintenanceFeedback({ vaultPath, item: makeItem({ title: 'Snoozed' }), status: 'snoozed', now: now - 1 * 24 * 60 * 60 })
+    recordMaintenanceFeedback({ vaultPath, item: makeItem({ title: 'Not relevant' }), status: 'not_relevant', now: now - 29 * 24 * 60 * 60 })
+    recordMaintenanceFeedback({ vaultPath, item: makeItem({ title: 'Old done' }), status: 'done', now: now - 31 * 24 * 60 * 60 })
+
+    const summary = getMaintenanceFeedbackSummary(vaultPath, now)
+
+    expect(summary.last7Days).toEqual({
+      done: 1,
+      skipped: 0,
+      snoozed: 1,
+      not_relevant: 0
+    })
+    expect(summary.last30Days).toEqual({
+      done: 1,
+      skipped: 1,
+      snoozed: 1,
+      not_relevant: 1
+    })
+  })
 })

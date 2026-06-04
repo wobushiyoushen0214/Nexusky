@@ -193,3 +193,18 @@
 - Renderer 改用 local-pack IPC、state 和 i18n keys。
 - 主进程保留旧 marketplace IPC handler，转发到 local-pack 实现。
 - 插件 API 测试改用 local-pack 函数名。
+
+## 13. 追加审查：维护反馈与健康趋势联动
+
+2026-06-04 追加检查范围：Maintenance Queue feedback、Vault Health trend card 和 `PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md` 的 P0 候选项。
+
+### 发现
+
+- Maintenance feedback 已经能持久化 `done`、`skipped`、`snoozed`、`not_relevant`，但 Health trend 卡只展示分数、周变化和扣分因子。
+- 用户完成、延后或判定不相关的维护动作没有在趋势卡里可见，维护行为和 Vault Health 变化之间缺少产品层反馈。
+
+### 修复
+
+- 新增 `maintenance:get-feedback-summary` 只读 IPC，按最近 7 天和 30 天统计维护反馈状态。
+- Maintenance 的 Vault Health trend 卡展示本周已审查数量、完成数量、延后/跳过数量和不相关数量。
+- `PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md` 将 `Maintenance 完成历史和健康趋势联动` 标记为第一版完成，并保留后续“按修复类型关联 Health Score 因子”的方向。

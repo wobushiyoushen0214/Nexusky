@@ -313,6 +313,31 @@
   white-space: nowrap;
 }
 
+.maintenance-health-trend__feedback {
+  margin-top: 9px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.maintenance-health-trend__feedback span,
+.maintenance-health-trend__feedback small {
+  padding: 2px 7px;
+  border: 1px solid var(--border-faint, rgba(255, 255, 255, 0.04));
+  border-radius: 999px;
+  background: var(--bg-primary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.maintenance-health-trend__feedback span {
+  color: var(--text-secondary);
+  font-weight: 650;
+}
+
 .maintenance-weekly-review__head {
   display: flex;
   align-items: flex-start;

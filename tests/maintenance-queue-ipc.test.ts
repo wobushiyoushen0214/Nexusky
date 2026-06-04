@@ -73,6 +73,14 @@ describe('maintenance IPC types', () => {
       status: 'snoozed',
       snoozeUntil: 1770000000
     }
+    const feedbackSummaryParams: IPCChannelMap['maintenance:get-feedback-summary']['params'] = {
+      vaultPath: '/tmp/vault'
+    }
+    const feedbackSummaryResult: IPCChannelMap['maintenance:get-feedback-summary']['result'] = {
+      last7Days: { done: 1, skipped: 0, snoozed: 1, not_relevant: 0 },
+      last30Days: { done: 2, skipped: 1, snoozed: 1, not_relevant: 1 },
+      updatedAt: 1770000000
+    }
 
     expect(getParams.type).toBe('review_open_tasks')
     expect(getParams.scanGroups).toEqual(['tasks'])
@@ -88,5 +96,8 @@ describe('maintenance IPC types', () => {
     expect(feedbackParams.status).toBe('snoozed')
     expect(feedbackResult.ok).toBe(true)
     expect(feedbackResult.snoozeUntil).toBe(1770000000)
+    expect(feedbackSummaryParams.vaultPath).toBe('/tmp/vault')
+    expect(feedbackSummaryResult.last7Days.done).toBe(1)
+    expect(feedbackSummaryResult.last30Days.not_relevant).toBe(1)
   })
 })

@@ -321,6 +321,13 @@
         "down": "Down {{delta}} point(s) from last week.",
         "flat": "Unchanged from last week.",
         "empty": "Changes appear after a week of snapshots."
+      },
+      "feedback": {
+        "week": "This week: {{count}} reviewed",
+        "done": "{{count}} done",
+        "deferred": "{{count}} deferred",
+        "dismissed": "{{count}} not relevant",
+        "loading": "Loading review history"
       }
     },
     "today": {

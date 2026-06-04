@@ -321,6 +321,13 @@
         "down": "较上一周下降 {{delta}} 分。",
         "flat": "与上一周持平。",
         "empty": "积累一周后会显示变化。"
+      },
+      "feedback": {
+        "week": "本周已审查 {{count}} 项",
+        "done": "完成 {{count}} 项",
+        "deferred": "延后/跳过 {{count}} 项",
+        "dismissed": "不相关 {{count}} 项",
+        "loading": "正在读取维护历史"
       }
     },
     "today": {

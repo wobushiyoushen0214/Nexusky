@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { gatherMaintenanceItems } from '../services/maintenance/queue-builder'
 import { applyMaintenanceFix, type ApplyFixAction } from '../services/maintenance/apply-fix'
-import { isMaintenanceFeedbackStatus, recordMaintenanceFeedback } from '../services/maintenance/feedback'
+import { getMaintenanceFeedbackSummary, isMaintenanceFeedbackStatus, recordMaintenanceFeedback } from '../services/maintenance/feedback'
 import type {
   AppLanguage,
   MaintenanceFeedbackStatus,
@@ -71,5 +71,9 @@ export function registerMaintenanceIPC(): void {
       status: params.status,
       snoozeUntil: params.snoozeUntil
     })
+  })
+
+  ipcMain.handle('maintenance:get-feedback-summary', async (_event, params: { vaultPath: string }) => {
+    return getMaintenanceFeedbackSummary(params.vaultPath)
   })
 }

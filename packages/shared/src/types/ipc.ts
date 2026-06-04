@@ -844,6 +844,14 @@ export interface MaintenanceFeedbackResult {
   snoozeUntil: number | null
 }
 
+export type MaintenanceFeedbackStatusCounts = Record<MaintenanceFeedbackStatus, number>
+
+export interface MaintenanceFeedbackSummary {
+  last7Days: MaintenanceFeedbackStatusCounts
+  last30Days: MaintenanceFeedbackStatusCounts
+  updatedAt: number
+}
+
 export interface AiApplyEditResult {
   success: boolean
   filePath?: string
@@ -1294,6 +1302,10 @@ export interface IPCChannelMap {
       snoozeUntil?: number | null
     }
     result: MaintenanceFeedbackResult
+  }
+  'maintenance:get-feedback-summary': {
+    params: { vaultPath: string }
+    result: MaintenanceFeedbackSummary
   }
   'agent:plan': {
     params: { vaultPath: string; goal: string; description?: string; context?: Record<string, unknown>; dryRun?: boolean }

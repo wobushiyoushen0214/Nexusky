@@ -10,6 +10,7 @@ import type {
   KnowledgeMaintenanceItem,
   KnowledgeMaintenanceType,
   MaintenanceFeedbackStatus,
+  MaintenanceFeedbackSummary,
   LongContextCognitiveReviewResult,
   MaintenanceApplyAction,
   MaintenanceApplyPreview,
@@ -218,6 +219,7 @@ export function MaintenanceQueuePanel() {
   const [weeklyReview, setWeeklyReview] = useState<LongContextCognitiveReviewResult | null>(null)
   const [scanStatus, setScanStatus] = useState<MaintenanceScanStatus | null>(null)
   const [healthSummary, setHealthSummary] = useState<VaultHealthSummary | null>(null)
+  const [feedbackSummary, setFeedbackSummary] = useState<MaintenanceFeedbackSummary | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
   const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
   const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
@@ -234,6 +236,7 @@ export function MaintenanceQueuePanel() {
     setItems([])
     setCounts({})
     setHealthSummary(null)
+    setFeedbackSummary(null)
     setScanStatus(createPendingScanStatus(activeFilter))
     try {
       window.api.invoke('vault:health-scan', { vaultPath })
@@ -242,6 +245,13 @@ export function MaintenanceQueuePanel() {
         })
         .catch(() => {
           if (isCurrentRefresh()) setHealthSummary(null)
+        })
+      window.api.invoke('maintenance:get-feedback-summary', { vaultPath })
+        .then((summary) => {
+          if (isCurrentRefresh()) setFeedbackSummary(summary)
+        })
+        .catch(() => {
+          if (isCurrentRefresh()) setFeedbackSummary(null)
         })
       if (activeFilter !== 'all') {
         const result = await window.api.invoke('maintenance:get-queue', {
@@ -483,7 +493,9 @@ export function MaintenanceQueuePanel() {
           {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
           <div className="maintenance-panel__body">
             {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
-            {vaultPath && healthSummary && <MaintenanceHealthTrendPanel summary={healthSummary} />}
+            {vaultPath && healthSummary && (
+              <MaintenanceHealthTrendPanel summary={healthSummary} feedbackSummary={feedbackSummary} />
+            )}
             {vaultPath && (
               <WeeklyReviewPanel
                 review={weeklyReview}
@@ -563,11 +575,21 @@ interface WeeklyReviewPanelProps {
   onSave: () => void
 }
 
-function MaintenanceHealthTrendPanel({ summary }: { summary: VaultHealthSummary }) {
+function MaintenanceHealthTrendPanel({
+  summary,
+  feedbackSummary
+}: {
+  summary: VaultHealthSummary
+  feedbackSummary: MaintenanceFeedbackSummary | null
+}) {
   const { t } = useTranslation()
   const trend = summary.trend
   const previous = trend.length > 1 ? trend[trend.length - 2] : null
   const delta = previous ? summary.score - previous.score : null
+  const weeklyFeedback = feedbackSummary?.last7Days
+  const weeklyTotal = weeklyFeedback
+    ? weeklyFeedback.done + weeklyFeedback.skipped + weeklyFeedback.snoozed + weeklyFeedback.not_relevant
+    : 0
   const dragFactors = summary.scoreFactors
     .filter((factor) => factor.impact > 0)
     .sort((a, b) => b.impact - a.impact)
@@ -617,6 +639,18 @@ function MaintenanceHealthTrendPanel({ summary }: { summary: VaultHealthSummary 
             </span>
           ))
           : <span>{t('vaultHealth.score.noIssues')}</span>}
+      </div>
+      <div className="maintenance-health-trend__feedback">
+        <span>{t('maintenance.healthTrend.feedback.week', { count: weeklyTotal })}</span>
+        {weeklyFeedback
+          ? (
+            <>
+              <small>{t('maintenance.healthTrend.feedback.done', { count: weeklyFeedback.done })}</small>
+              <small>{t('maintenance.healthTrend.feedback.deferred', { count: weeklyFeedback.skipped + weeklyFeedback.snoozed })}</small>
+              <small>{t('maintenance.healthTrend.feedback.dismissed', { count: weeklyFeedback.not_relevant })}</small>
+            </>
+          )
+          : <small>{t('maintenance.healthTrend.feedback.loading')}</small>}
       </div>
     </section>
   )
