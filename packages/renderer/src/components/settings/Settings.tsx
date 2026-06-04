@@ -2504,6 +2504,20 @@ function KeyBindingsTab() {
   )
 }
 
+const PLUGIN_PERMISSION_LABELS: Record<PluginMarketplaceItem['permissions'][number], string> = {
+  ai_prompt: 'AI 提示',
+  read_only_panel: '只读面板',
+  editor_extension_declaration: '编辑器声明'
+}
+
+function pluginMarketplaceRiskLabel(value: PluginMarketplaceItem['riskLevel']): string {
+  return value === 'medium' ? '需确认' : '低风险'
+}
+
+function pluginMarketplaceSourceLabel(value: PluginMarketplaceItem['source']): string {
+  return value === 'bundled_local' ? '内置本地包' : value
+}
+
 function PluginsTab() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
@@ -2570,7 +2584,7 @@ function PluginsTab() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
           <div>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>精选插件市场</span>
-            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>安装内置工作流插件，立即出现在命令面板、Slash 菜单和插件面板中。</p>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>安装内置本地插件包；不会联网下载，也不会执行任意脚本。</p>
           </div>
           <button
             onClick={installPack}
@@ -2587,6 +2601,7 @@ function PluginsTab() {
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plugin.name}</span>
                   <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{plugin.author} · {plugin.commands.length} commands · {plugin.panels.length} panels</span>
+                  <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{pluginMarketplaceSourceLabel(plugin.source)} · {pluginMarketplaceRiskLabel(plugin.riskLevel)}</span>
                 </span>
                 <button
                   onClick={() => installPlugin(plugin.id)}
@@ -2597,6 +2612,9 @@ function PluginsTab() {
                 </button>
               </div>
               <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {plugin.permissions.map((permission) => (
+                  <span key={permission} title={plugin.installNote} style={{ padding: '2px 5px', borderRadius: 999, border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontSize: 10 }}>{PLUGIN_PERMISSION_LABELS[permission]}</span>
+                ))}
                 {plugin.tags.map((tag) => (
                   <span key={tag} style={{ padding: '2px 5px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
                 ))}

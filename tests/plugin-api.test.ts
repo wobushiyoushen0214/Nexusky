@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getPluginMarketplace, installMarketplacePlugins, normalizePlugin } from '../packages/main/src/ipc/plugin.ipc'
+import { getPluginMarketplace, inferPluginMarketplacePermissions, installMarketplacePlugins, normalizePlugin } from '../packages/main/src/ipc/plugin.ipc'
 
 describe('local plugin API', () => {
   it('normalizes commands, panels, and editor extension declarations', () => {
@@ -56,6 +56,13 @@ describe('local plugin API', () => {
     try {
       let market = await getPluginMarketplace(vaultPath)
       expect(market.some((plugin) => plugin.id === 'market-research-synthesizer' && !plugin.installed)).toBe(true)
+      const featured = market.find((plugin) => plugin.id === 'market-research-synthesizer')
+      expect(featured).toMatchObject({
+        source: 'bundled_local',
+        riskLevel: 'medium',
+        permissions: ['ai_prompt', 'read_only_panel', 'editor_extension_declaration']
+      })
+      expect(featured?.installNote).toContain('does not download or execute remote code')
 
       const result = await installMarketplacePlugins(vaultPath, ['market-research-synthesizer'])
       expect(result.installed).toBe(1)
@@ -68,5 +75,18 @@ describe('local plugin API', () => {
     } finally {
       rmSync(vaultPath, { recursive: true, force: true })
     }
+  })
+
+  it('infers marketplace permissions from declarative plugin capabilities', () => {
+    expect(inferPluginMarketplacePermissions({
+      commands: [{ id: 'ask', title: 'Ask', prompt: 'Ask AI' }],
+      panels: [{ id: 'panel', title: 'Panel' }],
+      editorExtensions: [{ id: 'slash', title: 'Slash', kind: 'slash' }]
+    })).toEqual(['ai_prompt', 'read_only_panel', 'editor_extension_declaration'])
+    expect(inferPluginMarketplacePermissions({
+      commands: [],
+      panels: [{ id: 'panel', title: 'Panel' }],
+      editorExtensions: []
+    })).toEqual(['read_only_panel'])
   })
 })

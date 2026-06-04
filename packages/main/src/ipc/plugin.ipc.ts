@@ -1,7 +1,17 @@
 import { ipcMain } from 'electron'
 import { access, mkdir, readdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
-import type { CssSnippet, LocalPlugin, PluginCommand, PluginEditorExtension, PluginMarketplaceItem, PluginPanel, ThemePackage } from '@shared/types/ipc'
+import type {
+  CssSnippet,
+  LocalPlugin,
+  PluginCommand,
+  PluginEditorExtension,
+  PluginMarketplaceItem,
+  PluginMarketplacePermission,
+  PluginMarketplaceRiskLevel,
+  PluginPanel,
+  ThemePackage
+} from '@shared/types/ipc'
 
 const THEME_VARIABLES = new Set([
   '--bg-base',
@@ -92,7 +102,7 @@ export function normalizePlugin(raw: unknown): LocalPlugin | null {
   return { id: plugin.id, name: plugin.name, version: plugin.version, commands, panels, editorExtensions }
 }
 
-type MarketplacePlugin = LocalPlugin & { author: string; tags: string[] }
+type MarketplacePlugin = LocalPlugin & { author: string; tags: string[]; installNote?: string }
 
 const marketplacePlugins: MarketplacePlugin[] = [
   {
@@ -197,6 +207,18 @@ function pluginDir(vaultPath: string): string {
   return join(vaultPath, '.nexusky', 'plugins')
 }
 
+export function inferPluginMarketplacePermissions(plugin: Pick<LocalPlugin, 'commands' | 'panels' | 'editorExtensions'>): PluginMarketplacePermission[] {
+  const permissions: PluginMarketplacePermission[] = []
+  if (plugin.commands.length > 0) permissions.push('ai_prompt')
+  if (plugin.panels.length > 0) permissions.push('read_only_panel')
+  if (plugin.editorExtensions.length > 0) permissions.push('editor_extension_declaration')
+  return permissions
+}
+
+function inferPluginMarketplaceRisk(plugin: Pick<LocalPlugin, 'commands' | 'editorExtensions'>): PluginMarketplaceRiskLevel {
+  return plugin.commands.length > 0 || plugin.editorExtensions.length > 0 ? 'medium' : 'low'
+}
+
 async function pathExists(path: string): Promise<boolean> {
   try {
     await access(path)
@@ -225,6 +247,10 @@ export async function getPluginMarketplace(vaultPath: string): Promise<PluginMar
   const installedIds = new Set((await listLocalPlugins(vaultPath)).map((plugin) => plugin.id))
   return marketplacePlugins.map((plugin) => ({
     ...plugin,
+    source: 'bundled_local' as const,
+    permissions: inferPluginMarketplacePermissions(plugin),
+    riskLevel: inferPluginMarketplaceRisk(plugin),
+    installNote: plugin.installNote ?? 'Bundled declarative plugin. Installs into .nexusky/plugins and does not download or execute remote code.',
     installed: installedIds.has(plugin.id)
   }))
 }

@@ -141,9 +141,17 @@ export interface LocalPlugin {
   editorExtensions: PluginEditorExtension[]
 }
 
+export type PluginMarketplaceSource = 'bundled_local'
+export type PluginMarketplacePermission = 'ai_prompt' | 'read_only_panel' | 'editor_extension_declaration'
+export type PluginMarketplaceRiskLevel = 'low' | 'medium'
+
 export interface PluginMarketplaceItem extends LocalPlugin {
   author: string
   tags: string[]
+  source: PluginMarketplaceSource
+  permissions: PluginMarketplacePermission[]
+  riskLevel: PluginMarketplaceRiskLevel
+  installNote: string
   installed: boolean
 }
 
