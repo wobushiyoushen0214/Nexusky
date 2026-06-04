@@ -297,6 +297,9 @@ export interface IPCChatMessage {
   content: string | ChatContentPart[]
 }
 
+export type ChatSourceOrigin = 'local_search' | 'context_pack' | 'vault_tool'
+export type ChatSourceMemoryTier = 'hot' | 'warm' | 'cold'
+
 export interface ChatSource {
   title: string
   filePath: string
@@ -306,6 +309,11 @@ export interface ChatSource {
   endLine?: number
   heading?: string
   blockId?: string
+  origins?: ChatSourceOrigin[]
+  explanation?: string
+  evidence?: string[]
+  relationType?: LongContextRelationType
+  memoryTier?: ChatSourceMemoryTier
 }
 
 export type AIOutboundPreviewMode = 'chat' | 'agent'

@@ -7,6 +7,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
+import { getChatSourceProvenance } from './chat-source-provenance'
 
 interface ChatSourceRowProps {
   index: number
@@ -21,6 +22,7 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ relations: LongContextSuggestion[]; themes: LongTermTheme[]; found: boolean } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const provenance = getChatSourceProvenance(source)
 
   const openSourceFile = useCallback(() => {
     const full = resolveVaultSourcePath(vaultPath, source.filePath)
@@ -91,18 +93,29 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
             flex: 1,
             minWidth: 0,
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
             border: 'none',
             background: 'transparent',
             color: 'inherit',
             textAlign: 'left',
             padding: 0,
             font: 'inherit',
-            cursor: source.filePath ? 'pointer' : 'default'
+            cursor: source.filePath ? 'pointer' : 'default',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1
           }}
         >
-          [{index + 1}] {source.title}
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            [{index + 1}] {source.title}
+          </span>
+          {(provenance.originLabelKey || provenance.explanation) && (
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-tertiary)', fontSize: 9.5 }}>
+              {provenance.originLabelKey ? t(provenance.originLabelKey) : t('citationLookup.origin.source')}
+              {source.relationType ? ` · ${getRelationTypeLabel(source.relationType, t)}` : ''}
+              {source.memoryTier ? ` · ${t(`citationLookup.memoryTier.${source.memoryTier}`)}` : ''}
+              {provenance.explanation ? `: ${provenance.explanation}` : ''}
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -144,9 +157,24 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
           maxHeight: 280,
           overflowY: 'auto'
         }}>
+          {provenance.hasContextPack && (
+            <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                {t('citationLookup.contextPackReason')}
+              </div>
+              {provenance.explanation && <div>{provenance.explanation}</div>}
+              {provenance.evidence.length > 0 && (
+                <div style={{ marginTop: 4, color: 'var(--text-tertiary)', fontSize: 10 }}>
+                  {provenance.evidence.join(' · ')}
+                </div>
+              )}
+            </div>
+          )}
           {loading && <div>{t('citationLookup.loading')}</div>}
           {!loading && result && !result.found && (
-            <div style={{ color: 'var(--text-tertiary)' }}>{t('citationLookup.empty')}</div>
+            <div style={{ color: 'var(--text-tertiary)' }}>
+              {provenance.hasContextPack ? t('citationLookup.noExtraRelations') : t('citationLookup.empty')}
+            </div>
           )}
           {!loading && result?.relations.length ? (
             <div>

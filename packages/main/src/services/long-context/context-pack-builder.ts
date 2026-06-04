@@ -321,7 +321,12 @@ function addSource(sources: ChatSource[], item: LongContextPackItem): void {
     title: item.title,
     filePath: item.source,
     chunk,
-    score: item.score ?? item.confidence ?? 0.5
+    score: item.score ?? item.confidence ?? 0.5,
+    origins: ['context_pack'],
+    explanation: item.reason,
+    evidence: item.evidence,
+    relationType: item.relationType,
+    memoryTier: item.tier
   })
 }
 

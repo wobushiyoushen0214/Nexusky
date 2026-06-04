@@ -8,6 +8,7 @@ import { buildLongContextPack, mergeLongContextIntoSystemPrompt, type LongContex
 import { logger } from '../services/logger'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
+import { mergeChatSources } from '@shared/chat-sources'
 import { setAgentToolRunner } from '../services/agent/tool-runner'
 import { consumeStream } from './streams/consume-stream'
 import { AGENT_TOOLS } from './tools/agent-tools'
@@ -27,17 +28,6 @@ import { getAICostBudget, getAIUsageSummary } from '../services/ai/usage'
 
 function getErrorMessage(error: unknown): string {
   return getErrorMessageShared(error)
-}
-
-function mergeChatSources(...groups: (ChatSource[] | undefined)[]): ChatSource[] {
-  const sources: ChatSource[] = []
-  for (const group of groups) {
-    for (const source of group || []) {
-      if (sources.some((item) => item.filePath === source.filePath && item.title === source.title)) continue
-      sources.push(source)
-    }
-  }
-  return sources
 }
 
 function buildLongContextPackSafely(vaultPath?: string, currentFilePath?: string | null, language: AppLanguage = 'zh-CN'): LongContextPack | null {
@@ -197,7 +187,8 @@ ${wrapRetrievedNotes(context)}`
             title: r.title,
             filePath: r.filePath,
             chunk: r.chunk.slice(0, 100),
-            score: r.score
+            score: r.score,
+            origins: ['local_search' as const]
           }))
           window.webContents.send('ai:sources', mergeChatSources(longContextPack?.sources, retrievalSources))
         } else if (params.systemPrompt) {

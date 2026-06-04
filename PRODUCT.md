@@ -157,3 +157,11 @@ Maintenance, Context Pack, and Memory Ledger empty states now explain what is ab
 ### 2026-06-04 - Runtime copy uses vault, not knowledge base
 
 Chat prompts, AI tool descriptions, onboarding, search empty states, publish UI, README, and project overview copy now describe Nexusky as a Markdown vault workbench instead of a generic knowledge base. Reason: even internal AI instructions shape product behavior; they should preserve the user's local Markdown vault as the source of truth and avoid drifting back to abstract knowledge-base positioning.
+
+### 2026-06-04 - Chat sources explain Context Pack recall
+
+Chat sources now keep provenance for local search and Context Pack recall. When the same note appears through both paths, the source row shows local search plus Context Pack, relation type, Hot/Warm/Cold tier, reason, and evidence. Reason: sourced chat should explain not only which Markdown notes were used, but why the long-context layer remembered those relationships.
+
+### 2026-06-04 - Workflow samples open through the maintenance loop
+
+Research, Writing, Developer, and Learning sample vault README files now start with Vault Health, Ask with sources, and Maintenance top 3 before sending users into the sample notes. Reason: samples should demonstrate the product loop for a real Markdown vault, not behave like standalone content templates.

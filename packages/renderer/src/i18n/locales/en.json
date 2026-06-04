@@ -443,12 +443,26 @@
     "why": "Why was this cited?",
     "loading": "Loading...",
     "empty": "No Memory Ledger relation found",
+    "noExtraRelations": "No additional Memory Ledger relation found",
     "relations": "Why this",
     "themes": "Themes",
     "score": "score",
     "confidence": "confidence",
     "openSource": "Open source",
-    "openTarget": "Open related note"
+    "openTarget": "Open related note",
+    "contextPackReason": "Context Pack reason",
+    "origin": {
+      "source": "Source",
+      "localSearch": "Local search",
+      "contextPack": "Context Pack",
+      "blended": "Local search + Context Pack",
+      "vaultTool": "Vault tool"
+    },
+    "memoryTier": {
+      "hot": "Hot",
+      "warm": "Warm",
+      "cold": "Cold"
+    }
   },
   "longContext": {
     "relationType": {

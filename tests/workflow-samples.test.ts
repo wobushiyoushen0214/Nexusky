@@ -30,6 +30,10 @@ describe('workflow sample vaults', () => {
       expect(sample.files.some((file) => file.content.includes('- [ ]'))).toBe(true)
       expect(sample.files.some((file) => /\[\[[^\]]+\]\]/.test(file.content))).toBe(true)
       expect(sample.files.some((file) => file.content.includes('[[Maintenance/Workflow Rules]]'))).toBe(true)
+      const readme = sample.files.find((file) => file.path === 'README.md')?.content || ''
+      expect(readme).toContain('Open Vault Health first')
+      expect(readme).toContain('Ask with sources')
+      expect(readme).toContain("today's top 3")
       const supportFiles = getWorkflowSampleSupportFiles(sample.id)
       expect(supportFiles.some((file) => file.path === 'Maintenance/Workflow Rules.md')).toBe(true)
       expect(supportFiles.some((file) => file.path === `.nexusky/templates/${sample.id}.json`)).toBe(true)

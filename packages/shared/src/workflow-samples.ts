@@ -32,10 +32,10 @@ Use this vault to test literature notes, source notes, digest writing, and weekl
 
 ## Start here
 
-- Read [[Literature/CRDTs for Offline Knowledge Work]].
-- Compare it with [[Sources/Local-first Software Notes]].
-- Turn the open questions in [[Digests/2026-06-01 Research Digest]] into follow-up searches.
-- Close the loop in [[Reviews/2026-W22 Weekly Research Review]].
+- Open Vault Health first and check the top score factors for this sample.
+- Ask with sources: "What should I understand about local-first research here?"
+- Open Maintenance and review today's top 3 items before editing notes.
+- Then read [[Literature/CRDTs for Offline Knowledge Work]] and close the loop in [[Reviews/2026-W22 Weekly Research Review]].
 
 ## Maintenance signals to inspect
 
@@ -193,10 +193,10 @@ This vault models a small essay project: brief, source notes, draft fragments, a
 
 ## Start here
 
-- Open [[Projects/Essay - Local-first AI Workbench]] to see the brief.
-- Reuse evidence from [[Sources/Interview Notes - Knowledge Workers]].
-- Continue [[Drafts/Opening Draft]].
-- Plan the next revision in [[Reviews/2026-W22 Writing Review]].
+- Open Vault Health first and check the top score factors for this sample.
+- Ask with sources: "Which evidence supports the essay thesis?"
+- Open Maintenance and review today's top 3 items before editing notes.
+- Then continue [[Drafts/Opening Draft]] and plan the next revision in [[Reviews/2026-W22 Writing Review]].
 
 ## Maintenance signals to inspect
 
@@ -351,10 +351,10 @@ This vault demonstrates ADRs, debug notes, API notes, and weekly engineering rev
 
 ## Start here
 
-- Read [[ADR/ADR-0001 Local SQLite Index]].
-- Trace an incident in [[Debug/2026-06-01 Search Index Timeout]].
-- Compare the publish contract in [[API/Publish Export Contract]].
-- Review follow-ups in [[Reviews/2026-W22 Engineering Review]].
+- Open Vault Health first and check the top score factors for this sample.
+- Ask with sources: "What repeated engineering risks appear in this vault?"
+- Open Maintenance and review today's top 3 items before editing notes.
+- Then read [[ADR/ADR-0001 Local SQLite Index]] and trace [[Debug/2026-06-01 Search Index Timeout]].
 
 ## Maintenance signals to inspect
 
@@ -506,10 +506,10 @@ This vault demonstrates course notes, concept notes, practice tasks, and weekly 
 
 ## Start here
 
-- Study [[Courses/Systems Thinking/01 Feedback Loops]].
-- Connect it to [[Concepts/Spaced Repetition]].
-- Try [[Practice/Linking Drill]].
-- Reflect in [[Reviews/2026-W22 Learning Review]].
+- Open Vault Health first and check the top score factors for this sample.
+- Ask with sources: "How do feedback loops connect to learning review?"
+- Open Maintenance and review today's top 3 items before editing notes.
+- Then study [[Courses/Systems Thinking/01 Feedback Loops]] and try [[Practice/Linking Drill]].
 
 ## Maintenance signals to inspect
 

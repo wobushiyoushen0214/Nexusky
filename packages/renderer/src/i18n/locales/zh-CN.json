@@ -443,12 +443,26 @@
     "why": "为什么引用此项？",
     "loading": "加载中...",
     "empty": "未找到记忆账本关系",
+    "noExtraRelations": "未找到更多记忆账本关系",
     "relations": "为什么是它",
     "themes": "主题",
     "score": "评分",
     "confidence": "置信度",
     "openSource": "打开来源",
-    "openTarget": "打开关联笔记"
+    "openTarget": "打开关联笔记",
+    "contextPackReason": "上下文包原因",
+    "origin": {
+      "source": "来源",
+      "localSearch": "本地搜索",
+      "contextPack": "上下文包",
+      "blended": "本地搜索 + 上下文包",
+      "vaultTool": "Vault 工具"
+    },
+    "memoryTier": {
+      "hot": "热",
+      "warm": "温",
+      "cold": "冷"
+    }
   },
   "longContext": {
     "relationType": {

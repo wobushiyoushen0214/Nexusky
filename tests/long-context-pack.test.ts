@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mergeChatSources } from '../packages/shared/src/chat-sources'
 import { buildLongContextPack } from '../packages/main/src/services/long-context/context-pack-builder'
 import { upsertRelation } from '../packages/main/src/services/long-context/relation-store'
 
@@ -91,6 +92,13 @@ describe('long-context context pack builder', () => {
     expect(pack.systemText).toContain('Cold Memory')
     expect(pack.systemText).toContain('evidence:')
     expect(pack.sources.map((source) => source.filePath)).toEqual(expect.arrayContaining(['Tool.md', 'Current.md']))
+    expect(pack.sources.find((source) => source.filePath === 'Tool.md')).toMatchObject({
+      origins: ['context_pack'],
+      explanation: 'Both notes connect AI automation with external tool orchestration.',
+      evidence: expect.arrayContaining(['Current note mentions AI automation']),
+      relationType: 'supports_goal',
+      memoryTier: 'hot'
+    })
   })
 
   it('formats archived context in Simplified Chinese when requested', () => {
@@ -109,5 +117,37 @@ describe('long-context context pack builder', () => {
     expect(pack.systemText).toContain('归档记忆')
     expect(pack.systemText).toContain('证据:')
     expect(pack.systemText).not.toContain('supports_goal')
+  })
+
+  it('merges retrieval and Context Pack provenance for the same source', () => {
+    expect(mergeChatSources(
+      [{
+        title: 'Tool Orchestration',
+        filePath: 'Tool.md',
+        chunk: 'Both notes connect AI automation with external tool orchestration.',
+        score: 0.84,
+        origins: ['context_pack'],
+        explanation: 'Both notes connect AI automation with external tool orchestration.',
+        evidence: ['Current note mentions AI automation'],
+        relationType: 'supports_goal',
+        memoryTier: 'hot'
+      }],
+      [{
+        title: 'Tool Orchestration',
+        filePath: 'Tool.md',
+        chunk: 'Tool search match snippet',
+        score: 0.91,
+        origins: ['local_search']
+      }]
+    )).toEqual([expect.objectContaining({
+      title: 'Tool Orchestration',
+      filePath: 'Tool.md',
+      chunk: 'Tool search match snippet',
+      score: 0.91,
+      origins: ['context_pack', 'local_search'],
+      explanation: 'Both notes connect AI automation with external tool orchestration.',
+      relationType: 'supports_goal',
+      memoryTier: 'hot'
+    })])
   })
 })

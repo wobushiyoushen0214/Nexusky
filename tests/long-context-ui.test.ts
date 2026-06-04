@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import i18n from '../packages/renderer/src/i18n'
 import { getRelationTypeLabel } from '../packages/renderer/src/components/long-context/LongContextBadge'
+import { getChatSourceProvenance } from '../packages/renderer/src/components/observability/chat-source-provenance'
+import type { ChatSource } from '../packages/shared/src/types/ipc'
 
 describe('long-context UI helpers', () => {
   afterEach(async () => {
@@ -22,5 +24,26 @@ describe('long-context UI helpers', () => {
     expect(getRelationTypeLabel('supports_goal', t)).toBe('Goal')
     expect(getRelationTypeLabel('blocked_by', t)).toBe('Blocked')
     expect(getRelationTypeLabel('repeated_pattern', t)).toBe('Pattern')
+  })
+
+  it('exposes Context Pack reasons alongside local search provenance', () => {
+    const source: ChatSource = {
+      title: 'Tool Orchestration',
+      filePath: 'Tool.md',
+      chunk: 'Search snippet',
+      score: 0.91,
+      origins: ['local_search', 'context_pack'],
+      explanation: 'Both notes connect AI automation with external tool orchestration.',
+      evidence: ['Current note mentions AI automation', 'Tool note explains orchestration'],
+      relationType: 'supports_goal',
+      memoryTier: 'hot'
+    }
+
+    expect(getChatSourceProvenance(source)).toEqual({
+      originLabelKey: 'citationLookup.origin.blended',
+      hasContextPack: true,
+      explanation: 'Both notes connect AI automation with external tool orchestration.',
+      evidence: ['Current note mentions AI automation', 'Tool note explains orchestration']
+    })
   })
 })

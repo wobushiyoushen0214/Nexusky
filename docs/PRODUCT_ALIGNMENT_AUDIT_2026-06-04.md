@@ -223,3 +223,47 @@
 - ChatPanel 读取 `ai:list-tool-surface`，统计 `read_only`、`preview_write` 和 `agent_only` 工具数量。
 - `Vault 工具` 开关旁展示紧凑边界摘要，tooltip 明确写入仍需编辑模式、维护预览或可审查执行。
 - 新增纯 helper 测试，确保工具分级统计不会把 read-only 和 preview-write 混淆。
+
+## 15. 追加审查：Properties View frontmatter 边界回归
+
+2026-06-04 追加检查范围：Properties View、Command Palette 的 properties/bases 命令、英文/中文 locale 和 `PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md` 的 P1 候选项。
+
+### 发现
+
+- 当前 Properties View 文案已经收束到 frontmatter、属性、标签、别名和 metadata。
+- 这类边界容易在后续新增筛选、列配置或批量编辑时重新滑向 object database / supertag-first 叙事。
+
+### 修复
+
+- 新增 `tests/product-boundary-copy.test.ts`，直接检查 Properties View 命令关键词和核心文案。
+- 测试要求该入口继续包含 frontmatter / metadata 语义，并禁止重新出现 database、object、supertag 作为 Properties View 心智锚点。
+
+## 16. 追加审查：Chat source 与 Context Pack 解释合并
+
+2026-06-04 追加检查范围：普通 `ai:chat` 来源、Context Pack sources、Chat source 行和 `PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md` 的 P0 候选项。
+
+### 发现
+
+- `ai:chat` 已经会同时发送本地检索来源和 Context Pack sources，但前端来源行原本只显示笔记标题。
+- Context Pack 的 reason、evidence、relation type 和 Hot/Warm/Cold 层级没有跟来源行合并展示，用户只能知道“用了哪些笔记”，不能直接知道“为什么想起这些关系”。
+
+### 修复
+
+- `ChatSource` 新增可选 `origins`、`explanation`、`evidence`、`relationType` 和 `memoryTier` 字段，不破坏历史 chat 记录。
+- Context Pack 生成 sources 时附带 reason、evidence、关系类型和记忆层级；本地检索 sources 标记为 `local_search`。
+- 新增 `mergeChatSources` 合并同一来源的本地搜索与 Context Pack provenance，保留检索 snippet，同时显示 Context Pack 解释。
+- Chat source 行显示“本地搜索 + 上下文包”、关系类型、Hot/Warm/Cold 层级和 reason，展开后继续展示 evidence 与 Memory Ledger 关系。
+
+## 17. 追加审查：Workflow sample 首启路径压缩
+
+2026-06-04 追加检查范围：四个 workflow sample README、样例支持文件和 `PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md` 的 P1 候选项。
+
+### 发现
+
+- 四个样例 README 已有真实笔记、链接和 Workflow Rules，但 `Start here` 仍先引导用户阅读样例内容。
+- 这会削弱当前主线：创建样例后应先体验 Vault Health、Ask with sources 和 Maintenance top 3，而不是把样例当成普通模板内容包。
+
+### 修复
+
+- Research / Writing / Developer / Learning 四个 README 的首启步骤统一改为：先打开 Vault Health、再 Ask with sources、然后审查 Maintenance 今日 top 3，最后再进入对应样例笔记。
+- `tests/workflow-samples.test.ts` 增加合同断言，要求每个样例 README 保留这三步首启路径。
