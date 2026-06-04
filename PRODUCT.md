@@ -117,3 +117,7 @@ Agent/tool calling remains available as an opt-in `Vault tools` control inside C
 No-AI copy now says local Files, Search, Graph, Vault Health, and Maintenance remain available without a provider. Provider-required work is described as AI chat, AI edit, Vault tools, Memory generation, or reviewable execution. Reason: the product boundary should explain capability requirements without re-promoting Agent as the default mental model.
 
 Vault Health's Ask AI prompt now asks for local search plus Context Pack, not local search/tools, because the action uses ordinary cited chat.
+
+### 2026-06-04 - Vault tools are provider-capability driven
+
+The Chat `Vault tools` control now follows the active provider's `capabilities.toolCalling`. If no provider is enabled, no vault is open, or the active provider cannot call tools, the control stays disabled and stored tool mode is cleared only after provider capability has been checked. Reason: users should not discover provider limits only after sending a request, and unsupported providers should keep the default cited-answer path.

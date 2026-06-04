@@ -18,6 +18,7 @@ import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEd
 import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate, shouldApplyBatchProgressEvent } from './batch-operation'
 import { stopPendingBatchPlanContent } from './batch-progress'
 import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-stream'
+import { getVaultToolsAvailability, type VaultToolsAvailability } from './vault-tools-capability'
 import { formatAiProviderError } from '../../utils/ai-provider-errors'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
@@ -256,10 +257,22 @@ export function ChatPanel() {
   const [agentMode, setAgentMode] = useState(() => {
     return safeGet('nexusky-agent-mode') === '1'
   })
+  const [vaultToolsAvailability, setVaultToolsAvailability] = useState<VaultToolsAvailability | null>(null)
   const updateAgentMode = (v: boolean) => {
     setAgentMode(v)
     safeSet('nexusky-agent-mode', v ? '1' : '0')
   }
+  const canUseVaultTools = Boolean(vaultPath && vaultToolsAvailability?.supportsVaultTools)
+  const shouldUseVaultTools = Boolean(agentMode && canUseVaultTools)
+  const vaultToolsDisabledTitle = !vaultPath
+    ? '打开 vault 后可启用 Vault 工具'
+    : !vaultToolsAvailability
+      ? '正在检查 AI Provider 能力...'
+      : !vaultToolsAvailability.hasEnabledProvider
+      ? '配置支持工具调用的 AI Provider 后可启用 Vault 工具'
+      : !vaultToolsAvailability.supportsVaultTools
+        ? `${vaultToolsAvailability.providerName || '当前 Provider'} 不支持 Vault 工具`
+        : ''
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
@@ -326,6 +339,16 @@ export function ChatPanel() {
     outboundPreviewRequestRef.current += 1
     setOutboundPreview(null)
   }, [input, attachedNotes, attachedSelections, attachedImages, attachedDocuments, editMode, agentMode, currentFilePath, vaultPath, language])
+
+  useEffect(() => {
+    window.api.invoke('ai:get-providers', undefined)
+      .then((providers) => setVaultToolsAvailability(getVaultToolsAvailability(providers)))
+      .catch(() => setVaultToolsAvailability(getVaultToolsAvailability(null)))
+  }, [])
+
+  useEffect(() => {
+    if (vaultToolsAvailability && agentMode && !canUseVaultTools) updateAgentMode(false)
+  }, [agentMode, canUseVaultTools, vaultToolsAvailability])
 
   useEffect(() => {
     if (!vaultPath) return
@@ -594,6 +617,8 @@ export function ChatPanel() {
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
+    const availability = getVaultToolsAvailability(providers)
+    setVaultToolsAvailability(availability)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       showNoAiProviderToast()
       return
@@ -609,7 +634,7 @@ export function ChatPanel() {
 
     const chatMessages = await buildChatMessages(remaining)
     try {
-      if (agentMode && vaultPath) {
+      if (agentMode && vaultPath && availability.supportsVaultTools) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath, language })
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath, language })
@@ -646,6 +671,8 @@ export function ChatPanel() {
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
+    const availability = getVaultToolsAvailability(providers)
+    setVaultToolsAvailability(availability)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       showNoAiProviderToast()
       return
@@ -663,7 +690,7 @@ export function ChatPanel() {
     const chatMessages = await buildChatMessages(remaining)
     chatMessages.push({ role: 'assistant', content: msg.content })
     try {
-      if (agentMode && vaultPath) {
+      if (agentMode && vaultPath && availability.supportsVaultTools) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath, language })
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath, language })
@@ -1295,6 +1322,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setOutboundPreviewLoading(true)
     try {
       const providers = await window.api.invoke('ai:get-providers', undefined)
+      const availability = getVaultToolsAvailability(providers)
+      setVaultToolsAvailability(availability)
       if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
         showNoAiProviderToast()
         return
@@ -1315,7 +1344,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         vaultPath: vaultPath || undefined,
         currentFilePath,
         language,
-        mode: agentMode && vaultPath ? 'agent' : 'chat'
+        mode: agentMode && vaultPath && availability.supportsVaultTools ? 'agent' : 'chat'
       })
       if (requestId !== outboundPreviewRequestRef.current) return
       const warnings = [...preview.warnings]
@@ -1374,6 +1403,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
 
     const providers = await window.api.invoke('ai:get-providers', undefined)
+    const availability = getVaultToolsAvailability(providers)
+    setVaultToolsAvailability(availability)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       showNoAiProviderToast()
       return
@@ -1471,9 +1502,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       }
 
       try {
-        setToolStatus(agentMode ? 'Vault 工具处理中...' : '正在生成回答...')
+        setToolStatus(agentMode && availability.supportsVaultTools ? 'Vault 工具处理中...' : '正在生成回答...')
         const attachedChatMessages = applyChatAttachments(chatMessages, userMsg.content, contextPrefix, sentImages)
-        if (agentMode) {
+        if (agentMode && availability.supportsVaultTools) {
           await window.api.invoke('ai:chat-agent', { messages: attachedChatMessages, vaultPath, currentFilePath, language })
         } else {
           await window.api.invoke('ai:chat', { messages: attachedChatMessages, vaultPath, currentFilePath, language })
@@ -1725,7 +1756,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     const allMessages = [...messages, userMsg]
     const chatMessages = applyChatAttachments(await buildChatMessages(allMessages), userMsg.content, contextPrefix, sentImages)
     try {
-      if (agentMode && vaultPath) {
+      if (shouldUseVaultTools && vaultPath) {
         await window.api.invoke('ai:chat-agent', { messages: chatMessages, vaultPath, currentFilePath, language })
       } else {
         await window.api.invoke('ai:chat', { messages: chatMessages, vaultPath: vaultPath || undefined, currentFilePath, language })
@@ -2472,16 +2503,25 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             </button>
             {!editMode && (
               <button
-                onClick={() => updateAgentMode(!agentMode)}
+                onClick={() => {
+                  if (!canUseVaultTools) {
+                    updateAgentMode(false)
+                    toast(vaultToolsDisabledTitle || '当前 Provider 不支持 Vault 工具', 'info')
+                    return
+                  }
+                  updateAgentMode(!agentMode)
+                }}
+                disabled={!canUseVaultTools}
                 style={{
-                  height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
+                  height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: canUseVaultTools ? 'pointer' : 'not-allowed',
                   background: agentMode ? 'var(--accent-muted)' : 'transparent',
                   color: agentMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
                   border: 'none',
+                  opacity: canUseVaultTools ? 1 : 0.55,
                   transition: 'all 100ms',
                   display: 'flex', alignItems: 'center', gap: 4,
                 }}
-                title={agentMode ? 'Vault 工具：AI 可按需搜索/读取笔记，修改请切换编辑模式' : '普通模式：使用本地检索和来源引用'}
+                title={canUseVaultTools ? (agentMode ? 'Vault 工具：AI 可按需搜索/读取笔记，修改请切换编辑模式' : '普通模式：使用本地检索和来源引用') : vaultToolsDisabledTitle}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
                 工具
