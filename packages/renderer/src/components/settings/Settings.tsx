@@ -12,7 +12,7 @@ import { applyCssSnippets, CSS_SNIPPETS_UPDATED, getEnabledSnippetNames, loadCss
 import { applyThemePackage, getActiveThemePackageId, loadThemePackages, setActiveThemePackageId, THEME_PACKAGES_UPDATED } from '../../utils/theme-packages'
 import { ProactivePreferencesTab } from '../proactive/ProactivePreferences'
 import { LongContextDebugPanel } from '../observability/LongContextDebugPanel'
-import type { AICostBudget, AIProviderConfig, AIUsageSummary, CloudSyncConflict, CloudSyncHealth, CssSnippet, LocalPlugin, PluginMarketplaceItem, ThemePackage } from '@shared/types/ipc'
+import type { AICostBudget, AIProviderConfig, AIUsageSummary, CloudSyncConflict, CloudSyncHealth, CssSnippet, LocalPlugin, PluginLocalPackItem, ThemePackage } from '@shared/types/ipc'
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
@@ -2504,24 +2504,24 @@ function KeyBindingsTab() {
   )
 }
 
-const PLUGIN_PERMISSION_LABELS: Record<PluginMarketplaceItem['permissions'][number], string> = {
+const PLUGIN_PERMISSION_LABELS: Record<PluginLocalPackItem['permissions'][number], string> = {
   ai_prompt: 'AI 提示',
   read_only_panel: '只读面板',
   editor_extension_declaration: '编辑器声明'
 }
 
-function pluginMarketplaceRiskLabel(value: PluginMarketplaceItem['riskLevel']): string {
+function pluginLocalPackRiskLabel(value: PluginLocalPackItem['riskLevel']): string {
   return value === 'medium' ? '需确认' : '低风险'
 }
 
-function pluginMarketplaceSourceLabel(value: PluginMarketplaceItem['source']): string {
+function pluginLocalPackSourceLabel(value: PluginLocalPackItem['source']): string {
   return value === 'bundled_local' ? '内置本地包' : value
 }
 
 function PluginsTab() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
-  const [marketplace, setMarketplace] = useState<PluginMarketplaceItem[]>([])
+  const [localPack, setLocalPack] = useState<PluginLocalPackItem[]>([])
   const [loading, setLoading] = useState(false)
   const [installing, setInstalling] = useState<string | null>(null)
 
@@ -2529,12 +2529,12 @@ function PluginsTab() {
     if (!vaultPath) return
     setLoading(true)
     try {
-      const [result, market] = await Promise.all([
+      const [result, packItems] = await Promise.all([
         window.api.invoke('plugins:list', { vaultPath }),
-        window.api.invoke('plugins:get-marketplace', { vaultPath })
+        window.api.invoke('plugins:get-local-pack', { vaultPath })
       ])
       setPlugins(result)
-      setMarketplace(market)
+      setLocalPack(packItems)
     } finally {
       setLoading(false)
     }
@@ -2554,10 +2554,10 @@ function PluginsTab() {
     if (!vaultPath) return
     setInstalling(pluginId)
     try {
-      const result = await window.api.invoke('plugins:install-marketplace', { vaultPath, pluginId })
+      const result = await window.api.invoke('plugins:install-local-pack', { vaultPath, pluginId })
       setPlugins(result.plugins)
-      const market = await window.api.invoke('plugins:get-marketplace', { vaultPath })
-      setMarketplace(market)
+      const packItems = await window.api.invoke('plugins:get-local-pack', { vaultPath })
+      setLocalPack(packItems)
       toast(result.installed > 0 ? '插件已安装' : '插件已存在', result.installed > 0 ? 'success' : 'info')
     } finally {
       setInstalling(null)
@@ -2568,10 +2568,10 @@ function PluginsTab() {
     if (!vaultPath) return
     setInstalling('__pack__')
     try {
-      const result = await window.api.invoke('plugins:install-marketplace-pack', { vaultPath })
+      const result = await window.api.invoke('plugins:install-local-pack-bundle', { vaultPath })
       setPlugins(result.plugins)
-      const market = await window.api.invoke('plugins:get-marketplace', { vaultPath })
-      setMarketplace(market)
+      const packItems = await window.api.invoke('plugins:get-local-pack', { vaultPath })
+      setLocalPack(packItems)
       toast(result.installed > 0 ? `已安装 ${result.installed} 个精选插件` : '精选插件已全部安装', result.installed > 0 ? 'success' : 'info')
     } finally {
       setInstalling(null)
@@ -2588,20 +2588,20 @@ function PluginsTab() {
           </div>
           <button
             onClick={installPack}
-            disabled={installing === '__pack__' || marketplace.every((plugin) => plugin.installed)}
-            style={{ flexShrink: 0, fontSize: 11, color: 'var(--accent-text)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: installing === '__pack__' ? 'default' : 'pointer', padding: '4px 8px', borderRadius: 4, opacity: marketplace.every((plugin) => plugin.installed) ? 0.6 : 1 }}
+            disabled={installing === '__pack__' || localPack.every((plugin) => plugin.installed)}
+            style={{ flexShrink: 0, fontSize: 11, color: 'var(--accent-text)', background: 'transparent', border: '1px solid var(--border-subtle)', cursor: installing === '__pack__' ? 'default' : 'pointer', padding: '4px 8px', borderRadius: 4, opacity: localPack.every((plugin) => plugin.installed) ? 0.6 : 1 }}
           >
             {installing === '__pack__' ? '安装中...' : '安装全部精选'}
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
-          {marketplace.map((plugin) => (
+          {localPack.map((plugin) => (
             <div key={plugin.id} style={{ padding: 10, borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plugin.name}</span>
                   <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{plugin.author} · {plugin.commands.length} commands · {plugin.panels.length} panels</span>
-                  <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{pluginMarketplaceSourceLabel(plugin.source)} · {pluginMarketplaceRiskLabel(plugin.riskLevel)}</span>
+                  <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{pluginLocalPackSourceLabel(plugin.source)} · {pluginLocalPackRiskLabel(plugin.riskLevel)}</span>
                 </span>
                 <button
                   onClick={() => installPlugin(plugin.id)}

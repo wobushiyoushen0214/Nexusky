@@ -70,8 +70,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       await navigator.clipboard.writeText(`[[${title}]]`)
       toast(t('commandPalette.toasts.wikilinkCopied'), 'success')
     }},
-    { id: 'template-marketplace-pack', category: 'file', label: t('commandPalette.commands.templateMarketplacePack.label'), description: t('commandPalette.commands.templateMarketplacePack.description'), keywords: ['template', 'local', 'featured', 'pack'], action: async () => {
-      const result = await window.api.invoke('template:install-marketplace-pack', undefined)
+    { id: 'template-local-pack', category: 'file', label: t('commandPalette.commands.templateLocalPack.label'), description: t('commandPalette.commands.templateLocalPack.description'), keywords: ['template', 'local', 'featured', 'pack'], action: async () => {
+      const result = await window.api.invoke('template:install-local-pack-bundle', undefined)
       const { toast } = await import('../stores/toast-store')
       toast(t('commandPalette.toasts.templatesInstalled', { count: result.installed }), result.installed > 0 ? 'success' : 'info')
     }},
@@ -137,10 +137,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         toast(t('commandPalette.toasts.summaryInserted'), 'success')
       }
     }},
-    { id: 'plugin-marketplace-pack', category: 'plugin', label: t('commandPalette.commands.pluginMarketplacePack.label'), description: t('commandPalette.commands.pluginMarketplacePack.description'), keywords: ['plugin', 'local', 'featured', 'pack'], action: async () => {
+    { id: 'plugin-local-pack', category: 'plugin', label: t('commandPalette.commands.pluginLocalPack.label'), description: t('commandPalette.commands.pluginLocalPack.description'), keywords: ['plugin', 'local', 'featured', 'pack'], action: async () => {
       if (!vaultPath) return
       const { toast } = await import('../stores/toast-store')
-      const result = await window.api.invoke('plugins:install-marketplace-pack', { vaultPath })
+      const result = await window.api.invoke('plugins:install-local-pack-bundle', { vaultPath })
       setPlugins(result.plugins)
       toast(result.installed > 0 ? t('commandPalette.toasts.pluginsInstalled', { count: result.installed }) : t('commandPalette.toasts.pluginsAlreadyInstalled'), result.installed > 0 ? 'success' : 'info')
     }},

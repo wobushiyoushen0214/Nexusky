@@ -5,7 +5,7 @@ import { join, dirname } from 'path'
 import { store } from '../services/store'
 import { indexNote } from '../services/indexer'
 import { notifyVaultFilesChanged } from './events'
-import type { NoteTemplate, TemplateMarketplaceItem } from '@shared/types/ipc'
+import type { NoteTemplate, TemplateLocalPackItem } from '@shared/types/ipc'
 
 export function registerTemplateIPC(): void {
   ipcMain.handle('template:daily-note', async (_event, params: { vaultPath: string }) => {
@@ -33,21 +33,33 @@ export function registerTemplateIPC(): void {
     return (store.get('templates') as Template[] | undefined) || defaultTemplates
   })
 
-  ipcMain.handle('template:get-marketplace', () => {
+  const listBundledTemplates = () => {
     const templates = getTemplates()
     const installedIds = new Set(templates.map((template) => template.id))
-    return marketplaceTemplates.map((template) => ({
+    return localPackTemplates.map((template) => ({
       ...template,
       installed: installedIds.has(template.id)
     }))
+  }
+
+  ipcMain.handle('template:get-local-pack', listBundledTemplates)
+
+  ipcMain.handle('template:install-local-pack', (_event, params: { templateId: string }) => {
+    return installLocalPackTemplates([params.templateId])
   })
 
+  ipcMain.handle('template:install-local-pack-bundle', () => {
+    return installLocalPackTemplates(localPackTemplates.map((template) => template.id))
+  })
+
+  ipcMain.handle('template:get-marketplace', listBundledTemplates)
+
   ipcMain.handle('template:install-marketplace', (_event, params: { templateId: string }) => {
-    return installMarketplaceTemplates([params.templateId])
+    return installLocalPackTemplates([params.templateId])
   })
 
   ipcMain.handle('template:install-marketplace-pack', () => {
-    return installMarketplaceTemplates(marketplaceTemplates.map((template) => template.id))
+    return installLocalPackTemplates(localPackTemplates.map((template) => template.id))
   })
 
   ipcMain.handle('template:list-community', async (_event, params: { vaultPath: string }) => {
@@ -81,7 +93,7 @@ export function registerTemplateIPC(): void {
 
 type Template = NoteTemplate
 
-interface MarketplaceTemplate extends Template {
+interface LocalPackTemplate extends Template {
   author: string
   tags: string[]
 }
@@ -90,8 +102,8 @@ function getTemplates(): Template[] {
   return (store.get('templates') as Template[] | undefined) || defaultTemplates
 }
 
-function installMarketplaceTemplates(templateIds: string[]): { installed: number; templates: Template[] } {
-  return installTemplates(marketplaceTemplates.filter((template) => templateIds.includes(template.id)))
+function installLocalPackTemplates(templateIds: string[]): { installed: number; templates: Template[] } {
+  return installTemplates(localPackTemplates.filter((template) => templateIds.includes(template.id)))
 }
 
 function installTemplates(installableTemplates: NoteTemplate[]): { installed: number; templates: Template[] } {
@@ -132,12 +144,12 @@ function normalizeTemplate(raw: unknown, fallbackId: string): NoteTemplate | nul
   }
 }
 
-async function listCommunityTemplates(vaultPath: string): Promise<TemplateMarketplaceItem[]> {
+async function listCommunityTemplates(vaultPath: string): Promise<TemplateLocalPackItem[]> {
   const templatesDir = join(vaultPath, '.nexusky', 'templates')
   await mkdir(templatesDir, { recursive: true })
   const entries = await readdir(templatesDir)
   const installedIds = new Set(getTemplates().map((template) => template.id))
-  const templates: TemplateMarketplaceItem[] = []
+  const templates: TemplateLocalPackItem[] = []
 
   for (const entry of entries) {
     if (!entry.endsWith('.json')) continue
@@ -187,7 +199,7 @@ const defaultTemplates: Template[] = [
   }
 ]
 
-const marketplaceTemplates: MarketplaceTemplate[] = [
+const localPackTemplates: LocalPackTemplate[] = [
   {
     id: 'market-zettelkasten-permanent',
     name: 'Zettelkasten 永久笔记',

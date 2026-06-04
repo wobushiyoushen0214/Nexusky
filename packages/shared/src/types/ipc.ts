@@ -141,19 +141,24 @@ export interface LocalPlugin {
   editorExtensions: PluginEditorExtension[]
 }
 
-export type PluginMarketplaceSource = 'bundled_local'
-export type PluginMarketplacePermission = 'ai_prompt' | 'read_only_panel' | 'editor_extension_declaration'
-export type PluginMarketplaceRiskLevel = 'low' | 'medium'
+export type PluginLocalPackSource = 'bundled_local'
+export type PluginLocalPackPermission = 'ai_prompt' | 'read_only_panel' | 'editor_extension_declaration'
+export type PluginLocalPackRiskLevel = 'low' | 'medium'
 
-export interface PluginMarketplaceItem extends LocalPlugin {
+export interface PluginLocalPackItem extends LocalPlugin {
   author: string
   tags: string[]
-  source: PluginMarketplaceSource
-  permissions: PluginMarketplacePermission[]
-  riskLevel: PluginMarketplaceRiskLevel
+  source: PluginLocalPackSource
+  permissions: PluginLocalPackPermission[]
+  riskLevel: PluginLocalPackRiskLevel
   installNote: string
   installed: boolean
 }
+
+export type PluginMarketplaceSource = PluginLocalPackSource
+export type PluginMarketplacePermission = PluginLocalPackPermission
+export type PluginMarketplaceRiskLevel = PluginLocalPackRiskLevel
+export type PluginMarketplaceItem = PluginLocalPackItem
 
 export interface CssSnippet {
   name: string
@@ -179,11 +184,13 @@ export interface NoteTemplate {
   category?: string
 }
 
-export interface TemplateMarketplaceItem extends NoteTemplate {
+export interface TemplateLocalPackItem extends NoteTemplate {
   author: string
   tags: string[]
   installed: boolean
 }
+
+export type TemplateMarketplaceItem = TemplateLocalPackItem
 
 export interface BacklinkResult {
   sourceTitle: string
@@ -1132,14 +1139,20 @@ export interface IPCChannelMap {
   'template:daily-note': { params: { vaultPath: string }; result: string }
   'template:get-templates': { params: undefined; result: NoteTemplate[] }
   'template:save-templates': { params: { templates: NoteTemplate[] }; result: void }
-  'template:get-marketplace': { params: undefined; result: TemplateMarketplaceItem[] }
+  'template:get-local-pack': { params: undefined; result: TemplateLocalPackItem[] }
+  'template:install-local-pack': { params: { templateId: string }; result: { installed: number; templates: NoteTemplate[] } }
+  'template:install-local-pack-bundle': { params: undefined; result: { installed: number; templates: NoteTemplate[] } }
+  'template:get-marketplace': { params: undefined; result: TemplateLocalPackItem[] }
   'template:install-marketplace': { params: { templateId: string }; result: { installed: number; templates: NoteTemplate[] } }
   'template:install-marketplace-pack': { params: undefined; result: { installed: number; templates: NoteTemplate[] } }
-  'template:list-community': { params: { vaultPath: string }; result: TemplateMarketplaceItem[] }
+  'template:list-community': { params: { vaultPath: string }; result: TemplateLocalPackItem[] }
   'template:install-community-pack': { params: { vaultPath: string }; result: { installed: number; templates: NoteTemplate[] } }
   'template:create-from': { params: { vaultPath: string; templateId: string; title: string }; result: string | null }
   'plugins:list': { params: { vaultPath: string }; result: LocalPlugin[] }
-  'plugins:get-marketplace': { params: { vaultPath: string }; result: PluginMarketplaceItem[] }
+  'plugins:get-local-pack': { params: { vaultPath: string }; result: PluginLocalPackItem[] }
+  'plugins:install-local-pack': { params: { vaultPath: string; pluginId: string }; result: { installed: number; plugins: LocalPlugin[] } }
+  'plugins:install-local-pack-bundle': { params: { vaultPath: string }; result: { installed: number; plugins: LocalPlugin[] } }
+  'plugins:get-marketplace': { params: { vaultPath: string }; result: PluginLocalPackItem[] }
   'plugins:install-marketplace': { params: { vaultPath: string; pluginId: string }; result: { installed: number; plugins: LocalPlugin[] } }
   'plugins:install-marketplace-pack': { params: { vaultPath: string }; result: { installed: number; plugins: LocalPlugin[] } }
   'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }

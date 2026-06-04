@@ -176,3 +176,20 @@
 - Command Palette 的 Maintenance 描述改为 previewable fixes / 可预览修复项。
 - Migration guide 改为 Chat or reviewable execution、Vault tools hints 和 reviewable execution writes。
 - `PRODUCT.md` 追加记录：Agent 是实现路径，用户承诺是 maintenance -> plan -> preview -> execute -> undo。
+
+## 12. 追加审查：本地内置包内部命名
+
+2026-06-04 追加检查范围：插件/模板 bundled pack IPC、shared IPC 类型、Settings 插件页、Command Palette 和插件 API 测试。
+
+### 发现
+
+- 用户可见文案已经改为本地内置包，但 canonical 类型、函数、renderer state 和 IPC 仍用 marketplace。
+- 直接删除旧 IPC 可能影响历史调用和兼容性。
+
+### 修复
+
+- 新增 `PluginLocalPackItem` / `TemplateLocalPackItem` 作为 canonical shared 类型，旧 Marketplace 类型保留为 alias。
+- 新增 `plugins:get-local-pack`、`plugins:install-local-pack`、`plugins:install-local-pack-bundle` 和对应 template local-pack IPC。
+- Renderer 改用 local-pack IPC、state 和 i18n keys。
+- 主进程保留旧 marketplace IPC handler，转发到 local-pack 实现。
+- 插件 API 测试改用 local-pack 函数名。

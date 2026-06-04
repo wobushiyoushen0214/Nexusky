@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getPluginMarketplace, inferPluginMarketplacePermissions, installMarketplacePlugins, normalizePlugin } from '../packages/main/src/ipc/plugin.ipc'
+import { getPluginLocalPack, inferPluginLocalPackPermissions, installLocalPackPlugins, normalizePlugin } from '../packages/main/src/ipc/plugin.ipc'
 
 describe('local plugin API', () => {
   it('normalizes commands, panels, and editor extension declarations', () => {
@@ -51,12 +51,12 @@ describe('local plugin API', () => {
     expect(normalizePlugin(null)).toBeNull()
   })
 
-  it('installs featured marketplace plugins without overwriting existing installs', async () => {
-    const vaultPath = mkdtempSync(join(tmpdir(), 'nexusky-plugin-market-'))
+  it('installs bundled local-pack plugins without overwriting existing installs', async () => {
+    const vaultPath = mkdtempSync(join(tmpdir(), 'nexusky-plugin-pack-'))
     try {
-      let market = await getPluginMarketplace(vaultPath)
-      expect(market.some((plugin) => plugin.id === 'market-research-synthesizer' && !plugin.installed)).toBe(true)
-      const featured = market.find((plugin) => plugin.id === 'market-research-synthesizer')
+      let localPack = await getPluginLocalPack(vaultPath)
+      expect(localPack.some((plugin) => plugin.id === 'market-research-synthesizer' && !plugin.installed)).toBe(true)
+      const featured = localPack.find((plugin) => plugin.id === 'market-research-synthesizer')
       expect(featured).toMatchObject({
         source: 'bundled_local',
         riskLevel: 'medium',
@@ -64,26 +64,26 @@ describe('local plugin API', () => {
       })
       expect(featured?.installNote).toContain('does not download or execute remote code')
 
-      const result = await installMarketplacePlugins(vaultPath, ['market-research-synthesizer'])
+      const result = await installLocalPackPlugins(vaultPath, ['market-research-synthesizer'])
       expect(result.installed).toBe(1)
       expect(result.plugins.map((plugin) => plugin.id)).toContain('market-research-synthesizer')
       expect(readFileSync(join(vaultPath, '.nexusky', 'plugins', 'market-research-synthesizer.json'), 'utf-8')).toContain('Research Synthesizer')
 
-      market = await getPluginMarketplace(vaultPath)
-      expect(market.find((plugin) => plugin.id === 'market-research-synthesizer')?.installed).toBe(true)
-      await expect(installMarketplacePlugins(vaultPath, ['market-research-synthesizer'])).resolves.toMatchObject({ installed: 0 })
+      localPack = await getPluginLocalPack(vaultPath)
+      expect(localPack.find((plugin) => plugin.id === 'market-research-synthesizer')?.installed).toBe(true)
+      await expect(installLocalPackPlugins(vaultPath, ['market-research-synthesizer'])).resolves.toMatchObject({ installed: 0 })
     } finally {
       rmSync(vaultPath, { recursive: true, force: true })
     }
   })
 
-  it('infers marketplace permissions from declarative plugin capabilities', () => {
-    expect(inferPluginMarketplacePermissions({
+  it('infers local-pack permissions from declarative plugin capabilities', () => {
+    expect(inferPluginLocalPackPermissions({
       commands: [{ id: 'ask', title: 'Ask', prompt: 'Ask AI' }],
       panels: [{ id: 'panel', title: 'Panel' }],
       editorExtensions: [{ id: 'slash', title: 'Slash', kind: 'slash' }]
     })).toEqual(['ai_prompt', 'read_only_panel', 'editor_extension_declaration'])
-    expect(inferPluginMarketplacePermissions({
+    expect(inferPluginLocalPackPermissions({
       commands: [],
       panels: [{ id: 'panel', title: 'Panel' }],
       editorExtensions: []

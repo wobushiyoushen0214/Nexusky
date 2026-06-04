@@ -137,3 +137,7 @@ Website metadata and the root package description now name Nexusky as a local Ma
 ### 2026-06-04 - Maintenance copy leads with reviewable execution
 
 Maintenance handoff and migration-guide copy now describe execution as reviewable planning, previewable fixes, and Vault tools context instead of asking users to think in Agent-first terms. Reason: Agent remains an implementation path for advanced execution, but the user promise is maintenance -> plan -> preview -> execute -> undo.
+
+### 2026-06-04 - Local-pack names replace marketplace as the canonical plugin/template API
+
+Plugin and template bundled examples now use local-pack IPC names, types, renderer state, and tests as the canonical implementation language. Legacy marketplace IPC channels and type aliases remain for compatibility only. Reason: bundled examples are local activation aids, not a remote marketplace or platform business.

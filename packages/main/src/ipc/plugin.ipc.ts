@@ -6,9 +6,9 @@ import type {
   LocalPlugin,
   PluginCommand,
   PluginEditorExtension,
-  PluginMarketplaceItem,
-  PluginMarketplacePermission,
-  PluginMarketplaceRiskLevel,
+  PluginLocalPackItem,
+  PluginLocalPackPermission,
+  PluginLocalPackRiskLevel,
   PluginPanel,
   ThemePackage
 } from '@shared/types/ipc'
@@ -102,9 +102,9 @@ export function normalizePlugin(raw: unknown): LocalPlugin | null {
   return { id: plugin.id, name: plugin.name, version: plugin.version, commands, panels, editorExtensions }
 }
 
-type MarketplacePlugin = LocalPlugin & { author: string; tags: string[]; installNote?: string }
+type LocalPackPlugin = LocalPlugin & { author: string; tags: string[]; installNote?: string }
 
-const marketplacePlugins: MarketplacePlugin[] = [
+const localPackPlugins: LocalPackPlugin[] = [
   {
     id: 'market-research-synthesizer',
     name: 'Research Synthesizer',
@@ -207,17 +207,19 @@ function pluginDir(vaultPath: string): string {
   return join(vaultPath, '.nexusky', 'plugins')
 }
 
-export function inferPluginMarketplacePermissions(plugin: Pick<LocalPlugin, 'commands' | 'panels' | 'editorExtensions'>): PluginMarketplacePermission[] {
-  const permissions: PluginMarketplacePermission[] = []
+export function inferPluginLocalPackPermissions(plugin: Pick<LocalPlugin, 'commands' | 'panels' | 'editorExtensions'>): PluginLocalPackPermission[] {
+  const permissions: PluginLocalPackPermission[] = []
   if (plugin.commands.length > 0) permissions.push('ai_prompt')
   if (plugin.panels.length > 0) permissions.push('read_only_panel')
   if (plugin.editorExtensions.length > 0) permissions.push('editor_extension_declaration')
   return permissions
 }
 
-function inferPluginMarketplaceRisk(plugin: Pick<LocalPlugin, 'commands' | 'editorExtensions'>): PluginMarketplaceRiskLevel {
+function inferPluginLocalPackRisk(plugin: Pick<LocalPlugin, 'commands' | 'editorExtensions'>): PluginLocalPackRiskLevel {
   return plugin.commands.length > 0 || plugin.editorExtensions.length > 0 ? 'medium' : 'low'
 }
+
+export const inferPluginMarketplacePermissions = inferPluginLocalPackPermissions
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -243,24 +245,24 @@ async function listLocalPlugins(vaultPath: string): Promise<LocalPlugin[]> {
   return plugins.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-export async function getPluginMarketplace(vaultPath: string): Promise<PluginMarketplaceItem[]> {
+export async function getPluginLocalPack(vaultPath: string): Promise<PluginLocalPackItem[]> {
   const installedIds = new Set((await listLocalPlugins(vaultPath)).map((plugin) => plugin.id))
-  return marketplacePlugins.map((plugin) => ({
+  return localPackPlugins.map((plugin) => ({
     ...plugin,
     source: 'bundled_local' as const,
-    permissions: inferPluginMarketplacePermissions(plugin),
-    riskLevel: inferPluginMarketplaceRisk(plugin),
+    permissions: inferPluginLocalPackPermissions(plugin),
+    riskLevel: inferPluginLocalPackRisk(plugin),
     installNote: plugin.installNote ?? 'Bundled declarative plugin. Installs into .nexusky/plugins and does not download or execute remote code.',
     installed: installedIds.has(plugin.id)
   }))
 }
 
-export async function installMarketplacePlugins(vaultPath: string, pluginIds: string[]): Promise<{ installed: number; plugins: LocalPlugin[] }> {
+export async function installLocalPackPlugins(vaultPath: string, pluginIds: string[]): Promise<{ installed: number; plugins: LocalPlugin[] }> {
   const dir = pluginDir(vaultPath)
   await mkdir(dir, { recursive: true })
   const installedIds = new Set((await listLocalPlugins(vaultPath)).map((plugin) => plugin.id))
   let installed = 0
-  for (const plugin of marketplacePlugins.filter((item) => pluginIds.includes(item.id))) {
+  for (const plugin of localPackPlugins.filter((item) => pluginIds.includes(item.id))) {
     if (installedIds.has(plugin.id)) continue
     const targetPath = join(dir, `${plugin.id}.json`)
     if (await pathExists(targetPath)) continue
@@ -270,6 +272,9 @@ export async function installMarketplacePlugins(vaultPath: string, pluginIds: st
   }
   return { installed, plugins: await listLocalPlugins(vaultPath) }
 }
+
+export const getPluginMarketplace = getPluginLocalPack
+export const installMarketplacePlugins = installLocalPackPlugins
 
 function isSafeCssValue(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= 160 && !/[;{}<>]/.test(value)
@@ -306,16 +311,28 @@ export function registerPluginIPC(): void {
     return listLocalPlugins(params.vaultPath)
   })
 
+  ipcMain.handle('plugins:get-local-pack', async (_event, params: { vaultPath: string }) => {
+    return getPluginLocalPack(params.vaultPath)
+  })
+
+  ipcMain.handle('plugins:install-local-pack', async (_event, params: { vaultPath: string; pluginId: string }) => {
+    return installLocalPackPlugins(params.vaultPath, [params.pluginId])
+  })
+
+  ipcMain.handle('plugins:install-local-pack-bundle', async (_event, params: { vaultPath: string }) => {
+    return installLocalPackPlugins(params.vaultPath, localPackPlugins.map((plugin) => plugin.id))
+  })
+
   ipcMain.handle('plugins:get-marketplace', async (_event, params: { vaultPath: string }) => {
-    return getPluginMarketplace(params.vaultPath)
+    return getPluginLocalPack(params.vaultPath)
   })
 
   ipcMain.handle('plugins:install-marketplace', async (_event, params: { vaultPath: string; pluginId: string }) => {
-    return installMarketplacePlugins(params.vaultPath, [params.pluginId])
+    return installLocalPackPlugins(params.vaultPath, [params.pluginId])
   })
 
   ipcMain.handle('plugins:install-marketplace-pack', async (_event, params: { vaultPath: string }) => {
-    return installMarketplacePlugins(params.vaultPath, marketplacePlugins.map((plugin) => plugin.id))
+    return installLocalPackPlugins(params.vaultPath, localPackPlugins.map((plugin) => plugin.id))
   })
 
   ipcMain.handle('snippets:list', async (_event, params: { vaultPath: string }) => {
