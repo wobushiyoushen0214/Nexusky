@@ -89,6 +89,7 @@ pnpm -C website run build
 - [P0 修复工单](docs/P0_FIX_TICKETS_2026-05.md)：数据安全、安全链和 P1 速修工单。
 - [迁移指南](docs/MIGRATION_GUIDE.md)：Markdown/Obsidian vault 安全打开、备份、忽略规则和 AI 数据边界。
 - [10k+ vault 性能回归](docs/10K_VAULT_PERFORMANCE_REGRESSION.md)：大 vault fixture 生成、手动 UI 回归和可选服务级 smoke 测试。
+- [同步灾难恢复演练](docs/SYNC_DISASTER_RECOVERY_DRILL.md)：本地 fake remote fixture、删除/覆盖/冲突恢复路径和发布前回归标准。
 - [Web Clipper](docs/WEB_CLIPPER.md)：浏览器剪藏扩展和本地接口说明。
 - [本地插件 API](docs/PLUGIN_COMMANDS.md)：声明式插件命令、面板和编辑器扩展格式。
 - [产品未来发展与功能升级](docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md)：基于 v0.8.2 当前状态的下一阶段产品方向、现有功能升级、路线图和指标体系。
