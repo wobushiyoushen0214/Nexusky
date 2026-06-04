@@ -248,6 +248,11 @@
     "emptyTitleChat": "Choose an AI task",
     "emptyTitleEdit": "Choose an editing task",
     "emptyHint": "You can also type a question, or use @ to cite notes.",
+    "vaultToolsBoundary": {
+      "compact": "Read-only {{readOnly}} · preview {{previewWrite}} · execution {{agentOnly}}",
+      "title": "Vault tools available: {{readOnly}} read-only tools, {{previewWrite}} preview-write tools, {{agentOnly}} execution-only tools. Writes still require edit mode, maintenance preview, or reviewable execution.",
+      "loading": "Loading Vault tools boundary"
+    },
     "hints": {
       "citedVaultQuestion": {
         "title": "Ask with sources",

@@ -18,6 +18,7 @@ import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEd
 import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate, shouldApplyBatchProgressEvent } from './batch-operation'
 import { stopPendingBatchPlanContent } from './batch-progress'
 import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-stream'
+import { summarizeVaultToolsBoundary, type VaultToolsBoundarySummary } from './vault-tools-boundary'
 import { getVaultToolsAvailability, type VaultToolsAvailability } from './vault-tools-capability'
 import { formatAiProviderError } from '../../utils/ai-provider-errors'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
@@ -258,6 +259,7 @@ export function ChatPanel() {
     return safeGet('nexusky-agent-mode') === '1'
   })
   const [vaultToolsAvailability, setVaultToolsAvailability] = useState<VaultToolsAvailability | null>(null)
+  const [vaultToolsBoundary, setVaultToolsBoundary] = useState<VaultToolsBoundarySummary | null>(null)
   const updateAgentMode = (v: boolean) => {
     setAgentMode(v)
     safeSet('nexusky-agent-mode', v ? '1' : '0')
@@ -273,6 +275,13 @@ export function ChatPanel() {
       : !vaultToolsAvailability.supportsVaultTools
         ? `${vaultToolsAvailability.providerName || '当前 Provider'} 不支持 Vault 工具`
         : ''
+  const vaultToolsBoundaryTitle = vaultToolsBoundary
+    ? t('chatMessages.vaultToolsBoundary.title', {
+      readOnly: vaultToolsBoundary.readOnly,
+      previewWrite: vaultToolsBoundary.previewWrite,
+      agentOnly: vaultToolsBoundary.agentOnly
+    })
+    : t('chatMessages.vaultToolsBoundary.loading')
 
   // Multi-session state
   const [sessions, setSessions] = useState<{ id: string; title: string; createdAt: number; updatedAt: number }[]>([])
@@ -344,6 +353,12 @@ export function ChatPanel() {
     window.api.invoke('ai:get-providers', undefined)
       .then((providers) => setVaultToolsAvailability(getVaultToolsAvailability(providers)))
       .catch(() => setVaultToolsAvailability(getVaultToolsAvailability(null)))
+  }, [])
+
+  useEffect(() => {
+    window.api.invoke('ai:list-tool-surface', undefined)
+      .then((result) => setVaultToolsBoundary(summarizeVaultToolsBoundary(result.entries)))
+      .catch(() => setVaultToolsBoundary(null))
   }, [])
 
   useEffect(() => {
@@ -2526,6 +2541,29 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
                 工具
               </button>
+            )}
+            {!editMode && canUseVaultTools && (
+              <span
+                title={vaultToolsBoundaryTitle}
+                style={{
+                  minWidth: 0,
+                  maxWidth: 190,
+                  padding: '0 6px',
+                  color: 'var(--text-tertiary)',
+                  fontSize: 10,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {vaultToolsBoundary
+                  ? t('chatMessages.vaultToolsBoundary.compact', {
+                    readOnly: vaultToolsBoundary.readOnly,
+                    previewWrite: vaultToolsBoundary.previewWrite,
+                    agentOnly: vaultToolsBoundary.agentOnly
+                  })
+                  : t('chatMessages.vaultToolsBoundary.loading')}
+              </span>
             )}
             {!editMode && (
               <button

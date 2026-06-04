@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { getChatDraftStorageKey, normalizeChatDraft } from '../packages/renderer/src/components/ai/chat-draft'
+import { summarizeVaultToolsBoundary } from '../packages/renderer/src/components/ai/vault-tools-boundary'
 import { getVaultToolsAvailability } from '../packages/renderer/src/components/ai/vault-tools-capability'
-import type { AIProviderConfig } from '../packages/shared/src/types/ipc'
+import type { AIProviderConfig, ToolSurfaceEntry } from '../packages/shared/src/types/ipc'
 
 describe('chat panel draft persistence helpers', () => {
   it('keys unsent drafts by vault and chat session', () => {
@@ -55,6 +56,31 @@ describe('chat vault tools provider capability', () => {
       hasEnabledProvider: true,
       supportsVaultTools: true,
       providerName: 'Claude'
+    })
+  })
+})
+
+describe('chat vault tools boundary summary', () => {
+  const entry = (name: string, kind: ToolSurfaceEntry['kind']): ToolSurfaceEntry => ({
+    name,
+    kind,
+    category: 'note',
+    labelKey: `aiToolStatus.tools.${name}`,
+    keywords: [],
+    requiresCurrentNote: false
+  })
+
+  it('counts read-only, preview-write, and execution-only tools separately', () => {
+    expect(summarizeVaultToolsBoundary([
+      entry('search_notes', 'read_only'),
+      entry('read_current_note', 'read_only'),
+      entry('plan_knowledge_maintenance', 'preview_write'),
+      entry('execute_plan', 'agent_only')
+    ])).toEqual({
+      total: 4,
+      readOnly: 2,
+      previewWrite: 1,
+      agentOnly: 1
     })
   })
 })

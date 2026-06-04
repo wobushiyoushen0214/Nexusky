@@ -208,3 +208,18 @@
 - 新增 `maintenance:get-feedback-summary` 只读 IPC，按最近 7 天和 30 天统计维护反馈状态。
 - Maintenance 的 Vault Health trend 卡展示本周已审查数量、完成数量、延后/跳过数量和不相关数量。
 - `PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md` 将 `Maintenance 完成历史和健康趋势联动` 标记为第一版完成，并保留后续“按修复类型关联 Health Score 因子”的方向。
+
+## 14. 追加审查：Vault tools 工具清单分级
+
+2026-06-04 追加检查范围：Chat `Vault 工具` 开关、tool surface registry 和 `PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md` 的 P1 候选项。
+
+### 发现
+
+- Chat 已经按 Provider 能力启用或禁用 `Vault 工具`，但开启前没有说明工具清单中哪些是只读、哪些是预览写入、哪些属于执行型边界。
+- 用户可能把 Vault tools 模式误解成静默自动修改 vault，而不是“可调用工具读取上下文，写入仍走编辑、维护预览或可审查执行”。
+
+### 修复
+
+- ChatPanel 读取 `ai:list-tool-surface`，统计 `read_only`、`preview_write` 和 `agent_only` 工具数量。
+- `Vault 工具` 开关旁展示紧凑边界摘要，tooltip 明确写入仍需编辑模式、维护预览或可审查执行。
+- 新增纯 helper 测试，确保工具分级统计不会把 read-only 和 preview-write 混淆。

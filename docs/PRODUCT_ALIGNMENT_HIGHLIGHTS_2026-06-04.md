@@ -27,6 +27,7 @@
 - No-AI 模式和无 Provider toast 不再说 “Agent actions”，改为 “Vault tools / 可审查执行”，让用户理解需要 Provider 的是 AI 工具和执行能力，而不是一个独立 Agent 主产品。
 - Chat 的 `Vault 工具` 开关现在根据当前启用 Provider 的 `capabilities.toolCalling` 启用；不支持工具调用的 Provider 会停留在普通来源问答路径，不再等发送后才报错。
 - Maintenance 的 Vault Health 趋势卡已接入维护反馈摘要，显示最近 7 天完成、延后/跳过和不相关的处理数量，让“维护行为”与“健康趋势”在同一张卡里可见。
+- Chat 的 `Vault 工具` 开关旁现在展示工具清单边界摘要，区分只读、预览写入和执行型工具，避免用户把工具模式误解成静默自动写入。
 
 ## 3. 下一步优化候选
 
@@ -35,7 +36,7 @@
 | P0 | Chat source 与 Context Pack 的解释合并 | 回答里不仅显示“用了哪些笔记”，还显示“为什么想起这些关系” |
 | P0 | Maintenance 完成历史和健康趋势联动（第一版已完成） | 用户能看到本周处理了多少维护项；后续继续把具体修复类型与 Health Score 扣分因子关联 |
 | P1 | Properties View 继续保持轻量 frontmatter 视角 | 避免发展成对象数据库，只做 Markdown/frontmatter 的浏览、筛选和补字段 |
-| P1 | Vault tools 工具清单分级 | 在开启工具前区分“只读工具 / 写入需编辑或维护预览”的边界 |
+| P1 | Vault tools 工具清单分级（第一版已完成） | 在开启工具前区分“只读工具 / 写入需编辑或维护预览”的边界；后续可展开到具体工具清单 |
 | P1 | Workflow sample 的首启路径继续压缩 | 示例 vault 应直接导向 Vault Health、Ask with sources、Maintenance top 3 |
 
 ## 4. 保留原则

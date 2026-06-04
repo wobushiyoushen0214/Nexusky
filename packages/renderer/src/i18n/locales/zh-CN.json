@@ -248,6 +248,11 @@
     "emptyTitleChat": "选择一个 AI 任务",
     "emptyTitleEdit": "选择一个编辑任务",
     "emptyHint": "也可以直接输入问题，或用 @ 引用笔记。",
+    "vaultToolsBoundary": {
+      "compact": "只读 {{readOnly}} · 预览 {{previewWrite}} · 执行 {{agentOnly}}",
+      "title": "Vault 工具清单：{{readOnly}} 个只读工具，{{previewWrite}} 个预览写入工具，{{agentOnly}} 个执行型工具。写入仍需进入编辑模式、维护预览或可审查执行。",
+      "loading": "正在读取 Vault 工具边界"
+    },
     "hints": {
       "citedVaultQuestion": {
         "title": "带来源提问",
