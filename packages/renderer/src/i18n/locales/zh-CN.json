@@ -963,10 +963,10 @@
     "unknownDate": "未知日期"
   },
   "reader": {
-    "title": "阅读收件箱",
+    "title": "导入阅读",
     "summary": "共 {{count}} 条阅读材料，{{unread}} 条待读",
     "intake": "阅读输入",
-    "inboxMetric": "收件",
+    "inboxMetric": "导入",
     "unreadMetric": "待读",
     "visibleMetric": "当前",
     "sourceLabel": "输入源",

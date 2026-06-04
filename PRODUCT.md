@@ -141,3 +141,7 @@ Maintenance handoff and migration-guide copy now describe execution as reviewabl
 ### 2026-06-04 - Local-pack names replace marketplace as the canonical plugin/template API
 
 Plugin and template bundled examples now use local-pack IPC names, types, renderer state, and tests as the canonical implementation language. Legacy marketplace IPC channels and type aliases remain for compatibility only. Reason: bundled examples are local activation aids, not a remote marketplace or platform business.
+
+### 2026-06-04 - Imported reading helpers stay compatibility-only
+
+The retired Reader Inbox component file remains as a holder for imported-reading helpers and tests, but it is not imported by `App`, ActivityBar, or the Command Palette. Any generated digest output now uses `imported-reading` / `Imported Reading Digest` language instead of `reader-inbox` / `Reader Inbox`. Reason: Readwise, Pocket, and Notion imports still produce useful Markdown notes, but the product should not imply a standalone reading inbox is part of the current core loop.

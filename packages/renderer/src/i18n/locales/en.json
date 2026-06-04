@@ -963,10 +963,10 @@
     "unknownDate": "Unknown date"
   },
   "reader": {
-    "title": "Reader Inbox",
+    "title": "Imported Reading",
     "summary": "{{count}} reading items, {{unread}} unread",
     "intake": "Reading intake",
-    "inboxMetric": "Inbox",
+    "inboxMetric": "Imported",
     "unreadMetric": "Unread",
     "visibleMetric": "Visible",
     "sourceLabel": "Sources",

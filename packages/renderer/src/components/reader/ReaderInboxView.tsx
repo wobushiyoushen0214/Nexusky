@@ -8,6 +8,8 @@ import { updateMarkdownProperty } from '../../utils/frontmatter'
 import { safeGetJSON, safeSet, safeSetJSON } from '../../utils/storage'
 import type { PropertyTableRow } from '@shared/types/ipc'
 
+// The standalone Reader Inbox route was retired. These helpers stay for imported
+// Markdown compatibility and tests, not as a current primary product surface.
 type ReaderSource = 'all' | 'notion' | 'readwise' | 'pocket'
 type ReaderSort = 'updated' | 'oldest' | 'title' | 'source'
 type ReaderTriageStage = 'next' | 'connect' | 'later' | 'archived'
@@ -258,14 +260,14 @@ export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new D
   const readerRows = rows.filter((row) => getReaderSource(row))
   const lines = [
     '---',
-    'source: reader-inbox',
+    'source: imported-reading',
     `created: ${date}`,
     `items: ${readerRows.length}`,
     'source_paths:',
     ...readerRows.map((row) => `  - ${row.filePath}`),
     '---',
     '',
-    `# Reading Digest ${date}`,
+    `# Imported Reading Digest ${date}`,
     '',
     '## Focus',
     '',
@@ -296,7 +298,7 @@ export function createReaderDigestMarkdown(rows: PropertyTableRow[], now = new D
 export function createReaderDigestionPrompt(rows: PropertyTableRow[], excerptsByPath: Record<string, string[]> = {}, maxRows = 12): string {
   const readerRows = rows.filter((row) => getReaderSource(row)).slice(0, maxRows)
   const lines = [
-    '请把下面这些阅读收件箱条目当作待消化的信息流处理。',
+    '请把下面这些已导入的阅读材料当作待消化的信息流处理。',
     '',
     '请输出：',
     '1. 值得立刻阅读/处理的 Top 3，并说明原因。',
@@ -474,7 +476,7 @@ const readerToggleStyle: CSSProperties = {
 }
 
 async function getAvailableReaderDigestPath(vaultPath: string, date: string): Promise<string> {
-  const base = `${vaultPath}/Reader Digests/Reading Digest ${date}`
+  const base = `${vaultPath}/Imported Reading Digests/Imported Reading Digest ${date}`
   for (let i = 0; i < 1000; i++) {
     const path = `${base}${i === 0 ? '' : ` ${i + 1}`}.md`
     try {

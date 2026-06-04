@@ -197,10 +197,10 @@ describe('reader inbox helpers', () => {
       'Imports/Pocket/Later.md': ['A compact takeaway from the saved article.']
     })
 
-    expect(digest).toContain('source: reader-inbox')
+    expect(digest).toContain('source: imported-reading')
     expect(digest).toContain('items: 1')
     expect(digest).toContain('source_paths:\n  - Imports/Pocket/Later.md')
-    expect(digest).toContain('# Reading Digest 2026-05-20')
+    expect(digest).toContain('# Imported Reading Digest 2026-05-20')
     expect(digest).toContain('- [[Imports/Pocket/Later|Later]] - Pocket · Ada · unread')
     expect(digest).toContain('  - Path: Imports/Pocket/Later.md')
     expect(digest).toContain('  - Source: https://example.com')
@@ -216,7 +216,7 @@ describe('reader inbox helpers', () => {
       'Imports/Pocket/Later.md': ['A compact takeaway from the saved article.']
     })
 
-    expect(prompt).toContain('待消化的信息流')
+    expect(prompt).toContain('已导入的阅读材料')
     expect(prompt).toContain('值得立刻阅读/处理的 Top 3')
     expect(prompt).toContain('1. Later')
     expect(prompt).toContain('Path: Imports/Pocket/Later.md')
