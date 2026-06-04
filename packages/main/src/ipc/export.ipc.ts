@@ -173,7 +173,7 @@ ${markdownToHtml(params.content)}
     if (!window) return { ok: false, files: 0 }
 
     const result = await dialog.showOpenDialog(window, {
-      title: '发布知识库',
+      title: '发布 vault',
       properties: ['openDirectory', 'createDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return { ok: false, files: 0 }
@@ -526,7 +526,7 @@ ${publishStyles()}
   ${renderPublishSearch()}
 </aside>
 <main>
-  <h1>知识库索引</h1>
+  <h1>Vault 索引</h1>
   <p class="muted">${notes.length} 篇已发布笔记 · ${escapeHtml(scopeLabel)}</p>
   <div class="index-list">
     ${notes.map((note) => `<a class="index-card" href="${note.href}"><strong>${note.title}</strong><span>${note.relPath}</span></a>`).join('\n    ')}
@@ -540,7 +540,7 @@ ${publishSearchScript('index.html')}
 
 function renderPublishSearch(): string {
   return `<div class="site-search">
-  <input id="site-search-input" type="search" placeholder="搜索知识库..." autocomplete="off">
+  <input id="site-search-input" type="search" placeholder="搜索 vault..." autocomplete="off">
   <div id="site-search-results" class="site-search-results"></div>
 </div>`
 }

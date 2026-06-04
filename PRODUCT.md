@@ -153,3 +153,7 @@ The homepage now describes Nexusky as a desktop vault workbench and names the lo
 ### 2026-06-04 - Empty states describe vault evidence
 
 Maintenance, Context Pack, and Memory Ledger empty states now explain what is absent in the current vault instead of using generic `Nothing to do`, `0 suggestions`, or `No memory` copy. Reason: empty states should reinforce the trusted maintenance loop: the app looked at local vault signals and either found work to review or found no explainable evidence yet.
+
+### 2026-06-04 - Runtime copy uses vault, not knowledge base
+
+Chat prompts, AI tool descriptions, onboarding, search empty states, publish UI, README, and project overview copy now describe Nexusky as a Markdown vault workbench instead of a generic knowledge base. Reason: even internal AI instructions shape product behavior; they should preserve the user's local Markdown vault as the source of truth and avoid drifting back to abstract knowledge-base positioning.

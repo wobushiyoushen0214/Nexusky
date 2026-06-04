@@ -230,7 +230,7 @@ const localPackTemplates: LocalPackTemplate[] = [
   {
     id: 'market-weekly-review',
     name: '周复盘',
-    description: '面向长期项目和个人知识库的周度复盘模板',
+    description: '面向长期项目和个人 vault 的周度复盘模板',
     category: '复盘',
     author: 'Nexusky',
     tags: ['review', 'weekly'],

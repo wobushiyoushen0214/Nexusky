@@ -46,7 +46,7 @@ const steps = [
   {
     title: 'AI 深度集成',
     subtitle: '不只是聊天',
-    desc: '对话中 @ 引用任意笔记作为上下文，AI 直接理解你的知识库。\n切换到编辑模式，AI 直接修改文档内容。',
+    desc: '对话中 @ 引用任意笔记作为上下文，AI 直接读取你的 vault 证据。\n切换到编辑模式，AI 先生成可预览的修改方案。',
     visual: (
       <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
         <rect x="12" y="16" width="40" height="32" rx="8" stroke="var(--accent)" strokeWidth="1.2" opacity="0.5" />

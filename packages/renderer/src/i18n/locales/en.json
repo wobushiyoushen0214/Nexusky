@@ -237,11 +237,11 @@
       "rewriteSelection": {
         "title": "Rewrite selection",
         "detail": "Select text in the editor, then refine it",
-        "prompt": "Rewrite the selected text so it is clearer and better suited for long-term knowledge base storage."
+        "prompt": "Rewrite the selected text so it is clearer and better suited for long-term Markdown notes."
       },
       "batchNotes": {
         "title": "Generate linked notes",
-        "detail": "Build a small linked knowledge base around a topic",
+        "detail": "Build a small linked vault section around a topic",
         "prompt": "Generate 5 interlinked Markdown notes around a topic. Each note should have a clear title, summary, key points, and [[bidirectional links]]. Topic:"
       },
       "generateGraph": {
@@ -695,11 +695,11 @@
       "importNotion": { "label": "Import Notion export", "description": "Choose a Notion Markdown, CSV, or HTML export folder and convert page links and database tables" },
       "search": { "label": "Full-text search" },
       "chat": { "label": "Open AI workspace", "description": "Chat, cited answers, editing, and batch generation entry point" },
-      "aiRag": { "label": "Ask from knowledge base", "description": "Search the vault and cite notes automatically" },
+      "aiRag": { "label": "Ask from vault", "description": "Search the vault and cite notes automatically" },
       "aiEditCurrent": { "label": "AI edit current note", "description": "Generate an edit plan and write only after confirmation" },
       "aiRewriteSelection": { "label": "AI rewrite selection", "description": "Use the current selection as editing context" },
       "aiNewNote": { "label": "AI generate new note", "description": "Create a new Markdown note without binding to the current file" },
-      "aiBatchNotes": { "label": "AI batch generate linked notes", "description": "Build a topic knowledge base skeleton" },
+      "aiBatchNotes": { "label": "AI batch generate linked notes", "description": "Build a linked topic note skeleton" },
       "summarize": { "label": "AI summary into current note", "description": "Insert a summary at the beginning of the current note" },
       "pluginLocalPack": { "label": "Install bundled local plugin pack", "description": "Install the bundled research, meeting, and evergreen-note workflow plugins" },
       "graphFull": { "label": "Open full-screen knowledge graph" },
@@ -754,9 +754,9 @@
       "plan_knowledge_maintenance": { "label": "Plan knowledge maintenance", "description": "Generate a maintenance recommendation list" }
     },
     "prompts": {
-      "rag": "Answer based on the current knowledge base:",
+      "rag": "Answer based on the current vault:",
       "editCurrent": "Improve the current note structure, heading hierarchy, and clarity while preserving the original facts.",
-      "rewriteSelection": "Rewrite the selected text so it is clearer and better suited for long-term knowledge base storage.",
+      "rewriteSelection": "Rewrite the selected text so it is clearer and better suited for long-term Markdown notes.",
       "newNote": "Create a complete structured note about:",
       "batchNotes": "Generate 5 interlinked Markdown notes around a topic. Each note should have a clear title, summary, key points, and [[bidirectional links]]. Topic:"
     },
@@ -1096,7 +1096,7 @@
         "forest": { "label": "Forest", "detail": "Soft on eyes" },
         "rose": { "label": "Rose", "detail": "Soft light" },
         "minimal": { "label": "Minimal", "detail": "Reduced color" },
-        "obsidian": { "label": "Obsidian", "detail": "Purple knowledge base" },
+        "obsidian": { "label": "Obsidian", "detail": "Purple vault style" },
         "nord": { "label": "Nord", "detail": "Cool gray blue" },
         "solarized": { "label": "Solarized", "detail": "Long-form reading" },
         "contrast": { "label": "High Contrast", "detail": "Strong readability" }

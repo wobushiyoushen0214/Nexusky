@@ -14,7 +14,7 @@ async function canonicalPath(path: string): Promise<string> {
 export async function requireCurrentVaultPath(providedVaultPath?: string | null): Promise<string> {
   const currentVaultPath = store.get('vaultPath')
   if (typeof currentVaultPath !== 'string' || currentVaultPath.trim().length === 0) {
-    throw new Error('未打开知识库')
+    throw new Error('未打开 vault')
   }
 
   if (providedVaultPath) {

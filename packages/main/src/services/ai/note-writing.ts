@@ -2,7 +2,7 @@ import type { AppLanguage } from '@shared/types/ipc'
 import { getAiOutputLanguageInstruction } from './language'
 
 export function buildGeneratedNoteSystemPrompt(language: AppLanguage = 'zh-CN'): string {
-  return `你是一个知识库笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。
+  return `你是一个 Markdown vault 笔记写作助手。请根据标题和描述，写一篇结构清晰的 Markdown 笔记。
 
 规则：
 1. 第一行必须是 # 标题，标题必须和给定的标题完全一致

@@ -237,11 +237,11 @@
       "rewriteSelection": {
         "title": "改写选中文本",
         "detail": "先在编辑器选中文本，再让 AI 精修",
-        "prompt": "请改写选中文本，使表达更清晰、更适合知识库长期保存。"
+        "prompt": "请改写选中文本，使表达更清晰、更适合长期 Markdown 笔记保存。"
       },
       "batchNotes": {
         "title": "生成关联笔记",
-        "detail": "围绕一个主题搭建小型双链知识库",
+        "detail": "围绕一个主题搭建小型双链笔记组",
         "prompt": "请围绕一个主题生成 5 篇相互关联的 Markdown 笔记，每篇都有清晰标题、摘要、要点和 [[双向链接]]。主题是："
       },
       "generateGraph": {
@@ -288,7 +288,7 @@
     },
     "healthTrend": {
       "title": "Vault Health 趋势",
-      "desc": "最近 8 周的每周快照，用来确认维护是否真的让知识库变轻。",
+      "desc": "最近 8 周的每周快照，用来确认维护是否真的让 vault 变轻。",
       "score": "/100",
       "chartLabel": "最近 8 周健康分趋势",
       "delta": {
@@ -514,7 +514,7 @@
       "list_memory_term_pairs": "分析记忆账本概念共现",
       "list_notes_by_memory_term": "按记忆账本概念找笔记",
       "list_notes_missing_memory": "检查缺失记忆账本",
-      "get_vault_overview": "汇总知识库",
+      "get_vault_overview": "汇总 vault",
       "list_tasks": "查询任务",
       "list_current_note_tasks": "查询当前笔记任务",
       "list_tags": "查询标签",
@@ -695,11 +695,11 @@
       "importNotion": { "label": "导入 Notion 导出", "description": "选择 Notion Markdown、CSV 或 HTML 导出文件夹，转换页面链接和数据库表" },
       "search": { "label": "全文搜索" },
       "chat": { "label": "打开 AI 工作台", "description": "对话、有来源回答、编辑和批量生成入口" },
-      "aiRag": { "label": "基于知识库提问", "description": "自动搜索 vault 并引用笔记来源" },
+      "aiRag": { "label": "向 vault 提问", "description": "自动搜索 vault 并引用笔记来源" },
       "aiEditCurrent": { "label": "AI 修改当前笔记", "description": "生成修改方案，确认后再写入文件" },
       "aiRewriteSelection": { "label": "AI 改写选中文本", "description": "把当前选区作为编辑目标上下文" },
       "aiNewNote": { "label": "AI 生成新笔记", "description": "不绑定当前文件，直接创建新的 Markdown 笔记" },
-      "aiBatchNotes": { "label": "AI 批量生成关联笔记", "description": "适合搭建主题知识库骨架" },
+      "aiBatchNotes": { "label": "AI 批量生成关联笔记", "description": "适合搭建主题笔记骨架" },
       "summarize": { "label": "AI 摘要写入当前笔记", "description": "把摘要插入到当前笔记开头" },
       "pluginLocalPack": { "label": "安装本地内置插件包", "description": "安装随应用提供的研究、会议和常青笔记工作流插件" },
       "graphFull": { "label": "打开全屏知识图谱" },
@@ -712,7 +712,7 @@
       "pull": { "label": "从云端拉取" },
       "exportPdf": { "label": "导出 PDF" },
       "exportHtml": { "label": "导出 HTML" },
-      "publishVault": { "label": "发布知识库静态站点", "description": "先预览导航、链接和缺失资源，再导出可部署 HTML" },
+      "publishVault": { "label": "发布 vault 静态站点", "description": "先预览导航、链接和缺失资源，再导出可部署 HTML" },
       "share": { "label": "分享笔记（复制 HTML）" },
       "outline": { "label": "打开文档大纲" },
       "properties": { "label": "打开笔记属性", "description": "编辑 title、aliases、tags、cssclasses" },
@@ -727,7 +727,7 @@
       "theme": { "label": "切换主题" }
     },
     "toolSurface": {
-      "search_notes": { "label": "搜索笔记", "description": "在知识库中按关键词搜索相关笔记" },
+      "search_notes": { "label": "搜索笔记", "description": "在 vault 中按关键词搜索相关笔记" },
       "find_similar_notes": { "label": "查找相似笔记", "description": "为当前笔记寻找词法相似的其他笔记" },
       "find_memory_related_notes": { "label": "查找记忆账本关联", "description": "基于当前笔记的记忆账本术语查找相关条目" },
       "find_connection_opportunities": { "label": "发现关联机会", "description": "为当前笔记推荐潜在的关联点" },
@@ -749,14 +749,14 @@
       "list_memory_terms": { "label": "列出记忆账本术语", "description": "浏览记忆账本中的所有术语" },
       "list_notes_missing_memory": { "label": "列出缺失记忆账本的笔记", "description": "找出尚未生成记忆账本的笔记" },
       "read_current_note_memory": { "label": "读取当前笔记的记忆账本", "description": "查看当前笔记关联的记忆账本条目" },
-      "list_tasks": { "label": "列出全部任务", "description": "查看知识库内所有任务" },
+      "list_tasks": { "label": "列出全部任务", "description": "查看 vault 内所有任务" },
       "list_current_note_tasks": { "label": "列出当前笔记的任务", "description": "查看当前笔记的待办" },
-      "plan_knowledge_maintenance": { "label": "规划知识维护", "description": "生成知识库维护建议清单" }
+      "plan_knowledge_maintenance": { "label": "规划知识维护", "description": "生成 vault 维护建议清单" }
     },
     "prompts": {
-      "rag": "请基于当前知识库回答：",
+      "rag": "请基于当前 vault 回答：",
       "editCurrent": "请优化当前笔记的结构、标题层级和表达清晰度，保留原有事实。",
-      "rewriteSelection": "请改写选中文本，使表达更清晰、更适合知识库长期保存。",
+      "rewriteSelection": "请改写选中文本，使表达更清晰、更适合长期 Markdown 笔记保存。",
       "newNote": "请创建一篇结构完整的新笔记，主题是：",
       "batchNotes": "请围绕一个主题生成 5 篇相互关联的 Markdown 笔记，每篇都有清晰标题、摘要、要点和 [[双向链接]]。主题是："
     },
@@ -784,7 +784,7 @@
       "htmlDone": "HTML 导出完成",
       "publishDone": "已发布 {{count}} 篇笔记",
       "publishPreviewFailed": "生成发布预览失败",
-      "publishFailed": "发布知识库失败",
+      "publishFailed": "发布 vault 失败",
       "unpublishDone": "已撤回生成站点文件，移除 {{count}} 个文件",
       "unpublishFailed": "撤回发布失败"
     },
@@ -1096,7 +1096,7 @@
         "forest": { "label": "森林绿", "detail": "柔和护眼" },
         "rose": { "label": "玫瑰粉", "detail": "浅色柔和" },
         "minimal": { "label": "极简灰", "detail": "去色干扰" },
-        "obsidian": { "label": "Obsidian", "detail": "紫调知识库" },
+        "obsidian": { "label": "Obsidian", "detail": "紫调 vault" },
         "nord": { "label": "Nord", "detail": "冷灰蓝" },
         "solarized": { "label": "Solarized", "detail": "长读友好" },
         "contrast": { "label": "高对比", "detail": "强可读性" }

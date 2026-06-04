@@ -29,7 +29,7 @@ describe('AI tool status labels', () => {
     expect(formatAiToolStatus('plan_knowledge_maintenance', { query: 'broken' })).toBe('规划知识维护: broken')
     expect(formatAiToolStatus('list_memory_term_pairs', { type: 'mixed' })).toBe('分析记忆账本概念共现: mixed')
     expect(formatAiToolStatus('list_notes_by_property', { key: 'status' })).toBe('按属性找笔记: status')
-    expect(formatAiToolStatus('get_vault_overview')).toBe('汇总知识库')
+    expect(formatAiToolStatus('get_vault_overview')).toBe('汇总 vault')
   })
 
   it('uses the active locale for Memory Ledger tool status labels', async () => {

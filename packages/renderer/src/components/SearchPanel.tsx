@@ -374,7 +374,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
                     ? searchIndexStatus.message || '本地检索索引失败'
                     : searchIndexStatus.total > 0
                       ? `已索引 ${searchIndexStatus.indexed}/${searchIndexStatus.total} 篇`
-                      : '当前知识库还没有可索引的笔记'}
+                      : '当前 vault 还没有可索引的 Markdown 笔记'}
               </span>
               {searchIndexStatus.total > 0 && searchIndexStatus.state === 'indexing' && (
                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexPercent}%</span>

@@ -1721,7 +1721,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           setEditHistory((prev) => [...prev, userMsg.content])
           if (!filePath) {
             if (!vaultPath) {
-              appendAssistantMessage('需要先打开知识库才能创建新笔记。')
+              appendAssistantMessage('需要先打开 vault 才能创建新笔记。')
               return
             }
             const titleMatch = result.content.match(/^#\s+(.+)$/m)

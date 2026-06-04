@@ -5,7 +5,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'search_notes',
-      description: '搜索知识库中的笔记',
+      description: '搜索当前 vault 中的笔记',
       parameters: {
         type: 'object',
         properties: {
@@ -64,7 +64,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_note_memories',
-      description: '列出已生成的笔记记忆摘要、概念和主题，适合先快速了解知识库内容再决定读取哪些笔记。',
+      description: '列出已生成的笔记记忆摘要、概念和主题，适合先快速了解 vault 内容再决定读取哪些笔记。',
       parameters: {
         type: 'object',
         properties: {
@@ -100,7 +100,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_memory_terms',
-      description: '汇总已生成笔记记忆中的概念和主题，帮助发现知识库里的高频知识点。',
+      description: '汇总已生成笔记记忆中的概念和主题，帮助发现 vault 里的高频知识点。',
       parameters: {
         type: 'object',
         properties: {
@@ -275,7 +275,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'get_vault_overview',
-      description: '获取当前知识库的摘要，包括笔记、标签、任务、属性、链接、断链和孤岛笔记数量。',
+      description: '获取当前 vault 的摘要，包括笔记、标签、任务、属性、链接、断链和孤岛笔记数量。',
       parameters: { type: 'object', properties: {} }
     }
   },
@@ -365,7 +365,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_tasks',
-      description: '查询知识库中从 Markdown 任务列表索引出来的任务，默认返回未完成任务。',
+      description: '查询当前 vault 中从 Markdown 任务列表索引出来的任务，默认返回未完成任务。',
       parameters: {
         type: 'object',
         properties: {
@@ -395,7 +395,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_tags',
-      description: '列出知识库中的标签及使用次数，可按标签名过滤。',
+      description: '列出当前 vault 中的标签及使用次数，可按标签名过滤。',
       parameters: {
         type: 'object',
         properties: {
@@ -409,7 +409,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_folders',
-      description: '列出知识库中的笔记文件夹及其笔记数量，可按文件夹路径过滤。',
+      description: '列出当前 vault 中的笔记文件夹及其笔记数量，可按文件夹路径过滤。',
       parameters: {
         type: 'object',
         properties: {
@@ -454,7 +454,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_properties',
-      description: '列出知识库中的结构化属性键、出现次数和样例值。',
+      description: '列出当前 vault 中的结构化属性键、出现次数和样例值。',
       parameters: {
         type: 'object',
         properties: {
@@ -530,7 +530,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_unresolved_links',
-      description: '列出知识库中尚未解析到现有笔记的 wikilink 断链，可按来源、目标或上下文过滤。',
+      description: '列出当前 vault 中尚未解析到现有笔记的 wikilink 断链，可按来源、目标或上下文过滤。',
       parameters: {
         type: 'object',
         properties: {
@@ -586,7 +586,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'list_link_hubs',
-      description: '列出链接最多的枢纽笔记，可按反链、出链或总连接数排序，帮助理解知识库结构。',
+      description: '列出链接最多的枢纽笔记，可按反链、出链或总连接数排序，帮助理解 vault 结构。',
       parameters: {
         type: 'object',
         properties: {
@@ -615,7 +615,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'plan_knowledge_maintenance',
-      description: '生成下一步知识库维护队列，按断链、孤岛、未链接引用和知识桥梁等信号排序，适合回答“我接下来该整理什么”。',
+      description: '生成下一步 vault 维护队列，按断链、孤岛、未链接引用和知识桥梁等信号排序，适合回答“我接下来该整理什么”。',
       parameters: {
         type: 'object',
         properties: {

@@ -1,6 +1,6 @@
 # Nexusky
 
-Nexusky 是一个本地优先的 AI 知识库桌面应用。它把普通 Markdown 文件夹作为真实数据源，用 SQLite 建立索引，用 Electron + React 提供编辑、搜索、图谱、维护和可信 AI 工作流。
+Nexusky 是一个本地优先的 Markdown vault 桌面工作台。它把普通 Markdown 文件夹作为真实数据源，用 SQLite 建立索引，用 Electron + React 提供编辑、搜索、图谱、维护和可信 AI 工作流。
 
 核心目标很直接：让你的笔记可以长期保存在自己控制的文件系统里，同时让 AI 能在需要时读取、连接、维护和解释这些知识。
 

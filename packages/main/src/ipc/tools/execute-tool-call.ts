@@ -138,7 +138,7 @@ export async function executeToolCall(
   vaultPath: string,
   currentFilePath?: string | null
 ): Promise<{ content: string; sources?: { title: string; filePath: string; chunk: string; score: number }[] }> {
-  if (!vaultPath) return { content: '未打开知识库，无法使用笔记工具。' }
+  if (!vaultPath) return { content: '未打开 vault，无法使用笔记工具。' }
   const language = getAppLanguage()
 
   switch (name) {

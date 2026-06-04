@@ -172,7 +172,7 @@ export function buildPlanPrompt(params: PlanAgentRunParams): ChatMessage[] {
     {
       role: 'system',
       content: [
-        'You are designing a step-by-step plan to achieve a user goal in a personal knowledge base.',
+        'You are designing a step-by-step plan to achieve a user goal in a personal Markdown vault.',
         '',
         `Allowed step kinds: ${stepKinds}.`,
         'Allowed tools for tool_call (whitelist):',

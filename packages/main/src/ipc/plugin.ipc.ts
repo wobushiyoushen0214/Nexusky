@@ -116,7 +116,7 @@ const localPackPlugins: LocalPackPlugin[] = [
         id: 'synthesize-sources',
         title: '综合多篇资料',
         description: '把当前上下文整理为可长期保存的研究笔记',
-        prompt: '请基于当前上下文和知识库资料，生成一篇结构化研究综述，包含核心结论、证据、分歧点、待验证问题和建议的 [[双向链接]]。',
+        prompt: '请基于当前上下文和 vault 中的资料，生成一篇结构化研究综述，包含核心结论、证据、分歧点、待验证问题和建议的 [[双向链接]]。',
         mode: 'edit'
       },
       {
@@ -179,7 +179,7 @@ const localPackPlugins: LocalPackPlugin[] = [
       {
         id: 'atomic-note-review',
         title: '检查原子化程度',
-        description: '评估当前笔记是否适合长期知识库',
+        description: '评估当前笔记是否适合长期 Markdown vault',
         prompt: '请检查当前笔记是否足够原子化：指出过大的段落、应该拆分的新笔记、缺少的上下文、可添加的 [[双向链接]] 和更清晰的标题建议。',
         mode: 'chat'
       },

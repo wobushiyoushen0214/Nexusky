@@ -165,7 +165,7 @@ Output exactly one intent name from the list. No punctuation, no explanation.`
         const results = await lexicalSearch(params.vaultPath, queryText, 5)
         if (results.length > 0) {
           const context = results.map((r, i) => `[^${i + 1}] ${r.title}\n${r.chunk}`).join('\n\n---\n\n')
-          const systemContent = params.systemPrompt || `You are the user's personal knowledge base assistant. Answer questions based on retrieved note content.
+          const systemContent = params.systemPrompt || `You are the user's personal Markdown vault assistant. Answer questions based on retrieved note content.
 ${getAiOutputLanguageInstruction(language)}
 
 <response_strategy>
@@ -204,7 +204,7 @@ ${wrapRetrievedNotes(context)}`
           messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(`${params.systemPrompt}\n\n${getAiOutputLanguageInstruction(language)}`, longContextPack, language), messages)
           if (longContextPack?.sources.length) window.webContents.send('ai:sources', longContextPack.sources)
         } else if (longContextPack?.systemText) {
-          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(`You are the user's personal knowledge base assistant. Use the long-term context only when it helps answer the current question.
+          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(`You are the user's personal Markdown vault assistant. Use the long-term context only when it helps answer the current question.
 ${getAiOutputLanguageInstruction(language)}`, longContextPack, language), messages)
           if (longContextPack.sources.length) window.webContents.send('ai:sources', longContextPack.sources)
         }
@@ -339,7 +339,7 @@ ${getAiOutputLanguageInstruction(language)}`, longContextPack, language), messag
       // Build initial messages with system prompt
       let messages = [...params.messages]
       const customPrompt = params.systemPrompt || (store.get('aiSystemPrompt') as string) || ''
-      const defaultSystemPrompt = `你是一个智能知识库助手。你可以搜索和阅读笔记来帮助用户。
+      const defaultSystemPrompt = `你是一个 Markdown vault 助手。你可以搜索和阅读笔记来帮助用户。
 使用工具来获取信息，然后基于获取的内容回答用户问题。
 如果用户的问题可以通过搜索笔记来回答，请先搜索相关内容。
 如果用户想创建或修改笔记，请让用户切换到编辑模式，那里会先展示预览并等待确认。`

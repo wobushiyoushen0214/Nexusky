@@ -6,11 +6,11 @@
 
 ## 1. 一句话理解
 
-Nexusky 是一个 Electron 桌面端、本地优先的 Markdown 知识库笔记应用。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、编辑、批量生成、长期上下文、本地相关检索、知识图谱、维护队列、导入剪藏、同步发布和主动建议等工作流中接入多种 AI Provider。
+Nexusky 是一个 Electron 桌面端、本地优先的 Markdown vault 工作台。它把文件系统中的 Markdown vault 作为真实数据源，用 SQLite 建立索引，用 React/TipTap 提供编辑体验，并在 AI 对话、编辑、批量生成、长期上下文、本地相关检索、知识图谱、维护队列、导入剪藏、同步发布和主动建议等工作流中接入多种 AI Provider。
 
 ## 2. 产品定位
 
-Nexusky 的核心目标是让用户在本地文件夹中长期维护知识资产，同时获得现代知识库工具和 AI 助手能力。
+Nexusky 的核心目标是让用户在本地文件夹中长期维护 Markdown vault，同时获得现代编辑、检索、维护和可信 AI 助手能力。
 
 它不是纯云端笔记软件，也不是只读的 AI 聊天窗口。它的设计重点是：
 
@@ -260,7 +260,7 @@ main/services/*
 | `db:*` | 索引、搜索、图谱、反链、属性、对话历史、本地检索状态 |
 | `flashcards:*` | 历史闪卡兼容：到期队列和评分写回 IPC 仍保留，但渲染层已不再暴露闪卡复习入口 |
 | `kanban:*` | 历史看板兼容：列、任务、关系和 AI plan 预览 IPC 暂时保留，但渲染层已不再暴露独立看板 surface |
-| `ai:*` | Provider、聊天、Agent 工具执行、工具面板 surface、编辑、批量笔记、摘要、历史闪卡生成兼容、标签、语音转写 |
+| `ai:*` | Provider、聊天、Vault tools 执行、编辑、批量笔记、摘要、历史闪卡生成兼容、标签、语音转写 |
 | `maintenance:*` | 知识维护队列查询和自动修复应用 |
 | `proactive:*` | 主动建议列表、单条响应、批量已读/删除、偏好设置和调试运行 |
 | `agent:*` | Agent 规划、运行控制、步骤重试/跳过/回滚、运行列表和反思 |
@@ -649,7 +649,7 @@ pnpm test
 
 | 术语 | 含义 |
 | --- | --- |
-| vault | 用户选择的知识库根目录 |
+| vault | 用户选择的 Markdown 根目录 |
 | note | 一个 Markdown 笔记文件 |
 | wikilink | `[[目标笔记]]` 形式的内部链接 |
 | backlink | 指向当前笔记的其他笔记链接 |
@@ -668,7 +668,7 @@ pnpm test
 | connection opportunity | 基于共同属性/标签等信号发现的、值得用 wikilink 显式串起来的潜在关联 |
 | kanban plan | 看板 AI 工作流先生成、用户可编辑、确认后才写入数据库的中间结果 |
 | GraphMode | `db:get-graph` 的数据模式：`folder`、`semantic`、`connection`、`group`、`folder-scope` |
-| tool surface | 命令面板、编辑器上下文菜单等可触发结构化 AI 工具的前端入口 |
+| Vault tools | 命令面板、编辑器上下文菜单和 Chat 内可触发的结构化 vault 工具 |
 
 ## 21. 与其他文档的关系
 
@@ -736,7 +736,7 @@ pnpm test
 - 前端新增 `AgentRunPanel`，保留 Command Palette、Chat/Kanban hand-off 等入口，不再占用 ActivityBar 默认导航位。
 - AI IPC 被拆分为 provider、transcribe、complete、edit、text-tools、notes、graph 等模块；stream/abort 公共逻辑抽到 `ipc/streams/consume-stream.ts`。
 - Agent tool 定义和执行从 `ai.ipc.ts` 抽到 `ipc/tools/agent-tools.ts` 和 `ipc/tools/execute-tool-call.ts`。
-- 新增 tool surface registry、`ai:run-tool` / `ai:list-tool-surface`、命令面板工具入口、编辑器上下文菜单和结构化结果抽屉。
+- 新增内部 tool-surface registry、`ai:run-tool` / `ai:list-tool-surface`、命令面板工具入口、编辑器上下文菜单和结构化结果抽屉。
 
 ### 22.8 图谱性能与默认视图
 
