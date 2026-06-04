@@ -48,6 +48,10 @@ describe('website homepage copy contract', () => {
     expect(source).toContain('AI calls can include')
     expect(source).toContain('outbound preview')
     expect(source).toContain('Preview first, recover locally')
+    expect(source).toContain('Chat or reviewable execution')
+    expect(source).toContain('Vault tools hints')
+    expect(source).not.toContain('Chat or Agent')
+    expect(source).not.toContain('Agent tool hints')
   })
 
   it('keeps public metadata anchored on the local Markdown vault', () => {

@@ -37,7 +37,7 @@ const firstRunSteps = [
   "Open the folder and let Nexusky finish the Markdown index.",
   "Read Vault Health before configuring any AI provider.",
   "Handle only a few Maintenance items and verify preview, apply and undo.",
-  "Use outbound preview before Chat or Agent sends retrieved context to a provider.",
+  "Use outbound preview before Chat or reviewable execution sends retrieved context to a provider.",
 ];
 
 const ignoreRules = [
@@ -51,8 +51,8 @@ const ignoreRules = [
 
 const dataBoundaries = [
   "Vault Health, search, graph and Maintenance scans work without an AI provider.",
-  "AI calls can include the user prompt, retrieved note snippets, selected attachment text, long-context snippets and Agent tool hints.",
-  "The outbound preview shows a local summary before Chat or Agent sends the request.",
+  "AI calls can include the user prompt, retrieved note snippets, selected attachment text, long-context snippets and Vault tools hints.",
+  "The outbound preview shows a local summary before Chat or reviewable execution sends the request.",
   "Bring-your-own sync uploads only to the backend you configure; hosted backup is still a future add-on.",
 ];
 
@@ -183,7 +183,7 @@ export default function MigrationGuidePage() {
           <h2 id="recovery-title">Preview first, recover locally.</h2>
           <p>
             Markdown writes save history snapshots. Deletes move files into a vault trash
-            folder. Maintenance and Agent writes keep previews and undo information so the
+            folder. Maintenance and reviewable execution writes keep previews and undo information so the
             first migration session can stay small and reversible.
           </p>
         </div>

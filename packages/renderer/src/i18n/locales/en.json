@@ -267,9 +267,9 @@
     "contextEmpty": "Open a note to view related context.",
     "noVault": "Open a vault first",
     "agentBatch": {
-      "title": "Send the top maintenance items to Agent for a reviewable plan",
-      "action": "Batch plan",
-      "empty": "No maintenance items to hand off."
+      "title": "Create a reviewable execution plan for the top maintenance items",
+      "action": "Plan execution",
+      "empty": "No maintenance items are ready for execution planning."
     },
     "weeklyReview": {
       "title": "Weekly cognitive review",
@@ -719,7 +719,7 @@
       "settings": { "label": "Open settings" },
       "viewContextPack": { "label": "View Context Pack", "description": "Inspect Active / Nearby / Archive Memory Ledger tiers, token usage, and tuning" },
       "openAgent": { "label": "Review execution history", "description": "Advanced: inspect saved plans, steps, reflections, and rollback records" },
-      "openMaintenance": { "label": "Open maintenance queue", "description": "Browse unresolved links, orphan notes, open tasks and one-click fixes" },
+      "openMaintenance": { "label": "Open maintenance queue", "description": "Browse unresolved links, orphan notes, open tasks, and previewable fixes" },
       "newWindow": { "label": "Open new window", "description": "Create an independent Nexusky window for viewing different areas in parallel" },
       "sidebar": { "label": "Toggle sidebar" },
       "resetWorkspace": { "label": "Reset workspace layout", "description": "Restore the editor, sidebar, and right panel default layout" },

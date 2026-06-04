@@ -267,9 +267,9 @@
     "contextEmpty": "打开一篇笔记后查看相关上下文。",
     "noVault": "请先打开一个 vault",
     "agentBatch": {
-      "title": "把优先维护项交给 Agent 生成可审查计划",
-      "action": "批量计划",
-      "empty": "暂无可交给 Agent 的维护项。"
+      "title": "为优先维护项生成可审查执行计划",
+      "action": "规划执行",
+      "empty": "暂无可生成执行计划的维护项。"
     },
     "weeklyReview": {
       "title": "每周认知复盘",
@@ -719,7 +719,7 @@
       "settings": { "label": "打开设置" },
       "viewContextPack": { "label": "查看上下文包", "description": "查看活跃 / 邻近 / 归档三层记忆账本、token 占用与调参" },
       "openAgent": { "label": "查看执行历史", "description": "高级入口：检查已保存的计划、步骤、反思和回滚记录" },
-      "openMaintenance": { "label": "打开知识维护队列", "description": "查看未解析链接、孤立笔记、未完任务等可一键修复项" },
+      "openMaintenance": { "label": "打开知识维护队列", "description": "查看未解析链接、孤立笔记、未完任务和可预览修复项" },
       "newWindow": { "label": "打开新窗口", "description": "新建一个独立 Nexusky 窗口，可并行查看不同视图" },
       "sidebar": { "label": "切换侧边栏" },
       "resetWorkspace": { "label": "重置工作区布局", "description": "恢复编辑器、侧栏和右侧面板默认布局" },

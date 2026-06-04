@@ -159,3 +159,20 @@
 - 英文 `reader.openInSpace` 改为 `Locate in properties view`。
 - 英文 tagged triage reason 改为在 properties view 整理。
 - 不改 Reader 兼容组件结构；本次只清理已经移除的 Generic Knowledge Space 用户心智残留。
+
+## 11. 追加审查：Maintenance 执行入口文案
+
+2026-06-04 追加检查范围：Maintenance handoff、Command Palette 的 Maintenance 描述、官网 migration guide 和 No-AI / Vault tools 边界。
+
+### 发现
+
+- Maintenance 批量入口仍写 `Send the top maintenance items to Agent...`，中文也直接写“交给 Agent”。
+- Command Palette 的 Maintenance 描述写 `one-click fixes` / “可一键修复项”，弱化了 preview-first 写入边界。
+- 官网 migration guide 仍写 `Chat or Agent`、`Agent tool hints`、`Maintenance and Agent writes`。
+
+### 修复
+
+- Maintenance 批量入口改为创建可审查执行计划，按钮改为规划执行。
+- Command Palette 的 Maintenance 描述改为 previewable fixes / 可预览修复项。
+- Migration guide 改为 Chat or reviewable execution、Vault tools hints 和 reviewable execution writes。
+- `PRODUCT.md` 追加记录：Agent 是实现路径，用户承诺是 maintenance -> plan -> preview -> execute -> undo。

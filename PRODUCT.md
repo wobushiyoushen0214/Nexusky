@@ -133,3 +133,7 @@ The public website now describes the default search path as full-text search plu
 ### 2026-06-04 - Public metadata follows the vault workbench story
 
 Website metadata and the root package description now name Nexusky as a local Markdown vault workbench rather than an AI-powered knowledge base. Reason: public snippets should match the product's first promise: open a real vault, inspect health, ask with sources, and preview writes before AI changes files.
+
+### 2026-06-04 - Maintenance copy leads with reviewable execution
+
+Maintenance handoff and migration-guide copy now describe execution as reviewable planning, previewable fixes, and Vault tools context instead of asking users to think in Agent-first terms. Reason: Agent remains an implementation path for advanced execution, but the user promise is maintenance -> plan -> preview -> execute -> undo.
