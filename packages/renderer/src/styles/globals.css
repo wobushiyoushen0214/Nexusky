@@ -788,9 +788,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   background: linear-gradient(90deg, var(--settings-dialog-rail-top), var(--settings-dialog-rail-bottom));
-  box-shadow:
-    inset 1px 0 0 color-mix(in srgb, var(--glass-highlight) 50%, transparent),
-    inset -1px 0 0 color-mix(in srgb, var(--border-subtle) 18%, transparent);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent);
 }
 
 .settings-tab {
@@ -876,9 +874,7 @@
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--settings-dialog-content-top) 82%, transparent), color-mix(in srgb, var(--settings-dialog-content) 76%, transparent) 140px, color-mix(in srgb, var(--settings-dialog-content) 70%, transparent)),
     var(--settings-dialog-content);
-  box-shadow:
-    inset 1px 0 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--glass-border) 34%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 34%, transparent);
 }
 
 .settings-tab-content :is(button, input, select, textarea) {
