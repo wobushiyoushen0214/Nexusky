@@ -463,11 +463,12 @@ export function Settings({ open, onClose }: SettingsProps) {
           </nav>
 
           <div className="file-tree-scroll settings-tab-content" role="tabpanel" aria-label={t(`settings.tabs.${tab}`)}>
-          {tab === 'appearance' && (
-            <AppearanceTab />
-          )}
+            <div className={`settings-tab-page settings-tab-page--${tab}`}>
+            {tab === 'appearance' && (
+              <AppearanceTab />
+            )}
 
-          {tab === 'ai' && (<>
+            {tab === 'ai' && (<>
             {/* AI header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>已配置</span>
@@ -568,23 +569,24 @@ export function Settings({ open, onClose }: SettingsProps) {
             <SystemPromptSection />
           </>)}
 
-          {tab === 'cloud' && (
-            <CloudTab
-              cloudConfig={cloudConfig}
-              setCloudConfig={setCloudConfig}
-              cloudUser={cloudUser}
-              setCloudUser={setCloudUser}
-              inputStyle={inputStyle}
-            />
-          )}
+            {tab === 'cloud' && (
+              <CloudTab
+                cloudConfig={cloudConfig}
+                setCloudConfig={setCloudConfig}
+                cloudUser={cloudUser}
+                setCloudUser={setCloudUser}
+                inputStyle={inputStyle}
+              />
+            )}
 
-          {tab === 'plugins' && <PluginsTab />}
+            {tab === 'plugins' && <PluginsTab />}
 
-          {tab === 'keys' && <KeyBindingsTab />}
+            {tab === 'keys' && <KeyBindingsTab />}
 
-          {tab === 'proactive' && <ProactivePreferencesTab />}
+            {tab === 'proactive' && <ProactivePreferencesTab />}
 
-          {tab === 'long-context' && <LongContextDebugPanel />}
+            {tab === 'long-context' && <LongContextDebugPanel />}
+            </div>
           </div>
         </div>
       </div>
