@@ -47,9 +47,10 @@ export function getFileTreeReloadPaths(changedPaths: string[], expandedPaths: Se
 interface VirtualFileTreeProps {
   entries: FileEntry[]
   defaultExpanded?: boolean
+  expansionVersion?: number
 }
 
-export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFileTreeProps) {
+export function VirtualFileTree({ entries, defaultExpanded = true, expansionVersion = 0 }: VirtualFileTreeProps) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
     if (!defaultExpanded) return new Set()
     const set = new Set<string>()
@@ -148,8 +149,14 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
       collectDirs(entries)
       setExpandedPaths((prev) => {
         const next = new Set(prev)
-        for (const path of rootDirs) next.add(path)
-        return next
+        let changed = false
+        for (const path of rootDirs) {
+          if (!next.has(path)) {
+            next.add(path)
+            changed = true
+          }
+        }
+        return changed ? next : prev
       })
 
       const loadExpanded = async () => {
@@ -166,10 +173,10 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
       }
       loadExpanded()
     } else {
-      setExpandedPaths(new Set())
-      setLazyChildren(new Map())
+      setExpandedPaths((prev) => prev.size === 0 ? prev : new Set())
+      setLazyChildren((prev) => prev.size === 0 ? prev : new Map())
     }
-  }, [defaultExpanded, entries])
+  }, [defaultExpanded, entries, expansionVersion])
 
   useEffect(() => {
     const reload = (changedPaths: string[] = []) => {

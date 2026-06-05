@@ -53,8 +53,8 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const [filterQuery, setFilterQuery] = useState('')
   const [blankContextMenu, setBlankContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [sortBy, setSortBy] = useState<SortMode>(getInitialSortMode)
-  const [treeKey, setTreeKey] = useState(0)
   const [defaultExpanded, setDefaultExpanded] = useState(true)
+  const [treeExpansionVersion, setTreeExpansionVersion] = useState(0)
   const [vaultMenu, setVaultMenu] = useState(false)
   const vaultMenuRef = useRef<HTMLDivElement>(null)
   const vaultMenuButtonRef = useRef<HTMLButtonElement>(null)
@@ -277,7 +277,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           </svg>
         </button>
         <button
-          onClick={() => { setDefaultExpanded(false); setTreeKey((k) => k + 1) }}
+          onClick={() => { setDefaultExpanded(false); setTreeExpansionVersion((version) => version + 1) }}
           style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--control-border)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
           title="折叠全部"
         >
@@ -286,7 +286,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           </svg>
         </button>
         <button
-          onClick={() => { setDefaultExpanded(true); setTreeKey((k) => k + 1) }}
+          onClick={() => { setDefaultExpanded(true); setTreeExpansionVersion((version) => version + 1) }}
           style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--control-border)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
           title="展开全部"
         >
@@ -362,7 +362,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                 索引失败：{indexError}
               </div>
             )}
-            <VirtualFileTree key={treeKey} entries={sortedFiles} defaultExpanded={defaultExpanded} />
+            <VirtualFileTree entries={sortedFiles} defaultExpanded={defaultExpanded} expansionVersion={treeExpansionVersion} />
           </>
         )}
       </div>

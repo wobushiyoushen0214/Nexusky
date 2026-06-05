@@ -749,8 +749,7 @@ export function Editor() {
       {/* Tab bar */}
       {!focusMode && (
         <div
-          className="hide-scrollbar"
-          style={{ height: 44, padding: '7px 10px 0', display: 'flex', alignItems: 'flex-start', gap: 3, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg-soft) 86%, transparent), color-mix(in srgb, var(--panel-bg-soft) 56%, transparent))', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent), inset 0 -1px 0 var(--border-faint)' }}
+          className="editor-tab-bar hide-scrollbar"
           onWheel={(e) => { e.currentTarget.scrollLeft += e.deltaY }}
         >
           {tabs.map((tab, i) => {
@@ -759,6 +758,7 @@ export function Editor() {
             return (
               <div
                 key={tab.path}
+                className={`editor-tab${isActive ? ' is-active' : ''}`}
                 ref={(node) => { tabButtonRefs.current[i] = node }}
                 draggable
                 onDragStart={() => { dragTabRef.current = i }}
@@ -768,42 +768,10 @@ export function Editor() {
                 onClick={() => switchTab(i)}
                 onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(i) } }}
                 onContextMenu={(e) => { e.preventDefault(); setTabContextMenu({ x: e.clientX, y: e.clientY, index: i }) }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'var(--control-bg)'
-                    e.currentTarget.style.color = 'var(--text-secondary)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = 'var(--text-tertiary)'
-                  }
-                }}
-                style={{
-                  height: 34,
-                  minWidth: 0,
-                  maxWidth: 210,
-                  padding: '0 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  borderRadius: isActive ? '14px 14px 0 0' : 12,
-                  background: isActive ? 'color-mix(in srgb, var(--bg-glass-dense, var(--panel-bg)) 88%, var(--control-bg))' : 'transparent',
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  border: isActive ? '1px solid var(--glass-border)' : '1px solid transparent',
-                  borderBottomColor: isActive ? 'transparent' : 'transparent',
-                  boxShadow: isActive ? '0 1px 0 var(--glass-highlight) inset, 0 12px 26px color-mix(in srgb, var(--accent-glow) 64%, transparent)' : 'none',
-                  whiteSpace: 'nowrap',
-                  position: 'relative',
-                  transition: 'background 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out, color 140ms ease-out',
-                }}
               >
-                <span style={{ width: 20, height: 20, borderRadius: 7, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: isActive ? 'var(--accent-muted)' : 'var(--control-bg)', color: isActive ? 'var(--accent-text)' : 'var(--text-tertiary)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
+                <span className="editor-tab-icon">
                   {tab.isDirty ? (
-                    <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--accent)' }} />
+                    <span className="editor-tab-dirty" />
                   ) : (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -811,12 +779,11 @@ export function Editor() {
                     </svg>
                   )}
                 </span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 36 }}>{tabName}</span>
+                <span className="editor-tab-title">{tabName}</span>
                 <button
+                  className="editor-tab-close"
                   onClick={(e) => { e.stopPropagation(); closeTab(i) }}
-                  style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', opacity: isActive ? 1 : 0, flexShrink: 0 }}
-                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.opacity = '0' }}
+                  title="关闭"
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
