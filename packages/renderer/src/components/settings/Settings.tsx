@@ -523,13 +523,13 @@ export function Settings({ open, onClose }: SettingsProps) {
               {providers.map((p) => {
                 const isActive = p.id === activeProviderId
                 return (
-                <div key={p.id} style={{ padding: '12px 14px', borderRadius: 10, border: isActive ? '1px solid color-mix(in srgb, var(--accent) 42%, var(--border-subtle))' : '1px solid var(--control-border)', background: isActive ? 'var(--accent-muted)' : 'var(--control-bg)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
+                <div key={p.id} className={`settings-glass-card${isActive ? ' is-active' : ''}`} style={{ padding: '12px 14px', borderRadius: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {isActive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
+                      {isActive && <span className="settings-status-mark" style={{ background: 'var(--accent)', color: 'var(--accent)' }} />}
                       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{p.name}</span>
-                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontWeight: 500 }}>{p.type}</span>
-                      {isActive && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'var(--success-muted)', color: 'var(--success)', fontWeight: 500 }}>使用中</span>}
+                      <span className="settings-glass-badge is-accent">{p.type}</span>
+                      {isActive && <span className="settings-glass-badge is-success">使用中</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {!isActive && <button onClick={() => handleSetActive(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--text-on-accent)', background: 'var(--accent)', border: 'none', cursor: 'pointer', fontWeight: 500 }}>激活</button>}
@@ -987,7 +987,7 @@ export function CloudSyncHealthPanel({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, minWidth: 0, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('settings.cloudSync.provider')}</span>
         <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{providerLabel}</span>
-        <span style={{ padding: '2px 7px', borderRadius: 999, border: `1px solid ${tone}33`, fontSize: 10, color: tone, background: 'var(--bg-elevated)' }}>
+        <span className="settings-glass-badge" style={{ color: tone }}>
           {statusLabel}
         </span>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{queueValue}</span>
@@ -1069,7 +1069,7 @@ export function CloudSyncConflictList({
             {t('settings.cloudSync.conflicts.description')}
           </p>
         </div>
-        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: 999, border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)', color: 'var(--warning)', background: 'var(--warning-muted)', fontSize: 10 }}>
+        <span className="settings-glass-badge is-warning" style={{ flexShrink: 0 }}>
           {t('settings.cloudSync.conflicts.count', { count: conflicts.length })}
         </span>
       </div>
@@ -1177,7 +1177,7 @@ export function NoAiModePanel() {
             {t('settings.noAiMode.description')}
           </p>
         </div>
-        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: 999, border: '1px solid var(--border-subtle)', fontSize: 10, color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>
+        <span className="settings-glass-badge" style={{ flexShrink: 0 }}>
           {t('settings.noAiMode.badge')}
         </span>
       </div>
@@ -1215,7 +1215,7 @@ function NoAiModeFeatureGroup({
         {featureKeys.map((feature) => (
           <span
             key={feature}
-            style={{ padding: '3px 7px', borderRadius: 999, border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', background: 'var(--bg-elevated)', fontSize: 10, lineHeight: 1.2 }}
+            className="settings-glass-badge"
           >
             {t(`${translationPrefix}.${feature}`)}
           </span>
@@ -1285,7 +1285,7 @@ function ProviderSetupChecklist({ config, validationResult, probeResult, testing
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.map((item) => (
           <div key={item.key} style={{ display: 'grid', gridTemplateColumns: '14px 82px minmax(0, 1fr) auto', alignItems: 'center', gap: 8, minHeight: 24 }}>
-            <span style={{ width: 7, height: 7, borderRadius: 999, background: colorByStatus[item.status] }} />
+            <span className="settings-status-mark" style={{ background: colorByStatus[item.status], color: colorByStatus[item.status] }} />
             <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{item.label}</span>
             <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: item.status === 'error' ? 'var(--danger)' : 'var(--text-tertiary)' }}>{item.detail}</span>
             <span style={{ fontSize: 10, color: colorByStatus[item.status], textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -2567,10 +2567,10 @@ function PluginsTab() {
               </div>
               <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {plugin.permissions.map((permission) => (
-                  <span key={permission} title={plugin.installNote} style={{ padding: '2px 5px', borderRadius: 999, border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', fontSize: 10 }}>{PLUGIN_PERMISSION_LABELS[permission]}</span>
+                  <span key={permission} title={plugin.installNote} className="settings-glass-badge">{PLUGIN_PERMISSION_LABELS[permission]}</span>
                 ))}
                 {plugin.tags.map((tag) => (
-                  <span key={tag} style={{ padding: '2px 5px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
+                  <span key={tag} className="settings-glass-badge is-accent">{tag}</span>
                 ))}
               </div>
             </div>
