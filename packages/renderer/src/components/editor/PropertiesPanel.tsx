@@ -102,7 +102,7 @@ export function PropertiesPanel() {
             borderRadius: 6,
             border: 'none',
             background: dirty ? 'var(--accent)' : 'var(--bg-elevated)',
-            color: dirty ? '#fff' : 'var(--text-tertiary)',
+            color: dirty ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
             fontSize: 12,
             fontWeight: 600,
             cursor: dirty ? 'pointer' : 'default'

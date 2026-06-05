@@ -106,7 +106,7 @@ function OutboundPreviewPanel({
             <button
               onClick={onConfirm}
               disabled={!preview || loading || !preview.provider}
-              style={{ height: 26, padding: '0 10px', fontSize: 11, background: preview && !loading && preview.provider ? 'var(--accent)' : 'var(--bg-hover)', color: preview && !loading && preview.provider ? '#fff' : 'var(--text-tertiary)', border: 'none', borderRadius: 5, cursor: preview && !loading && preview.provider ? 'pointer' : 'default', fontWeight: 500, whiteSpace: 'nowrap' }}
+              style={{ height: 26, padding: '0 10px', fontSize: 11, background: preview && !loading && preview.provider ? 'var(--accent)' : 'var(--bg-hover)', color: preview && !loading && preview.provider ? 'var(--text-on-accent)' : 'var(--text-tertiary)', border: 'none', borderRadius: 5, cursor: preview && !loading && preview.provider ? 'pointer' : 'default', fontWeight: 500, whiteSpace: 'nowrap' }}
             >
               确认发送
             </button>
@@ -135,7 +135,7 @@ function OutboundPreviewPanel({
               )}
             </div>
             {preview.cost.monthlyBudgetUsd && (
-              <div style={{ fontSize: 11, color: preview.cost.budgetStatus === 'over' ? '#f87171' : preview.cost.budgetStatus === 'near' ? 'oklch(78% 0.14 82)' : 'var(--text-tertiary)', lineHeight: 1.45 }}>
+              <div style={{ fontSize: 11, color: preview.cost.budgetStatus === 'over' ? 'var(--danger)' : preview.cost.budgetStatus === 'near' ? 'var(--warning)' : 'var(--text-tertiary)', lineHeight: 1.45 }}>
                 本月已用 {formatPreviewUsd(preview.cost.monthlyCostUsd)}
                 {preview.cost.projectedMonthlyCostUsd != null ? `，本次后约 ${formatPreviewUsd(preview.cost.projectedMonthlyCostUsd)}` : '，本次成本未知'}
                 {preview.cost.budgetUsagePercent != null ? `（${Math.round(preview.cost.budgetUsagePercent)}%）` : ''}
@@ -2033,7 +2033,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 导出
               </button>
               <button onClick={handleClear} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
               >
                 清空
@@ -2063,7 +2063,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               <button
                 onClick={() => handleDeleteSession(s.id)}
                 style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3, flexShrink: 0 }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -2107,7 +2107,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 <button
                   onClick={handleConfirmBatchPlan}
                   disabled={pendingBatchPlan.batches.length === 0}
-                  style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: pendingBatchPlan.batches.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 500, whiteSpace: 'nowrap', opacity: pendingBatchPlan.batches.length === 0 ? 0.5 : 1 }}
+                  style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: pendingBatchPlan.batches.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 500, whiteSpace: 'nowrap', opacity: pendingBatchPlan.batches.length === 0 ? 0.5 : 1 }}
                 >
                   开始生成
                 </button>
@@ -2191,7 +2191,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   const input = (e.currentTarget.previousElementSibling as HTMLInputElement)
                   if (input.value.trim()) handleSelectFolder(input.value.trim())
                 }}
-                style={{ height: 30, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                style={{ height: 30, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
               >
                 新建目录
               </button>
@@ -2219,13 +2219,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 <div style={{ display: 'flex', marginLeft: 8, background: 'var(--bg-surface)', borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                   <button
                     onClick={() => setEditPreviewMode('diff')}
-                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? '#fff' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
+                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
                   >
                     Diff
                   </button>
                   <button
                     onClick={() => setEditPreviewMode('preview')}
-                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'preview' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'preview' ? '#fff' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
+                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'preview' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'preview' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
                   >
                     预览
                   </button>
@@ -2238,7 +2238,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 >
                   {editPreviewExpanded ? '收起' : '展开'}
                 </button>
-                <button onClick={handleApplyEdit} style={{ height: 24, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 500 }}>应用修改</button>
+                <button onClick={handleApplyEdit} style={{ height: 24, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 500 }}>应用修改</button>
                 <button onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }} style={{ height: 24, padding: '0 8px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>放弃</button>
               </div>
             </div>
@@ -2341,7 +2341,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   {attachedImages.map((img, i) => (
                     <div key={i} style={{ position: 'relative', width: 40, height: 40, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                       <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 1, right: 1, width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 7, padding: 0 }}>×</button>
+                      <button onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 1, right: 1, width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 7, padding: 0 }}>×</button>
                     </div>
                   ))}
                 </div>
@@ -2520,7 +2520,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: canSend && !outboundPreviewLoading ? 'var(--accent)' : 'transparent',
-                  color: canSend && !outboundPreviewLoading ? '#fff' : 'var(--text-tertiary)',
+                  color: canSend && !outboundPreviewLoading ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
                   border: 'none', borderRadius: 8,
                   cursor: canSend && !outboundPreviewLoading ? 'pointer' : 'default',
                   transition: 'background 150ms, color 150ms',

@@ -56,8 +56,8 @@ export const DiffView = memo(function DiffView({ original, modified }: DiffViewP
   return (
     <div style={{ fontSize: 12, fontFamily: 'var(--font-mono, "JetBrains Mono", "Fira Code", monospace)', lineHeight: 1.6, overflow: 'auto' }}>
       <div style={{ padding: '4px 12px', display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-subtle)' }}>
-        {stats.added > 0 && <span style={{ color: '#22c55e' }}>+{stats.added}</span>}
-        {stats.removed > 0 && <span style={{ color: '#ef4444' }}>-{stats.removed}</span>}
+        {stats.added > 0 && <span style={{ color: 'var(--success)' }}>+{stats.added}</span>}
+        {stats.removed > 0 && <span style={{ color: 'var(--danger)' }}>-{stats.removed}</span>}
       </div>
       <div style={{ padding: '4px 0' }}>
         {hunks.map((line, i) => {
@@ -69,15 +69,15 @@ export const DiffView = memo(function DiffView({ original, modified }: DiffViewP
             )
           }
           const bg = line.type === 'add'
-            ? 'rgba(34,197,94,0.08)'
+            ? 'var(--success-muted)'
             : line.type === 'remove'
-              ? 'rgba(239,68,68,0.08)'
+              ? 'var(--danger-muted)'
               : 'transparent'
           const prefix = line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '
           const color = line.type === 'add'
-            ? '#22c55e'
+            ? 'var(--success)'
             : line.type === 'remove'
-              ? '#ef4444'
+              ? 'var(--danger)'
               : 'var(--text-secondary)'
           return (
             <div key={i} style={{ padding: '0 12px', background: bg, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>

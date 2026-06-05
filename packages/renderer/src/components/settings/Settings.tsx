@@ -427,11 +427,11 @@ export function Settings({ open, onClose }: SettingsProps) {
         aria-modal="true"
         aria-labelledby={SETTINGS_DIALOG_TITLE_ID}
         tabIndex={-1}
-        style={{ width: 760, maxWidth: 'calc(100vw - 40px)', height: 600, maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 16, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' } as React.CSSProperties}
+        style={{ width: 780, maxWidth: 'calc(100vw - 40px)', height: 620, maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 18, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ height: 48, padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
+        <div style={{ height: 48, padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--border-faint)' }}>
           <span id={SETTINGS_DIALOG_TITLE_ID} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.title')}</span>
           <button
             onClick={onClose}
@@ -447,7 +447,7 @@ export function Settings({ open, onClose }: SettingsProps) {
         {/* Body: sidebar + content */}
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           {/* Sidebar */}
-          <nav style={{ width: 180, flexShrink: 0, padding: '12px 8px', borderRight: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
+          <nav style={{ width: 184, flexShrink: 0, padding: '12px 8px', boxShadow: 'inset -1px 0 0 var(--border-faint)', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', background: 'color-mix(in srgb, var(--panel-bg-soft) 46%, transparent)' }}>
             {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive', 'long-context'] as Tab[]).map((tabId) => {
               const active = tab === tabId
               return (
@@ -460,18 +460,24 @@ export function Settings({ open, onClose }: SettingsProps) {
                     fontSize: 13,
                     fontWeight: active ? 600 : 500,
                     color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    background: active ? 'var(--accent-muted, rgba(124,110,240,0.14))' : 'transparent',
-                    border: 'none',
-                    borderRadius: 6,
+                    background: active ? 'var(--accent-muted)' : 'transparent',
+                    border: active ? '1px solid color-mix(in srgb, var(--accent) 24%, var(--border-subtle))' : '1px solid transparent',
+                    borderRadius: 8,
                     cursor: 'pointer',
-                    transition: 'background 120ms, color 120ms',
+                    transition: 'background 120ms, color 120ms, border-color 120ms',
                     whiteSpace: 'nowrap',
                   }}
                   onMouseEnter={(e) => {
-                    if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-elevated, rgba(255,255,255,0.04))'
+                    if (!active) {
+                      e.currentTarget.style.background = 'var(--control-bg)'
+                      e.currentTarget.style.borderColor = 'var(--control-border)'
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                    if (!active) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.borderColor = 'transparent'
+                    }
                   }}
                 >
                   {t(`settings.tabs.${tabId}`)}
@@ -481,7 +487,7 @@ export function Settings({ open, onClose }: SettingsProps) {
           </nav>
 
           {/* Content */}
-          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '20px 24px 24px' }}>
+          <div className="file-tree-scroll" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '20px 24px 24px', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg-soft) 28%, transparent), transparent 42%)' }}>
           {tab === 'appearance' && (
             <AppearanceTab />
           )}
@@ -543,13 +549,13 @@ export function Settings({ open, onClose }: SettingsProps) {
               {providers.map((p) => {
                 const isActive = p.id === activeProviderId
                 return (
-                <div key={p.id} style={{ padding: '12px 14px', borderRadius: 8, border: isActive ? '1.5px solid var(--accent)' : '1px solid var(--border-subtle)', background: isActive ? 'var(--accent-muted)' : 'var(--bg-base)' }}>
+                <div key={p.id} style={{ padding: '12px 14px', borderRadius: 10, border: isActive ? '1px solid color-mix(in srgb, var(--accent) 42%, var(--border-subtle))' : '1px solid var(--control-border)', background: isActive ? 'var(--accent-muted)' : 'var(--control-bg)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {isActive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
                       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{p.name}</span>
                       <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontWeight: 500 }}>{p.type}</span>
-                      {isActive && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', fontWeight: 500 }}>使用中</span>}
+                      {isActive && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'var(--success-muted)', color: 'var(--success)', fontWeight: 500 }}>使用中</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {!isActive && <button onClick={() => handleSetActive(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--text-on-accent)', background: 'var(--accent)', border: 'none', cursor: 'pointer', fontWeight: 500 }}>激活</button>}
@@ -626,7 +632,7 @@ export function Settings({ open, onClose }: SettingsProps) {
             style={{ width: 440, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-popover)', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'color-mix(in srgb, var(--panel-bg-soft) 70%, transparent)', boxShadow: 'inset 0 -1px 0 var(--border-faint)' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                 {providers.find((p) => p.id === editing.id) ? '编辑提供商' : '添加提供商'}
               </span>
@@ -768,13 +774,13 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
               </div>
               {probeResult && (
-                <div style={{ marginTop: 10, padding: 10, borderRadius: 6, background: 'var(--bg-elevated)', border: `1px solid ${probeResult.ok ? 'var(--border-subtle)' : '#f8717155'}` }}>
+                <div style={{ marginTop: 10, padding: 10, borderRadius: 6, background: 'var(--control-bg)', border: `1px solid ${probeResult.ok ? 'var(--control-border)' : 'color-mix(in srgb, var(--danger) 38%, transparent)'}` }}>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
                     {probeResult.ok
                       ? t('settings.providerTest.probeAnswer', { latency: probeResult.latencyMs ?? 0, model: probeResult.model || editing.model })
                       : t('settings.providerTest.probeFailed')}
                   </div>
-                  <div style={{ fontSize: 12, color: probeResult.ok ? 'var(--text-primary)' : '#f87171', whiteSpace: 'pre-wrap' }}>
+                  <div style={{ fontSize: 12, color: probeResult.ok ? 'var(--text-primary)' : 'var(--danger)', whiteSpace: 'pre-wrap' }}>
                     {probeResult.text}
                   </div>
                 </div>
@@ -845,7 +851,7 @@ function AIUsageSummaryPanel({
   }
 
   return (
-    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>本月用量</span>
         <button
@@ -916,16 +922,16 @@ function AIUsageSummaryPanel({
 
 const SYNC_STATUS_TONES: Record<CloudSyncHealth['status'], string> = {
   idle: 'var(--text-tertiary)',
-  ok: 'oklch(72% 0.11 154)',
-  conflict: 'oklch(78% 0.14 82)',
-  error: 'oklch(66% 0.16 23)'
+  ok: 'var(--success)',
+  conflict: 'var(--warning)',
+  error: 'var(--danger)'
 }
 type SyncNoticeTone = 'neutral' | 'success' | 'warning' | 'error'
 const SYNC_NOTICE_COLORS: Record<SyncNoticeTone, string> = {
   neutral: 'var(--text-tertiary)',
-  success: 'oklch(72% 0.11 154)',
-  warning: 'oklch(78% 0.14 82)',
-  error: 'oklch(66% 0.16 23)'
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  error: 'var(--danger)'
 }
 
 function formatSyncTimestamp(value: number | null, locale?: string): string {
@@ -991,7 +997,7 @@ export function CloudSyncHealthPanel({
   return (
     <section
       aria-label={t('settings.cloudSync.title')}
-      style={{ marginBottom: 16, padding: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}
+      style={{ marginBottom: 16, padding: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--control-bg)' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
         <div style={{ minWidth: 0 }}>
@@ -1057,7 +1063,7 @@ export function CloudSyncBoundaryNotice() {
   const { t } = useTranslation()
 
   return (
-    <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+    <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--control-bg)', border: '1px solid var(--border-subtle)' }}>
       <div style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-primary)', marginBottom: 4 }}>
         {t('settings.cloudSync.boundaryTitle')}
       </div>
@@ -1084,18 +1090,18 @@ export function CloudSyncConflictList({
   return (
     <section
       aria-label={t('settings.cloudSync.conflicts.title')}
-      style={{ marginTop: 12, padding: 12, borderRadius: 8, border: '1px solid #f59e0b66', background: 'var(--bg-base)' }}
+      style={{ marginTop: 12, padding: 12, borderRadius: 8, border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', background: 'var(--control-bg)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 650, color: '#f59e0b', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 650, color: 'var(--warning)', marginBottom: 4 }}>
             {t('settings.cloudSync.conflicts.title')}
           </div>
           <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', maxWidth: 560 }}>
             {t('settings.cloudSync.conflicts.description')}
           </p>
         </div>
-        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: 999, border: '1px solid #f59e0b55', color: '#f59e0b', background: 'rgba(245,158,11,0.08)', fontSize: 10 }}>
+        <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: 999, border: '1px solid color-mix(in srgb, var(--warning) 34%, transparent)', color: 'var(--warning)', background: 'var(--warning-muted)', fontSize: 10 }}>
           {t('settings.cloudSync.conflicts.count', { count: conflicts.length })}
         </span>
       </div>
@@ -1142,7 +1148,7 @@ export function CloudSyncConflictList({
                     onClick={() => onResolve(conflict.path, 'local')}
                     disabled={busy}
                     title={t('settings.cloudSync.conflicts.keepLocalHint')}
-                    style={{ height: 28, padding: '0 10px', fontSize: 11, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: 6, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1, fontWeight: 500 }}
+                    style={{ height: 28, padding: '0 10px', fontSize: 11, color: 'var(--text-on-accent)', background: 'var(--accent)', border: 'none', borderRadius: 6, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.65 : 1, fontWeight: 500 }}
                   >
                     {t('settings.cloudSync.conflicts.keepLocal')}
                   </button>
@@ -1192,7 +1198,7 @@ export function NoAiModePanel() {
   return (
     <section
       aria-label={t('settings.noAiMode.title')}
-      style={{ marginBottom: 16, padding: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}
+      style={{ marginBottom: 16, padding: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--control-bg)' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
         <div style={{ minWidth: 0 }}>
@@ -1298,12 +1304,12 @@ function ProviderSetupChecklist({ config, validationResult, probeResult, testing
   const colorByStatus: Record<ProviderChecklistStatus, string> = {
     idle: 'var(--text-tertiary)',
     running: 'var(--accent)',
-    success: 'oklch(72% 0.11 154)',
-    error: 'oklch(66% 0.16 23)'
+    success: 'var(--success)',
+    error: 'var(--danger)'
   }
 
   return (
-    <div style={{ marginBottom: 14, padding: 10, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}>
+    <div style={{ marginBottom: 14, padding: 10, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--control-bg)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
         <span style={{ fontSize: 11, fontWeight: 650, color: 'var(--text-secondary)' }}>{t('settings.providerTest.title')}</span>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('settings.providerTest.optional')}</span>
@@ -1313,7 +1319,7 @@ function ProviderSetupChecklist({ config, validationResult, probeResult, testing
           <div key={item.key} style={{ display: 'grid', gridTemplateColumns: '14px 82px minmax(0, 1fr) auto', alignItems: 'center', gap: 8, minHeight: 24 }}>
             <span style={{ width: 7, height: 7, borderRadius: 999, background: colorByStatus[item.status] }} />
             <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{item.label}</span>
-            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: item.status === 'error' ? 'oklch(72% 0.14 24)' : 'var(--text-tertiary)' }}>{item.detail}</span>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11, color: item.status === 'error' ? 'var(--danger)' : 'var(--text-tertiary)' }}>{item.detail}</span>
             <span style={{ fontSize: 10, color: colorByStatus[item.status], textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               {t(`settings.providerTest.status.${item.status}`)}
             </span>
@@ -1531,7 +1537,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
 
       {activeProvider === 'icloud' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--control-bg)', border: '1px solid var(--border-subtle)' }}>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
               iCloud Drive 通过文件系统同步，无需额外配置。确保已登录 iCloud 并启用 iCloud Drive。
             </p>
@@ -1551,7 +1557,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
             />
             <button
               onClick={async () => { if (icloudPath) await window.api.invoke('cloud:set-icloud-path', { path: icloudPath }) }}
-              style={{ marginTop: 8, height: 28, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}
+              style={{ marginTop: 8, height: 28, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 5, cursor: 'pointer' }}
             >
               保存路径
             </button>
@@ -1591,7 +1597,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
                 if (result.success) toast('OneDrive 授权成功', 'success')
                 else toast(`授权失败: ${result.error}`, 'error')
               }}
-              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
             >
               授权登录
             </button>
@@ -1660,7 +1666,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
                 await window.api.invoke('cloud:save-webdav-config', webdavConfig)
                 toast('WebDAV 配置已保存', 'success')
               }}
-              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
             >
               保存配置
             </button>
@@ -1759,7 +1765,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
                 await window.api.invoke('cloud:save-s3-config', s3Config)
                 toast('S3 配置已保存', 'success')
               }}
-              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+              style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
             >
               保存配置
             </button>
@@ -1804,7 +1810,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           <button
             onClick={handleSync}
             disabled={syncing}
-            style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: syncing ? 'wait' : 'pointer', fontWeight: 500, opacity: syncing ? 0.6 : 1 }}
+            style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: syncing ? 'wait' : 'pointer', fontWeight: 500, opacity: syncing ? 0.6 : 1 }}
           >
             {syncing ? '同步中...' : '双向同步'}
           </button>
@@ -1817,7 +1823,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           </button>
         </div>
         {syncMsg && (
-          <p style={{ marginTop: 10, fontSize: 11, color: SYNC_NOTICE_COLORS[syncMsgTone], padding: '8px 10px', borderRadius: 6, background: 'var(--bg-base)' }}>
+          <p style={{ marginTop: 10, fontSize: 11, color: SYNC_NOTICE_COLORS[syncMsgTone], padding: '8px 10px', borderRadius: 6, background: 'var(--control-bg)' }}>
             {syncMsg}
           </p>
         )}
@@ -1881,7 +1887,7 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={async () => { await window.api.invoke('cloud:save-config', { config: cloudConfig }) }}
-          style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+          style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
         >
           保存配置
         </button>
@@ -1900,11 +1906,11 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
       </div>
       {cloudConfig.enabled && cloudUser && (
         <div style={{ paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 6, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 6, background: 'var(--control-bg)', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cloudUser.email}</span>
             <button
               onClick={async () => { await window.api.invoke('cloud:sign-out', undefined); setCloudUser(null) }}
-              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}
+              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
               退出
             </button>
@@ -2248,7 +2254,7 @@ function ThemePackagesSection() {
       </div>
 
       {!vaultPath ? (
-        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12 }}>
+        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', fontSize: 12 }}>
           {t('settings.themePackages.noVault')}
         </div>
       ) : (
@@ -2262,7 +2268,7 @@ function ThemePackagesSection() {
           </label>
 
           {themes.length === 0 ? (
-            <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.6 }}>
+            <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.6 }}>
               {t('settings.themePackages.empty')}
             </div>
           ) : themes.map((theme) => {
@@ -2347,11 +2353,11 @@ function CssSnippetsSection() {
       </div>
 
       {!vaultPath ? (
-        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12 }}>
+        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', fontSize: 12 }}>
           {t('settings.snippets.noVault')}
         </div>
       ) : snippets.length === 0 ? (
-        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.6 }}>
+        <div style={{ padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.6 }}>
           {t('settings.snippets.empty')}
         </div>
       ) : (
@@ -2439,7 +2445,7 @@ function SystemPromptSection() {
         <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>自定义系统提示词</span>
         <button
           onClick={handleSave}
-          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: 'none', background: saved ? 'rgba(74,222,128,0.15)' : 'var(--accent)', color: saved ? '#4ade80' : '#fff', cursor: 'pointer', fontWeight: 500, transition: 'all 150ms' }}
+          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: 'none', background: saved ? 'var(--success-muted)' : 'var(--accent)', color: saved ? 'var(--success)' : 'var(--text-on-accent)', cursor: 'pointer', fontWeight: 500, transition: 'all 150ms' }}
         >
           {saved ? '已保存' : '保存'}
         </button>
@@ -2450,7 +2456,7 @@ function SystemPromptSection() {
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="例如：你是一个专注于编程的助手，回答简洁明了..."
         rows={4}
-        style={{ width: '100%', padding: '8px 10px', fontSize: 12, lineHeight: 1.6, background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+        style={{ width: '100%', padding: '8px 10px', fontSize: 12, lineHeight: 1.6, background: 'var(--control-bg)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
       />
     </div>
   )
@@ -2482,7 +2488,7 @@ function KeyBindingsTab() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {bindings.map((b) => (
-          <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 6, background: 'var(--bg-base)' }}>
+          <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 6, background: 'var(--control-bg)' }}>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{b.label}</span>
             <button
               onClick={() => setRecording(b.id)}
@@ -2581,7 +2587,7 @@ function PluginsTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+      <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
           <div>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>本地内置插件包</span>
@@ -2637,13 +2643,13 @@ function PluginsTab() {
       </div>
 
       {plugins.length === 0 ? (
-        <div style={{ padding: 18, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.7 }}>
+        <div style={{ padding: 18, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.7 }}>
           暂未发现插件。参考 docs/PLUGIN_COMMANDS.md 创建 JSON 文件后，插件声明会出现在命令面板、Slash 菜单或插件面板中。
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {plugins.map((plugin) => (
-            <div key={plugin.id} style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+            <div key={plugin.id} style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{plugin.name}</span>
                 <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{plugin.version || plugin.id}</span>

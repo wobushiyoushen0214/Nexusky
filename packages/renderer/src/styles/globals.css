@@ -57,6 +57,19 @@
   --control-bg: oklch(99% 0.006 238 / 0.5);
   --control-hover: oklch(99.2% 0.006 238 / 0.76);
   --control-border: oklch(55% 0.02 245 / 0.14);
+  --bg-primary: var(--bg-base);
+  --bg-hover-strong: var(--bg-active);
+  --border-soft: var(--border-subtle);
+  --border-faint: color-mix(in srgb, var(--border-subtle) 54%, transparent);
+  --accent-soft: var(--accent-muted);
+  --accent-contrast: var(--text-on-accent);
+  --success: oklch(64% 0.13 150);
+  --success-muted: oklch(64% 0.13 150 / 0.12);
+  --warning: oklch(72% 0.14 82);
+  --warning-muted: oklch(72% 0.14 82 / 0.12);
+  --accent-success: var(--success);
+  --accent-warning: var(--warning);
+  --accent-danger: var(--danger);
   --overlay-bg: oklch(83% 0.018 236 / 0.3);
 
   --shadow-sm: 0 1px 2px oklch(32% 0.025 250 / 0.07);
@@ -519,6 +532,7 @@
     var(--app-shell-bg);
   --panel-bg: var(--bg-glass-solid);
   --panel-bg-soft: var(--bg-glass);
+  --bg-glass-dense: color-mix(in srgb, var(--bg-glass-solid) 88%, var(--bg-elevated));
   --control-bg: var(--bg-glass-hover);
   --control-hover: var(--bg-hover);
   --control-border: var(--border-subtle);
@@ -530,6 +544,11 @@
   --text-on-accent: oklch(97% 0.006 260);
   --shadow-panel: 0 1px 0 var(--glass-highlight) inset, var(--shadow-md);
   --shadow-popover: 0 1px 0 var(--glass-highlight) inset, var(--shadow-lg);
+}
+
+[data-theme="contrast"] {
+  --text-on-accent: oklch(12% 0.008 260);
+  --accent-contrast: var(--text-on-accent);
 }
 
 * {

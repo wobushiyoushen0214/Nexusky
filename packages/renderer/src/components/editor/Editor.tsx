@@ -750,7 +750,7 @@ export function Editor() {
       {!focusMode && (
         <div
           className="hide-scrollbar"
-          style={{ height: 40, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden', background: 'linear-gradient(180deg, var(--panel-bg-soft), color-mix(in srgb, var(--panel-bg-soft) 74%, transparent))', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 36%, transparent)' }}
+          style={{ height: 44, padding: '7px 10px 0', display: 'flex', alignItems: 'flex-start', gap: 3, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg-soft) 86%, transparent), color-mix(in srgb, var(--panel-bg-soft) 56%, transparent))', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent), inset 0 -1px 0 var(--border-faint)' }}
           onWheel={(e) => { e.currentTarget.scrollLeft += e.deltaY }}
         >
           {tabs.map((tab, i) => {
@@ -768,28 +768,53 @@ export function Editor() {
                 onClick={() => switchTab(i)}
                 onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(i) } }}
                 onContextMenu={(e) => { e.preventDefault(); setTabContextMenu({ x: e.clientX, y: e.clientY, index: i }) }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'var(--control-bg)'
+                    e.currentTarget.style.color = 'var(--text-secondary)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = 'var(--text-tertiary)'
+                  }
+                }}
                 style={{
-                  height: 28,
-                  padding: '0 12px',
+                  height: 34,
+                  minWidth: 0,
+                  maxWidth: 210,
+                  padding: '0 10px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 7,
                   fontSize: 12,
                   cursor: 'pointer',
-                  borderRadius: 8,
-                  background: isActive ? 'color-mix(in srgb, var(--panel-bg) 90%, var(--control-bg))' : 'transparent',
+                  borderRadius: isActive ? '14px 14px 0 0' : 12,
+                  background: isActive ? 'color-mix(in srgb, var(--bg-glass-dense, var(--panel-bg)) 88%, var(--control-bg))' : 'transparent',
                   color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  border: isActive ? '1px solid color-mix(in srgb, var(--border-subtle) 56%, transparent)' : '1px solid transparent',
-                  boxShadow: isActive ? '0 1px 0 var(--glass-highlight) inset, var(--shadow-sm)' : 'none',
+                  border: isActive ? '1px solid var(--glass-border)' : '1px solid transparent',
+                  borderBottomColor: isActive ? 'transparent' : 'transparent',
+                  boxShadow: isActive ? '0 1px 0 var(--glass-highlight) inset, 0 12px 26px color-mix(in srgb, var(--accent-glow) 64%, transparent)' : 'none',
                   whiteSpace: 'nowrap',
                   position: 'relative',
+                  transition: 'background 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out, color 140ms ease-out',
                 }}
               >
-                {tab.isDirty && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
-                <span>{tabName}</span>
+                <span style={{ width: 20, height: 20, borderRadius: 7, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: isActive ? 'var(--accent-muted)' : 'var(--control-bg)', color: isActive ? 'var(--accent-text)' : 'var(--text-tertiary)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
+                  {tab.isDirty ? (
+                    <span style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--accent)' }} />
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                  )}
+                </span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 36 }}>{tabName}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); closeTab(i) }}
-                  style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', opacity: isActive ? 1 : 0 }}
+                  style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', opacity: isActive ? 1 : 0, flexShrink: 0 }}
                   onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                   onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.opacity = '0' }}
                 >
@@ -846,8 +871,8 @@ export function Editor() {
               top: linkPreview.y + 200 > window.innerHeight ? linkPreview.y - 210 : linkPreview.y,
               zIndex: 50,
               maxWidth: 360, maxHeight: 200, padding: '10px 14px',
-              background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-              borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+              background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)',
+              borderRadius: 10, boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
               fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)',
               overflowY: 'auto', whiteSpace: 'pre-wrap', pointerEvents: 'none',
             }}>
@@ -928,8 +953,8 @@ function SyncIndicator() {
   const colors: Record<string, string> = {
     idle: 'var(--text-tertiary)',
     syncing: 'var(--accent)',
-    success: '#4ade80',
-    error: '#f87171',
+    success: 'var(--success)',
+    error: 'var(--danger)',
   }
 
   const titles: Record<string, string> = {

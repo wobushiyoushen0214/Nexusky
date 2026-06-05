@@ -64,7 +64,7 @@ export function MermaidRenderer({ code }: { code: string }) {
 
   if (error) {
     return (
-      <div style={{ padding: '8px 12px', fontSize: 11, color: '#f87171', background: 'rgba(248,113,113,0.1)', borderRadius: 6 }}>
+      <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--danger)', background: 'var(--danger-muted)', borderRadius: 6 }}>
         Mermaid 语法错误: {error}
       </div>
     )
