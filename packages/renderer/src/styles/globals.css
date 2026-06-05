@@ -573,7 +573,7 @@
 .workspace-content {
   --workspace-panel-surface: color-mix(in srgb, var(--panel-bg-soft) 68%, var(--panel-bg));
   --workspace-panel-top-surface: color-mix(in srgb, var(--workspace-panel-surface) 86%, var(--glass-highlight));
-  --workspace-panel-header-surface: color-mix(in srgb, var(--workspace-panel-surface) 92%, var(--panel-bg-soft));
+  --workspace-panel-header-surface: color-mix(in srgb, var(--workspace-panel-surface) 88%, var(--app-shell-bg));
 }
 
 .workspace-content.has-editor-tabs {

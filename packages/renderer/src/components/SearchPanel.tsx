@@ -250,175 +250,171 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     : mode === 'regex'
       ? '正则搜索...'
       : '相关内容搜索（按词语重合排序）...'
+  const emptyMessage = mode === 'keyword'
+    ? '输入关键词后按 Enter 搜索'
+    : mode === 'regex'
+      ? '输入正则表达式后按 Enter 搜索'
+      : '输入词语或短句查找相关内容'
+  const modeButtonStyle = (active: boolean): React.CSSProperties => ({
+    height: 26,
+    padding: '0 10px',
+    fontSize: 11,
+    borderRadius: 7,
+    cursor: 'pointer',
+    fontWeight: active ? 600 : 500,
+    background: active ? 'color-mix(in srgb, var(--accent-muted) 76%, var(--control-bg))' : 'transparent',
+    color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
+    border: active ? '1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle))' : '1px solid transparent',
+    boxShadow: active ? 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 55%, transparent)' : 'none'
+  })
+  const resultButtonStyle = (active: boolean): React.CSSProperties => ({
+    width: '100%',
+    textAlign: 'left',
+    padding: '10px 12px',
+    borderRadius: 9,
+    background: active ? 'color-mix(in srgb, var(--accent-muted) 62%, var(--control-bg))' : 'transparent',
+    border: active ? '1px solid color-mix(in srgb, var(--accent) 18%, var(--border-subtle))' : '1px solid transparent',
+    cursor: 'pointer',
+    display: 'block',
+    color: 'var(--text-primary)',
+    outline: 'none',
+    transition: 'background 120ms ease, border-color 120ms ease'
+  })
 
   return (
     <div
       className="animate-overlay-in glass-overlay"
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '13vh 24px 24px', background: 'color-mix(in srgb, var(--overlay-bg) 82%, transparent)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
       onClick={onClose}
     >
       <div
         className="animate-scale-in glass-popover"
-        style={{ width: 560, maxHeight: '58vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+        style={{ width: 'min(640px, calc(100vw - 48px))', maxHeight: '64vh', background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 92%, var(--glass-highlight)), var(--bg-glass-dense, var(--bg-glass-solid)))', border: '1px solid color-mix(in srgb, var(--glass-border) 82%, var(--glass-highlight))', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 28px 90px color-mix(in srgb, var(--text-primary) 12%, transparent), inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Search input */}
-        <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                if (selectedIndex >= 0 && results[selectedIndex]) {
-                  handleResultClick(results[selectedIndex])
-                } else {
-                  handleSearch()
+        <div style={{ padding: 12, background: 'linear-gradient(180deg, color-mix(in srgb, var(--control-bg) 64%, transparent), color-mix(in srgb, var(--bg-glass) 72%, transparent))', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 42%, transparent)' }}>
+          <div className="glass-control" style={{ height: 40, padding: '0 8px 0 12px', display: 'flex', alignItems: 'center', gap: 10, borderRadius: 10, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', borderColor: 'color-mix(in srgb, var(--control-border) 72%, var(--glass-highlight))' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (selectedIndex >= 0 && results[selectedIndex]) {
+                    handleResultClick(results[selectedIndex])
+                  } else {
+                    handleSearch()
+                  }
                 }
-              }
-              if (e.key === 'Escape') onClose()
-              if (e.key === 'ArrowDown' && results.length > 0) {
-                e.preventDefault()
-                setSelectedIndex((i) => {
-                  const next = Math.min(i + 1, results.length - 1)
-                  const item = resultsRef.current?.children[next] as HTMLElement
-                  if (item) item.scrollIntoView({ block: 'nearest' })
-                  return next
-                })
-              }
-              if (e.key === 'ArrowUp' && results.length > 0) {
-                e.preventDefault()
-                setSelectedIndex((i) => {
-                  const next = Math.max(i - 1, 0)
-                  const item = resultsRef.current?.children[next] as HTMLElement
-                  if (item) item.scrollIntoView({ block: 'nearest' })
-                  return next
-                })
-              }
-            }}
-            placeholder={searchPlaceholder}
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)' }}
-          />
-          {query && (
-            <button
-              onClick={() => handleSearch()}
-              style={{ height: 28, padding: '0 11px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontWeight: 600, boxShadow: '0 8px 18px var(--accent-glow)' }}
-            >
-              搜索
-            </button>
-          )}
-          <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 5, background: 'var(--control-bg)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>ESC</kbd>
-        </div>
-
-        {/* Mode toggle */}
-        <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => setMode('keyword')}
-            style={{
-              height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer', fontWeight: 500,
-              background: mode === 'keyword' ? 'var(--accent-muted)' : 'var(--control-bg)',
-              color: mode === 'keyword' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              border: mode === 'keyword' ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
-            }}
-          >
-            关键词
-          </button>
-          <button
-            onClick={() => setMode('related')}
-            style={{
-              height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer', fontWeight: 500,
-              background: mode === 'related' ? 'var(--accent-muted)' : 'var(--control-bg)',
-              color: mode === 'related' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              border: mode === 'related' ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
-            }}
-          >
-            相关
-          </button>
-          <button
-            onClick={() => setMode('regex')}
-            style={{
-              height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer', fontWeight: 500,
-              background: mode === 'regex' ? 'var(--accent-muted)' : 'var(--control-bg)',
-              color: mode === 'regex' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              border: mode === 'regex' ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
-            }}
-          >
-            正则
-          </button>
-          {mode === 'related' && (
-            <button
-              onClick={handleBuildIndex}
-              disabled={isIndexing}
-              style={{
-                marginLeft: 'auto', height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer',
-                background: hasCompleteSearchIndex ? 'var(--accent-muted)' : 'var(--control-bg)',
-                color: hasCompleteSearchIndex ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                border: hasCompleteSearchIndex ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
+                if (e.key === 'Escape') onClose()
+                if (e.key === 'ArrowDown' && results.length > 0) {
+                  e.preventDefault()
+                  setSelectedIndex((i) => {
+                    const next = Math.min(i + 1, results.length - 1)
+                    const item = resultsRef.current?.children[next] as HTMLElement
+                    if (item) item.scrollIntoView({ block: 'nearest' })
+                    return next
+                  })
+                }
+                if (e.key === 'ArrowUp' && results.length > 0) {
+                  e.preventDefault()
+                  setSelectedIndex((i) => {
+                    const next = Math.max(i - 1, 0)
+                    const item = resultsRef.current?.children[next] as HTMLElement
+                    if (item) item.scrollIntoView({ block: 'nearest' })
+                    return next
+                  })
+                }
               }}
-            >
-              {isIndexing ? '索引中...' : hasCompleteSearchIndex ? '更新索引' : '建立本地索引'}
-            </button>
-          )}
-        </div>
-
-        {mode === 'related' && searchIndexStatus && (searchIndexStatus.state === 'indexing' || searchIndexStatus.state === 'error' || !hasCompleteSearchIndex) && (
-          <div style={{ padding: '0 16px 12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: searchIndexStatus.state === 'error' ? 'var(--danger)' : 'var(--text-tertiary)' }}>
-                {searchIndexStatus.state === 'indexing'
-                  ? `正在建立本地检索索引 ${searchIndexStatus.current}/${searchIndexStatus.total}`
-                  : searchIndexStatus.state === 'error'
-                    ? searchIndexStatus.message || '本地检索索引失败'
-                    : searchIndexStatus.total > 0
-                      ? `已索引 ${searchIndexStatus.indexed}/${searchIndexStatus.total} 篇`
-                      : '当前 vault 还没有可索引的 Markdown 笔记'}
-              </span>
-              {searchIndexStatus.total > 0 && searchIndexStatus.state === 'indexing' && (
-                <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexPercent}%</span>
-              )}
-            </div>
-            {searchIndexStatus.state === 'indexing' && (
-              <div style={{ height: 4, overflow: 'hidden', borderRadius: 999, background: 'var(--bg-hover)' }}>
-                <div
-                  style={{
-                    width: `${searchIndexPercent}%`,
-                    height: '100%',
-                    borderRadius: 999,
-                    background: 'var(--accent)',
-                    transition: 'width 180ms ease'
-                  }}
-                />
-              </div>
+              placeholder={searchPlaceholder}
+              style={{ flex: 1, minWidth: 0, height: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: 'var(--text-primary)' }}
+            />
+            {query && (
+              <button
+                onClick={() => handleSearch()}
+                style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: '1px solid color-mix(in srgb, var(--accent) 82%, var(--glass-highlight))', borderRadius: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 8px 18px var(--accent-glow)' }}
+              >
+                搜索
+              </button>
             )}
-            {searchIndexStatus.message && searchIndexStatus.state !== 'error' && searchIndexStatus.state === 'indexing' && (
-              <div style={{ marginTop: 5, fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexStatus.message}</div>
+            <kbd style={{ fontSize: 10, lineHeight: 1, color: 'var(--text-tertiary)', padding: '4px 6px', borderRadius: 6, background: 'color-mix(in srgb, var(--control-bg) 74%, transparent)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 50%, transparent)' }}>ESC</kbd>
+          </div>
+
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 2, background: 'color-mix(in srgb, var(--control-bg) 70%, transparent)', border: '1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent)', borderRadius: 9, boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent)' }}>
+              <button onClick={() => setMode('keyword')} style={modeButtonStyle(mode === 'keyword')}>关键词</button>
+              <button onClick={() => setMode('related')} style={modeButtonStyle(mode === 'related')}>相关</button>
+              <button onClick={() => setMode('regex')} style={modeButtonStyle(mode === 'regex')}>正则</button>
+            </div>
+            {mode === 'related' && (
+              <button
+                onClick={handleBuildIndex}
+                disabled={isIndexing}
+                style={{ ...modeButtonStyle(hasCompleteSearchIndex), marginLeft: 'auto', background: hasCompleteSearchIndex ? modeButtonStyle(true).background : 'color-mix(in srgb, var(--control-bg) 70%, transparent)', opacity: isIndexing ? 0.72 : 1, cursor: isIndexing ? 'default' : 'pointer' }}
+              >
+                {isIndexing ? '索引中...' : hasCompleteSearchIndex ? '更新索引' : '建立本地索引'}
+              </button>
             )}
           </div>
-        )}
 
-        {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+          {mode === 'related' && searchIndexStatus && (searchIndexStatus.state === 'indexing' || searchIndexStatus.state === 'error' || !hasCompleteSearchIndex) && (
+            <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 10, background: 'color-mix(in srgb, var(--control-bg) 68%, transparent)', border: '1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: searchIndexStatus.state === 'error' ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                  {searchIndexStatus.state === 'indexing'
+                    ? `正在建立本地检索索引 ${searchIndexStatus.current}/${searchIndexStatus.total}`
+                    : searchIndexStatus.state === 'error'
+                      ? searchIndexStatus.message || '本地检索索引失败'
+                      : searchIndexStatus.total > 0
+                        ? `已索引 ${searchIndexStatus.indexed}/${searchIndexStatus.total} 篇`
+                        : '当前 vault 还没有可索引的 Markdown 笔记'}
+                </span>
+                {searchIndexStatus.total > 0 && searchIndexStatus.state === 'indexing' && (
+                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexPercent}%</span>
+                )}
+              </div>
+              {searchIndexStatus.state === 'indexing' && (
+                <div style={{ height: 4, overflow: 'hidden', borderRadius: 999, background: 'var(--bg-hover)' }}>
+                  <div
+                    style={{
+                      width: `${searchIndexPercent}%`,
+                      height: '100%',
+                      borderRadius: 999,
+                      background: 'var(--accent)',
+                      transition: 'width 180ms ease'
+                    }}
+                  />
+                </div>
+              )}
+              {searchIndexStatus.message && searchIndexStatus.state !== 'error' && searchIndexStatus.state === 'indexing' && (
+                <div style={{ marginTop: 5, fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexStatus.message}</div>
+              )}
+            </div>
+          )}
+        </div>
 
-        {/* Results / History */}
-        <div ref={resultsRef} style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
+        <div ref={resultsRef} style={{ flex: 1, minHeight: 96, overflowY: 'auto', padding: 8, background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass) 58%, transparent), color-mix(in srgb, var(--bg-glass) 42%, transparent))' }}>
           {searching && (
-            <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>搜索中...</div>
+            <div style={{ minHeight: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>搜索中...</div>
           )}
           {!searching && results.length === 0 && query && (
-            <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>无结果</div>
+            <div style={{ minHeight: 88, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>无结果</div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>可以切换搜索模式或缩短关键词</div>
+            </div>
           )}
           {!searching && results.length === 0 && !query && history.length > 0 && (
-            <div style={{ padding: '8px 10px' }}>
-              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, padding: '0 4px' }}>搜索历史</p>
+            <div style={{ padding: '6px 8px' }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: 0, marginBottom: 8, padding: '0 2px' }}>搜索历史</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {history.map((h, i) => (
                   <button
                     key={i}
                     onClick={() => handleHistoryClick(h)}
-                    style={{ height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, background: 'var(--control-bg)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', cursor: 'pointer' }}
+                    style={{ height: 28, padding: '0 10px', fontSize: 11, borderRadius: 8, background: 'color-mix(in srgb, var(--control-bg) 78%, transparent)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', cursor: 'pointer', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 38%, transparent)' }}
                   >
                     {h}
                   </button>
@@ -427,26 +423,16 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             </div>
           )}
           {!searching && results.length === 0 && !query && history.length === 0 && (
-            <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {mode === 'keyword'
-                ? '输入关键词后按 Enter 搜索'
-                : mode === 'regex'
-                  ? '输入正则表达式后按 Enter 搜索'
-                  : '输入词语或短句查找相关内容'}
+            <div style={{ minHeight: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
+              {emptyMessage}
             </div>
           )}
           {results.map((r, i) => (
             <button
               key={i}
               onClick={() => handleResultClick(r)}
-              style={{
-                width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 8,
-                background: i === selectedIndex ? 'var(--accent-muted)' : 'transparent',
-                border: 'none', cursor: 'pointer', display: 'block',
-                transition: 'background 80ms',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-muted)'; setSelectedIndex(i) }}
-              onMouseLeave={(e) => { if (i !== selectedIndex) e.currentTarget.style.background = 'transparent' }}
+              style={resultButtonStyle(i === selectedIndex)}
+              onMouseEnter={() => setSelectedIndex(i)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.title}</span>
