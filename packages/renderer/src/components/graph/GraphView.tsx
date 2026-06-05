@@ -1443,6 +1443,24 @@ export function GraphView() {
       />
 
       <div className="graph-canvas-stage">
+        <div className="graph-canvas-hud" role="status">
+          <div className="graph-canvas-hud__main">
+            <span className="graph-canvas-hud__title">{t('graph.overview')}</span>
+            <span>{t('graph.nodes', { count: visibleNodes.length })} · {t('graph.connections', { count: visibleLinks.length })}</span>
+          </div>
+          <div className="graph-canvas-hud__legend" aria-hidden="true">
+            {showExplicitEdges && (
+              <span><i className="graph-edge-swatch swatch-explicit" />{t('graph.explicit')}</span>
+            )}
+            {showInferredEdges && (
+              <span><i className="graph-edge-swatch swatch-inferred" />{t('graph.inferred')}</span>
+            )}
+            {showFolderEdges && (
+              <span><i className="graph-edge-swatch swatch-folder" />{t('graph.folderEdges')}</span>
+            )}
+          </div>
+        </div>
+
         <GraphMaintenanceNudge
           signals={maintenanceSignals}
           focus={maintenanceFocus}

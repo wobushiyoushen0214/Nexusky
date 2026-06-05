@@ -412,6 +412,7 @@ export function MaintenanceQueuePanel() {
   const grouped = useMemo(() => items, [items])
   const priorityItems = useMemo(() => grouped.slice(0, 3), [grouped])
   const remainingItems = useMemo(() => grouped.slice(priorityItems.length), [grouped, priorityItems.length])
+  const activeFilterKey = TYPE_FILTERS.find((filter) => filter.value === activeFilter)?.key ?? 'all'
 
   return (
     <div className="maintenance-panel">
@@ -472,6 +473,14 @@ export function MaintenanceQueuePanel() {
         )
       ) : (
         <>
+          <MaintenanceQueueSummary
+            itemCount={items.length}
+            priorityCount={priorityItems.length}
+            activeFilterLabel={t(`maintenance.filters.${activeFilterKey}`)}
+            healthScore={healthSummary?.score ?? null}
+            feedbackSummary={feedbackSummary}
+            loading={loading}
+          />
           <div className="maintenance-panel__filters">
             {TYPE_FILTERS.map((filter) => {
               const count = filter.value === 'all'
@@ -567,6 +576,15 @@ interface MaintenanceScanStatusBarProps {
   itemCount: number
 }
 
+interface MaintenanceQueueSummaryProps {
+  itemCount: number
+  priorityCount: number
+  activeFilterLabel: string
+  healthScore: number | null
+  feedbackSummary: MaintenanceFeedbackSummary | null
+  loading: boolean
+}
+
 interface WeeklyReviewPanelProps {
   review: LongContextCognitiveReviewResult | null
   loading: boolean
@@ -653,6 +671,44 @@ function MaintenanceHealthTrendPanel({
           : <small>{t('maintenance.healthTrend.feedback.loading')}</small>}
       </div>
     </section>
+  )
+}
+
+function MaintenanceQueueSummary({
+  itemCount,
+  priorityCount,
+  activeFilterLabel,
+  healthScore,
+  feedbackSummary,
+  loading
+}: MaintenanceQueueSummaryProps) {
+  const { t } = useTranslation()
+  const weeklyFeedback = feedbackSummary?.last7Days
+  const weeklyTotal = weeklyFeedback
+    ? weeklyFeedback.done + weeklyFeedback.skipped + weeklyFeedback.snoozed + weeklyFeedback.not_relevant
+    : 0
+  return (
+    <section className="maintenance-panel__summary" aria-label={t('maintenance.summary.title')}>
+      <div className="maintenance-panel__summary-copy">
+        <span className="maintenance-panel__summary-filter">{activeFilterLabel}</span>
+        <strong>{loading ? t('maintenance.refreshing') : t('maintenance.summary.title')}</strong>
+      </div>
+      <div className="maintenance-panel__summary-metrics">
+        <SummaryMetric label={t('maintenance.summary.ready')} value={itemCount.toLocaleString()} />
+        <SummaryMetric label={t('maintenance.summary.priority')} value={priorityCount.toLocaleString()} />
+        <SummaryMetric label={t('maintenance.summary.health')} value={healthScore == null ? '--' : String(healthScore)} />
+        <SummaryMetric label={t('maintenance.summary.reviewed')} value={weeklyTotal.toLocaleString()} />
+      </div>
+    </section>
+  )
+}
+
+function SummaryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="maintenance-panel__summary-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   )
 }
 

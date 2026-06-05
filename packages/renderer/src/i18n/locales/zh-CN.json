@@ -301,6 +301,13 @@
       "action": "规划执行",
       "empty": "暂无可生成执行计划的维护项。"
     },
+    "summary": {
+      "title": "维护队列",
+      "ready": "待审查",
+      "priority": "优先项",
+      "health": "健康分",
+      "reviewed": "本周审查"
+    },
     "weeklyReview": {
       "title": "每周认知复盘",
       "desc": "基于关系、主题、重复问题、阻塞项和重新浮现的上下文生成有证据的复盘。",

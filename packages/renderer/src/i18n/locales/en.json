@@ -301,6 +301,13 @@
       "action": "Plan execution",
       "empty": "No maintenance items are ready for execution planning."
     },
+    "summary": {
+      "title": "Maintenance queue",
+      "ready": "Ready",
+      "priority": "Priority",
+      "health": "Health",
+      "reviewed": "Reviewed"
+    },
     "weeklyReview": {
       "title": "Weekly cognitive review",
       "desc": "Generate an evidence-backed review from relations, themes, repeated questions, blockers, and resurfaced context.",

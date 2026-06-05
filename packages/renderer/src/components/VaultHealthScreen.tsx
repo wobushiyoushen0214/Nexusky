@@ -5,6 +5,7 @@ import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
+import './VaultHealthScreen.css'
 
 type VaultHealthNextStepId =
   | 'askAi'
@@ -145,32 +146,18 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)', padding: '56px 32px' }}>
-      <div style={{ maxWidth: 840, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div className="vault-health-screen">
+      <div className="vault-health-shell">
+        <header className="vault-health-header">
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 4 }}>
-              {t('vaultHealth.title')}
-            </h1>
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
-              {t('vaultHealth.subtitle')}
-            </p>
+            <div className="vault-health-kicker">{t('vaultHealth.scanning')}</div>
+            <h1>{t('vaultHealth.title')}</h1>
+            <p>{t('vaultHealth.subtitle')}</p>
           </div>
-          <button
-            onClick={dismiss}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              color: 'var(--text-secondary)',
-              background: 'transparent',
-              border: '1px solid var(--border-default)',
-              borderRadius: 6,
-              cursor: 'pointer'
-            }}
-          >
+          <button type="button" onClick={dismiss} className="vault-health-skip">
             {t('vaultHealth.skip')}
           </button>
-        </div>
+        </header>
 
         {error && (
           <StatePanel
@@ -184,65 +171,55 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
           <StatePanel
             title={t('vaultHealth.state.scanning.title')}
             desc={t('vaultHealth.state.scanning.desc')}
-          />
+          >
+            <div className="vault-health-scan-steps">
+              <ScanStep label={t('welcome.signal.local')} />
+              <ScanStep label={t('activityBar.graph')} />
+              <ScanStep label={t('activityBar.maintenance')} />
+            </div>
+          </StatePanel>
         )}
 
         {summary && (
           <>
-            <div
-              style={{
-                padding: '18px 20px',
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 8,
-                marginBottom: 16
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {t('vaultHealth.hero.kicker')}
-              </div>
-              <h2 style={{ fontSize: 18, lineHeight: 1.35, color: 'var(--text-primary)', margin: 0, marginBottom: 8 }}>
-                {repairSignalCount > 0
-                  ? t('vaultHealth.hero.titleWithWork', { count: repairSignalCount })
-                  : t('vaultHealth.hero.title')}
-              </h2>
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0, maxWidth: 640 }}>
-                {t('vaultHealth.hero.body')}
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-                <SignalLabel>{t('vaultHealth.hero.signal.local')}</SignalLabel>
-                <SignalLabel>{t('vaultHealth.hero.signal.review')}</SignalLabel>
-                <SignalLabel>{t('vaultHealth.hero.signal.context')}</SignalLabel>
-              </div>
-              <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(120px, 160px) minmax(0, 1fr)', gap: 14, alignItems: 'stretch' }}>
-                <div style={{ padding: '12px 14px', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>{t('vaultHealth.score.label')}</div>
-                  <div style={{ fontSize: 32, lineHeight: 1, fontWeight: 700, color: 'var(--text-primary)' }}>{summary.score}</div>
-                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('vaultHealth.score.outOf')}</div>
-                </div>
-                <div style={{ minWidth: 0, padding: '12px 14px', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-base)' }}>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>{t('vaultHealth.score.why')}</div>
-                  {scoreDragFactors.length > 0 ? (
-                    <div style={{ display: 'grid', gap: 6 }}>
-                      {scoreDragFactors.map((factor) => (
-                        <div key={factor.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', fontSize: 12 }}>
-                          <span style={{ minWidth: 0, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {t(`vaultHealth.score.factor.${factor.id}`)}
-                          </span>
-                          <span style={{ color: factor.status === 'bad' ? '#f87171' : '#f59e0b', fontWeight: 600 }}>
-                            {t('vaultHealth.score.impact', { impact: factor.impact })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('vaultHealth.score.noIssues')}</div>
-                  )}
+            <section className="vault-health-hero">
+              <div className="vault-health-hero__copy">
+                <div className="vault-health-kicker">{t('vaultHealth.hero.kicker')}</div>
+                <h2>
+                  {repairSignalCount > 0
+                    ? t('vaultHealth.hero.titleWithWork', { count: repairSignalCount })
+                    : t('vaultHealth.hero.title')}
+                </h2>
+                <p>{t('vaultHealth.hero.body')}</p>
+                <div className="vault-health-signals">
+                  <SignalLabel>{t('vaultHealth.hero.signal.local')}</SignalLabel>
+                  <SignalLabel>{t('vaultHealth.hero.signal.review')}</SignalLabel>
+                  <SignalLabel>{t('vaultHealth.hero.signal.context')}</SignalLabel>
                 </div>
               </div>
-            </div>
+              <div className="vault-health-score-card" aria-label={t('vaultHealth.score.label')}>
+                <div className="vault-health-score-card__value">{summary.score}</div>
+                <div className="vault-health-score-card__label">{t('vaultHealth.score.label')} {t('vaultHealth.score.outOf')}</div>
+              </div>
+            </section>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+            <section className="vault-health-drivers" aria-label={t('vaultHealth.score.why')}>
+              <div className="vault-health-section-heading">{t('vaultHealth.score.why')}</div>
+              {scoreDragFactors.length > 0 ? (
+                <div className="vault-health-driver-list">
+                  {scoreDragFactors.map((factor) => (
+                    <div key={factor.id} className="vault-health-driver">
+                      <span>{t(`vaultHealth.score.factor.${factor.id}`)}</span>
+                      <strong className={`is-${factor.status}`}>{t('vaultHealth.score.impact', { impact: factor.impact })}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="vault-health-driver is-empty">{t('vaultHealth.score.noIssues')}</div>
+              )}
+            </section>
+
+            <section className="vault-health-metrics" aria-label={t('vaultHealth.title')}>
               <HealthMetric label={t('vaultHealth.metric.notes')} value={summary.noteCount} />
               <HealthMetric label={t('vaultHealth.metric.links')} value={summary.linkCount} />
               <HealthMetric label={t('vaultHealth.metric.unresolvedLinks')} value={summary.unresolvedLinkCount} tone={summary.unresolvedLinkCount > 0 ? 'warn' : 'ok'} />
@@ -251,22 +228,24 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
               <HealthMetric label={t('vaultHealth.metric.duplicateTitles')} value={summary.duplicateTitleCount} tone={summary.duplicateTitleCount > 0 ? 'warn' : 'ok'} />
               <HealthMetric label={t('vaultHealth.metric.missingMemory')} value={summary.missingMemoryCount} />
               <HealthMetric label={t('vaultHealth.metric.staleNotes')} value={summary.staleNoteCount} />
-            </div>
+            </section>
 
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, fontWeight: 500 }}>
-              {t('vaultHealth.nextSteps')}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {nextSteps.map((step) => (
-                <NextStepButton
-                  key={step.id}
-                  kicker={t(`vaultHealth.action.${step.id}.kicker`)}
-                  title={t(`vaultHealth.action.${step.id}.title`, { count: step.count ?? 0 })}
-                  desc={t(`vaultHealth.action.${step.id}.desc`)}
-                  onClick={() => { void runNextStep(step.id) }}
-                />
-              ))}
-            </div>
+            <section className="vault-health-next" aria-labelledby="vault-health-next-title">
+              <div className="vault-health-next__head">
+                <h2 id="vault-health-next-title">{t('vaultHealth.nextSteps')}</h2>
+              </div>
+              <div className="vault-health-next__list">
+                {nextSteps.map((step) => (
+                  <NextStepButton
+                    key={step.id}
+                    kicker={t(`vaultHealth.action.${step.id}.kicker`)}
+                    title={t(`vaultHealth.action.${step.id}.title`, { count: step.count ?? 0 })}
+                    desc={t(`vaultHealth.action.${step.id}.desc`)}
+                    onClick={() => { void runNextStep(step.id) }}
+                  />
+                ))}
+              </div>
+            </section>
           </>
         )}
       </div>
@@ -278,45 +257,34 @@ interface StatePanelProps {
   title: string
   desc: string
   tone?: 'default' | 'error'
+  children?: ReactNode
 }
 
-function StatePanel({ title, desc, tone = 'default' }: StatePanelProps) {
+function StatePanel({ title, desc, tone = 'default', children }: StatePanelProps) {
   return (
-    <div
-      style={{
-        padding: '22px 20px',
-        borderRadius: 8,
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-default)',
-        marginBottom: 16
-      }}
-    >
-      <div style={{ fontSize: 14, fontWeight: 600, color: tone === 'error' ? '#f87171' : 'var(--text-primary)', marginBottom: 6 }}>
-        {title}
+    <section className={`vault-health-state is-${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
+      <div className="vault-health-state__mark" aria-hidden="true" />
+      <div className="vault-health-state__copy">
+        <h2>{title}</h2>
+        <p>{desc}</p>
+        {children}
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
-        {desc}
-      </div>
-    </div>
+    </section>
+  )
+}
+
+function ScanStep({ label }: { label: string }) {
+  return (
+    <span className="vault-health-scan-step">
+      <span aria-hidden="true" />
+      {label}
+    </span>
   )
 }
 
 function SignalLabel({ children }: { children: ReactNode }) {
   return (
-    <span
-      style={{
-        height: 24,
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '0 9px',
-        borderRadius: 6,
-        border: '1px solid var(--border-subtle)',
-        color: 'var(--text-secondary)',
-        background: 'var(--bg-base)',
-        fontSize: 11,
-        fontWeight: 500
-      }}
-    >
+    <span className="vault-health-signal">
       {children}
     </span>
   )
@@ -330,20 +298,9 @@ interface HealthMetricProps {
 
 function HealthMetric({ label, value, tone = 'ok' }: HealthMetricProps) {
   return (
-    <div
-      style={{
-        padding: '14px 16px',
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 8
-      }}
-    >
-      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 600, color: tone === 'warn' && value > 0 ? '#f59e0b' : 'var(--text-primary)' }}>
-        {value.toLocaleString()}
-      </div>
+    <div className={`vault-health-metric is-${tone}`}>
+      <span>{label}</span>
+      <strong>{value.toLocaleString()}</strong>
     </div>
   )
 }
@@ -359,33 +316,16 @@ interface NextStepButtonProps {
 function NextStepButton({ kicker, title, desc, onClick, disabled = false }: NextStepButtonProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        width: '100%',
-        padding: '12px 16px',
-        textAlign: 'left',
-        background: disabled ? 'var(--bg-base)' : 'var(--bg-elevated)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 8,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        transition: 'border-color 150ms, background 150ms'
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.borderColor = 'var(--accent)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border-default)'
-        }}
-      >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-        <span style={{ minWidth: 52, fontSize: 11, fontWeight: 700, color: disabled ? 'var(--text-tertiary)' : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {kicker}
-        </span>
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</span>
-      </div>
-      <div style={{ paddingLeft: 62, fontSize: 12, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>{desc}</div>
+      className="vault-health-next-step"
+    >
+      <span className="vault-health-next-step__kicker">{kicker}</span>
+      <span className="vault-health-next-step__copy">
+        <strong>{title}</strong>
+        <span>{desc}</span>
+      </span>
     </button>
   )
 }

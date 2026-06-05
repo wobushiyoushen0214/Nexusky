@@ -1,0 +1,465 @@
+.vault-health-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--accent-muted) 48%, transparent) 0 160px, transparent 340px),
+    var(--bg-base);
+  color: var(--text-primary);
+}
+
+.vault-health-shell {
+  width: min(940px, calc(100% - 56px));
+  margin: 0 auto;
+  padding: 44px 0;
+}
+
+.vault-health-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.vault-health-header h1,
+.vault-health-hero h2,
+.vault-health-next h2,
+.vault-health-state h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.vault-health-header h1 {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1.16;
+}
+
+.vault-health-header p {
+  max-width: 58ch;
+  margin: 6px 0 0;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.vault-health-kicker,
+.vault-health-section-heading {
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vault-health-skip {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-base) 70%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+
+.vault-health-skip:hover {
+  border-color: var(--border-default);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.vault-health-skip:focus-visible,
+.vault-health-next-step:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.vault-health-state,
+.vault-health-hero,
+.vault-health-drivers,
+.vault-health-next {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-elevated) 80%, var(--bg-base));
+}
+
+.vault-health-state {
+  min-height: 240px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 30px;
+}
+
+.vault-health-state__mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border-subtle));
+  background:
+    radial-gradient(circle, var(--accent-text) 0 4px, transparent 5px),
+    color-mix(in srgb, var(--accent-muted) 82%, transparent);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent-muted) 34%, transparent);
+}
+
+.vault-health-state.is-default .vault-health-state__mark {
+  animation: vault-health-scan-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.vault-health-state.is-error .vault-health-state__mark {
+  border-color: color-mix(in srgb, var(--danger) 52%, var(--border-subtle));
+  background:
+    radial-gradient(circle, var(--danger) 0 4px, transparent 5px),
+    var(--danger-muted);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger-muted) 50%, transparent);
+}
+
+@keyframes vault-health-scan-pulse {
+  0% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-muted) 50%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--accent-muted) 0%, transparent);
+  }
+}
+
+.vault-health-state__copy h2 {
+  font-size: 17px;
+  font-weight: 720;
+  line-height: 1.25;
+}
+
+.vault-health-state__copy p {
+  max-width: 64ch;
+  margin: 7px 0 0;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.vault-health-scan-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.vault-health-scan-step {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-base) 68%, transparent);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vault-health-scan-step span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent-text);
+}
+
+.vault-health-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 22px;
+  align-items: stretch;
+  padding: 22px;
+}
+
+.vault-health-hero__copy {
+  min-width: 0;
+}
+
+.vault-health-hero h2 {
+  margin-top: 7px;
+  font-size: 20px;
+  font-weight: 740;
+  line-height: 1.28;
+}
+
+.vault-health-hero p {
+  max-width: 66ch;
+  margin: 9px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.vault-health-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 15px;
+}
+
+.vault-health-signal {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-base) 62%, transparent);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vault-health-score-card {
+  min-height: 132px;
+  display: grid;
+  place-content: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-subtle));
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-muted) 68%, transparent), transparent),
+    color-mix(in srgb, var(--bg-base) 70%, transparent);
+}
+
+.vault-health-score-card__value {
+  color: var(--text-primary);
+  font-size: 42px;
+  font-weight: 780;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-health-score-card__label {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.vault-health-drivers {
+  margin-top: 12px;
+  padding: 13px 15px;
+}
+
+.vault-health-driver-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.vault-health-driver {
+  min-width: 0;
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-base) 58%, transparent);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.vault-health-driver span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-health-driver strong {
+  color: oklch(77% 0.12 83);
+  font-size: 12px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-health-driver strong.is-bad {
+  color: oklch(70% 0.14 25);
+}
+
+.vault-health-driver.is-empty {
+  display: block;
+  color: var(--text-tertiary);
+}
+
+.vault-health-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.vault-health-metric {
+  min-width: 0;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-elevated) 78%, var(--bg-base));
+}
+
+.vault-health-metric span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 720;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vault-health-metric strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 23px;
+  font-weight: 720;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-health-metric.is-warn strong {
+  color: oklch(77% 0.12 83);
+}
+
+.vault-health-next {
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.vault-health-next__head {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.vault-health-next h2 {
+  font-size: 14px;
+  font-weight: 720;
+  line-height: 1.3;
+}
+
+.vault-health-next__list {
+  display: grid;
+}
+
+.vault-health-next-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 13px 16px;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms;
+}
+
+.vault-health-next-step:last-child {
+  border-bottom: none;
+}
+
+.vault-health-next-step:hover {
+  background: var(--bg-hover);
+}
+
+.vault-health-next-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.vault-health-next-step__kicker {
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle));
+  border-radius: 999px;
+  background: var(--accent-muted);
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vault-health-next-step__copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.vault-health-next-step__copy strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.vault-health-next-step__copy span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 780px) {
+  .vault-health-shell {
+    width: min(640px, calc(100% - 28px));
+    padding: 28px 0;
+  }
+
+  .vault-health-header,
+  .vault-health-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-health-header {
+    display: grid;
+  }
+
+  .vault-health-score-card {
+    min-height: 100px;
+  }
+
+  .vault-health-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vault-health-state {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .vault-health-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-health-next-step {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-health-next-step__kicker {
+    width: max-content;
+    padding: 0 10px;
+  }
+}
