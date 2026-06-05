@@ -674,12 +674,15 @@ pnpm test
 
 - `README.md`：项目入口、快速开始和高层介绍。
 - `PRODUCT.md`：产品取舍、ActivityBar 调整和 Canvas/Kanban/Agent 入口决策。
-- `docs/PROJECT_ANALYSIS_2026-05.md`：当前缺陷清单、优先级和修复进度。
-- `docs/P0_FIX_TICKETS_2026-05.md`：数据安全、安全链和 P1 速修工单。
+- `docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md`：基于 v0.8.3 当前状态的下一阶段产品方向、升级计划和指标体系。
+- `docs/PRODUCT_ALIGNMENT_AUDIT_2026-06-04.md`：产品边界偏离审查、修复记录和验收范围。
+- `docs/PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md`：当前最符合本地 Markdown vault 维护闭环的能力清单。
+- `docs/MIGRATION_GUIDE.md`：Markdown/Obsidian vault 迁移、备份和 AI 数据边界。
+- `docs/10K_VAULT_PERFORMANCE_REGRESSION.md`：大 vault 发布前性能回归 runbook。
+- `docs/SYNC_DISASTER_RECOVERY_DRILL.md`：同步删除、覆盖和冲突恢复演练 runbook。
 - `docs/PLUGIN_COMMANDS.md`：插件命令格式。
 - `docs/WEB_CLIPPER.md`：浏览器剪藏功能说明。
-- `docs/PRODUCT_STRATEGY_ANALYSIS.md`：产品方向和策略分析。
-- `docs/PROJECT_AUDIT.md`：历史项目审计记录。
+- `docs/SEMANTIC_SEARCH_EVALUATION_2026-05-31.md`：embedding 不默认启用的评估边界和隐私约束。
 - 本文：面向开发者和 AI 的代码/功能全景索引。
 
 ## 22. v0.4.0 及之后的增量索引
@@ -755,8 +758,8 @@ pnpm test
 ### 22.10 文档与配套
 
 - `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
-- `README.md`、`PRODUCT.md`、`docs/PROJECT_ANALYSIS_2026-05.md`、`docs/P0_FIX_TICKETS_2026-05.md` 在同一周期内同步更新。
-- 保留 `docs/PRODUCT_STRATEGY_ANALYSIS.md` 和 `docs/PROJECT_AUDIT.md` 作为策略与历史审计背景。
+- `README.md`、`PRODUCT.md`、当前路线图、产品对齐记录和发布 runbook 在同一周期内同步更新。
+- v0.8.3 发版后移除 2026-05 的旧审计、旧工单、旧方向和旧开发计划文档，避免维护者或 AI agent 把历史快照误读为当前产品边界。
 
 ### 22.11 `ac7dee4..cb6a1f3` 最新回写
 

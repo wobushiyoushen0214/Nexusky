@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | A1 | Chat / Vault Health / 来源问答默认或显式进入 Agent 工具调用路径 | 已修复 | `ChatPanel.tsx`、`CommandPalette.tsx`、`VaultHealthScreen.tsx`、`ai-command-draft.ts`、Reader 历史组件 |
 | A2 | 用户可见文案仍使用“插件市场 / marketplace”描述本地内置包 | 已修复 | Settings 插件页、命令面板 i18n、插件文档、项目全景文档 |
-| A3 | 旧产品战略分析文档仍像当前说明一样列出 Reader、Kanban、Agent、marketplace 等横向能力 | 已修复 | `docs/PRODUCT_STRATEGY_ANALYSIS.md` |
+| A3 | 旧产品战略分析文档仍像当前说明一样列出 Reader、Kanban、Agent、marketplace 等横向能力 | 已修复 | 历史策略文档 |
 
 内部 IPC、类型名和函数名中的 `marketplace` 暂不作为偏离点处理，因为它们不是用户可见入口，立即重命名会扩大兼容和测试风险。后续如要清理，可在单独的内部命名迁移中处理。
 
@@ -62,7 +62,7 @@
 
 ### 发现
 
-`docs/PRODUCT_STRATEGY_ANALYSIS.md` 是 2026-05-28 的功能扫描，里面仍完整列出 Reader Inbox、Kanban、Flashcards、Agent、插件 marketplace 等能力和方向。它对历史判断有价值，但若被维护者或 AI agent 当成当前产品说明，会和 2026-06-03 之后的收束路线冲突。
+旧产品策略分析是 2026-05-28 的功能扫描，里面仍完整列出 Reader Inbox、Kanban、Flashcards、Agent、插件 marketplace 等能力和方向。它对历史判断有价值，但若被维护者或 AI agent 当成当前产品说明，会和 2026-06-03 之后的收束路线冲突。
 
 ### 为什么偏离
 
@@ -70,9 +70,9 @@
 
 ### 修复方案
 
-- 在文档顶部加历史快照提示。
+- 先在文档顶部加历史快照提示。
 - 明确当前权威产品边界以 `PRODUCT.md`、`docs/PROJECT_OVERVIEW.md` 和 `docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md` 为准。
-- 不重写整份历史分析，避免抹掉当时功能扫描依据。
+- v0.8.3 发版后删除该历史策略文档，避免继续作为公开文档入口被误读。
 
 ## 5. 验收
 
@@ -107,7 +107,7 @@
 - `ChatPanel` 新用户默认关闭工具调用；聊天开关改为“Vault 工具 / 工具”，外发预览显示 `Vault 工具`。
 - Command Palette、Vault Health、Chat 空状态和 Reader 历史 digest 的来源问答 draft 显式使用普通 chat。
 - Settings 插件页、命令面板 i18n、插件文档和项目全景文档改为“本地内置包”。
-- `docs/PRODUCT_STRATEGY_ANALYSIS.md` 顶部标记为历史快照，不再承担当前路线图职责。
+- 旧产品策略分析已不再承担当前路线图职责，并在 v0.8.3 发版后的文档清理中删除。
 - Properties View、Command Palette、官网能力区和路线图文案已收束到 Markdown 属性视图与普通命令入口，不再使用数据库或 Tool Surface 心智锚点。
 
 ## 8. 追加审查：默认搜索命名边界

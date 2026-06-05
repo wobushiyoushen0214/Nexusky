@@ -85,16 +85,15 @@ pnpm -C website run build
 
 - [项目全景文档](docs/PROJECT_OVERVIEW.md)：给维护者和 AI agent 的代码导航与系统说明。
 - [产品上下文](PRODUCT.md)：当前产品取舍、ActivityBar 调整、Canvas/Kanban/Agent 入口决策。
-- [项目分析与修复记录](docs/PROJECT_ANALYSIS_2026-05.md)：当前缺陷清单、优先级和修复进度。
-- [P0 修复工单](docs/P0_FIX_TICKETS_2026-05.md)：数据安全、安全链和 P1 速修工单。
+- [产品未来发展与功能升级](docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md)：基于 v0.8.3 当前状态的下一阶段产品方向、现有功能升级、路线图和指标体系。
+- [产品目标偏离审查](docs/PRODUCT_ALIGNMENT_AUDIT_2026-06-04.md)：记录 2026-06-04 产品边界修复和验收。
+- [产品目标一致性亮点](docs/PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md)：整理当前最符合本地 Markdown vault 维护闭环的能力。
 - [迁移指南](docs/MIGRATION_GUIDE.md)：Markdown/Obsidian vault 安全打开、备份、忽略规则和 AI 数据边界。
 - [10k+ vault 性能回归](docs/10K_VAULT_PERFORMANCE_REGRESSION.md)：大 vault fixture 生成、手动 UI 回归和可选服务级 smoke 测试。
 - [同步灾难恢复演练](docs/SYNC_DISASTER_RECOVERY_DRILL.md)：本地 fake remote fixture、删除/覆盖/冲突恢复路径和发布前回归标准。
 - [Web Clipper](docs/WEB_CLIPPER.md)：浏览器剪藏扩展和本地接口说明。
 - [本地插件 API](docs/PLUGIN_COMMANDS.md)：声明式插件命令、面板和编辑器扩展格式。
-- [产品未来发展与功能升级](docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md)：基于 v0.8.3 当前状态的下一阶段产品方向、现有功能升级、路线图和指标体系。
-- [产品策略分析](docs/PRODUCT_STRATEGY_ANALYSIS.md)：产品方向、目标用户和体验策略。
-- [历史项目审计](docs/PROJECT_AUDIT.md)：早期工程审计记录和历史问题背景。
+- [Semantic Search Evaluation](docs/SEMANTIC_SEARCH_EVALUATION_2026-05-31.md)：记录 v0.8 不默认启用 embedding 的评估边界。
 
 ## 安全边界
 
