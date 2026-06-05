@@ -197,7 +197,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
             {recentVaults.filter((p) => p !== vaultPath).length === 0 && (
               <div style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>暂无其他笔记空间</div>
             )}
-            <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 6px' }} />
+            <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--border-subtle) 44%, transparent) 18%, color-mix(in srgb, var(--glass-highlight) 62%, transparent) 50%, color-mix(in srgb, var(--border-subtle) 34%, transparent) 82%, transparent)', margin: '4px 8px' }} />
             <button
               onClick={() => { setVaultMenu(false); selectVault() }}
               style={{ width: '100%', height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
@@ -244,7 +244,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       )}
 
       {/* Filter + Sort */}
-      <div style={{ padding: '0 10px 8px', display: 'flex', gap: 5, flexWrap: 'wrap', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div style={{ padding: '0 10px 8px', display: 'flex', gap: 5, flexWrap: 'wrap', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 28%, transparent)' }}>
         <input
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}

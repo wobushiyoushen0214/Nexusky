@@ -51,10 +51,11 @@ export function ResizeHandle({ side, onResize }: ResizeHandleProps) {
     >
       <div style={{
         width: 2,
-        height: 32,
+        height: 34,
         borderRadius: 1,
-        background: 'var(--border-subtle)',
-        opacity: 0.5,
+        background: 'linear-gradient(180deg, transparent, color-mix(in srgb, var(--border-subtle) 54%, transparent) 18%, color-mix(in srgb, var(--glass-highlight) 66%, transparent) 50%, color-mix(in srgb, var(--border-subtle) 42%, transparent) 82%, transparent)',
+        opacity: 0.68,
+        boxShadow: '0 0 10px color-mix(in srgb, var(--glass-highlight) 32%, transparent)',
         transition: 'opacity 150ms, height 150ms',
       }} />
     </div>

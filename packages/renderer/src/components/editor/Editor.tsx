@@ -28,7 +28,6 @@ import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
 import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { EditorToolbar } from './EditorToolbar'
-import { BacklinksPanel } from './BacklinksPanel'
 import { AIWritingMenu } from './AIWritingMenu'
 import { ContextMenu } from '../ContextMenu'
 import { buildEditorToolMenuItems } from '../tool-surface/editor-tool-menu'
@@ -209,11 +208,6 @@ export function Editor() {
   const closeSplit = useEditorStore((s) => s.closeSplit)
   const focusMode = useUIStore((s) => s.focusMode)
   const previewMode = useUIStore((s) => s.previewMode)
-  const rightPanel = useUIStore((s) => s.rightPanel)
-  const maintenancePanelSection = useUIStore((s) => s.maintenancePanelSection)
-  const setRightPanel = useUIStore((s) => s.setRightPanel)
-  const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
-  const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
   const language = useUIStore((s) => s.language)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
   const [editorContextMenu, setEditorContextMenu] = useState<{ x: number; y: number } | null>(null)
@@ -750,8 +744,6 @@ export function Editor() {
     )
   }
 
-  const fileName = currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '')
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Tab bar */}
@@ -898,61 +890,20 @@ export function Editor() {
       {/* Slash Command Menu */}
       <SlashCommandMenu editor={editor} />
 
-      {/* Backlinks */}
-      {!focusMode && <BacklinksPanel />}
-
       {/* Status bar */}
       {!focusMode && (
         <div style={{ height: 30, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, fontSize: 11, color: 'var(--text-tertiary)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)' }}>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <span>{stats.words} 词</span>
-          <span>{stats.chars} 字符</span>
-          <span>~{stats.readTime} 分钟阅读</span>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <span>{stats.words} 词</span>
+            <span>{stats.chars} 字符</span>
+            <span>~{stats.readTime} 分钟阅读</span>
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {isDirty ? <span style={{ color: 'var(--accent)' }}>未保存</span> : <span>已保存</span>}
+            <span>Markdown</span>
+            <SyncIndicator />
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button
-            onClick={() => {
-              const contextOpen = rightPanel === 'maintenance' && maintenancePanelSection === 'context'
-              setMaintenancePanelSection('context')
-              setRightPanel(contextOpen ? 'none' : 'maintenance')
-            }}
-            title={t('editor.openRelatedContext')}
-            disabled={!currentFilePath}
-            style={{
-              height: 18,
-              padding: '0 7px',
-              borderRadius: 5,
-              border: rightPanel === 'maintenance' && maintenancePanelSection === 'context' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-              background: rightPanel === 'maintenance' && maintenancePanelSection === 'context' ? 'var(--accent-muted)' : 'transparent',
-              color: rightPanel === 'maintenance' && maintenancePanelSection === 'context' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              fontSize: 10,
-              cursor: currentFilePath ? 'pointer' : 'default',
-              opacity: currentFilePath ? 1 : 0.5
-            }}
-          >
-            {t('editor.relatedContext')}
-          </button>
-          <button
-            onClick={() => toggleRightPanel('properties')}
-            title={t('editor.openProperties')}
-            style={{
-              height: 18,
-              padding: '0 7px',
-              borderRadius: 5,
-              border: rightPanel === 'properties' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-              background: rightPanel === 'properties' ? 'var(--accent-muted)' : 'transparent',
-              color: rightPanel === 'properties' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              fontSize: 10,
-              cursor: 'pointer'
-            }}
-          >
-            {t('editor.properties')}
-          </button>
-          {isDirty ? <span style={{ color: 'var(--accent)' }}>未保存</span> : <span>已保存</span>}
-          <span>Markdown</span>
-          <SyncIndicator />
-        </div>
-      </div>
       )}
     </div>
   )

@@ -115,10 +115,13 @@ export function ActivityBar() {
         justifyContent: 'space-between',
         flexShrink: 0,
         background: 'transparent',
-        borderRight: sidebarCollapsed && mainView !== 'graph' ? 'none' : '1px solid var(--border-subtle)',
+        borderRight: 'none',
         padding: '4px 6px 6px',
         boxSizing: 'border-box',
         position: 'relative',
+        boxShadow: sidebarCollapsed && mainView !== 'graph'
+          ? 'none'
+          : 'inset -1px 0 0 color-mix(in srgb, var(--border-subtle) 30%, transparent), 1px 0 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent)',
       }}
     >
       {/* Top icons */}

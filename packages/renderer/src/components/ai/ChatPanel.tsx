@@ -225,20 +225,6 @@ function friendlyError(raw: string, t: TFunction): string {
   return formatAiProviderError(msg, t)
 }
 
-function estimateTokens(text: string): number {
-  let cjk = 0, other = 0
-  for (const ch of text) {
-    const code = ch.codePointAt(0)!
-    if ((code >= 0x4E00 && code <= 0x9FFF) || (code >= 0x3400 && code <= 0x4DBF) ||
-        (code >= 0x3000 && code <= 0x303F) || (code >= 0xFF00 && code <= 0xFFEF)) {
-      cjk++
-    } else {
-      other++
-    }
-  }
-  return cjk + Math.ceil(other / 4)
-}
-
 export function ChatPanel() {
   const { t } = useTranslation()
   const [messages, setMessages] = useState<Message[]>([])
@@ -335,14 +321,6 @@ export function ChatPanel() {
   const [folderOptions, setFolderOptions] = useState<string[]>([])
   const [editUnbound, setEditUnbound] = useState(false)
   const draftStorageKey = useMemo(() => getChatDraftStorageKey(vaultPath, currentSessionId), [vaultPath, currentSessionId])
-
-  const tokenCount = useMemo(() => {
-    let total = 0
-    for (const msg of messages) {
-      total += estimateTokens(msg.content)
-    }
-    return total
-  }, [messages])
 
   useEffect(() => {
     outboundPreviewRequestRef.current += 1
@@ -2411,15 +2389,74 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
           {/* Input row */}
           <div style={{ display: 'flex', alignItems: 'flex-end', padding: '8px 8px 8px 12px', gap: 6 }}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".md,.txt,.csv,.tsv,.rtf,.pdf,.doc,.docx,.xls,.xlsx,image/*"
-              onChange={(event) => { void handleAttachFiles(event.currentTarget.files) }}
-              style={{ display: 'none' }}
-            />
-            <textarea
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".md,.txt,.csv,.tsv,.rtf,.pdf,.doc,.docx,.xls,.xlsx,image/*"
+                onChange={(event) => { void handleAttachFiles(event.currentTarget.files) }}
+                style={{ display: 'none' }}
+              />
+              <button
+                onClick={() => { updateEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
+                type="button"
+                style={{
+                  width: 28,
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: editMode ? 'var(--accent-muted)' : 'transparent',
+                  color: editMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  transition: 'background 150ms, color 150ms',
+                  flexShrink: 0,
+                }}
+                title={editMode ? '切换到对话模式' : '切换到编辑模式'}
+                aria-label={editMode ? '切换到对话模式' : '切换到编辑模式'}
+              >
+                {editMode ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                )}
+              </button>
+              {!editMode && (
+                <button
+                  onClick={() => {
+                    if (!canUseVaultTools) {
+                      updateAgentMode(false)
+                      toast(vaultToolsDisabledTitle || '当前 Provider 不支持 Vault 工具', 'info')
+                      return
+                    }
+                    updateAgentMode(!agentMode)
+                  }}
+                  disabled={!canUseVaultTools}
+                  type="button"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: agentMode ? 'var(--accent-muted)' : 'transparent',
+                    color: agentMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: canUseVaultTools ? 'pointer' : 'not-allowed',
+                    opacity: canUseVaultTools ? 1 : 0.55,
+                    transition: 'background 150ms, color 150ms',
+                    flexShrink: 0,
+                  }}
+                  title={canUseVaultTools ? vaultToolsBoundaryTitle : vaultToolsDisabledTitle}
+                  aria-label="切换 Vault 工具"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+                </button>
+              )}
+              <textarea
               ref={inputRef}
               value={input}
               onChange={handleInputChange}
@@ -2498,109 +2535,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             )}
           </div>
 
-          {/* Bottom toolbar */}
-          <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: 2 }}>
-            <button
-              onClick={() => { updateEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
-              style={{
-                height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: 'pointer',
-                background: editMode ? 'var(--accent-muted)' : 'transparent',
-                color: editMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                border: 'none',
-                transition: 'all 100ms',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-              title={editMode ? '切换到对话模式' : '切换到编辑模式（直接修改文档）'}
-            >
-              {editMode ? (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-              ) : (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-              )}
-              {editMode ? '编辑' : '对话'}
-            </button>
-            {!editMode && (
-              <button
-                onClick={() => {
-                  if (!canUseVaultTools) {
-                    updateAgentMode(false)
-                    toast(vaultToolsDisabledTitle || '当前 Provider 不支持 Vault 工具', 'info')
-                    return
-                  }
-                  updateAgentMode(!agentMode)
-                }}
-                disabled={!canUseVaultTools}
-                style={{
-                  height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5, cursor: canUseVaultTools ? 'pointer' : 'not-allowed',
-                  background: agentMode ? 'var(--accent-muted)' : 'transparent',
-                  color: agentMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                  border: 'none',
-                  opacity: canUseVaultTools ? 1 : 0.55,
-                  transition: 'all 100ms',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}
-                title={canUseVaultTools ? (agentMode ? 'Vault 工具：AI 可按需搜索/读取笔记，修改请切换编辑模式' : '普通模式：使用本地检索和来源引用') : vaultToolsDisabledTitle}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
-                工具
-              </button>
-            )}
-            {!editMode && canUseVaultTools && (
-              <span
-                title={vaultToolsBoundaryTitle}
-                style={{
-                  minWidth: 0,
-                  maxWidth: 190,
-                  padding: '0 6px',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 10,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {vaultToolsBoundary
-                  ? t('chatMessages.vaultToolsBoundary.compact', {
-                    readOnly: vaultToolsBoundary.readOnly,
-                    previewWrite: vaultToolsBoundary.previewWrite,
-                    agentOnly: vaultToolsBoundary.agentOnly
-                  })
-                  : t('chatMessages.vaultToolsBoundary.loading')}
-              </span>
-            )}
-            {!editMode && (
-              <button
-                onClick={() => { void prepareOutboundPreview() }}
-                disabled={!canSend || outboundPreviewLoading}
-                style={{
-                  height: 22, padding: '0 8px', fontSize: 11, fontWeight: 500, borderRadius: 5,
-                  cursor: canSend && !outboundPreviewLoading ? 'pointer' : 'default',
-                  background: outboundPreview ? 'var(--accent-muted)' : 'transparent',
-                  color: outboundPreview ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                  border: 'none',
-                  opacity: canSend ? 1 : 0.5,
-                  transition: 'all 100ms',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}
-                title="查看本次会发送什么"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-                外发预览
-              </button>
-            )}
-            <div style={{ flex: 1 }} />
-            {tokenCount > 0 && (
-              <span
-                style={{ fontSize: 10, color: tokenCount > 5000 ? 'var(--warning, #f59e0b)' : 'var(--text-tertiary)', opacity: tokenCount > 5000 ? 0.9 : 0.5, marginRight: 6 }}
-                title={`当前对话约 ${tokenCount} tokens`}
-              >
-                ~{tokenCount > 1000 ? `${(tokenCount / 1000).toFixed(1)}k` : tokenCount} tokens
-              </span>
-            )}
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.5 }}>Enter 发送</span>
           </div>
         </div>
-      </div>
       <ConfirmModal
         open={confirmClear}
         title="清空对话"
