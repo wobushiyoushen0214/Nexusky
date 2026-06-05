@@ -85,16 +85,17 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}
+      className="glass-overlay"
+      style={{ position: 'fixed', inset: 0, zIndex: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}
       onClick={handleClose}
     >
       <div
-        className="animate-scale-in"
-        style={{ width: 560, maxHeight: '80vh', background: 'var(--bg-surface)', borderRadius: 12, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        className="animate-scale-in glass-popover"
+        style={{ width: 560, maxHeight: '80vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-popover)', display: 'flex', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+        <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>AI 知识图谱生成</span>
           <button onClick={handleClose} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -150,7 +151,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
               <button onClick={handleGenerate} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>
                 重新生成
               </button>
-              <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
+              <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
                 保存为笔记
               </button>
             </>

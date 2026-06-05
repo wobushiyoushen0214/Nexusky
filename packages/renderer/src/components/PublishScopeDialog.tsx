@@ -155,8 +155,8 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
 
   return (
     <div
-      className="animate-overlay-in"
-      style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
+      className="animate-overlay-in glass-overlay"
+      style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}
       onPointerDown={(event) => {
         overlayPointerDownRef.current = event.target === event.currentTarget
       }}
@@ -170,11 +170,11 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="publish-scope-dialog-title"
-        className="animate-scale-in"
-        style={{ width: 760, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 12, boxShadow: 'var(--shadow-lg)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        className="animate-scale-in glass-popover"
+        style={{ width: 760, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 14, boxShadow: 'var(--shadow-popover)', overflow: 'hidden', display: 'flex', flexDirection: 'column', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
           <h3 id="publish-scope-dialog-title" style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{t('commandPalette.publishScope.title')}</h3>
           <p style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>{t('commandPalette.publishScope.description')}</p>
         </div>
@@ -551,7 +551,7 @@ const primaryButtonStyle: React.CSSProperties = {
   borderRadius: 6,
   border: 'none',
   background: 'var(--accent)',
-  color: 'white',
+  color: 'var(--text-on-accent)',
   fontSize: 12,
   fontWeight: 600
 }
@@ -559,9 +559,9 @@ const primaryButtonStyle: React.CSSProperties = {
 const dangerButtonStyle: React.CSSProperties = {
   padding: '6px 10px',
   borderRadius: 6,
-  border: '1px solid rgba(220, 38, 38, 0.35)',
-  background: 'rgba(220, 38, 38, 0.1)',
-  color: '#dc2626',
+  border: '1px solid color-mix(in srgb, var(--danger) 36%, var(--glass-border))',
+  background: 'var(--danger-muted)',
+  color: 'var(--danger)',
   fontSize: 11,
   fontWeight: 700
 }

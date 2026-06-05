@@ -90,13 +90,13 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
 
   return (
     <div
-      className="animate-overlay-in"
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '18vh', background: 'rgba(0, 0, 0, 0.4)' }}
+      className="animate-overlay-in glass-overlay"
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '18vh', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
       onClick={onClose}
     >
       <div
-        className="animate-scale-in"
-        style={{ width: 520, background: 'var(--bg-elevated)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}
+        className="animate-scale-in glass-popover"
+        style={{ width: 520, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
@@ -112,11 +112,11 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
             placeholder="搜索笔记..."
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)' }}
           />
-          <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 4, background: 'var(--bg-hover)' }}>ESC</kbd>
+          <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 5, background: 'var(--control-bg)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>ESC</kbd>
         </div>
 
         {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+        <div style={{ height: 1, background: 'color-mix(in srgb, var(--border-subtle) 36%, transparent)' }} />
 
         {/* Results */}
         <div ref={listRef} style={{ maxHeight: 340, overflowY: 'auto', padding: '6px' }}>

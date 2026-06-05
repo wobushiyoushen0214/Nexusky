@@ -6,6 +6,7 @@ export function TitleBar() {
       <div
         style={{
           height: 32,
+          background: 'transparent',
           WebkitAppRegion: 'drag',
           userSelect: 'none',
           flexShrink: 0,
@@ -22,7 +23,8 @@ export function TitleBar() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: 'var(--sidebar-bg)',
+        background: 'transparent',
+        borderBottom: '1px solid color-mix(in srgb, var(--glass-border) 50%, transparent)',
         userSelect: 'none',
         flexShrink: 0,
         WebkitAppRegion: 'drag',
@@ -45,7 +47,7 @@ export function TitleBar() {
             <circle cx="180" cy="260" r="22" fill="var(--accent)"/>
             <circle cx="330" cy="240" r="20" fill="var(--accent)"/>
             <circle cx="256" cy="180" r="32" fill="var(--accent)"/>
-            <circle cx="256" cy="180" r="14" fill="#fff" fillOpacity="0.8"/>
+            <circle cx="256" cy="180" r="14" fill="var(--text-on-accent)" fillOpacity="0.8"/>
           </svg>
         </div>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
@@ -77,7 +79,7 @@ export function TitleBar() {
         <button
           onClick={() => window.api.windowControls.close()}
           style={controlBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#e81123'; e.currentTarget.style.color = '#fff' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--danger)'; e.currentTarget.style.color = 'var(--text-on-accent)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
         >
           <svg width="10" height="10" viewBox="0 0 10 10">

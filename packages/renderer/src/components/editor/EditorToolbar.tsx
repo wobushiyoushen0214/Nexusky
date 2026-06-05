@@ -36,16 +36,17 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const btnStyle = (active: boolean): React.CSSProperties => ({
-    width: 28,
+    width: 30,
     height: 28,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
-    border: 'none',
+    borderRadius: 7,
+    border: active ? '1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle))' : '1px solid transparent',
     cursor: 'pointer',
     background: active ? 'var(--accent-muted)' : 'transparent',
     color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
+    transition: 'background 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out',
   })
 
   const stopVoiceInput = useCallback(() => {
@@ -140,14 +141,14 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
   }, [editor])
 
   const sepStyle: React.CSSProperties = {
-    width: 1,
-    height: 16,
-    background: 'var(--border-subtle)',
-    margin: '0 4px',
+    width: 10,
+    height: 1,
+    margin: '0 3px',
+    flexShrink: 0,
   }
 
   return (
-    <div style={{ height: 36, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+    <div style={{ width: '100%', height: 40, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 28%, transparent)', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg-soft) 86%, transparent), color-mix(in srgb, var(--panel-bg-soft) 62%, transparent))' }}>
       {/* Headings */}
       <button
         style={btnStyle(editor.isActive('heading', { level: 1 }))}

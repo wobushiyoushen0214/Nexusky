@@ -107,19 +107,22 @@ export function ActivityBar() {
     <div
       onContextMenu={handleContextMenu}
       style={{
-        width: 48,
+        width: 50,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexShrink: 0,
-        background: 'var(--sidebar-bg)',
+        background: 'transparent',
+        borderRight: sidebarCollapsed && mainView !== 'graph' ? 'none' : '1px solid var(--border-subtle)',
+        padding: '4px 6px 6px',
+        boxSizing: 'border-box',
         position: 'relative',
       }}
     >
       {/* Top icons */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8, gap: 4, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
         {visibleItems.map((item) => {
           const isActive = item!.id === activeId
           const isDisabled = !isActivityBarItemAvailable(item!, availabilityContext)
@@ -130,29 +133,32 @@ export function ActivityBar() {
               disabled={isDisabled}
               title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}${isDisabled ? ` - ${t('activityBar.requiresCurrentFile')}` : ''}`}
               style={{
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 8,
-                border: 'none',
-                background: isActive ? 'var(--bg-hover)' : 'transparent',
-                color: isDisabled ? 'var(--border-default)' : isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                borderRadius: 10,
+                border: isActive ? '1px solid color-mix(in srgb, var(--accent) 70%, var(--glass-border))' : '1px solid transparent',
+                background: isActive ? 'var(--accent)' : 'transparent',
+                color: isDisabled ? 'var(--border-default)' : isActive ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 opacity: isDisabled ? 0.55 : 1,
                 position: 'relative',
-                transition: 'color 0.15s, background 0.15s',
+                boxShadow: isActive ? 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 72%, transparent), 0 10px 22px var(--accent-glow)' : 'none',
+                transition: 'color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s',
               }}
               onMouseEnter={(e) => {
                 if (!isActive && !isDisabled) {
-                  e.currentTarget.style.background = 'var(--bg-hover)'
+                  e.currentTarget.style.background = 'var(--control-bg)'
+                  e.currentTarget.style.borderColor = 'var(--control-border)'
                   e.currentTarget.style.color = 'var(--text-secondary)'
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isActive && !isDisabled) {
                   e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.borderColor = 'transparent'
                   e.currentTarget.style.color = 'var(--text-tertiary)'
                 }
               }}
@@ -169,25 +175,28 @@ export function ActivityBar() {
             onClick={() => setMoreOpen(!moreOpen)}
             title={t('activityBar.more')}
             style={{
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 8,
-              border: 'none',
-              background: moreOpen ? 'var(--bg-hover)' : 'transparent',
-              color: 'var(--text-tertiary)',
+              borderRadius: 10,
+              border: moreOpen ? '1px solid var(--control-border)' : '1px solid transparent',
+              background: moreOpen ? 'var(--control-bg)' : 'transparent',
+              color: moreOpen ? 'var(--text-secondary)' : 'var(--text-tertiary)',
               cursor: 'pointer',
-              transition: 'color 0.15s, background 0.15s',
+              boxShadow: moreOpen ? 'inset 0 1px 0 var(--glass-highlight)' : 'none',
+              transition: 'color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--bg-hover)'
+              e.currentTarget.style.background = 'var(--control-bg)'
+              e.currentTarget.style.borderColor = 'var(--control-border)'
               e.currentTarget.style.color = 'var(--text-secondary)'
             }}
             onMouseLeave={(e) => {
               if (!moreOpen) {
                 e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
                 e.currentTarget.style.color = 'var(--text-tertiary)'
               }
             }}
@@ -198,29 +207,31 @@ export function ActivityBar() {
       </div>
 
       {/* Bottom: settings */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 0 }}>
         <button
           onClick={() => setSettingsOpen(true)}
           title={t('activityBar.settings') + ' (Ctrl+,)'}
           style={{
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 8,
-            border: 'none',
+            borderRadius: 10,
+            border: '1px solid transparent',
             background: 'transparent',
             color: 'var(--text-tertiary)',
             cursor: 'pointer',
-            transition: 'color 0.15s, background 0.15s',
+            transition: 'color 0.15s, background 0.15s, border-color 0.15s',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--bg-hover)'
+            e.currentTarget.style.background = 'var(--control-bg)'
+            e.currentTarget.style.borderColor = 'var(--control-border)'
             e.currentTarget.style.color = 'var(--text-secondary)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.borderColor = 'transparent'
             e.currentTarget.style.color = 'var(--text-tertiary)'
           }}
         >
@@ -230,17 +241,19 @@ export function ActivityBar() {
 
       {/* More menu popup */}
       {moreOpen && (
-        <div ref={moreRef} style={{
+        <div ref={moreRef} className="glass-popover" style={{
           position: 'absolute',
           top: (visibleItems.length + 1) * 44 + 8,
-          left: 52,
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 8,
+          left: 46,
+          background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
+          border: '1px solid var(--glass-border)',
+          borderRadius: 12,
           padding: 4,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          boxShadow: 'var(--shadow-popover)',
           minWidth: 160,
           zIndex: 100,
+          backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+          WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
         }}>
           {hiddenItems.map((item) => {
             const isDisabled = !isActivityBarItemAvailable(item, availabilityContext)

@@ -428,7 +428,7 @@ export default function App() {
   }, [vaultPath, autoSyncInterval])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--sidebar-bg)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--workspace-bg)' }}>
       {showOnboarding ? (
         <Onboarding onDone={() => setShowOnboarding(false)} />
       ) : (
@@ -438,15 +438,17 @@ export default function App() {
             showVaultHealth ? (
               <VaultHealthScreen vaultPath={vaultPath} onDismiss={() => setShowVaultHealth(false)} />
             ) : (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'var(--sidebar-bg)', minHeight: 0, alignItems: 'stretch' }}>
-          <ActivityBar />
-          {!sidebarCollapsed && (
-            <>
-              <Sidebar width={sidebarWidth} />
-              <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />
-            </>
-          )}
-          <main style={{ flex: 1, overflow: 'hidden', background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginLeft: sidebarCollapsed ? 0 : 4, marginRight: rightPanel !== 'none' ? 4 : 12, minWidth: 0 }}>
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'transparent', minHeight: 0, alignItems: 'stretch', padding: '8px 16px 16px' }}>
+          <div className="glass-panel" style={{ width: mainView === 'graph' ? 'auto' : sidebarCollapsed ? 62 : 62 + sidebarWidth, height: '100%', display: 'flex', flexShrink: 0, overflow: 'hidden', background: 'var(--panel-bg-soft)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', padding: 6, boxSizing: 'border-box', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
+            <ActivityBar />
+            {mainView === 'graph' ? (
+              <div id="graph-panel-slot" style={{ height: '100%', display: 'flex', minWidth: 0 }} />
+            ) : (
+              !sidebarCollapsed && <Sidebar width={sidebarWidth} />
+            )}
+          </div>
+          {!sidebarCollapsed && mainView !== 'graph' && <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />}
+          <main className="glass-panel" style={{ flex: 1, overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', marginLeft: sidebarCollapsed || mainView === 'graph' ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
             {mainView === 'editor' ? <Editor /> : mainView === 'bases' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><CanvasView initialMode="properties" /></Suspense>
@@ -464,15 +466,17 @@ export default function App() {
           {rightPanel !== 'none' && (
             <ResizeHandle side="right" onResize={(delta) => resizeRightPanel(delta)} />
           )}
-          <aside style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--editor-bg)', borderRadius: '12px 12px 0 0', marginRight: rightPanel !== 'none' ? 12 : 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <aside className="glass-panel" style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--panel-bg)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', marginRight: 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
+            <div style={{ height: 46, padding: '0 14px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 26%, transparent)' }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
                 {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'maintenance' ? t('panels.maintenance') : rightPanel === 'agent' ? t('panels.agent') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
                   onClick={() => toggleRightPanel(rightPanel)}
-                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                  style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, border: '1px solid transparent', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

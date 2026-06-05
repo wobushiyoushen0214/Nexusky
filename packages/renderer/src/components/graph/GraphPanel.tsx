@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCancellationError, getErrorMessage } from '../../utils/errors'
 import type { GraphData, GraphNode } from '@shared/types/ipc'
@@ -48,6 +48,8 @@ interface GraphPanelProps {
 
 export function GraphPanel(props: GraphPanelProps) {
   const { t } = useTranslation()
+  const scrollHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [panelScrolling, setPanelScrolling] = useState(false)
   const {
     collapsed, onToggleCollapsed,
     graphData, groupColorMap, vaultPath,
@@ -98,6 +100,18 @@ export function GraphPanel(props: GraphPanelProps) {
     setTimeout(() => setIndexStatus(null), 3000)
   }
 
+  const handlePanelScroll = () => {
+    setPanelScrolling(true)
+    if (scrollHideTimerRef.current) clearTimeout(scrollHideTimerRef.current)
+    scrollHideTimerRef.current = setTimeout(() => setPanelScrolling(false), 700)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (scrollHideTimerRef.current) clearTimeout(scrollHideTimerRef.current)
+    }
+  }, [])
+
   const handleGenerateMemories = async () => {
     if (!vaultPath) return
     onStartAi()
@@ -134,7 +148,10 @@ export function GraphPanel(props: GraphPanelProps) {
           </svg>
         </button>
       )}
-      <div className={`graph-panel${collapsed ? ' collapsed' : ''}`}>
+      <div
+        className={`graph-panel file-tree-scroll${collapsed ? ' collapsed' : ''}${panelScrolling ? ' is-scrolling' : ''}`}
+        onScroll={handlePanelScroll}
+      >
         <div className="graph-panel-header">
           <div className="graph-panel-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

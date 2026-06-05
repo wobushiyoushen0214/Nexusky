@@ -90,8 +90,8 @@ function OutboundPreviewPanel({
 
   return (
     <div style={{ padding: '8px 14px 0', flexShrink: 0 }}>
-      <div style={{ background: 'var(--bg-base)', border: '1px solid var(--accent-muted)', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ padding: '9px 11px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+      <div style={{ background: 'color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 76%, transparent)', border: '1px solid color-mix(in srgb, var(--glass-border) 72%, transparent)', borderRadius: 12, overflow: 'hidden', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--shadow-sm)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}>
+        <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 32%, transparent)' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>外发内容预览</div>
             <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -175,7 +175,7 @@ function OutboundPreviewPanel({
 
 function PreviewMetric({ label, value }: { label: string; value: string }) {
   return (
-    <span style={{ height: 22, padding: '0 7px', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 5 }}>
+    <span style={{ height: 22, padding: '0 7px', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text-secondary)', background: 'color-mix(in srgb, var(--control-bg) 72%, transparent)', border: '1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent)', borderRadius: 6, boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 58%, transparent)' }}>
       <span style={{ color: 'var(--text-tertiary)' }}>{label}</span>
       <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{value}</span>
     </span>
@@ -191,7 +191,7 @@ function PreviewSnippetRow({ snippet }: { snippet: AIOutboundPreviewSnippet }) {
         ? '附件'
         : '上下文'
   return (
-    <div style={{ minWidth: 0, padding: '6px 8px', display: 'grid', gap: 3, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6 }}>
+    <div style={{ minWidth: 0, padding: '6px 8px', display: 'grid', gap: 3, background: 'color-mix(in srgb, var(--control-bg) 68%, transparent)', border: '1px solid color-mix(in srgb, var(--border-subtle) 54%, transparent)', borderRadius: 7 }}>
       <div style={{ display: 'flex', gap: 6, minWidth: 0, alignItems: 'center' }}>
         <span style={{ fontSize: 10, color: 'var(--accent-text)', fontWeight: 600, flexShrink: 0 }}>{label}</span>
         <span style={{ fontSize: 11, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{snippet.title}</span>
@@ -2015,15 +2015,15 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
   return (
     <div
       ref={dropZoneRef}
-      style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg-soft) 48%, transparent), transparent 18%)' }}
     >
       {dragOver && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(124,110,240,0.06)', border: '2px dashed var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', inset: 8, zIndex: 20, background: 'color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 72%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 48%, var(--glass-border))', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
           <span style={{ fontSize: 13, color: 'var(--accent-text)', fontWeight: 500 }}>松开以引用文件或文本</span>
         </div>
       )}
       {/* Header */}
-      <div style={{ padding: '0 10px 0 14px', height: 36, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+      <div style={{ padding: '0 10px 0 14px', height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 58%, transparent)', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 24%, transparent)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={() => setShowSessions(!showSessions)}
@@ -2067,7 +2067,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
 
       {/* Session list panel */}
       {showSessions && (
-        <div style={{ borderBottom: '1px solid var(--border-subtle)', maxHeight: 200, overflowY: 'auto', flexShrink: 0 }}>
+        <div className="file-tree-scroll" style={{ margin: '0 12px 8px', maxHeight: 200, overflowY: 'auto', flexShrink: 0, borderRadius: 10, background: 'color-mix(in srgb, var(--control-bg) 58%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 60%, transparent)' }}>
           <button
             onClick={() => handleSwitchSession(null)}
             style={{ width: '100%', height: 30, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: !currentSessionId ? 'var(--accent-text)' : 'var(--text-secondary)', background: !currentSessionId ? 'var(--accent-muted)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
@@ -2282,7 +2282,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {/* Mention dropdown */}
       {showMention && mentionResults.length > 0 && (
         <div style={{ padding: '0 16px 4px' }}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 8, padding: 4, maxHeight: 180, overflowY: 'auto' }}>
+          <div className="glass-popover file-tree-scroll" style={{ background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 10, padding: 4, maxHeight: 180, overflowY: 'auto', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
             {mentionResults.map((note, i) => (
               <button
                 key={note.filePath}
@@ -2317,14 +2317,17 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {/* Input */}
       <div style={{ padding: '10px 14px 14px', flexShrink: 0 }}>
         <div style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 10,
+          background: 'color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 72%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--glass-border) 78%, transparent)',
+          borderRadius: 14,
           transition: 'border-color 150ms, box-shadow 150ms',
           overflow: 'hidden',
+          boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--shadow-sm)',
+          backdropFilter: 'blur(var(--glass-blur)) saturate(150%)',
+          WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)',
         }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124,110,240,0.08)' }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none' }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 46%, var(--glass-border))'; e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent), inset 0 1px 0 var(--glass-highlight), var(--shadow-sm)' }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--glass-border) 78%, transparent)'; e.currentTarget.style.boxShadow = 'inset 0 1px 0 var(--glass-highlight), var(--shadow-sm)' }}
         >
           {/* Edit target indicator */}
           {editMode && (

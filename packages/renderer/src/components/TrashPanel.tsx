@@ -47,20 +47,20 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
   return (
     <>
       <div
-        className="animate-overlay-in"
-        style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
+        className="animate-overlay-in glass-overlay"
+        style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}
         onClick={onClose}
       >
         <div
-          className="animate-scale-in"
-          style={{ width: 440, maxHeight: '60vh', background: 'var(--bg-elevated)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}
+          className="animate-scale-in glass-popover"
+          style={{ width: 440, maxHeight: '60vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
+          <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>回收站</span>
             <div style={{ display: 'flex', gap: 8 }}>
               {items.length > 0 && (
-                <button onClick={() => setEmptyConfirmOpen(true)} style={{ fontSize: 11, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}>清空</button>
+                <button onClick={() => setEmptyConfirmOpen(true)} style={{ fontSize: 11, color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}>清空</button>
               )}
               <button onClick={onClose} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>关闭</button>
             </div>
@@ -70,7 +70,7 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
               <p style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>回收站为空</p>
             ) : (
               items.map((item) => (
-                <div key={item.path} style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                <div key={item.path} style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--control-bg)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
                   <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
                     <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalName}</span>
@@ -82,7 +82,7 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
                       <span style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalPath}</span>
                     )}
                   </span>
-                  <button onClick={() => handleRestore(item)} style={{ fontSize: 10, color: '#4ade80', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}>恢复</button>
+                  <button onClick={() => handleRestore(item)} style={{ fontSize: 10, color: 'oklch(55% 0.14 150)', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}>恢复</button>
                 </div>
               ))
             )}

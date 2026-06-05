@@ -253,13 +253,13 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
 
   return (
     <div
-      className="animate-overlay-in"
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh', background: 'rgba(0, 0, 0, 0.4)' }}
+      className="animate-overlay-in glass-overlay"
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
       onClick={onClose}
     >
       <div
-        className="animate-scale-in"
-        style={{ width: 560, maxHeight: '55vh', background: 'var(--bg-elevated)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}
+        className="animate-scale-in glass-popover"
+        style={{ width: 560, maxHeight: '58vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
@@ -305,12 +305,12 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           {query && (
             <button
               onClick={() => handleSearch()}
-              style={{ padding: '4px 10px', fontSize: 12, background: 'var(--accent)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+              style={{ height: 28, padding: '0 11px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontWeight: 600, boxShadow: '0 8px 18px var(--accent-glow)' }}
             >
               搜索
             </button>
           )}
-          <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 4, background: 'var(--bg-hover)' }}>ESC</kbd>
+          <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 5, background: 'var(--control-bg)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>ESC</kbd>
         </div>
 
         {/* Mode toggle */}
@@ -318,10 +318,10 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           <button
             onClick={() => setMode('keyword')}
             style={{
-              padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer', fontWeight: 500,
-              background: mode === 'keyword' ? 'var(--accent-muted)' : 'transparent',
+              height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer', fontWeight: 500,
+              background: mode === 'keyword' ? 'var(--accent-muted)' : 'var(--control-bg)',
               color: mode === 'keyword' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              border: mode === 'keyword' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              border: mode === 'keyword' ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
             }}
           >
             关键词
@@ -329,10 +329,10 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           <button
             onClick={() => setMode('related')}
             style={{
-              padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer', fontWeight: 500,
-              background: mode === 'related' ? 'var(--accent-muted)' : 'transparent',
+              height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer', fontWeight: 500,
+              background: mode === 'related' ? 'var(--accent-muted)' : 'var(--control-bg)',
               color: mode === 'related' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              border: mode === 'related' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              border: mode === 'related' ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
             }}
           >
             相关
@@ -340,10 +340,10 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           <button
             onClick={() => setMode('regex')}
             style={{
-              padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer', fontWeight: 500,
-              background: mode === 'regex' ? 'var(--accent-muted)' : 'transparent',
+              height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer', fontWeight: 500,
+              background: mode === 'regex' ? 'var(--accent-muted)' : 'var(--control-bg)',
               color: mode === 'regex' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-              border: mode === 'regex' ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              border: mode === 'regex' ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
             }}
           >
             正则
@@ -353,10 +353,10 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
               onClick={handleBuildIndex}
               disabled={isIndexing}
               style={{
-                marginLeft: 'auto', padding: '4px 10px', fontSize: 11, borderRadius: 5, cursor: 'pointer',
-                background: hasCompleteSearchIndex ? 'var(--accent-muted)' : 'transparent',
+                marginLeft: 'auto', height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, cursor: 'pointer',
+                background: hasCompleteSearchIndex ? 'var(--accent-muted)' : 'var(--control-bg)',
                 color: hasCompleteSearchIndex ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                border: hasCompleteSearchIndex ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                border: hasCompleteSearchIndex ? '1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle))' : '1px solid var(--border-subtle)',
               }}
             >
               {isIndexing ? '索引中...' : hasCompleteSearchIndex ? '更新索引' : '建立本地索引'}
@@ -418,7 +418,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
                   <button
                     key={i}
                     onClick={() => handleHistoryClick(h)}
-                    style={{ padding: '4px 10px', fontSize: 11, borderRadius: 5, background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}
+                    style={{ height: 26, padding: '0 10px', fontSize: 11, borderRadius: 7, background: 'var(--control-bg)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', cursor: 'pointer' }}
                   >
                     {h}
                   </button>

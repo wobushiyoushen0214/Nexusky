@@ -218,6 +218,7 @@ export function Editor() {
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
   const [editorContextMenu, setEditorContextMenu] = useState<{ x: number; y: number } | null>(null)
   const dragTabRef = useRef<number | null>(null)
+  const tabButtonRefs = useRef<Array<HTMLDivElement | null>>([])
   const [findReplaceOpen, setFindReplaceOpen] = useState(false)
   const [linkPreview, setLinkPreview] = useState<{ x: number; y: number; content: string } | null>(null)
   const linkPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -286,6 +287,16 @@ export function Editor() {
       }, 1000)
     }
   })
+
+  const activeTabPath = tabs[activeTabIndex]?.path
+
+  useEffect(() => {
+    const activeTab = tabButtonRefs.current[activeTabIndex]
+    if (!activeTab) return
+    requestAnimationFrame(() => {
+      activeTab.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+    })
+  }, [activeTabIndex, activeTabPath])
 
   const editorAreaRef = useRef<HTMLDivElement>(null)
 
@@ -708,10 +719,32 @@ export function Editor() {
 
   if (!currentFilePath) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 14, color: 'var(--text-tertiary)', marginBottom: 6 }}>选择文件开始编辑</p>
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', opacity: 0.5 }}>Ctrl+O 快速切换</p>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'linear-gradient(180deg, var(--panel-bg) 0%, color-mix(in srgb, var(--panel-bg) 88%, var(--panel-bg-soft)) 100%)' }}>
+        <div style={{ textAlign: 'center', display: 'grid', justifyItems: 'center', gap: 12 }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', color: 'var(--text-tertiary)', boxShadow: 'var(--shadow-sm)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 4 }}>选择文件开始编辑</p>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Ctrl+O 快速切换</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => useUIStore.getState().setQuickSwitcherOpen(true)}
+              style={{ height: 30, padding: '0 11px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
+            >
+              快速切换
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('create-new-note'))}
+              style={{ height: 30, padding: '0 11px', borderRadius: 8, border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--border-subtle))', background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
+            >
+              新建笔记
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -723,57 +756,59 @@ export function Editor() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Tab bar */}
       {!focusMode && (
-      <div
-        className="hide-scrollbar"
-        style={{ height: 36, padding: '0 8px', display: 'flex', alignItems: 'end', gap: 0, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden' }}
-        onWheel={(e) => { e.currentTarget.scrollLeft += e.deltaY }}
-      >
-        {tabs.map((tab, i) => {
-          const tabName = tab.path.split(/[\\/]/).pop()?.replace(/\.md$/, '')
-          const isActive = i === activeTabIndex
-          return (
-            <div
-              key={tab.path}
-              draggable
-              onDragStart={() => { dragTabRef.current = i }}
-              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
-              onDrop={() => { if (dragTabRef.current !== null && dragTabRef.current !== i) { reorderTab(dragTabRef.current, i) }; dragTabRef.current = null }}
-              onDragEnd={() => { dragTabRef.current = null }}
-              onClick={() => switchTab(i)}
-              onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(i) } }}
-              onContextMenu={(e) => { e.preventDefault(); setTabContextMenu({ x: e.clientX, y: e.clientY, index: i }) }}
-              style={{
-                height: 30,
-                padding: '0 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                cursor: 'pointer',
-                borderRadius: '6px 6px 0 0',
-                background: isActive ? 'var(--bg-elevated)' : 'transparent',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
-                whiteSpace: 'nowrap',
-                position: 'relative',
-              }}
-            >
-              {tab.isDirty && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
-              <span>{tabName}</span>
-              <button
-                onClick={(e) => { e.stopPropagation(); closeTab(i) }}
-                style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', opacity: isActive ? 1 : 0 }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.opacity = '0' }}
+        <div
+          className="hide-scrollbar"
+          style={{ height: 40, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, overflowX: 'auto', overflowY: 'hidden', background: 'linear-gradient(180deg, var(--panel-bg-soft), color-mix(in srgb, var(--panel-bg-soft) 74%, transparent))', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 36%, transparent)' }}
+          onWheel={(e) => { e.currentTarget.scrollLeft += e.deltaY }}
+        >
+          {tabs.map((tab, i) => {
+            const tabName = tab.path.split(/[\\/]/).pop()?.replace(/\.md$/, '')
+            const isActive = i === activeTabIndex
+            return (
+              <div
+                key={tab.path}
+                ref={(node) => { tabButtonRefs.current[i] = node }}
+                draggable
+                onDragStart={() => { dragTabRef.current = i }}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                onDrop={() => { if (dragTabRef.current !== null && dragTabRef.current !== i) { reorderTab(dragTabRef.current, i) }; dragTabRef.current = null }}
+                onDragEnd={() => { dragTabRef.current = null }}
+                onClick={() => switchTab(i)}
+                onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(i) } }}
+                onContextMenu={(e) => { e.preventDefault(); setTabContextMenu({ x: e.clientX, y: e.clientY, index: i }) }}
+                style={{
+                  height: 28,
+                  padding: '0 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  borderRadius: 8,
+                  background: isActive ? 'color-mix(in srgb, var(--panel-bg) 90%, var(--control-bg))' : 'transparent',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  border: isActive ? '1px solid color-mix(in srgb, var(--border-subtle) 56%, transparent)' : '1px solid transparent',
+                  boxShadow: isActive ? '0 1px 0 var(--glass-highlight) inset, var(--shadow-sm)' : 'none',
+                  whiteSpace: 'nowrap',
+                  position: 'relative',
+                }}
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-          )
-        })}
-      </div>
+                {tab.isDirty && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />}
+                <span>{tabName}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeTab(i) }}
+                  style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', opacity: isActive ? 1 : 0 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.opacity = '0' }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            )
+          })}
+        </div>
       )}
       {tabContextMenu && (
         <ContextMenu
@@ -805,28 +840,11 @@ export function Editor() {
         />
       )}
 
-      {/* Breadcrumb */}
-      {!focusMode && currentFilePath && (
-        <div style={{ height: 24, padding: '0 16px', display: 'flex', alignItems: 'center', fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, gap: 4, overflow: 'hidden' }}>
-          {(() => {
-            const vaultPath = window.api.platform ? useVaultStore.getState().vaultPath : null
-            const rel = vaultPath ? currentFilePath.replace(vaultPath, '').replace(/^[\\/]/, '') : currentFilePath
-            const parts = rel.replace(/\\/g, '/').split('/')
-            return parts.map((part, i) => (
-              <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {i > 0 && <span style={{ opacity: 0.5 }}>/</span>}
-                <span style={{ color: i === parts.length - 1 ? 'var(--text-secondary)' : undefined }}>{part.replace(/\.md$/, '')}</span>
-              </span>
-            ))
-          })()}
-        </div>
-      )}
-
       {/* Toolbar */}
       {!focusMode && editor && <EditorToolbar editor={editor} />}
 
       {/* Editor area */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 86%, transparent) 0%, transparent 28%)' }}>
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           <FindReplace editor={editor} open={findReplaceOpen} onClose={() => setFindReplaceOpen(false)} />
           {linkPreview && (
@@ -846,7 +864,8 @@ export function Editor() {
           )}
           <div
             ref={editorAreaRef}
-            style={{ height: '100%', overflowY: 'auto', padding: focusMode ? '48px 64px' : '24px 32px' }}
+            className="editor-scroll file-tree-scroll"
+            style={{ height: '100%', overflowY: 'auto', padding: focusMode ? '48px min(8vw, 80px)' : '30px min(7vw, 72px) 40px' }}
             onContextMenu={(e) => {
               if (e.shiftKey) return
               e.preventDefault()
@@ -859,8 +878,8 @@ export function Editor() {
           </div>
         </div>
         {splitPath && splitContent !== null && (
-          <div style={{ width: '50%', borderLeft: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ width: '50%', boxShadow: 'inset 1px 0 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 32%, transparent)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{splitPath.split(/[\\/]/).pop()?.replace(/\.md$/, '')}</span>
               <button onClick={closeSplit} style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -884,7 +903,7 @@ export function Editor() {
 
       {/* Status bar */}
       {!focusMode && (
-      <div style={{ height: 24, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, fontSize: 11, color: 'var(--text-tertiary)' }}>
+        <div style={{ height: 30, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, fontSize: 11, color: 'var(--text-tertiary)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)' }}>
         <div style={{ display: 'flex', gap: 12 }}>
           <span>{stats.words} 词</span>
           <span>{stats.chars} 字符</span>

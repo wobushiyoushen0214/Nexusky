@@ -124,11 +124,13 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
   if (!open) return null
 
   return (
-    <div style={{
+    <div className="glass-popover" style={{
       position: 'absolute', top: 8, right: 16, zIndex: 40,
-      background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-      borderRadius: 8, padding: '10px 12px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+      background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)',
+      borderRadius: 10, padding: '10px 12px', boxShadow: 'var(--shadow-popover)',
       display: 'flex', flexDirection: 'column', gap: 8, width: 320,
+      backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+      WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
     }}>
       {/* Find row */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -141,7 +143,7 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
             if (e.key === 'Escape') onClose()
           }}
           placeholder="查找"
-          style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none' }}
+          style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
         />
         <button onClick={() => setCaseSensitive(!caseSensitive)} title="大小写敏感" style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: caseSensitive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)', background: caseSensitive ? 'var(--accent-muted)' : 'transparent', color: caseSensitive ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
           Aa
@@ -166,7 +168,7 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
           onChange={(e) => setReplaceText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleReplace(); if (e.key === 'Escape') onClose() }}
           placeholder="替换"
-          style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none' }}
+          style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
         />
         <button onClick={handleReplace} style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 4 }}>替换</button>
         <button onClick={handleReplaceAll} style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 4, whiteSpace: 'nowrap' }}>全部</button>

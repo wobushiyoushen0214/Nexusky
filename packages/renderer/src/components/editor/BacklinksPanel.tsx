@@ -114,14 +114,14 @@ export function BacklinksPanel() {
   if (total === 0) return null
 
   return (
-    <div style={{ borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+    <div style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)', flexShrink: 0 }}>
       <button
         onClick={() => setCollapsed(!collapsed)}
         style={{
-          width: '100%', height: 32, padding: '0 20px',
-          display: 'flex', alignItems: 'center', gap: 6,
+          width: '100%', height: 34, padding: '0 16px',
+          display: 'flex', alignItems: 'center', gap: 7,
           background: 'transparent', border: 'none', cursor: 'pointer',
-          color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500
+          color: collapsed ? 'var(--text-tertiary)' : 'var(--text-secondary)', fontSize: 12, fontWeight: 500
         }}
       >
         <svg
@@ -134,7 +134,7 @@ export function BacklinksPanel() {
         链接概览 ({total})
       </button>
       {!collapsed && (
-        <div style={{ padding: '0 20px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--panel-bg-soft)' }}>
           {outgoingLinks.length > 0 && (
             <OutgoingSection
               items={outgoingLinks}
@@ -229,8 +229,8 @@ function OutgoingSection({
             void jumpToSourceLine(item)
           }}
           style={{
-            textAlign: 'left', padding: '8px 12px', borderRadius: 6,
-            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+            textAlign: 'left', padding: '8px 10px', borderRadius: 8,
+            background: 'var(--panel-bg)', border: '1px solid var(--border-subtle)',
             cursor: 'pointer', display: 'block', width: '100%', position: 'relative',
             opacity: item.targetPath ? 1 : 0.72
           }}
@@ -315,8 +315,8 @@ function LinkSection({
           <div
             key={`${title}-${item.sourcePath}-${i}`}
             style={{
-              textAlign: 'left', padding: '8px 12px', borderRadius: 6,
-              background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+              textAlign: 'left', padding: '8px 10px', borderRadius: 8,
+              background: 'var(--panel-bg)', border: '1px solid var(--border-subtle)',
               display: 'block', width: '100%'
             }}
           >

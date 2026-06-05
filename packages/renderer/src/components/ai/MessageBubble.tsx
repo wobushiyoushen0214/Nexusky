@@ -36,12 +36,14 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, on
 
   return (
     <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', minWidth: 0 }}>
-      <div style={{ maxWidth: '88%', minWidth: 0 }}>
+      <div style={{ maxWidth: msg.role === 'user' ? '86%' : '92%', minWidth: 0 }}>
         <div style={{
-          borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+          borderRadius: msg.role === 'user' ? '14px 14px 5px 14px' : '14px 14px 14px 5px',
           padding: '10px 14px', fontSize: 13, lineHeight: 1.7,
-          background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-elevated)',
-          color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+          background: msg.role === 'user' ? 'var(--accent)' : 'color-mix(in srgb, var(--panel-bg-soft) 64%, transparent)',
+          color: msg.role === 'user' ? 'var(--text-on-accent)' : 'var(--text-primary)',
+          border: msg.role === 'user' ? '1px solid color-mix(in srgb, var(--accent) 78%, var(--glass-border))' : '1px solid color-mix(in srgb, var(--border-subtle) 48%, transparent)',
+          boxShadow: msg.role === 'user' ? 'var(--shadow-sm)' : 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 52%, transparent)',
           wordBreak: 'break-word', overflowWrap: 'anywhere',
           overflow: 'hidden',
         }}>
@@ -109,9 +111,9 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, on
 
 const actionBtnStyle: React.CSSProperties = {
   height: 20, padding: '0 8px', fontSize: 10, color: 'var(--text-tertiary)',
-  background: 'transparent', border: '1px solid var(--border-subtle)',
+  background: 'transparent', border: '1px solid transparent',
   borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
-  transition: 'color 100ms, border-color 100ms',
+  transition: 'color 100ms, background 100ms',
 }
 
 function MessageActionBar({ content, onRegenerate, onContinue }: { content: string; onRegenerate?: () => void; onContinue?: () => void }) {
@@ -128,8 +130,8 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
       <button
         onClick={handleCopy}
         style={actionBtnStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--control-bg)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent' }}
         title="复制"
       >
         {copied ? (
@@ -147,8 +149,8 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
         <button
           onClick={onContinue}
           style={actionBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--control-bg)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent' }}
           title="继续生成"
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -161,8 +163,8 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
         <button
           onClick={onRegenerate}
           style={actionBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--control-bg)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent' }}
           title="重新生成"
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

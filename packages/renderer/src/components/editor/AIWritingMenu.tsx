@@ -185,11 +185,11 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
 
   if (preview) {
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' } as React.CSSProperties}
+      <div className="glass-overlay" style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
         onClick={(e) => { if (e.target === e.currentTarget) handleCancel() }}
       >
-        <div style={{ width: 640, maxHeight: '75vh', background: 'var(--bg-surface)', borderRadius: 12, border: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+        <div className="glass-popover" style={{ width: 640, maxHeight: '75vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>AI {preview.actionLabel}结果</span>
               {preview.streaming && (
@@ -225,7 +225,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
             <button onClick={handleAppend} disabled={!preview.result || preview.streaming} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: preview.result && !preview.streaming ? 'pointer' : 'not-allowed', opacity: preview.result && !preview.streaming ? 1 : 0.5 }}>
               追加到下方
             </button>
-            <button onClick={handleReplace} disabled={!preview.result || preview.streaming} style={{ height: 28, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 5, cursor: preview.result && !preview.streaming ? 'pointer' : 'not-allowed', opacity: preview.result && !preview.streaming ? 1 : 0.5, fontWeight: 500 }}>
+            <button onClick={handleReplace} disabled={!preview.result || preview.streaming} style={{ height: 28, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 5, cursor: preview.result && !preview.streaming ? 'pointer' : 'not-allowed', opacity: preview.result && !preview.streaming ? 1 : 0.5, fontWeight: 500 }}>
               替换原文
             </button>
           </div>
@@ -239,6 +239,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
   return (
     <div
       ref={menuRef}
+      className="glass-popover"
       style={{
         position: 'fixed',
         left: Math.max(8, position.x),
@@ -247,10 +248,12 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
         display: 'flex',
         gap: 2,
         padding: 4,
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-default)',
+        background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
+        border: '1px solid var(--glass-border)',
         borderRadius: 8,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        boxShadow: 'var(--shadow-popover)',
+        backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+        WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
       }}
     >
       {ACTIONS.map((action) => (

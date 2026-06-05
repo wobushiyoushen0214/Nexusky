@@ -121,8 +121,8 @@ export function Onboarding({ onDone }: OnboardingProps) {
   const current = steps[step]
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)' }}>
-      <div style={{ width: 420, background: 'var(--bg-elevated)', borderRadius: 16, padding: '36px 32px 28px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', border: '1px solid var(--border-subtle)' }}>
+    <div className="glass-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}>
+      <div className="glass-popover" style={{ width: 420, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 16, padding: '36px 32px 28px', textAlign: 'center', boxShadow: 'var(--shadow-popover)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
         <div style={{ marginBottom: 20, opacity: 0.9 }}>{current.visual}</div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.3px' }}>{current.title}</h2>
         <p style={{ fontSize: 12, color: 'var(--accent)', marginBottom: 14, fontWeight: 500 }}>{current.subtitle}</p>
@@ -164,11 +164,11 @@ export function Onboarding({ onDone }: OnboardingProps) {
             </button>
           )}
           {step < steps.length - 1 ? (
-            <button onClick={() => setStep(step + 1)} style={{ height: 34, padding: '0 22px', fontSize: 13, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
+            <button onClick={() => setStep(step + 1)} style={{ height: 34, padding: '0 22px', fontSize: 13, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
               继续
             </button>
           ) : (
-            <button onClick={handleFinish} style={{ height: 34, padding: '0 22px', fontSize: 13, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
+            <button onClick={handleFinish} style={{ height: 34, padding: '0 22px', fontSize: 13, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
               开始使用
             </button>
           )}

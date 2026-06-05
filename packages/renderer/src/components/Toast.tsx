@@ -1,9 +1,9 @@
 import { useToastStore, type ToastType } from '../stores/toast-store'
 
 const typeStyles: Record<ToastType, { bg: string; border: string; color: string }> = {
-  success: { bg: 'rgba(74, 222, 128, 0.1)', border: 'rgba(74, 222, 128, 0.3)', color: '#4ade80' },
-  error: { bg: 'rgba(248, 113, 113, 0.1)', border: 'rgba(248, 113, 113, 0.3)', color: '#f87171' },
-  info: { bg: 'rgba(124, 110, 240, 0.1)', border: 'rgba(124, 110, 240, 0.3)', color: '#7c6ef0' },
+  success: { bg: 'color-mix(in srgb, oklch(68% 0.15 150) 12%, var(--bg-glass-dense, var(--panel-bg)))', border: 'oklch(68% 0.15 150 / 0.32)', color: 'oklch(55% 0.14 150)' },
+  error: { bg: 'color-mix(in srgb, var(--danger-muted) 42%, var(--bg-glass-dense, var(--panel-bg)))', border: 'color-mix(in srgb, var(--danger) 36%, var(--glass-border))', color: 'var(--danger)' },
+  info: { bg: 'color-mix(in srgb, var(--accent-muted) 44%, var(--bg-glass-dense, var(--panel-bg)))', border: 'color-mix(in srgb, var(--accent) 34%, var(--glass-border))', color: 'var(--accent-text)' },
 }
 
 export interface ToastView {
@@ -38,15 +38,15 @@ export function ToastViewport({
         return (
           <div
             key={t.id}
-            className="animate-slide-in-right"
+            className="animate-slide-in-right glass-popover"
             role={t.type === 'error' ? 'alert' : 'status'}
             style={{
               padding: '10px 14px', borderRadius: 8,
               background: style.bg, border: `1px solid ${style.border}`,
               color: style.color, fontSize: 12, fontWeight: 500,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)',
+              boxShadow: 'var(--shadow-popover)',
             }}
           >
             <span style={{ flex: 1 }}>{t.message}</span>

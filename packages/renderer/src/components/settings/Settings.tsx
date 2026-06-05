@@ -88,11 +88,12 @@ const inputStyle: React.CSSProperties = {
   height: 32,
   padding: '0 12px',
   fontSize: 13,
-  background: 'var(--bg-elevated)',
-  border: '1px solid var(--border-default)',
+  background: 'var(--control-bg)',
+  border: '1px solid var(--control-border)',
   borderRadius: 6,
   color: 'var(--text-primary)',
   outline: 'none',
+  boxShadow: 'inset 0 1px 0 var(--glass-highlight)',
   transition: 'border-color 150ms',
 }
 
@@ -410,7 +411,7 @@ export function Settings({ open, onClose }: SettingsProps) {
   return (
     <div
       className="animate-overlay-in"
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 12, 20, 0.65)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' } as React.CSSProperties}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
       onPointerDown={(e) => {
         overlayPointerDownRef.current = e.target === e.currentTarget
       }}
@@ -421,16 +422,16 @@ export function Settings({ open, onClose }: SettingsProps) {
     >
       <div
         ref={dialogRef}
-        className="animate-scale-in"
+        className="animate-scale-in glass-popover"
         role="dialog"
         aria-modal="true"
         aria-labelledby={SETTINGS_DIALOG_TITLE_ID}
         tabIndex={-1}
-        style={{ width: 760, maxWidth: 'calc(100vw - 40px)', height: 600, maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-surface)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: 14, border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' } as React.CSSProperties}
+        style={{ width: 760, maxWidth: 'calc(100vw - 40px)', height: 600, maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 16, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ height: 48, padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+        <div style={{ height: 48, padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
           <span id={SETTINGS_DIALOG_TITLE_ID} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.title')}</span>
           <button
             onClick={onClose}
@@ -551,9 +552,9 @@ export function Settings({ open, onClose }: SettingsProps) {
                       {isActive && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 9999, background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', fontWeight: 500 }}>使用中</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {!isActive && <button onClick={() => handleSetActive(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#fff', background: 'var(--accent)', border: 'none', cursor: 'pointer', fontWeight: 500 }}>激活</button>}
+                      {!isActive && <button onClick={() => handleSetActive(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--text-on-accent)', background: 'var(--accent)', border: 'none', cursor: 'pointer', fontWeight: 500 }}>激活</button>}
                       <button onClick={() => handleEditProvider(p)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>编辑</button>
-                      <button onClick={() => handleDelete(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}>删除</button>
+                      <button onClick={() => handleDelete(p.id)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}>删除</button>
                     </div>
                   </div>
                   <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{p.model} · {p.type === 'codex' ? (p.baseUrl || 'codex') : (p.baseUrl || '默认地址')}</p>
@@ -611,7 +612,7 @@ export function Settings({ open, onClose }: SettingsProps) {
       {/* Provider edit modal */}
       {editing && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
           onPointerDown={(e) => {
             providerOverlayPointerDownRef.current = e.target === e.currentTarget
           }}
@@ -621,8 +622,8 @@ export function Settings({ open, onClose }: SettingsProps) {
           }}
         >
           <div
-            className="animate-scale-in"
-            style={{ width: 440, background: 'var(--bg-surface)', borderRadius: 12, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}
+            className="animate-scale-in glass-popover"
+            style={{ width: 440, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-popover)', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -764,7 +765,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <button onClick={handleProbeQuestion} disabled={probing || testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: probing ? 'wait' : 'pointer', opacity: probing ? 0.6 : 1 }}>{probing ? t('settings.providerTest.probing') : t('settings.providerTest.probeAction')}</button>
                 <button onClick={handleValidateEditing} disabled={testingProvider} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: testingProvider ? 'wait' : 'pointer', opacity: testingProvider ? 0.6 : 1 }}>{testingProvider ? t('settings.providerTest.testing') : t('settings.providerTest.validateAction')}</button>
                 <button onClick={() => setEditing(null)} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>取消</button>
-                <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
+                <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>保存</button>
               </div>
               {probeResult && (
                 <div style={{ marginTop: 10, padding: 10, borderRadius: 6, background: 'var(--bg-elevated)', border: `1px solid ${probeResult.ok ? 'var(--border-subtle)' : '#f8717155'}` }}>
@@ -1920,7 +1921,7 @@ function ThemeTab() {
 
   const themeMeta: Record<Theme, { swatches: [string, string, string] }> = {
     dark: { swatches: ['#1e1e1e', '#2d2d2d', '#7c6ef5'] },
-    light: { swatches: ['#ffffff', '#f7f7f7', '#6c5ce7'] },
+    light: { swatches: ['#eceef3', '#f8f9fb', '#2f6feb'] },
     ocean: { swatches: ['#1a2332', '#243242', '#4facfe'] },
     amber: { swatches: ['#1c1a17', '#2c2820', '#f0a050'] },
     forest: { swatches: ['#1a2420', '#24332d', '#4ec9a0'] },
@@ -2173,7 +2174,7 @@ function AppearanceTab() {
                 }
               }
             }}
-            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
+            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'var(--panel-bg)', cursor: 'pointer' }}
           >
             {window.api.platform === 'darwin' ? '前往下载' : '立即更新'}
           </button>
@@ -2181,7 +2182,7 @@ function AppearanceTab() {
         {updateStage === 'ready' && (
           <button
             onClick={() => window.api.invoke('updater:install', undefined)}
-            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'white', cursor: 'pointer' }}
+            style={{ height: 26, padding: '0 10px', fontSize: 11, background: 'var(--accent)', border: 'none', borderRadius: 5, color: 'var(--panel-bg)', cursor: 'pointer' }}
           >
             重启安装
           </button>

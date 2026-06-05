@@ -12,6 +12,12 @@ interface FlatNode {
   hasChildren: boolean
 }
 
+interface FileTreeItemMenu {
+  path: string
+  x: number
+  y: number
+}
+
 const ITEM_HEIGHT = 30
 const OVERSCAN = 5
 
@@ -283,6 +289,7 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
   }, [flatNodes])
 
   const [multiContextMenu, setMultiContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [itemContextMenu, setItemContextMenu] = useState<FileTreeItemMenu | null>(null)
   const [multiDeleteConfirm, setMultiDeleteConfirm] = useState(false)
 
   const handleMultiDelete = async () => {
@@ -310,6 +317,11 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
     setMultiDeleteConfirm(false)
     useVaultStore.getState().refreshFiles()
   }
+
+  const openItemContextMenu = useCallback((path: string, x: number, y: number) => {
+    setMultiContextMenu(null)
+    setItemContextMenu({ path, x, y })
+  }, [])
 
   useEffect(() => {
     if (focusedIndex >= 0 && containerRef.current) {
@@ -364,6 +376,10 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
               isFocused={startIndex + i === focusedIndex}
               isSelected={selectedPaths.has(node.entry.path)}
               onItemClick={handleItemClick}
+              contextMenu={itemContextMenu?.path === node.entry.path ? itemContextMenu : null}
+              hasOpenContextMenu={itemContextMenu !== null}
+              onOpenContextMenu={openItemContextMenu}
+              onCloseContextMenu={() => setItemContextMenu(null)}
             />
           ))}
         </div>
@@ -391,14 +407,36 @@ export function VirtualFileTree({ entries, defaultExpanded = true }: VirtualFile
   )
 }
 
-function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onItemClick }: { node: FlatNode; index: number; onToggle: (path: string) => void; isFocused?: boolean; isSelected?: boolean; onItemClick: (index: number, path: string, e: React.MouseEvent) => void }) {
+function VirtualFileTreeItem({
+  node,
+  index,
+  onToggle,
+  isFocused,
+  isSelected,
+  onItemClick,
+  contextMenu,
+  hasOpenContextMenu,
+  onOpenContextMenu,
+  onCloseContextMenu,
+}: {
+  node: FlatNode
+  index: number
+  onToggle: (path: string) => void
+  isFocused?: boolean
+  isSelected?: boolean
+  onItemClick: (index: number, path: string, e: React.MouseEvent) => void
+  contextMenu: FileTreeItemMenu | null
+  hasOpenContextMenu: boolean
+  onOpenContextMenu: (path: string, x: number, y: number) => void
+  onCloseContextMenu: () => void
+}) {
   const { entry, depth, isExpanded } = node
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [hovered, setHovered] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [newName, setNewName] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const dragCountRef = useRef(0)
+  const suppressNextMenuOpenRef = useRef(false)
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const vaultPath = useVaultStore((s) => s.vaultPath)
@@ -495,7 +533,7 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setRenaming(false) }}
           onBlur={() => setRenaming(false)}
-          style={{ width: '100%', height: 24, padding: '0 8px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--accent)', borderRadius: 4, color: 'var(--text-primary)', outline: 'none' }}
+          style={{ width: '100%', height: 24, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--accent)', borderRadius: 7, color: 'var(--text-primary)', outline: 'none' }}
         />
       </div>
     )
@@ -506,7 +544,7 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onContextMenu={(e) => { if (isSelected) return; e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
+        onContextMenu={(e) => { if (isSelected) return; e.preventDefault(); onOpenContextMenu(entry.path, e.clientX, e.clientY) }}
         onDragOver={entry.isDirectory ? handleDragOver : undefined}
         onDragEnter={entry.isDirectory ? handleDragEnter : undefined}
         onDragLeave={entry.isDirectory ? handleDragLeave : undefined}
@@ -518,9 +556,19 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
           marginRight: 4,
           display: 'flex',
           alignItems: 'center',
-          borderRadius: 6,
-          background: isSelected ? 'var(--accent-muted)' : isActive ? 'var(--accent-muted)' : dragOver ? 'var(--accent-muted)' : isFocused ? 'var(--bg-hover)' : 'transparent',
-          border: dragOver ? '1.5px dashed var(--accent)' : 'none',
+          borderRadius: 8,
+          background: isSelected || isActive
+            ? 'color-mix(in srgb, var(--accent-muted) 68%, var(--panel-bg-soft))'
+            : dragOver
+              ? 'var(--accent-muted)'
+              : hovered || isFocused
+                ? 'var(--control-bg)'
+                : 'transparent',
+          border: dragOver
+            ? '1.5px dashed var(--accent)'
+            : '1px solid transparent',
+          boxShadow: isSelected || isActive ? 'inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent)' : 'none',
+          transition: 'background 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out',
         }}
       >
         <button
@@ -535,9 +583,9 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
           }}
           style={{
             flex: 1, height: ITEM_HEIGHT, paddingLeft: entry.isDirectory ? paddingLeft : paddingLeft + 16, paddingRight: 4,
-            display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6,
+            display: 'flex', alignItems: 'center', gap: 6, borderRadius: 8,
             border: 'none', background: 'transparent', cursor: 'pointer',
-            fontSize: 13, color: isActive ? 'var(--accent-text)' : 'var(--text-secondary)', textAlign: 'left', minWidth: 0,
+            fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--accent-text)' : 'var(--text-secondary)', textAlign: 'left', minWidth: 0,
           }}
         >
           {entry.isDirectory && (
@@ -545,7 +593,7 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
               <polyline points="9 18 15 12 9 6" />
             </svg>
           )}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: isActive ? 'var(--accent-text)' : 'var(--text-tertiary)', opacity: 0.7 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: isActive ? 'var(--accent-text)' : 'var(--text-tertiary)', opacity: isActive ? 0.95 : 0.72 }}>
             {entry.isDirectory
               ? <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
               : <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></>
@@ -556,13 +604,28 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
           </span>
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
+          onPointerDown={(e) => {
+            if (!hasOpenContextMenu) return
+            suppressNextMenuOpenRef.current = true
+            e.preventDefault()
+            e.stopPropagation()
+            onCloseContextMenu()
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (suppressNextMenuOpenRef.current) {
+              suppressNextMenuOpenRef.current = false
+              return
+            }
+            onOpenContextMenu(entry.path, e.clientX, e.clientY)
+          }}
           style={{
-            width: 22, height: 22, flexShrink: 0, marginRight: 4,
+            width: 24, height: 24, flexShrink: 0, marginRight: 2,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 4, border: 'none', cursor: 'pointer',
-            background: 'transparent', color: 'var(--text-tertiary)',
-            opacity: hovered ? 1 : 0, transition: 'opacity 100ms',
+            borderRadius: 7, border: 'none', cursor: 'pointer',
+            background: 'transparent', color: isActive ? 'var(--accent-text)' : 'var(--text-tertiary)',
+            opacity: hovered || isSelected || isActive ? 0.72 : 0,
+            transition: 'opacity 100ms ease-out, color 100ms ease-out',
           }}
           title="更多操作"
         >
@@ -571,7 +634,7 @@ function VirtualFileTreeItem({ node, index, onToggle, isFocused, isSelected, onI
           </svg>
         </button>
       </div>
-      {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={() => setContextMenu(null)} />}
+      {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={onCloseContextMenu} />}
       <ConfirmModal
         open={deleteConfirm}
         title="删除确认"

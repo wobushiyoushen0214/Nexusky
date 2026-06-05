@@ -336,15 +336,16 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh]"
-      style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' } as React.CSSProperties}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh] glass-overlay"
+      style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
       onClick={onClose}
     >
       <div
-        style={{ width: 480, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}
+        className="glass-popover"
+        style={{ width: 500, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ padding: 12, borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ padding: 12, boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 32%, transparent)' }}>
           <input
             ref={inputRef}
             value={query}

@@ -278,6 +278,7 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
   return (
     <div
       ref={menuRef}
+      className="glass-popover"
       style={{
         position: 'fixed',
         left: position.x,
@@ -286,11 +287,13 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
         width: 240,
         maxHeight: 320,
         overflowY: 'auto',
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 8,
+        background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 10,
         padding: 4,
-        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+        boxShadow: 'var(--shadow-popover)',
+        backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+        WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
       }}
     >
       {filtered.map((item, i) => (

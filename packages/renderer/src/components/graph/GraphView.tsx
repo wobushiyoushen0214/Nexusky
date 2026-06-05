@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -1396,51 +1397,56 @@ export function GraphView() {
     )
   }
 
+  const graphPanel = (
+    <GraphPanel
+      collapsed={panelCollapsed}
+      onToggleCollapsed={setPanelCollapsed}
+      graphData={graphData}
+      groupColorMap={groupColorMap}
+      vaultPath={vaultPath}
+      activeFolderPath={activeFolderPath}
+      onOpenOverview={openGraphOverview}
+      onOpenParentFolder={openParentGraphFolder}
+      hiddenGroupIds={hiddenGroupIds}
+      onToggleGroup={toggleGroupVisibility}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      minLinks={minLinks}
+      setMinLinks={setMinLinks}
+      showLabels={showLabels}
+      setShowLabels={setShowLabels}
+      showOrphans={showOrphans}
+      setShowOrphans={setShowOrphans}
+      showArrows={showArrows}
+      setShowArrows={setShowArrows}
+      showFolders={showFolders}
+      setShowFolders={setShowFolders}
+      showExplicitEdges={showExplicitEdges}
+      setShowExplicitEdges={setShowExplicitEdges}
+      showInferredEdges={showInferredEdges}
+      setShowInferredEdges={setShowInferredEdges}
+      showFolderEdges={showFolderEdges}
+      setShowFolderEdges={setShowFolderEdges}
+      indexStatus={indexStatus}
+      setIndexStatus={setIndexStatus}
+      onOpenInferConfirm={() => setConfirmInferOpen(true)}
+      onStartAi={() => {
+        aiStopRequestedRef.current = false
+        silentMemoryRefreshRef.current = false
+      }}
+      onStopAi={() => {
+        aiStopRequestedRef.current = true
+        window.api.invoke('ai:stop', undefined).catch(() => {})
+        setIndexStatus(t('graph.memory.stopRequested'))
+      }}
+      onBackToEditor={() => setMainView('editor')}
+    />
+  )
+  const graphPanelSlot = typeof document === 'undefined' ? null : document.getElementById('graph-panel-slot')
+
   return (
     <div className="graph-container">
-      <GraphPanel
-        collapsed={panelCollapsed}
-        onToggleCollapsed={setPanelCollapsed}
-        graphData={graphData}
-        groupColorMap={groupColorMap}
-        vaultPath={vaultPath}
-        activeFolderPath={activeFolderPath}
-        onOpenOverview={openGraphOverview}
-        onOpenParentFolder={openParentGraphFolder}
-        hiddenGroupIds={hiddenGroupIds}
-        onToggleGroup={toggleGroupVisibility}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        minLinks={minLinks}
-        setMinLinks={setMinLinks}
-        showLabels={showLabels}
-        setShowLabels={setShowLabels}
-        showOrphans={showOrphans}
-        setShowOrphans={setShowOrphans}
-        showArrows={showArrows}
-        setShowArrows={setShowArrows}
-        showFolders={showFolders}
-        setShowFolders={setShowFolders}
-        showExplicitEdges={showExplicitEdges}
-        setShowExplicitEdges={setShowExplicitEdges}
-        showInferredEdges={showInferredEdges}
-        setShowInferredEdges={setShowInferredEdges}
-        showFolderEdges={showFolderEdges}
-        setShowFolderEdges={setShowFolderEdges}
-        indexStatus={indexStatus}
-        setIndexStatus={setIndexStatus}
-        onOpenInferConfirm={() => setConfirmInferOpen(true)}
-        onStartAi={() => {
-          aiStopRequestedRef.current = false
-          silentMemoryRefreshRef.current = false
-        }}
-        onStopAi={() => {
-          aiStopRequestedRef.current = true
-          window.api.invoke('ai:stop', undefined).catch(() => {})
-          setIndexStatus(t('graph.memory.stopRequested'))
-        }}
-        onBackToEditor={() => setMainView('editor')}
-      />
+      {graphPanelSlot ? createPortal(graphPanel, graphPanelSlot) : graphPanel}
 
       <div className="graph-canvas-stage">
         <div className="graph-canvas-hud" role="status">

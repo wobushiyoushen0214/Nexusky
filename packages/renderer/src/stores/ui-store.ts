@@ -91,7 +91,7 @@ interface UIState {
 function getInitialTheme(): Theme {
   const saved = safeGet('nexusky-theme')
   if (saved && (THEME_IDS as readonly string[]).includes(saved)) return saved as Theme
-  return 'dark'
+  return 'light'
 }
 
 function getInitialGraphMode(): GraphMode {

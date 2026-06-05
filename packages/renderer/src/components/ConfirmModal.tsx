@@ -37,11 +37,13 @@ export function ConfirmModal({
 
   return (
     <div
-      className="animate-overlay-in"
+      className="animate-overlay-in glass-overlay"
       style={{
         position: 'fixed', inset: 0, zIndex: 200,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.4)',
+        background: 'var(--overlay-bg)',
+        backdropFilter: 'blur(var(--glass-blur)) saturate(150%)',
+        WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)',
       }}
       onPointerDown={(e) => {
         overlayPointerDownRef.current = e.target === e.currentTarget
@@ -52,14 +54,16 @@ export function ConfirmModal({
       }}
     >
       <div
-        className="animate-scale-in"
+        className="animate-scale-in glass-popover"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 380, padding: '20px 22px',
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border-default)',
+          background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
+          border: '1px solid var(--glass-border)',
           borderRadius: 12,
-          boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+          boxShadow: 'var(--shadow-popover)',
+          backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+          WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
         }}
       >
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{title}</h3>
@@ -80,8 +84,8 @@ export function ConfirmModal({
             autoFocus
             style={{
               padding: '6px 14px', fontSize: 12, borderRadius: 6, fontWeight: 500,
-              background: danger ? '#dc2626' : 'var(--accent)',
-              color: '#fff', border: 'none', cursor: 'pointer',
+              background: danger ? 'var(--danger)' : 'var(--accent)',
+              color: 'var(--text-on-accent)', border: 'none', cursor: 'pointer',
             }}
           >
             {confirmText}
