@@ -345,7 +345,8 @@
 
 .vault-health-next__head {
   padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 0;
+  box-shadow: var(--glass-divider-shadow-bottom);
 }
 
 .vault-health-next h2 {
@@ -366,7 +367,8 @@
   align-items: start;
   padding: 13px 16px;
   border: none;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 0;
+  box-shadow: var(--glass-divider-shadow-bottom);
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
@@ -375,7 +377,7 @@
 }
 
 .vault-health-next-step:last-child {
-  border-bottom: none;
+  box-shadow: none;
 }
 
 .vault-health-next-step:hover {

@@ -50,12 +50,14 @@ export function ResizeHandle({ side, onResize }: ResizeHandleProps) {
       } as React.CSSProperties}
     >
       <div style={{
-        width: 2,
+        width: 3,
         height: 34,
-        borderRadius: 1,
-        background: 'linear-gradient(180deg, transparent, color-mix(in srgb, var(--border-subtle) 54%, transparent) 18%, color-mix(in srgb, var(--glass-highlight) 66%, transparent) 50%, color-mix(in srgb, var(--border-subtle) 42%, transparent) 82%, transparent)',
-        opacity: 0.68,
-        boxShadow: '0 0 10px color-mix(in srgb, var(--glass-highlight) 32%, transparent)',
+        borderRadius: 999,
+        background: 'linear-gradient(180deg, transparent, var(--glass-divider-line) 18%, var(--glass-divider-highlight) 50%, var(--glass-divider-line) 82%, transparent)',
+        opacity: 0.78,
+        boxShadow: '0 0 12px color-mix(in srgb, var(--glass-highlight) 36%, transparent), inset 1px 0 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent)',
+        backdropFilter: 'blur(8px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(8px) saturate(140%)',
         transition: 'opacity 150ms, height 150ms',
       }} />
     </div>

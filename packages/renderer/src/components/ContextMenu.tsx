@@ -45,9 +45,9 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
         minWidth: 160,
         padding: 4,
         background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
-        border: '1px solid var(--glass-border)',
+        border: '1px solid var(--glass-panel-border)',
         borderRadius: 12,
-        boxShadow: 'var(--shadow-popover)',
+        boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
         backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
         WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
       }}

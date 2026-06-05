@@ -94,7 +94,7 @@ export function TagsPanel() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
       {/* Current file tags */}
       {currentFilePath && (
-        <div style={{ padding: '12px 12px 10px', boxShadow: 'inset 0 -1px 0 var(--border-faint)', flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 54%, transparent)' }}>
+        <div className="glass-divider-bottom" style={{ padding: '12px 12px 10px', boxShadow: 'var(--glass-divider-shadow-bottom)', flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 54%, transparent)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
             <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

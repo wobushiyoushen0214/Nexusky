@@ -435,14 +435,14 @@ export default function App() {
   const workspaceTabsRight = 16 + (rightPanel !== 'none' ? rightPanelWidth + 8 : 0)
   const workspaceContentPadding = showEditorChromeTabs ? '0 16px 16px' : '8px 16px 16px'
   const workspaceSideBackground = 'var(--panel-bg-soft)'
-  const workspaceSideBorder = '1px solid var(--glass-border)'
+  const workspaceSideBorder = '1px solid var(--glass-panel-border)'
   const workspaceSideRadius = 18
-  const workspaceSideShadow = 'var(--shadow-panel)'
+  const workspaceSideShadow = 'var(--shadow-panel), var(--glass-panel-edge-shadow)'
   const workspaceSideBackdropFilter = 'blur(var(--glass-blur)) saturate(160%)'
   const workspaceMainBackground = showEditorChromeTabs ? 'var(--workspace-tab-surface)' : 'var(--workspace-panel-surface)'
-  const workspacePanelBorder = '1px solid var(--glass-border)'
+  const workspacePanelBorder = '1px solid var(--glass-panel-border)'
   const workspacePanelRadius = 18
-  const workspacePanelShadow = 'var(--shadow-panel)'
+  const workspacePanelShadow = 'var(--shadow-panel), var(--glass-panel-edge-shadow)'
   const workspaceMainShadow = showEditorChromeTabs ? 'var(--shadow-md)' : workspacePanelShadow
 
   return (
@@ -503,7 +503,7 @@ export default function App() {
             <ResizeHandle side="right" onResize={(delta) => resizeRightPanel(delta)} />
           )}
           <aside className={`glass-panel workspace-right-panel${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--workspace-panel-surface)', border: workspacePanelBorder, borderRadius: workspacePanelRadius, boxShadow: workspacePanelShadow, marginRight: 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
-            <div style={{ height: 46, padding: '0 14px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'linear-gradient(180deg, color-mix(in srgb, var(--workspace-panel-header-surface) 94%, var(--glass-highlight)), var(--workspace-panel-header-surface))', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 44%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 24%, transparent)' }}>
+            <div className="glass-divider-bottom" style={{ height: 46, padding: '0 14px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'linear-gradient(180deg, color-mix(in srgb, var(--workspace-panel-header-surface) 94%, var(--glass-highlight)), var(--workspace-panel-header-surface))', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 44%, transparent), var(--glass-divider-shadow-bottom)' }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
                 {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'maintenance' ? t('panels.maintenance') : rightPanel === 'agent' ? t('panels.agent') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
               </span>

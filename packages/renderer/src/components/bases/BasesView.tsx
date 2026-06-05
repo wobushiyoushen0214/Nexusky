@@ -181,7 +181,7 @@ export function BasesView() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--editor-bg)' }}>
-      <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+      <div className="glass-divider-bottom" style={{ padding: '14px 18px 12px', borderBottom: '0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: 0 }}>{t('bases.title')}</div>
           <div style={{ marginTop: 3, fontSize: 12, color: 'var(--text-tertiary)' }}>
@@ -205,7 +205,7 @@ export function BasesView() {
         </div>
       </div>
 
-      <div style={{ padding: '10px 18px', display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 160px 160px 120px', gap: 8, borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+      <div className="glass-divider-bottom" style={{ padding: '10px 18px', display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 160px 160px 120px', gap: 8, borderBottom: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -362,7 +362,8 @@ function PropertyNoteCard({
         gridTemplateColumns: 'minmax(0, 1.25fr) minmax(240px, 0.75fr)',
         gap: 16,
         padding: '14px 0',
-        borderBottom: '1px solid var(--border-subtle)',
+        borderBottom: '0',
+        boxShadow: 'var(--glass-divider-shadow-bottom)',
         background: highlighted ? 'color-mix(in srgb, var(--accent-muted) 35%, transparent)' : 'transparent',
         transition: 'background 0.3s ease',
         borderRadius: highlighted ? 6 : 0

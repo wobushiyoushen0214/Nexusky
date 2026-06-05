@@ -115,7 +115,7 @@ export function ActivityBar() {
         position: 'relative',
         boxShadow: sidebarCollapsed && mainView !== 'graph'
           ? 'none'
-          : 'inset -1px 0 0 color-mix(in srgb, var(--border-subtle) 30%, transparent), 1px 0 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent)',
+          : 'var(--glass-divider-shadow-right)',
       }}
     >
       {/* Top icons */}
@@ -243,10 +243,10 @@ export function ActivityBar() {
           top: (visibleItems.length + 1) * 44 + 8,
           left: 46,
           background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
-          border: '1px solid var(--glass-border)',
+          border: '1px solid var(--glass-panel-border)',
           borderRadius: 12,
           padding: 4,
-          boxShadow: 'var(--shadow-popover)',
+          boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
           minWidth: 160,
           zIndex: 100,
           backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',

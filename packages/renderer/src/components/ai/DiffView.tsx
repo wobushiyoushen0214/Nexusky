@@ -55,7 +55,7 @@ export const DiffView = memo(function DiffView({ original, modified }: DiffViewP
 
   return (
     <div style={{ fontSize: 12, fontFamily: 'var(--font-mono, "JetBrains Mono", "Fira Code", monospace)', lineHeight: 1.6, overflow: 'auto' }}>
-      <div style={{ padding: '4px 12px', display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div className="glass-divider-bottom" style={{ padding: '4px 12px', display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-tertiary)', borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         {stats.added > 0 && <span style={{ color: 'var(--success)' }}>+{stats.added}</span>}
         {stats.removed > 0 && <span style={{ color: 'var(--danger)' }}>-{stats.removed}</span>}
       </div>

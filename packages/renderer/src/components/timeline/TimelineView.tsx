@@ -107,7 +107,7 @@ export function TimelineView() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--editor-bg)', color: 'var(--text-primary)' }}>
-      <div style={{ flexShrink: 0, padding: '24px 30px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div className="glass-divider-bottom" style={{ flexShrink: 0, padding: '24px 30px 18px', borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 24, alignItems: 'end' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: 'var(--text-tertiary)', fontSize: 10, fontWeight: 720, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{mode === 'updatedAt' ? t('timeline.updatedTrack') : t('timeline.createdTrack')}</div>
@@ -172,7 +172,7 @@ export function TimelineView() {
                     )}
                   </div>
                   <div style={{ position: 'relative', paddingLeft: 20 }}>
-                    <div style={{ position: 'absolute', left: 5, top: 6, bottom: -20, width: 1, background: 'var(--border-subtle)' }} />
+                    <div style={{ position: 'absolute', left: 5, top: 6, bottom: -20, width: 2, borderRadius: 999, background: 'linear-gradient(180deg, transparent, var(--glass-divider-line-strong) 10%, var(--glass-divider-highlight) 50%, var(--glass-divider-line) 90%, transparent)', boxShadow: '0 0 10px color-mix(in srgb, var(--glass-highlight) 28%, transparent)' }} />
                     {items.map((row, index) => {
                       const tags = getTextValues(row.properties.tags).slice(0, 3)
                       return (

@@ -342,10 +342,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     >
       <div
         className="glass-popover"
-        style={{ width: 500, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+        style={{ width: 500, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ padding: 12, boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 32%, transparent)' }}>
+        <div className="glass-divider-bottom" style={{ padding: 12, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
           <input
             ref={inputRef}
             value={query}

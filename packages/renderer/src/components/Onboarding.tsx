@@ -122,7 +122,7 @@ export function Onboarding({ onDone }: OnboardingProps) {
 
   return (
     <div className="glass-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}>
-      <div className="glass-popover" style={{ width: 420, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 16, padding: '36px 32px 28px', textAlign: 'center', boxShadow: 'var(--shadow-popover)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
+      <div className="glass-popover" style={{ width: 420, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 16, padding: '36px 32px 28px', textAlign: 'center', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', border: '1px solid var(--glass-panel-border)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
         <div style={{ marginBottom: 20, opacity: 0.9 }}>{current.visual}</div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.3px' }}>{current.title}</h2>
         <p style={{ fontSize: 12, color: 'var(--accent)', marginBottom: 14, fontWeight: 500 }}>{current.subtitle}</p>

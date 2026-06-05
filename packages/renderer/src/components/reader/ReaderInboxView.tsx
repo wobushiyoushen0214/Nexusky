@@ -837,7 +837,7 @@ export function ReaderInboxView() {
       </aside>
 
       <main style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-subtle)' }}>
-        <div style={{ flexShrink: 0, padding: '20px 20px 14px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="glass-divider-bottom" style={{ flexShrink: 0, padding: '20px 20px 14px', borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center' }}>
             <input
               value={query}
@@ -1102,7 +1102,7 @@ function ReaderBrief({
 
   return (
     <section style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--bg-surface)' }}>
-      <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div className="glass-divider-bottom" style={{ padding: '18px 20px 16px', borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
           <div style={{ minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 12 }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: color, boxShadow: `0 0 0 3px color-mix(in srgb, ${color} 20%, transparent)` }} />
@@ -1186,7 +1186,7 @@ function ReaderBrief({
         )}
       </div>
 
-      <div style={{ flexShrink: 0, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: '1px solid var(--border-subtle)', background: 'var(--editor-bg)' }}>
+      <div className="glass-divider-top" style={{ flexShrink: 0, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)', background: 'var(--editor-bg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           <button onClick={onPrevious} disabled={!hasPrevious} title={t('reader.previousItem')} aria-label={t('reader.previousItem')} style={{ ...smallIconButtonBaseStyle, opacity: hasPrevious ? 1 : 0.45, cursor: hasPrevious ? 'pointer' : 'default' }}>
             <PreviousIcon />

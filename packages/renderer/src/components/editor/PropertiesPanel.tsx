@@ -71,7 +71,7 @@ export function PropertiesPanel() {
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '12px 14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ paddingBottom: 10, borderBottom: '1px solid var(--border-subtle)' }}>
+      <div className="glass-divider-bottom" style={{ paddingBottom: 10, borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>{t('propertiesPanel.currentNote')}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
       </div>

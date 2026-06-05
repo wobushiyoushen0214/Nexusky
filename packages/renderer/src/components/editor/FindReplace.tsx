@@ -126,8 +126,8 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
   return (
     <div className="glass-popover" style={{
       position: 'absolute', top: 8, right: 16, zIndex: 40,
-      background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)',
-      borderRadius: 10, padding: '10px 12px', boxShadow: 'var(--shadow-popover)',
+      background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)',
+      borderRadius: 10, padding: '10px 12px', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
       display: 'flex', flexDirection: 'column', gap: 8, width: 320,
       backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
       WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',

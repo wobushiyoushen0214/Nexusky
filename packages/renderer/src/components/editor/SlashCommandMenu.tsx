@@ -288,10 +288,10 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
         maxHeight: 320,
         overflowY: 'auto',
         background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
-        border: '1px solid var(--glass-border)',
+        border: '1px solid var(--glass-panel-border)',
         borderRadius: 10,
         padding: 4,
-        boxShadow: 'var(--shadow-popover)',
+        boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
         backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
         WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
       }}

@@ -164,7 +164,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       {/* Vault switcher dropdown */}
       {vaultMenu && (
         <div ref={vaultMenuRef} style={{ position: 'absolute', top: 48, left: 8, right: 8, zIndex: 100 }}>
-          <div className="glass-popover" style={{ background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 12, padding: '6px 4px', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
+          <div className="glass-popover" style={{ background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 12, padding: '6px 4px', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
             <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
@@ -244,7 +244,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       )}
 
       {/* Filter + Sort */}
-      <div style={{ padding: '0 10px 8px', display: 'flex', gap: 5, flexWrap: 'wrap', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 28%, transparent)' }}>
+      <div className="glass-divider-bottom" style={{ padding: '0 10px 8px', display: 'flex', gap: 5, flexWrap: 'wrap', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <input
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}

@@ -753,8 +753,8 @@ export function Editor() {
               top: linkPreview.y + 200 > window.innerHeight ? linkPreview.y - 210 : linkPreview.y,
               zIndex: 50,
               maxWidth: 360, maxHeight: 200, padding: '10px 14px',
-              background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)',
-              borderRadius: 10, boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+              background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)',
+              borderRadius: 10, boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
               fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)',
               overflowY: 'auto', whiteSpace: 'pre-wrap', pointerEvents: 'none',
             }}>
@@ -777,8 +777,8 @@ export function Editor() {
           </div>
         </div>
         {splitPath && splitContent !== null && (
-            <div style={{ width: '50%', boxShadow: 'inset 1px 0 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 32%, transparent)' }}>
+            <div className="glass-divider-left" style={{ width: '50%', boxShadow: 'var(--glass-divider-shadow-left)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div className="glass-divider-bottom" style={{ height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{splitPath.split(/[\\/]/).pop()?.replace(/\.md$/, '')}</span>
               <button onClick={closeSplit} style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -799,7 +799,7 @@ export function Editor() {
 
       {/* Status bar */}
       {!focusMode && (
-        <div style={{ height: 30, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, fontSize: 11, color: 'var(--text-tertiary)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)' }}>
+        <div className="glass-divider-top" style={{ height: 30, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, fontSize: 11, color: 'var(--text-tertiary)', boxShadow: 'var(--glass-divider-shadow-top)', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)' }}>
           <div style={{ display: 'flex', gap: 12 }}>
             <span>{stats.words} 词</span>
             <span>{stats.chars} 字符</span>
@@ -884,8 +884,8 @@ function MermaidBlocks({ content }: { content: string }) {
   return (
     <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
       {blocks.map((code, i) => (
-        <div key={i} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-subtle)' }}>Mermaid</div>
+        <div key={i} style={{ background: 'var(--bg-surface)', border: '1px solid var(--glass-divider-line)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--glass-panel-edge-shadow)' }}>
+          <div className="glass-divider-bottom" style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-tertiary)', borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>Mermaid</div>
           <MermaidRenderer code={code} />
         </div>
       ))}
@@ -930,8 +930,8 @@ function TransclusionBlocks({ content }: { content: string }) {
   return (
     <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {embeds.map((embed, i) => (
-        <div key={i} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ padding: '6px 12px', fontSize: 11, color: 'var(--accent-text)', borderBottom: '1px solid var(--border-subtle)', background: 'var(--accent-muted)', fontWeight: 500 }}>
+        <div key={i} style={{ background: 'var(--bg-surface)', border: '1px solid var(--glass-divider-line)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--glass-panel-edge-shadow)' }}>
+          <div className="glass-divider-bottom" style={{ padding: '6px 12px', fontSize: 11, color: 'var(--accent-text)', borderBottom: '0', background: 'var(--accent-muted)', fontWeight: 500, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
             嵌入: {embed.title}
           </div>
           <div style={{ padding: '12px 16px', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>

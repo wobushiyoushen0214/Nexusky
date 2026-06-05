@@ -431,7 +431,7 @@ export function Settings({ open, onClose }: SettingsProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="settings-dialog-header">
+        <div className="settings-dialog-header glass-divider-bottom">
           <span id={SETTINGS_DIALOG_TITLE_ID} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.title')}</span>
           <button
             onClick={onClose}
@@ -445,7 +445,7 @@ export function Settings({ open, onClose }: SettingsProps) {
         </div>
 
         <div className="settings-dialog-body">
-          <nav className="settings-tab-bar" role="tablist" aria-orientation="vertical" aria-label={t('settings.title')}>
+          <nav className="settings-tab-bar glass-divider-right" role="tablist" aria-orientation="vertical" aria-label={t('settings.title')}>
             {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive', 'long-context'] as Tab[]).map((tabId) => {
               const active = tab === tabId
               return (
@@ -462,7 +462,7 @@ export function Settings({ open, onClose }: SettingsProps) {
             })}
           </nav>
 
-          <div className="file-tree-scroll settings-tab-content" role="tabpanel" aria-label={t(`settings.tabs.${tab}`)}>
+          <div className="file-tree-scroll settings-tab-content glass-divider-top" role="tabpanel" aria-label={t(`settings.tabs.${tab}`)}>
             <div className={`settings-tab-page settings-tab-page--${tab}`}>
             {tab === 'appearance' && (
               <AppearanceTab />
@@ -604,10 +604,10 @@ export function Settings({ open, onClose }: SettingsProps) {
         >
           <div
             className="animate-scale-in glass-popover"
-            style={{ width: 440, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-popover)', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+            style={{ width: 440, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-panel-border)', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'color-mix(in srgb, var(--panel-bg-soft) 70%, transparent)', boxShadow: 'inset 0 -1px 0 var(--border-faint)' }}>
+            <div className="glass-divider-bottom" style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'color-mix(in srgb, var(--panel-bg-soft) 70%, transparent)', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                 {providers.find((p) => p.id === editing.id) ? '编辑提供商' : '添加提供商'}
               </span>
@@ -832,7 +832,7 @@ function AIUsageSummaryPanel({
           {loading ? '刷新中...' : '刷新'}
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, paddingTop: 8, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
         <div>
           <span style={{ display: 'block', fontSize: 10, color: 'var(--text-tertiary)' }}>请求</span>
           <span style={{ display: 'block', marginTop: 2, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{summary ? formatTokenCount(summary.records) : '-'}</span>
@@ -846,7 +846,7 @@ function AIUsageSummaryPanel({
           <span style={{ display: 'block', marginTop: 2, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{costLabel}</span>
         </div>
       </div>
-      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <label style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>月预算 USD</label>
         <input
           type="number"
@@ -1750,7 +1750,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       )}
 
       {/* Auto sync */}
-      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ paddingTop: 16, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>自动同步</span>
         <select
           defaultValue={safeGet('nexusky-auto-sync') || '0'}
@@ -1770,7 +1770,7 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       </div>
 
       {/* Sync actions */}
-      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ paddingTop: 16, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 12 }}>同步操作</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -1871,7 +1871,7 @@ function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, 
         )}
       </div>
       {cloudConfig.enabled && cloudUser && (
-        <div style={{ paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+        <div style={{ paddingTop: 12, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 6, background: 'var(--control-bg)', border: '1px solid var(--border-subtle)' }}>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cloudUser.email}</span>
             <button
@@ -2061,7 +2061,7 @@ function AppearanceTab() {
         </div>
       </div>
 
-      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ paddingTop: 16, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>隐私</span>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
           <input
@@ -2080,7 +2080,7 @@ function AppearanceTab() {
       </div>
 
       {/* Version & Update */}
-      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ paddingTop: 16, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Nexusky v{appVersion || '...'}</span>
           {updateInfo && updateStage === 'idle' && (
@@ -2346,7 +2346,7 @@ function InlineCompletionSection() {
   }
 
   return (
-    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer' }}>
         <div>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>行内 AI 补全</span>
@@ -2390,7 +2390,7 @@ function SystemPromptSection() {
   }
 
   return (
-    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>自定义系统提示词</span>
         <button

@@ -188,8 +188,8 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
       <div className="glass-overlay" style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
         onClick={(e) => { if (e.target === e.currentTarget) handleCancel() }}
       >
-        <div className="glass-popover" style={{ width: 640, maxHeight: '75vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
-          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0, background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
+        <div className="glass-popover" style={{ width: 640, maxHeight: '75vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-panel-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
+          <div className="glass-divider-bottom" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', flexShrink: 0, background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>AI {preview.actionLabel}结果</span>
               {preview.streaming && (
@@ -204,7 +204,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
             </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', borderRight: '1px solid var(--border-subtle)', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div className="glass-divider-right" style={{ padding: '12px 16px', borderRight: '0', overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: 'var(--glass-divider-shadow-right)' }}>
               <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>原文</span>
               <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview.originalText}</div>
             </div>
@@ -215,7 +215,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
               </div>
             </div>
           </div>
-          <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+          <div className="glass-divider-top" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, borderTop: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-top)' }}>
             <button onClick={handleCancel} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>
               取消
             </button>
@@ -249,9 +249,9 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
         gap: 2,
         padding: 4,
         background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
-        border: '1px solid var(--glass-border)',
+        border: '1px solid var(--glass-panel-border)',
         borderRadius: 8,
-        boxShadow: 'var(--shadow-popover)',
+        boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
         backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
         WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
       }}

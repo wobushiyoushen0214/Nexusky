@@ -224,7 +224,8 @@
 .welcome-recent {
   min-height: 0;
   padding-top: 10px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 0;
+  box-shadow: var(--glass-divider-shadow-top);
 }
 
 .welcome-section-label {
@@ -280,7 +281,8 @@
 
 .welcome-samples-head {
   padding: 15px 16px 13px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 0;
+  box-shadow: var(--glass-divider-shadow-bottom);
 }
 
 .welcome-samples-head p {
@@ -306,8 +308,9 @@
   gap: 14px;
   padding: 13px 15px;
   border: none;
-  border-right: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  box-shadow:
+    var(--glass-divider-shadow-bottom),
+    var(--glass-divider-shadow-right);
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
@@ -316,7 +319,7 @@
 }
 
 .welcome-sample-item:nth-child(2n) {
-  border-right: none;
+  box-shadow: var(--glass-divider-shadow-bottom);
 }
 
 .welcome-sample-item:nth-last-child(-n + 2) {
@@ -398,10 +401,10 @@
   }
 
   .welcome-sample-item:nth-last-child(-n + 2) {
-    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: var(--glass-divider-shadow-bottom);
   }
 
   .welcome-sample-item:last-child {
-    border-bottom: none;
+    box-shadow: none;
   }
 }

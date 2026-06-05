@@ -171,10 +171,10 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
         aria-modal="true"
         aria-labelledby="publish-scope-dialog-title"
         className="animate-scale-in glass-popover"
-        style={{ width: 760, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 14, boxShadow: 'var(--shadow-popover)', overflow: 'hidden', display: 'flex', flexDirection: 'column', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+        style={{ width: 760, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 14, boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', overflow: 'hidden', display: 'flex', flexDirection: 'column', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
+        <div className="glass-divider-bottom" style={{ padding: '16px 18px 14px', borderBottom: '0', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
           <h3 id="publish-scope-dialog-title" style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{t('commandPalette.publishScope.title')}</h3>
           <p style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>{t('commandPalette.publishScope.description')}</p>
         </div>
@@ -257,7 +257,7 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
           <PublishPreviewPanel preview={preview} loading={previewing} hasIssues={hasIssues} />
         </div>
 
-        <div style={{ padding: '12px 18px 16px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <div className="glass-divider-top" style={{ padding: '12px 18px 16px', borderTop: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, boxShadow: 'var(--glass-divider-shadow-top)' }}>
           <span style={{ fontSize: 11, color: hasIssues ? 'var(--warning, #d97706)' : 'var(--text-tertiary)' }}>
             {preview ? (hasIssues ? t('commandPalette.publishScope.issueHint') : t('commandPalette.publishScope.readyHint')) : t('commandPalette.publishScope.previewRequired')}
           </span>
@@ -437,8 +437,8 @@ function PreviewMetric({ label, value, tone }: { label: string; value: number; t
 
 function PreviewList({ title, empty, count, children }: { title: string; empty: string; count: number; children: ReactNode }) {
   return (
-    <div style={{ minHeight: 0, border: '1px solid var(--border-subtle)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-surface)' }}>
-      <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{title}</div>
+    <div style={{ minHeight: 0, border: '1px solid var(--glass-divider-line)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-surface)', boxShadow: 'var(--glass-panel-edge-shadow)' }}>
+      <div className="glass-divider-bottom" style={{ padding: '8px 10px', borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{title}</div>
       <div style={{ maxHeight: 180, overflow: 'auto', padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {count > 0 ? children : <div style={{ padding: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>{empty}</div>}
       </div>

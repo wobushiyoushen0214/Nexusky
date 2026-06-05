@@ -158,7 +158,7 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
           overflowY: 'auto'
         }}>
           {provenance.hasContextPack && (
-            <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
+            <div className="glass-divider-bottom" style={{ marginBottom: 8, paddingBottom: 8, borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
               <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
                 {t('citationLookup.contextPackReason')}
               </div>

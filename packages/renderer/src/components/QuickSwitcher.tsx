@@ -96,7 +96,7 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
     >
       <div
         className="animate-scale-in glass-popover"
-        style={{ width: 520, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+        style={{ width: 520, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
@@ -116,7 +116,7 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
         </div>
 
         {/* Divider */}
-        <div style={{ height: 1, background: 'color-mix(in srgb, var(--border-subtle) 36%, transparent)' }} />
+        <div className="glass-divider-bottom" style={{ height: 1, boxShadow: 'var(--glass-divider-shadow-bottom)' }} />
 
         {/* Results */}
         <div ref={listRef} style={{ maxHeight: 340, overflowY: 'auto', padding: '6px' }}>

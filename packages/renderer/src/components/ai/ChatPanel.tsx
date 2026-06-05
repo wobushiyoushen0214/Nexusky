@@ -90,8 +90,8 @@ function OutboundPreviewPanel({
 
   return (
     <div style={{ padding: '8px 14px 0', flexShrink: 0 }}>
-      <div style={{ background: 'color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 76%, transparent)', border: '1px solid color-mix(in srgb, var(--glass-border) 72%, transparent)', borderRadius: 12, overflow: 'hidden', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--shadow-sm)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}>
-        <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 32%, transparent)' }}>
+      <div style={{ background: 'color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 76%, transparent)', border: '1px solid color-mix(in srgb, var(--glass-panel-border) 72%, transparent)', borderRadius: 12, overflow: 'hidden', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--shadow-sm), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}>
+        <div className="glass-divider-bottom" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>外发内容预览</div>
             <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -2001,7 +2001,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         </div>
       )}
       {/* Header */}
-      <div style={{ padding: '0 10px 0 14px', height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 58%, transparent)', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 24%, transparent)' }}>
+      <div className="glass-divider-bottom" style={{ padding: '0 10px 0 14px', height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 58%, transparent)', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={() => setShowSessions(!showSessions)}
@@ -2210,7 +2210,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {editResult && (
         <div style={{ padding: '8px 14px', flexShrink: 0, maxHeight: editPreviewExpanded ? 'calc(50% - 60px)' : 'none', display: 'flex', flexDirection: 'column' }}>
           <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}>
-            <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+            <div className="glass-divider-bottom" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
@@ -2260,7 +2260,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {/* Mention dropdown */}
       {showMention && mentionResults.length > 0 && (
         <div style={{ padding: '0 16px 4px' }}>
-          <div className="glass-popover file-tree-scroll" style={{ background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-border)', borderRadius: 10, padding: 4, maxHeight: 180, overflowY: 'auto', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
+          <div className="glass-popover file-tree-scroll" style={{ background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 10, padding: 4, maxHeight: 180, overflowY: 'auto', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
             {mentionResults.map((note, i) => (
               <button
                 key={note.filePath}
