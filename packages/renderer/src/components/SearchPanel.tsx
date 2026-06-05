@@ -299,6 +299,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             </svg>
             <input
               ref={inputRef}
+              className="search-panel-input"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {

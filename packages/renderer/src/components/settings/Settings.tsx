@@ -422,16 +422,16 @@ export function Settings({ open, onClose }: SettingsProps) {
     >
       <div
         ref={dialogRef}
-        className="animate-scale-in glass-popover"
+        className="animate-scale-in glass-popover settings-dialog-shell"
         role="dialog"
         aria-modal="true"
         aria-labelledby={SETTINGS_DIALOG_TITLE_ID}
         tabIndex={-1}
-        style={{ width: 780, maxWidth: 'calc(100vw - 40px)', height: 620, maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 18, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' } as React.CSSProperties}
+        style={{ width: 780, maxWidth: 'calc(100vw - 40px)', height: 620, maxHeight: 'calc(100vh - 40px)', borderRadius: 18, display: 'flex', flexDirection: 'column', overflow: 'hidden' } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ height: 48, padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--border-faint)' }}>
+        <div className="settings-dialog-header">
           <span id={SETTINGS_DIALOG_TITLE_ID} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('settings.title')}</span>
           <button
             onClick={onClose}
@@ -444,50 +444,25 @@ export function Settings({ open, onClose }: SettingsProps) {
           </button>
         </div>
 
-        {/* Body: sidebar + content */}
-        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          {/* Sidebar */}
-          <nav style={{ width: 184, flexShrink: 0, padding: '12px 8px', boxShadow: 'inset -1px 0 0 var(--border-faint)', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', background: 'color-mix(in srgb, var(--panel-bg-soft) 46%, transparent)' }}>
+        <div className="settings-dialog-body">
+          <nav className="settings-tab-bar" role="tablist" aria-orientation="vertical" aria-label={t('settings.title')}>
             {(['appearance', 'ai', 'cloud', 'plugins', 'keys', 'proactive', 'long-context'] as Tab[]).map((tabId) => {
               const active = tab === tabId
               return (
                 <button
                   key={tabId}
+                  role="tab"
+                  aria-selected={active}
+                  className={`settings-tab${active ? ' is-active' : ''}`}
                   onClick={() => setTab(tabId)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '8px 12px',
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 500,
-                    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    background: active ? 'var(--accent-muted)' : 'transparent',
-                    border: active ? '1px solid color-mix(in srgb, var(--accent) 24%, var(--border-subtle))' : '1px solid transparent',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    transition: 'background 120ms, color 120ms, border-color 120ms',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = 'var(--control-bg)'
-                      e.currentTarget.style.borderColor = 'var(--control-border)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = 'transparent'
-                      e.currentTarget.style.borderColor = 'transparent'
-                    }
-                  }}
                 >
-                  {t(`settings.tabs.${tabId}`)}
+                  <span className="settings-tab-label">{t(`settings.tabs.${tabId}`)}</span>
                 </button>
               )
             })}
           </nav>
 
-          {/* Content */}
-          <div className="file-tree-scroll" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '20px 24px 24px', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg-soft) 28%, transparent), transparent 42%)' }}>
+          <div className="file-tree-scroll settings-tab-content" role="tabpanel" aria-label={t(`settings.tabs.${tab}`)}>
           {tab === 'appearance' && (
             <AppearanceTab />
           )}
