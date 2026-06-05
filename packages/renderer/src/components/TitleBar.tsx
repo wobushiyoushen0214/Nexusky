@@ -1,24 +1,36 @@
+import type { ReactNode } from 'react'
+
 const isMac = window.api.platform === 'darwin'
 
-export function TitleBar() {
+interface TitleBarProps {
+  children?: ReactNode
+}
+
+export function TitleBar({ children }: TitleBarProps) {
   if (isMac) {
     return (
       <div
+        className="titlebar titlebar-mac"
         style={{
-          height: 32,
+          height: children ? 40 : 32,
+          position: 'relative',
           background: 'transparent',
           WebkitAppRegion: 'drag',
           userSelect: 'none',
           flexShrink: 0,
         } as React.CSSProperties}
-      />
+      >
+        {children}
+      </div>
     )
   }
 
   return (
     <div
+      className="titlebar titlebar-windows"
       style={{
         height: 40,
+        position: 'relative',
         padding: '0 0 0 16px',
         display: 'flex',
         alignItems: 'center',
@@ -54,6 +66,8 @@ export function TitleBar() {
           Nexusky
         </span>
       </div>
+
+      {children}
 
       <div style={{ display: 'flex', alignItems: 'center', height: '100%', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <button

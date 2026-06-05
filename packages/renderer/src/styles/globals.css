@@ -580,6 +580,24 @@
   overflow: hidden;
 }
 
+.workspace-title-tabs {
+  position: absolute;
+  bottom: -1px;
+  height: 40px;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+
+.workspace-title-tabs .editor-tab-bar {
+  width: 100%;
+  margin-bottom: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .editor-tab-bar,
 .editor-toolbar {
   --editor-tab-toolbar-surface: color-mix(in srgb, var(--bg-glass-dense, var(--panel-bg)) 72%, var(--panel-bg-soft));

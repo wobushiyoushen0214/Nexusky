@@ -115,6 +115,7 @@ export default function App() {
     }))
   )
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
+  const tabCount = useEditorStore((s) => s.tabs.length)
   const [trashOpen, setTrashOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
@@ -428,18 +429,38 @@ export default function App() {
     return () => { if (syncTimerRef.current) clearInterval(syncTimerRef.current) }
   }, [vaultPath, autoSyncInterval])
 
+  const showEditorChromeTabs = Boolean(vaultPath && !showVaultHealth && mainView === 'editor' && !focusMode && tabCount > 0)
+  const workspaceSidebarWidth = sidebarCollapsed ? 62 : 62 + sidebarWidth
+  const workspaceTabsLeft = 16 + workspaceSidebarWidth + (sidebarCollapsed ? 10 : 8)
+  const workspaceTabsRight = 16 + (rightPanel !== 'none' ? rightPanelWidth + 8 : 0)
+  const workspaceContentPadding = showEditorChromeTabs ? '0 16px 16px' : '8px 16px 16px'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--workspace-bg)' }}>
       {showOnboarding ? (
         <Onboarding onDone={() => setShowOnboarding(false)} />
       ) : (
         <>
-          {!focusMode && <TitleBar />}
+          {!focusMode && (
+            <TitleBar>
+              {showEditorChromeTabs && (
+                <div
+                  className="workspace-title-tabs"
+                  style={{
+                    left: workspaceTabsLeft,
+                    right: workspaceTabsRight,
+                  }}
+                >
+                  <EditorTabs />
+                </div>
+              )}
+            </TitleBar>
+          )}
           {vaultPath ? (
             showVaultHealth ? (
               <VaultHealthScreen vaultPath={vaultPath} onDismiss={() => setShowVaultHealth(false)} />
             ) : (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'transparent', minHeight: 0, alignItems: 'stretch', padding: '8px 16px 16px' }}>
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'transparent', minHeight: 0, alignItems: 'stretch', padding: workspaceContentPadding }}>
           <div className="glass-panel" style={{ width: mainView === 'graph' ? 'auto' : sidebarCollapsed ? 62 : 62 + sidebarWidth, height: '100%', display: 'flex', flexShrink: 0, overflow: 'hidden', background: 'var(--panel-bg-soft)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', padding: 6, boxSizing: 'border-box', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
             <ActivityBar />
             {mainView === 'graph' ? (
@@ -452,7 +473,6 @@ export default function App() {
           <main className="glass-panel workspace-main-panel" style={{ flex: 1, overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', marginLeft: sidebarCollapsed || mainView === 'graph' ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
             {mainView === 'editor' ? (
               <div className="workspace-editor-frame">
-                {!focusMode && <EditorTabs />}
                 <Editor />
               </div>
             ) : mainView === 'bases' ? (
