@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
+import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
@@ -29,7 +30,8 @@ function frontmatterPrefix(content: string): string {
 }
 
 export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProps) {
-  const { previewMode, togglePreviewMode } = useUIStore()
+  const { t } = useTranslation()
+  const { previewMode, rightPanel, togglePreviewMode, toggleRightPanel } = useUIStore()
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -360,6 +362,34 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+
+      {/* Outline */}
+      <button
+        style={btnStyle(rightPanel === 'outline')}
+        onClick={() => toggleRightPanel('outline')}
+        title={t('panels.outline')}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6" />
+          <line x1="8" y1="12" x2="21" y2="12" />
+          <line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" />
+          <line x1="3" y1="12" x2="3.01" y2="12" />
+          <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+      </button>
+
+      {/* Tags */}
+      <button
+        style={btnStyle(rightPanel === 'tags')}
+        onClick={() => toggleRightPanel('tags')}
+        title={t('panels.tags')}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
         </svg>
       </button>
 

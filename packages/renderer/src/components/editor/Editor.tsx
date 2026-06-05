@@ -743,7 +743,7 @@ export function Editor() {
       {!focusMode && editor && <EditorToolbar editor={editor} />}
 
       {/* Editor area */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 86%, transparent) 0%, transparent 28%)' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'linear-gradient(180deg, color-mix(in srgb, var(--workspace-panel-top-surface, var(--panel-bg)) 78%, transparent) 0%, transparent 28%)' }}>
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           <FindReplace editor={editor} open={findReplaceOpen} onClose={() => setFindReplaceOpen(false)} />
           {linkPreview && (

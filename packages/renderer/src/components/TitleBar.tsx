@@ -7,6 +7,8 @@ interface TitleBarProps {
 }
 
 export function TitleBar({ children }: TitleBarProps) {
+  const hasIntegratedTabs = Boolean(children)
+
   if (isMac) {
     return (
       <div
@@ -29,41 +31,22 @@ export function TitleBar({ children }: TitleBarProps) {
     <div
       className="titlebar titlebar-windows"
       style={{
-        height: 40,
+        height: hasIntegratedTabs ? 40 : 32,
         position: 'relative',
         padding: '0 0 0 16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         background: 'transparent',
-        borderBottom: '1px solid color-mix(in srgb, var(--glass-border) 50%, transparent)',
+        borderBottom: 'none',
         userSelect: 'none',
         flexShrink: 0,
         WebkitAppRegion: 'drag',
       } as React.CSSProperties}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="18" height="18" viewBox="0 0 512 512" fill="none">
-            <g stroke="var(--accent)" strokeWidth="12" strokeOpacity="0.5">
-              <path d="M256 180 L180 260"/><path d="M256 180 L330 240"/><path d="M256 180 L256 100"/>
-              <path d="M180 260 L140 340"/><path d="M180 260 L240 340"/>
-              <path d="M330 240 L380 320"/><path d="M330 240 L290 340"/>
-              <path d="M240 340 L290 340"/>
-            </g>
-            <circle cx="256" cy="100" r="16" fill="var(--accent)" fillOpacity="0.5"/>
-            <circle cx="140" cy="340" r="14" fill="var(--accent)" fillOpacity="0.5"/>
-            <circle cx="240" cy="340" r="14" fill="var(--accent)" fillOpacity="0.5"/>
-            <circle cx="290" cy="340" r="14" fill="var(--accent)" fillOpacity="0.5"/>
-            <circle cx="380" cy="320" r="14" fill="var(--accent)" fillOpacity="0.5"/>
-            <circle cx="180" cy="260" r="22" fill="var(--accent)"/>
-            <circle cx="330" cy="240" r="20" fill="var(--accent)"/>
-            <circle cx="256" cy="180" r="32" fill="var(--accent)"/>
-            <circle cx="256" cy="180" r="14" fill="var(--text-on-accent)" fillOpacity="0.8"/>
-          </svg>
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
-          Nexusky
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <span style={{ fontSize: 12, fontWeight: 650, color: 'var(--text-secondary)', letterSpacing: 0 }}>
+          nexusky
         </span>
       </div>
 

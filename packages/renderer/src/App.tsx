@@ -434,6 +434,16 @@ export default function App() {
   const workspaceTabsLeft = 16 + workspaceSidebarWidth + (sidebarCollapsed ? 10 : 8)
   const workspaceTabsRight = 16 + (rightPanel !== 'none' ? rightPanelWidth + 8 : 0)
   const workspaceContentPadding = showEditorChromeTabs ? '0 16px 16px' : '8px 16px 16px'
+  const workspaceSideBackground = 'var(--panel-bg-soft)'
+  const workspaceSideBorder = '1px solid var(--glass-border)'
+  const workspaceSideRadius = 18
+  const workspaceSideShadow = 'var(--shadow-panel)'
+  const workspaceSideBackdropFilter = 'blur(var(--glass-blur)) saturate(160%)'
+  const workspaceMainBackground = showEditorChromeTabs ? 'var(--workspace-tab-surface)' : 'var(--workspace-panel-surface)'
+  const workspacePanelBorder = '1px solid var(--glass-border)'
+  const workspacePanelRadius = 18
+  const workspacePanelShadow = 'var(--shadow-panel)'
+  const workspaceMainShadow = showEditorChromeTabs ? 'var(--shadow-md)' : workspacePanelShadow
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--workspace-bg)' }}>
@@ -460,8 +470,8 @@ export default function App() {
             showVaultHealth ? (
               <VaultHealthScreen vaultPath={vaultPath} onDismiss={() => setShowVaultHealth(false)} />
             ) : (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'transparent', minHeight: 0, alignItems: 'stretch', padding: workspaceContentPadding }}>
-          <div className="glass-panel" style={{ width: mainView === 'graph' ? 'auto' : sidebarCollapsed ? 62 : 62 + sidebarWidth, height: '100%', display: 'flex', flexShrink: 0, overflow: 'hidden', background: 'var(--panel-bg-soft)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', padding: 6, boxSizing: 'border-box', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
+        <div className={`workspace-content${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'transparent', minHeight: 0, alignItems: 'stretch', padding: workspaceContentPadding }}>
+          <div className="glass-panel workspace-side-panel" style={{ width: mainView === 'graph' ? 'auto' : sidebarCollapsed ? 62 : 62 + sidebarWidth, height: '100%', display: 'flex', flexShrink: 0, overflow: 'hidden', background: workspaceSideBackground, border: workspaceSideBorder, borderRadius: workspaceSideRadius, boxShadow: workspaceSideShadow, padding: 6, boxSizing: 'border-box', backdropFilter: workspaceSideBackdropFilter, WebkitBackdropFilter: workspaceSideBackdropFilter }}>
             <ActivityBar />
             {mainView === 'graph' ? (
               <div id="graph-panel-slot" style={{ height: '100%', display: 'flex', minWidth: 0 }} />
@@ -470,7 +480,7 @@ export default function App() {
             )}
           </div>
           {!sidebarCollapsed && mainView !== 'graph' && <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />}
-          <main className="glass-panel workspace-main-panel" style={{ flex: 1, overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', marginLeft: sidebarCollapsed || mainView === 'graph' ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
+          <main className={`glass-panel workspace-main-panel${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ flex: 1, overflow: 'hidden', background: workspaceMainBackground, border: workspacePanelBorder, borderRadius: workspacePanelRadius, boxShadow: workspaceMainShadow, marginLeft: sidebarCollapsed || mainView === 'graph' ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
             {mainView === 'editor' ? (
               <div className="workspace-editor-frame">
                 <Editor />
@@ -492,8 +502,8 @@ export default function App() {
           {rightPanel !== 'none' && (
             <ResizeHandle side="right" onResize={(delta) => resizeRightPanel(delta)} />
           )}
-          <aside className="glass-panel" style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--panel-bg)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', marginRight: 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
-            <div style={{ height: 46, padding: '0 14px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 26%, transparent)' }}>
+          <aside className={`glass-panel workspace-right-panel${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--workspace-panel-surface)', border: workspacePanelBorder, borderRadius: workspacePanelRadius, boxShadow: workspacePanelShadow, marginRight: 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
+            <div style={{ height: 46, padding: '0 14px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'linear-gradient(180deg, var(--workspace-panel-header-surface), var(--workspace-panel-surface))', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 52%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 26%, transparent)' }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
                 {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'maintenance' ? t('panels.maintenance') : rightPanel === 'agent' ? t('panels.agent') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
               </span>
