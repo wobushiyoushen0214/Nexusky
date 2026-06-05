@@ -148,7 +148,7 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
   }
 
   return (
-    <div style={{ width: '100%', height: 40, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 28%, transparent)', background: 'linear-gradient(180deg, color-mix(in srgb, var(--panel-bg-soft) 86%, transparent), color-mix(in srgb, var(--panel-bg-soft) 62%, transparent))' }}>
+    <div className="editor-toolbar" style={{ width: '100%', height: 40, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--editor-tab-toolbar-edge, color-mix(in srgb, var(--glass-highlight) 70%, transparent)), inset 0 -1px 0 color-mix(in srgb, var(--border-subtle) 28%, transparent)', background: 'linear-gradient(180deg, var(--editor-tab-toolbar-surface, color-mix(in srgb, var(--panel-bg-soft) 86%, transparent)), color-mix(in srgb, var(--panel-bg-soft) 62%, transparent))' }}>
       {/* Headings */}
       <button
         style={btnStyle(editor.isActive('heading', { level: 1 }))}

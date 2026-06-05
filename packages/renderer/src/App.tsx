@@ -10,6 +10,7 @@ import { toast } from './stores/toast-store'
 import { Sidebar } from './components/sidebar/Sidebar'
 import { ActivityBar } from './components/sidebar/ActivityBar'
 import { Editor } from './components/editor/Editor'
+import { EditorTabs } from './components/editor/EditorTabs'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { TitleBar } from './components/TitleBar'
 import { QuickSwitcher } from './components/QuickSwitcher'
@@ -448,8 +449,13 @@ export default function App() {
             )}
           </div>
           {!sidebarCollapsed && mainView !== 'graph' && <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />}
-          <main className="glass-panel" style={{ flex: 1, overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', marginLeft: sidebarCollapsed || mainView === 'graph' ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
-            {mainView === 'editor' ? <Editor /> : mainView === 'bases' ? (
+          <main className="glass-panel workspace-main-panel" style={{ flex: 1, overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid var(--glass-border)', borderRadius: 18, boxShadow: 'var(--shadow-panel)', marginLeft: sidebarCollapsed || mainView === 'graph' ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
+            {mainView === 'editor' ? (
+              <div className="workspace-editor-frame">
+                {!focusMode && <EditorTabs />}
+                <Editor />
+              </div>
+            ) : mainView === 'bases' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><CanvasView initialMode="properties" /></Suspense>
               </div>
