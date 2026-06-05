@@ -506,11 +506,10 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {PROVIDER_PRESETS.map((preset) => (
                     <button
+                      className="settings-glass-control"
                       key={preset.label}
                       onClick={() => handleAdd(preset)}
-                      style={{ height: 28, padding: '0 10px', fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer', transition: 'all 100ms' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent-text)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                      style={{ height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer' }}
                     >
                       {preset.label}
                     </button>
@@ -551,11 +550,10 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {PROVIDER_PRESETS.map((preset) => (
                     <button
+                      className="settings-glass-control"
                       key={preset.label}
                       onClick={() => handleAdd(preset)}
-                      style={{ height: 24, padding: '0 8px', fontSize: 10, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 4, cursor: 'pointer', transition: 'all 100ms' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent-text)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                      style={{ height: 24, padding: '0 8px', fontSize: 10, borderRadius: 4, cursor: 'pointer' }}
                     >
                       + {preset.label}
                     </button>
@@ -624,14 +622,11 @@ export function Settings({ open, onClose }: SettingsProps) {
                     const isSelected = editing.name === preset.label || (editing.baseUrl === preset.baseUrl && editing.type === preset.type && preset.baseUrl !== '')
                     return (
                       <button
+                        className={`settings-glass-control${isSelected ? ' is-active' : ''}`}
                         key={preset.label}
                         onClick={() => setEditing({ ...editing, name: preset.label, type: preset.type, baseUrl: preset.baseUrl, model: preset.model })}
                         style={{
-                          height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer', transition: 'all 100ms',
-                          background: isSelected ? 'var(--accent-muted)' : 'var(--bg-elevated)',
-                          color: isSelected ? 'var(--accent-text)' : 'var(--text-secondary)',
-                          border: isSelected ? '1.5px solid var(--accent)' : '1px solid var(--border-subtle)',
-                          fontWeight: isSelected ? 500 : 400,
+                          height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
                         }}
                       >
                         {preset.label}
@@ -639,12 +634,10 @@ export function Settings({ open, onClose }: SettingsProps) {
                     )
                   })}
                   <button
+                    className={`settings-glass-control${!PROVIDER_PRESETS.some((p) => p.label === editing.name) ? ' is-active' : ''}`}
                     onClick={() => setEditing({ ...editing, name: editing.name || '自定义', type: 'custom', baseUrl: editing.baseUrl })}
                     style={{
-                      height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer', transition: 'all 100ms',
-                      background: !PROVIDER_PRESETS.some((p) => p.label === editing.name) ? 'var(--accent-muted)' : 'var(--bg-elevated)',
-                      color: !PROVIDER_PRESETS.some((p) => p.label === editing.name) ? 'var(--accent-text)' : 'var(--text-secondary)',
-                      border: !PROVIDER_PRESETS.some((p) => p.label === editing.name) ? '1.5px solid var(--accent)' : '1px solid var(--border-subtle)',
+                      height: 28, padding: '0 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
                     }}
                   >
                     其他...
@@ -1453,13 +1446,9 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
     justifyContent: 'center',
     gap: 4,
     borderRadius: 8,
-    border: active ? '2px solid var(--accent)' : '1px solid var(--border-default)',
-    background: active ? 'var(--accent-muted)' : 'var(--bg-elevated)',
     cursor: 'pointer',
-    transition: 'all 150ms',
     fontSize: 11,
-    fontWeight: 500,
-    color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
+    fontWeight: active ? 620 : 500,
   })
 
   return (
@@ -1476,23 +1465,23 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       <div>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>{t('settings.cloudSync.providerSelectorTitle')}</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => switchProvider('supabase')} style={providerBtnStyle(activeProvider === 'supabase')}>
+          <button className={`settings-glass-control${activeProvider === 'supabase' ? ' is-active' : ''}`} onClick={() => switchProvider('supabase')} style={providerBtnStyle(activeProvider === 'supabase')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             Supabase
           </button>
-          <button onClick={() => switchProvider('icloud')} style={providerBtnStyle(activeProvider === 'icloud')}>
+          <button className={`settings-glass-control${activeProvider === 'icloud' ? ' is-active' : ''}`} onClick={() => switchProvider('icloud')} style={providerBtnStyle(activeProvider === 'icloud')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
             iCloud
           </button>
-          <button onClick={() => switchProvider('onedrive')} style={providerBtnStyle(activeProvider === 'onedrive')}>
+          <button className={`settings-glass-control${activeProvider === 'onedrive' ? ' is-active' : ''}`} onClick={() => switchProvider('onedrive')} style={providerBtnStyle(activeProvider === 'onedrive')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
             OneDrive
           </button>
-          <button onClick={() => switchProvider('webdav')} style={providerBtnStyle(activeProvider === 'webdav')}>
+          <button className={`settings-glass-control${activeProvider === 'webdav' ? ' is-active' : ''}`} onClick={() => switchProvider('webdav')} style={providerBtnStyle(activeProvider === 'webdav')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 4h16v16H4z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
             WebDAV
           </button>
-          <button onClick={() => switchProvider('s3')} style={providerBtnStyle(activeProvider === 's3')}>
+          <button className={`settings-glass-control${activeProvider === 's3' ? ' is-active' : ''}`} onClick={() => switchProvider('s3')} style={providerBtnStyle(activeProvider === 's3')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg>
             S3
           </button>
@@ -1925,32 +1914,19 @@ function ThemeTab() {
           const meta = themeMeta[id]
           return (
           <button
+            className={`settings-glass-control settings-theme-card${theme === id ? ' is-active' : ''}`}
             key={id}
             onClick={() => setTheme(id)}
-            style={{
-              minHeight: 104,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'stretch',
-              justifyContent: 'space-between',
-              gap: 12,
-              padding: 12,
-              borderRadius: 10,
-              border: theme === id ? '2px solid var(--accent)' : '1px solid var(--border-default)',
-              background: theme === id ? 'var(--accent-muted)' : 'var(--bg-elevated)',
-              cursor: 'pointer',
-              transition: 'all 150ms',
-              textAlign: 'left',
-            }}
+            style={{ cursor: 'pointer' }}
           >
-            <div style={{ display: 'flex', gap: 5 }}>
+            <div className="settings-theme-card-swatches">
               {meta.swatches.map((color) => (
-                <span key={color} style={{ flex: 1, height: 24, borderRadius: 5, background: color, border: '1px solid var(--border-subtle)' }} />
+                <span className="settings-theme-card-swatch" key={color} style={{ background: color }} />
               ))}
             </div>
             <span>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: theme === id ? 'var(--accent-text)' : 'var(--text-primary)' }}>{t(`settings.theme.items.${id}.label`)}</span>
-              <span style={{ display: 'block', marginTop: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>{t(`settings.theme.items.${id}.detail`)}</span>
+              <span className="settings-theme-card-label">{t(`settings.theme.items.${id}.label`)}</span>
+              <span className="settings-theme-card-detail">{t(`settings.theme.items.${id}.detail`)}</span>
             </span>
           </button>
           )
@@ -2067,17 +2043,14 @@ function AppearanceTab() {
         <div style={{ display: 'flex', gap: 8 }}>
           {([['zh-CN', '简体中文'], ['en', 'English']] as const).map(([lang, label]) => (
             <button
+              className={`settings-glass-control${language === lang ? ' is-active' : ''}`}
               key={lang}
               onClick={() => setLanguage(lang)}
               style={{
                 padding: '8px 16px',
                 fontSize: 12,
                 borderRadius: 8,
-                border: language === lang ? '1px solid var(--accent)' : '1px solid var(--border-default)',
-                background: language === lang ? 'var(--accent-muted)' : 'var(--bg-elevated)',
-                color: language === lang ? 'var(--accent)' : 'var(--text-primary)',
                 cursor: 'pointer',
-                fontWeight: language === lang ? 600 : 400,
               }}
             >
               {label}
@@ -2466,13 +2439,12 @@ function KeyBindingsTab() {
           <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 6, background: 'var(--control-bg)' }}>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{b.label}</span>
             <button
+              className={`settings-glass-control${recording === b.id ? ' is-active' : ''}`}
               onClick={() => setRecording(b.id)}
               onKeyDown={(e) => recording === b.id && handleKeyDown(e, b.id)}
               onBlur={() => setRecording(null)}
               style={{
                 minWidth: 100, height: 24, padding: '0 8px', fontSize: 11, textAlign: 'center',
-                background: recording === b.id ? 'var(--accent-muted)' : 'var(--bg-elevated)',
-                border: recording === b.id ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                 borderRadius: 4, color: 'var(--text-primary)', cursor: 'pointer', outline: 'none',
               }}
             >
