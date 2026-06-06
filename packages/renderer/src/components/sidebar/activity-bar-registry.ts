@@ -18,6 +18,8 @@ export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
   { id: 'search', labelKey: 'activityBar.search', shortcut: 'Ctrl+Shift+F', defaultVisible: true, defaultOrder: 1, pinned: true },
   { id: 'chat', labelKey: 'activityBar.chat', shortcut: 'Ctrl+L', defaultVisible: true, defaultOrder: 2 },
   { id: 'graph', labelKey: 'activityBar.graph', shortcut: 'Ctrl+G', defaultVisible: true, defaultOrder: 3 },
+  { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: false, defaultOrder: 8, requiresCurrentFile: true },
+  { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: false, defaultOrder: 9, requiresCurrentFile: true },
   { id: 'maintenance', labelKey: 'activityBar.maintenance', defaultVisible: true, defaultOrder: 13 },
 ]
 
