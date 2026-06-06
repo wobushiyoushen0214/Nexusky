@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 interface ResizeHandleProps {
   side: 'left' | 'right'
@@ -8,12 +8,14 @@ interface ResizeHandleProps {
 export function ResizeHandle({ side, onResize }: ResizeHandleProps) {
   const startX = useRef(0)
   const dragging = useRef(false)
+  const [isActive, setIsActive] = useState(false)
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     startX.current = e.clientX
     dragging.current = true
+    setIsActive(true)
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return
@@ -24,6 +26,7 @@ export function ResizeHandle({ side, onResize }: ResizeHandleProps) {
 
     const handleMouseUp = () => {
       dragging.current = false
+      setIsActive(false)
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       document.body.style.cursor = ''
@@ -39,6 +42,10 @@ export function ResizeHandle({ side, onResize }: ResizeHandleProps) {
   return (
     <div
       onMouseDown={handleMouseDown}
+      onMouseEnter={() => setIsActive(true)}
+      onMouseLeave={() => {
+        if (!dragging.current) setIsActive(false)
+      }}
       style={{
         width: 8,
         cursor: 'col-resize',
@@ -50,15 +57,13 @@ export function ResizeHandle({ side, onResize }: ResizeHandleProps) {
       } as React.CSSProperties}
     >
       <div style={{
-        width: 3,
-        height: 34,
+        width: 5,
+        height: isActive ? 42 : 30,
         borderRadius: 999,
-        background: 'linear-gradient(180deg, transparent, var(--glass-divider-line) 18%, var(--glass-divider-highlight) 50%, var(--glass-divider-line) 82%, transparent)',
-        opacity: 0.78,
-        boxShadow: '0 0 12px color-mix(in srgb, var(--glass-highlight) 36%, transparent), inset 1px 0 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent)',
-        backdropFilter: 'blur(8px) saturate(140%)',
-        WebkitBackdropFilter: 'blur(8px) saturate(140%)',
-        transition: 'opacity 150ms, height 150ms',
+        background: isActive ? 'color-mix(in srgb, var(--bg-hover) 82%, transparent)' : 'transparent',
+        opacity: isActive ? 1 : 0,
+        boxShadow: 'none',
+        transition: 'opacity 140ms, height 140ms, background 140ms',
       }} />
     </div>
   )

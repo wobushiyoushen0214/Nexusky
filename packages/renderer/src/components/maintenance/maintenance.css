@@ -6,13 +6,10 @@
   --maintenance-row-hover: color-mix(in srgb, var(--bg-hover) 72%, transparent);
   --maintenance-control: color-mix(in srgb, var(--control-bg) 86%, transparent);
   --maintenance-soft-border: color-mix(in srgb, var(--text-primary) 4%, transparent);
-  --maintenance-card-bg: color-mix(in srgb, var(--maintenance-section) 76%, transparent);
   display: flex;
   flex-direction: column;
   height: 100%;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--maintenance-surface) 94%, var(--glass-highlight)), var(--maintenance-surface)),
-    var(--maintenance-surface);
+  background: var(--maintenance-surface);
 }
 
 .maintenance-panel__header {
@@ -20,9 +17,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 12px 8px;
   border-bottom: none;
-  background: color-mix(in srgb, var(--maintenance-surface) 92%, var(--bg-elevated));
+  background: transparent;
   box-shadow: none;
 }
 
@@ -30,9 +27,9 @@
   display: inline-flex;
   min-width: 0;
   padding: 2px;
-  border: 1px solid var(--control-border);
+  border: 0;
   border-radius: 7px;
-  background: var(--maintenance-control);
+  background: color-mix(in srgb, var(--maintenance-control) 72%, transparent);
   box-shadow: none;
 }
 
@@ -56,7 +53,7 @@
 
 .maintenance-panel__tab.is-active {
   color: var(--accent-text);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--control-border));
+  border-color: transparent;
   background: color-mix(in srgb, var(--accent-muted) 76%, var(--maintenance-control));
 }
 
@@ -64,7 +61,7 @@
   min-height: 26px;
   padding: 3px 9px;
   font-size: 11px;
-  border: 1px solid var(--control-border);
+  border: 0;
   background: var(--maintenance-control);
   color: var(--text-secondary);
   border-radius: 6px;
@@ -92,13 +89,13 @@
 
 .maintenance-panel__summary {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  margin: 2px 10px 8px;
-  padding: 11px 12px;
-  border-radius: 9px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
+  margin: 0 12px 9px;
+  padding: 4px 0 2px;
+  border-radius: 0;
   border-bottom: none;
-  background: color-mix(in srgb, var(--maintenance-section) 78%, transparent);
+  background: transparent;
   box-shadow: none;
 }
 
@@ -113,10 +110,10 @@
   width: max-content;
   max-width: 100%;
   overflow: hidden;
-  padding: 2px 7px;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-subtle));
+  padding: 0;
+  border: 0;
   border-radius: 999px;
-  background: var(--accent-muted);
+  background: transparent;
   color: var(--accent-text);
   font-size: 10px;
   font-weight: 720;
@@ -137,19 +134,19 @@
 .maintenance-panel__summary-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 10px;
 }
 
 .maintenance-panel__summary-metric {
   min-width: 0;
-  min-height: 44px;
+  min-height: 34px;
   display: grid;
   align-content: center;
-  gap: 3px;
-  padding: 6px 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--maintenance-control) 72%, var(--maintenance-surface));
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -207,7 +204,7 @@
 .maintenance-panel__filter.is-active {
   background: color-mix(in srgb, var(--accent-soft) 82%, var(--maintenance-control));
   color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border-subtle));
+  border-color: transparent;
 }
 
 .maintenance-panel__filter-count {
@@ -234,12 +231,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 34px;
-  margin: 0 10px 8px;
-  padding: 7px 10px;
+  min-height: 28px;
+  margin: 0 12px 10px;
+  padding: 2px 0;
   border-bottom: none;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--maintenance-card-bg) 70%, transparent);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
   color: var(--text-tertiary);
   font-size: 11px;
@@ -298,7 +295,7 @@
 .maintenance-panel__body {
   flex: 1;
   overflow-y: auto;
-  padding: 2px 0 10px;
+  padding: 4px 0 12px;
   scrollbar-width: none;
   mask-image: linear-gradient(180deg, transparent 0, black 10px, black calc(100% - 12px), transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0, black 10px, black calc(100% - 12px), transparent 100%);
@@ -317,20 +314,20 @@
 }
 
 .maintenance-weekly-review {
-  margin: 8px 10px 10px;
-  padding: 12px 13px;
+  margin: 12px 12px 14px;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
-  background: var(--maintenance-card-bg);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
 
 .maintenance-health-trend {
-  margin: 8px 10px 10px;
-  padding: 12px 13px;
+  margin: 10px 12px 14px;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
-  background: var(--maintenance-card-bg);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -435,7 +432,7 @@
   min-width: 0;
   max-width: 100%;
   padding: 3px 7px;
-  border: 1px solid var(--control-border);
+  border: 0;
   border-radius: 5px;
   color: var(--text-secondary);
   background: var(--maintenance-control);
@@ -508,7 +505,7 @@
 
 .maintenance-weekly-review__stats span {
   padding: 2px 7px;
-  border: 1px solid transparent;
+  border: 0;
   background: var(--maintenance-control);
   border-radius: 999px;
   color: var(--text-secondary);
@@ -521,7 +518,7 @@
   margin: 10px 0 0;
   padding: 10px;
   overflow: auto;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 6px;
   background: color-mix(in srgb, var(--bg-base) 86%, var(--maintenance-surface));
   color: var(--text-secondary);
@@ -533,10 +530,11 @@
 }
 
 .maintenance-panel__today {
-  margin: 8px 10px 10px;
+  margin: 12px 8px 14px;
+  padding: 10px;
   border: 0;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent-muted) 36%, var(--maintenance-section));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent-muted) 24%, transparent);
   box-shadow: none;
   overflow: hidden;
 }
@@ -546,7 +544,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 13px;
+  padding: 0 2px 9px;
   border-bottom: none;
   box-shadow: none;
 }
@@ -579,16 +577,16 @@
 .maintenance-panel__today-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 0 10px 10px;
+  gap: 2px;
+  padding: 0;
 }
 
 .maintenance-panel__today-list .maintenance-card {
   margin: 0;
-  padding: 11px 13px;
+  padding: 9px 10px;
   border-color: transparent;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--maintenance-surface) 70%, transparent);
+  border-radius: 6px;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -599,7 +597,7 @@
 }
 
 .maintenance-panel__section-label {
-  padding: 4px 14px 8px;
+  padding: 8px 14px 6px;
   color: var(--text-tertiary);
   font-size: 10px;
   font-weight: 650;
@@ -607,11 +605,11 @@
 }
 
 .maintenance-card {
-  margin: 0 10px 6px;
-  padding: 11px 12px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--maintenance-card-bg) 72%, transparent);
+  margin: 0 8px 2px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -639,7 +637,7 @@
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 999px;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   background: color-mix(in srgb, var(--bg-hover) 68%, transparent);
   color: var(--text-secondary);
   letter-spacing: 0;
@@ -699,7 +697,7 @@
   font-size: 11px;
   background: var(--maintenance-control);
   color: var(--text-secondary);
-  border: 1px solid var(--maintenance-soft-border);
+  border: 0;
   border-radius: 6px;
   cursor: pointer;
   transition: background 120ms, color 120ms, border-color 120ms;
@@ -720,7 +718,7 @@
 .maintenance-card__btn--quiet:hover {
   background: var(--bg-hover);
   color: var(--text-secondary);
-  border-color: var(--border-subtle);
+  border-color: transparent;
 }
 
 .maintenance-card__btn:disabled {
