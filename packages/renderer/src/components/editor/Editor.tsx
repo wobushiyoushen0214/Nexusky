@@ -691,9 +691,11 @@ export function Editor() {
     return () => { cancelled = true; if (linkPreviewTimer.current) clearTimeout(linkPreviewTimer.current); setLinkPreview(null); container.removeEventListener('mouseover', handleMouseOver); container.removeEventListener('mouseout', handleMouseOut) }
   }, [currentFilePath])
 
+  const editorSurfaceBackground = 'linear-gradient(180deg, color-mix(in srgb, var(--workspace-panel-top-surface, var(--panel-bg)) 78%, transparent) 0%, transparent 28%)'
+
   if (!currentFilePath) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'linear-gradient(180deg, var(--panel-bg) 0%, color-mix(in srgb, var(--panel-bg) 88%, var(--panel-bg-soft)) 100%)' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: editorSurfaceBackground }}>
         <div style={{ textAlign: 'center', display: 'grid', justifyItems: 'center', gap: 12 }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', color: 'var(--text-tertiary)', boxShadow: 'var(--shadow-sm)' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -743,7 +745,7 @@ export function Editor() {
       {!focusMode && editor && <EditorToolbar editor={editor} />}
 
       {/* Editor area */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'linear-gradient(180deg, color-mix(in srgb, var(--workspace-panel-top-surface, var(--panel-bg)) 78%, transparent) 0%, transparent 28%)' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: editorSurfaceBackground }}>
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           <FindReplace editor={editor} open={findReplaceOpen} onClose={() => setFindReplaceOpen(false)} />
           {linkPreview && (
