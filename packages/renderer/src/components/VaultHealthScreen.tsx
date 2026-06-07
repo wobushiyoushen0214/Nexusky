@@ -80,6 +80,8 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   const setRightPanel = useUIStore((s) => s.setRightPanel)
   const setMainView = useUIStore((s) => s.setMainView)
   const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
   const [summary, setSummary] = useState<VaultHealthSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -116,7 +118,9 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
 
   const openMaintenance = async () => {
     setMaintenancePanelSection('queue')
-    setRightPanel('maintenance')
+    setRightPanel('none')
+    setMainView('maintenance')
+    if (!sidebarCollapsed) toggleSidebar()
     await dismiss()
   }
 

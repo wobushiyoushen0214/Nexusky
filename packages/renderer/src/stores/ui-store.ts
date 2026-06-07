@@ -11,7 +11,7 @@ const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
 const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'bases' | 'timeline'
+type MainView = 'editor' | 'graph' | 'bases' | 'timeline' | 'maintenance'
 type Language = typeof LANGUAGE_IDS[number]
 type MaintenancePanelSection = 'context' | 'queue'
 type WorkspaceLayout = {
@@ -30,7 +30,7 @@ const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'history', 'graph', 'plugin', 'maintenance', 'agent']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'timeline']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'timeline', 'maintenance']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
@@ -248,7 +248,8 @@ function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
 }
 
 function normalizeRightPanel(value: string | null | undefined): Panel | null {
-  if (value === 'context') return 'maintenance'
+  if (value === 'context') return 'none'
+  if (value === 'maintenance') return 'none'
   if (value === 'calendar') return 'none'
   return value && PANEL_IDS.includes(value as Panel) ? value as Panel : null
 }
@@ -268,10 +269,12 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
 }
 
 function isRightPanelAvailable(mainView: MainView, panel: Panel): boolean {
+  if (panel === 'maintenance') return false
   return panel === 'none' || mainView === 'editor' || !NOTE_SCOPED_PANELS.has(panel)
 }
 
 function getAvailableRightPanel(mainView: MainView, panel: Panel): Panel {
+  if (panel === 'maintenance') return 'none'
   return isRightPanelAvailable(mainView, panel) ? panel : 'none'
 }
 

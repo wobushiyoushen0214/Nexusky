@@ -13,27 +13,27 @@
   --glass-blur: 22px;
   --glass-blur-strong: 30px;
 
-  --bg-base: oklch(95.5% 0.015 238);
-  --bg-surface: oklch(94.1% 0.018 238);
-  --bg-elevated: oklch(98.7% 0.006 238);
-  --bg-hover: oklch(42% 0.026 250 / 0.07);
-  --bg-active: oklch(34% 0.034 255 / 0.12);
+  --bg-base: oklch(96.2% 0.012 235);
+  --bg-surface: oklch(94.7% 0.014 236);
+  --bg-elevated: oklch(98.5% 0.006 238);
+  --bg-hover: oklch(40% 0.022 250 / 0.055);
+  --bg-active: oklch(34% 0.03 255 / 0.095);
 
-  --bg-glass: oklch(99.1% 0.007 238 / 0.58);
-  --bg-glass-hover: oklch(98.3% 0.009 238 / 0.7);
-  --bg-glass-solid: oklch(98.8% 0.006 238 / 0.86);
-  --bg-glass-dense: oklch(99.2% 0.005 238 / 0.8);
+  --bg-glass: oklch(99% 0.006 238 / 0.5);
+  --bg-glass-hover: oklch(98.6% 0.007 238 / 0.62);
+  --bg-glass-solid: oklch(98.8% 0.006 238 / 0.76);
+  --bg-glass-dense: oklch(99.1% 0.005 238 / 0.72);
 
-  --border-subtle: oklch(48% 0.02 248 / 0.1);
-  --border-default: oklch(48% 0.02 248 / 0.16);
-  --border-glow: oklch(70% 0.045 220 / 0.14);
-  --border-shine: oklch(100% 0.003 240 / 0.76);
-  --glass-border: oklch(70% 0.025 230 / 0.24);
-  --glass-highlight: oklch(100% 0.003 240 / 0.82);
-  --glass-panel-border: color-mix(in srgb, var(--glass-border) 78%, var(--glass-highlight));
-  --glass-panel-inner-edge: color-mix(in srgb, var(--glass-highlight) 42%, transparent);
+  --border-subtle: oklch(48% 0.018 248 / 0.075);
+  --border-default: oklch(48% 0.018 248 / 0.12);
+  --border-glow: oklch(70% 0.035 220 / 0.1);
+  --border-shine: oklch(100% 0.003 240 / 0.68);
+  --glass-border: oklch(67% 0.022 230 / 0.18);
+  --glass-highlight: oklch(100% 0.003 240 / 0.72);
+  --glass-panel-border: color-mix(in srgb, var(--glass-border) 58%, transparent);
+  --glass-panel-inner-edge: color-mix(in srgb, var(--glass-highlight) 46%, transparent);
   --glass-panel-edge-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--glass-panel-inner-edge) 40%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--glass-panel-inner-edge) 54%, transparent);
   --glass-divider-line: color-mix(in srgb, var(--glass-border) 12%, transparent);
   --glass-divider-line-strong: color-mix(in srgb, var(--glass-border) 18%, transparent);
   --glass-divider-highlight: transparent;
@@ -58,18 +58,15 @@
   --danger: oklch(57% 0.2 28);
   --danger-muted: oklch(57% 0.2 28 / 0.1);
 
-  --sidebar-bg: oklch(95.7% 0.014 238 / 0.68);
-  --editor-bg: oklch(99.1% 0.005 238 / 0.9);
-  --app-shell-bg: oklch(89.8% 0.021 238);
-  --workspace-bg:
-    radial-gradient(circle at 10% 8%, oklch(100% 0.004 235 / 0.72) 0, transparent 34%),
-    radial-gradient(circle at 92% 4%, oklch(85% 0.045 220 / 0.42) 0, transparent 30%),
-    linear-gradient(135deg, oklch(93.3% 0.021 232) 0%, oklch(88.8% 0.019 246) 44%, oklch(94.4% 0.014 210) 100%);
+  --sidebar-bg: oklch(95.9% 0.012 238 / 0.62);
+  --editor-bg: oklch(99% 0.005 238 / 0.86);
+  --app-shell-bg: oklch(91.2% 0.017 238);
+  --workspace-bg: linear-gradient(135deg, oklch(95.6% 0.013 232) 0%, oklch(91.9% 0.015 246) 48%, oklch(95.2% 0.01 202) 100%);
   --panel-bg: var(--bg-glass-solid);
   --panel-bg-soft: var(--bg-glass);
-  --control-bg: oklch(99% 0.006 238 / 0.5);
-  --control-hover: oklch(99.2% 0.006 238 / 0.76);
-  --control-border: oklch(55% 0.02 245 / 0.14);
+  --control-bg: oklch(99% 0.006 238 / 0.42);
+  --control-hover: oklch(99.2% 0.006 238 / 0.64);
+  --control-border: oklch(55% 0.018 245 / 0.09);
   --bg-primary: var(--bg-base);
   --bg-hover-strong: var(--bg-active);
   --border-soft: var(--border-subtle);
@@ -85,12 +82,16 @@
   --accent-danger: var(--danger);
   --overlay-bg: oklch(83% 0.018 236 / 0.3);
 
-  --shadow-sm: 0 1px 2px oklch(32% 0.025 250 / 0.07);
-  --shadow-md: 0 10px 28px oklch(31% 0.026 250 / 0.1);
-  --shadow-lg: 0 26px 70px oklch(31% 0.026 250 / 0.16);
-  --shadow-panel: 0 1px 0 var(--glass-highlight) inset, 0 20px 54px oklch(32% 0.03 250 / 0.12), 0 1px 2px oklch(32% 0.03 250 / 0.06);
-  --shadow-popover: 0 1px 0 var(--glass-highlight) inset, 0 28px 90px oklch(30% 0.03 250 / 0.2);
-  --shadow-glow: 0 0 24px oklch(48% 0.09 232 / 0.08);
+  --shadow-sm: 0 1px 2px oklch(32% 0.025 250 / 0.045);
+  --shadow-md: 0 8px 22px oklch(31% 0.026 250 / 0.065);
+  --shadow-lg: 0 18px 54px oklch(31% 0.026 250 / 0.12);
+  --shadow-panel: 0 1px 0 var(--glass-highlight) inset, 0 12px 34px oklch(32% 0.03 250 / 0.055), 0 1px 2px oklch(32% 0.03 250 / 0.035);
+  --shadow-popover: 0 1px 0 var(--glass-highlight) inset, 0 20px 66px oklch(30% 0.03 250 / 0.15);
+  --shadow-glow: 0 0 20px oklch(48% 0.09 232 / 0.055);
+  --workspace-frame-shadow: var(--shadow-panel), var(--glass-panel-edge-shadow);
+  --activity-active-bg: oklch(29% 0.035 252 / 0.92);
+  --activity-active-color: var(--text-on-accent);
+  --activity-active-shadow: inset 0 1px 0 oklch(100% 0.003 240 / 0.13);
 }
 
 [data-theme="dark"] {
@@ -132,23 +133,23 @@
 }
 
 [data-theme="light"] {
-  --bg-base: oklch(95.5% 0.015 238);
-  --bg-surface: oklch(94.1% 0.018 238);
-  --bg-elevated: oklch(98.7% 0.006 238);
-  --bg-hover: oklch(42% 0.026 250 / 0.07);
-  --bg-active: oklch(34% 0.034 255 / 0.12);
+  --bg-base: oklch(96.2% 0.012 235);
+  --bg-surface: oklch(94.7% 0.014 236);
+  --bg-elevated: oklch(98.5% 0.006 238);
+  --bg-hover: oklch(40% 0.022 250 / 0.055);
+  --bg-active: oklch(34% 0.03 255 / 0.095);
 
-  --bg-glass: oklch(99.1% 0.007 238 / 0.58);
-  --bg-glass-hover: oklch(98.3% 0.009 238 / 0.7);
-  --bg-glass-solid: oklch(98.8% 0.006 238 / 0.86);
-  --bg-glass-dense: oklch(99.2% 0.005 238 / 0.8);
+  --bg-glass: oklch(99% 0.006 238 / 0.5);
+  --bg-glass-hover: oklch(98.6% 0.007 238 / 0.62);
+  --bg-glass-solid: oklch(98.8% 0.006 238 / 0.76);
+  --bg-glass-dense: oklch(99.1% 0.005 238 / 0.72);
 
-  --border-subtle: oklch(48% 0.02 248 / 0.1);
-  --border-default: oklch(48% 0.02 248 / 0.16);
-  --border-glow: oklch(70% 0.045 220 / 0.14);
-  --border-shine: oklch(100% 0.003 240 / 0.76);
-  --glass-border: oklch(70% 0.025 230 / 0.24);
-  --glass-highlight: oklch(100% 0.003 240 / 0.82);
+  --border-subtle: oklch(48% 0.018 248 / 0.075);
+  --border-default: oklch(48% 0.018 248 / 0.12);
+  --border-glow: oklch(70% 0.035 220 / 0.1);
+  --border-shine: oklch(100% 0.003 240 / 0.68);
+  --glass-border: oklch(67% 0.022 230 / 0.18);
+  --glass-highlight: oklch(100% 0.003 240 / 0.72);
 
   --text-primary: oklch(22% 0.025 258);
   --text-secondary: oklch(42% 0.021 252);
@@ -164,26 +165,27 @@
   --danger: oklch(57% 0.2 28);
   --danger-muted: oklch(57% 0.2 28 / 0.1);
 
-  --sidebar-bg: oklch(95.7% 0.014 238 / 0.68);
-  --editor-bg: oklch(99.1% 0.005 238 / 0.9);
-  --app-shell-bg: oklch(89.8% 0.021 238);
-  --workspace-bg:
-    radial-gradient(circle at 10% 8%, oklch(100% 0.004 235 / 0.72) 0, transparent 34%),
-    radial-gradient(circle at 92% 4%, oklch(85% 0.045 220 / 0.42) 0, transparent 30%),
-    linear-gradient(135deg, oklch(93.3% 0.021 232) 0%, oklch(88.8% 0.019 246) 44%, oklch(94.4% 0.014 210) 100%);
+  --sidebar-bg: oklch(95.9% 0.012 238 / 0.62);
+  --editor-bg: oklch(99% 0.005 238 / 0.86);
+  --app-shell-bg: oklch(91.2% 0.017 238);
+  --workspace-bg: linear-gradient(135deg, oklch(95.6% 0.013 232) 0%, oklch(91.9% 0.015 246) 48%, oklch(95.2% 0.01 202) 100%);
   --panel-bg: var(--bg-glass-solid);
   --panel-bg-soft: var(--bg-glass);
-  --control-bg: oklch(99% 0.006 238 / 0.5);
-  --control-hover: oklch(99.2% 0.006 238 / 0.76);
-  --control-border: oklch(55% 0.02 245 / 0.14);
+  --control-bg: oklch(99% 0.006 238 / 0.42);
+  --control-hover: oklch(99.2% 0.006 238 / 0.64);
+  --control-border: oklch(55% 0.018 245 / 0.09);
   --overlay-bg: oklch(83% 0.018 236 / 0.3);
 
-  --shadow-sm: 0 1px 2px oklch(32% 0.025 250 / 0.07);
-  --shadow-md: 0 10px 28px oklch(31% 0.026 250 / 0.1);
-  --shadow-lg: 0 26px 70px oklch(31% 0.026 250 / 0.16);
-  --shadow-panel: 0 1px 0 var(--glass-highlight) inset, 0 20px 54px oklch(32% 0.03 250 / 0.12), 0 1px 2px oklch(32% 0.03 250 / 0.06);
-  --shadow-popover: 0 1px 0 var(--glass-highlight) inset, 0 28px 90px oklch(30% 0.03 250 / 0.2);
-  --shadow-glow: 0 0 24px oklch(48% 0.09 232 / 0.08);
+  --shadow-sm: 0 1px 2px oklch(32% 0.025 250 / 0.045);
+  --shadow-md: 0 8px 22px oklch(31% 0.026 250 / 0.065);
+  --shadow-lg: 0 18px 54px oklch(31% 0.026 250 / 0.12);
+  --shadow-panel: 0 1px 0 var(--glass-highlight) inset, 0 12px 34px oklch(32% 0.03 250 / 0.055), 0 1px 2px oklch(32% 0.03 250 / 0.035);
+  --shadow-popover: 0 1px 0 var(--glass-highlight) inset, 0 20px 66px oklch(30% 0.03 250 / 0.15);
+  --shadow-glow: 0 0 20px oklch(48% 0.09 232 / 0.055);
+  --workspace-frame-shadow: var(--shadow-panel), var(--glass-panel-edge-shadow);
+  --activity-active-bg: oklch(29% 0.035 252 / 0.92);
+  --activity-active-color: var(--text-on-accent);
+  --activity-active-shadow: inset 0 1px 0 oklch(100% 0.003 240 / 0.13);
 }
 
 [data-theme="ocean"] {
@@ -551,10 +553,10 @@
   --control-border: var(--border-subtle);
   --glass-border: var(--border-default);
   --glass-highlight: var(--border-shine);
-  --glass-panel-border: color-mix(in srgb, var(--glass-border) 86%, transparent);
-  --glass-panel-inner-edge: color-mix(in srgb, var(--glass-highlight) 42%, transparent);
+  --glass-panel-border: color-mix(in srgb, var(--glass-border) 56%, transparent);
+  --glass-panel-inner-edge: color-mix(in srgb, var(--glass-highlight) 30%, transparent);
   --glass-panel-edge-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--glass-panel-inner-edge) 28%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--glass-panel-inner-edge) 34%, transparent);
   --glass-divider-line: color-mix(in srgb, var(--border-default) 10%, transparent);
   --glass-divider-line-strong: color-mix(in srgb, var(--border-default) 14%, transparent);
   --glass-divider-highlight: transparent;
@@ -564,8 +566,12 @@
   --glass-blur-strong: 24px;
   --overlay-bg: color-mix(in srgb, var(--app-shell-bg) 76%, transparent);
   --text-on-accent: oklch(97% 0.006 260);
-  --shadow-panel: 0 1px 0 var(--glass-highlight) inset, var(--shadow-md);
-  --shadow-popover: 0 1px 0 var(--glass-highlight) inset, var(--shadow-lg);
+  --shadow-panel: 0 1px 0 var(--glass-highlight) inset, 0 10px 30px rgba(0, 0, 0, 0.2);
+  --shadow-popover: 0 1px 0 var(--glass-highlight) inset, 0 20px 62px rgba(0, 0, 0, 0.34);
+  --workspace-frame-shadow: var(--shadow-panel), var(--glass-panel-edge-shadow);
+  --activity-active-bg: color-mix(in srgb, var(--accent-muted) 72%, var(--bg-hover));
+  --activity-active-color: var(--accent-text);
+  --activity-active-shadow: none;
 }
 
 [data-theme="contrast"] {
@@ -593,13 +599,15 @@
 }
 
 .workspace-content {
-  --workspace-panel-surface: color-mix(in srgb, var(--panel-bg-soft) 68%, var(--panel-bg));
-  --workspace-panel-top-surface: color-mix(in srgb, var(--workspace-panel-surface) 86%, var(--glass-highlight));
-  --workspace-panel-header-surface: color-mix(in srgb, var(--workspace-panel-surface) 88%, var(--app-shell-bg));
+  --workspace-panel-surface: color-mix(in srgb, var(--panel-bg-soft) 76%, var(--panel-bg));
+  --workspace-rail-surface: color-mix(in srgb, var(--panel-bg-soft) 66%, var(--bg-surface));
+  --workspace-panel-top-surface: color-mix(in srgb, var(--workspace-panel-surface) 90%, var(--glass-highlight));
+  --workspace-panel-header-surface: color-mix(in srgb, var(--workspace-panel-surface) 84%, transparent);
+  --workspace-panel-border-color: var(--glass-panel-border);
 }
 
 .workspace-content.has-editor-tabs {
-  --workspace-tab-surface: color-mix(in srgb, var(--workspace-panel-surface) 88%, var(--panel-bg-soft));
+  --workspace-tab-surface: color-mix(in srgb, var(--workspace-panel-surface) 90%, var(--panel-bg-soft));
 }
 
 .workspace-main-panel.has-editor-tabs {

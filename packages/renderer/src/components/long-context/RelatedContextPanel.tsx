@@ -17,7 +17,7 @@ interface RelatedContextPanelProps {
 }
 
 type LoadState = 'idle' | 'loading' | 'error'
-type RelatedContextPanelPlacement = 'inline' | 'top' | 'side'
+type RelatedContextPanelPlacement = 'inline' | 'top' | 'side' | 'page'
 type RelatedContextDirection = -1 | 1
 type ContextPackTier = LongContextMemoryTier
 
@@ -59,7 +59,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
   const [suggestions, setSuggestions] = useState<LongContextSuggestion[]>([])
   const [feedbackByRelation, setFeedbackByRelation] = useState<Record<string, LongContextFeedbackType>>({})
   const [inspection, setInspection] = useState<LongContextInspection | null>(null)
-  const [packExpanded, setPackExpanded] = useState(false)
+  const [packExpanded, setPackExpanded] = useState(placement === 'page')
   const [activePackTier, setActivePackTier] = useState<ContextPackTier>('hot')
   const [state, setState] = useState<LoadState>('idle')
   const [error, setError] = useState('')
@@ -76,7 +76,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
     setSuggestions([])
     setFeedbackByRelation({})
     setInspection(null)
-    setPackExpanded(false)
+    setPackExpanded(placement === 'page')
     setActivePackTier('hot')
     setActiveSuggestionIndex(0)
     if (!vaultPath || !currentFilePath) return
@@ -99,7 +99,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
     return () => {
       cancelled = true
     }
-  }, [vaultPath, currentFilePath])
+  }, [vaultPath, currentFilePath, placement])
 
   const loadSuggestions = useCallback(async (refresh = false) => {
     if (!vaultPath || !noteId) return
@@ -216,7 +216,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
   const hasPackItems = packSummary.hot + packSummary.warm + packSummary.cold > 0
 
   return (
-    <section className={getRelatedContextPanelClassName(placement)} aria-label={t('relatedContext.label')}>
+    <section className={`${getRelatedContextPanelClassName(placement)}${inspection || hasPackItems ? ' has-pack' : ''}`} aria-label={t('relatedContext.label')}>
       <div className="related-context-panel__header">
         <div>
           <div className="related-context-panel__eyebrow">{t('relatedContext.label')}</div>

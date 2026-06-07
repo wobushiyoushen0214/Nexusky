@@ -117,9 +117,9 @@ export function Sidebar({ width = 240 }: { width?: number }) {
         <button
           ref={vaultMenuButtonRef}
           onClick={() => setVaultMenu(!vaultMenu)}
-          style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: '1px solid transparent', cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 8 }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
+          style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 0, cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 9 }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           title="切换笔记空间"
         >
           {vaultPath?.split(/[\\/]/).pop()}
@@ -134,9 +134,9 @@ export function Sidebar({ width = 240 }: { width?: number }) {
               if (isCreating && createType === 'file') { setIsCreating(false); setNewFileName('') }
               else { setCreateType('file'); setIsCreating(true) }
             }}
-            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: isCreating && createType === 'file' ? '1px solid var(--border-subtle)' : '1px solid transparent', background: isCreating && createType === 'file' ? 'var(--control-bg)' : 'transparent', color: isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'file' ? 'var(--control-bg)' : 'transparent'; e.currentTarget.style.borderColor = isCreating && createType === 'file' ? 'var(--border-subtle)' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
+            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 0, background: isCreating && createType === 'file' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent', color: isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'file' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
             title="新建笔记 (Ctrl+N)"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -149,9 +149,9 @@ export function Sidebar({ width = 240 }: { width?: number }) {
               if (isCreating && createType === 'folder') { setIsCreating(false); setNewFileName('') }
               else { setCreateType('folder'); setIsCreating(true) }
             }}
-            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: isCreating && createType === 'folder' ? '1px solid var(--border-subtle)' : '1px solid transparent', background: isCreating && createType === 'folder' ? 'var(--control-bg)' : 'transparent', color: isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'folder' ? 'var(--control-bg)' : 'transparent'; e.currentTarget.style.borderColor = isCreating && createType === 'folder' ? 'var(--border-subtle)' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
+            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 0, background: isCreating && createType === 'folder' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent', color: isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'folder' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
             title="新建文件夹"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -244,20 +244,20 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       )}
 
       {/* Filter + Sort */}
-      <div className="glass-divider-bottom" style={{ padding: '0 10px 8px', display: 'flex', gap: 5, flexWrap: 'wrap', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
+      <div className="glass-divider-bottom" style={{ margin: '0 6px 6px', padding: 6, display: 'flex', gap: 5, flexWrap: 'wrap', borderRadius: 12, background: 'color-mix(in srgb, var(--panel-bg-soft) 34%, transparent)', boxShadow: 'none' }}>
         <input
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}
           placeholder="筛选..."
           style={{
             flex: 1, minWidth: 60, height: 26, padding: '0 8px', fontSize: 12,
-            background: 'var(--control-bg)', border: '1px solid var(--control-border)',
+            background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', border: 0,
             borderRadius: 8, color: 'var(--text-primary)', outline: 'none',
-            boxShadow: 'inset 0 1px 0 var(--glass-highlight)',
-            transition: 'border-color 150ms, background 150ms',
+            boxShadow: 'none',
+            transition: 'background 150ms',
           }}
-          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--control-border)'}
+          onFocus={(e) => e.currentTarget.style.background = 'var(--control-hover)'}
+          onBlur={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--control-bg) 82%, transparent)'}
         />
         <button
           onClick={() => {
@@ -265,7 +265,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
             setSortBy(next)
             safeSet('nexusky-sort', next)
           }}
-          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--control-border)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
+          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
           title={sortBy === 'name' ? '按名称排序（点击切换为按时间）' : '按修改时间排序（点击切换为按名称）'}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -278,7 +278,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
         </button>
         <button
           onClick={() => { setDefaultExpanded(false); setTreeExpansionVersion((version) => version + 1) }}
-          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--control-border)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
+          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
           title="折叠全部"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -287,7 +287,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
         </button>
         <button
           onClick={() => { setDefaultExpanded(true); setTreeExpansionVersion((version) => version + 1) }}
-          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--control-border)', background: 'var(--control-bg)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
+          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
           title="展开全部"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

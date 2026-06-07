@@ -697,7 +697,7 @@ export function Editor() {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: editorSurfaceBackground }}>
         <div style={{ textAlign: 'center', display: 'grid', justifyItems: 'center', gap: 12 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', background: 'var(--panel-bg-soft)', color: 'var(--text-tertiary)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 72%, var(--control-bg))', color: 'var(--text-tertiary)', boxShadow: 'none' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
@@ -710,13 +710,13 @@ export function Editor() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={() => useUIStore.getState().setQuickSwitcherOpen(true)}
-              style={{ height: 30, padding: '0 11px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--control-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
+              style={{ height: 30, padding: '0 11px', borderRadius: 8, border: 0, background: 'var(--control-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
             >
               快速切换
             </button>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('create-new-note'))}
-              style={{ height: 30, padding: '0 11px', borderRadius: 8, border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--border-subtle))', background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
+              style={{ height: 30, padding: '0 11px', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--accent-muted) 82%, var(--control-bg))', color: 'var(--accent-text)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
             >
               新建笔记
             </button>

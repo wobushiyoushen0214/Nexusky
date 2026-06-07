@@ -19,7 +19,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export function ActivityBar() {
   const { t } = useTranslation()
-  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar, setMaintenancePanelSection } = useUIStore()
+  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar, setRightPanel, setMaintenancePanelSection } = useUIStore()
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const { visibleIds, toggleVisibility } = useActivityBarStore()
 
@@ -66,8 +66,16 @@ export function ActivityBar() {
     properties: () => toggleRightPanel('properties'),
     tags: () => toggleRightPanel('tags'),
     maintenance: () => {
+      const state = useUIStore.getState()
       setMaintenancePanelSection('queue')
-      toggleRightPanel('maintenance')
+      setRightPanel('none')
+      if (state.mainView === 'maintenance') {
+        setMainView('editor')
+        if (state.sidebarCollapsed) toggleSidebar()
+        return
+      }
+      setMainView('maintenance')
+      if (!state.sidebarCollapsed) toggleSidebar()
     },
   }
 
@@ -80,12 +88,12 @@ export function ActivityBar() {
 
   const getActiveId = () => {
     if (useUIStore.getState().mainView === 'graph') return 'graph'
+    if (useUIStore.getState().mainView === 'maintenance') return 'maintenance'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
     if (rightPanel === 'outline') return 'outline'
     if (rightPanel === 'properties') return 'properties'
     if (rightPanel === 'tags') return 'tags'
-    if (rightPanel === 'maintenance') return 'maintenance'
     return ''
   }
 
@@ -107,16 +115,17 @@ export function ActivityBar() {
     <div
       onContextMenu={handleContextMenu}
       style={{
-        width: 50,
+        width: 48,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexShrink: 0,
-        background: 'transparent',
+        background: 'color-mix(in srgb, var(--panel-bg-soft) 38%, transparent)',
+        borderRadius: 16,
         borderRight: 'none',
-        padding: '4px 6px 6px',
+        padding: '5px 6px 7px',
         boxSizing: 'border-box',
         position: 'relative',
         boxShadow: sidebarCollapsed && mainView !== 'graph'
@@ -141,27 +150,25 @@ export function ActivityBar() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 10,
-                border: isActive ? '1px solid color-mix(in srgb, var(--accent) 34%, var(--glass-border))' : '1px solid transparent',
-                background: isActive ? 'linear-gradient(180deg, color-mix(in srgb, var(--accent-muted) 58%, var(--control-bg)), color-mix(in srgb, var(--control-bg) 76%, transparent))' : 'transparent',
-                color: isDisabled ? 'var(--border-default)' : isActive ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                borderRadius: 11,
+                border: 0,
+                background: isActive ? 'var(--activity-active-bg)' : 'transparent',
+                color: isDisabled ? 'var(--border-default)' : isActive ? 'var(--activity-active-color)' : 'var(--text-tertiary)',
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 opacity: isDisabled ? 0.55 : 1,
                 position: 'relative',
-                boxShadow: isActive ? 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 78%, transparent), 0 6px 14px color-mix(in srgb, var(--accent-glow) 52%, transparent)' : 'none',
+                boxShadow: isActive ? 'var(--activity-active-shadow)' : 'none',
                 transition: 'color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s',
               }}
               onMouseEnter={(e) => {
                 if (!isActive && !isDisabled) {
                   e.currentTarget.style.background = 'var(--control-bg)'
-                  e.currentTarget.style.borderColor = 'var(--control-border)'
                   e.currentTarget.style.color = 'var(--text-secondary)'
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isActive && !isDisabled) {
                   e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.borderColor = 'transparent'
                   e.currentTarget.style.color = 'var(--text-tertiary)'
                 }
               }}
@@ -183,23 +190,21 @@ export function ActivityBar() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 10,
-              border: moreOpen ? '1px solid var(--control-border)' : '1px solid transparent',
+              borderRadius: 11,
+              border: 0,
               background: moreOpen ? 'var(--control-bg)' : 'transparent',
               color: moreOpen ? 'var(--text-secondary)' : 'var(--text-tertiary)',
               cursor: 'pointer',
-              boxShadow: moreOpen ? 'inset 0 1px 0 var(--glass-highlight)' : 'none',
+              boxShadow: 'none',
               transition: 'color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--control-bg)'
-              e.currentTarget.style.borderColor = 'var(--control-border)'
               e.currentTarget.style.color = 'var(--text-secondary)'
             }}
             onMouseLeave={(e) => {
               if (!moreOpen) {
                 e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.borderColor = 'transparent'
                 e.currentTarget.style.color = 'var(--text-tertiary)'
               }
             }}
@@ -220,8 +225,8 @@ export function ActivityBar() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 10,
-            border: '1px solid transparent',
+            borderRadius: 11,
+            border: 0,
             background: 'transparent',
             color: 'var(--text-tertiary)',
             cursor: 'pointer',
@@ -229,12 +234,10 @@ export function ActivityBar() {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'var(--control-bg)'
-            e.currentTarget.style.borderColor = 'var(--control-border)'
             e.currentTarget.style.color = 'var(--text-secondary)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.borderColor = 'transparent'
             e.currentTarget.style.color = 'var(--text-tertiary)'
           }}
         >

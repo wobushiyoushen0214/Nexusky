@@ -565,7 +565,7 @@ function VirtualFileTreeItem({
           alignItems: 'center',
           borderRadius: 8,
           background: isSelected || isActive
-            ? 'color-mix(in srgb, var(--accent-muted) 68%, var(--panel-bg-soft))'
+            ? 'color-mix(in srgb, var(--accent-muted) 58%, var(--control-bg))'
             : dragOver
               ? 'var(--accent-muted)'
               : hovered || isFocused
@@ -574,7 +574,7 @@ function VirtualFileTreeItem({
           border: dragOver
             ? '1.5px dashed var(--accent)'
             : '1px solid transparent',
-          boxShadow: isSelected || isActive ? 'inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent)' : 'none',
+          boxShadow: 'none',
           transition: 'background 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out',
         }}
       >

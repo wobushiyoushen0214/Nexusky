@@ -5,6 +5,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { RelatedContextPanel } from '../long-context/RelatedContextPanel'
+import { MaintenanceFeedbackChart, MaintenanceHealthTrendPanel, MaintenanceQueueComposition } from './MaintenanceCharts'
 import type {
   AppLanguage,
   KnowledgeMaintenanceItem,
@@ -202,7 +203,11 @@ interface LastMaintenanceUndo {
   undoToken: string
 }
 
-export function MaintenanceQueuePanel() {
+interface MaintenanceQueuePanelProps {
+  surface?: 'panel' | 'page'
+}
+
+export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePanelProps = {}) {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -223,7 +228,9 @@ export function MaintenanceQueuePanel() {
   const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
   const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
   const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
+  const [insightsExpanded, setInsightsExpanded] = useState(surface === 'page')
   const refreshSeq = useRef(0)
+  const isPageSurface = surface === 'page'
 
   const refresh = useCallback(async () => {
     if (!vaultPath) return
@@ -412,11 +419,16 @@ export function MaintenanceQueuePanel() {
   const grouped = useMemo(() => items, [items])
   const priorityItems = useMemo(() => grouped.slice(0, 3), [grouped])
   const remainingItems = useMemo(() => grouped.slice(priorityItems.length), [grouped, priorityItems.length])
-  const activeFilterKey = TYPE_FILTERS.find((filter) => filter.value === activeFilter)?.key ?? 'all'
 
   return (
-    <div className="maintenance-panel">
+    <div className={`maintenance-panel${isPageSurface ? ' maintenance-panel--page' : ''}`}>
       <div className="maintenance-panel__header">
+        {isPageSurface && (
+          <div className="maintenance-panel__heading">
+            <span>{t('maintenance.title')}</span>
+            <strong>{maintenancePanelSection === 'queue' ? t('maintenance.tabs.queue') : t('maintenance.tabs.context')}</strong>
+          </div>
+        )}
         <div className="maintenance-panel__tabs">
           <button
             type="button"
@@ -467,63 +479,30 @@ export function MaintenanceQueuePanel() {
       </div>
       {maintenancePanelSection === 'context' ? (
         currentFilePath ? (
-          <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement="side" />
+          <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement={isPageSurface ? 'page' : 'side'} />
         ) : (
           <div className="maintenance-panel__empty">{t('maintenance.contextEmpty')}</div>
         )
       ) : (
         <>
-          <MaintenanceQueueSummary
+          <MaintenanceQueueToolbar
             itemCount={items.length}
             priorityCount={priorityItems.length}
-            activeFilterLabel={t(`maintenance.filters.${activeFilterKey}`)}
-            healthScore={healthSummary?.score ?? null}
-            feedbackSummary={feedbackSummary}
+            activeFilter={activeFilter}
+            counts={counts}
+            onFilterChange={setActiveFilter}
             loading={loading}
           />
-          <div className="maintenance-panel__filters">
-            {TYPE_FILTERS.map((filter) => {
-              const count = filter.value === 'all'
-                ? items.length
-                : counts[filter.value as KnowledgeMaintenanceType] ?? 0
-              return (
-                <button
-                  key={filter.value}
-                  type="button"
-                  className={`maintenance-panel__filter${activeFilter === filter.value ? ' is-active' : ''}`}
-                  onClick={() => setActiveFilter(filter.value)}
-                >
-                  {t(`maintenance.filters.${filter.key}`)}
-                  <span className="maintenance-panel__filter-count">{count}</span>
-                </button>
-              )
-            })}
-          </div>
           {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
           <div className="maintenance-panel__body">
             {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
-            {vaultPath && healthSummary && (
-              <MaintenanceHealthTrendPanel summary={healthSummary} feedbackSummary={feedbackSummary} />
-            )}
-            {vaultPath && (
-              <WeeklyReviewPanel
-                review={weeklyReview}
-                loading={reviewLoading}
-                saving={reviewSaving}
-                onGenerate={() => void generateWeeklyReview(false)}
-                onSave={() => void generateWeeklyReview(true)}
-              />
-            )}
             {vaultPath && grouped.length === 0 && !loading && (
               <div className="maintenance-panel__empty">{t('maintenance.empty')}</div>
             )}
             {vaultPath && priorityItems.length > 0 && (
               <section className="maintenance-panel__today" aria-labelledby="maintenance-today-title">
                 <div className="maintenance-panel__today-head">
-                  <div>
-                    <h3 id="maintenance-today-title">{t('maintenance.today.title')}</h3>
-                    <p>{t('maintenance.today.desc')}</p>
-                  </div>
+                  <h3 id="maintenance-today-title">{t('maintenance.today.title')}</h3>
                   <span>{t('maintenance.today.count', { count: priorityItems.length })}</span>
                 </div>
                 <div className="maintenance-panel__today-list">
@@ -538,6 +517,21 @@ export function MaintenanceQueuePanel() {
                   ))}
                 </div>
               </section>
+            )}
+            {vaultPath && (
+              <MaintenanceInsightsPanel
+                expanded={insightsExpanded}
+                onToggle={() => setInsightsExpanded((expanded) => !expanded)}
+                healthSummary={healthSummary}
+                feedbackSummary={feedbackSummary}
+                itemCount={items.length}
+                counts={counts}
+                review={weeklyReview}
+                reviewLoading={reviewLoading}
+                reviewSaving={reviewSaving}
+                onGenerateReview={() => void generateWeeklyReview(false)}
+                onSaveReview={() => void generateWeeklyReview(true)}
+              />
             )}
             {vaultPath && remainingItems.length > 0 && (
               <div className="maintenance-panel__section-label">
@@ -576,12 +570,12 @@ interface MaintenanceScanStatusBarProps {
   itemCount: number
 }
 
-interface MaintenanceQueueSummaryProps {
+interface MaintenanceQueueToolbarProps {
   itemCount: number
   priorityCount: number
-  activeFilterLabel: string
-  healthScore: number | null
-  feedbackSummary: MaintenanceFeedbackSummary | null
+  activeFilter: 'all' | KnowledgeMaintenanceType
+  counts: Partial<Record<KnowledgeMaintenanceType, number>>
+  onFilterChange: (filter: 'all' | KnowledgeMaintenanceType) => void
   loading: boolean
 }
 
@@ -593,122 +587,127 @@ interface WeeklyReviewPanelProps {
   onSave: () => void
 }
 
-function MaintenanceHealthTrendPanel({
-  summary,
-  feedbackSummary
-}: {
-  summary: VaultHealthSummary
+interface MaintenanceInsightsPanelProps {
+  expanded: boolean
+  onToggle: () => void
+  healthSummary: VaultHealthSummary | null
   feedbackSummary: MaintenanceFeedbackSummary | null
-}) {
-  const { t } = useTranslation()
-  const trend = summary.trend
-  const previous = trend.length > 1 ? trend[trend.length - 2] : null
-  const delta = previous ? summary.score - previous.score : null
-  const weeklyFeedback = feedbackSummary?.last7Days
-  const weeklyTotal = weeklyFeedback
-    ? weeklyFeedback.done + weeklyFeedback.skipped + weeklyFeedback.snoozed + weeklyFeedback.not_relevant
-    : 0
-  const dragFactors = summary.scoreFactors
-    .filter((factor) => factor.impact > 0)
-    .sort((a, b) => b.impact - a.impact)
-    .slice(0, 2)
-  const deltaKey = delta == null
-    ? 'empty'
-    : delta > 0
-      ? 'up'
-      : delta < 0
-        ? 'down'
-        : 'flat'
-
-  return (
-    <section className="maintenance-health-trend" aria-labelledby="maintenance-health-trend-title">
-      <div className="maintenance-health-trend__head">
-        <div>
-          <h3 id="maintenance-health-trend-title">{t('maintenance.healthTrend.title')}</h3>
-          <p>{t('maintenance.healthTrend.desc')}</p>
-        </div>
-        <div className="maintenance-health-trend__score">
-          <span>{summary.score}</span>
-          <small>{t('maintenance.healthTrend.score')}</small>
-        </div>
-      </div>
-      <div className="maintenance-health-trend__bars" aria-label={t('maintenance.healthTrend.chartLabel')}>
-        {trend.map((point) => (
-          <div key={`${point.weekStart}:${point.snapshotDate}`} className="maintenance-health-trend__bar-wrap" title={`${point.snapshotDate}: ${point.score}`}>
-            <span className="maintenance-health-trend__bar" style={{ height: `${Math.max(8, point.score)}%` }} />
-            <span className="maintenance-health-trend__week">{point.weekStart.slice(5)}</span>
-          </div>
-        ))}
-      </div>
-      <div className={`maintenance-health-trend__delta is-${deltaKey}`}>
-        {delta == null
-          ? t('maintenance.healthTrend.delta.empty')
-          : delta > 0
-            ? t('maintenance.healthTrend.delta.up', { delta })
-            : delta < 0
-              ? t('maintenance.healthTrend.delta.down', { delta: Math.abs(delta) })
-              : t('maintenance.healthTrend.delta.flat')}
-      </div>
-      <div className="maintenance-health-trend__factors">
-        {dragFactors.length > 0
-          ? dragFactors.map((factor) => (
-            <span key={factor.id}>
-              {t(`vaultHealth.score.factor.${factor.id}`)} · {t('vaultHealth.score.impact', { impact: factor.impact })}
-            </span>
-          ))
-          : <span>{t('vaultHealth.score.noIssues')}</span>}
-      </div>
-      <div className="maintenance-health-trend__feedback">
-        <span>{t('maintenance.healthTrend.feedback.week', { count: weeklyTotal })}</span>
-        {weeklyFeedback
-          ? (
-            <>
-              <small>{t('maintenance.healthTrend.feedback.done', { count: weeklyFeedback.done })}</small>
-              <small>{t('maintenance.healthTrend.feedback.deferred', { count: weeklyFeedback.skipped + weeklyFeedback.snoozed })}</small>
-              <small>{t('maintenance.healthTrend.feedback.dismissed', { count: weeklyFeedback.not_relevant })}</small>
-            </>
-          )
-          : <small>{t('maintenance.healthTrend.feedback.loading')}</small>}
-      </div>
-    </section>
-  )
+  itemCount: number
+  counts: Partial<Record<KnowledgeMaintenanceType, number>>
+  review: LongContextCognitiveReviewResult | null
+  reviewLoading: boolean
+  reviewSaving: boolean
+  onGenerateReview: () => void
+  onSaveReview: () => void
 }
 
-function MaintenanceQueueSummary({
+function getWeeklyFeedbackTotal(feedbackSummary: MaintenanceFeedbackSummary | null): number {
+  const weeklyFeedback = feedbackSummary?.last7Days
+  if (!weeklyFeedback) return 0
+  return weeklyFeedback.done + weeklyFeedback.skipped + weeklyFeedback.snoozed + weeklyFeedback.not_relevant
+}
+
+function MaintenanceQueueToolbar({
   itemCount,
   priorityCount,
-  activeFilterLabel,
-  healthScore,
-  feedbackSummary,
+  activeFilter,
+  counts,
+  onFilterChange,
   loading
-}: MaintenanceQueueSummaryProps) {
+}: MaintenanceQueueToolbarProps) {
   const { t } = useTranslation()
-  const weeklyFeedback = feedbackSummary?.last7Days
-  const weeklyTotal = weeklyFeedback
-    ? weeklyFeedback.done + weeklyFeedback.skipped + weeklyFeedback.snoozed + weeklyFeedback.not_relevant
-    : 0
   return (
-    <section className="maintenance-panel__summary" aria-label={t('maintenance.summary.title')}>
-      <div className="maintenance-panel__summary-copy">
-        <span className="maintenance-panel__summary-filter">{activeFilterLabel}</span>
-        <strong>{loading ? t('maintenance.refreshing') : t('maintenance.summary.title')}</strong>
+    <section className="maintenance-panel__queuebar" aria-label={t('maintenance.summary.title')}>
+      <div className="maintenance-panel__queuebar-copy">
+        <span>{loading ? t('maintenance.refreshing') : t('maintenance.summary.title')}</span>
+        <strong>{itemCount.toLocaleString()}</strong>
+        <small>
+          {t('maintenance.summary.ready')} / {t('maintenance.summary.priority')} {priorityCount.toLocaleString()}
+        </small>
       </div>
-      <div className="maintenance-panel__summary-metrics">
-        <SummaryMetric label={t('maintenance.summary.ready')} value={itemCount.toLocaleString()} />
-        <SummaryMetric label={t('maintenance.summary.priority')} value={priorityCount.toLocaleString()} />
-        <SummaryMetric label={t('maintenance.summary.health')} value={healthScore == null ? '--' : String(healthScore)} />
-        <SummaryMetric label={t('maintenance.summary.reviewed')} value={weeklyTotal.toLocaleString()} />
-      </div>
+      <label className="maintenance-panel__filter-select">
+        <select
+          value={activeFilter}
+          onChange={(event) => onFilterChange(event.currentTarget.value as 'all' | KnowledgeMaintenanceType)}
+          aria-label={t('maintenance.summary.title')}
+        >
+          {TYPE_FILTERS.map((filter) => {
+            const count = filter.value === 'all'
+              ? itemCount
+              : counts[filter.value as KnowledgeMaintenanceType] ?? 0
+            return (
+              <option key={filter.value} value={filter.value}>
+                {t(`maintenance.filters.${filter.key}`)} ({count})
+              </option>
+            )
+          })}
+        </select>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </label>
     </section>
   )
 }
 
-function SummaryMetric({ label, value }: { label: string; value: string }) {
+function MaintenanceInsightsPanel({
+  expanded,
+  onToggle,
+  healthSummary,
+  feedbackSummary,
+  itemCount,
+  counts,
+  review,
+  reviewLoading,
+  reviewSaving,
+  onGenerateReview,
+  onSaveReview
+}: MaintenanceInsightsPanelProps) {
+  const { t } = useTranslation()
+  const weeklyTotal = getWeeklyFeedbackTotal(feedbackSummary)
   return (
-    <div className="maintenance-panel__summary-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
+    <section className={`maintenance-insights${expanded ? ' is-expanded' : ''}`}>
+      <button
+        type="button"
+        className="maintenance-insights__summary"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
+        <span className="maintenance-insights__copy">
+          <strong>{t('maintenance.healthTrend.title')}</strong>
+          <span>{t('maintenance.weeklyReview.title')}</span>
+        </span>
+        <span className="maintenance-insights__metrics">
+          <span>
+            <strong>{healthSummary?.score ?? '--'}</strong>
+            <small>{t('maintenance.summary.health')}</small>
+          </span>
+          <span>
+            <strong>{weeklyTotal.toLocaleString()}</strong>
+            <small>{t('maintenance.summary.reviewed')}</small>
+          </span>
+        </span>
+        <svg className="maintenance-insights__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="maintenance-insights__details">
+          {healthSummary && (
+            <MaintenanceHealthTrendPanel summary={healthSummary} feedbackSummary={feedbackSummary} />
+          )}
+          <MaintenanceQueueComposition itemCount={itemCount} counts={counts} typeFilters={TYPE_FILTERS} />
+          <MaintenanceFeedbackChart feedbackSummary={feedbackSummary} />
+          <WeeklyReviewPanel
+            review={review}
+            loading={reviewLoading}
+            saving={reviewSaving}
+            onGenerate={onGenerateReview}
+            onSave={onSaveReview}
+          />
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -818,40 +817,23 @@ function MaintenanceItemCard({ item, onAction, onFeedback, onFocusInBases }: Mai
         >
           {t('maintenance.jumps.focusInBases')}
         </button>
-      </div>
-      <div className="maintenance-card__feedback" aria-label={t('maintenance.feedback.label')}>
-        <button
-          type="button"
-          className="maintenance-card__btn maintenance-card__btn--quiet"
-          onClick={() => onFeedback('done')}
-          title={t('maintenance.feedback.title.done')}
+        <select
+          className="maintenance-card__feedback-select"
+          defaultValue=""
+          aria-label={t('maintenance.feedback.label')}
+          onChange={(event) => {
+            const status = event.currentTarget.value as MaintenanceFeedbackStatus
+            if (!status) return
+            onFeedback(status)
+            event.currentTarget.value = ''
+          }}
         >
-          {t('maintenance.feedback.done')}
-        </button>
-        <button
-          type="button"
-          className="maintenance-card__btn maintenance-card__btn--quiet"
-          onClick={() => onFeedback('snoozed')}
-          title={t('maintenance.feedback.title.snoozed')}
-        >
-          {t('maintenance.feedback.snoozed')}
-        </button>
-        <button
-          type="button"
-          className="maintenance-card__btn maintenance-card__btn--quiet"
-          onClick={() => onFeedback('skipped')}
-          title={t('maintenance.feedback.title.skipped')}
-        >
-          {t('maintenance.feedback.skipped')}
-        </button>
-        <button
-          type="button"
-          className="maintenance-card__btn maintenance-card__btn--quiet"
-          onClick={() => onFeedback('not_relevant')}
-          title={t('maintenance.feedback.title.not_relevant')}
-        >
-          {t('maintenance.feedback.not_relevant')}
-        </button>
+          <option value="" disabled>{t('maintenance.feedback.label')}</option>
+          <option value="done">{t('maintenance.feedback.done')}</option>
+          <option value="snoozed">{t('maintenance.feedback.snoozed')}</option>
+          <option value="skipped">{t('maintenance.feedback.skipped')}</option>
+          <option value="not_relevant">{t('maintenance.feedback.not_relevant')}</option>
+        </select>
       </div>
     </div>
   )
