@@ -12,15 +12,22 @@ export const EditorTabs = memo(function EditorTabs() {
   const closeTabsToRight = useEditorStore((s) => s.closeTabsToRight)
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; index: number } | null>(null)
   const dragTabRef = useRef<number | null>(null)
+  const tabBarRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef<Array<HTMLDivElement | null>>([])
 
   const activeTabPath = tabs[activeTabIndex]?.path
 
   useEffect(() => {
+    const tabBar = tabBarRef.current
     const activeTab = tabButtonRefs.current[activeTabIndex]
-    if (!activeTab) return
+    if (!tabBar || !activeTab) return
     requestAnimationFrame(() => {
-      activeTab.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+      const maxLeft = Math.max(0, tabBar.scrollWidth - tabBar.clientWidth)
+      const centeredLeft = activeTab.offsetLeft - ((tabBar.clientWidth - activeTab.offsetWidth) / 2)
+      tabBar.scrollTo({
+        left: Math.max(0, Math.min(centeredLeft, maxLeft)),
+        behavior: 'smooth'
+      })
     })
   }, [activeTabIndex, activeTabPath])
 
@@ -30,6 +37,7 @@ export const EditorTabs = memo(function EditorTabs() {
     <>
       <div
         className="editor-tab-bar hide-scrollbar"
+        ref={tabBarRef}
         onWheel={(e) => { e.currentTarget.scrollLeft += e.deltaY }}
       >
         {tabs.map((tab, i) => {

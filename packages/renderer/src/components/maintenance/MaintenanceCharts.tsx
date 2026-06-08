@@ -28,18 +28,18 @@ interface MaintenanceChartPalette {
 }
 
 const DEFAULT_CHART_PALETTE: MaintenanceChartPalette = {
-  text: '#d4dce8',
-  textSecondary: '#a8b2c2',
-  textMuted: '#7f8a99',
-  axis: 'rgba(127, 138, 153, 0.36)',
-  grid: 'rgba(127, 138, 153, 0.14)',
-  surface: 'rgba(20, 24, 32, 0.92)',
-  tooltipBg: 'rgba(25, 29, 38, 0.96)',
-  accent: '#4facfe',
-  success: '#4ec9a0',
-  warning: '#f0a050',
-  danger: '#f47067',
-  series: ['#4facfe', '#4ec9a0', '#f0a050', '#f47067', '#8aa6cf', '#c49a6c']
+  text: 'var(--text-primary)',
+  textSecondary: 'var(--text-secondary)',
+  textMuted: 'var(--text-tertiary)',
+  axis: 'var(--border-subtle)',
+  grid: 'var(--border-subtle)',
+  surface: 'var(--maintenance-section)',
+  tooltipBg: 'var(--bg-glass-dense, var(--bg-elevated))',
+  accent: 'var(--accent)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  danger: 'var(--danger)',
+  series: ['var(--accent)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'var(--text-secondary)', 'var(--text-tertiary)']
 }
 
 let maintenanceEChartsLoader: Promise<typeof import('echarts/core')> | null = null
@@ -56,8 +56,10 @@ function loadMaintenanceECharts(): Promise<typeof import('echarts/core')> {
         charts.BarChart,
         charts.LineChart,
         charts.PieChart,
+        charts.RadarChart,
         components.GridComponent,
         components.LegendComponent,
+        components.RadarComponent,
         components.TooltipComponent,
         renderers.SVGRenderer
       ])
@@ -73,6 +75,7 @@ function readCssVar(source: Element, name: string, fallback: string): string {
 }
 
 function readChartPalette(): MaintenanceChartPalette {
+  if (typeof document === 'undefined') return DEFAULT_CHART_PALETTE
   const source = document.documentElement
   const text = readCssVar(source, '--text-primary', DEFAULT_CHART_PALETTE.text)
   const textSecondary = readCssVar(source, '--text-secondary', DEFAULT_CHART_PALETTE.textSecondary)
@@ -86,21 +89,22 @@ function readChartPalette(): MaintenanceChartPalette {
     textSecondary,
     textMuted,
     axis: readCssVar(source, '--border-subtle', DEFAULT_CHART_PALETTE.axis),
-    grid: readCssVar(source, '--maintenance-soft-border', DEFAULT_CHART_PALETTE.grid),
+    grid: readCssVar(source, '--maintenance-glass-edge', DEFAULT_CHART_PALETTE.grid),
     surface: readCssVar(source, '--maintenance-section', DEFAULT_CHART_PALETTE.surface),
     tooltipBg: readCssVar(source, '--bg-glass-dense', DEFAULT_CHART_PALETTE.tooltipBg),
     accent,
     success,
     warning,
     danger,
-    series: [accent, success, warning, danger, '#8aa6cf', '#c49a6c']
+    series: [accent, success, warning, danger, textSecondary, textMuted]
   }
 }
 
 function useMaintenanceChartPalette(): MaintenanceChartPalette {
-  const [palette, setPalette] = useState(DEFAULT_CHART_PALETTE)
+  const [palette, setPalette] = useState<MaintenanceChartPalette>(() => readChartPalette())
 
   useEffect(() => {
+    if (typeof document === 'undefined') return
     const refresh = () => setPalette(readChartPalette())
     refresh()
     const observer = new MutationObserver(refresh)
@@ -214,43 +218,62 @@ export function MaintenanceQueueComposition({
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
+    const maxCount = Math.max(...rows.map((row) => row.count), 1)
     return {
-      color: palette.series,
-      tooltip: {
-        trigger: 'item',
-        backgroundColor: palette.tooltipBg,
-        borderWidth: 0,
-        textStyle: { color: palette.text, fontSize: 11 },
-        confine: true
+      tooltip: makeTooltip(palette),
+      grid: { left: 104, right: 28, top: 8, bottom: 12 },
+      xAxis: {
+        type: 'value',
+        max: Math.ceil(maxCount * 1.15),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { show: false },
+        splitLine: { lineStyle: { color: palette.grid, opacity: 0.55 } }
+      },
+      yAxis: {
+        type: 'category',
+        inverse: true,
+        data: rows.map((row) => t(`maintenance.filters.${row.key}`)),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          color: palette.textSecondary,
+          fontSize: 10,
+          width: 94,
+          overflow: 'truncate'
+        }
       },
       series: [
         {
-          type: 'pie',
-          radius: ['56%', '78%'],
-          center: ['50%', '50%'],
-          minAngle: 6,
-          avoidLabelOverlap: true,
-          itemStyle: {
-            borderColor: palette.surface,
-            borderRadius: 7,
-            borderWidth: 2
+          name: t('maintenance.summary.title'),
+          type: 'bar',
+          barWidth: 11,
+          showBackground: true,
+          backgroundStyle: {
+            color: palette.grid,
+            borderRadius: 999,
+            opacity: 0.42
           },
           label: {
+            show: true,
+            position: 'right',
             color: palette.textSecondary,
-            fontSize: 10,
-            lineHeight: 14,
-            formatter: '{b}\n{c}'
+            fontSize: 10
           },
-          labelLine: {
-            length: 8,
-            length2: 5,
-            lineStyle: { color: palette.axis }
-          },
-          data: rows.map((row, index) => ({
-            name: t(`maintenance.filters.${row.key}`),
-            value: row.count,
-            itemStyle: { color: palette.series[index % palette.series.length] }
-          }))
+          data: rows.map((row, index) => {
+            const color = palette.series[index % palette.series.length]
+            return {
+              name: t(`maintenance.filters.${row.key}`),
+              value: row.count,
+              itemStyle: {
+                color,
+                borderRadius: 999,
+                shadowColor: color,
+                shadowBlur: 4,
+                shadowOffsetY: 0
+              }
+            }
+          })
         }
       ]
     }
@@ -266,7 +289,7 @@ export function MaintenanceQueueComposition({
         <strong>{itemCount.toLocaleString()}</strong>
       </div>
       <MaintenanceEChart
-        className="maintenance-chart--donut"
+        className="maintenance-chart--composition"
         option={option}
         ariaLabel={t('maintenance.summary.title')}
         emptyLabel={t('maintenance.empty')}
@@ -334,39 +357,51 @@ export function MaintenanceHealthTrendPanel({
   const factorOption = useMemo<EChartsCoreOption | null>(() => {
     if (factorRows.length === 0) return null
     return {
-      tooltip: makeTooltip(palette),
-      grid: { left: 78, right: 14, top: 8, bottom: 18 },
-      xAxis: {
-        type: 'value',
-        min: 0,
-        max: 100,
-        axisLabel: { color: palette.textMuted, fontSize: 10 },
-        splitLine: { lineStyle: { color: palette.grid } }
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: palette.tooltipBg,
+        borderWidth: 0,
+        textStyle: { color: palette.text, fontSize: 11 },
+        confine: true
       },
-      yAxis: {
-        type: 'category',
-        inverse: true,
-        data: factorRows.map((factor) => t(`vaultHealth.score.factor.${factor.id}`)),
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: palette.textSecondary, fontSize: 10 }
+      radar: {
+        center: ['50%', '55%'],
+        radius: '62%',
+        splitNumber: 4,
+        indicator: factorRows.map((factor) => ({
+          name: t(`vaultHealth.score.factor.${factor.id}`),
+          max: 100
+        })),
+        axisName: {
+          color: palette.textSecondary,
+          fontSize: 10,
+          lineHeight: 14
+        },
+        axisLine: { lineStyle: { color: palette.axis } },
+        splitLine: { lineStyle: { color: palette.grid } },
+        splitArea: {
+          areaStyle: {
+            color: [
+              'transparent',
+              palette.grid
+            ],
+            opacity: 0.2
+          }
+        }
       },
       series: [
         {
           name: t('maintenance.healthTrend.score'),
-          type: 'bar',
-          barWidth: 8,
-          data: factorRows.map((factor) => ({
-            value: factor.score,
-            itemStyle: {
-              color: factor.status === 'good'
-                ? palette.success
-                : factor.status === 'warn'
-                  ? palette.warning
-                  : palette.danger,
-              borderRadius: [5, 5, 5, 5]
-            }
-          }))
+          type: 'radar',
+          symbol: 'circle',
+          symbolSize: 4,
+          lineStyle: { width: 2, color: palette.accent },
+          itemStyle: { color: palette.accent },
+          areaStyle: { color: palette.accent, opacity: 0.12 },
+          data: [{
+            name: t('maintenance.healthTrend.score'),
+            value: factorRows.map((factor) => factor.score)
+          }]
         }
       ]
     }
@@ -432,51 +467,57 @@ export function MaintenanceFeedbackChart({
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (!feedbackSummary) return null
     const weekly = feedbackSummary.last7Days
-    const monthly = feedbackSummary.last30Days
-    const deferred = [weekly.skipped + weekly.snoozed, monthly.skipped + monthly.snoozed]
+    const rows = [
+      { name: t('maintenance.feedback.done'), value: weekly.done, color: palette.success },
+      { name: t('maintenance.feedback.skipped'), value: weekly.skipped, color: palette.warning },
+      { name: t('maintenance.feedback.snoozed'), value: weekly.snoozed, color: palette.accent },
+      { name: t('maintenance.feedback.not_relevant'), value: weekly.not_relevant, color: palette.danger }
+    ].filter((row) => row.value > 0)
+    if (rows.length === 0) return null
     return {
-      color: [palette.success, palette.warning, palette.danger],
-      tooltip: makeTooltip(palette),
+      color: rows.map((row) => row.color),
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: palette.tooltipBg,
+        borderWidth: 0,
+        textStyle: { color: palette.text, fontSize: 11 },
+        confine: true
+      },
       legend: {
         bottom: 0,
         itemWidth: 8,
         itemHeight: 8,
         textStyle: { color: palette.textMuted, fontSize: 10 }
       },
-      grid: { left: 34, right: 10, top: 8, bottom: 28 },
-      xAxis: {
-        type: 'value',
-        axisLabel: { color: palette.textMuted, fontSize: 10 },
-        splitLine: { lineStyle: { color: palette.grid } }
-      },
-      yAxis: {
-        type: 'category',
-        data: ['7d', '30d'],
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: palette.textSecondary, fontSize: 10 }
-      },
       series: [
         {
-          name: t('maintenance.feedback.done'),
-          type: 'bar',
-          stack: 'feedback',
-          barWidth: 12,
-          data: [weekly.done, monthly.done]
-        },
-        {
-          name: `${t('maintenance.feedback.skipped')} / ${t('maintenance.feedback.snoozed')}`,
-          type: 'bar',
-          stack: 'feedback',
-          barWidth: 12,
-          data: deferred
-        },
-        {
-          name: t('maintenance.feedback.not_relevant'),
-          type: 'bar',
-          stack: 'feedback',
-          barWidth: 12,
-          data: [weekly.not_relevant, monthly.not_relevant]
+          name: t('maintenance.feedback.label'),
+          type: 'pie',
+          roseType: 'radius',
+          radius: ['32%', '72%'],
+          center: ['50%', '44%'],
+          minAngle: 8,
+          itemStyle: {
+            borderColor: palette.surface,
+            borderRadius: 7,
+            borderWidth: 2
+          },
+          label: {
+            color: palette.textSecondary,
+            fontSize: 10,
+            lineHeight: 14,
+            formatter: '{b}\n{c}'
+          },
+          labelLine: {
+            length: 8,
+            length2: 6,
+            lineStyle: { color: palette.axis }
+          },
+          data: rows.map((row) => ({
+            name: row.name,
+            value: row.value,
+            itemStyle: { color: row.color }
+          }))
         }
       ]
     }

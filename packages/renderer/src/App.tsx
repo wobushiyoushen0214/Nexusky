@@ -430,21 +430,37 @@ export default function App() {
   }, [vaultPath, autoSyncInterval])
 
   const showEditorChromeTabs = Boolean(vaultPath && !showVaultHealth && mainView === 'editor' && !focusMode && tabCount > 0)
-  const maintenanceWorkspaceView = mainView === 'maintenance'
-  const workspaceSidebarWidth = sidebarCollapsed || maintenanceWorkspaceView ? 62 : 62 + sidebarWidth
-  const workspaceTabsLeft = 16 + workspaceSidebarWidth + (sidebarCollapsed ? 10 : 8)
-  const workspaceTabsRight = 16 + (rightPanel !== 'none' ? rightPanelWidth + 8 : 0)
+  const workspaceContentInset = 18
+  const activityRailWidth = 56
+  const workspacePanelRadius = 20
+  const workspaceSidebarWidth = sidebarCollapsed ? activityRailWidth : activityRailWidth + sidebarWidth
+  const workspaceTabsLeft = workspaceContentInset + workspaceSidebarWidth + (sidebarCollapsed ? 10 : 8) + workspacePanelRadius
+  const workspaceTabsRight = 80 + (rightPanel !== 'none' ? rightPanelWidth + 8 : 0)
   const workspaceContentPadding = showEditorChromeTabs ? '0 18px 18px' : '10px 18px 18px'
   const workspaceSideBackground = 'var(--workspace-rail-surface)'
   const workspaceSideBorder = '1px solid var(--workspace-panel-border-color)'
-  const workspaceSideRadius = 22
-  const workspaceSideShadow = 'var(--workspace-frame-shadow)'
+  const workspaceSideRadius = 20
+  const workspaceSideShadow = 'var(--shadow-md)'
   const workspaceSideBackdropFilter = 'blur(var(--glass-blur)) saturate(160%)'
   const workspaceMainBackground = showEditorChromeTabs ? 'var(--workspace-tab-surface)' : 'var(--workspace-panel-surface)'
   const workspacePanelBorder = '1px solid var(--workspace-panel-border-color)'
-  const workspacePanelRadius = 22
-  const workspacePanelShadow = 'var(--workspace-frame-shadow)'
+  const workspacePanelShadow = showEditorChromeTabs ? 'var(--shadow-md)' : 'var(--workspace-frame-shadow)'
   const workspaceMainShadow = workspacePanelShadow
+  const rightPanelTitle = rightPanel === 'chat'
+    ? t('panels.chat')
+    : rightPanel === 'properties'
+      ? t('panels.properties')
+      : rightPanel === 'tags'
+        ? t('panels.tags')
+        : rightPanel === 'history'
+          ? t('panels.history')
+          : rightPanel === 'agent'
+            ? t('panels.agent')
+            : rightPanel === 'maintenance'
+              ? t('panels.maintenance')
+              : rightPanel === 'plugin'
+                ? (activePluginPanel?.panel.title || 'Plugin')
+                : t('panels.outline')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--workspace-bg)' }}>
@@ -472,16 +488,16 @@ export default function App() {
               <VaultHealthScreen vaultPath={vaultPath} onDismiss={() => setShowVaultHealth(false)} />
             ) : (
         <div className={`workspace-content${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ display: 'flex', flex: 1, overflow: 'hidden', background: 'transparent', minHeight: 0, alignItems: 'stretch', padding: workspaceContentPadding }}>
-          <div className="glass-panel workspace-side-panel" style={{ width: mainView === 'graph' ? 'auto' : sidebarCollapsed || maintenanceWorkspaceView ? 62 : 62 + sidebarWidth, height: '100%', display: 'flex', flexShrink: 0, overflow: 'hidden', background: workspaceSideBackground, border: workspaceSideBorder, borderRadius: workspaceSideRadius, boxShadow: workspaceSideShadow, padding: 6, boxSizing: 'border-box', backdropFilter: workspaceSideBackdropFilter, WebkitBackdropFilter: workspaceSideBackdropFilter }}>
+          <div className="glass-panel workspace-side-panel" style={{ width: mainView === 'graph' ? 'auto' : workspaceSidebarWidth, height: '100%', display: 'flex', flexShrink: 0, overflow: 'hidden', background: workspaceSideBackground, border: workspaceSideBorder, borderRadius: workspaceSideRadius, boxShadow: workspaceSideShadow, padding: 5, boxSizing: 'border-box', backdropFilter: workspaceSideBackdropFilter, WebkitBackdropFilter: workspaceSideBackdropFilter }}>
             <ActivityBar />
             {mainView === 'graph' ? (
               <div id="graph-panel-slot" style={{ height: '100%', display: 'flex', minWidth: 0 }} />
             ) : (
-              !sidebarCollapsed && !maintenanceWorkspaceView && <Sidebar width={sidebarWidth} />
+              !sidebarCollapsed && <Sidebar width={sidebarWidth} />
             )}
           </div>
-          {!sidebarCollapsed && mainView !== 'graph' && !maintenanceWorkspaceView && <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />}
-          <main className={`glass-panel workspace-main-panel${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ flex: 1, overflow: 'hidden', background: workspaceMainBackground, border: workspacePanelBorder, borderRadius: workspacePanelRadius, boxShadow: workspaceMainShadow, marginLeft: sidebarCollapsed || mainView === 'graph' || maintenanceWorkspaceView ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
+          {!sidebarCollapsed && mainView !== 'graph' && <ResizeHandle side="left" onResize={(delta) => resizeSidebar(delta)} />}
+          <main className={`glass-panel workspace-main-panel${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ flex: 1, overflow: 'hidden', background: workspaceMainBackground, border: workspacePanelBorder, borderRadius: workspacePanelRadius, boxShadow: workspaceMainShadow, marginLeft: sidebarCollapsed || mainView === 'graph' ? 10 : 0, marginRight: 0, minWidth: 0, backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
             {mainView === 'editor' ? (
               <div className="workspace-editor-frame">
                 <Editor />
@@ -493,10 +509,6 @@ export default function App() {
             ) : mainView === 'timeline' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><CanvasView initialMode="time" /></Suspense>
-              </div>
-            ) : mainView === 'maintenance' ? (
-              <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><MaintenanceQueuePanel surface="page" /></Suspense>
               </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>
@@ -510,7 +522,7 @@ export default function App() {
           <aside className={`glass-panel workspace-right-panel${showEditorChromeTabs ? ' has-editor-tabs' : ''}`} style={{ width: rightPanel !== 'none' ? rightPanelWidth : 0, background: 'var(--workspace-panel-surface)', border: workspacePanelBorder, borderRadius: workspacePanelRadius, boxShadow: workspacePanelShadow, marginRight: 0, flexShrink: 0, display: rightPanel !== 'none' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur)) saturate(160%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(160%)' }}>
             <div style={{ height: 48, padding: '0 14px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--workspace-panel-header-surface)', boxShadow: 'none' }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {rightPanel === 'chat' ? t('panels.chat') : rightPanel === 'properties' ? t('panels.properties') : rightPanel === 'tags' ? t('panels.tags') : rightPanel === 'history' ? t('panels.history') : rightPanel === 'agent' ? t('panels.agent') : rightPanel === 'plugin' ? (activePluginPanel?.panel.title || 'Plugin') : t('panels.outline')}
+                {rightPanelTitle}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
@@ -533,6 +545,7 @@ export default function App() {
               {rightPanel === 'history' && <HistoryPanel />}
               {rightPanel === 'agent' && <AgentRunPanel />}
               {rightPanel === 'plugin' && <PluginPanelView active={activePluginPanel} />}
+              {rightPanel === 'maintenance' && <MaintenanceQueuePanel />}
               </Suspense>
               {chatEverOpened && (
                 <div style={{ flex: 1, overflow: 'hidden', display: rightPanel === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>

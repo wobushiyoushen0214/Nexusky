@@ -11,7 +11,7 @@ const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
 const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'bases' | 'timeline' | 'maintenance'
+type MainView = 'editor' | 'graph' | 'bases' | 'timeline'
 type Language = typeof LANGUAGE_IDS[number]
 type MaintenancePanelSection = 'context' | 'queue'
 type WorkspaceLayout = {
@@ -30,7 +30,7 @@ const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'history', 'graph', 'plugin', 'maintenance', 'agent']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'timeline', 'maintenance']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'timeline']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
@@ -227,7 +227,7 @@ function saveRightPanelWidth(panel: Panel, width: number): number {
 
 function normalizeMainView(value: string | null | undefined): MainView | null {
   if (value === 'canvas') return 'bases'
-  if (value === 'kanban' || value === 'reader') return 'editor'
+  if (value === 'kanban' || value === 'reader' || value === 'maintenance') return 'editor'
   return value && MAIN_VIEW_IDS.includes(value as MainView) ? value as MainView : null
 }
 
@@ -249,7 +249,6 @@ function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
 
 function normalizeRightPanel(value: string | null | undefined): Panel | null {
   if (value === 'context') return 'none'
-  if (value === 'maintenance') return 'none'
   if (value === 'calendar') return 'none'
   return value && PANEL_IDS.includes(value as Panel) ? value as Panel : null
 }
@@ -269,12 +268,10 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
 }
 
 function isRightPanelAvailable(mainView: MainView, panel: Panel): boolean {
-  if (panel === 'maintenance') return false
   return panel === 'none' || mainView === 'editor' || !NOTE_SCOPED_PANELS.has(panel)
 }
 
 function getAvailableRightPanel(mainView: MainView, panel: Panel): Panel {
-  if (panel === 'maintenance') return 'none'
   return isRightPanelAvailable(mainView, panel) ? panel : 'none'
 }
 

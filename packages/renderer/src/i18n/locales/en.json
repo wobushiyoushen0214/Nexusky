@@ -308,6 +308,10 @@
       "health": "Health",
       "reviewed": "Reviewed"
     },
+    "insights": {
+      "title": "Insights",
+      "subtitle": "Health trend, queue mix, weekly review"
+    },
     "weeklyReview": {
       "title": "Weekly cognitive review",
       "desc": "Generate an evidence-backed review from relations, themes, repeated questions, blockers, and resurfaced context.",
@@ -348,6 +352,11 @@
       "count": "{{count}} tasks",
       "remaining": "{{count}} more in the queue"
     },
+    "queueMore": {
+      "action": "More",
+      "title": "Full maintenance queue",
+      "subtitle": "{{count}} maintenance signal(s) are available in the current filter."
+    },
     "scan": {
       "pending": {
         "label": "Scanning",
@@ -369,16 +378,38 @@
       "duration": " in {{duration}}"
     },
     "filters": {
+      "label": "Maintenance filters",
+      "groups": "Maintenance groups",
+      "types": "Maintenance types",
       "all": "All",
       "fix_unresolved_link": "Unresolved Links",
       "connect_orphan": "Orphans",
       "fill_empty_note": "Empty Notes",
       "refresh_memory": "Memory Refresh",
       "review_overdue_tasks": "Overdue",
+      "review_due_today_tasks": "Due Today",
+      "review_high_priority_tasks": "High Priority",
+      "review_scheduled_tasks": "Scheduled",
+      "review_started_tasks": "In Progress",
+      "review_blocked_tasks": "Blocked",
+      "review_recurring_tasks": "Recurring",
+      "review_upcoming_tasks": "Upcoming",
       "review_open_tasks": "Open Tasks",
       "link_unlinked_reference": "Unlinked Mentions",
       "resolve_duplicate_title": "Duplicate Titles",
-      "resolve_duplicate_alias": "Duplicate Aliases"
+      "resolve_duplicate_alias": "Duplicate Aliases",
+      "split_large_note": "Large Notes",
+      "fill_missing_property": "Missing Properties",
+      "maintain_bridge": "Bridge Notes"
+    },
+    "filterGroups": {
+      "all": "All",
+      "links": "Links",
+      "tasks": "Tasks",
+      "properties": "Properties",
+      "memory": "Memory",
+      "structure": "Structure",
+      "bridge": "Bridge"
     },
     "types": {
       "fix_unresolved_link": "Unresolved Link",

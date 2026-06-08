@@ -308,6 +308,10 @@
       "health": "健康分",
       "reviewed": "本周审查"
     },
+    "insights": {
+      "title": "维护洞察",
+      "subtitle": "健康趋势 · 队列构成 · 每周复盘"
+    },
     "weeklyReview": {
       "title": "每周认知复盘",
       "desc": "基于关系、主题、重复问题、阻塞项和重新浮现的上下文生成有证据的复盘。",
@@ -348,6 +352,11 @@
       "count": "{{count}} 项任务",
       "remaining": "队列中还有 {{count}} 项"
     },
+    "queueMore": {
+      "action": "更多",
+      "title": "完整维护队列",
+      "subtitle": "当前筛选下有 {{count}} 项维护信号，可在这里集中处理。"
+    },
     "scan": {
       "pending": {
         "label": "扫描中",
@@ -369,16 +378,38 @@
       "duration": "，耗时 {{duration}}"
     },
     "filters": {
+      "label": "维护筛选",
+      "groups": "维护分组",
+      "types": "维护类型",
       "all": "全部",
       "fix_unresolved_link": "未解析链接",
       "connect_orphan": "孤立笔记",
       "fill_empty_note": "空笔记",
       "refresh_memory": "待回顾",
       "review_overdue_tasks": "逾期任务",
+      "review_due_today_tasks": "今日到期",
+      "review_high_priority_tasks": "高优先级",
+      "review_scheduled_tasks": "已排程",
+      "review_started_tasks": "进行中",
+      "review_blocked_tasks": "已阻塞",
+      "review_recurring_tasks": "周期任务",
+      "review_upcoming_tasks": "即将到来",
       "review_open_tasks": "未完任务",
       "link_unlinked_reference": "未引用提及",
       "resolve_duplicate_title": "重复标题",
-      "resolve_duplicate_alias": "重复别名"
+      "resolve_duplicate_alias": "重复别名",
+      "split_large_note": "笔记过长",
+      "fill_missing_property": "缺失属性",
+      "maintain_bridge": "枢纽笔记"
+    },
+    "filterGroups": {
+      "all": "全部",
+      "links": "链接",
+      "tasks": "任务",
+      "properties": "属性",
+      "memory": "记忆",
+      "structure": "结构",
+      "bridge": "枢纽"
     },
     "types": {
       "fix_unresolved_link": "未解析链接",

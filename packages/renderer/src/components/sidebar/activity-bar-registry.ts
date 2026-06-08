@@ -9,7 +9,7 @@ export interface ActivityBarItemDef {
 }
 
 export interface ActivityBarAvailabilityContext {
-  mainView: 'editor' | 'graph' | 'bases' | 'timeline' | 'maintenance'
+  mainView: 'editor' | 'graph' | 'bases' | 'timeline'
   currentFilePath: string | null
 }
 

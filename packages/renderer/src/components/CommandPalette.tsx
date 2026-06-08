@@ -219,11 +219,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'view-context-pack', category: 'interface', label: t('commandPalette.commands.viewContextPack.label'), description: t('commandPalette.commands.viewContextPack.description'), keywords: ['context', 'memory', 'long-context', 'observability', 'tune'], action: () => { useUIStore.getState().setSettingsInitialTab('long-context'); setSettingsOpen(true) } },
     { id: 'open-agent-panel', category: 'interface', label: t('commandPalette.commands.openAgent.label'), description: t('commandPalette.commands.openAgent.description'), keywords: ['agent', 'plan', 'execute', 'autonomy'], action: () => setRightPanel('agent') },
     { id: 'open-maintenance', category: 'interface', label: t('commandPalette.commands.openMaintenance.label'), description: t('commandPalette.commands.openMaintenance.description'), keywords: ['maintenance', 'queue', 'fix'], action: () => {
-      const state = useUIStore.getState()
       setMaintenancePanelSection('queue')
-      setRightPanel('none')
-      setMainView('maintenance')
-      if (!state.sidebarCollapsed) state.toggleSidebar()
+      setRightPanel('maintenance')
     } },
     { id: 'new-window', category: 'interface', label: t('commandPalette.commands.newWindow.label'), description: t('commandPalette.commands.newWindow.description'), keywords: ['window', 'multi'], action: () => window.api.windowControls.newWindow() },
     { id: 'sidebar', category: 'interface', label: t('commandPalette.commands.sidebar.label'), shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },

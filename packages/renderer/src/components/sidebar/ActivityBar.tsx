@@ -19,7 +19,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export function ActivityBar() {
   const { t } = useTranslation()
-  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar, setRightPanel, setMaintenancePanelSection } = useUIStore()
+  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar, setMaintenancePanelSection } = useUIStore()
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const { visibleIds, toggleVisibility } = useActivityBarStore()
 
@@ -66,16 +66,8 @@ export function ActivityBar() {
     properties: () => toggleRightPanel('properties'),
     tags: () => toggleRightPanel('tags'),
     maintenance: () => {
-      const state = useUIStore.getState()
       setMaintenancePanelSection('queue')
-      setRightPanel('none')
-      if (state.mainView === 'maintenance') {
-        setMainView('editor')
-        if (state.sidebarCollapsed) toggleSidebar()
-        return
-      }
-      setMainView('maintenance')
-      if (!state.sidebarCollapsed) toggleSidebar()
+      toggleRightPanel('maintenance')
     },
   }
 
@@ -87,8 +79,8 @@ export function ActivityBar() {
   const availabilityContext = { mainView, currentFilePath }
 
   const getActiveId = () => {
+    if (rightPanel === 'maintenance') return 'maintenance'
     if (useUIStore.getState().mainView === 'graph') return 'graph'
-    if (useUIStore.getState().mainView === 'maintenance') return 'maintenance'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
     if (rightPanel === 'outline') return 'outline'
@@ -115,7 +107,7 @@ export function ActivityBar() {
     <div
       onContextMenu={handleContextMenu}
       style={{
-        width: 48,
+        width: 46,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -123,14 +115,12 @@ export function ActivityBar() {
         justifyContent: 'space-between',
         flexShrink: 0,
         background: 'color-mix(in srgb, var(--panel-bg-soft) 38%, transparent)',
-        borderRadius: 16,
+        borderRadius: 14,
         borderRight: 'none',
-        padding: '5px 6px 7px',
+        padding: '5px 4px 7px',
         boxSizing: 'border-box',
         position: 'relative',
-        boxShadow: sidebarCollapsed && mainView !== 'graph'
-          ? 'none'
-          : 'var(--glass-divider-shadow-right)',
+        boxShadow: 'none',
       }}
     >
       {/* Top icons */}
@@ -145,12 +135,12 @@ export function ActivityBar() {
               disabled={isDisabled}
               title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}${isDisabled ? ` - ${t('activityBar.requiresCurrentFile')}` : ''}`}
               style={{
-                width: 36,
-                height: 36,
+                width: 34,
+                height: 34,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 11,
+                borderRadius: 9,
                 border: 0,
                 background: isActive ? 'var(--activity-active-bg)' : 'transparent',
                 color: isDisabled ? 'var(--border-default)' : isActive ? 'var(--activity-active-color)' : 'var(--text-tertiary)',
@@ -185,12 +175,12 @@ export function ActivityBar() {
             onClick={() => setMoreOpen(!moreOpen)}
             title={t('activityBar.more')}
             style={{
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 11,
+              borderRadius: 9,
               border: 0,
               background: moreOpen ? 'var(--control-bg)' : 'transparent',
               color: moreOpen ? 'var(--text-secondary)' : 'var(--text-tertiary)',
@@ -220,12 +210,12 @@ export function ActivityBar() {
           onClick={() => setSettingsOpen(true)}
           title={t('activityBar.settings') + ' (Ctrl+,)'}
           style={{
-            width: 36,
-            height: 36,
+            width: 34,
+            height: 34,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 11,
+            borderRadius: 9,
             border: 0,
             background: 'transparent',
             color: 'var(--text-tertiary)',
@@ -249,8 +239,8 @@ export function ActivityBar() {
       {moreOpen && (
         <div ref={moreRef} className="glass-popover" style={{
           position: 'absolute',
-          top: (visibleItems.length + 1) * 44 + 8,
-          left: 46,
+          top: (visibleItems.length + 1) * 40 + 8,
+          left: 44,
           background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
           border: '1px solid var(--glass-panel-border)',
           borderRadius: 12,

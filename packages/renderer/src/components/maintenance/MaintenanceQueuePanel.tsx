@@ -25,13 +25,33 @@ const TYPE_FILTERS: { value: 'all' | KnowledgeMaintenanceType; key: string }[] =
   { value: 'all', key: 'all' },
   { value: 'fix_unresolved_link', key: 'fix_unresolved_link' },
   { value: 'connect_orphan', key: 'connect_orphan' },
-  { value: 'fill_empty_note', key: 'fill_empty_note' },
-  { value: 'refresh_memory', key: 'refresh_memory' },
-  { value: 'review_overdue_tasks', key: 'review_overdue_tasks' },
-  { value: 'review_open_tasks', key: 'review_open_tasks' },
   { value: 'link_unlinked_reference', key: 'link_unlinked_reference' },
+  { value: 'review_overdue_tasks', key: 'review_overdue_tasks' },
+  { value: 'review_due_today_tasks', key: 'review_due_today_tasks' },
+  { value: 'review_high_priority_tasks', key: 'review_high_priority_tasks' },
+  { value: 'review_scheduled_tasks', key: 'review_scheduled_tasks' },
+  { value: 'review_started_tasks', key: 'review_started_tasks' },
+  { value: 'review_blocked_tasks', key: 'review_blocked_tasks' },
+  { value: 'review_recurring_tasks', key: 'review_recurring_tasks' },
+  { value: 'review_upcoming_tasks', key: 'review_upcoming_tasks' },
+  { value: 'review_open_tasks', key: 'review_open_tasks' },
+  { value: 'resolve_duplicate_alias', key: 'resolve_duplicate_alias' },
+  { value: 'fill_missing_property', key: 'fill_missing_property' },
+  { value: 'refresh_memory', key: 'refresh_memory' },
+  { value: 'fill_empty_note', key: 'fill_empty_note' },
   { value: 'resolve_duplicate_title', key: 'resolve_duplicate_title' },
-  { value: 'resolve_duplicate_alias', key: 'resolve_duplicate_alias' }
+  { value: 'split_large_note', key: 'split_large_note' },
+  { value: 'maintain_bridge', key: 'maintain_bridge' }
+]
+
+const GROUP_FILTERS: { value: 'all' | MaintenanceScanGroup; key: string }[] = [
+  { value: 'all', key: 'all' },
+  { value: 'links', key: 'links' },
+  { value: 'tasks', key: 'tasks' },
+  { value: 'properties', key: 'properties' },
+  { value: 'memory', key: 'memory' },
+  { value: 'structure', key: 'structure' },
+  { value: 'bridge', key: 'bridge' }
 ]
 
 const ACTIONS_BY_TYPE: Record<KnowledgeMaintenanceType, MaintenanceApplyAction[]> = {
@@ -86,6 +106,8 @@ const MAINTENANCE_SCAN_GROUP_BY_TYPE = new Map<KnowledgeMaintenanceType, Mainten
 )
 
 type MaintenanceCounts = Partial<Record<KnowledgeMaintenanceType, number>>
+type MaintenanceTypeFilter = 'all' | KnowledgeMaintenanceType
+type MaintenanceGroupFilter = 'all' | MaintenanceScanGroup
 
 export function buildMaintenanceAgentGoal(items: KnowledgeMaintenanceItem[], limit = 3): { goal: string; description: string } {
   const selected = items.slice(0, Math.max(1, limit))
@@ -109,6 +131,30 @@ export function getMaintenanceScanGroupsForFilter(activeFilter: 'all' | Knowledg
   if (activeFilter === 'all') return [...MAINTENANCE_SCAN_GROUPS]
   const group = MAINTENANCE_SCAN_GROUP_BY_TYPE.get(activeFilter)
   return group ? [group] : [...MAINTENANCE_SCAN_GROUPS]
+}
+
+export function getMaintenanceScanGroupsForSelection(
+  activeGroupFilter: MaintenanceGroupFilter,
+  activeTypeFilter: MaintenanceTypeFilter
+): MaintenanceScanGroup[] {
+  if (activeTypeFilter !== 'all') return getMaintenanceScanGroupsForFilter(activeTypeFilter)
+  if (activeGroupFilter !== 'all') return [activeGroupFilter]
+  return [...MAINTENANCE_SCAN_GROUPS]
+}
+
+export function getMaintenanceGroupCount(
+  counts: MaintenanceCounts,
+  activeGroupFilter: MaintenanceGroupFilter,
+  allCount = 0
+): number {
+  if (activeGroupFilter === 'all') return allCount
+  return MAINTENANCE_TYPES_BY_SCAN_GROUP[activeGroupFilter].reduce((total, type) => total + (counts[type] ?? 0), 0)
+}
+
+function getMaintenanceTypeFiltersForGroup(activeGroupFilter: MaintenanceGroupFilter): typeof TYPE_FILTERS {
+  if (activeGroupFilter === 'all') return TYPE_FILTERS
+  const types = new Set(MAINTENANCE_TYPES_BY_SCAN_GROUP[activeGroupFilter])
+  return TYPE_FILTERS.filter((filter) => filter.value === 'all' || types.has(filter.value as KnowledgeMaintenanceType))
 }
 
 function getMaintenanceScanTypesForGroups(scanGroups: MaintenanceScanGroup[]): KnowledgeMaintenanceType[] {
@@ -136,17 +182,18 @@ function sortMaintenanceItems(items: KnowledgeMaintenanceItem[]): KnowledgeMaint
   return [...items].sort((a, b) => b.priority - a.priority || a.filePath.localeCompare(b.filePath) || a.action.localeCompare(b.action))
 }
 
-function getPendingScanTypes(activeFilter: 'all' | KnowledgeMaintenanceType): KnowledgeMaintenanceType[] {
-  return activeFilter === 'all' ? MAINTENANCE_SCAN_TYPES : [activeFilter]
+function getPendingScanTypes(activeGroupFilter: MaintenanceGroupFilter, activeTypeFilter: MaintenanceTypeFilter): KnowledgeMaintenanceType[] {
+  if (activeTypeFilter !== 'all') return [activeTypeFilter]
+  return getMaintenanceScanTypesForGroups(getMaintenanceScanGroupsForSelection(activeGroupFilter, activeTypeFilter))
 }
 
-function createPendingScanStatus(activeFilter: 'all' | KnowledgeMaintenanceType): MaintenanceScanStatus {
+function createPendingScanStatus(activeGroupFilter: MaintenanceGroupFilter, activeTypeFilter: MaintenanceTypeFilter): MaintenanceScanStatus {
   return {
     state: 'pending',
     completedTypes: [],
-    pendingTypes: getPendingScanTypes(activeFilter),
+    pendingTypes: getPendingScanTypes(activeGroupFilter, activeTypeFilter),
     completedGroups: [],
-    pendingGroups: getMaintenanceScanGroupsForFilter(activeFilter),
+    pendingGroups: getMaintenanceScanGroupsForSelection(activeGroupFilter, activeTypeFilter),
     updatedAt: Date.now()
   }
 }
@@ -203,11 +250,7 @@ interface LastMaintenanceUndo {
   undoToken: string
 }
 
-interface MaintenanceQueuePanelProps {
-  surface?: 'panel' | 'page'
-}
-
-export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePanelProps = {}) {
+export function MaintenanceQueuePanel() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
@@ -225,26 +268,40 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
   const [scanStatus, setScanStatus] = useState<MaintenanceScanStatus | null>(null)
   const [healthSummary, setHealthSummary] = useState<VaultHealthSummary | null>(null)
   const [feedbackSummary, setFeedbackSummary] = useState<MaintenanceFeedbackSummary | null>(null)
-  const [activeFilter, setActiveFilter] = useState<'all' | KnowledgeMaintenanceType>('all')
+  const [activeGroupFilter, setActiveGroupFilter] = useState<MaintenanceGroupFilter>('all')
+  const [activeTypeFilter, setActiveTypeFilter] = useState<MaintenanceTypeFilter>('all')
   const [pendingPreview, setPendingPreview] = useState<PendingMaintenancePreview | null>(null)
   const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
-  const [insightsExpanded, setInsightsExpanded] = useState(surface === 'page')
+  const [insightsExpanded, setInsightsExpanded] = useState(false)
+  const [queueExpanded, setQueueExpanded] = useState(false)
   const refreshSeq = useRef(0)
-  const isPageSurface = surface === 'page'
+  const typeFilters = useMemo(() => getMaintenanceTypeFiltersForGroup(activeGroupFilter), [activeGroupFilter])
+  const handleGroupFilterChange = useCallback((nextGroup: MaintenanceGroupFilter) => {
+    setActiveGroupFilter(nextGroup)
+    setActiveTypeFilter('all')
+    setQueueExpanded(false)
+  }, [])
+  const handleTypeFilterChange = useCallback((nextType: MaintenanceTypeFilter) => {
+    setActiveTypeFilter(nextType)
+    setQueueExpanded(false)
+    if (nextType !== 'all') {
+      setActiveGroupFilter(MAINTENANCE_SCAN_GROUP_BY_TYPE.get(nextType) ?? 'all')
+    }
+  }, [])
 
   const refresh = useCallback(async () => {
     if (!vaultPath) return
     const seq = refreshSeq.current + 1
     refreshSeq.current = seq
     const isCurrentRefresh = () => refreshSeq.current === seq
-    const scanGroups = getMaintenanceScanGroupsForFilter(activeFilter)
+    const scanGroups = getMaintenanceScanGroupsForSelection(activeGroupFilter, activeTypeFilter)
     const startedAt = Date.now()
     setLoading(true)
     setItems([])
     setCounts({})
     setHealthSummary(null)
     setFeedbackSummary(null)
-    setScanStatus(createPendingScanStatus(activeFilter))
+    setScanStatus(createPendingScanStatus(activeGroupFilter, activeTypeFilter))
     try {
       window.api.invoke('vault:health-scan', { vaultPath })
         .then((summary) => {
@@ -260,10 +317,10 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
         .catch(() => {
           if (isCurrentRefresh()) setFeedbackSummary(null)
         })
-      if (activeFilter !== 'all') {
+      if (activeTypeFilter !== 'all') {
         const result = await window.api.invoke('maintenance:get-queue', {
           vaultPath,
-          type: activeFilter,
+          type: activeTypeFilter,
           scanGroups,
           limit: 200,
           language
@@ -312,7 +369,7 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
     } finally {
       if (isCurrentRefresh()) setLoading(false)
     }
-  }, [vaultPath, activeFilter, language])
+  }, [vaultPath, activeGroupFilter, activeTypeFilter, language])
 
   useEffect(() => {
     if (maintenancePanelSection !== 'queue') return
@@ -421,14 +478,8 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
   const remainingItems = useMemo(() => grouped.slice(priorityItems.length), [grouped, priorityItems.length])
 
   return (
-    <div className={`maintenance-panel${isPageSurface ? ' maintenance-panel--page' : ''}`}>
+    <div className="maintenance-panel">
       <div className="maintenance-panel__header">
-        {isPageSurface && (
-          <div className="maintenance-panel__heading">
-            <span>{t('maintenance.title')}</span>
-            <strong>{maintenancePanelSection === 'queue' ? t('maintenance.tabs.queue') : t('maintenance.tabs.context')}</strong>
-          </div>
-        )}
         <div className="maintenance-panel__tabs">
           <button
             type="button"
@@ -479,7 +530,7 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
       </div>
       {maintenancePanelSection === 'context' ? (
         currentFilePath ? (
-          <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement={isPageSurface ? 'page' : 'side'} />
+          <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement="side" />
         ) : (
           <div className="maintenance-panel__empty">{t('maintenance.contextEmpty')}</div>
         )
@@ -488,9 +539,12 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
           <MaintenanceQueueToolbar
             itemCount={items.length}
             priorityCount={priorityItems.length}
-            activeFilter={activeFilter}
+            activeGroupFilter={activeGroupFilter}
+            activeTypeFilter={activeTypeFilter}
             counts={counts}
-            onFilterChange={setActiveFilter}
+            typeFilters={typeFilters}
+            onGroupFilterChange={handleGroupFilterChange}
+            onTypeFilterChange={handleTypeFilterChange}
             loading={loading}
           />
           {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
@@ -503,7 +557,9 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
               <section className="maintenance-panel__today" aria-labelledby="maintenance-today-title">
                 <div className="maintenance-panel__today-head">
                   <h3 id="maintenance-today-title">{t('maintenance.today.title')}</h3>
-                  <span>{t('maintenance.today.count', { count: priorityItems.length })}</span>
+                  <div className="maintenance-panel__today-head-actions">
+                    <span>{t('maintenance.today.count', { count: priorityItems.length })}</span>
+                  </div>
                 </div>
                 <div className="maintenance-panel__today-list">
                   {priorityItems.map((item, idx) => (
@@ -516,6 +572,43 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
                     />
                   ))}
                 </div>
+              </section>
+            )}
+            {vaultPath && remainingItems.length > 0 && (
+              <section
+                className={`maintenance-panel__queue-list is-summary-only${queueExpanded ? ' is-expanded' : ''}`}
+                aria-label={t('maintenance.today.remaining', { count: remainingItems.length })}
+              >
+                <div className="maintenance-panel__section-label">
+                  {t('maintenance.queueMore.title')}
+                </div>
+                <div className="maintenance-panel__queue-summary">
+                  <div>
+                    <strong>{remainingItems.length.toLocaleString()}</strong>
+                    <span>{t('maintenance.today.remaining', { count: remainingItems.length })}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="maintenance-panel__more-btn"
+                    onClick={() => setQueueExpanded((expanded) => !expanded)}
+                    aria-expanded={queueExpanded}
+                  >
+                    {queueExpanded ? t('maintenance.queueMore.collapse') : t('maintenance.queueMore.action')}
+                  </button>
+                </div>
+                {queueExpanded && (
+                  <div className="maintenance-panel__queue-list-items">
+                    {remainingItems.map((item, idx) => (
+                      <MaintenanceItemCard
+                        key={`${item.filePath}-${item.type}-rest-${idx}`}
+                        item={item}
+                        onAction={(action) => void previewFix(item, action)}
+                        onFeedback={(status) => void recordFeedback(item, status)}
+                        onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
             {vaultPath && (
@@ -533,20 +626,6 @@ export function MaintenanceQueuePanel({ surface = 'panel' }: MaintenanceQueuePan
                 onSaveReview={() => void generateWeeklyReview(true)}
               />
             )}
-            {vaultPath && remainingItems.length > 0 && (
-              <div className="maintenance-panel__section-label">
-                {t('maintenance.today.remaining', { count: remainingItems.length })}
-              </div>
-            )}
-            {remainingItems.map((item, idx) => (
-              <MaintenanceItemCard
-                key={`${item.filePath}-${item.type}-rest-${idx}`}
-                item={item}
-                onAction={(action) => void previewFix(item, action)}
-                onFeedback={(status) => void recordFeedback(item, status)}
-                onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
-              />
-            ))}
           </div>
         </>
       )}
@@ -573,9 +652,12 @@ interface MaintenanceScanStatusBarProps {
 interface MaintenanceQueueToolbarProps {
   itemCount: number
   priorityCount: number
-  activeFilter: 'all' | KnowledgeMaintenanceType
+  activeGroupFilter: MaintenanceGroupFilter
+  activeTypeFilter: MaintenanceTypeFilter
   counts: Partial<Record<KnowledgeMaintenanceType, number>>
-  onFilterChange: (filter: 'all' | KnowledgeMaintenanceType) => void
+  typeFilters: typeof TYPE_FILTERS
+  onGroupFilterChange: (filter: MaintenanceGroupFilter) => void
+  onTypeFilterChange: (filter: MaintenanceTypeFilter) => void
   loading: boolean
 }
 
@@ -610,42 +692,67 @@ function getWeeklyFeedbackTotal(feedbackSummary: MaintenanceFeedbackSummary | nu
 function MaintenanceQueueToolbar({
   itemCount,
   priorityCount,
-  activeFilter,
+  activeGroupFilter,
+  activeTypeFilter,
   counts,
-  onFilterChange,
+  typeFilters,
+  onGroupFilterChange,
+  onTypeFilterChange,
   loading
 }: MaintenanceQueueToolbarProps) {
   const { t } = useTranslation()
+  const selectedScopeCount = getMaintenanceGroupCount(counts, activeGroupFilter, itemCount)
   return (
     <section className="maintenance-panel__queuebar" aria-label={t('maintenance.summary.title')}>
-      <div className="maintenance-panel__queuebar-copy">
-        <span>{loading ? t('maintenance.refreshing') : t('maintenance.summary.title')}</span>
-        <strong>{itemCount.toLocaleString()}</strong>
-        <small>
-          {t('maintenance.summary.ready')} / {t('maintenance.summary.priority')} {priorityCount.toLocaleString()}
-        </small>
+      <div className="maintenance-panel__queuebar-top">
+        <div className="maintenance-panel__queuebar-copy">
+          <span>{loading ? t('maintenance.refreshing') : t('maintenance.summary.title')}</span>
+          <strong>{itemCount.toLocaleString()}</strong>
+          <small>
+            {t('maintenance.summary.ready')} / {t('maintenance.summary.priority')} {priorityCount.toLocaleString()}
+          </small>
+        </div>
+        <label className="maintenance-panel__filter-select">
+          <select
+            value={activeTypeFilter}
+            onChange={(event) => onTypeFilterChange(event.currentTarget.value as MaintenanceTypeFilter)}
+            aria-label={t('maintenance.filters.types')}
+          >
+            {typeFilters.map((filter) => {
+              const count = filter.value === 'all'
+                ? selectedScopeCount
+                : counts[filter.value as KnowledgeMaintenanceType] ?? 0
+              return (
+                <option key={filter.value} value={filter.value}>
+                  {t(`maintenance.filters.${filter.key}`)} ({count})
+                </option>
+              )
+            })}
+          </select>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </label>
       </div>
-      <label className="maintenance-panel__filter-select">
-        <select
-          value={activeFilter}
-          onChange={(event) => onFilterChange(event.currentTarget.value as 'all' | KnowledgeMaintenanceType)}
-          aria-label={t('maintenance.summary.title')}
-        >
-          {TYPE_FILTERS.map((filter) => {
-            const count = filter.value === 'all'
-              ? itemCount
-              : counts[filter.value as KnowledgeMaintenanceType] ?? 0
+      <div className="maintenance-panel__filters" aria-label={t('maintenance.filters.label')}>
+        <div className="maintenance-panel__group-filters" role="list" aria-label={t('maintenance.filters.groups')}>
+          {GROUP_FILTERS.map((filter) => {
+            const count = getMaintenanceGroupCount(counts, filter.value, itemCount)
             return (
-              <option key={filter.value} value={filter.value}>
-                {t(`maintenance.filters.${filter.key}`)} ({count})
-              </option>
+              <button
+                key={filter.value}
+                type="button"
+                className={`maintenance-panel__group-filter${activeGroupFilter === filter.value ? ' is-active' : ''}`}
+                onClick={() => onGroupFilterChange(filter.value)}
+                aria-pressed={activeGroupFilter === filter.value}
+              >
+                <span>{t(`maintenance.filterGroups.${filter.key}`)}</span>
+                <small>{count.toLocaleString()}</small>
+              </button>
             )
           })}
-        </select>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </label>
+        </div>
+      </div>
     </section>
   )
 }
@@ -674,8 +781,8 @@ function MaintenanceInsightsPanel({
         aria-expanded={expanded}
       >
         <span className="maintenance-insights__copy">
-          <strong>{t('maintenance.healthTrend.title')}</strong>
-          <span>{t('maintenance.weeklyReview.title')}</span>
+          <strong>{t('maintenance.insights.title')}</strong>
+          <span>{t('maintenance.insights.subtitle')}</span>
         </span>
         <span className="maintenance-insights__metrics">
           <span>
@@ -803,7 +910,7 @@ function MaintenanceItemCard({ item, onAction, onFeedback, onFocusInBases }: Mai
           <button
             key={action}
             type="button"
-            className="maintenance-card__btn"
+            className={`maintenance-card__btn${MUTATING_ACTIONS.has(action) ? ' is-mutating' : ''}`}
             onClick={() => onAction(action)}
           >
             {t(`maintenance.actions.${action}`)}
@@ -871,7 +978,10 @@ function MaintenancePreviewModal({ pending, onConfirm, onCancel }: MaintenancePr
             <div className="maintenance-preview__summary">{pending.preview.summary}</div>
           </div>
           <button type="button" className="maintenance-preview__icon-btn" onClick={onCancel} aria-label={t('maintenance.preview.cancel')}>
-            x
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
         <div className="maintenance-preview__path">{pending.preview.filePath}</div>

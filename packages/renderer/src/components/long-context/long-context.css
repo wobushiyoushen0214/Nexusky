@@ -378,8 +378,8 @@
 }
 
 .related-context-pack__tab:hover {
-  color: var(--text-secondary);
-  background: color-mix(in srgb, var(--bg-hover) 54%, transparent);
+  color: var(--text-tertiary);
+  background: transparent;
 }
 
 .related-context-pack__tab.is-active {

@@ -141,6 +141,22 @@ describe('ui store workspace widths', () => {
     })
   })
 
+  it('keeps the maintenance panel available as a workspace tool layer', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setWorkspaceScope('workspace:/vault/maintenance')
+    store.setMainView('graph')
+    store.setRightPanel('maintenance')
+
+    expect(useUIStore.getState().mainView).toBe('graph')
+    expect(useUIStore.getState().rightPanel).toBe('maintenance')
+
+    store.setMainView('bases')
+    expect(useUIStore.getState().mainView).toBe('bases')
+    expect(useUIStore.getState().rightPanel).toBe('maintenance')
+  })
+
   it('sanitizes saved note-scoped panels when restoring non-editor views', async () => {
     localStorage.setItem('nexusky-workspace-layouts', JSON.stringify({
       'workspace:/vault/a': { mainView: 'graph', rightPanel: 'tags', sidebarCollapsed: true },
@@ -172,6 +188,7 @@ describe('ui store workspace widths', () => {
       'workspace:/vault/a': { mainView: 'kanban', rightPanel: 'chat', sidebarCollapsed: true },
       'workspace:/vault/b': { mainView: 'reader', rightPanel: 'none', sidebarCollapsed: false },
       'workspace:/vault/c': { mainView: 'canvas', rightPanel: 'chat', sidebarCollapsed: true },
+      'workspace:/vault/d': { mainView: 'maintenance', rightPanel: 'maintenance', sidebarCollapsed: false },
     }))
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
 
@@ -192,6 +209,12 @@ describe('ui store workspace widths', () => {
     expect(useUIStore.getState().mainView).toBe('bases')
     expect(useUIStore.getState().rightPanel).toBe('chat')
     expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+
+    useUIStore.getState().setWorkspaceScope('workspace:/vault/d')
+
+    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().rightPanel).toBe('maintenance')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(false)
   })
 
   it('uses legacy global workspace layout only as a fallback', async () => {
