@@ -62,7 +62,7 @@ const steps = [
   {
     title: '多端同步',
     subtitle: '随处继续',
-    desc: '支持 Supabase 云同步，笔记在多台设备间保持一致。\n离线时正常编辑，联网后自动合并。',
+    desc: '支持自选同步后端，笔记在多台设备间保持一致。\n离线时正常编辑，联网后自动合并。',
     visual: (
       <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
         <rect x="8" y="24" width="18" height="24" rx="3" stroke="var(--text-secondary)" strokeWidth="1" opacity="0.5" />

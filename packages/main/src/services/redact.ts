@@ -10,7 +10,6 @@ const SENSITIVE_KEY_PATTERNS: RegExp[] = [
   /\bpassphrase\b/i,
   /\bcookie\b/i,
   /service[_-]?role[_-]?key/i,
-  /supabase[_-]?key/i,
   /client[_-]?secret/i,
   /private[_-]?key/i,
   /session[_-]?id/i,

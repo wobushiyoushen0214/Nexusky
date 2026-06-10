@@ -86,6 +86,7 @@ export function ActivityBar() {
   }
 
   const activeId = getActiveId()
+  const activeIndex = visibleItems.findIndex((item) => item?.id === activeId)
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -101,6 +102,7 @@ export function ActivityBar() {
 
   return (
     <div
+      className="activity-bar"
       onContextMenu={handleContextMenu}
       style={{
         width: 46,
@@ -110,23 +112,28 @@ export function ActivityBar() {
         alignItems: 'center',
         justifyContent: 'space-between',
         flexShrink: 0,
-        background: 'color-mix(in srgb, var(--panel-bg-soft) 38%, transparent)',
+        background: 'transparent',
         borderRadius: 14,
-        borderRight: 'none',
         padding: '5px 4px 7px',
         boxSizing: 'border-box',
         position: 'relative',
-        boxShadow: 'none',
       }}
     >
       {/* Top icons */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+      <div className="activity-bar__items" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, overflow: 'visible', position: 'relative' }}>
+        {activeIndex >= 0 && (
+          <div
+            className="activity-bar__liquid-indicator"
+            style={{ transform: `translate3d(-50%, ${activeIndex * 40}px, 0)` }}
+          />
+        )}
         {visibleItems.map((item) => {
           const isActive = item!.id === activeId
           const isDisabled = !isActivityBarItemAvailable(item!, availabilityContext)
           return (
             <button
               key={item!.id}
+              className={`activity-bar__button${isActive ? ' is-active' : ''}${isDisabled ? ' is-disabled' : ''}`}
               onClick={isDisabled ? undefined : actionMap[item!.id]}
               disabled={isDisabled}
               title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}${isDisabled ? ` - ${t('activityBar.requiresCurrentFile')}` : ''}`}
@@ -137,29 +144,19 @@ export function ActivityBar() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: 9,
-                border: 0,
-                background: isActive ? 'var(--activity-active-bg)' : 'transparent',
-                color: isDisabled ? 'var(--border-default)' : isActive ? 'var(--activity-active-color)' : 'var(--text-tertiary)',
+                border: '1px solid transparent',
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 opacity: isDisabled ? 0.55 : 1,
                 position: 'relative',
-                boxShadow: isActive ? 'var(--activity-active-shadow)' : 'none',
-                transition: 'color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive && !isDisabled) {
-                  e.currentTarget.style.background = 'var(--control-bg)'
-                  e.currentTarget.style.color = 'var(--text-secondary)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive && !isDisabled) {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = 'var(--text-tertiary)'
-                }
+                zIndex: 1,
+                boxShadow: 'none',
+                transform: isActive ? 'translateY(1px) scale(0.97)' : 'translateY(0) scale(1)',
+                transition: 'color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s',
               }}
             >
-              {iconMap[item!.id]}
+              <span className="activity-bar__button-icon">
+                {iconMap[item!.id]}
+              </span>
             </button>
           )
         })}

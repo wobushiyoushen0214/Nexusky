@@ -47,6 +47,12 @@
     inset -1px 0 0 var(--glass-divider-line);
   --glass-divider-shadow-left:
     inset 1px 0 0 var(--glass-divider-highlight);
+  --glass-divider-border: color-mix(in srgb, var(--glass-divider-line-strong) 58%, var(--glass-divider-highlight));
+  --glass-divider-border-shadow:
+    inset 0 1px 0 var(--glass-divider-highlight),
+    inset 0 -1px 0 var(--glass-divider-line),
+    inset 1px 0 0 var(--glass-divider-highlight),
+    inset -1px 0 0 var(--glass-divider-line);
 
   --text-primary: oklch(22% 0.025 258);
   --text-secondary: oklch(42% 0.021 252);
@@ -89,15 +95,26 @@
   --shadow-sm: 0 1px 2px oklch(32% 0.025 250 / 0.045);
   --shadow-md: 0 8px 22px oklch(31% 0.026 250 / 0.065);
   --shadow-lg: 0 18px 54px oklch(31% 0.026 250 / 0.12);
-  --shadow-panel: 0 1px 0 color-mix(in srgb, var(--glass-highlight) 92%, transparent) inset, 0 12px 34px oklch(32% 0.03 250 / 0.055), 0 1px 2px oklch(32% 0.03 250 / 0.035);
-  --shadow-popover: 0 1px 0 color-mix(in srgb, var(--glass-highlight) 96%, transparent) inset, 0 20px 66px oklch(30% 0.03 250 / 0.15);
+  --shadow-panel:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 88%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-highlight) 14%, transparent),
+    0 18px 42px color-mix(in srgb, var(--accent-glow) 42%, transparent);
+  --shadow-popover:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 92%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-highlight) 16%, transparent),
+    0 24px 72px color-mix(in srgb, var(--accent-glow) 54%, transparent);
   --shadow-glow: 0 0 20px var(--accent-glow);
   --workspace-frame-shadow: var(--shadow-panel), var(--glass-panel-edge-shadow);
-  --activity-active-bg: var(--accent);
+  --activity-active-bg:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 92%, var(--glass-highlight)),
+      color-mix(in srgb, var(--accent) 86%, var(--text-primary)));
+  --activity-active-border: color-mix(in srgb, var(--accent) 68%, var(--glass-highlight));
   --activity-active-color: var(--text-on-accent);
   --activity-active-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 28%, transparent),
-    0 8px 18px var(--accent-glow);
+    inset 2px 2px 5px color-mix(in srgb, var(--text-primary) 24%, transparent),
+    inset -1px -1px 3px color-mix(in srgb, var(--glass-highlight) 34%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 58%, transparent);
 }
 
 [data-theme="dark"] {
@@ -185,15 +202,26 @@
   --shadow-sm: 0 1px 2px oklch(32% 0.025 250 / 0.045);
   --shadow-md: 0 8px 22px oklch(31% 0.026 250 / 0.065);
   --shadow-lg: 0 18px 54px oklch(31% 0.026 250 / 0.12);
-  --shadow-panel: 0 1px 0 color-mix(in srgb, var(--glass-highlight) 92%, transparent) inset, 0 12px 34px oklch(32% 0.03 250 / 0.055), 0 1px 2px oklch(32% 0.03 250 / 0.035);
-  --shadow-popover: 0 1px 0 color-mix(in srgb, var(--glass-highlight) 96%, transparent) inset, 0 20px 66px oklch(30% 0.03 250 / 0.15);
+  --shadow-panel:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 88%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-highlight) 14%, transparent),
+    0 18px 42px color-mix(in srgb, var(--accent-glow) 42%, transparent);
+  --shadow-popover:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 92%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-highlight) 16%, transparent),
+    0 24px 72px color-mix(in srgb, var(--accent-glow) 54%, transparent);
   --shadow-glow: 0 0 20px var(--accent-glow);
   --workspace-frame-shadow: var(--shadow-panel), var(--glass-panel-edge-shadow);
-  --activity-active-bg: var(--accent);
+  --activity-active-bg:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 92%, var(--glass-highlight)),
+      color-mix(in srgb, var(--accent) 86%, var(--text-primary)));
+  --activity-active-border: color-mix(in srgb, var(--accent) 68%, var(--glass-highlight));
   --activity-active-color: var(--text-on-accent);
   --activity-active-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 28%, transparent),
-    0 8px 18px var(--accent-glow);
+    inset 2px 2px 5px color-mix(in srgb, var(--text-primary) 24%, transparent),
+    inset -1px -1px 3px color-mix(in srgb, var(--glass-highlight) 34%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 58%, transparent);
 }
 
 [data-theme="ocean"] {
@@ -574,12 +602,25 @@
   --glass-blur-strong: 24px;
   --overlay-bg: color-mix(in srgb, var(--app-shell-bg) 76%, transparent);
   --text-on-accent: oklch(97% 0.006 260);
-  --shadow-panel: 0 1px 0 color-mix(in srgb, var(--glass-highlight) 88%, transparent) inset, 0 10px 30px rgba(0, 0, 0, 0.2);
-  --shadow-popover: 0 1px 0 color-mix(in srgb, var(--glass-highlight) 92%, transparent) inset, 0 20px 62px rgba(0, 0, 0, 0.34);
+  --shadow-panel:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 88%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-highlight) 14%, transparent),
+    0 18px 42px color-mix(in srgb, var(--accent-glow) 48%, transparent);
+  --shadow-popover:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 92%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-highlight) 16%, transparent),
+    0 24px 72px color-mix(in srgb, var(--accent-glow) 58%, transparent);
   --workspace-frame-shadow: var(--shadow-panel), var(--glass-panel-edge-shadow);
-  --activity-active-bg: color-mix(in srgb, var(--accent-muted) 72%, var(--bg-hover));
+  --activity-active-bg:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent-muted) 74%, var(--bg-hover)),
+      color-mix(in srgb, var(--bg-active) 78%, var(--accent-muted)));
+  --activity-active-border: color-mix(in srgb, var(--accent) 36%, var(--glass-divider-line-strong));
   --activity-active-color: var(--accent-text);
-  --activity-active-shadow: none;
+  --activity-active-shadow:
+    inset 2px 2px 5px color-mix(in srgb, var(--app-shell-bg) 58%, transparent),
+    inset -1px -1px 3px color-mix(in srgb, var(--glass-highlight) 18%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 [data-theme="contrast"] {
@@ -613,11 +654,8 @@
 .glass-panel.workspace-main-panel,
 .glass-panel.workspace-side-panel,
 .glass-panel.workspace-right-panel {
-  box-shadow:
-    0 1px 0 color-mix(in srgb, var(--glass-highlight) 92%, transparent) inset,
-    0 0 0 1px color-mix(in srgb, var(--glass-panel-border) 88%, transparent),
-    0 8px 24px color-mix(in srgb, var(--text-primary) 6%, transparent),
-    0 2px 8px color-mix(in srgb, var(--text-primary) 4%, transparent);
+  border-color: var(--workspace-panel-border-color);
+  box-shadow: var(--workspace-frame-shadow), var(--glass-divider-border-shadow);
 }
 
 .workspace-content {
@@ -627,11 +665,74 @@
   --workspace-rail-surface: color-mix(in srgb, var(--panel-bg-soft) 72%, var(--bg-surface));
   --workspace-panel-top-surface: color-mix(in srgb, var(--workspace-panel-surface) 90%, var(--glass-highlight));
   --workspace-panel-header-surface: color-mix(in srgb, var(--workspace-panel-surface) 84%, transparent);
-  --workspace-panel-border-color: var(--glass-panel-border);
+  --workspace-panel-border-color: var(--glass-divider-border);
 }
 
 .workspace-content.has-editor-tabs {
   --workspace-tab-surface: color-mix(in srgb, var(--workspace-panel-surface) 90%, var(--panel-bg-soft));
+}
+
+.activity-bar__items {
+  isolation: isolate;
+}
+
+.activity-bar__button {
+  background: transparent;
+  color: var(--text-tertiary);
+}
+
+.activity-bar__button:not(.is-active):not(:disabled):hover {
+  background: var(--control-bg);
+  color: var(--text-secondary);
+}
+
+.activity-bar__button.is-active {
+  color: var(--activity-active-color);
+}
+
+.activity-bar__button.is-disabled {
+  color: var(--border-default);
+}
+
+.activity-bar__liquid-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 0;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--activity-active-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--activity-active-bg);
+  background-clip: padding-box;
+  box-shadow: var(--activity-active-shadow);
+  pointer-events: none;
+  transition:
+    transform 420ms cubic-bezier(0.16, 1.18, 0.3, 1),
+    border-radius 220ms ease,
+    filter 220ms ease,
+    box-shadow 220ms ease;
+  will-change: transform;
+}
+
+.activity-bar__liquid-indicator::before {
+  content: none;
+}
+
+.activity-bar__liquid-indicator::after {
+  content: none;
+}
+
+.activity-bar__button-icon {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  line-height: 0;
+  pointer-events: none;
 }
 
 .workspace-main-panel.has-editor-tabs {
@@ -1191,6 +1292,25 @@ html, body, #root {
   overflow: hidden;
 }
 
+#root {
+  position: relative;
+}
+
+#root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--glass-highlight) 34%, var(--glass-panel-border)),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 72%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--glass-panel-border) 44%, transparent),
+    inset 1px 0 0 color-mix(in srgb, var(--glass-highlight) 24%, transparent),
+    inset -1px 0 0 color-mix(in srgb, var(--glass-panel-border) 34%, transparent);
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   background: var(--workspace-bg);
@@ -1230,6 +1350,11 @@ body {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 88%, transparent);
   backdrop-filter: blur(calc(var(--glass-blur) * 0.55)) saturate(140%);
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.55)) saturate(140%);
+}
+
+.glass-divider-border {
+  border: 1px solid var(--glass-divider-border);
+  box-shadow: var(--glass-divider-border-shadow);
 }
 
 .glass-divider-bottom,

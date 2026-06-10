@@ -82,7 +82,9 @@ function createWindow(): BrowserWindow {
     titleBarStyle: 'hiddenInset',
     titleBarOverlay: false,
     trafficLightPosition: isMac ? { x: 16, y: 12 } : undefined,
-    backgroundColor: '#1e1e1e',
+    transparent: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
     icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

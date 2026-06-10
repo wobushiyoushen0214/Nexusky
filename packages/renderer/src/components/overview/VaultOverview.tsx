@@ -10,7 +10,6 @@ import './vault-overview.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const TOKEN_WINDOW_DAYS = 30
-const DIARY_WINDOW_DAYS = 365
 
 function normalizeTimestamp(value: number): number {
   return value < 10_000_000_000 ? value * 1000 : value
@@ -80,36 +79,39 @@ function isDiaryNote(note: PropertyTableRow): boolean {
     title.includes('daily note')
 }
 
-function buildDiaryHeatmap(notes: PropertyTableRow[], days = DIARY_WINDOW_DAYS): {
+function buildDiaryHeatmap(notes: PropertyTableRow[]): {
   data: DiaryHeatmapPoint[]
   startDate: string
   endDate: string
   diaryCount: number
   editCount: number
 } {
-  const today = startOfLocalDay(new Date())
+  const year = new Date().getFullYear()
+  const yearStart = startOfLocalDay(new Date(year, 0, 1))
+  const yearEnd = startOfLocalDay(new Date(year, 11, 31))
   const byDate = new Map<string, number>()
 
-  for (let offset = days - 1; offset >= 0; offset--) {
-    const date = new Date(today.getTime() - offset * DAY_MS)
+  for (const date = new Date(yearStart); date <= yearEnd; date.setDate(date.getDate() + 1)) {
     byDate.set(formatDateKey(date), 0)
   }
 
   const diaryNotes = notes.filter(isDiaryNote)
+  let diaryCount = 0
   for (const note of diaryNotes) {
     const timestamp = normalizeTimestamp(note.updatedAt)
     if (!Number.isFinite(timestamp)) continue
     const key = formatDateKey(new Date(timestamp))
     if (!byDate.has(key)) continue
+    diaryCount += 1
     byDate.set(key, (byDate.get(key) || 0) + 1)
   }
 
   const data = Array.from(byDate.entries()).map(([date, value]) => ({ date, value }))
   return {
     data,
-    startDate: data[0]?.date || formatDateKey(today),
-    endDate: data[data.length - 1]?.date || formatDateKey(today),
-    diaryCount: diaryNotes.length,
+    startDate: data[0]?.date || formatDateKey(yearStart),
+    endDate: data[data.length - 1]?.date || formatDateKey(yearEnd),
+    diaryCount,
     editCount: data.reduce((sum, point) => sum + point.value, 0)
   }
 }

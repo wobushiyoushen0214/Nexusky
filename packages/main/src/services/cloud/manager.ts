@@ -1,5 +1,4 @@
 import { SyncProvider, SyncProviderType, SyncResult } from './provider'
-import { SupabaseSyncProvider } from './supabase-provider'
 import { ICloudSyncProvider } from './icloud-provider'
 import { OneDriveSyncProvider } from './onedrive-provider'
 import { WebDavSyncProvider } from './webdav-provider'
@@ -45,19 +44,22 @@ export function getOfflineQueueSize(): number {
 }
 
 const providers = new Map<SyncProviderType, SyncProvider>([
-  ['supabase', new SupabaseSyncProvider()],
   ['icloud', new ICloudSyncProvider()],
   ['onedrive', new OneDriveSyncProvider()],
   ['webdav', new WebDavSyncProvider()],
   ['s3', new S3SyncProvider()]
 ])
 
+function normalizeProviderType(value: unknown): SyncProviderType {
+  return providers.has(value as SyncProviderType) ? value as SyncProviderType : 'icloud'
+}
+
 export function getActiveProviderType(): SyncProviderType {
-  return (store.get('syncProvider') as SyncProviderType) || 'supabase'
+  return normalizeProviderType(store.get('syncProvider'))
 }
 
 export function setActiveProviderType(type: SyncProviderType): void {
-  store.set('syncProvider', type)
+  store.set('syncProvider', normalizeProviderType(type))
 }
 
 export function getActiveProvider(): SyncProvider | null {

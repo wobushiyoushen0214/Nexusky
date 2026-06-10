@@ -1281,13 +1281,6 @@ export interface IPCChannelMap {
   'plugins:install-marketplace-pack': { params: { vaultPath: string }; result: { installed: number; plugins: LocalPlugin[] } }
   'snippets:list': { params: { vaultPath: string }; result: CssSnippet[] }
   'themes:list': { params: { vaultPath: string }; result: ThemePackage[] }
-  'cloud:get-config': { params: undefined; result: { supabaseUrl: string; enabled: boolean; hasSupabaseKey: boolean; hasServiceRoleKey: boolean } }
-  'cloud:save-config': { params: { config: { supabaseUrl: string; supabaseKey?: string; serviceRoleKey?: string; enabled: boolean } }; result: void }
-  'cloud:init': { params: undefined; result: { success: boolean; error?: string } }
-  'cloud:sign-in': { params: { email: string; password: string }; result: { success: boolean; error?: string } }
-  'cloud:sign-up': { params: { email: string; password: string }; result: { success: boolean; error?: string } }
-  'cloud:sign-out': { params: undefined; result: void }
-  'cloud:get-user': { params: undefined; result: { email: string } | null }
   'cloud:get-sync-health': { params: { vaultPath?: string } | undefined; result: CloudSyncHealth }
   'cloud:sync': { params: { vaultPath: string }; result: { total: number; pushed: number; pulled: number; conflicts: CloudSyncConflict[]; errors: string[] } }
   'cloud:push-file': { params: { vaultPath: string; filePath: string }; result: boolean }

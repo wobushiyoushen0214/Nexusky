@@ -271,7 +271,7 @@
       },
       "diary": {
         "title": "Diary edit heatmap",
-        "subtitle": "Last year: {{count}} diary notes, {{edits}} updates"
+        "subtitle": "January to December: {{count}} diary notes, {{edits}} updates"
       },
       "composition": {
         "title": "Note composition",

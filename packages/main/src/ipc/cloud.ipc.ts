@@ -1,8 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { store } from '../services/store'
-import { resetClient, CloudConfig } from '../services/cloud/client'
-import { initializeCloud } from '../services/cloud/setup'
-import { signIn, signUp, signOut, getUser } from '../services/cloud/auth'
 import {
   pushFile,
   pullFile,
@@ -28,47 +25,6 @@ import { WebDavConfig, normalizeWebDavConfig } from '../services/cloud/webdav-pr
 import { S3Config, normalizeS3Config } from '../services/cloud/s3-provider'
 
 export function registerCloudIPC(): void {
-  ipcMain.handle('cloud:get-config', () => {
-    const config = (store.get('cloudConfig') as Partial<CloudConfig> | undefined) || {}
-    return {
-      supabaseUrl: config.supabaseUrl || '',
-      enabled: !!config.enabled,
-      hasSupabaseKey: !!config.supabaseKey,
-      hasServiceRoleKey: !!config.serviceRoleKey
-    }
-  })
-
-  ipcMain.handle('cloud:save-config', (_event, params: { config: CloudConfig }) => {
-    const existing = (store.get('cloudConfig') as Partial<CloudConfig> | undefined) || {}
-    store.set('cloudConfig', {
-      supabaseUrl: params.config.supabaseUrl || '',
-      supabaseKey: params.config.supabaseKey || existing.supabaseKey || '',
-      serviceRoleKey: params.config.serviceRoleKey || existing.serviceRoleKey || '',
-      enabled: !!params.config.enabled
-    })
-    resetClient()
-  })
-
-  ipcMain.handle('cloud:init', async () => {
-    return initializeCloud()
-  })
-
-  ipcMain.handle('cloud:sign-in', async (_event, params: { email: string; password: string }) => {
-    return signIn(params.email, params.password)
-  })
-
-  ipcMain.handle('cloud:sign-up', async (_event, params: { email: string; password: string }) => {
-    return signUp(params.email, params.password)
-  })
-
-  ipcMain.handle('cloud:sign-out', async () => {
-    await signOut()
-  })
-
-  ipcMain.handle('cloud:get-user', async () => {
-    return getUser()
-  })
-
   ipcMain.handle('cloud:get-sync-health', (_event, params?: { vaultPath?: string }) => {
     return getSyncHealth(params?.vaultPath)
   })

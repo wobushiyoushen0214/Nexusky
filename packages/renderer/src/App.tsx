@@ -441,11 +441,11 @@ export default function App() {
   const workspaceSideBackground = 'var(--workspace-rail-surface)'
   const workspaceSideBorder = '1px solid var(--workspace-panel-border-color)'
   const workspaceSideRadius = 20
-  const workspaceSideShadow = 'var(--shadow-md)'
+  const workspaceSideShadow = 'var(--workspace-frame-shadow), var(--glass-divider-border-shadow)'
   const workspaceSideBackdropFilter = 'blur(var(--glass-blur)) saturate(160%)'
   const workspaceMainBackground = showEditorChromeTabs ? 'var(--workspace-tab-surface)' : 'var(--workspace-panel-surface)'
   const workspacePanelBorder = '1px solid var(--workspace-panel-border-color)'
-  const workspacePanelShadow = showEditorChromeTabs ? 'var(--shadow-md)' : 'var(--workspace-frame-shadow)'
+  const workspacePanelShadow = 'var(--workspace-frame-shadow), var(--glass-divider-border-shadow)'
   const workspaceMainShadow = workspacePanelShadow
   const rightPanelTitle = rightPanel === 'chat'
     ? t('panels.chat')

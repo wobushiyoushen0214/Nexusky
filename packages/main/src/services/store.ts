@@ -13,11 +13,9 @@ function getStorePath(): string {
 }
 
 // 字段路径模式：用于判断 value 中哪些字符串字段需要加密
-// 支持点号嵌套（cloudConfig.supabaseKey）和数组通配（aiProviders[].apiKey）
+// 支持点号嵌套和数组通配（aiProviders[].apiKey）
 const SECRET_FIELD_NAMES = new Set([
   'apiKey',
-  'supabaseKey',
-  'serviceRoleKey',
   'accessToken',
   'refreshToken',
   'token',
@@ -207,4 +205,3 @@ class Store {
 }
 
 export const store = new Store()
-

@@ -15,14 +15,7 @@
     inset 0 1px 0 var(--overview-glass-highlight);
   --overview-scratch-bright: color-mix(in srgb, var(--overview-glass-highlight) 62%, transparent);
   --overview-scratch-shadow: color-mix(in srgb, var(--text-primary) 9%, transparent);
-  --overview-scratch-line: linear-gradient(
-    90deg,
-    var(--overview-scratch-shadow) 0%,
-    var(--overview-scratch-bright) 18%,
-    color-mix(in srgb, var(--overview-scratch-shadow) 64%, transparent) 50%,
-    var(--overview-scratch-bright) 82%,
-    var(--overview-scratch-shadow) 100%
-  );
+  --overview-scratch-line: color-mix(in srgb, var(--overview-scratch-bright) 64%, var(--overview-glass-border));
   --overview-glass-blur: var(--blur-md, 14px);
   --overview-text-primary: var(--text-primary);
   --overview-text-secondary: var(--text-secondary);
@@ -210,8 +203,8 @@
   bottom: 0;
   height: 1px;
   background: var(--overview-scratch-line);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--overview-scratch-bright) 38%, transparent);
-  opacity: 0.58;
+  box-shadow: none;
+  opacity: 0.74;
   pointer-events: none;
 }
 

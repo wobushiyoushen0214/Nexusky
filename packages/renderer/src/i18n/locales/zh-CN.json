@@ -271,7 +271,7 @@
       },
       "diary": {
         "title": "日记编辑热力图",
-        "subtitle": "最近一年：{{count}} 篇日记，{{edits}} 次更新"
+        "subtitle": "1 月到 12 月：{{count}} 篇日记，{{edits}} 次更新"
       },
       "composition": {
         "title": "笔记构成",

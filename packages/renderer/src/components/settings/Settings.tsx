@@ -16,8 +16,6 @@ import type { AICostBudget, AIProviderConfig, AIUsageSummary, CloudSyncConflict,
 import type { Theme } from '../../stores/ui-store'
 
 type ProviderConfig = AIProviderConfig
-type CloudConfig = { supabaseUrl: string; supabaseKey: string; serviceRoleKey: string; enabled: boolean; hasSupabaseKey: boolean; hasServiceRoleKey: boolean }
-type CloudUser = { email: string } | null
 type SnippetView = CssSnippet & { enabled: boolean }
 type ThemePackageView = ThemePackage & { active: boolean }
 type ProviderSetupErrorKind = AiProviderErrorKind
@@ -174,8 +172,6 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [aiUsageSummary, setAiUsageSummary] = useState<AIUsageSummary | null>(null)
   const [aiUsageLoading, setAiUsageLoading] = useState(false)
   const [aiCostBudget, setAiCostBudget] = useState<AICostBudget | null>(null)
-  const [cloudConfig, setCloudConfig] = useState<CloudConfig>({ supabaseUrl: '', supabaseKey: '', serviceRoleKey: '', enabled: false, hasSupabaseKey: false, hasServiceRoleKey: false })
-  const [cloudUser, setCloudUser] = useState<CloudUser>(null)
   const [detectConfirm, setDetectConfirm] = useState(false)
   const overlayPointerDownRef = useRef(false)
   const providerOverlayPointerDownRef = useRef(false)
@@ -226,10 +222,6 @@ export function Settings({ open, onClose }: SettingsProps) {
           setActiveProviderId(active?.id || ps[0]?.id || null)
         })
       })
-      window.api.invoke('cloud:get-config', undefined).then((config) => {
-        setCloudConfig({ ...config, supabaseKey: '', serviceRoleKey: '' })
-      })
-      window.api.invoke('cloud:get-user', undefined).then(setCloudUser)
       loadAiUsageSummary()
       loadAiCostBudget()
     }
@@ -571,10 +563,6 @@ export function Settings({ open, onClose }: SettingsProps) {
 
             {tab === 'cloud' && (
               <CloudTab
-                cloudConfig={cloudConfig}
-                setCloudConfig={setCloudConfig}
-                cloudUser={cloudUser}
-                setCloudUser={setCloudUser}
                 inputStyle={inputStyle}
               />
             )}
@@ -1301,18 +1289,13 @@ function ProviderSetupChecklist({ config, validationResult, probeResult, testing
 }
 
 interface CloudTabProps {
-  cloudConfig: CloudConfig
-  setCloudConfig: React.Dispatch<React.SetStateAction<CloudConfig>>
-  cloudUser: CloudUser
-  setCloudUser: React.Dispatch<React.SetStateAction<CloudUser>>
   inputStyle: React.CSSProperties
 }
 
-function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputStyle }: CloudTabProps) {
+function CloudTab({ inputStyle }: CloudTabProps) {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
-  const [activeProvider, setActiveProvider] = useState<string>('supabase')
-  const [providers, setProviders] = useState<{ type: string; name: string; configured: boolean }[]>([])
+  const [activeProvider, setActiveProvider] = useState<string>('icloud')
   const [syncHealth, setSyncHealth] = useState<CloudSyncHealth | null>(null)
   const [syncHealthLoading, setSyncHealthLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -1327,7 +1310,6 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
 
   useEffect(() => {
     window.api.invoke('cloud:get-sync-provider', undefined).then(setActiveProvider)
-    window.api.invoke('cloud:get-all-providers', undefined).then(setProviders)
     window.api.invoke('cloud:get-onedrive-config', undefined).then((c) => {
       if (c) setOnedriveConfig({ clientId: c.clientId, folder: c.folder })
     })
@@ -1467,10 +1449,6 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       <div>
         <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 10 }}>{t('settings.cloudSync.providerSelectorTitle')}</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className={`settings-glass-control${activeProvider === 'supabase' ? ' is-active' : ''}`} onClick={() => switchProvider('supabase')} style={providerBtnStyle(activeProvider === 'supabase')}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Supabase
-          </button>
           <button className={`settings-glass-control${activeProvider === 'icloud' ? ' is-active' : ''}`} onClick={() => switchProvider('icloud')} style={providerBtnStyle(activeProvider === 'icloud')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
             iCloud
@@ -1491,16 +1469,6 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
       </div>
 
       {/* Provider-specific config */}
-      {activeProvider === 'supabase' && (
-        <SupabaseConfig
-          cloudConfig={cloudConfig}
-          setCloudConfig={setCloudConfig}
-          cloudUser={cloudUser}
-          setCloudUser={setCloudUser}
-          inputStyle={inputStyle}
-        />
-      )}
-
       {activeProvider === 'icloud' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ padding: '12px 14px', borderRadius: 8, background: 'var(--control-bg)', border: '1px solid var(--border-subtle)' }}>
@@ -1799,90 +1767,6 @@ function CloudTab({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputS
           onResolve={handleResolveConflict}
         />
       </div>
-    </div>
-  )
-}
-
-function SupabaseConfig({ cloudConfig, setCloudConfig, cloudUser, setCloudUser, inputStyle }: CloudTabProps) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div>
-        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Supabase URL</label>
-        <input
-          value={cloudConfig.supabaseUrl}
-          onChange={(e) => setCloudConfig({ ...cloudConfig, supabaseUrl: e.target.value })}
-          style={inputStyle}
-          placeholder="https://xxx.supabase.co"
-          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
-        />
-      </div>
-      <div>
-        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Supabase Anon Key</label>
-        <input
-          type="password"
-          value={cloudConfig.supabaseKey}
-          onChange={(e) => setCloudConfig({ ...cloudConfig, supabaseKey: e.target.value })}
-          style={inputStyle}
-          placeholder={cloudConfig.hasSupabaseKey ? '已保存，留空保留' : 'eyJ...'}
-          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
-        />
-      </div>
-      <div>
-        <label style={{ display: 'block', fontSize: 11, color: 'var(--accent-text)', marginBottom: 6, fontWeight: 600 }}>Service Role Key（必填）</label>
-        <input
-          type="password"
-          value={cloudConfig.serviceRoleKey}
-          onChange={(e) => setCloudConfig({ ...cloudConfig, serviceRoleKey: e.target.value })}
-          style={inputStyle}
-          placeholder={cloudConfig.hasServiceRoleKey ? '已保存，留空保留' : 'eyJ... (Dashboard → Settings → API → service_role)'}
-          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
-        />
-      </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={cloudConfig.enabled}
-          onChange={(e) => setCloudConfig({ ...cloudConfig, enabled: e.target.checked })}
-          style={{ width: 14, height: 14, accentColor: 'var(--accent)' }}
-        />
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>启用 Supabase</span>
-      </label>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={async () => { await window.api.invoke('cloud:save-config', { config: cloudConfig }) }}
-          style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
-        >
-          保存配置
-        </button>
-        {cloudConfig.supabaseUrl && (cloudConfig.supabaseKey || cloudConfig.hasSupabaseKey) && (
-          <button
-            onClick={async () => {
-              await window.api.invoke('cloud:save-config', { config: cloudConfig })
-              const result = await window.api.invoke('cloud:init', undefined)
-              toast(result.success ? '云端初始化成功！' : `初始化失败: ${result.error}`, result.success ? 'success' : 'error')
-            }}
-            style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 6, cursor: 'pointer' }}
-          >
-            一键初始化
-          </button>
-        )}
-      </div>
-      {cloudConfig.enabled && cloudUser && (
-        <div style={{ paddingTop: 12, borderTop: '0', boxShadow: 'var(--glass-divider-shadow-top)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 6, background: 'var(--control-bg)', border: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cloudUser.email}</span>
-            <button
-              onClick={async () => { await window.api.invoke('cloud:sign-out', undefined); setCloudUser(null) }}
-              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}
-            >
-              退出
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
