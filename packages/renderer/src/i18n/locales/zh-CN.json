@@ -204,6 +204,7 @@
     }
   },
   "activityBar": {
+    "overview": "总览",
     "files": "文件",
     "search": "搜索",
     "chat": "AI 对话",
@@ -217,6 +218,70 @@
     "more": "更多",
     "requiresCurrentFile": "打开笔记后可用",
     "settings": "设置"
+  },
+  "overviewPage": {
+    "title": "笔记空间总览",
+    "refresh": "刷新",
+    "refreshing": "刷新中...",
+    "loading": "正在读取本地数据...",
+    "scannedAt": "扫描于 {{time}}",
+    "stats": {
+      "notes": "笔记",
+      "links": "链接",
+      "orphans": "孤立笔记",
+      "issues": "待处理问题"
+    },
+    "health": {
+      "title": "Vault Health",
+      "action": "进入维护",
+      "scoreLabel": "健康分",
+      "issuesHint": "本地扫描发现 {{count}} 项可处理的维护信号",
+      "noIssues": "本地扫描未发现需要处理的维护信号",
+      "empty": "尚未生成健康扫描结果"
+    },
+    "trend": {
+      "title": "健康趋势",
+      "subtitle": "按周记录的健康分",
+      "empty": "本地还没有足够的每周健康快照，持续使用后会出现趋势"
+    },
+    "composition": {
+      "title": "笔记构成",
+      "action": "查看图谱",
+      "linked": "已链接",
+      "orphan": "孤立",
+      "stale": "久未更新",
+      "empty": "当前笔记空间还没有可统计的笔记"
+    },
+    "tags": {
+      "title": "常用标签",
+      "subtitle": "共 {{count}} 个标签",
+      "empty": "笔记里还没有标签，使用 #标签 后会在这里汇总"
+    },
+    "recent": {
+      "title": "最近更新",
+      "subtitle": "按修改时间排序",
+      "empty": "还没有最近更新的笔记"
+    },
+    "charts": {
+      "tokens": {
+        "title": "Token 使用量",
+        "subtitle": "最近 30 天共 {{count}} tokens",
+        "input": "输入",
+        "output": "输出"
+      },
+      "diary": {
+        "title": "日记编辑热力图",
+        "subtitle": "最近一年：{{count}} 篇日记，{{edits}} 次更新"
+      },
+      "composition": {
+        "title": "笔记构成",
+        "subtitle": "共 {{count}} 篇笔记",
+        "active": "活跃笔记",
+        "orphan": "孤立笔记",
+        "stale": "久未更新",
+        "empty": "当前笔记空间还没有可统计的笔记"
+      }
+    }
   },
   "panels": {
     "chat": "AI 对话",
@@ -306,7 +371,8 @@
       "ready": "待审查",
       "priority": "优先项",
       "health": "健康分",
-      "reviewed": "本周审查"
+      "reviewed": "本周审查",
+      "backToList": "返回完整列表"
     },
     "insights": {
       "title": "维护洞察",
@@ -354,6 +420,8 @@
     },
     "queueMore": {
       "action": "更多",
+      "collapse": "收起",
+      "loadMore": "加载更多 {{count}} 项",
       "title": "完整维护队列",
       "subtitle": "当前筛选下有 {{count}} 项维护信号，可在这里集中处理。"
     },

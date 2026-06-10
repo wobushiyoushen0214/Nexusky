@@ -41,7 +41,8 @@ const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => 
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
 const PublishScopeDialog = lazy(() => import('./components/PublishScopeDialog').then((m) => ({ default: m.PublishScopeDialog })))
-const MaintenanceQueuePanel = lazy(() => import('./components/maintenance/MaintenanceQueuePanel').then((m) => ({ default: m.MaintenanceQueuePanel })))
+const MaintenanceContainer = lazy(() => import('./components/maintenance/MaintenanceContainer').then((m) => ({ default: m.MaintenanceContainer })))
+const VaultOverview = lazy(() => import('./components/overview/VaultOverview').then((m) => ({ default: m.VaultOverview })))
 const AgentRunPanel = lazy(() => import('./components/agent/AgentRunPanel').then((m) => ({ default: m.AgentRunPanel })))
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
@@ -456,11 +457,9 @@ export default function App() {
           ? t('panels.history')
           : rightPanel === 'agent'
             ? t('panels.agent')
-            : rightPanel === 'maintenance'
-              ? t('panels.maintenance')
-              : rightPanel === 'plugin'
-                ? (activePluginPanel?.panel.title || 'Plugin')
-                : t('panels.outline')
+            : rightPanel === 'plugin'
+              ? (activePluginPanel?.panel.title || 'Plugin')
+              : t('panels.outline')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--workspace-bg)' }}>
@@ -510,6 +509,14 @@ export default function App() {
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><CanvasView initialMode="time" /></Suspense>
               </div>
+            ) : mainView === 'maintenance' ? (
+              <div style={{ height: '100%', overflow: 'auto' }}>
+                <Suspense fallback={null}><MaintenanceContainer /></Suspense>
+              </div>
+            ) : mainView === 'overview' ? (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Suspense fallback={null}><VaultOverview /></Suspense>
+              </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><GraphView /></Suspense>
@@ -545,7 +552,6 @@ export default function App() {
               {rightPanel === 'history' && <HistoryPanel />}
               {rightPanel === 'agent' && <AgentRunPanel />}
               {rightPanel === 'plugin' && <PluginPanelView active={activePluginPanel} />}
-              {rightPanel === 'maintenance' && <MaintenanceQueuePanel />}
               </Suspense>
               {chatEverOpened && (
                 <div style={{ flex: 1, overflow: 'hidden', display: rightPanel === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>

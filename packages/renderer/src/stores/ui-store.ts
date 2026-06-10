@@ -3,7 +3,7 @@ import i18n from '../i18n'
 import { safeGet, safeGetJSON, safeRemove, safeSet, safeSetJSON } from '../utils/storage'
 import type { GraphMode } from '@shared/types/ipc'
 
-type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'history' | 'graph' | 'plugin' | 'maintenance' | 'agent'
+type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'history' | 'graph' | 'plugin' | 'agent'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
 const LANGUAGE_IDS = ['zh-CN', 'en'] as const
 const ACCENT_STORAGE_KEY = 'nexusky-accent-color'
@@ -11,9 +11,8 @@ const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
 const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'bases' | 'timeline'
+type MainView = 'editor' | 'graph' | 'bases' | 'timeline' | 'maintenance' | 'overview'
 type Language = typeof LANGUAGE_IDS[number]
-type MaintenancePanelSection = 'context' | 'queue'
 type WorkspaceLayout = {
   mainView: MainView
   rightPanel: Panel
@@ -29,8 +28,8 @@ const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
-const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'history', 'graph', 'plugin', 'maintenance', 'agent']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'timeline']
+const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'history', 'graph', 'plugin', 'agent']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'bases', 'timeline', 'maintenance', 'overview']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
@@ -53,7 +52,6 @@ interface UIState {
   accentColor: string | null
   language: Language
   graphMode: GraphMode
-  maintenancePanelSection: MaintenancePanelSection
   pendingAgentGoal: { goal: string; description?: string } | null
   pendingBasesFocus: { filePath: string } | null
   setRightPanel: (panel: Panel) => void
@@ -80,7 +78,6 @@ interface UIState {
   toggleTheme: () => void
   setLanguage: (lang: Language) => void
   setGraphMode: (mode: GraphMode) => void
-  setMaintenancePanelSection: (section: MaintenancePanelSection) => void
   resetWorkspaceLayout: () => void
   sendToAgent: (payload: { goal: string; description?: string }) => void
   consumePendingAgentGoal: () => { goal: string; description?: string } | null
@@ -227,12 +224,12 @@ function saveRightPanelWidth(panel: Panel, width: number): number {
 
 function normalizeMainView(value: string | null | undefined): MainView | null {
   if (value === 'canvas') return 'bases'
-  if (value === 'kanban' || value === 'reader' || value === 'maintenance') return 'editor'
+  if (value === 'kanban' || value === 'reader') return 'editor'
   return value && MAIN_VIEW_IDS.includes(value as MainView) ? value as MainView : null
 }
 
 function getInitialMainView(): MainView {
-  return normalizeMainView(safeGet(WORKSPACE_KEYS.mainView)) || 'editor'
+  return normalizeMainView(safeGet(WORKSPACE_KEYS.mainView)) || 'overview'
 }
 
 function getInitialRightPanel(): Panel {
@@ -250,6 +247,7 @@ function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
 function normalizeRightPanel(value: string | null | undefined): Panel | null {
   if (value === 'context') return 'none'
   if (value === 'calendar') return 'none'
+  if (value === 'maintenance') return 'none'
   return value && PANEL_IDS.includes(value as Panel) ? value as Panel : null
 }
 
@@ -260,10 +258,12 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   if (scoped && scopedMainView && scopedRightPanel && typeof scoped.sidebarCollapsed === 'boolean') {
     return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel) }
   }
+  const mainView = getInitialMainView()
+  const legacyOverviewMainView = safeGet(WORKSPACE_KEYS.mainView) === 'overview'
   return {
-    mainView: getInitialMainView(),
-    rightPanel: getAvailableRightPanel(getInitialMainView(), getInitialRightPanel()),
-    sidebarCollapsed: getInitialSidebarCollapsed(),
+    mainView,
+    rightPanel: getAvailableRightPanel(mainView, getInitialRightPanel()),
+    sidebarCollapsed: legacyOverviewMainView ? false : getInitialSidebarCollapsed(),
   }
 }
 
@@ -327,7 +327,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   accentColor: initialAccentColor,
   language: initialLanguage,
   graphMode: getInitialGraphMode(),
-  maintenancePanelSection: 'queue',
   pendingAgentGoal: null,
   pendingBasesFocus: null,
 
@@ -427,7 +426,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     safeSet(GRAPH_MODE_STORAGE_KEY, next)
     set({ graphMode: next })
   },
-  setMaintenancePanelSection: (section) => set({ maintenancePanelSection: section }),
   resetWorkspaceLayout: () => {
     const { workspaceScope, sidebarWidthScope } = get()
     removeWorkspaceLayout(workspaceScope)

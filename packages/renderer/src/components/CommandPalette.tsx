@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
+import { useMaintenanceStore } from '../stores/maintenance-store'
 import { toast } from '../stores/toast-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import { toolSurfaceCategoryToCommandCategory } from './tool-surface/tool-surface-category'
@@ -32,7 +33,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
   const [toolSurfaceEntries, setToolSurfaceEntries] = useState<ToolSurfaceEntry[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
-  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection, setPublishScopeOpen, language } = useUIStore()
+  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setPublishScopeOpen, language } = useUIStore()
   const { saveFile, currentFilePath, content } = useEditorStore()
   const { vaultPath } = useVaultStore()
 
@@ -219,8 +220,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'view-context-pack', category: 'interface', label: t('commandPalette.commands.viewContextPack.label'), description: t('commandPalette.commands.viewContextPack.description'), keywords: ['context', 'memory', 'long-context', 'observability', 'tune'], action: () => { useUIStore.getState().setSettingsInitialTab('long-context'); setSettingsOpen(true) } },
     { id: 'open-agent-panel', category: 'interface', label: t('commandPalette.commands.openAgent.label'), description: t('commandPalette.commands.openAgent.description'), keywords: ['agent', 'plan', 'execute', 'autonomy'], action: () => setRightPanel('agent') },
     { id: 'open-maintenance', category: 'interface', label: t('commandPalette.commands.openMaintenance.label'), description: t('commandPalette.commands.openMaintenance.description'), keywords: ['maintenance', 'queue', 'fix'], action: () => {
-      setMaintenancePanelSection('queue')
-      setRightPanel('maintenance')
+      useMaintenanceStore.getState().setViewMode('legacy')
+      setMainView('maintenance')
+      if (!useUIStore.getState().sidebarCollapsed) {
+        toggleSidebar()
+      }
     } },
     { id: 'new-window', category: 'interface', label: t('commandPalette.commands.newWindow.label'), description: t('commandPalette.commands.newWindow.description'), keywords: ['window', 'multi'], action: () => window.api.windowControls.newWindow() },
     { id: 'sidebar', category: 'interface', label: t('commandPalette.commands.sidebar.label'), shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
@@ -274,7 +278,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         }
       }
     })),
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setMaintenancePanelSection, setPublishScopeOpen, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, toolSurfaceEntries, t])
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setPublishScopeOpen, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, toolSurfaceEntries, t])
 
   const filtered = query.trim()
     ? commands.filter((c) => {

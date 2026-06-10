@@ -10,9 +10,12 @@ interface WorkerNode {
   fy?: number | null
 }
 
+type WorkerLinkType = 'explicit' | 'inferred' | 'folder'
+
 interface WorkerLink {
   source: string
   target: string
+  linkType?: WorkerLinkType
 }
 
 interface ForceParams {
@@ -48,7 +51,7 @@ type OutMsg = OutTickEvent | { type: 'end' }
 let simulation: ReturnType<typeof forceSimulation<SimInternalNode>> | null = null
 let currentNodes: SimInternalNode[] = []
 let currentLinks: WorkerLink[] = []
-let currentParams: ForceParams | null = null
+let degreeMap = new Map<string, number>()
 let tickPending = false
 
 function radiusFor(d: SimInternalNode): number {
@@ -58,6 +61,59 @@ function radiusFor(d: SimInternalNode): number {
   if (d.linkCount >= 3) return 7
   if (d.linkCount >= 1) return 5
   return 3
+}
+
+function endpointId(endpoint: string | SimInternalNode): string {
+  return typeof endpoint === 'string' ? endpoint : endpoint.id
+}
+
+function endpointNode(endpoint: string | SimInternalNode): SimInternalNode | null {
+  return typeof endpoint === 'string' ? null : endpoint
+}
+
+function degreeOf(id: string): number {
+  return Math.max(1, degreeMap.get(id) || 0)
+}
+
+function rebuildDegreeMap(): void {
+  degreeMap = new Map<string, number>()
+  for (const link of currentLinks) {
+    degreeMap.set(link.source, (degreeMap.get(link.source) || 0) + 1)
+    degreeMap.set(link.target, (degreeMap.get(link.target) || 0) + 1)
+  }
+}
+
+/* Hub-heavy graphs collapse into knots when every link pulls with the same
+   strength. Degree-aware distance/strength (Obsidian-style) lets dense hubs
+   relax outward while folder links keep clusters compact. */
+function linkDistanceFor(link: WorkerLink, params: ForceParams): number {
+  const source = endpointNode(link.source as unknown as string | SimInternalNode)
+  const target = endpointNode(link.target as unknown as string | SimInternalNode)
+  const radii = (source ? radiusFor(source) : 5) + (target ? radiusFor(target) : 5)
+  if (link.linkType === 'folder') {
+    return (params.isLarge ? 46 : 58) + radii
+  }
+  const base = params.isLarge ? 72 : params.linkDistance
+  const sourceDegree = degreeOf(endpointId(link.source as unknown as string | SimInternalNode))
+  const targetDegree = degreeOf(endpointId(link.target as unknown as string | SimInternalNode))
+  return base + radii + Math.min(48, (sourceDegree + targetDegree) * 3)
+}
+
+function linkStrengthFor(link: WorkerLink, params: ForceParams): number {
+  if (link.linkType === 'folder') return params.isLarge ? 0.45 : 0.55
+  const sourceDegree = degreeOf(endpointId(link.source as unknown as string | SimInternalNode))
+  const targetDegree = degreeOf(endpointId(link.target as unknown as string | SimInternalNode))
+  return Math.min(0.5, 1 / Math.min(sourceDegree, targetDegree))
+}
+
+function chargeStrengthFor(node: SimInternalNode, params: ForceParams): number {
+  const base = params.isLarge ? -220 : params.chargeStrength
+  if (node.type === 'folder') return base * 1.7
+  return base * (0.6 + Math.min(node.linkCount, 10) * 0.08)
+}
+
+function collideRadiusFor(node: SimInternalNode, params: ForceParams): number {
+  return radiusFor(node) + (params.isLarge ? 16 : 26)
 }
 
 function postTick(): void {
@@ -78,12 +134,17 @@ function postTick(): void {
 
 function buildSimulation(width: number, height: number, params: ForceParams, startAlpha?: number): void {
   if (simulation) simulation.stop()
-  currentParams = params
+  rebuildDegreeMap()
   simulation = forceSimulation(currentNodes)
-    .force('link', forceLink<SimInternalNode, WorkerLink>(currentLinks).id((d) => d.id).distance(params.isLarge ? 60 : params.linkDistance).strength(0.35))
-    .force('charge', forceManyBody().strength(params.isLarge ? -220 : params.chargeStrength).distanceMax(params.isLarge ? 320 : 520))
+    .force('link', forceLink<SimInternalNode, WorkerLink>(currentLinks)
+      .id((d) => d.id)
+      .distance((l) => linkDistanceFor(l, params))
+      .strength((l) => linkStrengthFor(l, params)))
+    .force('charge', forceManyBody<SimInternalNode>()
+      .strength((d) => chargeStrengthFor(d, params))
+      .distanceMax(params.isLarge ? 380 : 640))
     .force('center', forceCenter(width / 2, height / 2))
-    .force('collide', forceCollide<SimInternalNode>((d) => radiusFor(d) + (params.isLarge ? 12 : 22)).iterations(params.isLarge ? 1 : 2))
+    .force('collide', forceCollide<SimInternalNode>((d) => collideRadiusFor(d, params)).iterations(2))
     .force('x', forceX(width / 2).strength(params.centerStrength))
     .force('y', forceY(height / 2).strength(params.centerStrength))
 
@@ -139,15 +200,13 @@ self.onmessage = (event: MessageEvent<InMsg>): void => {
     return
   }
   if (msg.type === 'update-params') {
-    if (!currentParams) return
     const params = msg.params
-    currentParams = params
     const linkForce = simulation.force('link') as ReturnType<typeof forceLink<SimInternalNode, WorkerLink>> | undefined
-    if (linkForce) linkForce.distance(params.isLarge ? 60 : params.linkDistance)
-    const chargeForce = simulation.force('charge') as ReturnType<typeof forceManyBody> | undefined
-    if (chargeForce) chargeForce.strength(params.isLarge ? -220 : params.chargeStrength).distanceMax(params.isLarge ? 320 : 520)
+    if (linkForce) linkForce.distance((l) => linkDistanceFor(l, params)).strength((l) => linkStrengthFor(l, params))
+    const chargeForce = simulation.force('charge') as ReturnType<typeof forceManyBody<SimInternalNode>> | undefined
+    if (chargeForce) chargeForce.strength((d) => chargeStrengthFor(d, params)).distanceMax(params.isLarge ? 380 : 640)
     const collideForce = simulation.force('collide') as ReturnType<typeof forceCollide<SimInternalNode>> | undefined
-    if (collideForce) collideForce.radius((d) => radiusFor(d) + (params.isLarge ? 12 : 22)).iterations(params.isLarge ? 1 : 2)
+    if (collideForce) collideForce.radius((d) => collideRadiusFor(d, params)).iterations(2)
     const xForce = simulation.force('x') as ReturnType<typeof forceX> | undefined
     if (xForce) xForce.strength(params.centerStrength)
     const yForce = simulation.force('y') as ReturnType<typeof forceY> | undefined

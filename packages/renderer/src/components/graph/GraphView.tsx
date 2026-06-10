@@ -1031,13 +1031,14 @@ export function GraphView() {
         links: links.map((link) => ({
           source: typeof link.source === 'string' ? link.source : link.source.id,
           target: typeof link.target === 'string' ? link.target : link.target.id,
+          linkType: link.linkType,
         })),
         width,
         height,
         params: {
-          chargeStrength: isLarge ? -220 : -380,
-          linkDistance: relationLinkCount > nodes.length ? 80 : 110,
-          centerStrength: isLarge ? 0.005 : 0.01,
+          chargeStrength: isLarge ? -240 : -400,
+          linkDistance: relationLinkCount > nodes.length ? 84 : 104,
+          centerStrength: isLarge ? 0.008 : 0.015,
           isLarge,
           isHeavy,
         },

@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../../stores/ui-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useActivityBarStore } from '../../stores/activity-bar-store'
+import { useMaintenanceStore } from '../../stores/maintenance-store'
 import { ACTIVITY_BAR_REGISTRY, isActivityBarItemAvailable } from './activity-bar-registry'
 import { ContextMenu } from '../ContextMenu'
 
 const iconMap: Record<string, React.ReactNode> = {
+  overview: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>,
   files: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>,
   search: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
   chat: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
@@ -19,28 +21,19 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export function ActivityBar() {
   const { t } = useTranslation()
-  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar, setMaintenancePanelSection } = useUIStore()
+  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar } = useUIStore()
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const { visibleIds, toggleVisibility } = useActivityBarStore()
 
-  const [moreOpen, setMoreOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
-  const moreRef = useRef<HTMLDivElement>(null)
-  const moreButtonRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (!moreOpen) return
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (moreRef.current?.contains(target)) return
-      if (moreButtonRef.current?.contains(target)) return
-      setMoreOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [moreOpen])
 
   const actionMap: Record<string, () => void> = {
+    overview: () => {
+      setMainView('overview')
+      if (!useUIStore.getState().sidebarCollapsed) {
+        toggleSidebar()
+      }
+    },
     files: () => {
       const state = useUIStore.getState()
       if (state.mainView !== 'editor') {
@@ -66,8 +59,11 @@ export function ActivityBar() {
     properties: () => toggleRightPanel('properties'),
     tags: () => toggleRightPanel('tags'),
     maintenance: () => {
-      setMaintenancePanelSection('queue')
-      toggleRightPanel('maintenance')
+      useMaintenanceStore.getState().setViewMode('legacy')
+      setMainView('maintenance')
+      if (!useUIStore.getState().sidebarCollapsed) {
+        toggleSidebar()
+      }
     },
   }
 
@@ -75,11 +71,11 @@ export function ActivityBar() {
     .map((id) => ACTIVITY_BAR_REGISTRY.find((i) => i.id === id))
     .filter(Boolean)
 
-  const hiddenItems = ACTIVITY_BAR_REGISTRY.filter((item) => !visibleIds.includes(item.id))
   const availabilityContext = { mainView, currentFilePath }
 
   const getActiveId = () => {
-    if (rightPanel === 'maintenance') return 'maintenance'
+    if (mainView === 'overview') return 'overview'
+    if (mainView === 'maintenance') return 'maintenance'
     if (useUIStore.getState().mainView === 'graph') return 'graph'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
@@ -168,40 +164,6 @@ export function ActivityBar() {
           )
         })}
 
-        {/* More button - only show if there are hidden items */}
-        {hiddenItems.length > 0 && (
-          <button
-            ref={moreButtonRef}
-            onClick={() => setMoreOpen(!moreOpen)}
-            title={t('activityBar.more')}
-            style={{
-              width: 34,
-              height: 34,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 9,
-              border: 0,
-              background: moreOpen ? 'var(--control-bg)' : 'transparent',
-              color: moreOpen ? 'var(--text-secondary)' : 'var(--text-tertiary)',
-              cursor: 'pointer',
-              boxShadow: 'none',
-              transition: 'color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--control-bg)'
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-            onMouseLeave={(e) => {
-              if (!moreOpen) {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = 'var(--text-tertiary)'
-              }
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
-          </button>
-        )}
       </div>
 
       {/* Bottom: settings */}
@@ -234,42 +196,6 @@ export function ActivityBar() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
         </button>
       </div>
-
-      {/* More menu popup */}
-      {moreOpen && (
-        <div ref={moreRef} className="glass-popover" style={{
-          position: 'absolute',
-          top: (visibleItems.length + 1) * 40 + 8,
-          left: 44,
-          background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
-          border: '1px solid var(--glass-panel-border)',
-          borderRadius: 12,
-          padding: 4,
-          boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
-          minWidth: 160,
-          zIndex: 100,
-          backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
-          WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
-        }}>
-          {hiddenItems.map((item) => {
-            const isDisabled = !isActivityBarItemAvailable(item, availabilityContext)
-            return (
-              <button
-                key={item.id}
-                onClick={isDisabled ? undefined : () => { actionMap[item.id]?.(); setMoreOpen(false) }}
-                disabled={isDisabled}
-                title={isDisabled ? t('activityBar.requiresCurrentFile') : undefined}
-                style={{ width: '100%', height: 30, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: isDisabled ? 'var(--border-default)' : 'var(--text-secondary)', background: 'transparent', border: 'none', borderRadius: 4, cursor: isDisabled ? 'not-allowed' : 'pointer', textAlign: 'left', opacity: isDisabled ? 0.55 : 1 }}
-                onMouseEnter={(e) => { if (!isDisabled) e.currentTarget.style.background = 'var(--bg-hover)' }}
-                onMouseLeave={(e) => { if (!isDisabled) e.currentTarget.style.background = 'transparent' }}
-              >
-                <span>{t(item.labelKey)}</span>
-                {item.shortcut && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{item.shortcut}</span>}
-              </button>
-            )
-          })}
-        </div>
-      )}
 
       {/* Right-click context menu for customization */}
       {contextMenu && (

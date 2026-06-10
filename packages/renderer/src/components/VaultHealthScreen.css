@@ -85,7 +85,7 @@
 .vault-health-next {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-elevated) 80%, var(--bg-base));
+  background: transparent;
 }
 
 .vault-health-state {
@@ -173,7 +173,7 @@
 
 .vault-health-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 132px;
+  grid-template-columns: minmax(0, 1fr) 180px;
   gap: 22px;
   align-items: stretch;
   padding: 22px;
@@ -219,20 +219,17 @@
 }
 
 .vault-health-score-card {
-  min-height: 132px;
+  min-height: 180px;
   display: grid;
   place-content: center;
-  gap: 7px;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-subtle));
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent-muted) 68%, transparent), transparent),
-    color-mix(in srgb, var(--bg-base) 70%, transparent);
+  gap: 8px;
+  background: transparent;
+  border: none;
 }
 
 .vault-health-score-card__value {
   color: var(--text-primary);
-  font-size: 42px;
+  font-size: 56px;
   font-weight: 780;
   line-height: 1;
   text-align: center;

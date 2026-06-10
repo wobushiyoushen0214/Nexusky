@@ -860,6 +860,114 @@ export interface MaintenanceFeedbackSummary {
   updatedAt: number
 }
 
+// ============================================================================
+// Maintenance Queue Redesign - Issue Clusters & Work Packages
+// ============================================================================
+
+export type MaintenanceClusterType = 'note' | 'folder' | 'category' | 'impact'
+export type MaintenancePriorityLevel = 'high' | 'medium' | 'low'
+export type MaintenanceConfidenceLevel = 'high' | 'medium' | 'low'
+export type MaintenancePackageMode = 'quick' | 'focused' | 'deep'
+
+/**
+ * Issue Cluster - 聚合后的问题域
+ * 将多个原始维护项聚合成用户能理解的问题组
+ */
+export interface MaintenanceIssueCluster {
+  id: string                              // cluster 唯一标识
+  type: MaintenanceClusterType            // 聚合维度
+  title: string                           // "12 篇笔记有链接问题"
+  description: string                     // "67 个断链分布在 12 篇笔记"
+  itemCount: number                       // 包含的原始维护项数量
+  affectedResources: string[]             // 受影响的笔记/文件夹路径
+  priority: MaintenancePriorityLevel      // 优先级
+  estimatedMinutes: number                // 预计处理时间（分钟）
+  impactScore: number                     // 影响分数 0-100
+  items: KnowledgeMaintenanceItem[]       // 包含的原始维护项
+  categories: MaintenanceScanGroup[]      // 涉及的类型分组
+}
+
+/**
+ * Work Package - 可执行的维护批次
+ * 系统策划好的一轮维护工作
+ */
+export interface MaintenanceWorkPackage {
+  id: string
+  title: string                           // "快速清理"
+  description: string                     // "5 分钟 · 3-5 项 · 仅高置信度"
+  mode: MaintenancePackageMode
+  estimatedMinutes: number
+  confidence: MaintenanceConfidenceLevel
+  clusters: MaintenanceIssueCluster[]
+  totalItems: number
+  scope?: {                               // deep 模式的自定义范围
+    timeLimit?: number
+    riskLevel?: 'low' | 'medium' | 'high'
+    folders?: string[]
+    categories?: MaintenanceScanGroup[]
+  }
+}
+
+/**
+ * Maintenance Session - 维护会话状态
+ * 用户正在进行的维护工作
+ */
+export interface MaintenanceSession {
+  id: string
+  vaultPath: string
+  package: MaintenanceWorkPackage
+  startedAt: number
+  currentIndex: number
+  completed: KnowledgeMaintenanceItem[]
+  skipped: KnowledgeMaintenanceItem[]
+  remaining: KnowledgeMaintenanceItem[]
+  stats: {
+    resolved: number
+    healthImprovement: number             // 预计健康分提升
+    affectedNotes: string[]               // 受影响的笔记路径
+  }
+}
+
+/**
+ * Session Summary - 维护会话完成摘要
+ * 显示本次维护的成果
+ */
+export interface MaintenanceSessionSummary {
+  sessionId: string
+  duration: number                        // 会话时长（秒）
+  itemsProcessed: number
+  itemsResolved: number
+  healthBefore: number
+  healthAfter: number
+  improvements: {
+    category: MaintenanceScanGroup
+    before: number
+    after: number
+  }[]
+  nextRecommendation?: MaintenanceWorkPackage
+}
+
+/**
+ * Maintenance Overview - 维护队列首屏概览
+ * 替代原来的 118 个卡片列表
+ */
+export interface MaintenanceOverview {
+  summary: {
+    totalItems: number
+    problemAreas: {
+      category: MaintenanceScanGroup
+      count: number
+      impact: MaintenancePriorityLevel
+      description: string
+    }[]
+    healthScore: number
+    mainIssue: string                     // "链接问题是主要问题：67 项分布在 12 篇笔记"
+  }
+  packages: MaintenanceWorkPackage[]      // 预设的维护批次
+  clusters: MaintenanceIssueCluster[]     // 问题域分组
+  scan: MaintenanceScanStatus
+}
+
 export interface AiApplyEditResult {
   success: boolean
   filePath?: string
@@ -1314,6 +1422,51 @@ export interface IPCChannelMap {
   'maintenance:get-feedback-summary': {
     params: { vaultPath: string }
     result: MaintenanceFeedbackSummary
+  }
+  'maintenance:get-overview': {
+    params: {
+      vaultPath: string
+      language?: AppLanguage
+    }
+    result: MaintenanceOverview
+  }
+  'maintenance:start-session': {
+    params: {
+      vaultPath: string
+      packageId: string
+      language?: AppLanguage
+    }
+    result: MaintenanceSession
+  }
+  'maintenance:get-session': {
+    params: {
+      vaultPath: string
+      sessionId: string
+    }
+    result: MaintenanceSession | null
+  }
+  'maintenance:session-next-item': {
+    params: {
+      vaultPath: string
+      sessionId: string
+    }
+    result: KnowledgeMaintenanceItem | null
+  }
+  'maintenance:session-record-action': {
+    params: {
+      vaultPath: string
+      sessionId: string
+      item: KnowledgeMaintenanceItem
+      action: MaintenanceFeedbackStatus
+    }
+    result: { ok: boolean }
+  }
+  'maintenance:complete-session': {
+    params: {
+      vaultPath: string
+      sessionId: string
+    }
+    result: MaintenanceSessionSummary
   }
   'agent:plan': {
     params: { vaultPath: string; goal: string; description?: string; context?: Record<string, unknown>; dryRun?: boolean }

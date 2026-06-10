@@ -1,0 +1,321 @@
+/* Overview is a compact analytics surface: three glass chart panes only. */
+
+.vault-overview {
+  --overview-bg: color-mix(in srgb, var(--panel-bg-soft) 38%, transparent);
+  --overview-panel: color-mix(in srgb, var(--panel-bg-soft) 52%, transparent);
+  --overview-panel-hover: var(--control-bg);
+  --overview-glass-card: color-mix(in srgb, var(--bg-glass-solid, var(--panel-bg-soft)) 62%, transparent);
+  --overview-glass-card-hover: color-mix(in srgb, var(--bg-glass-hover, var(--control-bg)) 74%, transparent);
+  --overview-glass-well: color-mix(in srgb, var(--control-bg) 70%, transparent);
+  --overview-glass-border: color-mix(in srgb, var(--glass-border, var(--border-default)) 78%, transparent);
+  --overview-glass-highlight: color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 76%, transparent);
+  --overview-glass-shadow:
+    0 12px 28px color-mix(in srgb, var(--text-primary) 9%, transparent),
+    0 1px 3px color-mix(in srgb, var(--text-primary) 5%, transparent),
+    inset 0 1px 0 var(--overview-glass-highlight);
+  --overview-scratch-bright: color-mix(in srgb, var(--overview-glass-highlight) 62%, transparent);
+  --overview-scratch-shadow: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  --overview-scratch-line: linear-gradient(
+    90deg,
+    var(--overview-scratch-shadow) 0%,
+    var(--overview-scratch-bright) 18%,
+    color-mix(in srgb, var(--overview-scratch-shadow) 64%, transparent) 50%,
+    var(--overview-scratch-bright) 82%,
+    var(--overview-scratch-shadow) 100%
+  );
+  --overview-glass-blur: var(--blur-md, 14px);
+  --overview-text-primary: var(--text-primary);
+  --overview-text-secondary: var(--text-secondary);
+  --overview-text-tertiary: var(--text-tertiary);
+  --overview-control-radius: 9px;
+  --overview-card-radius: 8px;
+  --overview-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --overview-focus: color-mix(in srgb, var(--accent) 76%, var(--bg-elevated) 24%);
+  --maintenance-rule: color-mix(in srgb, var(--text-tertiary) 10%, transparent);
+
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--overview-text-primary);
+  background: var(--overview-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.vault-overview *,
+.vault-overview *::before,
+.vault-overview *::after {
+  box-sizing: border-box;
+}
+
+.vault-overview button {
+  font: inherit;
+}
+
+.vault-overview button:focus-visible {
+  outline: 2px solid var(--overview-focus);
+  outline-offset: 3px;
+}
+
+.vault-overview__shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 14px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.vault-overview__header {
+  min-width: 0;
+  padding: 2px 2px 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vault-overview__header > div:first-child {
+  min-width: 0;
+}
+
+.vault-overview__eyebrow {
+  display: block;
+  max-width: min(100%, 720px);
+  overflow: hidden;
+  color: var(--overview-text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vault-overview__header h1 {
+  margin: 2px 0 0;
+  color: var(--overview-text-primary);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.vault-overview__header-meta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.vault-overview__header-meta button {
+  min-width: 76px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--overview-control-radius);
+  background: transparent;
+  color: var(--overview-text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  transition:
+    background 150ms var(--overview-ease),
+    color 150ms var(--overview-ease),
+    opacity 150ms var(--overview-ease);
+}
+
+.vault-overview__header-meta button:hover:not(:disabled) {
+  background: var(--overview-panel-hover);
+  color: var(--overview-text-secondary);
+}
+
+.vault-overview__header-meta button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.vault-overview__dashboard {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) minmax(0, 0.92fr);
+  grid-template-areas:
+    "tokens tokens tokens tokens tokens tokens tokens tokens composition composition composition composition"
+    "diary diary diary diary diary diary diary diary diary diary diary diary";
+  gap: 10px;
+}
+
+.vault-overview__card {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--overview-glass-border);
+  border-radius: var(--overview-card-radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 24%, transparent), transparent 44%),
+    linear-gradient(135deg, var(--overview-glass-card), color-mix(in srgb, var(--overview-glass-card) 82%, var(--overview-panel)));
+  box-shadow: var(--overview-glass-shadow);
+  backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.12);
+  -webkit-backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.12);
+  transition:
+    background 150ms var(--overview-ease),
+    box-shadow 150ms var(--overview-ease);
+}
+
+.vault-overview__card:hover {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 30%, transparent), transparent 46%),
+    var(--overview-glass-card-hover);
+  box-shadow:
+    0 14px 34px color-mix(in srgb, var(--text-primary) 10%, transparent),
+    0 1px 3px color-mix(in srgb, var(--text-primary) 6%, transparent),
+    inset 0 1px 0 var(--overview-glass-highlight);
+}
+
+.vault-overview__card--tokens {
+  grid-area: tokens;
+}
+
+.vault-overview__card--diary {
+  grid-area: diary;
+}
+
+.vault-overview__card--composition {
+  grid-area: composition;
+}
+
+.vault-overview__card-head {
+  position: relative;
+  min-width: 0;
+  padding: 12px 14px 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vault-overview__card-head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--overview-scratch-line);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--overview-scratch-bright) 38%, transparent);
+  opacity: 0.58;
+  pointer-events: none;
+}
+
+.vault-overview__card-title {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.vault-overview__card-title h2 {
+  margin: 0;
+  color: var(--overview-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.vault-overview__card-title span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--overview-text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-overview__chart-frame,
+.vault-overview__chart--donut,
+.vault-overview__empty {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 10px 14px 14px;
+}
+
+.vault-overview__chart {
+  width: 100%;
+  height: 100% !important;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.vault-overview__empty {
+  width: calc(100% - 28px);
+  display: grid;
+  place-items: center;
+  border-radius: var(--overview-card-radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 18%, transparent), transparent 48%),
+    var(--overview-glass-well);
+  box-shadow:
+    inset 0 1px 0 var(--overview-scratch-bright),
+    inset 0 -1px 0 var(--overview-scratch-shadow);
+  color: var(--overview-text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: center;
+}
+
+@media (max-width: 1080px) {
+  .vault-overview__dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "tokens composition"
+      "diary diary";
+  }
+}
+
+@media (max-width: 760px) {
+  .vault-overview__shell {
+    padding: 12px;
+  }
+
+  .vault-overview__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .vault-overview__header-meta,
+  .vault-overview__header-meta button {
+    width: 100%;
+  }
+
+  .vault-overview__dashboard {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      "tokens"
+      "composition"
+      "diary";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-overview__header-meta button,
+  .vault-overview__card {
+    transition: none;
+  }
+}

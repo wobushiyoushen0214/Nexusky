@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
+import { useMaintenanceStore } from '../stores/maintenance-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import './VaultHealthScreen.css'
 
@@ -79,7 +80,6 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   const { t } = useTranslation()
   const setRightPanel = useUIStore((s) => s.setRightPanel)
   const setMainView = useUIStore((s) => s.setMainView)
-  const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
   const [summary, setSummary] = useState<VaultHealthSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -115,8 +115,11 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   }
 
   const openMaintenance = async () => {
-    setMaintenancePanelSection('queue')
-    setRightPanel('maintenance')
+    useMaintenanceStore.getState().setViewMode('legacy')
+    setMainView('maintenance')
+    if (!useUIStore.getState().sidebarCollapsed) {
+      useUIStore.getState().toggleSidebar()
+    }
     await dismiss()
   }
 

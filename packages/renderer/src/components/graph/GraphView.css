@@ -3,7 +3,9 @@
   height: 100%;
   position: relative;
   overflow: hidden;
-  background: var(--panel-bg);
+  /* Transparent: inherit the workspace main-panel glass surface so the graph
+     matches editor / maintenance views instead of painting its own layer. */
+  background: transparent;
   display: flex;
 }
 
@@ -483,7 +485,7 @@
   height: 100%;
   position: relative;
   overflow: hidden;
-  background: var(--panel-bg);
+  background: transparent;
 }
 
 .graph-canvas-hud {
@@ -737,9 +739,8 @@
   position: relative;
   cursor: grab;
   background:
-    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--border-subtle) 70%, transparent) 1px, transparent 0),
-    linear-gradient(var(--panel-bg), var(--panel-bg));
-  background-size: 24px 24px, auto;
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--border-subtle) 70%, transparent) 1px, transparent 0);
+  background-size: 24px 24px;
   touch-action: none;
   scrollbar-gutter: stable;
 }

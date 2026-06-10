@@ -4,7 +4,6 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
-import { RelatedContextPanel } from '../long-context/RelatedContextPanel'
 import { MaintenanceFeedbackChart, MaintenanceHealthTrendPanel, MaintenanceQueueComposition } from './MaintenanceCharts'
 import type {
   AppLanguage,
@@ -237,6 +236,12 @@ function formatScanDuration(value?: number): string {
   return `${(value / 1000).toFixed(1)}s`
 }
 
+function getMaintenancePriorityClass(priority: number): string {
+  if (priority >= 85) return 'is-critical'
+  if (priority >= 70) return 'is-high'
+  return 'is-normal'
+}
+
 interface PendingMaintenancePreview {
   item: KnowledgeMaintenanceItem
   action: MaintenanceApplyAction
@@ -253,10 +258,6 @@ interface LastMaintenanceUndo {
 export function MaintenanceQueuePanel() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
-  const currentFilePath = useEditorStore((s) => s.currentFilePath)
-  const content = useEditorStore((s) => s.content)
-  const maintenancePanelSection = useUIStore((s) => s.maintenancePanelSection)
-  const setMaintenancePanelSection = useUIStore((s) => s.setMaintenancePanelSection)
   const language = useUIStore((s) => s.language)
   const sendToAgent = useUIStore((s) => s.sendToAgent)
   const [items, setItems] = useState<KnowledgeMaintenanceItem[]>([])
@@ -274,12 +275,14 @@ export function MaintenanceQueuePanel() {
   const [lastUndo, setLastUndo] = useState<LastMaintenanceUndo | null>(null)
   const [insightsExpanded, setInsightsExpanded] = useState(false)
   const [queueExpanded, setQueueExpanded] = useState(false)
+  const [queueVisibleCount, setQueueVisibleCount] = useState(20)
   const refreshSeq = useRef(0)
   const typeFilters = useMemo(() => getMaintenanceTypeFiltersForGroup(activeGroupFilter), [activeGroupFilter])
   const handleGroupFilterChange = useCallback((nextGroup: MaintenanceGroupFilter) => {
     setActiveGroupFilter(nextGroup)
     setActiveTypeFilter('all')
     setQueueExpanded(false)
+    setQueueVisibleCount(20)
   }, [])
   const handleTypeFilterChange = useCallback((nextType: MaintenanceTypeFilter) => {
     setActiveTypeFilter(nextType)
@@ -372,9 +375,8 @@ export function MaintenanceQueuePanel() {
   }, [vaultPath, activeGroupFilter, activeTypeFilter, language])
 
   useEffect(() => {
-    if (maintenancePanelSection !== 'queue') return
     void refresh()
-  }, [refresh, maintenancePanelSection])
+  }, [refresh])
 
   const runFix = useCallback(async (
     item: KnowledgeMaintenanceItem,
@@ -480,80 +482,57 @@ export function MaintenanceQueuePanel() {
   return (
     <div className="maintenance-panel">
       <div className="maintenance-panel__header">
-        <div className="maintenance-panel__tabs">
+        <div className="maintenance-panel__header-left">
+          <h2 className="maintenance-panel__title">{t('maintenance.title')}</h2>
+        </div>
+        <div className="maintenance-panel__header-actions">
           <button
             type="button"
-            className={`maintenance-panel__tab${maintenancePanelSection === 'context' ? ' is-active' : ''}`}
-            onClick={() => setMaintenancePanelSection('context')}
+            className="maintenance-panel__refresh"
+            onClick={handOffBatchToAgent}
+            disabled={!vaultPath || items.length === 0}
+            title={t('maintenance.agentBatch.title')}
           >
-            {t('maintenance.tabs.context')}
+            {t('maintenance.agentBatch.action')}
           </button>
+          {lastUndo && (
+            <button
+              type="button"
+              className="maintenance-panel__refresh"
+              onClick={() => void undoLastFix()}
+              disabled={!vaultPath}
+            >
+              {t('maintenance.undoLast')}
+            </button>
+          )}
           <button
             type="button"
-            className={`maintenance-panel__tab${maintenancePanelSection === 'queue' ? ' is-active' : ''}`}
-            onClick={() => setMaintenancePanelSection('queue')}
+            className="maintenance-panel__refresh"
+            onClick={() => void refresh()}
+            disabled={loading || !vaultPath}
           >
-            {t('maintenance.tabs.queue')}
+            {loading ? t('maintenance.refreshing') : t('maintenance.refresh')}
           </button>
         </div>
-        {maintenancePanelSection === 'queue' && (
-          <div className="maintenance-panel__header-actions">
-            <button
-              type="button"
-              className="maintenance-panel__refresh"
-              onClick={handOffBatchToAgent}
-              disabled={!vaultPath || items.length === 0}
-              title={t('maintenance.agentBatch.title')}
-            >
-              {t('maintenance.agentBatch.action')}
-            </button>
-            {lastUndo && (
-              <button
-                type="button"
-                className="maintenance-panel__refresh"
-                onClick={() => void undoLastFix()}
-                disabled={!vaultPath}
-              >
-                {t('maintenance.undoLast')}
-              </button>
-            )}
-            <button
-              type="button"
-              className="maintenance-panel__refresh"
-              onClick={() => void refresh()}
-              disabled={loading || !vaultPath}
-            >
-              {loading ? t('maintenance.refreshing') : t('maintenance.refresh')}
-            </button>
-          </div>
-        )}
       </div>
-      {maintenancePanelSection === 'context' ? (
-        currentFilePath ? (
-          <RelatedContextPanel currentFilePath={currentFilePath} content={content} placement="side" />
-        ) : (
-          <div className="maintenance-panel__empty">{t('maintenance.contextEmpty')}</div>
-        )
-      ) : (
-        <>
-          <MaintenanceQueueToolbar
-            itemCount={items.length}
-            priorityCount={priorityItems.length}
-            activeGroupFilter={activeGroupFilter}
-            activeTypeFilter={activeTypeFilter}
-            counts={counts}
-            typeFilters={typeFilters}
-            onGroupFilterChange={handleGroupFilterChange}
-            onTypeFilterChange={handleTypeFilterChange}
-            loading={loading}
-          />
-          {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
-          <div className="maintenance-panel__body">
-            {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
-            {vaultPath && grouped.length === 0 && !loading && (
-              <div className="maintenance-panel__empty">{t('maintenance.empty')}</div>
-            )}
-            {vaultPath && priorityItems.length > 0 && (
+      <MaintenanceQueueToolbar
+        itemCount={items.length}
+        priorityCount={priorityItems.length}
+        activeGroupFilter={activeGroupFilter}
+        activeTypeFilter={activeTypeFilter}
+        counts={counts}
+        typeFilters={typeFilters}
+        onGroupFilterChange={handleGroupFilterChange}
+        onTypeFilterChange={handleTypeFilterChange}
+        loading={loading}
+      />
+      {vaultPath && scanStatus && <MaintenanceScanStatusBar status={scanStatus} itemCount={items.length} />}
+      <div className="maintenance-panel__body">
+        {!vaultPath && <div className="maintenance-panel__empty">{t('maintenance.noVault')}</div>}
+        {vaultPath && grouped.length === 0 && !loading && (
+          <div className="maintenance-panel__empty">{t('maintenance.empty')}</div>
+        )}
+        {vaultPath && priorityItems.length > 0 && (
               <section className="maintenance-panel__today" aria-labelledby="maintenance-today-title">
                 <div className="maintenance-panel__today-head">
                   <h3 id="maintenance-today-title">{t('maintenance.today.title')}</h3>
@@ -566,6 +545,7 @@ export function MaintenanceQueuePanel() {
                     <MaintenanceItemCard
                       key={`${item.filePath}-${item.type}-priority-${idx}`}
                       item={item}
+                      rank={idx + 1}
                       onAction={(action) => void previewFix(item, action)}
                       onFeedback={(status) => void recordFeedback(item, status)}
                       onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
@@ -597,17 +577,30 @@ export function MaintenanceQueuePanel() {
                   </button>
                 </div>
                 {queueExpanded && (
-                  <div className="maintenance-panel__queue-list-items">
-                    {remainingItems.map((item, idx) => (
-                      <MaintenanceItemCard
-                        key={`${item.filePath}-${item.type}-rest-${idx}`}
-                        item={item}
-                        onAction={(action) => void previewFix(item, action)}
-                        onFeedback={(status) => void recordFeedback(item, status)}
-                        onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="maintenance-panel__queue-list-items">
+                      {remainingItems.slice(0, queueVisibleCount).map((item, idx) => (
+                        <MaintenanceItemCard
+                          key={`${item.filePath}-${item.type}-rest-${idx}`}
+                          item={item}
+                          onAction={(action) => void previewFix(item, action)}
+                          onFeedback={(status) => void recordFeedback(item, status)}
+                          onFocusInBases={() => useUIStore.getState().focusInBases(item.filePath)}
+                        />
+                      ))}
+                    </div>
+                    {queueVisibleCount < remainingItems.length && (
+                      <div className="maintenance-panel__queue-load-more">
+                        <button
+                          type="button"
+                          className="maintenance-panel__load-more-btn"
+                          onClick={() => setQueueVisibleCount((prev) => prev + 20)}
+                        >
+                          {t('maintenance.queueMore.loadMore', { count: Math.min(20, remainingItems.length - queueVisibleCount) })}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             )}
@@ -627,20 +620,18 @@ export function MaintenanceQueuePanel() {
               />
             )}
           </div>
-        </>
-      )}
-      {pendingPreview && (
-        <MaintenancePreviewModal
-          pending={pendingPreview}
-          onCancel={() => setPendingPreview(null)}
-          onConfirm={async () => {
-            const pending = pendingPreview
-            setPendingPreview(null)
-            await runFix(pending.item, pending.action, pending.payload, pending.preview.beforeHash)
-          }}
-        />
-      )}
-    </div>
+        {pendingPreview && (
+          <MaintenancePreviewModal
+            pending={pendingPreview}
+            onCancel={() => setPendingPreview(null)}
+            onConfirm={async () => {
+              const pending = pendingPreview
+              setPendingPreview(null)
+              await runFix(pending.item, pending.action, pending.payload, pending.preview.beforeHash)
+            }}
+          />
+        )}
+      </div>
   )
 }
 
@@ -886,25 +877,35 @@ function MaintenanceScanStatusBar({ status, itemCount }: MaintenanceScanStatusBa
 
 interface MaintenanceItemCardProps {
   item: KnowledgeMaintenanceItem
+  rank?: number
   onAction: (action: MaintenanceApplyAction) => void
   onFeedback: (status: MaintenanceFeedbackStatus) => void
   onFocusInBases: () => void
 }
 
-function MaintenanceItemCard({ item, onAction, onFeedback, onFocusInBases }: MaintenanceItemCardProps) {
+function MaintenanceItemCard({ item, rank, onAction, onFeedback, onFocusInBases }: MaintenanceItemCardProps) {
   const { t } = useTranslation()
   const language = useUIStore((s) => s.language)
   const actions = ACTIONS_BY_TYPE[item.type] || ['open_note']
   const detail = localizeMaintenanceGeneratedText(item.detail || item.reason, language)
+  const priorityClass = getMaintenancePriorityClass(item.priority)
+
   return (
-    <div className="maintenance-card">
-      <div className="maintenance-card__head">
-        <span className="maintenance-card__type">{t(`maintenance.types.${item.type}`)}</span>
-        <span className="maintenance-card__priority">{item.priority}</span>
+    <div className={`maintenance-card ${priorityClass}`}>
+      <div className="maintenance-card__header">
+        <div className="maintenance-card__meta">
+          {rank != null && <span className="maintenance-card__rank">{rank}</span>}
+          <span className="maintenance-card__type">{t(`maintenance.types.${item.type}`)}</span>
+          {item.priority >= 80 && (
+            <span className="maintenance-card__priority">{item.priority}</span>
+          )}
+        </div>
       </div>
-      <div className="maintenance-card__title">{item.title}</div>
-      <div className="maintenance-card__detail">{detail}</div>
-      <div className="maintenance-card__path">{item.filePath}</div>
+      <div className="maintenance-card__body">
+        <div className="maintenance-card__title">{item.title}</div>
+        {detail && <div className="maintenance-card__detail">{detail}</div>}
+        <div className="maintenance-card__path">{item.filePath}</div>
+      </div>
       <div className="maintenance-card__actions">
         {actions.map((action) => (
           <button
@@ -916,14 +917,6 @@ function MaintenanceItemCard({ item, onAction, onFeedback, onFocusInBases }: Mai
             {t(`maintenance.actions.${action}`)}
           </button>
         ))}
-        <button
-          type="button"
-          className="maintenance-card__btn"
-          onClick={onFocusInBases}
-          title={t('maintenance.jumps.focusInBasesTitle')}
-        >
-          {t('maintenance.jumps.focusInBases')}
-        </button>
         <select
           className="maintenance-card__feedback-select"
           defaultValue=""

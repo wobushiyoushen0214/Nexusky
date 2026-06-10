@@ -204,6 +204,7 @@
     }
   },
   "activityBar": {
+    "overview": "Overview",
     "files": "Files",
     "search": "Search",
     "chat": "AI Chat",
@@ -217,6 +218,70 @@
     "more": "More",
     "requiresCurrentFile": "Available after opening a note",
     "settings": "Settings"
+  },
+  "overviewPage": {
+    "title": "Vault Overview",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "loading": "Reading local data...",
+    "scannedAt": "Scanned at {{time}}",
+    "stats": {
+      "notes": "Notes",
+      "links": "Links",
+      "orphans": "Orphan notes",
+      "issues": "Open issues"
+    },
+    "health": {
+      "title": "Vault Health",
+      "action": "Open maintenance",
+      "scoreLabel": "Health score",
+      "issuesHint": "Local scan found {{count}} maintenance signals to review",
+      "noIssues": "Local scan found no maintenance signals to handle",
+      "empty": "No health scan result yet"
+    },
+    "trend": {
+      "title": "Health trend",
+      "subtitle": "Weekly health score",
+      "empty": "Not enough weekly snapshots yet; the trend appears as you keep using the vault"
+    },
+    "composition": {
+      "title": "Note composition",
+      "action": "Open graph",
+      "linked": "Linked",
+      "orphan": "Orphan",
+      "stale": "Stale",
+      "empty": "No notes to summarize in this vault yet"
+    },
+    "tags": {
+      "title": "Top tags",
+      "subtitle": "{{count}} tags total",
+      "empty": "No tags in your notes yet; #tags will be summarized here"
+    },
+    "recent": {
+      "title": "Recently updated",
+      "subtitle": "Sorted by modified time",
+      "empty": "No recently updated notes yet"
+    },
+    "charts": {
+      "tokens": {
+        "title": "Token usage",
+        "subtitle": "{{count}} tokens in the last 30 days",
+        "input": "Input",
+        "output": "Output"
+      },
+      "diary": {
+        "title": "Diary edit heatmap",
+        "subtitle": "Last year: {{count}} diary notes, {{edits}} updates"
+      },
+      "composition": {
+        "title": "Note composition",
+        "subtitle": "{{count}} notes total",
+        "active": "Active notes",
+        "orphan": "Orphan notes",
+        "stale": "Stale notes",
+        "empty": "No notes to summarize in this vault yet"
+      }
+    }
   },
   "panels": {
     "chat": "AI Chat",
@@ -306,7 +371,8 @@
       "ready": "Ready",
       "priority": "Priority",
       "health": "Health",
-      "reviewed": "Reviewed"
+      "reviewed": "Reviewed",
+      "backToList": "Back to full list"
     },
     "insights": {
       "title": "Insights",
@@ -354,6 +420,8 @@
     },
     "queueMore": {
       "action": "More",
+      "collapse": "Collapse",
+      "loadMore": "Load {{count}} more",
       "title": "Full maintenance queue",
       "subtitle": "{{count}} maintenance signal(s) are available in the current filter."
     },
