@@ -8,6 +8,10 @@ interface OllamaTagsResponse {
   models?: { name?: string }[]
 }
 
+function normalizeOllamaServerUrl(baseUrl?: string): string {
+  return (baseUrl || 'http://localhost:11434').replace(/\/+$/, '').replace(/\/v1$/, '')
+}
+
 function toOllamaMessage(message: ChatMessage): ChatCompletionMessageParam {
   const content = typeof message.content === 'string' ? message.content : JSON.stringify(message.content)
   if (message.role === 'tool') {
@@ -84,7 +88,7 @@ export class OllamaProvider extends BaseAIProvider {
 
   async validate(): Promise<AIProviderValidationResult> {
     try {
-      const baseUrl = this.config.baseUrl || 'http://localhost:11434'
+      const baseUrl = normalizeOllamaServerUrl(this.config.baseUrl)
       const response = await net.fetch(`${baseUrl}/api/tags`)
       if (!response.ok) return { ok: false, error: `Ollama 返回 HTTP ${response.status}` }
       return { ok: true }
@@ -96,7 +100,7 @@ export class OllamaProvider extends BaseAIProvider {
 
 export async function listOllamaModels(baseUrl?: string): Promise<string[]> {
   try {
-    const url = baseUrl || 'http://localhost:11434'
+    const url = normalizeOllamaServerUrl(baseUrl)
     const response = await net.fetch(`${url}/api/tags`)
     if (!response.ok) return []
     const data = await response.json() as OllamaTagsResponse

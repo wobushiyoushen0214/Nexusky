@@ -105,14 +105,7 @@ class AIManager {
     const configs = store.get('aiProviders') as AIProviderConfig[] | undefined
     if (!configs || configs.length === 0) return null
     const activeId = store.get('activeProviderId') as string | undefined
-    let config: AIProviderConfig | undefined
-    if (activeId) {
-      config = configs.find((c) => c.id === activeId && c.enabled)
-    }
-    if (!config) {
-      config = configs.find((c) => c.enabled)
-    }
-    return config || null
+    return resolveActiveProviderConfig(configs, activeId)
   }
 
   validateConfig(config: AIProviderConfig): string | null {
@@ -165,4 +158,17 @@ class AIManager {
 }
 
 export const aiManager = new AIManager()
+export function resolveActiveProviderConfig(configs: AIProviderConfig[], activeId?: string | null): AIProviderConfig | null {
+  const normalizedActiveId = typeof activeId === 'string' && activeId.trim() ? activeId : null
+  if (normalizedActiveId) {
+    const active = configs.find((config) => config.id === normalizedActiveId && config.enabled)
+    if (active) return active
+  }
+  return configs.find((config) => config.enabled) || null
+}
+
+export function resolveActiveProviderId(configs: AIProviderConfig[], activeId?: string | null): string | null {
+  return resolveActiveProviderConfig(configs, activeId)?.id || null
+}
+
 export type { AIProviderConfig, ChatMessage, ChatStreamEvent, ChatUsageMeta, ToolCallEvent, ChatOptions, ToolDefinition, AIProviderValidationResult, AIProviderCapabilities }

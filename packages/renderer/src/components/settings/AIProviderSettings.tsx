@@ -4,18 +4,48 @@ import type { AIProviderConfig } from '@shared/types/ipc'
 import { toast } from '../../stores/toast-store'
 import './AIProviderSettings.css'
 
-const PROVIDER_PRESETS = [
-  { label: 'OpenAI', type: 'openai' as const, baseUrl: '', model: 'gpt-4.1-mini' },
-  { label: 'Claude', type: 'claude' as const, baseUrl: '', model: 'claude-sonnet-4-6' },
-  { label: 'OpenAI 兼容', type: 'custom' as const, baseUrl: 'https://api.openai.com/v1', model: 'gpt-4' },
-  { label: 'Claude 兼容', type: 'openai-responses' as const, baseUrl: '', model: 'claude-sonnet-4-6' },
-  { label: 'DeepSeek', type: 'custom' as const, baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
-  { label: 'Ollama', type: 'ollama' as const, baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
+type ProviderType = AIProviderConfig['type']
+
+const DEFAULT_BY_TYPE: Record<ProviderType, Pick<AIProviderConfig, 'baseUrl' | 'model'>> = {
+  openai: { baseUrl: '', model: 'gpt-4.1-mini' },
+  'openai-responses': { baseUrl: '', model: 'gpt-4.1-mini' },
+  claude: { baseUrl: '', model: 'claude-sonnet-4-6' },
+  custom: { baseUrl: '', model: 'gpt-4.1-mini' },
+  ollama: { baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
+  codex: { baseUrl: 'codex', model: 'gpt-5.4' }
+}
+
+const PROVIDER_TYPES: { label: string; value: ProviderType }[] = [
+  { label: 'OpenAI', value: 'openai' },
+  { label: 'OpenAI Responses', value: 'openai-responses' },
+  { label: 'Claude', value: 'claude' },
+  { label: 'OpenAI 兼容', value: 'custom' },
+  { label: 'Ollama', value: 'ollama' },
+  { label: 'Codex CLI', value: 'codex' }
 ]
+
+const PROVIDER_PRESETS: { label: string; type: ProviderType; baseUrl: string; model: string }[] = [
+  { label: 'OpenAI', type: 'openai', baseUrl: '', model: 'gpt-4.1-mini' },
+  { label: 'OpenAI Responses', type: 'openai-responses', baseUrl: '', model: 'gpt-4.1-mini' },
+  { label: 'Claude', type: 'claude', baseUrl: '', model: 'claude-sonnet-4-6' },
+  { label: 'OpenAI 兼容', type: 'custom', baseUrl: '', model: 'gpt-4.1-mini' },
+  { label: 'DeepSeek', type: 'custom', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
+  { label: 'Ollama', type: 'ollama', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
+  { label: 'Codex CLI', type: 'codex', baseUrl: 'codex', model: 'gpt-5.4' },
+]
+
+function providerRequiresApiKey(type: ProviderType): boolean {
+  return type !== 'ollama' && type !== 'codex'
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
 
 export function AIProviderSettings() {
   const { t } = useTranslation()
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
+  const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
   const [editing, setEditing] = useState<AIProviderConfig | null>(null)
   const [testing, setTesting] = useState(false)
   const [fetchingModels, setFetchingModels] = useState(false)
@@ -27,20 +57,13 @@ export function AIProviderSettings() {
 
   const loadProviders = async () => {
     try {
-      const result = await window.api.invoke('ai:get-providers', undefined)
+      const [result, activeId] = await Promise.all([
+        window.api.invoke('ai:get-providers', undefined),
+        window.api.invoke('ai:get-active-provider', undefined),
+      ])
 
-      // 修复多个启用的情况：只保留第一个启用的
-      const enabledProviders = result.filter((p: AIProviderConfig) => p.enabled)
-      if (enabledProviders.length > 1) {
-        const firstEnabled = enabledProviders[0]
-        // 直接在前端修正显示状态，不保存到后端
-        result.forEach((p: AIProviderConfig) => {
-          if (p.enabled && p.id !== firstEnabled.id) {
-            p.enabled = false
-          }
-        })
-      }
       setProviders(result)
+      setActiveProviderId(activeId)
     } catch (error) {
       console.error('Failed to load providers:', error)
     }
@@ -56,6 +79,7 @@ export function AIProviderSettings() {
         type: editing.type,
         baseUrl: editing.baseUrl,
         apiKey: editing.apiKey,
+        providerId: editing.id || undefined,
       })
 
       if (result.ok) {
@@ -75,12 +99,39 @@ export function AIProviderSettings() {
     if (!editing) return
 
     try {
-      await window.api.invoke('ai:save-provider', { config: editing })
+      const normalized: AIProviderConfig = {
+        ...editing,
+        name: editing.name.trim(),
+        baseUrl: editing.type === 'codex' && !editing.baseUrl.trim() ? 'codex' : editing.baseUrl.trim(),
+        apiKey: editing.apiKey.trim(),
+        model: editing.model.trim(),
+        enabled: editing.enabled !== false,
+      }
+
+      if (!normalized.name) {
+        toast(t('settings.ai.nameRequired'), 'error')
+        return
+      }
+      if (!normalized.model) {
+        toast(t('settings.ai.modelRequired'), 'error')
+        return
+      }
+      if (providerRequiresApiKey(normalized.type) && !normalized.apiKey && !editing.hasApiKey) {
+        toast(t('settings.ai.apiKeyRequired'), 'error')
+        return
+      }
+      if (normalized.type === 'custom' && !normalized.baseUrl) {
+        toast(t('settings.ai.baseUrlRequired'), 'error')
+        return
+      }
+
+      await window.api.invoke('ai:save-provider', { config: normalized })
       await loadProviders()
       setEditing(null)
+      setAvailableModels([])
       toast(t('settings.ai.saved'), 'success')
     } catch (error) {
-      toast(t('settings.ai.saveFailed'), 'error')
+      toast(`${t('settings.ai.saveFailed')}: ${getErrorMessage(error, t('settings.ai.saveFailed'))}`, 'error')
     }
   }
 
@@ -103,29 +154,16 @@ export function AIProviderSettings() {
     }
   }
 
-  const handleToggleEnabled = async (provider: AIProviderConfig) => {
+  const handleSetActive = async (provider: AIProviderConfig) => {
+    if (provider.id === activeProviderId) return
     try {
-      // 如果要启用这个，先禁用所有其他的（只保存有 API Key 的）
-      if (!provider.enabled) {
-        for (const p of providers) {
-          if (p.enabled && p.id !== provider.id && p.apiKey) {
-            await window.api.invoke('ai:save-provider', {
-              config: { ...p, enabled: false },
-            })
-          }
-        }
-      }
-
-      // 切换当前的（只有当前有 API Key 时才保存）
-      if (provider.apiKey) {
-        await window.api.invoke('ai:save-provider', {
-          config: { ...provider, enabled: !provider.enabled },
-        })
-      }
-
+      setActiveProviderId(provider.id)
+      setProviders((current) => current.map((item) => item.id === provider.id ? { ...item, enabled: true } : item))
+      await window.api.invoke('ai:set-active', { providerId: provider.id })
       await loadProviders()
-      toast(provider.enabled ? t('settings.ai.disabled') : t('settings.ai.enabled'), 'success')
+      toast(t('settings.ai.activeSet'), 'success')
     } catch (error) {
+      await loadProviders()
       toast(t('settings.ai.saveFailed'), 'error')
     }
   }
@@ -148,29 +186,38 @@ export function AIProviderSettings() {
       </header>
 
       <div className="provider-list">
-        {providers.map((provider) => (
-          <div key={provider.id} className={`provider-card ${provider.enabled ? 'is-enabled' : 'is-disabled'}`}>
+        {providers.map((provider) => {
+          const isActive = provider.id === activeProviderId
+          return (
+          <div key={provider.id} className={`provider-card ${isActive ? 'is-enabled' : provider.enabled ? '' : 'is-disabled'}`}>
             <div className="provider-card__info">
               <div className="provider-header">
                 <button
-                  className={`provider-radio ${provider.enabled ? 'is-active' : ''}`}
-                  onClick={() => handleToggleEnabled(provider)}
-                  title={provider.enabled ? t('settings.ai.disable') : t('settings.ai.enable')}
+                  className={`provider-radio ${isActive ? 'is-active' : ''}`}
+                  onClick={() => handleSetActive(provider)}
+                  title={isActive ? t('settings.ai.active') : t('settings.ai.setActive')}
+                  aria-label={isActive ? t('settings.ai.active') : t('settings.ai.setActive')}
                 >
                   <span className="radio-dot"></span>
                 </button>
                 <div>
-                  <h3>{provider.name}</h3>
-                  <p>{provider.model}</p>
+                  <div className="provider-title-row">
+                    <h3>{provider.name}</h3>
+                    <span className="provider-type">{provider.type}</span>
+                    {isActive && <span className="provider-badge">{t('settings.ai.active')}</span>}
+                  </div>
+                  <p>{provider.model} · {provider.baseUrl || t('settings.ai.defaultEndpoint')}</p>
                 </div>
               </div>
             </div>
             <div className="provider-card__actions">
+              {!isActive && <button onClick={() => handleSetActive(provider)}>{t('settings.ai.setActive')}</button>}
               <button onClick={() => setEditing(provider)}>{t('common.edit')}</button>
               <button onClick={() => handleDelete(provider.id)}>{t('common.delete')}</button>
             </div>
           </div>
-        ))}
+          )
+        })}
 
         <button className="btn-add-provider" onClick={() => setEditing({
           id: '',
@@ -178,7 +225,7 @@ export function AIProviderSettings() {
           type: 'custom',
           apiKey: '',
           baseUrl: '',
-          model: '',
+          model: DEFAULT_BY_TYPE.custom.model,
           enabled: true,
           hasApiKey: false,
         })}>
@@ -206,22 +253,47 @@ export function AIProviderSettings() {
               </div>
 
               <div className="form-group">
+                <label>{t('settings.ai.providerType')}</label>
+                <select
+                  value={editing.type}
+                  onChange={(e) => {
+                    const type = e.target.value as ProviderType
+                    const defaults = DEFAULT_BY_TYPE[type]
+                    setAvailableModels([])
+                    setEditing({
+                      ...editing,
+                      type,
+                      apiKey: providerRequiresApiKey(type) ? editing.apiKey : '',
+                      baseUrl: defaults.baseUrl,
+                      model: defaults.model,
+                    })
+                  }}
+                >
+                  {PROVIDER_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {providerRequiresApiKey(editing.type) && (
+              <div className="form-group">
                 <label>{t('settings.ai.apiKey')}</label>
                 <input
                   type="password"
                   value={editing.apiKey}
                   onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
-                  placeholder="sk-..."
+                  placeholder={editing.hasApiKey ? t('settings.ai.savedApiKeyPlaceholder') : 'sk-...'}
                 />
               </div>
+              )}
 
               <div className="form-group">
-                <label>{t('settings.ai.baseUrl')}</label>
+                <label>{editing.type === 'codex' ? t('settings.ai.cliPath') : t('settings.ai.baseUrl')}</label>
                 <input
                   type="text"
                   value={editing.baseUrl}
                   onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
-                  placeholder="https://api.example.com/v1"
+                  placeholder={editing.type === 'codex' ? 'codex' : editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
                 />
               </div>
 
@@ -249,7 +321,11 @@ export function AIProviderSettings() {
                   <button
                     type="button"
                     onClick={handleFetchModels}
-                    disabled={fetchingModels || !editing.apiKey}
+                    disabled={
+                      fetchingModels ||
+                      editing.type === 'codex' ||
+                      (providerRequiresApiKey(editing.type) && !editing.apiKey && !editing.hasApiKey)
+                    }
                     className="btn-fetch-models"
                   >
                     {fetchingModels ? t('settings.ai.fetching') : t('settings.ai.fetchModels')}
@@ -263,13 +339,17 @@ export function AIProviderSettings() {
                   {PROVIDER_PRESETS.map((preset) => (
                     <button
                       key={preset.label}
-                      onClick={() => setEditing({
-                        ...editing,
-                        name: preset.label,
-                        type: preset.type,
-                        baseUrl: preset.baseUrl,
-                        model: preset.model,
-                      })}
+                      onClick={() => {
+                        setAvailableModels([])
+                        setEditing({
+                          ...editing,
+                          name: preset.label,
+                          type: preset.type,
+                          apiKey: providerRequiresApiKey(preset.type) ? editing.apiKey : '',
+                          baseUrl: preset.baseUrl,
+                          model: preset.model,
+                        })
+                      }}
                     >
                       {preset.label}
                     </button>

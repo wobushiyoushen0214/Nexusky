@@ -328,8 +328,11 @@ export function ChatPanel() {
   }, [input, attachedNotes, attachedSelections, attachedImages, attachedDocuments, editMode, agentMode, currentFilePath, vaultPath, language])
 
   useEffect(() => {
-    window.api.invoke('ai:get-providers', undefined)
-      .then((providers) => setVaultToolsAvailability(getVaultToolsAvailability(providers)))
+    Promise.all([
+      window.api.invoke('ai:get-providers', undefined),
+      window.api.invoke('ai:get-active-provider', undefined),
+    ])
+      .then(([providers, activeProviderId]) => setVaultToolsAvailability(getVaultToolsAvailability(providers, activeProviderId)))
       .catch(() => setVaultToolsAvailability(getVaultToolsAvailability(null)))
   }, [])
 
@@ -609,8 +612,11 @@ export function ChatPanel() {
       await rewriteDbHistory(remaining)
     }
 
-    const providers = await window.api.invoke('ai:get-providers', undefined)
-    const availability = getVaultToolsAvailability(providers)
+    const [providers, activeProviderId] = await Promise.all([
+      window.api.invoke('ai:get-providers', undefined),
+      window.api.invoke('ai:get-active-provider', undefined),
+    ])
+    const availability = getVaultToolsAvailability(providers, activeProviderId)
     setVaultToolsAvailability(availability)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       showNoAiProviderToast()
@@ -663,8 +669,11 @@ export function ChatPanel() {
       await rewriteDbHistory(remaining)
     }
 
-    const providers = await window.api.invoke('ai:get-providers', undefined)
-    const availability = getVaultToolsAvailability(providers)
+    const [providers, activeProviderId] = await Promise.all([
+      window.api.invoke('ai:get-providers', undefined),
+      window.api.invoke('ai:get-active-provider', undefined),
+    ])
+    const availability = getVaultToolsAvailability(providers, activeProviderId)
     setVaultToolsAvailability(availability)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       showNoAiProviderToast()
@@ -1314,8 +1323,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setOutboundPreview(null)
     setOutboundPreviewLoading(true)
     try {
-      const providers = await window.api.invoke('ai:get-providers', undefined)
-      const availability = getVaultToolsAvailability(providers)
+      const [providers, activeProviderId] = await Promise.all([
+        window.api.invoke('ai:get-providers', undefined),
+        window.api.invoke('ai:get-active-provider', undefined),
+      ])
+      const availability = getVaultToolsAvailability(providers, activeProviderId)
       setVaultToolsAvailability(availability)
       if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
         showNoAiProviderToast()
@@ -1395,8 +1407,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       setOutboundPreview(null)
     }
 
-    const providers = await window.api.invoke('ai:get-providers', undefined)
-    const availability = getVaultToolsAvailability(providers)
+    const [providers, activeProviderId] = await Promise.all([
+      window.api.invoke('ai:get-providers', undefined),
+      window.api.invoke('ai:get-active-provider', undefined),
+    ])
+    const availability = getVaultToolsAvailability(providers, activeProviderId)
     setVaultToolsAvailability(availability)
     if (!providers || providers.length === 0 || !providers.some((p) => p.enabled)) {
       showNoAiProviderToast()

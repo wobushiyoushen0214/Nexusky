@@ -6,8 +6,15 @@ export interface VaultToolsAvailability {
   providerName: string | null
 }
 
-export function getVaultToolsAvailability(providers: AIProviderConfig[] | null | undefined): VaultToolsAvailability {
-  const active = providers?.find((provider) => provider.enabled) ?? null
+export function getVaultToolsAvailability(
+  providers: AIProviderConfig[] | null | undefined,
+  activeProviderId?: string | null
+): VaultToolsAvailability {
+  const active = (
+    activeProviderId
+      ? providers?.find((provider) => provider.id === activeProviderId && provider.enabled)
+      : null
+  ) ?? providers?.find((provider) => provider.enabled) ?? null
   return {
     hasEnabledProvider: Boolean(active),
     supportsVaultTools: Boolean(active?.capabilities?.toolCalling),

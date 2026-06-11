@@ -1,6 +1,6 @@
 import { ipcMain, net } from 'electron'
 import { randomUUID } from 'crypto'
-import { aiManager, AIProviderConfig } from '../../services/ai'
+import { aiManager, AIProviderConfig, resolveActiveProviderId } from '../../services/ai'
 import { store } from '../../services/store'
 import { listOllamaModels } from '../../services/ai/ollama-provider'
 import { transcribeAudio, type TranscribeAudioParams } from '../../services/ai/transcription'
@@ -9,6 +9,15 @@ import type { AICostBudget, FetchModelsParams, FetchModelsResult } from '@shared
 
 function getStoredProviders(): AIProviderConfig[] {
   return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
+}
+
+function getStoredActiveProviderId(): string | null {
+  const activeId = store.get('activeProviderId')
+  return typeof activeId === 'string' && activeId.trim() ? activeId : null
+}
+
+function setStoredActiveProviderId(providerId: string | null): void {
+  store.set('activeProviderId', providerId || null)
 }
 
 export function redactProviderForRenderer(config: AIProviderConfig): AIProviderConfig {
@@ -29,7 +38,59 @@ function hydrateProviderConfig(config: AIProviderConfig): AIProviderConfig {
 
 function normalizeProviderForStore(config: AIProviderConfig): AIProviderConfig {
   const { hasApiKey: _hasApiKey, capabilities: _capabilities, ...rest } = config
-  return rest
+  return {
+    ...rest,
+    id: rest.id,
+    name: (rest.name || '').trim(),
+    type: rest.type,
+    baseUrl: (rest.baseUrl || '').trim(),
+    apiKey: (rest.apiKey || '').trim(),
+    model: (rest.model || '').trim(),
+    enabled: rest.enabled === true,
+    inputCostPer1MTokens: typeof rest.inputCostPer1MTokens === 'number' ? rest.inputCostPer1MTokens : undefined,
+    outputCostPer1MTokens: typeof rest.outputCostPer1MTokens === 'number' ? rest.outputCostPer1MTokens : undefined
+  }
+}
+
+function providerRequiresApiKey(config: Pick<AIProviderConfig, 'type'>): boolean {
+  return config.type !== 'ollama' && config.type !== 'codex'
+}
+
+function mergeProviderForStore(config: AIProviderConfig, existing?: AIProviderConfig): AIProviderConfig {
+  const normalized = normalizeProviderForStore(config)
+  return {
+    ...normalized,
+    apiKey: providerRequiresApiKey(normalized)
+      ? normalized.apiKey || existing?.apiKey || ''
+      : normalized.apiKey
+  }
+}
+
+function validateProviderForSave(config: AIProviderConfig): string | null {
+  if (!config.name?.trim()) return 'Provider name is required'
+  if (!config.model?.trim()) return 'Model name is required'
+  if (providerRequiresApiKey(config) && !config.apiKey?.trim()) {
+    return 'API Key is required for this provider type'
+  }
+  if (config.type === 'custom' && !config.baseUrl?.trim()) {
+    return 'Base URL is required for custom providers'
+  }
+  return null
+}
+
+function persistProviders(providers: AIProviderConfig[], preferredActiveId?: string | null): string | null {
+  const activeId = resolveActiveProviderId(providers, preferredActiveId ?? getStoredActiveProviderId())
+  store.set('aiProviders', providers)
+  setStoredActiveProviderId(activeId)
+  aiManager.clearCache()
+  return activeId
+}
+
+function getFetchModelsBaseUrl(type: AIProviderConfig['type'], baseUrl: string): string {
+  const trimmed = baseUrl.trim().replace(/\/+$/, '')
+  if (type === 'openai' || type === 'openai-responses') return trimmed || 'https://api.openai.com/v1'
+  if (type === 'ollama') return (trimmed || 'http://localhost:11434').replace(/\/v1$/, '')
+  return trimmed
 }
 
 function normalizeUsageQuery(params?: AIUsageQuery): AIUsageQuery {
@@ -46,10 +107,7 @@ export function mergeProviderSecretsForStore(providers: AIProviderConfig[], exis
   const existingById = new Map(existingProviders.map((provider) => [provider.id, provider]))
   return providers.map((provider) => {
     const existing = existingById.get(provider.id)
-    return normalizeProviderForStore({
-      ...provider,
-      apiKey: provider.apiKey || existing?.apiKey || ''
-    })
+    return mergeProviderForStore(provider, existing)
   })
 }
 
@@ -62,29 +120,22 @@ export function registerAiProviderHandlers(): void {
     const providers = getStoredProviders()
     const { config } = params
 
-    if (!config.name?.trim()) throw new Error('Provider name is required')
-    if (!config.model?.trim()) throw new Error('Model name is required')
-    if (config.type !== 'ollama' && config.type !== 'codex' && !config.apiKey?.trim()) {
-      throw new Error('API Key is required for this provider type')
-    }
+    const existingIndex = config.id ? providers.findIndex((provider) => provider.id === config.id) : -1
+    const existing = existingIndex >= 0 ? providers[existingIndex] : undefined
+    const providerId = existing?.id || config.id || randomUUID()
+    const normalized = mergeProviderForStore({ ...config, id: providerId }, existing)
+    const validationError = validateProviderForSave(normalized)
+    if (validationError) throw new Error(validationError)
 
-    let updated = false
     if (config.id && providers.some(p => p.id === config.id)) {
-      const index = providers.findIndex(p => p.id === config.id)
-      providers[index] = normalizeProviderForStore({
-        ...config,
-        apiKey: config.apiKey || providers[index].apiKey
-      })
-      updated = true
+      providers[existingIndex] = normalized
     } else {
-      providers.push(normalizeProviderForStore({
-        ...config,
-        id: config.id || randomUUID()
-      }))
+      providers.push(normalized)
     }
 
-    store.set('aiProviders', providers)
-    aiManager.clearCache()
+    const currentActiveId = getStoredActiveProviderId()
+    const preferredActiveId = !existing && normalized.enabled ? normalized.id : currentActiveId
+    persistProviders(providers, preferredActiveId)
   })
 
   ipcMain.handle('ai:delete-provider', (_event, params: { id: string }) => {
@@ -96,8 +147,7 @@ export function registerAiProviderHandlers(): void {
       throw new Error('Cannot delete the last enabled provider')
     }
 
-    store.set('aiProviders', filtered)
-    aiManager.clearCache()
+    persistProviders(filtered)
   })
 
   ipcMain.handle('ai:test-provider', async (_event, params: { config: AIProviderConfig }) => {
@@ -150,17 +200,26 @@ export function registerAiProviderHandlers(): void {
   })
 
   ipcMain.handle('ai:save-providers', (_event, params: { providers: AIProviderConfig[] }) => {
-    store.set('aiProviders', mergeProviderSecretsForStore(params.providers, getStoredProviders()))
-    aiManager.clearCache()
+    persistProviders(mergeProviderSecretsForStore(params.providers, getStoredProviders()))
   })
 
   ipcMain.handle('ai:set-active', (_event, params: { providerId: string }) => {
-    store.set('activeProviderId', params.providerId)
+    const providers = getStoredProviders()
+    const providerIndex = providers.findIndex((provider) => provider.id === params.providerId)
+    if (providerIndex < 0) throw new Error('Provider not found')
+    if (!providers[providerIndex].enabled) {
+      providers[providerIndex] = normalizeProviderForStore({ ...providers[providerIndex], enabled: true })
+      store.set('aiProviders', providers)
+    }
+    setStoredActiveProviderId(params.providerId)
     aiManager.clearCache()
   })
 
   ipcMain.handle('ai:get-active-provider', () => {
-    return (store.get('activeProviderId') as string | undefined) || null
+    const providers = getStoredProviders()
+    const activeId = resolveActiveProviderId(providers, getStoredActiveProviderId())
+    if (activeId !== getStoredActiveProviderId()) setStoredActiveProviderId(activeId)
+    return activeId
   })
 
   ipcMain.handle('ai:get-usage-summary', (_event, params: AIUsageQuery) => {
@@ -345,8 +404,7 @@ export function registerAiProviderHandlers(): void {
     }
 
     if (imported > 0) {
-      store.set('aiProviders', next)
-      aiManager.clearCache()
+      persistProviders(next, getStoredActiveProviderId() || next.find((provider) => provider.enabled)?.id || null)
     }
 
     return {
@@ -371,6 +429,10 @@ export function registerAiProviderHandlers(): void {
 
   ipcMain.handle('ai:fetch-models', async (_event, params: FetchModelsParams): Promise<FetchModelsResult> => {
     try {
+      const stored = params.providerId ? getStoredProviders().find((provider) => provider.id === params.providerId) : undefined
+      const apiKey = params.apiKey || stored?.apiKey || ''
+      const baseUrl = getFetchModelsBaseUrl(params.type, params.baseUrl || stored?.baseUrl || '')
+
       if (params.type === 'claude') {
         return {
           ok: true,
@@ -379,25 +441,29 @@ export function registerAiProviderHandlers(): void {
       }
 
       if (params.type === 'ollama') {
-        const models = await listOllamaModels(params.baseUrl)
+        const models = await listOllamaModels(baseUrl)
         return { ok: true, models }
       }
 
-      const baseUrl = params.baseUrl.replace(/\/+$/, '')
+      if (!apiKey) return { ok: false, models: [], error: 'API Key 为空' }
+      if (!baseUrl) return { ok: false, models: [], error: 'Base URL 为空' }
+
       const endpoints = [`${baseUrl}/models`, `${baseUrl}/v1/models`]
 
       for (const url of endpoints) {
+        let timeout: ReturnType<typeof setTimeout> | null = null
         try {
           const controller = new AbortController()
-          const timeout = setTimeout(() => controller.abort(), 30_000)
+          timeout = setTimeout(() => controller.abort(), 30_000)
 
           const response = await net.fetch(url, {
             method: 'GET',
-            headers: { 'Authorization': `Bearer ${params.apiKey}` },
+            headers: { 'Authorization': `Bearer ${apiKey}` },
             signal: controller.signal
           })
 
           clearTimeout(timeout)
+          timeout = null
 
           if (response.status === 401) {
             return { ok: false, models: [], error: 'API Key 无效' }
@@ -416,6 +482,8 @@ export function registerAiProviderHandlers(): void {
             return { ok: false, models: [], error: '请求超时' }
           }
           continue
+        } finally {
+          if (timeout) clearTimeout(timeout)
         }
       }
 

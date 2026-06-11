@@ -58,6 +58,26 @@ describe('chat vault tools provider capability', () => {
       providerName: 'Claude'
     })
   })
+
+  it('uses the stored active provider before falling back to the first enabled provider', () => {
+    expect(getVaultToolsAvailability([
+      provider({ id: 'ollama', type: 'ollama', name: 'Ollama', capabilities: { streaming: true, toolCalling: false } }),
+      provider({ id: 'claude', type: 'claude', name: 'Claude', capabilities: { streaming: true, toolCalling: true } })
+    ], 'claude')).toEqual({
+      hasEnabledProvider: true,
+      supportsVaultTools: true,
+      providerName: 'Claude'
+    })
+
+    expect(getVaultToolsAvailability([
+      provider({ id: 'ollama', type: 'ollama', name: 'Ollama', capabilities: { streaming: true, toolCalling: false } }),
+      provider({ id: 'claude', type: 'claude', name: 'Claude', enabled: false, capabilities: { streaming: true, toolCalling: true } })
+    ], 'claude')).toEqual({
+      hasEnabledProvider: true,
+      supportsVaultTools: false,
+      providerName: 'Ollama'
+    })
+  })
 })
 
 describe('chat vault tools boundary summary', () => {

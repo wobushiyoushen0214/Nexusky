@@ -480,6 +480,7 @@ export interface FetchModelsParams {
   type: 'openai' | 'openai-responses' | 'claude' | 'custom' | 'ollama' | 'codex'
   baseUrl: string
   apiKey: string
+  providerId?: string
 }
 
 export interface FetchModelsResult {
