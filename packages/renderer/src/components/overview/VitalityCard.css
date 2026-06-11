@@ -1,12 +1,15 @@
 .vitality-card {
   grid-area: vitality;
-  padding: 28px;
+  padding: 20px 24px;
   background: var(--overview-glass-card);
   border: 1px solid var(--overview-glass-border);
   border-radius: var(--overview-card-radius);
   box-shadow: var(--overview-glass-shadow);
   backdrop-filter: blur(var(--overview-glass-blur));
   transition: all 0.3s var(--overview-ease);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .vitality-card--loading {
@@ -22,22 +25,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .vitality-card__header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--overview-text-primary);
 }
 
 .vitality-card__badge {
-  padding: 5px 14px;
+  padding: 4px 10px;
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
-  border-radius: 12px;
-  font-size: 11px;
+  border-radius: 10px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -46,12 +49,12 @@
 .vitality-card__score {
   display: flex;
   align-items: baseline;
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .vitality-card__score-value {
-  font-size: 56px;
+  font-size: 44px;
   font-weight: 700;
   line-height: 1;
   font-feature-settings: 'tnum';
@@ -93,13 +96,13 @@
 }
 
 .vitality-card__growth {
-  padding-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid var(--overview-glass-border);
 }
 
 .vitality-card__growth-title {
-  margin: 0 0 10px;
-  font-size: 11px;
+  margin: 0 0 8px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--overview-text-tertiary);
@@ -108,8 +111,8 @@
 
 .vitality-card__growth-stats {
   display: flex;
-  gap: 20px;
-  font-size: 13px;
+  gap: 16px;
+  font-size: 12px;
   color: var(--overview-text-secondary);
   font-feature-settings: 'tnum';
 }
