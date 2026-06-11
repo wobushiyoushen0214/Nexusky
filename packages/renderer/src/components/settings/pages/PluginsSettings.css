@@ -1,0 +1,24 @@
+.plugins-settings {
+  padding: 0;
+}
+
+.plugins-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+  margin-bottom: 16px;
+}
+
+.plugins-empty p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}

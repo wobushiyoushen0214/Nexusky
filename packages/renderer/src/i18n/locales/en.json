@@ -1346,6 +1346,32 @@
       }
     },
     "cloudSync": {
+      "title": "Cloud Sync",
+      "description": "Sync your notes to the cloud",
+      "notConfigured": "Cloud sync not configured",
+      "notConfiguredDesc": "Cloud sync feature is not yet configured, stay tuned"
+    },
+    "plugins": {
+      "title": "Plugins",
+      "description": "Extend Nexusky's functionality",
+      "noPlugins": "No plugins available"
+    },
+    "keys": {
+      "title": "Keyboard Shortcuts",
+      "description": "Customize keyboard shortcuts",
+      "comingSoon": "Keyboard shortcuts settings coming soon"
+    },
+    "proactive": {
+      "title": "Proactive Suggestions",
+      "description": "AI proactively provides suggestions and insights",
+      "comingSoon": "Proactive suggestions feature coming soon"
+    },
+    "longContext": {
+      "title": "Memory Ledger",
+      "description": "Long-term memory and context management",
+      "comingSoon": "Memory ledger feature coming soon"
+    },
+    "syncHealth": {
       "title": "Sync health",
       "description": "Check the latest sync, failure reason, and queued transfers for the active cloud backend.",
       "refresh": "Refresh",

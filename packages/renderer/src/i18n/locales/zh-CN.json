@@ -1346,6 +1346,32 @@
       }
     },
     "cloudSync": {
+      "title": "云端同步",
+      "description": "同步你的笔记到云端",
+      "notConfigured": "未配置云端同步",
+      "notConfiguredDesc": "云端同步功能尚未配置，敬请期待"
+    },
+    "plugins": {
+      "title": "插件",
+      "description": "扩展 Nexusky 的功能",
+      "noPlugins": "暂无可用插件"
+    },
+    "keys": {
+      "title": "快捷键",
+      "description": "自定义键盘快捷键",
+      "comingSoon": "快捷键设置即将推出"
+    },
+    "proactive": {
+      "title": "主动建议",
+      "description": "AI 主动提供建议和洞察",
+      "comingSoon": "主动建议功能即将推出"
+    },
+    "longContext": {
+      "title": "记忆账本",
+      "description": "长期记忆和上下文管理",
+      "comingSoon": "记忆账本功能即将推出"
+    },
+    "syncHealth": {
       "title": "同步健康",
       "description": "查看当前云端后端的最后同步、失败原因和待处理传输。",
       "refresh": "刷新",
