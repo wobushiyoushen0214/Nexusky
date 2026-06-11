@@ -28,7 +28,24 @@ export function AIProviderSettings() {
   const loadProviders = async () => {
     try {
       const result = await window.api.invoke('ai:get-providers', undefined)
-      setProviders(result)
+
+      // 修复多个启用的情况：只保留第一个启用的
+      const enabledCount = result.filter((p: AIProviderConfig) => p.enabled).length
+      if (enabledCount > 1) {
+        const firstEnabled = result.find((p: AIProviderConfig) => p.enabled)
+        for (const p of result) {
+          if (p.enabled && p.id !== firstEnabled?.id) {
+            await window.api.invoke('ai:save-provider', {
+              config: { ...p, enabled: false },
+            })
+          }
+        }
+        // 重新加载修正后的数据
+        const fixed = await window.api.invoke('ai:get-providers', undefined)
+        setProviders(fixed)
+      } else {
+        setProviders(result)
+      }
     } catch (error) {
       console.error('Failed to load providers:', error)
     }
@@ -136,16 +153,21 @@ export function AIProviderSettings() {
         {providers.map((provider) => (
           <div key={provider.id} className={`provider-card ${provider.enabled ? 'is-enabled' : 'is-disabled'}`}>
             <div className="provider-card__info">
-              <h3>
-                {provider.name}
-                {provider.enabled && <span className="provider-badge">启用</span>}
-              </h3>
-              <p>{provider.model}</p>
+              <div className="provider-header">
+                <button
+                  className={`provider-radio ${provider.enabled ? 'is-active' : ''}`}
+                  onClick={() => handleToggleEnabled(provider)}
+                  title={provider.enabled ? t('settings.ai.disable') : t('settings.ai.enable')}
+                >
+                  <span className="radio-dot"></span>
+                </button>
+                <div>
+                  <h3>{provider.name}</h3>
+                  <p>{provider.model}</p>
+                </div>
+              </div>
             </div>
             <div className="provider-card__actions">
-              <button onClick={() => handleToggleEnabled(provider)}>
-                {provider.enabled ? t('settings.ai.disable') : t('settings.ai.enable')}
-              </button>
               <button onClick={() => setEditing(provider)}>{t('common.edit')}</button>
               <button onClick={() => handleDelete(provider.id)}>{t('common.delete')}</button>
             </div>

@@ -51,25 +51,56 @@
 }
 
 .provider-card__info h3 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
-.provider-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+.provider-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.provider-radio {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.provider-radio:hover {
+  border-color: var(--accent);
+}
+
+.provider-radio.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.radio-dot {
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s;
+}
+
+.provider-radio.is-active .radio-dot {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .provider-card__info p {
