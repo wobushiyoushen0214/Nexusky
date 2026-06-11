@@ -1,0 +1,110 @@
+.vitality-card {
+  padding: 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.vitality-card--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  color: var(--text-secondary);
+}
+
+.vitality-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.vitality-card__header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.vitality-card__badge {
+  padding: 4px 12px;
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  color: var(--accent-color);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.vitality-card__score {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vitality-card__score-value {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vitality-card--good .vitality-card__score-value {
+  color: var(--color-success);
+}
+
+.vitality-card--medium .vitality-card__score-value {
+  color: var(--color-warning);
+}
+
+.vitality-card--needs-attention .vitality-card__score-value {
+  color: var(--color-error);
+}
+
+.vitality-card__score-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.vitality-card__trend {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.vitality-card__trend--up {
+  color: var(--color-success);
+}
+
+.vitality-card__trend--down {
+  color: var(--color-error);
+}
+
+.vitality-card__growth {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.vitality-card__growth-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  letter-spacing: 0.5px;
+}
+
+.vitality-card__growth-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.vitality-card__growth-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

@@ -223,6 +223,15 @@
     "refreshing": "Refreshing...",
     "loading": "Reading local data...",
     "scannedAt": "Scanned at {{time}}",
+    "vitality": {
+      "title": "Knowledge Vitality",
+      "badge": "Positive Growth",
+      "rank": "Healthier than {{percent}}% of vaults",
+      "thisWeek": "This Week",
+      "newLinks": "new links",
+      "orphansReduced": "orphans reduced",
+      "scanning": "Scanning..."
+    },
     "stats": {
       "notes": "Notes",
       "links": "Links",

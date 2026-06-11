@@ -223,6 +223,15 @@
     "refreshing": "刷新中...",
     "loading": "正在读取本地数据...",
     "scannedAt": "扫描于 {{time}}",
+    "vitality": {
+      "title": "知识活力",
+      "badge": "正向成长",
+      "rank": "比 {{percent}}% 的 vault 更健康",
+      "thisWeek": "本周成长",
+      "newLinks": "新增链接",
+      "orphansReduced": "孤岛减少",
+      "scanning": "正在扫描..."
+    },
     "stats": {
       "notes": "笔记",
       "links": "链接",
