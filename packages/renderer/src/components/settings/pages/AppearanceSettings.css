@@ -3,7 +3,7 @@
 }
 
 .settings-section {
-  padding: 32px;
+  padding: 24px 28px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -12,19 +12,19 @@
 }
 
 .section-header {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .section-header h2 {
-  margin: 0 0 6px;
-  font-size: 16px;
+  margin: 0 0 4px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .section-header p {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-tertiary);
   line-height: 1.5;
 }
@@ -32,9 +32,9 @@
 /* Theme Grid */
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 12px;
-  max-width: 700px;
+  grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+  gap: 10px;
+  max-width: 650px;
 }
 
 .theme-item {
@@ -52,11 +52,12 @@
 .theme-preview {
   width: 80px;
   height: 56px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 2px solid var(--border-color);
   position: relative;
   overflow: hidden;
   transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .theme-item:hover .theme-preview {
@@ -72,33 +73,58 @@
 
 .theme-preview__dots {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 6px;
+  left: 6px;
   display: flex;
-  gap: 4px;
+  gap: 3px;
 }
 
 .theme-preview__dots span {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.theme-preview--dark { background: #1e1e1e; }
-.theme-preview--light { background: #ffffff; }
-.theme-preview--ocean { background: #1a365d; }
-.theme-preview--amber { background: #78350f; }
-.theme-preview--forest { background: #14532d; }
-.theme-preview--rose { background: #fce7f3; }
-.theme-preview--minimal { background: #404040; }
-.theme-preview--obsidian { background: #2e1065; }
-.theme-preview--nord { background: #2e3440; }
-.theme-preview--solarized { background: #002b36; }
-.theme-preview--contrast { background: #000000; }
+.theme-preview--dark {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1e1e1e 100%);
+}
+.theme-preview--light {
+  background: linear-gradient(135deg, #fafafa 0%, #ffffff 50%, #f0f0f0 100%);
+  border-color: #e0e0e0;
+}
+.theme-preview--ocean {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #1e40af 100%);
+}
+.theme-preview--amber {
+  background: linear-gradient(135deg, #92400e 0%, #f59e0b 50%, #b45309 100%);
+}
+.theme-preview--forest {
+  background: linear-gradient(135deg, #14532d 0%, #22c55e 50%, #15803d 100%);
+}
+.theme-preview--rose {
+  background: linear-gradient(135deg, #fce7f3 0%, #f9a8d4 50%, #fbcfe8 100%);
+  border-color: #f9a8d4;
+}
+.theme-preview--minimal {
+  background: linear-gradient(135deg, #404040 0%, #737373 50%, #525252 100%);
+}
+.theme-preview--obsidian {
+  background: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 50%, #6d28d9 100%);
+}
+.theme-preview--nord {
+  background: linear-gradient(135deg, #2e3440 0%, #5e81ac 50%, #434c5e 100%);
+}
+.theme-preview--solarized {
+  background: linear-gradient(135deg, #002b36 0%, #268bd2 50%, #073642 100%);
+}
+.theme-preview--contrast {
+  background: linear-gradient(135deg, #000000 0%, #333333 50%, #1a1a1a 100%);
+}
 
 .theme-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   font-weight: 500;
   transition: color 0.2s;
@@ -116,16 +142,16 @@
 /* Accent List */
 .accent-list {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  max-width: 700px;
+  max-width: 650px;
 }
 
 .accent-item {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   background: transparent;
   border: none;
@@ -157,7 +183,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: white;
   opacity: 0;
@@ -178,8 +204,8 @@
 }
 
 .accent-picker {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 2px solid var(--border-color);
   border-radius: 8px;
@@ -197,10 +223,10 @@
 }
 
 .accent-text {
-  width: 100px;
-  height: 32px;
-  padding: 0 10px;
-  font-size: 12px;
+  width: 90px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 11px;
   font-family: monospace;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -226,7 +252,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: var(--bg-elevated);
   border: 2px solid var(--border-color);
   border-radius: 8px;
@@ -245,13 +271,13 @@
 }
 
 .language-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .language-check {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--accent);
   opacity: 0;

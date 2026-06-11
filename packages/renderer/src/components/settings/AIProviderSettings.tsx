@@ -23,7 +23,7 @@ export function AIProviderSettings() {
 
   const loadProviders = async () => {
     try {
-      const result = await window.api.invoke('ai:get-providers', null)
+      const result = await window.api.invoke('ai:get-providers', undefined)
       setProviders(result)
     } catch (error) {
       console.error('Failed to load providers:', error)
@@ -34,7 +34,7 @@ export function AIProviderSettings() {
     if (!editing) return
 
     try {
-      await window.api.invoke('ai:save-provider', editing)
+      await window.api.invoke('ai:save-provider', { config: editing })
       await loadProviders()
       setEditing(null)
       toast(t('settings.ai.saved'), 'success')
@@ -48,7 +48,7 @@ export function AIProviderSettings() {
 
     setTesting(true)
     try {
-      const result = await window.api.invoke('ai:test-provider', editing)
+      const result = await window.api.invoke('ai:test-provider', { config: editing })
       if (result.ok) {
         toast(t('settings.ai.testSuccess'), 'success')
       } else {
@@ -99,6 +99,8 @@ export function AIProviderSettings() {
           apiKey: '',
           baseUrl: '',
           model: '',
+          enabled: true,
+          hasApiKey: false,
         })}>
           + {t('settings.ai.addProvider')}
         </button>

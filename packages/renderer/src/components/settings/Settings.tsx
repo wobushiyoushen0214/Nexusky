@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SettingsSidebar, type SettingsTab } from './SettingsSidebar'
 import { AppearanceSettings } from './pages/AppearanceSettings'
+import { AIProviderSettings } from './AIProviderSettings'
 import './Settings.css'
 
 interface SettingsProps {
@@ -60,7 +61,7 @@ export function Settings({ open, onClose }: SettingsProps) {
 
           <main className="settings-dialog__content">
             {activeTab === 'appearance' && <AppearanceSettings />}
-            {activeTab === 'ai' && <div className="settings-placeholder">{t('settings.tabs.ai')} - 等待 Codex 后端</div>}
+            {activeTab === 'ai' && <AIProviderSettings />}
             {activeTab === 'cloud' && <div className="settings-placeholder">{t('settings.tabs.cloud')} - 开发中</div>}
             {activeTab === 'plugins' && <div className="settings-placeholder">{t('settings.tabs.plugins')} - 开发中</div>}
             {activeTab === 'keys' && <div className="settings-placeholder">{t('settings.tabs.keys')} - 开发中</div>}
