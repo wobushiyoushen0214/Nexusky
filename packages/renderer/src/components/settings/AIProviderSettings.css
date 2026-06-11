@@ -37,6 +37,14 @@
   transition: all 0.2s;
 }
 
+.provider-card.is-disabled {
+  opacity: 0.6;
+}
+
+.provider-card.is-enabled {
+  border-color: var(--accent);
+}
+
 .provider-card:hover {
   border-color: var(--accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -47,6 +55,21 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .provider-card__info p {

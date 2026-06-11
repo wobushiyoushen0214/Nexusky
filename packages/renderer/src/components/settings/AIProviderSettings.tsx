@@ -81,12 +81,25 @@ export function AIProviderSettings() {
       if (result.ok) {
         toast(t('settings.ai.testSuccess'), 'success')
       } else {
-        toast(result.text, 'error')
+        toast(result.text || t('settings.ai.testFailed'), 'error')
       }
     } catch (error) {
-      toast(t('settings.ai.testFailed'), 'error')
+      const errorMsg = error instanceof Error ? error.message : t('settings.ai.testFailed')
+      toast(errorMsg, 'error')
     } finally {
       setTesting(false)
+    }
+  }
+
+  const handleToggleEnabled = async (provider: AIProviderConfig) => {
+    try {
+      await window.api.invoke('ai:save-provider', {
+        config: { ...provider, enabled: !provider.enabled },
+      })
+      await loadProviders()
+      toast(provider.enabled ? t('settings.ai.disabled') : t('settings.ai.enabled'), 'success')
+    } catch (error) {
+      toast(t('settings.ai.saveFailed'), 'error')
     }
   }
 
@@ -109,12 +122,18 @@ export function AIProviderSettings() {
 
       <div className="provider-list">
         {providers.map((provider) => (
-          <div key={provider.id} className="provider-card">
+          <div key={provider.id} className={`provider-card ${provider.enabled ? 'is-enabled' : 'is-disabled'}`}>
             <div className="provider-card__info">
-              <h3>{provider.name}</h3>
+              <h3>
+                {provider.name}
+                {provider.enabled && <span className="provider-badge">启用</span>}
+              </h3>
               <p>{provider.model}</p>
             </div>
             <div className="provider-card__actions">
+              <button onClick={() => handleToggleEnabled(provider)}>
+                {provider.enabled ? t('settings.ai.disable') : t('settings.ai.enable')}
+              </button>
               <button onClick={() => setEditing(provider)}>{t('common.edit')}</button>
               <button onClick={() => handleDelete(provider.id)}>{t('common.delete')}</button>
             </div>
