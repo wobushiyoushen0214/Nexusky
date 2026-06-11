@@ -1297,6 +1297,25 @@
       "zhCN": "简体中文",
       "en": "English"
     },
+    "ai": {
+      "title": "AI 提供商",
+      "subtitle": "配置 OpenAI、Claude、DeepSeek 等 AI 服务",
+      "addProvider": "添加提供商",
+      "editProvider": "编辑提供商",
+      "providerName": "名称",
+      "apiKey": "API Key",
+      "baseUrl": "Base URL",
+      "model": "模型",
+      "quickSetup": "快速设置",
+      "test": "测试连接",
+      "testing": "测试中...",
+      "testSuccess": "连接成功",
+      "testFailed": "连接失败",
+      "saved": "保存成功",
+      "saveFailed": "保存失败",
+      "deleted": "删除成功",
+      "deleteFailed": "删除失败"
+    },
     "noAiMode": {
       "title": "未配置 AI 提供商",
       "description": "你仍可继续使用本地 vault。只有需要 AI 对话、编辑、Vault 工具或可审查执行时才需要添加提供商。",

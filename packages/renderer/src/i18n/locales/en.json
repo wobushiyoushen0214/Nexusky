@@ -1297,6 +1297,25 @@
       "zhCN": "简体中文",
       "en": "English"
     },
+    "ai": {
+      "title": "AI Providers",
+      "subtitle": "Configure OpenAI, Claude, DeepSeek and other AI services",
+      "addProvider": "Add Provider",
+      "editProvider": "Edit Provider",
+      "providerName": "Name",
+      "apiKey": "API Key",
+      "baseUrl": "Base URL",
+      "model": "Model",
+      "quickSetup": "Quick Setup",
+      "test": "Test Connection",
+      "testing": "Testing...",
+      "testSuccess": "Connection successful",
+      "testFailed": "Connection failed",
+      "saved": "Saved successfully",
+      "saveFailed": "Save failed",
+      "deleted": "Deleted successfully",
+      "deleteFailed": "Delete failed"
+    },
     "noAiMode": {
       "title": "No AI provider configured",
       "description": "You can keep using the local vault. Add a provider only when you want AI chat, editing, Vault tools, or reviewable execution.",
