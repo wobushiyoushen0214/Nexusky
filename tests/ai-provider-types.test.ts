@@ -152,4 +152,36 @@ describe('AI provider shared types', () => {
     if (ok.ok) expect(ok.model).toBe('gpt-4o-mini')
     if (!fail.ok) expect(fail.error).toBe('no provider')
   })
+
+  it('exposes ai:fetch-models for dynamic model discovery', () => {
+    type FetchModelsParams = IPCChannelMap['ai:fetch-models']['params']
+    type FetchModelsResult = IPCChannelMap['ai:fetch-models']['result']
+
+    const openaiParams: FetchModelsParams = {
+      type: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-test'
+    }
+    const claudeParams: FetchModelsParams = {
+      type: 'claude',
+      baseUrl: '',
+      apiKey: 'sk-ant-test'
+    }
+    const ollamaParams: FetchModelsParams = {
+      type: 'ollama',
+      baseUrl: 'http://localhost:11434',
+      apiKey: ''
+    }
+
+    const success: FetchModelsResult = { ok: true, models: ['gpt-4', 'gpt-4-turbo'] }
+    const failure: FetchModelsResult = { ok: false, models: [], error: 'API Key 无效' }
+
+    expect(openaiParams.type).toBe('openai')
+    expect(claudeParams.type).toBe('claude')
+    expect(ollamaParams.type).toBe('ollama')
+    expect(success.ok).toBe(true)
+    expect(success.models).toHaveLength(2)
+    expect(failure.ok).toBe(false)
+    expect(failure.error).toBe('API Key 无效')
+  })
 })

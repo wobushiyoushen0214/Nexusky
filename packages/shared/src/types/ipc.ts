@@ -476,6 +476,18 @@ export interface AIProviderValidationResult {
   error?: string
 }
 
+export interface FetchModelsParams {
+  type: 'openai' | 'openai-responses' | 'claude' | 'custom' | 'ollama' | 'codex'
+  baseUrl: string
+  apiKey: string
+}
+
+export interface FetchModelsResult {
+  ok: boolean
+  models: string[]
+  error?: string
+}
+
 export type AIUsageSource = 'chat' | 'agent' | 'completion' | 'edit' | 'utility'
 export type AIUsageStatus = 'completed' | 'error' | 'aborted'
 
@@ -1269,6 +1281,7 @@ export interface IPCChannelMap {
   'ai:summarize': { params: { content: string; language?: AppLanguage }; result: string }
   'ai:generate-flashcards': { params: { content: string; title?: string; maxCards?: number; language?: AppLanguage }; result: { success: boolean; cards: GeneratedFlashcard[]; markdown?: string; error?: string } }
   'ai:detect-local-config': { params: undefined; result: { importable: number; imported: number; existing: number; skipped?: string[] } }
+  'ai:fetch-models': { params: FetchModelsParams; result: FetchModelsResult }
   'ai:edit': { params: { instruction: string; fileContent: string; filePath: string; images?: string[]; history?: string[]; language?: AppLanguage }; result: { success: boolean; content?: string; beforeHash?: string; error?: string } }
   'ai:apply-edit': { params: { filePath: string; content: string; vaultPath?: string; expectedBeforeHash?: string; allowCreate?: boolean }; result: AiApplyEditResult }
   'ai:generate-graph': { params: { filePaths: string[]; vaultPath: string; language?: AppLanguage }; result: { success: boolean; content?: string; error?: string } }

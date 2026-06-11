@@ -18,6 +18,8 @@ export function AIProviderSettings() {
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
   const [editing, setEditing] = useState<AIProviderConfig | null>(null)
   const [testing, setTesting] = useState(false)
+  const [fetchingModels, setFetchingModels] = useState(false)
+  const [availableModels, setAvailableModels] = useState<string[]>([])
 
   useEffect(() => {
     loadProviders()
@@ -29,6 +31,31 @@ export function AIProviderSettings() {
       setProviders(result)
     } catch (error) {
       console.error('Failed to load providers:', error)
+    }
+  }
+
+  const handleFetchModels = async () => {
+    if (!editing) return
+
+    setFetchingModels(true)
+    setAvailableModels([])
+    try {
+      const result = await window.api.invoke('ai:fetch-models', {
+        type: editing.type,
+        baseUrl: editing.baseUrl,
+        apiKey: editing.apiKey,
+      })
+
+      if (result.ok) {
+        setAvailableModels(result.models)
+        toast(t('settings.ai.modelsFetched').replace('{{count}}', String(result.models.length)), 'success')
+      } else {
+        toast(result.error || t('settings.ai.fetchModelsFailed'), 'error')
+      }
+    } catch (error) {
+      toast(t('settings.ai.fetchModelsFailed'), 'error')
+    } finally {
+      setFetchingModels(false)
     }
   }
 
@@ -149,12 +176,34 @@ export function AIProviderSettings() {
 
               <div className="form-group">
                 <label>{t('settings.ai.model')}</label>
-                <input
-                  type="text"
-                  value={editing.model}
-                  onChange={(e) => setEditing({ ...editing, model: e.target.value })}
-                  placeholder="gpt-4"
-                />
+                <div className="model-input-group">
+                  {availableModels.length > 0 ? (
+                    <select
+                      value={editing.model}
+                      onChange={(e) => setEditing({ ...editing, model: e.target.value })}
+                    >
+                      <option value="">{t('settings.ai.selectModel')}</option>
+                      {availableModels.map((model) => (
+                        <option key={model} value={model}>{model}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editing.model}
+                      onChange={(e) => setEditing({ ...editing, model: e.target.value })}
+                      placeholder="gpt-4"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleFetchModels}
+                    disabled={fetchingModels || !editing.apiKey}
+                    className="btn-fetch-models"
+                  >
+                    {fetchingModels ? t('settings.ai.fetching') : t('settings.ai.fetchModels')}
+                  </button>
+                </div>
               </div>
 
               <div className="provider-editor__presets">

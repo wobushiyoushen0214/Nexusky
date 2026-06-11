@@ -1,11 +1,11 @@
-import { ipcMain } from 'electron'
+import { ipcMain, net } from 'electron'
 import { randomUUID } from 'crypto'
 import { aiManager, AIProviderConfig } from '../../services/ai'
 import { store } from '../../services/store'
 import { listOllamaModels } from '../../services/ai/ollama-provider'
 import { transcribeAudio, type TranscribeAudioParams } from '../../services/ai/transcription'
 import { clearAIUsageRecords, getAICostBudget, getAIUsageSummary, listAIUsageRecords, setAICostBudget, type AIUsageQuery } from '../../services/ai/usage'
-import type { AICostBudget } from '@shared/types/ipc'
+import type { AICostBudget, FetchModelsParams, FetchModelsResult } from '@shared/types/ipc'
 
 function getStoredProviders(): AIProviderConfig[] {
   return (store.get('aiProviders') as AIProviderConfig[] | undefined) || []
@@ -367,5 +367,61 @@ export function registerAiProviderHandlers(): void {
 
   ipcMain.handle('ai:set-system-prompt', (_event, params: { prompt: string }) => {
     store.set('aiSystemPrompt', params.prompt)
+  })
+
+  ipcMain.handle('ai:fetch-models', async (_event, params: FetchModelsParams): Promise<FetchModelsResult> => {
+    try {
+      if (params.type === 'claude') {
+        return {
+          ok: true,
+          models: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001']
+        }
+      }
+
+      if (params.type === 'ollama') {
+        const models = await listOllamaModels(params.baseUrl)
+        return { ok: true, models }
+      }
+
+      const baseUrl = params.baseUrl.replace(/\/+$/, '')
+      const endpoints = [`${baseUrl}/models`, `${baseUrl}/v1/models`]
+
+      for (const url of endpoints) {
+        try {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 30_000)
+
+          const response = await net.fetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${params.apiKey}` },
+            signal: controller.signal
+          })
+
+          clearTimeout(timeout)
+
+          if (response.status === 401) {
+            return { ok: false, models: [], error: 'API Key 无效' }
+          }
+
+          if (!response.ok) continue
+
+          const data = await response.json() as { data?: { id?: string }[] }
+          const models = (data.data || [])
+            .map(m => m.id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+
+          return { ok: true, models }
+        } catch (e) {
+          if (e instanceof Error && e.name === 'AbortError') {
+            return { ok: false, models: [], error: '请求超时' }
+          }
+          continue
+        }
+      }
+
+      return { ok: false, models: [], error: '网络错误' }
+    } catch (e) {
+      return { ok: false, models: [], error: e instanceof Error ? e.message : '网络错误' }
+    }
   })
 }
