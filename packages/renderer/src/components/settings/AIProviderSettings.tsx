@@ -33,20 +33,14 @@ export function AIProviderSettings() {
       const enabledProviders = result.filter((p: AIProviderConfig) => p.enabled)
       if (enabledProviders.length > 1) {
         const firstEnabled = enabledProviders[0]
-        for (const p of result) {
-          if (p.enabled && p.id !== firstEnabled.id && p.apiKey) {
-            // 只在有 API Key 时才保存
-            await window.api.invoke('ai:save-provider', {
-              config: { ...p, enabled: false },
-            })
+        // 直接在前端修正显示状态，不保存到后端
+        result.forEach((p: AIProviderConfig) => {
+          if (p.enabled && p.id !== firstEnabled.id) {
+            p.enabled = false
           }
-        }
-        // 重新加载修正后的数据
-        const fixed = await window.api.invoke('ai:get-providers', undefined)
-        setProviders(fixed)
-      } else {
-        setProviders(result)
+        })
       }
+      setProviders(result)
     } catch (error) {
       console.error('Failed to load providers:', error)
     }
