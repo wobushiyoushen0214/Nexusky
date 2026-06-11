@@ -1,21 +1,32 @@
 .vitality-card {
   --vitality-score-color: var(--color-success);
+  --vitality-track: color-mix(in srgb, var(--overview-text-tertiary) 16%, transparent);
+  --vitality-panel: color-mix(in srgb, var(--overview-glass-well) 78%, transparent);
 
   grid-area: vitality;
   min-width: 0;
+  min-height: 0;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--bg-elevated);
-  transition: all 0.2s;
+  overflow: hidden;
+  border: 1px solid var(--overview-glass-border);
+  border-radius: var(--overview-card-radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 22%, transparent), transparent 42%),
+    linear-gradient(135deg, var(--overview-glass-card), color-mix(in srgb, var(--overview-glass-card) 84%, var(--overview-panel)));
+  box-shadow: var(--overview-glass-shadow);
+  backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.12);
+  -webkit-backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.12);
+  transition: all 150ms var(--overview-ease);
 }
 
 .vitality-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--overview-glass-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 28%, transparent), transparent 44%),
+    var(--overview-glass-card-hover);
 }
 
 .vitality-card--medium {
@@ -29,7 +40,7 @@
 .vitality-card--loading {
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  color: var(--overview-text-secondary);
   font-size: 13px;
 }
 
@@ -40,66 +51,60 @@
 /* Header */
 .vitality-card__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-}
-
-.vitality-card__header > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .vitality-card__header h3 {
   margin: 0;
-  color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 700;
+  color: var(--overview-text-primary);
+  font-size: 14px;
+  font-weight: 650;
   letter-spacing: -0.01em;
 }
 
 .vitality-card__header span {
-  color: var(--text-tertiary);
-  font-size: 12px;
+  color: var(--overview-text-tertiary);
+  font-size: 11px;
   font-weight: 500;
 }
 
 .vitality-card__badge {
   padding: 4px 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--vitality-score-color) 15%, transparent);
-  color: var(--vitality-score-color);
+  border: 1px solid color-mix(in srgb, var(--vitality-score-color) 24%, transparent);
+  background: color-mix(in srgb, var(--vitality-score-color) 12%, transparent);
+  color: color-mix(in srgb, var(--vitality-score-color) 78%, var(--overview-text-primary));
   font-size: 11px;
   font-weight: 650;
-  white-space: nowrap;
 }
 
-/* Score Row */
+/* Score Section */
 .vitality-card__score-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto 1fr;
   gap: 20px;
+  align-items: center;
 }
 
 .vitality-card__score-ring {
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 80px;
+  height: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: conic-gradient(var(--vitality-score-color) 0deg, var(--bg-secondary) 0deg);
 }
 
-.vitality-card__score-ring::before {
+.vitality-card__score-ring::after {
   content: '';
   position: absolute;
-  inset: 8px;
-  border-radius: 50%;
-  background: var(--bg-elevated);
+  inset: 6px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--overview-glass-card) 90%, var(--panel-bg-soft));
+  box-shadow: inset 0 1px 0 var(--overview-glass-highlight);
 }
 
 .vitality-card__score-ring strong,
@@ -109,106 +114,103 @@
 }
 
 .vitality-card__score-ring strong {
-  color: var(--text-primary);
-  font-size: 32px;
-  font-weight: 800;
+  color: var(--overview-text-primary);
+  font-size: 28px;
+  font-weight: 760;
   line-height: 1;
   letter-spacing: -0.02em;
 }
 
 .vitality-card__score-ring span {
   margin-top: 2px;
-  color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--overview-text-tertiary);
+  font-size: 10px;
+  font-weight: 650;
 }
 
 .vitality-card__summary {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  gap: 8px;
 }
 
 .vitality-card__summary strong {
-  color: var(--text-primary);
-  font-size: 15px;
+  color: var(--overview-text-primary);
+  font-size: 13px;
   font-weight: 650;
   line-height: 1.3;
 }
 
 .vitality-card__summary span {
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: var(--overview-text-secondary);
+  font-size: 12px;
   line-height: 1.4;
 }
 
-/* Metrics */
+/* Metrics Grid */
 .vitality-card__metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   padding: 16px 0;
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+  border-top: 1px solid var(--overview-scratch-line);
+  border-bottom: 1px solid var(--overview-scratch-line);
 }
 
 .vitality-card__metrics > div {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 6px;
 }
 
 .vitality-card__metrics span {
-  color: var(--text-tertiary);
-  font-size: 11px;
+  color: var(--overview-text-tertiary);
+  font-size: 10px;
   font-weight: 650;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .vitality-card__metrics strong {
-  color: var(--text-primary);
-  font-size: 20px;
-  font-weight: 750;
+  color: var(--overview-text-primary);
+  font-size: 18px;
+  font-weight: 700;
   line-height: 1;
 }
 
 /* Drivers */
 .vitality-card__drivers {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 12px;
 }
 
 .vitality-card__driver {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 6px;
 }
 
 .vitality-card__driver > div:first-child {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: baseline;
 }
 
 .vitality-card__driver span {
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--overview-text-secondary);
+  font-size: 11px;
   font-weight: 600;
 }
 
 .vitality-card__driver strong {
   color: var(--color-warning);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
+  text-align: right;
 }
 
 .vitality-card__driver-meter {
-  height: 6px;
+  height: 5px;
   border-radius: 999px;
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--overview-text-tertiary) 12%, transparent);
   overflow: hidden;
 }
 
@@ -216,44 +218,43 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--vitality-score-color), var(--color-warning));
+  background: linear-gradient(90deg, var(--vitality-score-color), color-mix(in srgb, var(--color-warning) 74%, var(--vitality-score-color)));
 }
 
 .vitality-card__driver--empty {
-  padding: 12px 0;
-  color: var(--text-tertiary);
-  font-size: 12px;
+  padding: 8px 0;
+  color: var(--overview-text-secondary);
+  font-size: 11px;
   text-align: center;
 }
 
 /* Growth */
 .vitality-card__growth {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  gap: 10px;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--bg-secondary);
 }
 
 .vitality-card__growth > span {
-  color: var(--text-tertiary);
-  font-size: 11px;
+  color: var(--overview-text-tertiary);
+  font-size: 10px;
   font-weight: 650;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .vitality-card__growth strong {
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--overview-text-secondary);
+  font-size: 11px;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .vitality-card__trend {
-  margin-left: auto;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
+  text-align: right;
 }
 
 .vitality-card__trend--up {
