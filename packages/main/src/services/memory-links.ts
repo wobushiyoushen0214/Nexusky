@@ -16,7 +16,7 @@ export function refreshInferredLinksFromMemory(
   const db = getDatabase(vaultPath)
   const topK = options.topK ?? 3
   const memoryPairs = findRelatedByMemory(vaultPath, topK)
-  const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type) VALUES (?, ?, ?, ?)')
+  const insertLink = db.prepare('INSERT INTO links (source_note_id, target_title, context, link_type, created_at) VALUES (?, ?, ?, ?, ?)')
   const explicitLinkExists = db.prepare(`
     SELECT 1 FROM links
     WHERE source_note_id = ?
@@ -51,9 +51,10 @@ export function refreshInferredLinksFromMemory(
   if (options.signal?.aborted) return { added: 0, considered: memoryPairs.length, aborted: true }
 
   const replaceInferredLinks = db.transaction(() => {
+    const createdAt = Math.floor(Date.now() / 1000)
     db.prepare("DELETE FROM links WHERE link_type = 'inferred'").run()
     for (const link of inferredLinks) {
-      insertLink.run(link.sourceId, link.targetTitle, link.context, 'inferred')
+      insertLink.run(link.sourceId, link.targetTitle, link.context, 'inferred', createdAt)
     }
   })
   replaceInferredLinks()

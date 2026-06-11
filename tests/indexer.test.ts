@@ -76,7 +76,7 @@ describe('indexer', () => {
     const notes = db.prepare('PRAGMA table_info(notes)').all() as { name: string }[]
 
     expect(notes.map((column) => column.name)).toEqual(expect.arrayContaining(['properties_json', 'properties_version']))
-    expect(links.map((column) => column.name)).toEqual(expect.arrayContaining(['context', 'line', 'link_type']))
+    expect(links.map((column) => column.name)).toEqual(expect.arrayContaining(['context', 'line', 'link_type', 'created_at']))
     expect(conversations.map((column) => column.name)).toEqual(expect.arrayContaining(['sources', 'session_id']))
     expect(kanbanTasks.map((column) => column.name)).toEqual(expect.arrayContaining(['description', 'priority', 'due_date', 'source_note_id', 'source_file_path', 'created_at', 'updated_at']))
     expect(db.prepare('SELECT COUNT(*) as count FROM links').get()).toEqual({ count: 0 })

@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import Database from 'better-sqlite3'
 
 describe('vault-health', () => {
   let vaultPath: string
@@ -53,6 +54,52 @@ describe('vault-health', () => {
       noteCount: 0,
       repairSignalCount: 0
     })
+  })
+
+  it('repairs old link tables before calculating growth metrics', async () => {
+    const dbPath = join(vaultPath, '.nexusky', 'index.db')
+    const legacyDb = new Database(dbPath)
+    legacyDb.exec(`
+      CREATE TABLE notes (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        file_path TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        content_hash TEXT NOT NULL
+      );
+      CREATE TABLE links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_note_id TEXT NOT NULL,
+        target_note_id TEXT,
+        target_title TEXT NOT NULL,
+        context TEXT,
+        line INTEGER NOT NULL DEFAULT 1,
+        link_type TEXT NOT NULL DEFAULT 'explicit'
+      );
+      CREATE TABLE tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        note_id TEXT NOT NULL,
+        text TEXT NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0
+      );
+    `)
+    legacyDb
+      .prepare('INSERT INTO notes (id, title, file_path, created_at, updated_at, content_hash) VALUES (?, ?, ?, ?, ?, ?)')
+      .run('a', 'A', '/a.md', 1_700_000_000, 1_700_000_000, 'hash-a')
+    legacyDb
+      .prepare('INSERT INTO links (source_note_id, target_note_id, target_title, line, link_type) VALUES (?, ?, ?, ?, ?)')
+      .run('a', null, 'Missing', 1, 'explicit')
+    legacyDb.close()
+
+    const { scanVaultHealth } = await import('../packages/main/src/services/vault-health')
+    const summary = scanVaultHealth(vaultPath, 1_800_000_000)
+    const { getDatabase } = await import('../packages/main/src/services/database')
+    const columns = getDatabase(vaultPath).prepare('PRAGMA table_info(links)').all() as { name: string }[]
+
+    expect(columns.map((column) => column.name)).toContain('created_at')
+    expect(summary.linkCount).toBe(1)
+    expect(summary.growth?.newLinksThisWeek).toBe(0)
   })
 
   it('counts notes, links, orphans, duplicates, tasks, and stale notes', async () => {

@@ -13,6 +13,7 @@ import { registerProactiveIPC } from './ipc/proactive.ipc'
 import { registerAgentIPC } from './ipc/agent.ipc'
 import { registerDemoIPC } from './ipc/demo.ipc'
 import { registerMemoryIPC } from './ipc/memory.ipc'
+import { registerSettingsIPC } from './ipc/settings.ipc'
 import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
 import { startWebClipperServer, stopWebClipperServer } from './services/web-clipper'
@@ -170,6 +171,7 @@ app.whenReady().then(() => {
   registerAgentIPC()
   registerDemoIPC()
   registerMemoryIPC()
+  registerSettingsIPC()
   setupAutoUpdater()
   startWebClipperServer()
 

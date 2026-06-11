@@ -69,7 +69,7 @@ function getIndexerStatements(db: Database.Database): IndexerStatements {
         properties_version = excluded.properties_version
     `),
     deleteLinks: db.prepare('DELETE FROM links WHERE source_note_id = ?'),
-    insertLink: db.prepare('INSERT INTO links (source_note_id, target_title, context, line) VALUES (?, ?, ?, ?)'),
+    insertLink: db.prepare('INSERT INTO links (source_note_id, target_title, context, line, created_at) VALUES (?, ?, ?, ?, ?)'),
     deleteTags: db.prepare('DELETE FROM note_tags WHERE note_id = ?'),
     findOrCreateTag: db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)'),
     getTagId: db.prepare('SELECT id FROM tags WHERE name = ?'),
@@ -201,6 +201,7 @@ export function indexNote(vaultPath: string, filePath: string, options: { resolv
   const tasks = extractTasks(visibleContent)
   const properties = buildIndexedProperties({ title, aliases, tags, frontmatter, inlineProperties })
   const propertiesJson = JSON.stringify(properties)
+  const indexedAtSeconds = Math.floor(Date.now() / 1000)
 
   const transaction = db.transaction(() => {
     if (moveCandidate) {
@@ -210,7 +211,7 @@ export function indexNote(vaultPath: string, filePath: string, options: { resolv
     stmts.upsertNote.run(id, title, relPath, Math.floor(stat.birthtimeMs), Math.floor(stat.mtimeMs), hash, propertiesJson, NOTE_PROPERTIES_VERSION)
     stmts.deleteLinks.run(id)
     for (const link of links) {
-      stmts.insertLink.run(id, link.targetTitle, link.context, link.line)
+      stmts.insertLink.run(id, link.targetTitle, link.context, link.line, indexedAtSeconds)
     }
     stmts.deleteTags.run(id)
     stmts.deleteAliases.run(id)

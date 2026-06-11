@@ -1521,6 +1521,9 @@ export interface IPCChannelMap {
   'memory:get-timeline': { params: { vaultPath: string }; result: MemoryCard[] }
   'memory:update-card': { params: { vaultPath: string; id: string; actions: MemoryCardUpdate }; result: void }
   'memory:explain-card': { params: { vaultPath: string; id: string }; result: string }
+  'settings:get-keybindings': { params: undefined; result: KeybindingEntry[] }
+  'settings:set-keybinding': { params: { id: string; key: string }; result: { ok: boolean; error?: string } }
+  'settings:reset-keybinding': { params: { id: string }; result: { ok: boolean } }
 }
 
 export type IPCChannel = keyof IPCChannelMap
@@ -1667,4 +1670,15 @@ export interface MemoryCard {
 export interface MemoryCardUpdate {
   archived?: boolean
   pinned?: boolean
+}
+
+// ============================================================================
+// Settings
+// ============================================================================
+
+export interface KeybindingEntry {
+  id: string
+  label: string
+  key: string
+  description: string
 }

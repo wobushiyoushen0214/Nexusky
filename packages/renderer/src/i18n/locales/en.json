@@ -1386,7 +1386,6 @@
       "reset": "Reset",
       "resetFailed": "Reset failed"
     },
-    },
     "proactive": {
       "title": "Proactive Suggestions",
       "description": "AI proactively provides suggestions and insights",
@@ -1395,7 +1394,17 @@
     "longContext": {
       "title": "Memory Ledger",
       "description": "Long-term memory and context management",
-      "comingSoon": "Memory ledger feature coming soon"
+      "comingSoon": "Memory ledger feature coming soon",
+      "enabled": "Enable memory ledger",
+      "enabledHint": "Automatically generate and maintain long-term memory for notes",
+      "autoGenerate": "Auto-generate",
+      "autoGenerateHint": "Automatically generate memory ledger after note changes",
+      "retentionDays": "Retention days",
+      "retentionDaysHint": "How long to keep memory ledgers (days)",
+      "maxTokens": "Max tokens",
+      "maxTokensHint": "Maximum token limit per memory ledger",
+      "saved": "Saved successfully",
+      "saveFailed": "Save failed"
     },
     "syncHealth": {
       "title": "Sync health",

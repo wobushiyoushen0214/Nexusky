@@ -1394,7 +1394,17 @@
     "longContext": {
       "title": "记忆账本",
       "description": "长期记忆和上下文管理",
-      "comingSoon": "记忆账本功能即将推出"
+      "comingSoon": "记忆账本功能即将推出",
+      "enabled": "启用记忆账本",
+      "enabledHint": "自动为笔记生成和维护长期记忆",
+      "autoGenerate": "自动生成",
+      "autoGenerateHint": "笔记修改后自动生成记忆账本",
+      "retentionDays": "保留天数",
+      "retentionDaysHint": "记忆账本的保留时长（天）",
+      "maxTokens": "最大 Token 数",
+      "maxTokensHint": "单个记忆账本的最大 token 限制",
+      "saved": "保存成功",
+      "saveFailed": "保存失败"
     },
     "syncHealth": {
       "title": "同步健康",

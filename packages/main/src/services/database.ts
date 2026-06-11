@@ -83,6 +83,7 @@ function initSchema(db: Database.Database): void {
       context TEXT,
       line INTEGER NOT NULL DEFAULT 1,
       link_type TEXT NOT NULL DEFAULT 'explicit',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
       FOREIGN KEY (source_note_id) REFERENCES notes(id) ON DELETE CASCADE
     );
 
@@ -510,6 +511,7 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'links', 'context', 'context TEXT')
   ensureColumn(db, 'links', 'line', 'line INTEGER NOT NULL DEFAULT 1')
   ensureColumn(db, 'links', 'link_type', "link_type TEXT NOT NULL DEFAULT 'explicit'")
+  ensureColumn(db, 'links', 'created_at', 'created_at INTEGER NOT NULL DEFAULT 0')
 
   ensureColumn(db, 'tasks', 'note_id', "note_id TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, 'tasks', 'text', "text TEXT NOT NULL DEFAULT ''")
