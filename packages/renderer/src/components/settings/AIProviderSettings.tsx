@@ -7,6 +7,8 @@ import './AIProviderSettings.css'
 const PROVIDER_PRESETS = [
   { label: 'OpenAI', type: 'openai' as const, baseUrl: '', model: 'gpt-4.1-mini' },
   { label: 'Claude', type: 'claude' as const, baseUrl: '', model: 'claude-sonnet-4-6' },
+  { label: 'OpenAI 兼容', type: 'custom' as const, baseUrl: 'https://api.openai.com/v1', model: 'gpt-4' },
+  { label: 'Claude 兼容', type: 'openai-responses' as const, baseUrl: '', model: 'claude-sonnet-4-6' },
   { label: 'DeepSeek', type: 'custom' as const, baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
   { label: 'Ollama', type: 'ollama' as const, baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
 ]

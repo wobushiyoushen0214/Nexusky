@@ -27,26 +27,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .settings-dialog__header h1 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .settings-dialog__close {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  font-size: 24px;
+  border-radius: 4px;
+  font-size: 20px;
   line-height: 1;
   color: var(--text-secondary);
   cursor: pointer;

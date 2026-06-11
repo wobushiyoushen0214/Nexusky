@@ -1222,6 +1222,10 @@
   },
   "common": {
     "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
     "retry": "Retry",
     "indexing": "Indexing note relations...",
     "noMdFiles": "No .md files in this folder",

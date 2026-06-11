@@ -1222,6 +1222,10 @@
   },
   "common": {
     "close": "关闭",
+    "edit": "编辑",
+    "delete": "删除",
+    "save": "保存",
+    "cancel": "取消",
     "retry": "重试",
     "indexing": "正在索引笔记关系...",
     "noMdFiles": "该文件夹下没有 .md 文件",
