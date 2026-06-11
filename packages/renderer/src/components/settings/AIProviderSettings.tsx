@@ -105,10 +105,10 @@ export function AIProviderSettings() {
 
   const handleToggleEnabled = async (provider: AIProviderConfig) => {
     try {
-      // 如果要启用这个，先禁用所有其他的
+      // 如果要启用这个，先禁用所有其他的（只保存有 API Key 的）
       if (!provider.enabled) {
         for (const p of providers) {
-          if (p.enabled && p.id !== provider.id) {
+          if (p.enabled && p.id !== provider.id && p.apiKey) {
             await window.api.invoke('ai:save-provider', {
               config: { ...p, enabled: false },
             })
@@ -116,10 +116,13 @@ export function AIProviderSettings() {
         }
       }
 
-      // 切换当前的
-      await window.api.invoke('ai:save-provider', {
-        config: { ...provider, enabled: !provider.enabled },
-      })
+      // 切换当前的（只有当前有 API Key 时才保存）
+      if (provider.apiKey) {
+        await window.api.invoke('ai:save-provider', {
+          config: { ...provider, enabled: !provider.enabled },
+        })
+      }
+
       await loadProviders()
       toast(provider.enabled ? t('settings.ai.disabled') : t('settings.ai.enabled'), 'success')
     } catch (error) {
