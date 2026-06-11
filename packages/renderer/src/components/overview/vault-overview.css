@@ -136,8 +136,9 @@
   height: 100%;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr) minmax(0, 0.92fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 0.92fr);
   grid-template-areas:
+    "vitality vitality vitality vitality vitality vitality vitality vitality vitality vitality vitality vitality"
     "tokens tokens tokens tokens tokens tokens tokens tokens composition composition composition composition"
     "diary diary diary diary diary diary diary diary diary diary diary diary";
   gap: 10px;

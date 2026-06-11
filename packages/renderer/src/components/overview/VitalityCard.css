@@ -1,52 +1,60 @@
 .vitality-card {
-  padding: 24px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  transition: all 0.3s;
+  grid-area: vitality;
+  padding: 28px;
+  background: var(--overview-glass-card);
+  border: 1px solid var(--overview-glass-border);
+  border-radius: var(--overview-card-radius);
+  box-shadow: var(--overview-glass-shadow);
+  backdrop-filter: blur(var(--overview-glass-blur));
+  transition: all 0.3s var(--overview-ease);
 }
 
 .vitality-card--loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 160px;
-  color: var(--text-secondary);
+  min-height: 180px;
+  color: var(--overview-text-secondary);
+  font-size: 14px;
 }
 
 .vitality-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .vitality-card__header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  color: var(--overview-text-primary);
 }
 
 .vitality-card__badge {
-  padding: 4px 12px;
-  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
-  color: var(--accent-color);
+  padding: 5px 14px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
   border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .vitality-card__score {
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .vitality-card__score-value {
-  font-size: 48px;
+  font-size: 56px;
   font-weight: 700;
   line-height: 1;
+  font-feature-settings: 'tnum';
 }
 
 .vitality-card--good .vitality-card__score-value {
@@ -64,14 +72,16 @@
 .vitality-card__score-label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  color: var(--text-secondary);
+  gap: 6px;
+  padding-top: 8px;
+  color: var(--overview-text-secondary);
   font-size: 13px;
 }
 
 .vitality-card__trend {
   font-weight: 600;
   font-size: 12px;
+  font-feature-settings: 'tnum';
 }
 
 .vitality-card__trend--up {
@@ -83,24 +93,25 @@
 }
 
 .vitality-card__growth {
-  padding-top: 16px;
-  border-top: 1px solid var(--border-subtle);
+  padding-top: 18px;
+  border-top: 1px solid var(--overview-glass-border);
 }
 
 .vitality-card__growth-title {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 600;
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--overview-text-tertiary);
   letter-spacing: 0.5px;
 }
 
 .vitality-card__growth-stats {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--overview-text-secondary);
+  font-feature-settings: 'tnum';
 }
 
 .vitality-card__growth-stats span {
