@@ -134,13 +134,16 @@
 .vault-overview__dashboard {
   min-height: 0;
   height: 100%;
+  padding: 20px;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr) minmax(0, 0.92fr);
+  grid-template-columns: repeat(3, minmax(280px, 340px));
+  grid-template-rows: auto auto;
   grid-template-areas:
-    "vitality vitality vitality vitality tokens tokens tokens tokens composition composition composition composition"
-    "diary diary diary diary diary diary diary diary diary diary diary diary";
-  gap: 10px;
+    "vitality tokens composition"
+    "diary diary diary";
+  gap: 20px;
+  justify-content: start;
+  align-content: start;
 }
 
 .vault-overview__card {
