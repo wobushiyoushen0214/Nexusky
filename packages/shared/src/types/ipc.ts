@@ -459,6 +459,13 @@ export interface AIProviderConfig {
   capabilities?: AIProviderCapabilities
 }
 
+export interface TestResult {
+  ok: boolean
+  text: string
+  latencyMs?: number
+  model?: string
+}
+
 export interface AIProviderCapabilities {
   streaming: boolean
   toolCalling: boolean
@@ -1225,6 +1232,9 @@ export interface IPCChannelMap {
   'db:chat-session-delete': { params: { vaultPath: string; sessionId: string }; result: void }
   'db:chat-session-rename': { params: { vaultPath: string; sessionId: string; title: string }; result: void }
   'ai:get-providers': { params: undefined; result: AIProviderConfig[] }
+  'ai:save-provider': { params: { config: AIProviderConfig }; result: void }
+  'ai:delete-provider': { params: { id: string }; result: void }
+  'ai:test-provider': { params: { config: AIProviderConfig }; result: TestResult }
   'ai:save-providers': { params: { providers: AIProviderConfig[] }; result: void }
   'ai:set-active': { params: { providerId: string }; result: void }
   'ai:get-active-provider': { params: undefined; result: string | null }

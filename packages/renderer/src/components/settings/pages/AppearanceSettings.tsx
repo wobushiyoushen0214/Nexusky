@@ -19,75 +19,84 @@ export function AppearanceSettings() {
   return (
     <div className="appearance-settings">
       <section className="settings-section">
-        <h2>{t('settings.theme.title')}</h2>
-        <p className="settings-description">{t('settings.theme.description')}</p>
+        <div className="section-header">
+          <h2>{t('settings.theme.title')}</h2>
+          <p>{t('settings.theme.description')}</p>
+        </div>
 
         <div className="theme-grid">
           {THEME_IDS.map((themeId) => (
             <button
               key={themeId}
-              className={`theme-card ${theme === themeId ? 'is-active' : ''}`}
+              className={`theme-item ${theme === themeId ? 'is-active' : ''}`}
               onClick={() => setTheme(themeId as Theme)}
             >
-              <div className={`theme-preview theme-preview--${themeId}`} />
-              <div className="theme-card__info">
-                <h3>{t(`settings.theme.items.${themeId}.label`)}</h3>
-                <p>{t(`settings.theme.items.${themeId}.detail`)}</p>
+              <div className={`theme-preview theme-preview--${themeId}`}>
+                <div className="theme-preview__dots">
+                  <span /><span /><span />
+                </div>
               </div>
+              <span className="theme-label">{t(`settings.theme.items.${themeId}.label`)}</span>
             </button>
           ))}
         </div>
       </section>
 
       <section className="settings-section">
-        <h2>{t('settings.accent.title')}</h2>
-        <p className="settings-description">{t('settings.accent.description')}</p>
+        <div className="section-header">
+          <h2>{t('settings.accent.title')}</h2>
+          <p>{t('settings.accent.description')}</p>
+        </div>
 
-        <div className="accent-grid">
+        <div className="accent-list">
           {ACCENT_PRESETS.map((color) => (
             <button
               key={color}
-              className={`accent-swatch ${accentColor === color ? 'is-active' : ''}`}
-              style={{ background: color }}
+              className={`accent-item ${accentColor === color ? 'is-active' : ''}`}
               onClick={() => handleAccentChange(color)}
-              aria-label={color}
-            />
+            >
+              <span className="accent-color" style={{ background: color }} />
+              <span className="accent-check">✓</span>
+            </button>
           ))}
-        </div>
 
-        <div className="custom-accent">
-          <label>{t('settings.accent.custom')}</label>
-          <div className="custom-accent__input">
+          <div className="accent-custom">
             <input
               type="color"
               value={customAccent}
               onChange={(e) => handleAccentChange(e.target.value)}
+              className="accent-picker"
             />
             <input
               type="text"
               value={customAccent}
               onChange={(e) => handleAccentChange(e.target.value)}
               placeholder="#7c6ef5"
+              className="accent-text"
             />
           </div>
         </div>
       </section>
 
       <section className="settings-section">
-        <h2>{t('settings.language.title')}</h2>
+        <div className="section-header">
+          <h2>{t('settings.language.title')}</h2>
+        </div>
 
-        <div className="language-buttons">
+        <div className="language-list">
           <button
-            className={`language-btn ${language === 'zh-CN' ? 'is-active' : ''}`}
+            className={`language-item ${language === 'zh-CN' ? 'is-active' : ''}`}
             onClick={() => setLanguage('zh-CN')}
           >
-            {t('settings.language.zhCN')}
+            <span className="language-label">{t('settings.language.zhCN')}</span>
+            <span className="language-check">✓</span>
           </button>
           <button
-            className={`language-btn ${language === 'en' ? 'is-active' : ''}`}
+            className={`language-item ${language === 'en' ? 'is-active' : ''}`}
             onClick={() => setLanguage('en')}
           >
-            {t('settings.language.en')}
+            <span className="language-label">{t('settings.language.en')}</span>
+            <span className="language-check">✓</span>
           </button>
         </div>
       </section>

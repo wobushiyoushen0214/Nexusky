@@ -58,6 +58,97 @@ export function registerAiProviderHandlers(): void {
     return getStoredProviders().map(redactProviderForRenderer)
   })
 
+  ipcMain.handle('ai:save-provider', (_event, params: { config: AIProviderConfig }) => {
+    const providers = getStoredProviders()
+    const { config } = params
+
+    if (!config.name?.trim()) throw new Error('Provider name is required')
+    if (!config.model?.trim()) throw new Error('Model name is required')
+    if (config.type !== 'ollama' && config.type !== 'codex' && !config.apiKey?.trim()) {
+      throw new Error('API Key is required for this provider type')
+    }
+
+    let updated = false
+    if (config.id && providers.some(p => p.id === config.id)) {
+      const index = providers.findIndex(p => p.id === config.id)
+      providers[index] = normalizeProviderForStore({
+        ...config,
+        apiKey: config.apiKey || providers[index].apiKey
+      })
+      updated = true
+    } else {
+      providers.push(normalizeProviderForStore({
+        ...config,
+        id: config.id || randomUUID()
+      }))
+    }
+
+    store.set('aiProviders', providers)
+    aiManager.clearCache()
+  })
+
+  ipcMain.handle('ai:delete-provider', (_event, params: { id: string }) => {
+    const providers = getStoredProviders()
+    const filtered = providers.filter(p => p.id !== params.id)
+
+    const enabledCount = filtered.filter(p => p.enabled).length
+    if (enabledCount === 0 && filtered.length > 0) {
+      throw new Error('Cannot delete the last enabled provider')
+    }
+
+    store.set('aiProviders', filtered)
+    aiManager.clearCache()
+  })
+
+  ipcMain.handle('ai:test-provider', async (_event, params: { config: AIProviderConfig }) => {
+    const config = hydrateProviderConfig(params.config)
+    const configError = aiManager.validateConfig(config)
+    if (configError) return { ok: false, text: configError }
+
+    const started = Date.now()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30_000)
+
+    try {
+      const provider = aiManager.getProvider(config)
+      let answer = ''
+      for await (const event of provider.chatStream(
+        [
+          { role: 'system', content: 'You are a helpful AI assistant.' },
+          { role: 'user', content: 'hi' }
+        ],
+        controller.signal,
+        { temperature: 0.2 }
+      )) {
+        if (event.type === 'text') answer += event.content
+        if (event.type === 'error') {
+          return { ok: false, text: event.content || 'Connection failed' }
+        }
+        if (event.type === 'done') break
+      }
+      const latencyMs = Date.now() - started
+      if (!answer.trim()) return { ok: false, text: 'Provider returned empty response' }
+      return { ok: true, text: 'Connection successful', latencyMs, model: config.model }
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e)
+      if (error.includes('401') || error.includes('unauthorized')) {
+        return { ok: false, text: 'Invalid API Key' }
+      }
+      if (error.includes('404') || error.includes('not found')) {
+        return { ok: false, text: 'Model not found' }
+      }
+      if (error.includes('timeout') || error.includes('ETIMEDOUT')) {
+        return { ok: false, text: 'Network timeout' }
+      }
+      if (error.includes('ECONNREFUSED') || error.includes('ENOTFOUND')) {
+        return { ok: false, text: 'Base URL unreachable' }
+      }
+      return { ok: false, text: error }
+    } finally {
+      clearTimeout(timeout)
+    }
+  })
+
   ipcMain.handle('ai:save-providers', (_event, params: { providers: AIProviderConfig[] }) => {
     store.set('aiProviders', mergeProviderSecretsForStore(params.providers, getStoredProviders()))
     aiManager.clearCache()
