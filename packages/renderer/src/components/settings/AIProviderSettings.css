@@ -95,6 +95,7 @@
   border-color: var(--accent);
 }
 
+/* Modal */
 .provider-editor-modal {
   position: fixed;
   inset: 0;
@@ -102,99 +103,123 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
 }
 
 .provider-editor {
   width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
+  max-width: 480px;
+  max-height: 70vh;
   background: var(--bg-primary);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .provider-editor header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
 }
 
 .provider-editor h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.provider-editor header button {
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.provider-editor__content {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.form-group input {
+.provider-editor header button {
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  font-size: 20px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.provider-editor header button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Content */
+.provider-editor__content {
+  flex: 1;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.form-group input,
+.form-group select {
   width: 100%;
   height: 36px;
-  padding: 0 12px;
-  font-size: 14px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  padding: 0 11px;
+  font-size: 13px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-primary);
   transition: all 0.2s;
 }
 
 .form-group select {
-  width: 100%;
-  height: 36px;
-  padding: 0 12px;
-  font-size: 14px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  transition: all 0.2s;
   cursor: pointer;
+}
+
+.form-group input:hover,
+.form-group select:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-color));
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124, 110, 245, 0.1);
+  box-shadow: 0 0 0 3px rgba(124, 110, 245, 0.08);
+  background: var(--bg-primary);
 }
 
+.form-group input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}
+
+/* Model input group */
 .model-input-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .model-input-group input,
@@ -203,13 +228,13 @@
 }
 
 .btn-fetch-models {
-  padding: 0 16px;
+  padding: 0 14px;
   height: 36px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
@@ -218,69 +243,76 @@
 
 .btn-fetch-models:hover:not(:disabled) {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--accent);
   border-color: var(--accent);
 }
 
 .btn-fetch-models:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
+/* Presets */
 .provider-editor__presets {
-  margin-top: 24px;
-  padding-top: 24px;
+  margin-top: 20px;
+  padding-top: 18px;
   border-top: 1px solid var(--border-color);
 }
 
 .provider-editor__presets p {
-  margin: 0 0 12px;
-  font-size: 13px;
+  margin: 0 0 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .preset-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .preset-buttons button {
-  padding: 6px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 6px 11px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-color);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .preset-buttons button:hover {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--accent);
   border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
+/* Footer */
 .provider-editor__footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 24px;
+  gap: 8px;
+  padding: 14px 18px;
   border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
 }
 
 .provider-editor__footer button {
-  padding: 8px 16px;
+  padding: 7px 16px;
   background: transparent;
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--border-color);
   border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .provider-editor__footer button:hover {
@@ -290,7 +322,7 @@
 }
 
 .provider-editor__footer button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -300,6 +332,8 @@
   border-color: var(--accent);
 }
 
-.provider-editor__footer .btn-primary:hover {
+.provider-editor__footer .btn-primary:hover:not(:disabled) {
   opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 110, 245, 0.3);
 }
