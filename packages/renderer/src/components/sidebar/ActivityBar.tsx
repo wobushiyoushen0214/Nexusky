@@ -8,6 +8,7 @@ import { ContextMenu } from '../ContextMenu'
 
 const iconMap: Record<string, React.ReactNode> = {
   overview: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>,
+  memory: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z" /><circle cx="12" cy="12" r="3" /></svg>,
   files: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>,
   search: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
   chat: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
@@ -29,6 +30,12 @@ export function ActivityBar() {
   const actionMap: Record<string, () => void> = {
     overview: () => {
       setMainView('overview')
+      if (!useUIStore.getState().sidebarCollapsed) {
+        toggleSidebar()
+      }
+    },
+    memory: () => {
+      setMainView('memory')
       if (!useUIStore.getState().sidebarCollapsed) {
         toggleSidebar()
       }
@@ -67,6 +74,7 @@ export function ActivityBar() {
 
   const getActiveId = () => {
     if (mainView === 'overview') return 'overview'
+    if (mainView === 'memory') return 'memory'
     if (useUIStore.getState().mainView === 'graph') return 'graph'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'

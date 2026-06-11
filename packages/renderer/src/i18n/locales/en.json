@@ -203,6 +203,7 @@
   },
   "activityBar": {
     "overview": "Overview",
+    "memory": "Memory",
     "files": "Files",
     "search": "Search",
     "chat": "AI Chat",

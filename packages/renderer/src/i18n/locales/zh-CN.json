@@ -203,6 +203,7 @@
   },
   "activityBar": {
     "overview": "总览",
+    "memory": "记忆",
     "files": "文件",
     "search": "搜索",
     "chat": "AI 对话",
