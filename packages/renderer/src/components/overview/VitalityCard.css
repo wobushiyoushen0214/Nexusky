@@ -1,124 +1,329 @@
 .vitality-card {
+  --vitality-score-color: var(--color-success);
+  --vitality-track: color-mix(in srgb, var(--overview-text-tertiary) 16%, transparent);
+  --vitality-panel: color-mix(in srgb, var(--overview-glass-well) 78%, transparent);
+
   grid-area: vitality;
-  padding: 20px 24px;
-  background: var(--overview-glass-card);
+  min-width: 0;
+  min-height: 0;
+  padding: 14px;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+  overflow: hidden;
   border: 1px solid var(--overview-glass-border);
   border-radius: var(--overview-card-radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 22%, transparent), transparent 42%),
+    linear-gradient(135deg, var(--overview-glass-card), color-mix(in srgb, var(--overview-glass-card) 84%, var(--overview-panel)));
   box-shadow: var(--overview-glass-shadow);
-  backdrop-filter: blur(var(--overview-glass-blur));
-  transition: all 0.3s var(--overview-ease);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.12);
+  -webkit-backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.12);
+  transition:
+    background 150ms var(--overview-ease),
+    border-color 150ms var(--overview-ease),
+    box-shadow 150ms var(--overview-ease);
+}
+
+.vitality-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--overview-glass-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 28%, transparent), transparent 44%),
+    var(--overview-glass-card-hover);
+}
+
+.vitality-card--medium {
+  --vitality-score-color: var(--color-warning);
+}
+
+.vitality-card--needs-attention {
+  --vitality-score-color: var(--color-error);
 }
 
 .vitality-card--loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 180px;
+  place-items: center;
   color: var(--overview-text-secondary);
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.vitality-card--loading p {
+  margin: 0;
 }
 
 .vitality-card__header {
+  min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.vitality-card__header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
 }
 
 .vitality-card__header h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
   color: var(--overview-text-primary);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.vitality-card__header span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--overview-text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vitality-card__badge {
-  padding: 4px 10px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  flex: 0 0 auto;
+  max-width: 112px;
+  padding: 5px 9px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--vitality-score-color) 24%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vitality-score-color) 12%, transparent);
+  color: color-mix(in srgb, var(--vitality-score-color) 78%, var(--overview-text-primary));
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.vitality-card__score {
+.vitality-card__score-row {
+  min-width: 0;
   display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 14px;
+  align-items: center;
+  gap: 14px;
 }
 
-.vitality-card__score-value {
-  font-size: 44px;
-  font-weight: 700;
-  line-height: 1;
+.vitality-card__score-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--vitality-score-color) 22%, transparent),
+    0 10px 22px color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.vitality-card__score-ring::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--overview-glass-card) 90%, var(--panel-bg-soft));
+  box-shadow: inset 0 1px 0 var(--overview-glass-highlight);
+}
+
+.vitality-card__score-ring strong,
+.vitality-card__score-ring span {
+  position: relative;
+  z-index: 1;
+}
+
+.vitality-card__score-ring strong {
+  margin-top: -4px;
+  color: var(--overview-text-primary);
+  font-size: 27px;
+  font-weight: 760;
   font-feature-settings: 'tnum';
+  line-height: 1;
 }
 
-.vitality-card--good .vitality-card__score-value {
-  color: var(--color-success);
+.vitality-card__score-ring span {
+  margin-top: 26px;
+  color: var(--overview-text-tertiary);
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1;
 }
 
-.vitality-card--medium .vitality-card__score-value {
-  color: var(--color-warning);
+.vitality-card__summary {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
 }
 
-.vitality-card--needs-attention .vitality-card__score-value {
-  color: var(--color-error);
+.vitality-card__summary strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--overview-text-primary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.vitality-card__score-label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 8px;
+.vitality-card__summary span {
   color: var(--overview-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.vitality-card__metrics {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  border-block: 1px solid var(--overview-scratch-line);
+}
+
+.vitality-card__metrics > div {
+  min-width: 0;
+  padding: 10px 0;
+  display: grid;
+  gap: 4px;
+}
+
+.vitality-card__metrics > div + div {
+  padding-left: 12px;
+  border-left: 1px solid var(--overview-scratch-line);
+}
+
+.vitality-card__metrics span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--overview-text-tertiary);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vitality-card__metrics strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--overview-text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  font-feature-settings: 'tnum';
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vitality-card__drivers {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+
+.vitality-card__driver {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.vitality-card__driver > div:first-child {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vitality-card__driver span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--overview-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vitality-card__driver strong {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--color-warning) 82%, var(--overview-text-primary));
+  font-size: 11px;
+  font-weight: 700;
+  font-feature-settings: 'tnum';
+  line-height: 1.25;
+}
+
+.vitality-card__driver-meter {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--overview-text-tertiary) 12%, transparent);
+}
+
+.vitality-card__driver-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--vitality-score-color), color-mix(in srgb, var(--color-warning) 74%, var(--vitality-score-color)));
+}
+
+.vitality-card__driver--empty {
+  min-height: 34px;
+  align-items: center;
+  color: var(--overview-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vitality-card__growth {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  color: var(--overview-text-secondary);
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.vitality-card__growth > span {
+  flex: 0 0 auto;
+  color: var(--overview-text-tertiary);
+  font-weight: 650;
+}
+
+.vitality-card__growth strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--overview-text-secondary);
+  font-weight: 650;
+  text-overflow: ellipsis;
 }
 
 .vitality-card__trend {
-  font-weight: 600;
-  font-size: 12px;
+  flex: 0 0 auto;
   font-feature-settings: 'tnum';
 }
 
 .vitality-card__trend--up {
-  color: var(--color-success);
+  color: var(--color-success) !important;
 }
 
 .vitality-card__trend--down {
-  color: var(--color-error);
+  color: var(--color-error) !important;
 }
 
-.vitality-card__growth {
-  padding-top: 14px;
-  border-top: 1px solid var(--overview-glass-border);
-}
-
-.vitality-card__growth-title {
-  margin: 0 0 8px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--overview-text-tertiary);
-  letter-spacing: 0.5px;
-}
-
-.vitality-card__growth-stats {
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: var(--overview-text-secondary);
-  font-feature-settings: 'tnum';
-}
-
-.vitality-card__growth-stats span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+@media (max-width: 1080px) {
+  .vitality-card {
+    display: none;
+  }
 }

@@ -92,13 +92,85 @@ await window.api.invoke('settings:reset-keybinding', {
 
 ---
 
+## ✅ Completed: LongContextSettings (P1)
+
+### Files Created/Modified
+
+1. **IPC Handler**: `/packages/main/src/ipc/settings.ipc.ts`
+   - Added 2 IPC channels for memory config management
+   - Uses electron-store for persistent configuration
+   - Merges custom config with defaults
+
+2. **Type Definitions**: `/packages/shared/src/types/ipc.ts`
+   - Added `MemoryConfig` interface
+   - Added 2 IPC channel definitions to `IPCChannelMap`
+
+3. **Tests**: `/tests/settings-memory-config.test.ts`
+   - 6 unit tests covering all functionality
+   - All tests passing ✅
+
+### IPC Channels Implemented
+
+#### 1. `settings:get-memory-config`
+- **Params**: `undefined`
+- **Result**: `MemoryConfig`
+- **Description**: Returns memory configuration (default + custom merged)
+
+#### 2. `settings:save-memory-config`
+- **Params**: `MemoryConfig`
+- **Result**: `{ ok: boolean }`
+- **Description**: Saves memory configuration to store
+
+### Default Memory Config
+
+```typescript
+{
+  enabled: true,
+  autoGenerate: false,
+  retentionDays: 90,
+  maxTokens: 100000
+}
+```
+
+### Storage
+
+- **Location**: Electron store via `store.get('memoryConfig')` / `store.set('memoryConfig', ...)`
+- **Format**: `MemoryConfig` object
+- **Persistence**: Automatically persisted by the store service
+
+### Verification
+
+✅ Build successful  
+✅ All unit tests passing (6/6)  
+✅ TypeScript types complete  
+✅ No runtime errors  
+
+### Frontend Integration
+
+The frontend can now use these IPC channels:
+
+```typescript
+// Get memory config
+const config = await window.api.invoke('settings:get-memory-config')
+
+// Save memory config
+await window.api.invoke('settings:save-memory-config', {
+  enabled: true,
+  autoGenerate: false,
+  retentionDays: 90,
+  maxTokens: 100000
+})
+```
+
+---
+
 ## 🔄 Next Steps (Not Implemented)
 
 As per the task document priority order, the remaining settings pages are:
 
-### P1: LongContextSettings
-- `settings:get-memory-config`
-- `settings:save-memory-config`
+## 🔄 Next Steps (Not Implemented)
+
+As per the task document priority order, the remaining settings pages are:
 
 ### P1: CloudSyncSettings
 - `settings:get-sync-status`
@@ -112,4 +184,4 @@ As per the task document priority order, the remaining settings pages are:
 - `settings:get-proactive-config`
 - `settings:save-proactive-config`
 
-These can be implemented following the same pattern established for KeysSettings.
+These can be implemented following the same pattern established for KeysSettings and LongContextSettings.

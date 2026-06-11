@@ -1373,7 +1373,11 @@
     "plugins": {
       "title": "Plugins",
       "description": "Extend Nexusky's functionality",
-      "noPlugins": "No plugins available"
+      "noPlugins": "No plugins available",
+      "noPluginsHint": "Plugin feature coming soon",
+      "enabled": "Plugin enabled",
+      "disabled": "Plugin disabled",
+      "toggleFailed": "Toggle failed"
     },
     "keys": {
       "title": "Keyboard Shortcuts",
