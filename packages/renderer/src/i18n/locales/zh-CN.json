@@ -1389,7 +1389,18 @@
     "proactive": {
       "title": "主动建议",
       "description": "AI 主动提供建议和洞察",
-      "comingSoon": "主动建议功能即将推出"
+      "comingSoon": "主动建议功能即将推出",
+      "enabled": "启用主动建议",
+      "enabledHint": "让 AI 主动分析你的笔记并提供建议",
+      "frequency": "建议频率",
+      "frequencyLow": "低",
+      "frequencyMedium": "中",
+      "frequencyHigh": "高",
+      "frequencyHint": "AI 提供建议的频率",
+      "categories": "建议类别",
+      "categoriesHint": "选择你想接收的建议类型",
+      "saved": "保存成功",
+      "saveFailed": "保存失败"
     },
     "longContext": {
       "title": "记忆账本",

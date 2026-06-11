@@ -2,11 +2,67 @@
   padding: 0;
 }
 
-.proactive-empty {
+.frequency-options {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.frequency-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.frequency-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.frequency-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.category-list {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.category-item {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-item:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.category-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.category-item span {
+  font-size: 13px;
+  color: var(--text-primary);
 }

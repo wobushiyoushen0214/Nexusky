@@ -8,6 +8,13 @@ export interface KeybindingEntry {
   description: string
 }
 
+export interface MemoryConfig {
+  enabled: boolean
+  autoGenerate: boolean
+  retentionDays: number
+  maxTokens: number
+}
+
 const DEFAULT_KEYBINDINGS: KeybindingEntry[] = [
   { id: 'save-note', label: '保存笔记', key: 'Cmd+S', description: '保存当前笔记' },
   { id: 'new-note', label: '新建笔记', key: 'Cmd+N', description: '创建新笔记' },
@@ -15,6 +22,13 @@ const DEFAULT_KEYBINDINGS: KeybindingEntry[] = [
   { id: 'command-palette', label: '命令面板', key: 'Cmd+P', description: '打开命令面板' },
   { id: 'toggle-sidebar', label: '切换侧边栏', key: 'Cmd+B', description: '显示/隐藏侧边栏' }
 ]
+
+const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
+  enabled: true,
+  autoGenerate: false,
+  retentionDays: 90,
+  maxTokens: 100000
+}
 
 function getStoredKeybindings(): Record<string, string> {
   return (store.get('keybindings') as Record<string, string> | undefined) || {}
@@ -26,6 +40,11 @@ function mergeKeybindings(): KeybindingEntry[] {
     ...binding,
     key: custom[binding.id] || binding.key
   }))
+}
+
+function getMemoryConfig(): MemoryConfig {
+  const stored = store.get('memoryConfig') as Partial<MemoryConfig> | undefined
+  return { ...DEFAULT_MEMORY_CONFIG, ...stored }
 }
 
 export function registerSettingsIPC(): void {
@@ -44,6 +63,15 @@ export function registerSettingsIPC(): void {
     const custom = getStoredKeybindings()
     delete custom[params.id]
     store.set('keybindings', custom)
+    return { ok: true }
+  })
+
+  ipcMain.handle('settings:get-memory-config', () => {
+    return getMemoryConfig()
+  })
+
+  ipcMain.handle('settings:save-memory-config', (_event, params: MemoryConfig) => {
+    store.set('memoryConfig', params)
     return { ok: true }
   })
 }

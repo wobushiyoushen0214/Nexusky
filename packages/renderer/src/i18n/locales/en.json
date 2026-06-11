@@ -1389,7 +1389,18 @@
     "proactive": {
       "title": "Proactive Suggestions",
       "description": "AI proactively provides suggestions and insights",
-      "comingSoon": "Proactive suggestions feature coming soon"
+      "comingSoon": "Proactive suggestions feature coming soon",
+      "enabled": "Enable proactive suggestions",
+      "enabledHint": "Let AI analyze your notes and provide proactive suggestions",
+      "frequency": "Suggestion frequency",
+      "frequencyLow": "Low",
+      "frequencyMedium": "Medium",
+      "frequencyHigh": "High",
+      "frequencyHint": "How often AI provides suggestions",
+      "categories": "Suggestion categories",
+      "categoriesHint": "Choose which types of suggestions you want to receive",
+      "saved": "Saved successfully",
+      "saveFailed": "Save failed"
     },
     "longContext": {
       "title": "Memory Ledger",

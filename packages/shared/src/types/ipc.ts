@@ -1524,6 +1524,8 @@ export interface IPCChannelMap {
   'settings:get-keybindings': { params: undefined; result: KeybindingEntry[] }
   'settings:set-keybinding': { params: { id: string; key: string }; result: { ok: boolean; error?: string } }
   'settings:reset-keybinding': { params: { id: string }; result: { ok: boolean } }
+  'settings:get-memory-config': { params: undefined; result: MemoryConfig }
+  'settings:save-memory-config': { params: MemoryConfig; result: { ok: boolean } }
 }
 
 export type IPCChannel = keyof IPCChannelMap
@@ -1681,4 +1683,11 @@ export interface KeybindingEntry {
   label: string
   key: string
   description: string
+}
+
+export interface MemoryConfig {
+  enabled: boolean
+  autoGenerate: boolean
+  retentionDays: number
+  maxTokens: number
 }
