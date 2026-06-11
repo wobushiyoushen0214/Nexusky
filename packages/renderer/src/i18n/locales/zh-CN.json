@@ -1390,7 +1390,7 @@
       "configureFailed": "配置失败",
       "status_idle": "空闲",
       "status_syncing": "同步中",
-      "status_error": "错误",
+      "status_error": "错误"
     },
     "plugins": {
       "title": "插件",
