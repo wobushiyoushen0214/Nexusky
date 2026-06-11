@@ -1380,7 +1380,7 @@
       "title": "云端同步",
       "description": "同步你的笔记到云端",
       "notConfigured": "未配置云端同步",
-      "notConfiguredDesc": "云端同步功能尚未配置，敬请期待"
+      "notConfiguredDesc": "云端同步功能尚未配置，敬请期待",
       "provider": "提供商",
       "status": "状态",
       "lastSync": "最后同步",
