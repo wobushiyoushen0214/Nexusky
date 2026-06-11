@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { AIProviderConfig, TestResult } from '../packages/shared/src/types/ipc'
+import { resolveActiveProviderConfig, resolveActiveProviderId } from '../packages/main/src/services/ai'
+import { mergeProviderSecretsForStore } from '../packages/main/src/ipc/ai/provider'
 
 describe('AI Provider CRUD Operations', () => {
   const mockProvider: AIProviderConfig = {
@@ -174,6 +176,54 @@ describe('AI Provider CRUD Operations', () => {
       expect(provider.inputCostPer1MTokens).toBe(0.5)
       expect(provider.outputCostPer1MTokens).toBe(1.5)
       expect(provider.hasApiKey).toBe(true)
+    })
+  })
+
+  describe('Active provider resolution', () => {
+    it('uses the stored active provider when it is enabled', () => {
+      const providers: AIProviderConfig[] = [
+        { ...mockProvider, id: 'openai', name: 'OpenAI', enabled: true },
+        { ...mockProvider, id: 'claude', name: 'Claude', type: 'claude', enabled: true }
+      ]
+
+      expect(resolveActiveProviderConfig(providers, 'claude')?.id).toBe('claude')
+      expect(resolveActiveProviderId(providers, 'claude')).toBe('claude')
+    })
+
+    it('falls back to the first enabled provider when the active id is stale or disabled', () => {
+      const providers: AIProviderConfig[] = [
+        { ...mockProvider, id: 'openai', name: 'OpenAI', enabled: true },
+        { ...mockProvider, id: 'claude', name: 'Claude', type: 'claude', enabled: false }
+      ]
+
+      expect(resolveActiveProviderConfig(providers, 'claude')?.id).toBe('openai')
+      expect(resolveActiveProviderId(providers, 'missing')).toBe('openai')
+    })
+  })
+
+  describe('renderer-safe provider persistence', () => {
+    it('preserves an existing API key when saving a redacted existing provider', () => {
+      const existing: AIProviderConfig = {
+        ...mockProvider,
+        id: 'openai',
+        apiKey: 'sk-existing',
+        hasApiKey: undefined,
+        capabilities: undefined
+      }
+      const redactedEdit: AIProviderConfig = {
+        ...existing,
+        apiKey: '',
+        hasApiKey: true,
+        capabilities: { streaming: true, toolCalling: true },
+        model: 'gpt-4.1'
+      }
+
+      const [stored] = mergeProviderSecretsForStore([redactedEdit], [existing])
+
+      expect(stored.apiKey).toBe('sk-existing')
+      expect(stored.model).toBe('gpt-4.1')
+      expect(stored.hasApiKey).toBeUndefined()
+      expect(stored.capabilities).toBeUndefined()
     })
   })
 })

@@ -37,12 +37,12 @@
   transition: all 0.2s;
 }
 
-.provider-card.is-disabled {
-  opacity: 0.6;
-}
-
 .provider-card.is-enabled {
   border-color: var(--accent);
+}
+
+.provider-card.is-inactive {
+  opacity: 1;
 }
 
 .provider-card:hover {
@@ -57,10 +57,46 @@
   color: var(--text-primary);
 }
 
+.provider-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.provider-title-row h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-type,
+.provider-badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.provider-type {
+  color: var(--text-tertiary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.provider-badge {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .provider-header {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .provider-radio {
@@ -80,6 +116,16 @@
 }
 
 .provider-radio:hover {
+  border-color: var(--accent);
+}
+
+.provider-radio.is-inactive {
+  background: var(--bg-elevated);
+  border-color: var(--border-color);
+}
+
+.provider-radio.is-inactive:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
   border-color: var(--accent);
 }
 

@@ -189,11 +189,11 @@ export function AIProviderSettings() {
         {providers.map((provider) => {
           const isActive = provider.id === activeProviderId
           return (
-          <div key={provider.id} className={`provider-card ${isActive ? 'is-enabled' : provider.enabled ? '' : 'is-disabled'}`}>
+          <div key={provider.id} className={`provider-card ${isActive ? 'is-enabled' : 'is-inactive'}`}>
             <div className="provider-card__info">
               <div className="provider-header">
                 <button
-                  className={`provider-radio ${isActive ? 'is-active' : ''}`}
+                  className={`provider-radio ${isActive ? 'is-active' : 'is-inactive'}`}
                   onClick={() => handleSetActive(provider)}
                   title={isActive ? t('settings.ai.active') : t('settings.ai.setActive')}
                   aria-label={isActive ? t('settings.ai.active') : t('settings.ai.setActive')}
