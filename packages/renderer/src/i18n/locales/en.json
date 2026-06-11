@@ -228,6 +228,18 @@
       "title": "Knowledge Vitality",
       "badge": "Positive Growth",
       "rank": "Healthier than {{percent}}% of vaults",
+      "rankUnknown": "No peer rank yet",
+      "scoreSuffix": "/100",
+      "status": {
+        "good": "Steady",
+        "medium": "Needs review",
+        "needs-attention": "Needs repair"
+      },
+      "signals": "{{count}} maintenance signals",
+      "noSignals": "No major maintenance signals",
+      "metrics": "Vitality metrics",
+      "repairSignals": "Signals",
+      "mainDriver": "Main driver",
       "thisWeek": "This Week",
       "newLinks": "new links",
       "orphansReduced": "orphans reduced",
@@ -1368,7 +1380,17 @@
       "title": "Cloud Sync",
       "description": "Sync your notes to the cloud",
       "notConfigured": "Cloud sync not configured",
-      "notConfiguredDesc": "Cloud sync feature is not yet configured, stay tuned"
+      "notConfiguredDesc": "Cloud sync feature is not configured yet, coming soon",
+      "provider": "Provider",
+      "status": "Status",
+      "lastSync": "Last sync",
+      "configure": "Configure",
+      "startConfiguration": "Start Configuration",
+      "configured": "Configured successfully",
+      "configureFailed": "Configuration failed",
+      "status_idle": "Idle",
+      "status_syncing": "Syncing",
+      "status_error": "Error"
     },
     "plugins": {
       "title": "Plugins",
