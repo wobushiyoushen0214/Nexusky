@@ -30,11 +30,12 @@ export function AIProviderSettings() {
       const result = await window.api.invoke('ai:get-providers', undefined)
 
       // 修复多个启用的情况：只保留第一个启用的
-      const enabledCount = result.filter((p: AIProviderConfig) => p.enabled).length
-      if (enabledCount > 1) {
-        const firstEnabled = result.find((p: AIProviderConfig) => p.enabled)
+      const enabledProviders = result.filter((p: AIProviderConfig) => p.enabled)
+      if (enabledProviders.length > 1) {
+        const firstEnabled = enabledProviders[0]
         for (const p of result) {
-          if (p.enabled && p.id !== firstEnabled?.id) {
+          if (p.enabled && p.id !== firstEnabled.id && p.apiKey) {
+            // 只在有 API Key 时才保存
             await window.api.invoke('ai:save-provider', {
               config: { ...p, enabled: false },
             })
