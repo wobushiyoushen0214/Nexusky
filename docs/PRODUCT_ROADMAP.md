@@ -16,16 +16,16 @@ Nexusky 下一阶段不应继续横向增加主入口。产品应从“功能丰
 已经成立的基础：
 
 - Markdown 文件仍是主数据，SQLite 只做索引和派生状态。
-- Vault Health、维护队列、Graph、Chat sources、Context Pack、`VaultMutation`、同步灾难恢复和 10k vault 回归已经构成可信闭环。
-- Reader、Kanban、Flashcards、Calendar、Generic Canvas、远程插件市场和对象数据库心智已从当前主线移除或降为兼容层。
-- ActivityBar 正在收束到 Overview、Files、Search、Chat、Graph；Maintenance 更适合从 Overview / Vault Health / Command Palette 进入，而不是继续占一线导航。
+- Vault Health、Graph、Chat sources、Context Pack、`VaultMutation`、同步灾难恢复和 10k vault 回归已经构成可信闭环。
+- Reader、Kanban、Flashcards、Calendar、Canvas（bases/timeline）、远程插件市场和对象数据库心智已从当前主线移除。
+- ActivityBar 已收束到 Overview、Files、Search、Chat、Graph 五个核心入口。
 
 主要风险：
 
-- 维护能力仍像“问题清单”，还没有完全变成“系统策划好的下一轮工作”。
-- Overview 目前更像统计页，下一步要承接 Vault Health、Top 3 维护和近期可信写入，而不是变成装饰性仪表盘。
+- Vault Health 提供健康诊断，但缺少直接可操作的修复入口。
+- Overview 目前更像统计页，下一步要承接 Vault Health、近期可信写入摘要，而不是变成装饰性仪表盘。
 - 部分代码和文案仍残留旧入口名，需要继续清理保存布局、命令和测试。
-- `ChatPanel.tsx`、`GraphView.tsx`、`CanvasView.tsx`、`db.ipc.ts`、`execute-tool-call.ts` 仍是高风险巨石模块。
+- `ChatPanel.tsx`、`GraphView.tsx`、`db.ipc.ts`、`execute-tool-call.ts` 仍是高风险巨石模块。
 - 分发信任仍未闭环，签名、公证、可信更新链路是 v1.0 前的商业化前置条件。
 
 ## 3. 改造主线
@@ -35,22 +35,24 @@ Nexusky 下一阶段不应继续横向增加主入口。产品应从“功能丰
 Overview 应整合四类信息：
 
 - Vault Health：健康分、扣分原因、趋势。
-- Today Top 3：今天最值得处理的维护动作。
+- Quick Actions：从 Vault Health 诊断直接跳转到 AI Chat 修复对话、Graph 孤岛定位、搜索断链等。
 - Recent Trust：最近应用、撤销、恢复、同步冲突处理记录。
 - Usage Boundary：AI 用量、预算、外发边界摘要。
 
-不要做复杂 BI 仪表盘，也不要新增“Dashboard”产品心智。Overview 是打开 vault 后的工作台首页。
+不要做复杂 BI 仪表盘，也不要新增”Dashboard”产品心智。Overview 是打开 vault 后的工作台首页。
 
-### 3.2 Maintenance 从队列改为维护会话
+### 3.2 Vault Health 从诊断到修复
 
-推荐四层结构：
+### 3.2 Vault Health 从诊断到修复
 
-1. Raw signals：索引扫描出的断链、孤岛、任务、缺失属性、记忆缺口等。
-2. Issue clusters：按笔记、文件夹、类型、影响范围聚合。
-3. Work packages：Quick 5min、Focused 15min、Deep 30min。
-4. Reviewable execution：逐项预览、应用、跳过、不相关、撤销和会话总结。
+Vault Health 扫描出问题后，应提供直接跳转：
 
-短期目标不是展示更多维护项，而是让用户愿意完成少量高价值动作。
+- **断链** → Chat "帮我修复这些断链"或 Graph 定位缺失节点
+- **孤岛笔记** → Graph 高亮孤立节点，建议桥接
+- **缺失属性/标签** → 批量编辑或 AI 推断补全
+- **过期内容** → 搜索匹配，AI 总结近期变化
+
+不要构建独立的"维护队列"UI，而是让 Vault Health 诊断结果能一键跳转到现有工具（Chat/Graph/Search）完成修复。
 
 ### 3.3 Chat 继续强化信任边界
 
@@ -72,7 +74,7 @@ Graph 的核心问题应是：
 - 哪些 AI 推断关系需要确认或降权？
 - 哪些边来自 authored、inferred、imported、review-generated？
 
-下一阶段应支持从 Graph 直接生成维护候选，但仍进入维护预览和撤销管道。
+下一阶段应支持从 Graph 直接跳转 Chat 生成修复建议，或标记节点进入批量操作，但仍进入预览和撤销管道。
 
 ### 3.5 Properties 保持 Markdown 边界
 
@@ -88,17 +90,16 @@ Properties View 只扩展 frontmatter、tags、aliases、Dataview inline fields 
 
 | ID | 事项 | 验收标准 |
 | --- | --- | --- |
-| P0-1 | 完成 Maintenance 入口收束 | ActivityBar、保存布局、Vault Health next step、Command Palette、测试对 `maintenance` 主视图/右侧 panel 的理解一致 |
-| P0-2 | Overview 接入 Top 3 维护动作 | 用户打开 vault 后能从 Overview 直接处理最高价值维护项 |
-| P0-3 | 维护会话 MVP | Quick / Focused / Deep 至少一条路径可运行，并有完成总结和撤销记录 |
-| P0-4 | 旧文档和旧入口清理 | README 和 Overview 只链接当前路线图；一次性审查快照不再作为文档入口 |
-| P0-5 | Typecheck + focused tests 恢复 | ActivityBar、UI store、Vault Health、docs links 测试通过 |
+| P0-1 | Overview 接入 Vault Health 快速跳转 | 用户从 Overview 看到健康问题后可直接跳转到 Chat/Graph/Search 修复 |
+| P0-2 | Vault Health 结果可操作化 | 每类健康问题（断链/孤岛/缺失属性）都有明确的下一步入口 |
+| P0-3 | 旧文档和旧入口清理 | README 和 Overview 只链接当前路线图；一次性审查快照不再作为文档入口 |
+| P0-4 | Typecheck + focused tests 恢复 | ActivityBar、UI store、Vault Health、docs links 测试通过 |
 
 ### P1：下一阶段
 
 | ID | 事项 | 验收标准 |
 | --- | --- | --- |
-| P1-1 | Graph -> Maintenance | 图谱中的孤岛、桥接、推断边可加入维护候选 |
+| P1-1 | Graph 跳转 Chat 修复 | 图谱中的孤岛、桥接、推断边可快速发起 Chat 对话请求修复建议 |
 | P1-2 | 片段级 Source 定位加固 | Chat source 和工具结果能稳定回跳到 Markdown 片段附近 |
 | P1-3 | Context Pack 反馈闭环可见 | 用户反馈后能看到关系已降权、隐藏或稍后再看 |
 | P1-4 | 巨石模块拆分第一轮 | Chat、Graph、db IPC、tool executor 各拆出一个低风险子模块 |
@@ -116,7 +117,7 @@ Properties View 只扩展 frontmatter、tags、aliases、Dataview inline fields 
 未来 3 到 6 个月不要做：
 
 - 新增一线 ActivityBar 入口。
-- 恢复独立 Kanban、Reader Inbox、Flashcards、Calendar、Daily Note 或 Generic Canvas。
+- 恢复独立 Kanban、Reader Inbox、Flashcards、Calendar、Daily Note、Canvas（bases/timeline）或独立维护队列面板。
 - 默认远程 embedding。
 - 团队协作、团队权限、评论、实时协作。
 - 对象化数据库系统、对象 OS、supertag-first。
@@ -127,19 +128,18 @@ Properties View 只扩展 frontmatter、tags、aliases、Dataview inline fields 
 
 北极星指标：
 
-> Weekly useful maintenance actions per active vault.
+> Weekly vault health improvement actions per active vault.
 
 辅助指标：
 
 - First Health Seen。
-- First Useful Action：打开来源、完成维护或应用预览写入。
-- Maintenance Completion Rate。
-- Snooze / Not Relevant Rate。
+- First Useful Action：打开来源、跳转 Chat 修复或应用预览写入。
+- Health Score Improvement Rate。
+- Quick Action Click-through。
 - Source Click-through。
 - Preview Apply Rate。
 - Undo / Rollback Success。
 - Vault Open to Health Time。
-- Maintenance Partial Result Time。
 
 ## 7. 文档维护规则
 
