@@ -11,6 +11,8 @@ import { registerExportIPC } from './ipc/export.ipc'
 import { registerPluginIPC } from './ipc/plugin.ipc'
 import { registerProactiveIPC } from './ipc/proactive.ipc'
 import { registerAgentIPC } from './ipc/agent.ipc'
+import { registerDemoIPC } from './ipc/demo.ipc'
+import { registerMemoryIPC } from './ipc/memory.ipc'
 import { store } from './services/store'
 import { setupAutoUpdater } from './services/updater'
 import { startWebClipperServer, stopWebClipperServer } from './services/web-clipper'
@@ -166,6 +168,8 @@ app.whenReady().then(() => {
   registerPluginIPC()
   registerProactiveIPC()
   registerAgentIPC()
+  registerDemoIPC()
+  registerMemoryIPC()
   setupAutoUpdater()
   startWebClipperServer()
 

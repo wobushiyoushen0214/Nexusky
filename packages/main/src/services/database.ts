@@ -4,7 +4,7 @@ import { join } from 'path'
 let db: Database.Database | null = null
 let currentVaultPath: string | null = null
 
-export const SCHEMA_VERSION = 14
+export const SCHEMA_VERSION = 15
 
 export function getDatabase(vaultPath: string): Database.Database {
   if (db && currentVaultPath === vaultPath) return db
@@ -209,6 +209,7 @@ function initSchema(db: Database.Database): void {
   createAgentSchema(db)
   createMaintenanceFeedbackSchema(db)
   createVaultHealthSnapshotSchema(db)
+  createMemorySchema(db)
 }
 
 function createAgentSchema(db: Database.Database): void {
@@ -338,6 +339,30 @@ function createVaultHealthSnapshotSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_vault_health_snapshots_updated
       ON vault_health_snapshots(updated_at DESC);
+  `)
+}
+
+function createMemorySchema(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS memory_cards (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      period_start INTEGER NOT NULL,
+      period_end INTEGER NOT NULL,
+      tier TEXT CHECK(tier IN ('Hot', 'Warm', 'Cold')),
+      confidence REAL,
+      sources_json TEXT NOT NULL DEFAULT '[]',
+      archived INTEGER DEFAULT 0,
+      pinned INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_memory_cards_period
+      ON memory_cards(period_end DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_memory_cards_tier
+      ON memory_cards(tier, archived);
   `)
 }
 

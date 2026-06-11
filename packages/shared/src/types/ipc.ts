@@ -726,6 +726,14 @@ export interface VaultHealthSummary {
   scannedAt: number
   scoreFactors: VaultHealthScoreFactor[]
   trend: VaultHealthTrendPoint[]
+  growth?: GrowthMetrics
+  relativeRank?: string
+}
+
+export interface GrowthMetrics {
+  newLinksThisWeek: number
+  orphansReducedThisWeek: number
+  healthScoreChange: number
 }
 
 export type VaultHealthScoreFactorId = 'links' | 'tasks' | 'memory' | 'structure' | 'freshness' | 'sync'
@@ -1483,6 +1491,12 @@ export interface IPCChannelMap {
   'agent:get-run': { params: { vaultPath: string; runId: string }; result: { run: AgentRunSummary; steps: AgentStepSummary[] } | null }
   'agent:list-runs': { params: { vaultPath: string; status?: AgentRunStatus[]; limit?: number }; result: AgentRunSummary[] }
   'agent:reflect': { params: { vaultPath: string; runId: string }; result: AgentReflectResult }
+  'demo:get-sample-vaults': { params: undefined; result: SampleVault[] }
+  'demo:run-transformation': { params: { vaultPath: string; vaultId: string }; result: TransformationResult }
+  'demo:get-stats': { params: { vaultPath: string }; result: VaultStats }
+  'memory:get-timeline': { params: { vaultPath: string }; result: MemoryCard[] }
+  'memory:update-card': { params: { vaultPath: string; id: string; actions: MemoryCardUpdate }; result: void }
+  'memory:explain-card': { params: { vaultPath: string; id: string }; result: string }
 }
 
 export type IPCChannel = keyof IPCChannelMap
@@ -1565,4 +1579,68 @@ export interface AgentReflectResult {
   failedSteps: number
   unmetExpectations: string[]
   suggestions: string[]
+}
+
+// ============================================================================
+// Demo Transformation
+// ============================================================================
+
+export interface SampleVault {
+  id: string
+  name: string
+  description: string
+  noteCount: number
+  scenario: 'research' | 'developer' | 'writer'
+  path?: string
+}
+
+export interface TransformationFix {
+  type: 'resolve-link' | 'connect-island' | 'add-property' | 'organize-folder'
+  count: number
+  examples: string[]
+}
+
+export interface VaultStats {
+  noteCount: number
+  linkCount: number
+  unresolvedLinkCount: number
+  orphanCount: number
+  duplicateTitleCount: number
+  missingPropertyCount: number
+  healthScore: number
+}
+
+export interface TransformationResult {
+  vaultId: string
+  status: 'running' | 'completed' | 'failed'
+  progress: number
+  beforeStats: VaultStats
+  afterStats?: VaultStats
+  fixes: TransformationFix[]
+  durationMs?: number
+  error?: string
+}
+
+// ============================================================================
+// Memory Timeline
+// ============================================================================
+
+export interface MemoryCard {
+  id: string
+  title: string
+  period: { start: number; end: number }
+  sources: Array<{ noteId: string; title: string; filePath: string; relevance: number }>
+  tier: 'Hot' | 'Warm' | 'Cold'
+  confidence: number
+  userActions: {
+    archived: boolean
+    pinned: boolean
+  }
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MemoryCardUpdate {
+  archived?: boolean
+  pinned?: boolean
 }

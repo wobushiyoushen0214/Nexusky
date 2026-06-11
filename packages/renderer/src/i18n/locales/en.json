@@ -130,7 +130,10 @@
       "confirm": "Choose location and create",
       "cancel": "Cancel"
     },
-    "recent": "Recent vaults"
+    "recent": "Recent vaults",
+    "demo": {
+      "button": "Try Demo"
+    }
   },
   "graph": {
     "title": "Graph",
@@ -1446,6 +1449,33 @@
       "theme_link": "Theme",
       "cognitive_review": "Review",
       "maintenance": "Maintenance"
+    }
+  },
+  "demo": {
+    "title": "Vault Transformation Showcase",
+    "intro": "Select a messy sample vault and see how Nexusky transforms it in 30 seconds.",
+    "notes": "notes",
+    "issues": "issues",
+    "scanning": "Scanning {{name}}...",
+    "issues": {
+      "found": "Issues Found",
+      "brokenLinks": "Broken Links",
+      "orphanNotes": "Orphan Notes",
+      "missingProperties": "Missing Properties"
+    },
+    "healthScore": "Health Score",
+    "applyFix": "Apply AI Fix",
+    "fixing": "Fixing...",
+    "before": "Before",
+    "after": "After",
+    "transformation": {
+      "complete": "Transformation Complete!"
+    },
+    "fixesApplied": "Fixes Applied",
+    "done": "Done",
+    "error": {
+      "scan": "Scan failed",
+      "fix": "Fix failed"
     }
   }
 }

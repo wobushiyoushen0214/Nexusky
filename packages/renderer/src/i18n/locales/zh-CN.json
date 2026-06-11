@@ -130,7 +130,10 @@
       "confirm": "选择位置并创建",
       "cancel": "取消"
     },
-    "recent": "最近打开"
+    "recent": "最近打开",
+    "demo": {
+      "button": "查看演示"
+    }
   },
   "graph": {
     "title": "图谱",
@@ -1446,6 +1449,33 @@
       "theme_link": "主题",
       "cognitive_review": "回顾",
       "maintenance": "维护"
+    }
+  },
+  "demo": {
+    "title": "Vault 转化演示",
+    "intro": "选择一个混乱的样例 vault，看看 Nexusky 如何在 30 秒内让它变得井然有序。",
+    "notes": "笔记",
+    "issues": "问题",
+    "scanning": "正在扫描 {{name}}...",
+    "issues": {
+      "found": "发现以下问题",
+      "brokenLinks": "断链",
+      "orphanNotes": "孤岛笔记",
+      "missingProperties": "缺失属性"
+    },
+    "healthScore": "健康分",
+    "applyFix": "一键修复",
+    "fixing": "修复中...",
+    "before": "修复前",
+    "after": "修复后",
+    "transformation": {
+      "complete": "转化完成！"
+    },
+    "fixesApplied": "已应用修复",
+    "done": "完成",
+    "error": {
+      "scan": "扫描失败",
+      "fix": "修复失败"
     }
   }
 }

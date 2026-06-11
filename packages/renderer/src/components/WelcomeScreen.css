@@ -39,6 +39,32 @@
   gap: 18px;
 }
 
+.welcome-demo-button {
+  width: fit-content;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.welcome-demo-button:hover {
+  background: var(--accent-color-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.welcome-demo-button svg {
+  flex-shrink: 0;
+}
+
 .welcome-brandmark {
   width: 46px;
   height: 46px;

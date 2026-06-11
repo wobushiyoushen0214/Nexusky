@@ -5,6 +5,7 @@ import { toast } from '../stores/toast-store'
 import type { WorkflowSampleVaultId } from '@shared/types/ipc'
 import { getErrorMessage } from '../utils/errors'
 import { SAMPLE_WORKFLOW_VAULTS } from '../../../shared/src/workflow-samples'
+import { DemoTransformationFlow } from './demo/DemoTransformationFlow'
 import './WelcomeScreen.css'
 
 export function WelcomeScreen() {
@@ -14,6 +15,7 @@ export function WelcomeScreen() {
   const [creatingSample, setCreatingSample] = useState<WorkflowSampleVaultId | null>(null)
   const [vaultName, setVaultName] = useState('')
   const [recentVaults, setRecentVaults] = useState<string[]>([])
+  const [showDemo, setShowDemo] = useState(false)
 
   useEffect(() => {
     window.api.invoke('vault:get-recent', undefined).then(setRecentVaults)
@@ -50,6 +52,7 @@ export function WelcomeScreen() {
 
   return (
     <div className="welcome-screen">
+      {showDemo && <DemoTransformationFlow onClose={() => setShowDemo(false)} />}
       <main className="welcome-shell" aria-labelledby="welcome-title">
         <section className="welcome-hero">
           <div className="welcome-brandmark" aria-hidden="true">
@@ -73,6 +76,13 @@ export function WelcomeScreen() {
             <WelcomeLoopStep index="02" label={t('activityBar.graph')} />
             <WelcomeLoopStep index="03" label={t('activityBar.maintenance')} />
           </div>
+          <button type="button" onClick={() => setShowDemo(true)} className="welcome-demo-button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+            </svg>
+            {t('welcome.demo.button')}
+          </button>
         </section>
 
         <section className="welcome-start-panel" aria-label={t('welcome.action.open')}>
