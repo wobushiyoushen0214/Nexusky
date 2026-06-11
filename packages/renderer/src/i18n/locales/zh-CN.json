@@ -1486,5 +1486,27 @@
       "scan": "扫描失败",
       "fix": "修复失败"
     }
+  },
+  "memory": {
+    "title": "记忆时间线",
+    "subtitle": "AI 记住了你研究过的主题和上下文",
+    "loading": "正在加载记忆...",
+    "empty": "暂无记忆数据，使用 AI 对话后会自动建立长期记忆",
+    "tier": {
+      "hot": "最近常用",
+      "warm": "偶尔提及",
+      "cold": "已归档"
+    },
+    "confidence": "置信度",
+    "moreSources": "更多来源",
+    "explain": "为什么记住",
+    "pin": "标记重要",
+    "unpin": "取消标记",
+    "archive": "归档",
+    "error": {
+      "load": "加载记忆失败",
+      "update": "更新记忆失败",
+      "explain": "获取解释失败"
+    }
   }
 }

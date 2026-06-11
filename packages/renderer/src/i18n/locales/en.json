@@ -1486,5 +1486,27 @@
       "scan": "Scan failed",
       "fix": "Fix failed"
     }
+  },
+  "memory": {
+    "title": "Memory Timeline",
+    "subtitle": "AI remembers topics and contexts you've explored",
+    "loading": "Loading memories...",
+    "empty": "No memory data yet. Long-term memory builds automatically as you chat with AI",
+    "tier": {
+      "hot": "Recently Active",
+      "warm": "Occasionally Mentioned",
+      "cold": "Archived"
+    },
+    "confidence": "confidence",
+    "moreSources": "more",
+    "explain": "Why remember",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "error": {
+      "load": "Failed to load memories",
+      "update": "Failed to update memory",
+      "explain": "Failed to get explanation"
+    }
   }
 }
