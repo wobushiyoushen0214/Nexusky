@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useVaultStore } from '../stores/vault-store'
-import { useMaintenanceStore } from '../stores/maintenance-store'
 import { toast } from '../stores/toast-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import { toolSurfaceCategoryToCommandCategory } from './tool-surface/tool-surface-category'
@@ -148,8 +147,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'graph-full', category: 'graph', label: t('commandPalette.commands.graphFull.label'), shortcut: 'Ctrl+G', keywords: ['graph'], action: () => {
       setMainView('graph')
     }},
-    { id: 'bases', category: 'search', label: t('commandPalette.commands.bases.label'), description: t('commandPalette.commands.bases.description'), keywords: ['bases', 'properties', 'frontmatter', 'metadata', 'obsidian'], action: () => setMainView('bases') },
-    { id: 'timeline', category: 'search', label: t('commandPalette.commands.timeline.label'), description: t('commandPalette.commands.timeline.description'), keywords: ['timeline', 'history', 'recent', 'activity'], action: () => setMainView('timeline') },
     { id: 'graph-current', category: 'graph', label: t('commandPalette.commands.graphCurrent.label'), description: t('commandPalette.commands.graphCurrent.description'), keywords: ['graph', 'mermaid'], action: () => {
       const filePath = currentFilePath
       if (!requireCurrentNote() || !filePath) return
@@ -219,13 +216,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'settings', category: 'interface', label: t('commandPalette.commands.settings.label'), shortcut: 'Ctrl+,', keywords: ['settings'], action: () => setSettingsOpen(true) },
     { id: 'view-context-pack', category: 'interface', label: t('commandPalette.commands.viewContextPack.label'), description: t('commandPalette.commands.viewContextPack.description'), keywords: ['context', 'memory', 'long-context', 'observability', 'tune'], action: () => { useUIStore.getState().setSettingsInitialTab('long-context'); setSettingsOpen(true) } },
     { id: 'open-agent-panel', category: 'interface', label: t('commandPalette.commands.openAgent.label'), description: t('commandPalette.commands.openAgent.description'), keywords: ['agent', 'plan', 'execute', 'autonomy'], action: () => setRightPanel('agent') },
-    { id: 'open-maintenance', category: 'interface', label: t('commandPalette.commands.openMaintenance.label'), description: t('commandPalette.commands.openMaintenance.description'), keywords: ['maintenance', 'queue', 'fix'], action: () => {
-      useMaintenanceStore.getState().setViewMode('legacy')
-      setMainView('maintenance')
-      if (!useUIStore.getState().sidebarCollapsed) {
-        toggleSidebar()
-      }
-    } },
     { id: 'new-window', category: 'interface', label: t('commandPalette.commands.newWindow.label'), description: t('commandPalette.commands.newWindow.description'), keywords: ['window', 'multi'], action: () => window.api.windowControls.newWindow() },
     { id: 'sidebar', category: 'interface', label: t('commandPalette.commands.sidebar.label'), shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
     { id: 'reset-workspace', category: 'interface', label: t('commandPalette.commands.resetWorkspace.label'), description: t('commandPalette.commands.resetWorkspace.description'), keywords: ['workspace', 'layout', 'reset'], action: () => resetWorkspaceLayout() },

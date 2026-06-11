@@ -2,7 +2,7 @@
 
 > 面向人类维护者和 AI agent 的项目说明。本文根据当前代码结构与功能实现整理，适合作为需求理解、代码导航、二次开发和自动化分析的上下文入口。
 
-最后核对版本：v0.8.3 发布前（v0.8.0 功能范围 + release CI pnpm setup 修复 + 无证书打包恢复；含 Vault Health top 3、维护反馈趋势、Vault tools 边界、Context Pack 来源解释、样例首启路径和官网首页重做）
+最后核对版本：2026-06-11（v0.8.3 后文档收束；产品路线图改为 `docs/PRODUCT_ROADMAP.md`；一次性产品对齐快照不再作为公开文档入口）
 
 ## 1. 一句话理解
 
@@ -609,12 +609,11 @@ pnpm dist
 | `tests/search-index.test.ts` | 分块与本地词法检索 fallback |
 | `tests/file-path.test.ts` / `file-tree-refresh.test.ts` | 路径安全与文件树刷新 |
 | `tests/markdown-comments.test.ts` / `markdown-highlights.test.ts` / `callouts.test.ts` / `footnotes.test.ts` / `frontmatter.test.ts` / `table-formulas.test.ts` | Markdown 兼容渲染特性 |
-| `tests/obsidian-importer.test.ts` / `obsidian-link.test.ts` / `notion-importer.test.ts` / `reader-importer.test.ts` | 各导入器 |
+| `tests/obsidian-importer.test.ts` / `obsidian-link.test.ts` / `notion-importer.test.ts` / `reader-importer.test.ts` | Obsidian、Notion 和导入阅读来源 |
 | `tests/publish-wikilinks.test.ts` / `wikilink.test.ts` | wikilink 解析与发布 |
 | `tests/backlinks-panel.test.ts` / `related-context-panel.test.ts` | 链接概览默认折叠、相关上下文布局和轮播 helper |
 | `tests/canvas-view.test.ts` | 属性/时间视图布局、连接线路由和拖拽时轻量路由 |
 | `tests/graph-modes.test.ts` / `graph-ui.test.ts` | 图谱数据模式、group/folder-scope 钻取、布局缓存、默认降噪和过滤 helper |
-| `tests/reader-inbox.test.ts` | 阅读收件箱 |
 | `tests/vault-store.test.ts` / `tests/ui-store.test.ts` / `activity-bar-registry.test.ts` | Zustand store 行为 |
 | `tests/tool-surface-*.test.ts` | 工具 surface 注册、命令面板入口、编辑器上下文菜单和 IPC 类型 |
 | `tests/s3-provider.test.ts` / `webdav-provider.test.ts` / `storage.test.ts` | 云同步 Provider |
@@ -674,9 +673,7 @@ pnpm test
 
 - `README.md`：项目入口、快速开始和高层介绍。
 - `PRODUCT.md`：产品取舍、ActivityBar 调整和 Canvas/Kanban/Agent 入口决策。
-- `docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md`：基于 v0.8.3 当前状态的下一阶段产品方向、升级计划和指标体系。
-- `docs/PRODUCT_ALIGNMENT_AUDIT_2026-06-04.md`：产品边界偏离审查、修复记录和验收范围。
-- `docs/PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md`：当前最符合本地 Markdown vault 维护闭环的能力清单。
+- `docs/PRODUCT_ROADMAP.md`：下一阶段产品改造主线、优先级、指标和不做清单。
 - `docs/MIGRATION_GUIDE.md`：Markdown/Obsidian vault 迁移、备份和 AI 数据边界。
 - `docs/10K_VAULT_PERFORMANCE_REGRESSION.md`：大 vault 发布前性能回归 runbook。
 - `docs/SYNC_DISASTER_RECOVERY_DRILL.md`：同步删除、覆盖和冲突恢复演练 runbook。
@@ -695,7 +692,7 @@ pnpm test
 - 新增 `services/ai/connection-opportunities.ts`：基于属性共现等信号给出 `suggest_note_links`。
 - 新增 `services/ai/graph-insights.ts`：图谱派生指标。
 - AI Agent 增加 `plan_knowledge_maintenance` 和 `list_knowledge_bridges` 两个工具，前端 `tool-labels.ts` 同步增加状态文案。
-- 新增 `maintenance:*` IPC 与 `MaintenanceQueuePanel`，把维护队列从 Agent 工具扩展为可直接浏览和应用修复的主视图。
+- 新增 `maintenance:*` IPC 与 `MaintenanceQueuePanel`，把维护队列从 Agent 工具扩展为可浏览、可预览和可应用修复的本地处理流；一线入口正在收束到 Overview / Vault Health / 命令流程。
 - 新增主动建议系统：schema v10、触发器、策略、orchestrator、偏好页、toast、通知中心和 `proactive:*` IPC。通知中心后来补上了 `proactive:respond-all`，支持全部已读和全部删除。
 
 ### 22.2 Obsidian 兼容性大幅增强
@@ -758,7 +755,7 @@ pnpm test
 ### 22.10 文档与配套
 
 - `docs/PROJECT_OVERVIEW.md`（本文）：随 22 节增量演进。
-- `README.md`、`PRODUCT.md`、当前路线图、产品对齐记录和发布 runbook 在同一周期内同步更新。
+- `README.md`、`PRODUCT.md`、当前路线图和发布 runbook 在同一周期内同步更新。
 - v0.8.3 发版后移除 2026-05 的旧审计、旧工单、旧方向和旧开发计划文档，避免维护者或 AI agent 把历史快照误读为当前产品边界。
 
 ### 22.11 `ac7dee4..cb6a1f3` 最新回写
@@ -767,7 +764,7 @@ pnpm test
 - 属性/时间视图连接线体验修复：进入时会先种下所有可见边和关联建议的轻量正交路由，再交给 `canvas-route-worker.ts` 做绕卡片的精细路由；拖拽时用轻量路线保持反馈，完成后再刷新 worker 路由，避免连接线默认不可见或使用过期锚点。
 - 当前笔记相关上下文从正文上方的内联区域调整为右侧维护面板的 `context` 页签，编辑器状态栏提供"相关上下文"入口；`RelatedContextPanel` 支持 top / side 轮播布局，维护队列和相关上下文共享同一个 `maintenance` 右侧面板。
 - 编辑器底部的链接概览默认折叠，每次切换当前文件都会恢复折叠状态，只在用户主动展开时显示出链、反链和未链接提及。
-- 左侧活动栏将维护入口设为默认可见，命令面板、activity bar registry、`ui-store` 和中英文 i18n 同步适配维护面板子页签。
+- 左侧活动栏曾将维护入口设为默认可见；后续产品收束继续把维护能力保留为本地处理流，但不再作为一线 ActivityBar 项。
 - README 被压缩为当前能力、技术栈、开发命令、文档入口和安全边界的高层入口；旧 `docs/FEATURES.md` 已移除，overview 和 README 不再引用它。
 - `website/` 首页重做为 Nexusky v0.5.0 官网与下载入口，使用 `public/product/icon.png`，展示本地 Markdown、长期上下文、AI 工具、图谱和下载链接；Next.js 中间件文件迁移为 `proxy.ts`，`website/README.md` 同步说明日志后台、环境变量和首页资产。
 
@@ -779,3 +776,9 @@ pnpm test
 - 关系反馈新增 `snoozed` 类型；Related Context card 现在支持 useful / not related / wrong reason / snooze / dismiss，反馈会写入 `relation_feedback` 并影响后续 ranking。
 - 新增 `docs/SEMANTIC_SEARCH_EVALUATION_2026-05-31.md`，明确 v0.8 不默认启用 embedding，先用 fixture 对 keyword / FTS / local embedding / remote embedding / hybrid 做评估，并写清远程 embedding 的数据外发边界。
 - 应用版本号推进到 `0.8.3`；功能范围对应 Phase 3 / Cognitive Partner MVP 加产品边界收束，补丁版本携带 Vault Health top 3、维护反馈趋势、Vault tools 边界、Context Pack 来源解释和 workflow sample 首启路径。
+
+### 22.13 2026-06-11 文档收束
+
+- 删除一次性产品对齐审查和亮点快照，避免已完成问题继续作为当前方向被维护者或 AI agent 误读。
+- 用 `docs/PRODUCT_ROADMAP.md` 替换 2026-06-03 的长篇未来计划，把已完成执行记录从路线图中移除，保留 Overview、Maintenance、Chat、Graph、Properties、商业信任和不做清单。
+- README 和本文的文档入口同步改为当前权威文档：`PRODUCT.md`、`docs/PRODUCT_ROADMAP.md`、`docs/PROJECT_OVERVIEW.md`。

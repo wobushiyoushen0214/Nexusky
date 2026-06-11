@@ -9,7 +9,7 @@ export interface ActivityBarItemDef {
 }
 
 export interface ActivityBarAvailabilityContext {
-  mainView: 'editor' | 'graph' | 'bases' | 'timeline' | 'maintenance' | 'overview'
+  mainView: 'editor' | 'graph' | 'overview'
   currentFilePath: string | null
 }
 
@@ -21,7 +21,6 @@ export const ACTIVITY_BAR_REGISTRY: ActivityBarItemDef[] = [
   { id: 'graph', labelKey: 'activityBar.graph', shortcut: 'Ctrl+G', defaultVisible: true, defaultOrder: 4 },
   { id: 'outline', labelKey: 'activityBar.outline', shortcut: 'Ctrl+E', defaultVisible: false, defaultOrder: 8, requiresCurrentFile: true },
   { id: 'tags', labelKey: 'activityBar.tags', defaultVisible: false, defaultOrder: 9, requiresCurrentFile: true },
-  { id: 'maintenance', labelKey: 'activityBar.maintenance', defaultVisible: true, defaultOrder: 13 },
 ]
 
 export function isActivityBarItemAvailable(item: ActivityBarItemDef, context: ActivityBarAvailabilityContext): boolean {

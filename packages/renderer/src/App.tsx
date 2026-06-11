@@ -30,7 +30,6 @@ import { safeGet } from './utils/storage'
 import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
-const CanvasView = lazy(() => import('./components/canvas/CanvasView').then((m) => ({ default: m.CanvasView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
 const Settings = lazy(() => import('./components/settings/Settings').then((m) => ({ default: m.Settings })))
 const SearchPanel = lazy(() => import('./components/SearchPanel').then((m) => ({ default: m.SearchPanel })))
@@ -41,7 +40,6 @@ const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => 
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
 const PublishScopeDialog = lazy(() => import('./components/PublishScopeDialog').then((m) => ({ default: m.PublishScopeDialog })))
-const MaintenanceContainer = lazy(() => import('./components/maintenance/MaintenanceContainer').then((m) => ({ default: m.MaintenanceContainer })))
 const VaultOverview = lazy(() => import('./components/overview/VaultOverview').then((m) => ({ default: m.VaultOverview })))
 const AgentRunPanel = lazy(() => import('./components/agent/AgentRunPanel').then((m) => ({ default: m.AgentRunPanel })))
 
@@ -500,18 +498,6 @@ export default function App() {
             {mainView === 'editor' ? (
               <div className="workspace-editor-frame">
                 <Editor />
-              </div>
-            ) : mainView === 'bases' ? (
-              <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><CanvasView initialMode="properties" /></Suspense>
-              </div>
-            ) : mainView === 'timeline' ? (
-              <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><CanvasView initialMode="time" /></Suspense>
-              </div>
-            ) : mainView === 'maintenance' ? (
-              <div style={{ height: '100%', overflow: 'auto' }}>
-                <Suspense fallback={null}><MaintenanceContainer /></Suspense>
               </div>
             ) : mainView === 'overview' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>

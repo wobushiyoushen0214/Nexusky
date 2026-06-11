@@ -23,7 +23,6 @@ describe('activity bar registry', () => {
   it('keeps global workspace items available outside the editor', () => {
     expect(isActivityBarItemAvailable(item('graph'), { mainView: 'graph', currentFilePath: null })).toBe(true)
     expect(isActivityBarItemAvailable(item('chat'), { mainView: 'bases', currentFilePath: null })).toBe(true)
-    expect(isActivityBarItemAvailable(item('maintenance'), { mainView: 'graph', currentFilePath: null })).toBe(true)
   })
 
   it('keeps retired standalone surfaces out of the activity registry', () => {
@@ -32,11 +31,12 @@ describe('activity bar registry', () => {
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'calendar')).toBe(false)
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'daily-note')).toBe(false)
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'canvas')).toBe(false)
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'maintenance')).toBe(false)
   })
 
-  it('keeps related context merged under knowledge maintenance instead of a separate activity item', () => {
+  it('keeps related context and maintenance out of the primary activity registry', () => {
     expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'context')).toBe(false)
-    expect(item('maintenance').defaultVisible).toBe(true)
+    expect(ACTIVITY_BAR_REGISTRY.some((entry) => entry.id === 'maintenance')).toBe(false)
   })
 
   it('keeps properties and timeline command-only instead of activity items', () => {

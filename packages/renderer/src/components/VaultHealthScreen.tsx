@@ -4,7 +4,6 @@ import type { TFunction } from 'i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
-import { useMaintenanceStore } from '../stores/maintenance-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import './VaultHealthScreen.css'
 
@@ -15,7 +14,6 @@ type VaultHealthNextStepId =
   | 'reviewTasks'
   | 'reviewMemory'
   | 'reviewStale'
-  | 'openMaintenance'
   | 'browseGraph'
 
 interface VaultHealthNextStep {
@@ -69,8 +67,7 @@ export function buildVaultHealthNextSteps(summary: VaultHealthSummary): VaultHea
   const sortedSignals = signalSteps.sort((a, b) => b.priority - a.priority).slice(0, 3)
   const fallbackSteps: VaultHealthNextStep[] = [
     { id: 'askAi', priority: 0 },
-    { id: 'browseGraph', priority: 0 },
-    { id: 'openMaintenance', priority: 0 }
+    { id: 'browseGraph', priority: 0 }
   ]
   return [...sortedSignals, ...fallbackSteps.filter((step) => !sortedSignals.some((signal) => signal.id === step.id))]
     .slice(0, 3)
@@ -114,15 +111,6 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
     await dismiss()
   }
 
-  const openMaintenance = async () => {
-    useMaintenanceStore.getState().setViewMode('legacy')
-    setMainView('maintenance')
-    if (!useUIStore.getState().sidebarCollapsed) {
-      useUIStore.getState().toggleSidebar()
-    }
-    await dismiss()
-  }
-
   const openGraph = async () => {
     setMainView('graph')
     await dismiss()
@@ -145,7 +133,6 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
       await openGraph()
       return
     }
-    await openMaintenance()
   }
 
   return (

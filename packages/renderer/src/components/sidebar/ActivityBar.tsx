@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../../stores/ui-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useActivityBarStore } from '../../stores/activity-bar-store'
-import { useMaintenanceStore } from '../../stores/maintenance-store'
 import { ACTIVITY_BAR_REGISTRY, isActivityBarItemAvailable } from './activity-bar-registry'
 import { ContextMenu } from '../ContextMenu'
 
@@ -58,13 +57,6 @@ export function ActivityBar() {
     outline: () => toggleRightPanel('outline'),
     properties: () => toggleRightPanel('properties'),
     tags: () => toggleRightPanel('tags'),
-    maintenance: () => {
-      useMaintenanceStore.getState().setViewMode('legacy')
-      setMainView('maintenance')
-      if (!useUIStore.getState().sidebarCollapsed) {
-        toggleSidebar()
-      }
-    },
   }
 
   const visibleItems = visibleIds
@@ -75,7 +67,6 @@ export function ActivityBar() {
 
   const getActiveId = () => {
     if (mainView === 'overview') return 'overview'
-    if (mainView === 'maintenance') return 'maintenance'
     if (useUIStore.getState().mainView === 'graph') return 'graph'
     if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'

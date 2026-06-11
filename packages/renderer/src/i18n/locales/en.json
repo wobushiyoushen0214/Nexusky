@@ -83,11 +83,6 @@
         "title": "Review {{count}} stale notes",
         "desc": "Find old notes that may need links, updates, or archiving."
       },
-      "openMaintenance": {
-        "kicker": "Maintain",
-        "title": "Open the maintenance queue",
-        "desc": "Review the current vault signals, apply safe fixes, or dismiss what is not relevant."
-      },
       "browseGraph": {
         "kicker": "Map",
         "title": "Browse the knowledge graph",
@@ -876,7 +871,6 @@
       "settings": { "label": "Open settings" },
       "viewContextPack": { "label": "View Context Pack", "description": "Inspect Active / Nearby / Archive Memory Ledger tiers, token usage, and tuning" },
       "openAgent": { "label": "Review execution history", "description": "Advanced: inspect saved plans, steps, reflections, and rollback records" },
-      "openMaintenance": { "label": "Open maintenance queue", "description": "Browse unresolved links, orphan notes, open tasks, and previewable fixes" },
       "newWindow": { "label": "Open new window", "description": "Create an independent Nexusky window for viewing different areas in parallel" },
       "sidebar": { "label": "Toggle sidebar" },
       "resetWorkspace": { "label": "Reset workspace layout", "description": "Restore the editor, sidebar, and right panel default layout" },

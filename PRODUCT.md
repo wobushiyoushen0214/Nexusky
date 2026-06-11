@@ -142,9 +142,9 @@ Maintenance handoff and migration-guide copy now describe execution as reviewabl
 
 Plugin and template bundled examples now use local-pack IPC names, types, renderer state, and tests as the canonical implementation language. Legacy marketplace IPC channels and type aliases remain for compatibility only. Reason: bundled examples are local activation aids, not a remote marketplace or platform business.
 
-### 2026-06-04 - Imported reading helpers stay compatibility-only
+### 2026-06-04 - Imported reading stays compatibility-only
 
-The retired Reader Inbox component file remains as a holder for imported-reading helpers and tests, but it is not imported by `App`, ActivityBar, or the Command Palette. Any generated digest output now uses `imported-reading` / `Imported Reading Digest` language instead of `reader-inbox` / `Reader Inbox`. Reason: Readwise, Pocket, and Notion imports still produce useful Markdown notes, but the product should not imply a standalone reading inbox is part of the current core loop.
+Readwise, Pocket, and Notion importers remain, but the retired Reader Inbox UI/helper surface is no longer a current product surface. Any generated digest output uses `imported-reading` / `Imported Reading Digest` language instead of `reader-inbox` / `Reader Inbox`. Reason: imported material should become ordinary Markdown notes inside Files, Search, Graph, Properties, and Maintenance, not a standalone reading inbox workflow.
 
 ### 2026-06-04 - Public homepage names explainable context
 
@@ -165,3 +165,7 @@ Chat sources now keep provenance for local search and Context Pack recall. When 
 ### 2026-06-04 - Workflow samples open through the maintenance loop
 
 Research, Writing, Developer, and Learning sample vault README files now start with Vault Health, Ask with sources, and Maintenance top 3 before sending users into the sample notes. Reason: samples should demonstrate the product loop for a real Markdown vault, not behave like standalone content templates.
+
+### 2026-06-11 - Product documentation collapsed to current authority
+
+One-off product alignment audit and highlight snapshots were removed from the public docs set, and the dated future plan was replaced by `docs/PRODUCT_ROADMAP.md`. Reason: completed audits and execution logs were listed beside current product docs, making closed issues look like active direction. The authoritative product context is now `PRODUCT.md`, `docs/PRODUCT_ROADMAP.md`, and `docs/PROJECT_OVERVIEW.md`.

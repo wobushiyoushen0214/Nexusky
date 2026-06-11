@@ -83,11 +83,6 @@
         "title": "审查 {{count}} 篇陈旧笔记",
         "desc": "找到可能需要补链接、更新或归档的旧笔记。"
       },
-      "openMaintenance": {
-        "kicker": "维护",
-        "title": "打开维护队列",
-        "desc": "审查当前 vault 信号，应用安全修复，或跳过不相关事项。"
-      },
       "browseGraph": {
         "kicker": "查看",
         "title": "浏览知识图谱",
@@ -876,7 +871,6 @@
       "settings": { "label": "打开设置" },
       "viewContextPack": { "label": "查看上下文包", "description": "查看活跃 / 邻近 / 归档三层记忆账本、token 占用与调参" },
       "openAgent": { "label": "查看执行历史", "description": "高级入口：检查已保存的计划、步骤、反思和回滚记录" },
-      "openMaintenance": { "label": "打开知识维护队列", "description": "查看未解析链接、孤立笔记、未完任务和可预览修复项" },
       "newWindow": { "label": "打开新窗口", "description": "新建一个独立 Nexusky 窗口，可并行查看不同视图" },
       "sidebar": { "label": "切换侧边栏" },
       "resetWorkspace": { "label": "重置工作区布局", "description": "恢复编辑器、侧栏和右侧面板默认布局" },

@@ -82,9 +82,10 @@ describe('ui store workspace widths', () => {
     store.setRightPanel('chat')
 
     store.setWorkspaceScope('workspace:/vault/b')
-    expect(useUIStore.getState().mainView).toBe('editor')
+    expect(useUIStore.getState().mainView).toBe('overview')
     expect(useUIStore.getState().sidebarCollapsed).toBe(false)
     expect(useUIStore.getState().rightPanel).toBe('none')
+    store.setMainView('editor')
     store.setRightPanel('tags')
 
     store.setWorkspaceScope('workspace:/vault/a')
@@ -120,6 +121,7 @@ describe('ui store workspace widths', () => {
     const store = useUIStore.getState()
 
     store.setWorkspaceScope('workspace:/vault/a')
+    store.setMainView('editor')
     store.setRightPanel('tags')
     expect(useUIStore.getState().rightPanel).toBe('tags')
 
@@ -139,22 +141,6 @@ describe('ui store workspace widths', () => {
     expect(JSON.parse(localStorage.getItem('nexusky-workspace-layouts') || '{}')).toEqual({
       'workspace:/vault/a': { mainView: 'bases', rightPanel: 'chat', sidebarCollapsed: false },
     })
-  })
-
-  it('keeps the maintenance panel available as a workspace tool layer', async () => {
-    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
-    const store = useUIStore.getState()
-
-    store.setWorkspaceScope('workspace:/vault/maintenance')
-    store.setMainView('graph')
-    store.setRightPanel('maintenance')
-
-    expect(useUIStore.getState().mainView).toBe('graph')
-    expect(useUIStore.getState().rightPanel).toBe('maintenance')
-
-    store.setMainView('bases')
-    expect(useUIStore.getState().mainView).toBe('bases')
-    expect(useUIStore.getState().rightPanel).toBe('maintenance')
   })
 
   it('sanitizes saved note-scoped panels when restoring non-editor views', async () => {
@@ -213,7 +199,7 @@ describe('ui store workspace widths', () => {
     useUIStore.getState().setWorkspaceScope('workspace:/vault/d')
 
     expect(useUIStore.getState().mainView).toBe('editor')
-    expect(useUIStore.getState().rightPanel).toBe('maintenance')
+    expect(useUIStore.getState().rightPanel).toBe('none')
     expect(useUIStore.getState().sidebarCollapsed).toBe(false)
   })
 
@@ -256,6 +242,7 @@ describe('ui store workspace widths', () => {
     const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
     const store = useUIStore.getState()
 
+    store.setMainView('editor')
     store.setRightPanel('chat')
     expect(useUIStore.getState().rightPanelWidth).toBe(410)
     store.setRightPanelWidth(420)

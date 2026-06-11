@@ -37,7 +37,7 @@ packages/
   shared/               IPC 类型、Markdown 工具和共享类型
 
 browser-extension/      Chromium Web Clipper 扩展
-docs/                   项目全景、指南、设计、优化和规划文档
+docs/                   项目全景、产品路线图、迁移、回归和功能指南
 image/                  产品截图和文档图片
 resources/              应用图标等资源
 scripts/                开发、重建原生模块、CLI、打包辅助脚本
@@ -85,9 +85,7 @@ pnpm -C website run build
 
 - [项目全景文档](docs/PROJECT_OVERVIEW.md)：给维护者和 AI agent 的代码导航与系统说明。
 - [产品上下文](PRODUCT.md)：当前产品取舍、ActivityBar 调整、Canvas/Kanban/Agent 入口决策。
-- [产品未来发展与功能升级](docs/PRODUCT_FUTURE_AND_UPGRADE_PLAN_2026-06-03.md)：基于 v0.8.3 当前状态的下一阶段产品方向、现有功能升级、路线图和指标体系。
-- [产品目标偏离审查](docs/PRODUCT_ALIGNMENT_AUDIT_2026-06-04.md)：记录 2026-06-04 产品边界修复和验收。
-- [产品目标一致性亮点](docs/PRODUCT_ALIGNMENT_HIGHLIGHTS_2026-06-04.md)：整理当前最符合本地 Markdown vault 维护闭环的能力。
+- [产品改造路线图](docs/PRODUCT_ROADMAP.md)：下一阶段产品改造主线、优先级、指标和不做清单。
 - [迁移指南](docs/MIGRATION_GUIDE.md)：Markdown/Obsidian vault 安全打开、备份、忽略规则和 AI 数据边界。
 - [10k+ vault 性能回归](docs/10K_VAULT_PERFORMANCE_REGRESSION.md)：大 vault fixture 生成、手动 UI 回归和可选服务级 smoke 测试。
 - [同步灾难恢复演练](docs/SYNC_DISASTER_RECOVERY_DRILL.md)：本地 fake remote fixture、删除/覆盖/冲突恢复路径和发布前回归标准。

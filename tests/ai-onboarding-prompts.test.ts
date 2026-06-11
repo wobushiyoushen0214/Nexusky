@@ -86,6 +86,6 @@ describe('AI onboarding prompts', () => {
       scoreFactors: []
     })
 
-    expect(steps.map((step) => step.id)).toEqual(['askAi', 'browseGraph', 'openMaintenance'])
+    expect(steps.map((step) => step.id)).toEqual(['askAi', 'browseGraph'])
   })
 })

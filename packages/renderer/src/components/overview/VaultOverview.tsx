@@ -4,7 +4,7 @@ import type { AIUsageRecord, PropertyTableRow, VaultHealthSummary } from '@share
 import { useVaultStore } from '../../stores/vault-store'
 import { useOverviewData } from './hooks/useOverviewData'
 import { OverviewCard } from './OverviewCard'
-import { DonutChart } from '../maintenance/DonutChart'
+import { DonutChart } from '../charts/DonutChart'
 import { DiaryHeatmapChart, TokenUsageAreaChart, type DiaryHeatmapPoint, type TokenUsagePoint } from './OverviewCharts'
 import './vault-overview.css'
 
