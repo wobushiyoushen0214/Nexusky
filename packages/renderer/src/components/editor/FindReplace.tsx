@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Editor } from '@tiptap/react'
+import { Button } from '../ui/button'
 
 interface FindReplaceProps {
   editor: Editor | null
@@ -145,21 +146,29 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
           placeholder="查找"
           style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
         />
-        <button onClick={() => setCaseSensitive(!caseSensitive)} title="大小写敏感" style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: caseSensitive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)', background: caseSensitive ? 'var(--accent-muted)' : 'transparent', color: caseSensitive ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-pressed={caseSensitive}
+          onClick={() => setCaseSensitive(!caseSensitive)}
+          title="大小写敏感"
+          style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: caseSensitive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)', background: caseSensitive ? 'var(--accent-muted)' : 'transparent', color: caseSensitive ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4, fontSize: 10, fontWeight: 700 }}
+        >
           Aa
-        </button>
+        </Button>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
           {matchCount > 0 ? `${currentMatch + 1}/${matchCount}` : findText ? '0' : ''}
         </span>
-        <button onClick={handleFindPrev} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }} title="上一个">
+        <Button type="button" variant="ghost" size="icon" onClick={handleFindPrev} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }} title="上一个">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg>
-        </button>
-        <button onClick={handleFindNext} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }} title="下一个">
+        </Button>
+        <Button type="button" variant="ghost" size="icon" onClick={handleFindNext} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }} title="下一个">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-        </button>
-        <button onClick={onClose} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+        </Button>
+        <Button type="button" variant="ghost" size="icon" onClick={onClose} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-        </button>
+        </Button>
       </div>
       {/* Replace row */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -170,8 +179,8 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
           placeholder="替换"
           style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
         />
-        <button onClick={handleReplace} style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 4 }}>替换</button>
-        <button onClick={handleReplaceAll} style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 4, whiteSpace: 'nowrap' }}>全部</button>
+        <Button type="button" variant="secondary" size="xs" onClick={handleReplace} style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 4 }}>替换</Button>
+        <Button type="button" variant="secondary" size="xs" onClick={handleReplaceAll} style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', background: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 4, whiteSpace: 'nowrap' }}>全部</Button>
       </div>
     </div>
   )
