@@ -4,6 +4,8 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import type { PropertyTableRow } from '@shared/types/ipc'
+import { Button } from '../ui/button'
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 
 type TimelineMode = 'updatedAt' | 'createdAt'
 
@@ -129,24 +131,28 @@ export function TimelineView() {
             placeholder={t('timeline.searchPlaceholder')}
             style={{ width: 340, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
           />
-          <div style={{ display: 'flex', padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+          <ToggleGroup
+            type="single"
+            value={mode}
+            onValueChange={(value) => {
+              if (value) setMode(value as TimelineMode)
+            }}
+            style={{ padding: 2, borderRadius: 7, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+          >
             {(['updatedAt', 'createdAt'] as TimelineMode[]).map((item) => (
-              <button
-                key={item}
-                onClick={() => setMode(item)}
-                style={{ height: 26, padding: '0 10px', border: 'none', borderRadius: 5, background: mode === item ? 'var(--accent-muted)' : 'transparent', color: mode === item ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12 }}
-              >
+              <ToggleGroupItem key={item} value={item} style={{ minHeight: 26, borderRadius: 5 }}>
                 {item === 'updatedAt' ? t('timeline.updated') : t('timeline.created')}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
-          <button
+          </ToggleGroup>
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => loadRows()}
             disabled={loading}
-            style={{ height: 32, padding: '0 11px', border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: loading ? 'default' : 'pointer' }}
           >
             {loading ? t('timeline.loading') : t('timeline.refresh')}
-          </button>
+          </Button>
         </div>
       </div>
 

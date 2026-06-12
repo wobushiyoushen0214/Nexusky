@@ -49,6 +49,7 @@ Already added:
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Checkbox` and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
 - `WelcomeScreen` now uses shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
+- `TimelineView` now uses shared `ToggleGroup` for updated/created mode switching and shared `Button` for refresh while leaving timeline row layout custom.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -153,6 +154,7 @@ These are lower impact or more visual than behavioral.
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
 | Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
 | Welcome screen | `Button` | Done for demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
+| Timeline view controls | `ToggleGroup`, `Button` | Done for mode switching and refresh. Timeline row buttons remain custom because they carry the grid and marker layout. |
 | Demo flow | `Dialog`, `Button`, `Progress` | Demo-only, lower priority. |
 | Toast system | Radix `Toast` or `sonner` | Bigger architectural choice. Current local toast store may be fine. |
 
