@@ -11,6 +11,7 @@ import type {
 import { useVaultStore } from '../../stores/vault-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
@@ -421,7 +422,7 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
         {detail.run.plan.map((step, idx) => (
           <div key={step.index} className="agent-run-panel__plan-step">
             <div className="agent-run-panel__step-head">
-              <span className="agent-run-panel__step-kind">{step.kind}</span>
+              <Badge variant="secondary" className="agent-run-panel__step-kind">{step.kind}</Badge>
               <div className="agent-run-panel__step-controls">
                 <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === 0} onClick={() => onMove(idx, -1)}>↑</Button>
                 <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === detail.run.plan.length - 1} onClick={() => onMove(idx, 1)}>↓</Button>
@@ -499,10 +500,10 @@ function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectRes
       {stepRows.map((step) => (
         <div key={step.id} className="agent-run-panel__exec-step">
           <div className="agent-run-panel__step-head">
-            <span className="agent-run-panel__step-kind">{step.kind}</span>
-            <span className={`agent-run-panel__step-status agent-run-panel__step-status--${step.status}`}>
+            <Badge variant="secondary" className="agent-run-panel__step-kind">{step.kind}</Badge>
+            <Badge variant="secondary" className={`agent-run-panel__step-status agent-run-panel__step-status--${step.status}`}>
               {step.status}
-            </span>
+            </Badge>
           </div>
           <div className="agent-run-panel__step-desc">{step.description}</div>
           {step.expectedEffect && <div className="agent-run-panel__step-expected">{step.expectedEffect}</div>}

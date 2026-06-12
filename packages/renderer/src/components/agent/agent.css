@@ -133,18 +133,18 @@
   margin-bottom: 4px;
 }
 
-.agent-run-panel__step-kind {
+.agent-run-panel__step-kind.ui-badge {
+  height: auto;
   font-size: 9px;
   font-weight: 600;
   padding: 1px 6px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-radius: 999px;
-  background: var(--muted, var(--bg-hover));
-  color: var(--muted-foreground, var(--text-secondary));
 }
 
-.agent-run-panel__step-status {
+.agent-run-panel__step-status.ui-badge {
+  height: auto;
   font-size: 10px;
   padding: 2px 8px;
   border-radius: 999px;
