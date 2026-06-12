@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { safeSet } from '../../utils/storage'
+import { Button } from '../ui/button'
 import type { LocalPlugin } from '@shared/types/ipc'
 
 interface SlashItem {
@@ -297,7 +298,9 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
       }}
     >
       {filtered.map((item, i) => (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
           key={item.id || item.title}
           onClick={() => executeItem(item)}
           style={{
@@ -306,6 +309,7 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
             padding: '0 10px',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'flex-start',
             gap: 10,
             fontSize: 13,
             color: 'var(--text-primary)',
@@ -322,7 +326,7 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
             <div style={{ fontSize: 13, fontWeight: 500 }}>{item.title}</div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: -1 }}>{item.description}</div>
           </div>
-        </button>
+        </Button>
       ))}
     </div>
   )
