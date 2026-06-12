@@ -27,11 +27,13 @@ const WORKSPACE_KEYS = {
   sidebarCollapsed: 'nexusky-workspace-sidebar-collapsed',
 }
 const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
+const WORKSPACE_DEFAULT_VERSION_KEY = 'nexusky-workspace-default-version'
+const WORKSPACE_DEFAULT_VERSION = 'overview-first-v1'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'history', 'graph', 'plugin', 'agent']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'overview', 'memory', 'bases']
+const MAIN_VIEW_IDS: MainView[] = ['overview', 'memory', 'editor', 'graph', 'bases']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
@@ -235,11 +237,47 @@ function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
   return safeGetJSON<Record<string, WorkspaceLayout>>(WORKSPACE_LAYOUTS_KEY, {})
 }
 
+function getDefaultWorkspaceLayout(): WorkspaceLayout {
+  return {
+    mainView: DEFAULT_MAIN_VIEW,
+    rightPanel: 'none',
+    sidebarCollapsed: DEFAULT_SIDEBAR_COLLAPSED,
+  }
+}
+
 function normalizeRightPanel(value: string | null | undefined): Panel | null {
   if (value === 'context') return 'none'
   if (value === 'calendar') return 'none'
   if (value === 'maintenance') return 'none'
   return value && PANEL_IDS.includes(value as Panel) ? value as Panel : null
+}
+
+function migrateOverviewFirstWorkspaceDefaults(): void {
+  if (safeGet(WORKSPACE_DEFAULT_VERSION_KEY) === WORKSPACE_DEFAULT_VERSION) return
+
+  const layouts = getSavedWorkspaceLayouts()
+  let changed = false
+  const migrated = Object.fromEntries(
+    Object.entries(layouts).map(([scope, layout]) => {
+      const mainView = normalizeMainView(layout?.mainView)
+      if (mainView !== 'editor') return [scope, layout]
+
+      changed = true
+      const rightPanel = getAvailableRightPanel(DEFAULT_MAIN_VIEW, normalizeRightPanel(layout?.rightPanel as string | undefined) ?? 'none')
+      return [scope, {
+        ...layout,
+        mainView: DEFAULT_MAIN_VIEW,
+        rightPanel,
+        sidebarCollapsed: DEFAULT_SIDEBAR_COLLAPSED,
+      }]
+    })
+  )
+
+  if (changed) safeSetJSON(WORKSPACE_LAYOUTS_KEY, migrated)
+  safeRemove(WORKSPACE_KEYS.mainView)
+  safeRemove(WORKSPACE_KEYS.rightPanel)
+  safeRemove(WORKSPACE_KEYS.sidebarCollapsed)
+  safeSet(WORKSPACE_DEFAULT_VERSION_KEY, WORKSPACE_DEFAULT_VERSION)
 }
 
 function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
@@ -252,11 +290,7 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
       : true
     return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel), sidebarCollapsed }
   }
-  return {
-    mainView: DEFAULT_MAIN_VIEW,
-    rightPanel: 'none',
-    sidebarCollapsed: DEFAULT_SIDEBAR_COLLAPSED,
-  }
+  return getDefaultWorkspaceLayout()
 }
 
 function isRightPanelAvailable(mainView: MainView, panel: Panel): boolean {
@@ -290,6 +324,7 @@ function resetSidebarWidth(scope: string): void {
 
 const initialTheme = getInitialTheme()
 const initialAccentColor = normalizeHexColor(safeGet(ACCENT_STORAGE_KEY))
+migrateOverviewFirstWorkspaceDefaults()
 const initialWorkspaceLayout = getInitialWorkspaceLayout()
 const initialLanguage = normalizeLanguage(safeGet('nexusky-language'))
 if (typeof document !== 'undefined') {
