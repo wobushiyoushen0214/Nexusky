@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 interface FindReplaceProps {
   editor: Editor | null
@@ -147,29 +148,49 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
           placeholder="查找"
           style={{ flex: 1, height: 28, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--control-border)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-pressed={caseSensitive}
-          onClick={() => setCaseSensitive(!caseSensitive)}
-          title="大小写敏感"
-          style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: caseSensitive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)', background: caseSensitive ? 'var(--accent-muted)' : 'transparent', color: caseSensitive ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4, fontSize: 10, fontWeight: 700 }}
-        >
-          Aa
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="大小写敏感"
+              aria-pressed={caseSensitive}
+              onClick={() => setCaseSensitive(!caseSensitive)}
+              style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: caseSensitive ? '1px solid var(--accent)' : '1px solid var(--border-subtle)', background: caseSensitive ? 'var(--accent-muted)' : 'transparent', color: caseSensitive ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4, fontSize: 10, fontWeight: 700 }}
+            >
+              Aa
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>大小写敏感</TooltipContent>
+        </Tooltip>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
           {matchCount > 0 ? `${currentMatch + 1}/${matchCount}` : findText ? '0' : ''}
         </span>
-        <Button type="button" variant="ghost" size="icon" onClick={handleFindPrev} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }} title="上一个">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg>
-        </Button>
-        <Button type="button" variant="ghost" size="icon" onClick={handleFindNext} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }} title="下一个">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
-        </Button>
-        <Button type="button" variant="ghost" size="icon" onClick={onClose} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="上一个" onClick={handleFindPrev} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15" /></svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>上一个</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="下一个" onClick={handleFindNext} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>下一个</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="关闭查找替换" onClick={onClose} style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>关闭</TooltipContent>
+        </Tooltip>
       </div>
       {/* Replace row */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
