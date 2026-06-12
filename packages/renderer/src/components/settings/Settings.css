@@ -121,6 +121,23 @@
   padding: 24px 32px 36px;
 }
 
+.settings-loading {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.settings-loading .ui-spinner {
+  width: 18px;
+  height: 18px;
+}
+
+.settings-loading p {
+  margin: 0;
+}
+
 .settings-dialog__tab-panel[data-state="inactive"] {
   display: none;
 }

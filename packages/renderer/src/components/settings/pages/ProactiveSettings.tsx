@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProactiveConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Button } from '../../ui/button'
 import { Checkbox } from '../../ui/checkbox'
-import { Spinner } from '../../ui/spinner'
 import { Switch } from '../../ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '../../ui/toggle-group'
 import './ProactiveSettings.css'
@@ -60,12 +60,7 @@ export function ProactiveSettings() {
   }
 
   if (loading) {
-    return (
-      <div className="proactive-settings settings-loading">
-        <Spinner aria-hidden="true" />
-        <p>{t('settings.loading')}</p>
-      </div>
-    )
+    return <SettingsLoadingState className="proactive-settings" label={t('settings.loading')} />
   }
 
   return (

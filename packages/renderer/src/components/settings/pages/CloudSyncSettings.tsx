@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SettingsSyncConfig, SettingsSyncStatus } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Alert, AlertDescription } from '../../ui/alert'
 import { Button } from '../../ui/button'
-import { Spinner } from '../../ui/spinner'
 import {
   Select,
   SelectContent,
@@ -51,12 +51,7 @@ export function CloudSyncSettings() {
   }
 
   if (loading) {
-    return (
-      <div className="cloud-sync-settings settings-loading">
-        <Spinner aria-hidden="true" />
-        <p>{t('settings.loading')}</p>
-      </div>
-    )
+    return <SettingsLoadingState className="cloud-sync-settings" label={t('settings.loading')} />
   }
 
   return (
