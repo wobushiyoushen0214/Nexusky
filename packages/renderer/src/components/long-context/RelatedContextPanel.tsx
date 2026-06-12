@@ -6,6 +6,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import { Button } from '../ui/button'
+import { Skeleton } from '../ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
 import type { LongContextFeedbackType, LongContextInspection, LongContextMemoryTier, LongContextPackItemPayload, LongContextSuggestion, NoteSearchResult } from '@shared/types/ipc'
 import { RelatedContextCard } from './RelatedContextCard'
@@ -334,9 +335,9 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
 
       {state === 'loading' && suggestions.length === 0 && (
         <div className="related-context-panel__skeleton">
-          <span />
-          <span />
-          <span />
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
         </div>
       )}
 

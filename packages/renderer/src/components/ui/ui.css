@@ -855,6 +855,12 @@
   transition: transform 180ms ease;
 }
 
+.ui-skeleton {
+  border-radius: var(--radius-md, 7px);
+  background: color-mix(in srgb, var(--muted, var(--bg-elevated)) 82%, var(--border, var(--border-subtle)));
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
 .ui-input,
 .ui-textarea {
   width: 100%;

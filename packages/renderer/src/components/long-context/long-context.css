@@ -606,21 +606,20 @@
   gap: 8px;
 }
 
-.related-context-panel__skeleton span {
+.related-context-panel__skeleton .ui-skeleton {
   height: 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-elevated) 82%, var(--border-subtle));
 }
 
-.related-context-panel__skeleton span:nth-child(1) {
+.related-context-panel__skeleton .ui-skeleton:nth-child(1) {
   width: 46%;
 }
 
-.related-context-panel__skeleton span:nth-child(2) {
+.related-context-panel__skeleton .ui-skeleton:nth-child(2) {
   width: 82%;
 }
 
-.related-context-panel__skeleton span:nth-child(3) {
+.related-context-panel__skeleton .ui-skeleton:nth-child(3) {
   width: 68%;
 }
 

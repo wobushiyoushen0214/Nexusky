@@ -22,7 +22,7 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, and `Progress` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, and `Skeleton` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers.
 - `ConfirmModal` now uses `AlertDialog`.
@@ -37,7 +37,7 @@ Already added:
 - The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
 - `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`; preview close/footer actions and selection action buttons now use shared `Button` while preserving streaming cancellation and editor replace/append/copy behavior.
-- `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card title/actions use shared `Button`; relation labels use shared `Badge`.
+- `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card title/actions use shared `Button`; loading placeholders use shared `Skeleton`; relation labels use shared `Badge`.
 - `GraphPanel` side controls now use shared `Input`, `Button`, `Select`, and `Switch` wrappers for graph search, panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
 - `GraphView` zoom toolbar actions now use shared `Button` while preserving the graph canvas node buttons, pan/zoom math, drag behavior, and raster renderer as custom interaction layers.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
@@ -87,6 +87,7 @@ Reference docs checked through `pnpm dlx shadcn@latest docs`:
 - `input`, `textarea`
 - `slider`
 - `progress`
+- `skeleton`
 
 ## Replacement Principles
 
@@ -157,7 +158,7 @@ These need design cleanup or affect many small controls.
 | Area | Current file | Recommended primitive | Notes |
 | --- | --- | --- | --- |
 | Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu`, `Button` | Done for drawer shell, snooze menu, bell, bulk actions, close, open, snooze, and dismiss controls. |
-| Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Done for pack summary/tier tabs and controls. Native list scrolling remains to preserve side/page layout sizing. |
+| Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge`, `Skeleton` | Done for pack summary/tier tabs, controls, and loading placeholders. Native list scrolling remains to preserve side/page layout sizing. |
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
 | Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Slider`, `Button` | Done for pack tier switching, tuning sliders, and tuning actions. |
 | Related context card actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done for title/open and icon feedback actions. Title/aria-label retained. |
@@ -232,7 +233,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Wrap `radix-ui` `ToggleGroup`.
    - Needed by Search mode controls and appearance option groups.
 
-6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx` - done
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx`, `skeleton.tsx` - done
    - Needed for settings pages.
    - Should be introduced after the settings shell is migrated.
 
