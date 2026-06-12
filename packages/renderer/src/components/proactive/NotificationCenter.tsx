@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
@@ -83,7 +84,7 @@ export function NotificationCenter() {
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-          {badge > 0 && <span className="proactive-bell__badge">{badge > 99 ? '99+' : badge}</span>}
+          {badge > 0 && <Badge className="proactive-bell__badge">{badge > 99 ? '99+' : badge}</Badge>}
         </Button>
 
         <SheetContent
