@@ -6,6 +6,7 @@ import { toast } from '../../stores/toast-store'
 import { Button } from '../ui/button'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Input } from '../ui/input'
+import { ScrollArea } from '../ui/scroll-area'
 import { Textarea } from '../ui/textarea'
 
 function listToText(values: string[]): string {
@@ -76,67 +77,69 @@ export function PropertiesPanel() {
   const fileName = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || ''
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '12px 14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div className="glass-divider-bottom" style={{ paddingBottom: 10, borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>{t('propertiesPanel.currentNote')}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
-      </div>
+    <ScrollArea style={{ height: '100%' }}>
+      <div style={{ padding: '12px 14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="glass-divider-bottom" style={{ paddingBottom: 10, borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>{t('propertiesPanel.currentNote')}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
+        </div>
 
-      <PropertyField label={t('propertiesPanel.title')} hint={t('propertiesPanel.titleHint')}>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('propertiesPanel.titlePlaceholder')} style={propertyInputStyle} />
-      </PropertyField>
+        <PropertyField label={t('propertiesPanel.title')} hint={t('propertiesPanel.titleHint')}>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('propertiesPanel.titlePlaceholder')} style={propertyInputStyle} />
+        </PropertyField>
 
-      <PropertyField label={t('propertiesPanel.aliases')} hint={t('propertiesPanel.aliasesHint')}>
-        <Textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder={t('propertiesPanel.aliasesPlaceholder')} rows={4} style={propertyTextareaStyle} />
-      </PropertyField>
+        <PropertyField label={t('propertiesPanel.aliases')} hint={t('propertiesPanel.aliasesHint')}>
+          <Textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder={t('propertiesPanel.aliasesPlaceholder')} rows={4} style={propertyTextareaStyle} />
+        </PropertyField>
 
-      <PropertyField label={t('propertiesPanel.tags')} hint={t('propertiesPanel.tagsHint')}>
-        <Textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t('propertiesPanel.tagsPlaceholder')} rows={4} style={propertyTextareaStyle} />
-      </PropertyField>
+        <PropertyField label={t('propertiesPanel.tags')} hint={t('propertiesPanel.tagsHint')}>
+          <Textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t('propertiesPanel.tagsPlaceholder')} rows={4} style={propertyTextareaStyle} />
+        </PropertyField>
 
-      <PropertyField label={t('propertiesPanel.cssclasses')} hint={t('propertiesPanel.cssclassesHint')}>
-        <Textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder={t('propertiesPanel.cssclassesPlaceholder')} rows={3} style={propertyTextareaStyle} />
-      </PropertyField>
+        <PropertyField label={t('propertiesPanel.cssclasses')} hint={t('propertiesPanel.cssclassesHint')}>
+          <Textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder={t('propertiesPanel.cssclassesPlaceholder')} rows={3} style={propertyTextareaStyle} />
+        </PropertyField>
 
-      <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          onClick={handleSave}
-          disabled={!dirty || saving}
-          style={{
-            height: 30,
-            padding: '0 12px',
-            borderRadius: 6,
-            border: 'none',
-            background: dirty ? 'var(--accent)' : 'var(--bg-elevated)',
-            color: dirty ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: dirty ? 'pointer' : 'default'
-          }}
-        >
-          {saving ? t('propertiesPanel.saving') : t('propertiesPanel.save')}
-        </Button>
-        {dirty && (
+        <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
           <Button
             type="button"
-            variant="outline"
+            variant="default"
             size="sm"
-            onClick={() => {
-              setTitle(parsed.title)
-              setAliases(listToText(parsed.aliases))
-              setTags(listToText(parsed.tags))
-              setCssclasses(listToText(parsed.cssclasses))
+            onClick={handleSave}
+            disabled={!dirty || saving}
+            style={{
+              height: 30,
+              padding: '0 12px',
+              borderRadius: 6,
+              border: 'none',
+              background: dirty ? 'var(--accent)' : 'var(--bg-elevated)',
+              color: dirty ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: dirty ? 'pointer' : 'default'
             }}
-            style={{ height: 30, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
           >
-            {t('propertiesPanel.reset')}
+            {saving ? t('propertiesPanel.saving') : t('propertiesPanel.save')}
           </Button>
-        )}
+          {dirty && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setTitle(parsed.title)
+                setAliases(listToText(parsed.aliases))
+                setTags(listToText(parsed.tags))
+                setCssclasses(listToText(parsed.cssclasses))
+              }}
+              style={{ height: 30, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
+            >
+              {t('propertiesPanel.reset')}
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   )
 }
 
