@@ -5,6 +5,7 @@ import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FlatNode {
@@ -614,39 +615,44 @@ function VirtualFileTreeItem({
             {entry.isDirectory ? entry.name : entry.name.replace(/\.md$/, '')}
           </span>
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onPointerDown={(e) => {
-            if (!hasOpenContextMenu) return
-            suppressNextMenuOpenRef.current = true
-            e.preventDefault()
-            e.stopPropagation()
-            onCloseContextMenu()
-          }}
-          onClick={(e) => {
-            e.stopPropagation()
-            if (suppressNextMenuOpenRef.current) {
-              suppressNextMenuOpenRef.current = false
-              return
-            }
-            onOpenContextMenu(entry.path, e.clientX, e.clientY)
-          }}
-          style={{
-            width: 24, height: 24, flexShrink: 0, marginRight: 2,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 7, border: 'none', cursor: 'pointer',
-            background: 'transparent', color: isActive ? 'var(--accent-text)' : 'var(--text-tertiary)',
-            opacity: hovered || isSelected || isActive ? 0.72 : 0,
-            transition: 'opacity 100ms ease-out, color 100ms ease-out',
-          }}
-          title="更多操作"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
-          </svg>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="更多操作"
+              onPointerDown={(e) => {
+                if (!hasOpenContextMenu) return
+                suppressNextMenuOpenRef.current = true
+                e.preventDefault()
+                e.stopPropagation()
+                onCloseContextMenu()
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (suppressNextMenuOpenRef.current) {
+                  suppressNextMenuOpenRef.current = false
+                  return
+                }
+                onOpenContextMenu(entry.path, e.clientX, e.clientY)
+              }}
+              style={{
+                width: 24, height: 24, flexShrink: 0, marginRight: 2,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 7, border: 'none', cursor: 'pointer',
+                background: 'transparent', color: isActive ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                opacity: hovered || isSelected || isActive ? 0.72 : 0,
+                transition: 'opacity 100ms ease-out, color 100ms ease-out',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+              </svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>更多操作</TooltipContent>
+        </Tooltip>
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={onCloseContextMenu} />}
       <ConfirmModal

@@ -5,6 +5,7 @@ import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FileTreeProps {
@@ -218,24 +219,29 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
             </svg>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
-            style={{
-              width: 22, height: 22, flexShrink: 0, marginRight: 4,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 4, border: 'none', cursor: 'pointer',
-              background: 'transparent', color: 'var(--text-tertiary)',
-              opacity: hovered ? 1 : 0, transition: 'opacity 100ms',
-            }}
-            title="更多操作"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
-            </svg>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="更多操作"
+                onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
+                style={{
+                  width: 22, height: 22, flexShrink: 0, marginRight: 4,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 4, border: 'none', cursor: 'pointer',
+                  background: 'transparent', color: 'var(--text-tertiary)',
+                  opacity: hovered ? 1 : 0, transition: 'opacity 100ms',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+                </svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>更多操作</TooltipContent>
+          </Tooltip>
         </div>
         {expanded && creating && (
           <div style={{ paddingLeft: (depth + 1) * 14 + 8 + 16, paddingRight: 8, paddingTop: 2, paddingBottom: 2 }}>
@@ -296,24 +302,29 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
           </svg>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name.replace(/\.md$/, '')}</span>
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
-          style={{
-            width: 22, height: 22, flexShrink: 0, marginRight: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 4, border: 'none', cursor: 'pointer',
-            background: 'transparent', color: 'var(--text-tertiary)',
-            opacity: hovered ? 1 : 0, transition: 'opacity 100ms',
-          }}
-          title="更多操作"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
-          </svg>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="更多操作"
+              onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
+              style={{
+                width: 22, height: 22, flexShrink: 0, marginRight: 4,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 4, border: 'none', cursor: 'pointer',
+                background: 'transparent', color: 'var(--text-tertiary)',
+                opacity: hovered ? 1 : 0, transition: 'opacity 100ms',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+              </svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>更多操作</TooltipContent>
+        </Tooltip>
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={() => setContextMenu(null)} />}
       <ConfirmModal
