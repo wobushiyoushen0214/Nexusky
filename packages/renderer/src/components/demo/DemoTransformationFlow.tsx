@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import type { SampleVault, TransformationResult, VaultStats } from '@shared/types/ipc'
+import { Button } from '../ui/button'
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import './DemoTransformationFlow.css'
 
 type DemoStep = 'select' | 'scan' | 'fix' | 'compare'
@@ -61,25 +63,35 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="demo-flow-overlay" onClick={onClose}>
-      <div className="demo-flow-shell" onClick={(e) => e.stopPropagation()}>
-        <header className="demo-flow-header">
-          <h2>{t('demo.title')}</h2>
-          <button type="button" onClick={onClose} className="demo-close-button" aria-label={t('common.close')}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </header>
+    <Dialog open onOpenChange={(open) => {
+      if (!open) onClose()
+    }}>
+      <DialogContent
+        className="demo-flow-shell"
+        overlayClassName="demo-flow-overlay"
+        showCloseButton={false}
+        aria-describedby={undefined}
+      >
+        <DialogHeader className="demo-flow-header">
+          <DialogTitle>{t('demo.title')}</DialogTitle>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost" size="icon" className="demo-close-button" aria-label={t('common.close')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </Button>
+          </DialogClose>
+        </DialogHeader>
 
         {step === 'select' && (
           <div className="demo-step-content">
             <p className="demo-intro">{t('demo.intro')}</p>
             <div className="demo-sample-grid">
               {samples.map((sample) => (
-                <button
+                <Button
                   key={sample.id}
                   type="button"
+                  variant="ghost"
                   onClick={() => handleSelectVault(sample)}
                   className="demo-sample-card"
                 >
@@ -89,7 +101,7 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
                     <span>{sample.noteCount} {t('demo.notes')}</span>
                     <span className="demo-issue-count">{sample.scenario}</span>
                   </div>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -123,14 +135,14 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
                 <strong className="demo-score-bad">{beforeStats.healthScore}</strong>
               </div>
             </div>
-            <button
+            <Button
               type="button"
               onClick={handleApplyFix}
               disabled={loading}
               className="demo-fix-button"
             >
               {loading ? t('demo.fixing') : t('demo.applyFix')}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -182,12 +194,12 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
                 ))}
               </ul>
             </div>
-            <button type="button" onClick={onClose} className="demo-done-button">
+            <Button type="button" onClick={onClose} className="demo-done-button">
               {t('demo.done')}
-            </button>
+            </Button>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
