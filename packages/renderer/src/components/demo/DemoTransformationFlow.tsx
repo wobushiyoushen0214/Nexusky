@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errors'
 import type { SampleVault, TransformationResult, VaultStats } from '@shared/types/ipc'
 import { Button } from '../ui/button'
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
+import { Spinner } from '../ui/spinner'
 import './DemoTransformationFlow.css'
 
 type DemoStep = 'select' | 'scan' | 'fix' | 'compare'
@@ -109,7 +110,7 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
 
         {step === 'scan' && (
           <div className="demo-step-content demo-scanning">
-            <div className="demo-spinner" />
+            <Spinner className="demo-spinner" aria-hidden="true" />
             <p>{t('demo.scanning', { name: selectedVault?.name })}</p>
           </div>
         )}

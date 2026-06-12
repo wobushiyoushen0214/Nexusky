@@ -861,6 +861,17 @@
   animation: pulse 1.8s ease-in-out infinite;
 }
 
+.ui-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--border, var(--border-color)) 78%, transparent);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  color: var(--primary, var(--accent));
+  animation: spin 0.8s linear infinite;
+}
+
 .ui-input,
 .ui-textarea {
   width: 100%;

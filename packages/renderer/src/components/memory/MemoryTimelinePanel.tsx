@@ -7,6 +7,7 @@ import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Spinner } from '../ui/spinner'
 import {
   Dialog,
   DialogContent,
@@ -230,7 +231,7 @@ export function MemoryTimelinePanel() {
   if (loading) {
     return (
       <div className="memory-timeline-panel memory-timeline-panel--loading">
-        <div className="memory-timeline-spinner" />
+        <Spinner className="memory-timeline-spinner" aria-hidden="true" />
         <p>{t('memory.loading')}</p>
       </div>
     )

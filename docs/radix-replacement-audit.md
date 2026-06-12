@@ -22,9 +22,9 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, and `Skeleton` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, and `Spinner` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
-- `MemoryTimelinePanel` now uses those wrappers.
+- `MemoryTimelinePanel` now uses those wrappers, including shared `Spinner` for its loading state.
 - `ConfirmModal` now uses `AlertDialog`.
 - Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
@@ -54,7 +54,7 @@ Already added:
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
-- `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell and shared `Button` for close, sample selection, fix, and done actions.
+- `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell, shared `Button` for close, sample selection, fix, and done actions, and shared `Spinner` for the scan state.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints, with hover styling moved into local token-based CSS.
 - `SearchPanel` search input now uses shared `Input`, result rows use shared `Button`, and local search-index progress uses shared `Progress`, while preserving the existing transparent search slot, keyboard navigation, async search, and result selection behavior.
@@ -88,6 +88,7 @@ Reference docs checked through `pnpm dlx shadcn@latest docs`:
 - `slider`
 - `progress`
 - `skeleton`
+- `spinner`
 
 ## Replacement Principles
 
@@ -185,7 +186,7 @@ These are lower impact or more visual than behavioral.
 | Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
 | Timeline view controls | `Input`, `ToggleGroup`, `Button` | Done for search, mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
-| Demo flow | `Dialog`, `Button`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Spinner/progress remains custom. |
+| Demo flow | `Dialog`, `Button`, `Spinner`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Scan loading now uses shared `Spinner`; progress remains custom. |
 | Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |
 | Chat panel actions and batch inputs | `Button`, `ToggleGroup`, `Input` | Done for outbound preview actions, chat header actions, session list actions, batch-plan controls, batch-plan directory/topic/count inputs, folder picker actions, folder-picker new-directory input, edit preview actions, mention result rows, attachment removal controls, and composer icon actions. ChatPanel no longer uses raw `<button>` elements. Composer textarea and hidden file input remain native by design. |
@@ -233,7 +234,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Wrap `radix-ui` `ToggleGroup`.
    - Needed by Search mode controls and appearance option groups.
 
-6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx`, `skeleton.tsx` - done
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx`, `skeleton.tsx`, `spinner.tsx` - done
    - Needed for settings pages.
    - Should be introduced after the settings shell is migrated.
 
