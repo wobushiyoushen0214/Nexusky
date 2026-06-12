@@ -148,9 +148,15 @@
   color: var(--primary, var(--accent-text));
 }
 
-.tags-panel__tag-count {
-  opacity: 0.62;
+.tags-panel__tag-count.ui-badge {
+  height: 15px;
+  min-width: 16px;
+  padding: 0 4px;
+  background: color-mix(in srgb, var(--muted, var(--bg-hover)) 58%, transparent);
+  color: currentColor;
+  font-size: 9px;
   font-variant-numeric: tabular-nums;
+  opacity: 0.72;
 }
 
 .tags-panel__notes {

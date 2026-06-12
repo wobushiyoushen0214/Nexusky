@@ -173,7 +173,7 @@ export function TagsPanel() {
                     title="单击筛选笔记，双击添加到当前文件"
                   >
                     <span>{tag.name}</span>
-                    <span className="tags-panel__tag-count">{tag.count}</span>
+                    <Badge variant="secondary" className="tags-panel__tag-count">{tag.count}</Badge>
                   </Button>
                 ))}
               </div>
