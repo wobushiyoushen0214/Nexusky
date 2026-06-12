@@ -36,7 +36,7 @@ Already added:
 - `NotificationCenter` snooze actions now use `DropdownMenu`.
 - The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
-- `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`.
+- `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`; preview close/footer actions and selection action buttons now use shared `Button` while preserving streaming cancellation and editor replace/append/copy behavior.
 - `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card title/actions use shared `Button`; relation labels use shared `Badge`.
 - `GraphPanel` side controls now use shared `Button`, `Select`, and `Switch` wrappers for panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
@@ -138,7 +138,7 @@ These have more custom keyboard behavior or more UI branches.
 | Graph generator modal | `components/GraphGenerator.tsx` | Custom glass overlay/modal | `Dialog` + `ScrollArea` | Straightforward. |
 | Trash modal | `components/TrashPanel.tsx` | Custom overlay/list | `Dialog` + `ScrollArea` + `AlertDialog` | Also uses `ConfirmModal`; migrate after ConfirmModal. |
 | Onboarding modal | `components/Onboarding.tsx` | Custom overlay/popover | `Dialog` | Simple. |
-| AI writing preview | `components/editor/AIWritingMenu.tsx` | Custom modal + floating menu | Preview: `Dialog`; inline menu: `Popover` | Split preview and inline suggestion menu. |
+| AI writing preview | `components/editor/AIWritingMenu.tsx` | Custom modal + floating menu | `Dialog`, `Popover`, `Button` | Done for preview shell, floating selection action bar, preview close/footer actions, and inline action buttons. Streaming cancellation and editor replace/append/copy behavior remain custom. |
 
 ### P2: Useful, But Should Wait
 

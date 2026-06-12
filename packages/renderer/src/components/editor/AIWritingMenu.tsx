@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
+import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover'
 import type { IPCChatMessage } from '@shared/types/ipc'
@@ -198,9 +199,9 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
                 </span>
               )}
             </div>
-            <button onClick={handleCancel} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+            <Button type="button" variant="ghost" size="icon" onClick={handleCancel} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-            </button>
+            </Button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <div className="glass-divider-right" style={{ padding: '12px 16px', borderRight: '0', overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: 'var(--glass-divider-shadow-right)' }}>
@@ -215,18 +216,18 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
             </div>
           </div>
           <div className="glass-divider-top" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, borderTop: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-top)' }}>
-            <button onClick={handleCancel} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>
+            <Button type="button" variant="outline" size="sm" onClick={handleCancel} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>
               取消
-            </button>
-            <button onClick={handleCopy} disabled={!preview.result} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: preview.result ? 'pointer' : 'not-allowed', opacity: preview.result ? 1 : 0.5 }}>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={handleCopy} disabled={!preview.result} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: preview.result ? 'pointer' : 'not-allowed', opacity: preview.result ? 1 : 0.5 }}>
               复制
-            </button>
-            <button onClick={handleAppend} disabled={!preview.result || preview.streaming} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: preview.result && !preview.streaming ? 'pointer' : 'not-allowed', opacity: preview.result && !preview.streaming ? 1 : 0.5 }}>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={handleAppend} disabled={!preview.result || preview.streaming} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: preview.result && !preview.streaming ? 'pointer' : 'not-allowed', opacity: preview.result && !preview.streaming ? 1 : 0.5 }}>
               追加到下方
-            </button>
-            <button onClick={handleReplace} disabled={!preview.result || preview.streaming} style={{ height: 28, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 5, cursor: preview.result && !preview.streaming ? 'pointer' : 'not-allowed', opacity: preview.result && !preview.streaming ? 1 : 0.5, fontWeight: 500 }}>
+            </Button>
+            <Button type="button" size="sm" onClick={handleReplace} disabled={!preview.result || preview.streaming} style={{ height: 28, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 5, cursor: preview.result && !preview.streaming ? 'pointer' : 'not-allowed', opacity: preview.result && !preview.streaming ? 1 : 0.5, fontWeight: 500 }}>
               替换原文
-            </button>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -279,7 +280,10 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
         }}
     >
       {ACTIONS.map((action) => (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
           key={action.id}
           onClick={() => handleAction(action)}
           style={{
@@ -302,7 +306,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
         >
           <span>{action.icon}</span>
           <span>{action.label}</span>
-        </button>
+        </Button>
       ))}
       </PopoverContent>
     </Popover>
