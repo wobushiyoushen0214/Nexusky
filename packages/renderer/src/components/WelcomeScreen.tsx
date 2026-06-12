@@ -6,6 +6,7 @@ import type { WorkflowSampleVaultId } from '@shared/types/ipc'
 import { getErrorMessage } from '../utils/errors'
 import { SAMPLE_WORKFLOW_VAULTS } from '../../../shared/src/workflow-samples'
 import { DemoTransformationFlow } from './demo/DemoTransformationFlow'
+import { Button } from './ui/button'
 import './WelcomeScreen.css'
 
 export function WelcomeScreen() {
@@ -76,13 +77,13 @@ export function WelcomeScreen() {
             <WelcomeLoopStep index="02" label={t('activityBar.graph')} />
             <WelcomeLoopStep index="03" label={t('activityBar.maintenance')} />
           </div>
-          <button type="button" onClick={() => setShowDemo(true)} className="welcome-demo-button">
+          <Button type="button" onClick={() => setShowDemo(true)} className="welcome-demo-button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
             </svg>
             {t('welcome.demo.button')}
-          </button>
+          </Button>
         </section>
 
         <section className="welcome-start-panel" aria-label={t('welcome.action.open')}>
@@ -107,22 +108,22 @@ export function WelcomeScreen() {
                 className="welcome-input"
               />
               <div className="welcome-action-row">
-                <button type="button" onClick={handleCreate} className="welcome-button is-primary">
+                <Button type="button" onClick={handleCreate} className="welcome-button is-primary">
                   {t('welcome.create.confirm')}
-                </button>
-                <button type="button" onClick={() => { setIsCreating(false); setVaultName('') }} className="welcome-button">
+                </Button>
+                <Button type="button" variant="outline" onClick={() => { setIsCreating(false); setVaultName('') }} className="welcome-button">
                   {t('welcome.create.cancel')}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
             <div className="welcome-action-stack">
-              <button type="button" onClick={selectVault} className="welcome-button is-primary">
+              <Button type="button" onClick={selectVault} className="welcome-button is-primary">
                 {t('welcome.action.open')}
-              </button>
-              <button type="button" onClick={() => setIsCreating(true)} className="welcome-button">
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setIsCreating(true)} className="welcome-button">
                 {t('welcome.action.create')}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -133,9 +134,10 @@ export function WelcomeScreen() {
                 {recentVaults.map((path) => {
                   const name = path.split(/[\\/]/).pop() || path
                   return (
-                    <button
+                    <Button
                       key={path}
                       type="button"
+                      variant="ghost"
                       onClick={() => handleOpenRecent(path)}
                       className="welcome-recent-item"
                       title={path}
@@ -144,7 +146,7 @@ export function WelcomeScreen() {
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                       </svg>
                       <span>{name}</span>
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
@@ -162,9 +164,10 @@ export function WelcomeScreen() {
           </div>
           <div className="welcome-sample-list">
             {SAMPLE_WORKFLOW_VAULTS.map((sample) => (
-              <button
+              <Button
                 key={sample.id}
                 type="button"
+                variant="ghost"
                 onClick={() => handleCreateSample(sample.id)}
                 disabled={creatingSample !== null}
                 className="welcome-sample-item"
@@ -176,7 +179,7 @@ export function WelcomeScreen() {
                 <span className="welcome-sample-action">
                   {creatingSample === sample.id ? t('welcome.samples.creating') : t('welcome.samples.open')}
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </section>

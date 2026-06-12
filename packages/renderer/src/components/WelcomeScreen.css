@@ -270,6 +270,7 @@
   height: 32px;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   padding: 0 9px;
   border: 1px solid transparent;
@@ -341,6 +342,7 @@
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
+  white-space: normal;
   transition: background 150ms, color 150ms;
 }
 
