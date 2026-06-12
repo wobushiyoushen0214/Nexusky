@@ -4,6 +4,7 @@ import type { ProactiveUserPrefs, ProactiveSuggestionKind, ProactiveTriggerThres
 import { useVaultStore } from '../../stores/vault-store'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
+import { Empty, EmptyDescription } from '../ui/empty'
 import { Input } from '../ui/input'
 import { Slider } from '../ui/slider'
 import { Spinner } from '../ui/spinner'
@@ -51,10 +52,10 @@ export function ProactivePreferencesTab() {
 
   if (!prefs) {
     return (
-      <div className="proactive-preferences__loading">
+      <Empty className="proactive-preferences__loading">
         <Spinner aria-hidden="true" />
-        <span>{t('settings.loading')}</span>
-      </div>
+        <EmptyDescription>{t('settings.loading')}</EmptyDescription>
+      </Empty>
     )
   }
 

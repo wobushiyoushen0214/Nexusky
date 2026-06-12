@@ -408,13 +408,23 @@
   font-size: 11px;
 }
 
-.proactive-preferences__loading {
+.proactive-preferences__loading.ui-empty {
+  min-height: 54px;
   padding: 12px;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  flex-direction: row;
   gap: 8px;
+  border: 0;
+  background: transparent;
   color: var(--muted-foreground, var(--text-tertiary));
+  text-align: left;
+}
+
+.proactive-preferences__loading .ui-empty-description {
   font-size: 12px;
+  line-height: 1.4;
 }
 
 @media (max-width: 520px) {

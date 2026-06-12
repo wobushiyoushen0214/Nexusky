@@ -49,7 +49,7 @@ Already added:
 - `ErrorBoundary` now uses shared `Alert` for the fallback error callout and shared `Button` for retry, with the fallback layout kept in token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, `ScrollArea`, and `Spinner` for citation lookup controls instead of custom absolute-positioned popovers, document listeners, and ad hoc loading text.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
-- `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, and `Spinner` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
+- `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, `Spinner`, and `Empty` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
 - `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use a shared `SettingsLoadingState` composed with the shared `Spinner` and compact settings-local spacing.
 - `CloudSyncSettings` sync error state now uses shared `Alert` instead of custom error markup.
@@ -175,7 +175,7 @@ These need design cleanup or affect many small controls.
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox`, `Empty` | Done for goal/description fields, plan edit fields, action buttons, dry-run checkbox, and empty states. Execution view layout remains custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Input`, `Button`, `Select`, `Checkbox`, `Badge`, `Empty`, `Spinner` | Done for toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, inline double-click edit targets, property pills, and main empty/loading state. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button`, `Spinner`, `Empty`, `Alert` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, the Keys key-capture field, shared settings page loading states, plugin/keybinding empty states, and CloudSync sync errors. Remaining native inputs are specialized native color picker only. |
-| Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button`, `Spinner` | Done for silent-hour fields, threshold sliders, enable/per-kind options, loading state, and debug/reset actions while preserving save-on-change behavior. |
+| Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button`, `Spinner`, `Empty` | Done for silent-hour fields, threshold sliders, enable/per-kind options, loading state, and debug/reset actions while preserving save-on-change behavior. |
 
 ### P3: Optional / Polish
 
