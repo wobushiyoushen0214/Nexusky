@@ -65,6 +65,7 @@ Already added:
 - `BacklinksPanel` now uses shared `Button` for the collapse header, target open/create actions, and unlinked-mention conversion actions while preserving its compact link overview layout and row navigation behavior.
 - `OutlinePanel` now uses shared `Button` for heading navigation rows while preserving heading-level indentation, compact row sizing, and editor jump events.
 - `TagBar` now uses shared `Button` for tag removal and add-tag controls while preserving its compact inline chip layout and frontmatter update behavior.
+- `EditorTabs` close actions now use shared `Button` while preserving the custom tab drag/reorder, middle-click close, and coordinate context menu behavior.
 - App shell right-panel close action now uses shared `Button`; native `TitleBar` window controls remain intentionally custom.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
@@ -180,6 +181,7 @@ These are lower impact or more visual than behavioral.
 | Backlinks panel actions | `Button` | Done for collapse, target open/create, batch convert, item jump, and single mention conversion actions. The row navigation/list layout remains custom. |
 | Outline panel rows | `Button` | Done for heading navigation rows. Heading parsing and editor jump events remain custom. |
 | Tag bar controls | `Button` | Done for remove-tag and add-tag controls. Native text input remains custom for the inline tag editing flow. |
+| Editor tab close actions | `Button` | Done for per-tab close controls. The draggable tab container and context menu remain custom. |
 | App shell panel actions | `Button` | Done for right-panel close action. `TitleBar` native window controls remain custom by design. |
 | Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button`. Bigger architecture move remains optional because the current local toast store is lightweight. |
 
