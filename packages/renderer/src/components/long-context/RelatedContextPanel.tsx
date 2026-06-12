@@ -7,6 +7,7 @@ import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Button } from '../ui/button'
+import { Empty, EmptyDescription } from '../ui/empty'
 import { Skeleton } from '../ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
 import type { LongContextFeedbackType, LongContextInspection, LongContextMemoryTier, LongContextPackItemPayload, LongContextSuggestion, NoteSearchResult } from '@shared/types/ipc'
@@ -317,7 +318,9 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
               </Tabs>
 
               {activePackItems.length === 0 ? (
-                <div className="related-context-pack__empty">{t('relatedContext.pack.emptyTier')}</div>
+                <Empty className="related-context-pack__empty">
+                  <EmptyDescription>{t('relatedContext.pack.emptyTier')}</EmptyDescription>
+                </Empty>
               ) : (
                 <div className="related-context-pack__items">
                   {activePackItems.slice(0, 4).map((item, index) => (

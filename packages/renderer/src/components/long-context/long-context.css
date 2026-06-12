@@ -461,7 +461,20 @@
   white-space: nowrap;
 }
 
-.related-context-pack__empty,
+.related-context-pack__empty {
+  min-height: auto;
+  padding: 10px 12px;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--border-subtle) 72%, transparent);
+  background: color-mix(in srgb, var(--muted) 34%, transparent);
+  text-align: left;
+}
+
+.related-context-pack__empty .ui-empty-description,
 .related-context-pack__dropped {
   color: var(--text-tertiary);
   font-size: 10px;
