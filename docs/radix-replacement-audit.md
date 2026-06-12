@@ -59,7 +59,7 @@ Already added:
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
 - `BasesView` toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline edit targets now use shared `Button`, `Select`, and `Checkbox`.
-- `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, and edit preview apply/cancel/expand actions now use shared `Button` while preserving the compact glass chat layout and existing hover colors.
+- `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview apply/cancel/expand actions, mention result rows, attachment removal controls, and composer icon actions now use shared `Button` while preserving the compact glass chat layout and existing hover colors.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -168,7 +168,7 @@ These are lower impact or more visual than behavioral.
 | Demo flow | `Dialog`, `Button`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Spinner/progress remains custom. |
 | Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |
-| Chat panel actions | `Button` | Done for outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, and edit preview apply/cancel/expand actions. Input composer, attachment chips, mention result rows, and Diff/preview segmented switching remain split into later low-risk batches. |
+| Chat panel actions | `Button`, `ToggleGroup` | Button migration done for outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview apply/cancel/expand actions, mention result rows, attachment removal controls, and composer icon actions. Diff/preview segmented switching remains split into a later `ToggleGroup` batch. |
 | Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button`. Bigger architecture move remains optional because the current local toast store is lightweight. |
 
 ## Components to Add Next

@@ -2357,14 +2357,17 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
         <div style={{ padding: '0 16px 4px' }}>
           <div className="glass-popover file-tree-scroll" style={{ background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 10, padding: 4, maxHeight: 180, overflowY: 'auto', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
             {mentionResults.map((note, i) => (
-              <button
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
                 key={note.filePath}
                 onClick={() => handleSelectMention(note)}
-                style={{ width: '100%', height: 28, padding: '0 10px', display: 'flex', alignItems: 'center', fontSize: 12, color: i === mentionIndex ? 'var(--text-primary)' : 'var(--text-secondary)', background: i === mentionIndex ? 'var(--bg-hover)' : 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left' }}
+                style={{ width: '100%', height: 28, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', fontSize: 12, color: i === mentionIndex ? 'var(--text-primary)' : 'var(--text-secondary)', background: i === mentionIndex ? 'var(--bg-hover)' : 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left' }}
                 onMouseEnter={() => setMentionIndex(i)}
               >
                 {note.title}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -2416,14 +2419,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                     : (currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '无目标文件（生成新笔记）')}
               </span>
               {(editTarget || (!editUnbound && currentFilePath)) && (
-                <button onClick={() => { setEditTarget(null); setEditUnbound(true) }} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }} title="取消绑定，切换为生成新文件">
+                <Button type="button" variant="ghost" size="icon" onClick={() => { setEditTarget(null); setEditUnbound(true) }} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }} title="取消绑定，切换为生成新文件">
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                </button>
+                </Button>
               )}
               {editUnbound && !editTarget && currentFilePath && (
-                <button onClick={() => setEditUnbound(false)} style={{ fontSize: 10, padding: '1px 6px', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3 }} title="重新绑定当前文件">
+                <Button type="button" variant="secondary" size="xs" onClick={() => setEditUnbound(false)} style={{ fontSize: 10, padding: '1px 6px', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3 }} title="重新绑定当前文件">
                   绑定当前
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -2436,7 +2439,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   {attachedImages.map((img, i) => (
                     <div key={i} style={{ position: 'relative', width: 40, height: 40, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                       <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 1, right: 1, width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 7, padding: 0 }}>×</button>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 1, right: 1, width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, background: 'color-mix(in srgb, var(--bg-base) 78%, transparent)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 7, padding: 0 }}>×</Button>
                     </div>
                   ))}
                 </div>
@@ -2446,9 +2449,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   {attachedNotes.map((note) => (
                     <span key={note.filePath} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'var(--accent-muted)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       {note.title}
-                      <button onClick={() => setAttachedNotes((prev) => prev.filter((n) => n.filePath !== note.filePath))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--accent-text)', cursor: 'pointer', padding: 0 }}>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setAttachedNotes((prev) => prev.filter((n) => n.filePath !== note.filePath))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--accent-text)', cursor: 'pointer', padding: 0 }}>
                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                      </button>
+                      </Button>
                     </span>
                   ))}
                 </div>
@@ -2458,9 +2461,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   {attachedDocuments.map((document) => (
                     <span key={document.path || document.name} style={{ maxWidth: 180, fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{document.name}</span>
-                      <button onClick={() => setAttachedDocuments((prev) => prev.filter((item) => (item.path || item.name) !== (document.path || document.name)))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setAttachedDocuments((prev) => prev.filter((item) => (item.path || item.name) !== (document.path || document.name)))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                      </button>
+                      </Button>
                     </span>
                   ))}
                 </div>
@@ -2472,9 +2475,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                       <span style={{ flex: 1, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{sel.source}:</span> {sel.text.slice(0, 60)}{sel.text.length > 60 ? '...' : ''}
                       </span>
-                      <button onClick={() => setAttachedSelections((prev) => prev.filter((_, j) => j !== i))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setAttachedSelections((prev) => prev.filter((_, j) => j !== i))} style={{ width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -2492,9 +2495,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 onChange={(event) => { void handleAttachFiles(event.currentTarget.files) }}
                 style={{ display: 'none' }}
               />
-              <button
+              <Button
                 onClick={() => { updateEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
                 type="button"
+                variant="ghost"
+                size="icon"
                 style={{
                   width: 28,
                   height: 28,
@@ -2517,9 +2522,9 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 ) : (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
                 )}
-              </button>
+              </Button>
               {!editMode && (
-                <button
+                <Button
                   onClick={() => {
                     if (!canUseVaultTools) {
                       updateAgentMode(false)
@@ -2530,6 +2535,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   }}
                   disabled={!canUseVaultTools}
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   style={{
                     width: 28,
                     height: 28,
@@ -2549,7 +2556,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   aria-label="切换 Vault 工具"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
-                </button>
+                </Button>
               )}
               <textarea
                 ref={inputRef}
@@ -2576,7 +2583,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 }}
               />
             {isStreaming ? (
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
                 onClick={stopGeneration}
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2589,12 +2599,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="4" y="4" width="16" height="16" rx="2" />
                 </svg>
-              </button>
+              </Button>
             ) : (
               <>
-              <button
+              <Button
                 onClick={() => fileInputRef.current?.click()}
                 type="button"
+                variant="ghost"
+                size="icon"
                 style={{
                   width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'transparent', color: 'var(--text-tertiary)',
@@ -2609,8 +2621,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21.4 11.6l-8.8 8.8a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.7 9.7a2 2 0 0 1-2.8-2.8l8.9-8.9" />
                 </svg>
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="icon"
                 onClick={handleSend}
                 disabled={!canSend || outboundPreviewLoading}
                 style={{
@@ -2626,7 +2641,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
                 </svg>
-              </button>
+              </Button>
               </>
             )}
           </div>
