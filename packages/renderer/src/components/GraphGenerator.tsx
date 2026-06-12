@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { useUIStore } from '../stores/ui-store'
@@ -131,16 +131,12 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
                 <span style={{ fontSize: 12, color: 'var(--accent-text)' }}>正在分析笔记关系...</span>
               </div>
               {progress && (
-                <pre style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--bg-base)', padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', maxHeight: 300, overflow: 'auto' }}>
-                  {progress}
-                </pre>
+                <GraphCodeBlock maxHeight={300} color="var(--text-secondary)">{progress}</GraphCodeBlock>
               )}
             </div>
           )}
           {!generating && result && (
-            <pre style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--bg-base)', padding: 12, borderRadius: 8, border: '1px solid var(--border-subtle)', maxHeight: 400, overflow: 'auto' }}>
-              {result}
-            </pre>
+            <GraphCodeBlock maxHeight={400} color="var(--text-primary)">{result}</GraphCodeBlock>
           )}
           {!generating && !result && !progress && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: 'var(--text-tertiary)', fontSize: 13 }}>
@@ -171,4 +167,30 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
       </DialogContent>
     </Dialog>
   )
+}
+
+function GraphCodeBlock({ children, color, maxHeight }: { children: string; color: string; maxHeight: number }) {
+  const height = getGraphCodeBlockHeight(children, maxHeight)
+
+  return (
+    <ScrollArea style={{ height, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+      <pre style={{ ...graphCodeBlockStyle, color }}>{children}</pre>
+    </ScrollArea>
+  )
+}
+
+function getGraphCodeBlockHeight(content: string, maxHeight: number): number {
+  const hardLines = content.split('\n').length
+  const wrappedLines = Math.ceil(content.length / 96)
+  const estimatedLines = Math.max(hardLines, wrappedLines, 1)
+  return Math.min(maxHeight, Math.max(64, estimatedLines * 20 + 28))
+}
+
+const graphCodeBlockStyle: CSSProperties = {
+  margin: 0,
+  padding: 12,
+  fontSize: 12,
+  lineHeight: 1.6,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word'
 }
