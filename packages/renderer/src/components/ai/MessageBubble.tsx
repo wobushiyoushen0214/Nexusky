@@ -10,6 +10,7 @@ import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
 import { ChatSourceRow } from '../observability/ChatSourceRow'
 import { Button } from '../ui/button'
+import { Spinner } from '../ui/spinner'
 import './MessageBubble.css'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -83,9 +84,7 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, on
                         <rect x="6" y="6" width="12" height="12" rx="2" />
                       </svg>
                     ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, animation: 'spin 2s linear infinite' }}>
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
+                      <Spinner className="message-bubble__plan-spinner" aria-hidden="true" />
                     )}
                     <span style={{ fontSize: 12, color: done ? 'var(--text-primary)' : stopped ? 'var(--text-tertiary)' : 'var(--text-secondary)', opacity: done ? 1 : 0.8 }}>{title}</span>
                   </div>

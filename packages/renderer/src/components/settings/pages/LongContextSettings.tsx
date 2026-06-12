@@ -4,6 +4,7 @@ import type { MemoryConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { Button } from '../../ui/button'
 import { Input } from '../../ui/input'
+import { Spinner } from '../../ui/spinner'
 import { Switch } from '../../ui/switch'
 import './LongContextSettings.css'
 
@@ -42,7 +43,12 @@ export function LongContextSettings() {
   }
 
   if (loading) {
-    return <div className="long-context-settings settings-loading"><p>{t('settings.loading')}</p></div>
+    return (
+      <div className="long-context-settings settings-loading">
+        <Spinner aria-hidden="true" />
+        <p>{t('settings.loading')}</p>
+      </div>
+    )
   }
 
   return (

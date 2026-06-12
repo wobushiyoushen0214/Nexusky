@@ -51,11 +51,12 @@ Already added:
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
+- `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use shared `Spinner` with compact settings-local spacing.
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell, shared `Button` for close, sample selection, fix, and done actions, and shared `Spinner` for the scan state.
-- `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
+- `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, and shared `Spinner` for in-progress plan rows, with hover/loading styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints, with hover styling moved into local token-based CSS.
 - `SearchPanel` search input now uses shared `Input`, result rows use shared `Button`, and local search-index progress uses shared `Progress`, while preserving the existing transparent search slot, keyboard navigation, async search, and result selection behavior.
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
@@ -70,7 +71,7 @@ Already added:
 - `EditorTabs` close actions now use shared `Button` while preserving the custom tab drag/reorder, middle-click close, and coordinate context menu behavior.
 - `SlashCommandMenu` command rows now use shared `Button` while preserving the existing slash trigger positioning, keyboard navigation, filtering, and command execution logic.
 - `Editor` shell actions now use shared `Button` for empty-state quick actions, split-pane close, and sync status while preserving the TipTap editor surface and markdown rendering behavior.
-- `EditorToolbar` formatting, insert, voice, preview, side-panel, history, and export actions now use shared `Button` while preserving compact toolbar sizing and TipTap command behavior.
+- `EditorToolbar` formatting, insert, voice, preview, side-panel, history, and export actions now use shared `Button`, and voice transcription now uses shared `Spinner`, while preserving compact toolbar sizing and TipTap command behavior.
 - `Sidebar` shell controls now use shared `Input` for create/filter fields and shared `Button` for vault switching, create actions, sort/expand controls, favorites, and file-error recovery while preserving the existing file tree and virtual scrolling behavior.
 - `FileTree` and `VirtualFileTree` rename/create inputs now use shared `Input`, and row/more-action controls use shared `Button`, while preserving tree drag/drop, expand/collapse, context menu coordinates, row height, selection, virtual scrolling, and active-file behavior.
 - `ActivityBar` rail and settings buttons now use shared `Button` as a thin control wrapper while preserving the existing rail sizing, liquid active indicator, icon styling, hover colors, and active-state logic.
@@ -168,7 +169,7 @@ These need design cleanup or affect many small controls.
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox` | Done for goal/description fields, plan edit fields, action buttons, and dry-run checkbox. Execution view layout remains custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Input`, `Button`, `Select`, `Checkbox` | Done for toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
-| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, and the Keys key-capture field. Remaining native inputs are specialized native color picker only. |
+| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button`, `Spinner` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, the Keys key-capture field, and settings page loading states. Remaining native inputs are specialized native color picker only. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button` | Done for silent-hour fields, threshold sliders, enable/per-kind options, and debug/reset actions while preserving save-on-change behavior. |
 
 ### P3: Optional / Polish
@@ -187,7 +188,7 @@ These are lower impact or more visual than behavioral.
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
 | Timeline view controls | `Input`, `ToggleGroup`, `Button` | Done for search, mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
 | Demo flow | `Dialog`, `Button`, `Spinner`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Scan loading now uses shared `Spinner`; progress remains custom. |
-| Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
+| Message bubble actions | `Button`, `Spinner` | Done for assistant copy, continue, and regenerate controls, plus in-progress plan row spinner. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |
 | Chat panel actions and batch inputs | `Button`, `ToggleGroup`, `Input` | Done for outbound preview actions, chat header actions, session list actions, batch-plan controls, batch-plan directory/topic/count inputs, folder picker actions, folder-picker new-directory input, edit preview actions, mention result rows, attachment removal controls, and composer icon actions. ChatPanel no longer uses raw `<button>` elements. Composer textarea and hidden file input remain native by design. |
 | Find/replace controls | `Input`, `Button` | Done for find/replace fields, case sensitivity, previous/next, close, replace, and replace-all actions. Editor text selection and search logic remain custom. |
@@ -198,7 +199,7 @@ These are lower impact or more visual than behavioral.
 | Editor tab close actions | `Button` | Done for per-tab close controls. The draggable tab container and context menu remain custom. |
 | Slash command rows | `Button` | Done for command row actions. The TipTap slash trigger, filtering, active-index keyboard handling, and fixed popover positioning remain custom. |
 | Editor shell actions | `Button` | Done for empty-state quick actions, split-pane close, and sync status. TipTap content, markdown rendering, and editor scrolling remain custom. |
-| Editor toolbar actions | `Button` | Done for formatting, insert, voice input, preview, side-panel, history, and export actions. TipTap command wiring and compact toolbar sizing remain custom. |
+| Editor toolbar actions | `Button`, `Spinner` | Done for formatting, insert, voice input, preview, side-panel, history, and export actions. Voice transcription uses shared Spinner. TipTap command wiring and compact toolbar sizing remain custom. |
 | Publish scope inputs | `Input` | Done for folder, tag, property key, and property value filters while preserving native `datalist` suggestions and publish preview/publish flow. |
 | Sidebar shell controls | `Input`, `Button` | Done for create/filter fields, vault switcher, create file/folder actions, sort/collapse/expand controls, favorites, and file-error recovery. File tree row rendering and virtual scrolling remain custom. |
 | File tree rows | `Input`, `Button` | Done for `FileTree` and `VirtualFileTree` rename/create inputs plus row and more-action controls. Drag/drop, context menu coordinates, expand/collapse, active row state, multi-select, and virtual scroll math remain custom. |

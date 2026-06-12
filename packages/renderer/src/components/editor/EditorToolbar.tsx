@@ -5,6 +5,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { Button } from '../ui/button'
+import { Spinner } from '../ui/spinner'
 import { calculateMarkdownTableFormulas } from '@shared/markdown/table-formulas'
 
 interface ToolbarProps {
@@ -395,7 +396,7 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
         title={recording ? '停止录音并转写' : transcribing ? '正在转写语音' : '语音输入'}
       >
         {transcribing ? (
-          <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid currentColor', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+          <Spinner className="editor-toolbar__spinner" aria-hidden="true" />
         ) : (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" />

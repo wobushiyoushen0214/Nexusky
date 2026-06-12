@@ -4,6 +4,7 @@ import type { ProactiveConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { Button } from '../../ui/button'
 import { Checkbox } from '../../ui/checkbox'
+import { Spinner } from '../../ui/spinner'
 import { Switch } from '../../ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '../../ui/toggle-group'
 import './ProactiveSettings.css'
@@ -59,7 +60,12 @@ export function ProactiveSettings() {
   }
 
   if (loading) {
-    return <div className="proactive-settings settings-loading"><p>{t('settings.loading')}</p></div>
+    return (
+      <div className="proactive-settings settings-loading">
+        <Spinner aria-hidden="true" />
+        <p>{t('settings.loading')}</p>
+      </div>
+    )
   }
 
   return (

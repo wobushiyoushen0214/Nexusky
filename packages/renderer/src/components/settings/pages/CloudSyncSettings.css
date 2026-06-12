@@ -5,8 +5,14 @@
 .settings-loading {
   display: grid;
   place-items: center;
+  gap: 8px;
   color: var(--text-tertiary);
   font-size: 13px;
+}
+
+.settings-loading .ui-spinner {
+  width: 18px;
+  height: 18px;
 }
 
 .settings-loading p {

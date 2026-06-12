@@ -884,6 +884,12 @@
   --editor-tab-rail-bottom: color-mix(in srgb, var(--app-shell-bg) 48%, var(--panel-bg-soft));
 }
 
+.editor-toolbar__spinner {
+  width: 12px;
+  height: 12px;
+  color: currentColor;
+}
+
 .editor-tab-bar {
   position: relative;
   z-index: 2;

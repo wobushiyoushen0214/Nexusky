@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SettingsPlugin } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Spinner } from '../../ui/spinner'
 import { Switch } from '../../ui/switch'
 import './PluginsSettings.css'
 
@@ -42,7 +43,12 @@ export function PluginsSettings() {
   }
 
   if (loading) {
-    return <div className="plugins-settings settings-loading"><p>{t('settings.loading')}</p></div>
+    return (
+      <div className="plugins-settings settings-loading">
+        <Spinner aria-hidden="true" />
+        <p>{t('settings.loading')}</p>
+      </div>
+    )
   }
 
   return (
