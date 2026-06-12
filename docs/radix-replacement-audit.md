@@ -144,7 +144,7 @@ These need design cleanup or affect many small controls.
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Button`, `Select`, `Switch` | Done for side-panel controls only. Graph canvas, pan/zoom, and node interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Button`, `Checkbox` | Done for action buttons and dry-run checkbox. Plan editing and execution views remain custom. |
-| Bases controls | `components/bases/BasesView.tsx` | `Button`, `ToggleGroup`, `DropdownMenu`, `Select` | Wait until existing `bases` type errors are resolved. |
+| Bases controls | `components/bases/BasesView.tsx` | `Button`, `ToggleGroup`, `DropdownMenu`, `Select` | Unblocked: `bases` is now a real `MainView` and renders `BasesView`. Controls can be migrated in a follow-up batch. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Button` | Do after Settings shell/Tabs so controls inherit a stable structure. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Checkbox`, `Button` | Done for enable/per-kind options and debug/reset actions. Native time inputs and range sliders remain custom to preserve current save-on-change behavior. |
 
@@ -465,13 +465,8 @@ For every migration:
 - No ActivityBar visual changes.
 - No new hardcoded raw colors in feature components.
 - `pnpm run build` passes.
-- `pnpm run typecheck` result is checked; current unrelated known failure is `"bases"` not assignable to `MainView`.
+- `pnpm run typecheck` result is checked.
 
 ## Current Known Typecheck Issue
 
-`pnpm run typecheck` currently fails outside the Radix migration work:
-
-- `packages/renderer/src/App.tsx`: `"bases"` is not assignable to `MainView`.
-- `packages/renderer/src/stores/ui-store.ts`: `"bases"` is not assignable to `MainView | undefined`.
-
-This should be fixed separately before using typecheck as a clean migration gate.
+None. The previous `"bases"` / `MainView` mismatch has been resolved by making `bases` a real main view and rendering `BasesView` from the app shell.

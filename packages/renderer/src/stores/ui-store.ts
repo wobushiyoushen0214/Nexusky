@@ -11,7 +11,7 @@ const GRAPH_MODE_STORAGE_KEY = 'nexusky-graph-mode'
 const GRAPH_MODE_IDS: GraphMode[] = ['folder']
 
 export type Theme = typeof THEME_IDS[number]
-type MainView = 'editor' | 'graph' | 'overview' | 'memory'
+type MainView = 'editor' | 'graph' | 'overview' | 'memory' | 'bases'
 type Language = typeof LANGUAGE_IDS[number]
 type WorkspaceLayout = {
   mainView: MainView
@@ -31,7 +31,7 @@ const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
 const PANEL_IDS: Panel[] = ['none', 'chat', 'outline', 'properties', 'tags', 'history', 'graph', 'plugin', 'agent']
-const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'overview', 'memory']
+const MAIN_VIEW_IDS: MainView[] = ['editor', 'graph', 'overview', 'memory', 'bases']
 const NOTE_SCOPED_PANELS = new Set<Panel>(['outline', 'properties', 'tags', 'history'])
 
 interface UIState {
@@ -226,7 +226,7 @@ function saveRightPanelWidth(panel: Panel, width: number): number {
 }
 
 function normalizeMainView(value: string | null | undefined): MainView | null {
-  if (value === 'canvas' || value === 'bases' || value === 'timeline') return 'editor'
+  if (value === 'canvas' || value === 'timeline') return 'editor'
   if (value === 'kanban' || value === 'reader' || value === 'maintenance') return 'editor'
   return value && MAIN_VIEW_IDS.includes(value as MainView) ? value as MainView : null
 }
@@ -495,11 +495,12 @@ export const useUIStore = create<UIState>((set, get) => ({
     return pending
   },
   focusInBases: (filePath) => {
-    const layout = saveWorkspaceLayout(get().workspaceScope, { mainView: 'bases' })
+    const layout = saveWorkspaceLayout(get().workspaceScope, { mainView: 'bases', sidebarCollapsed: true })
     set({
       pendingBasesFocus: { filePath },
       mainView: layout.mainView,
-      rightPanel: layout.rightPanel
+      rightPanel: layout.rightPanel,
+      sidebarCollapsed: layout.sidebarCollapsed
     })
   },
   consumePendingBasesFocus: () => {

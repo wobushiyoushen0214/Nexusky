@@ -43,6 +43,7 @@ const PublishScopeDialog = lazy(() => import('./components/PublishScopeDialog').
 const VaultOverview = lazy(() => import('./components/overview/VaultOverview').then((m) => ({ default: m.VaultOverview })))
 const MemoryTimelinePanel = lazy(() => import('./components/memory/MemoryTimelinePanel').then((m) => ({ default: m.MemoryTimelinePanel })))
 const AgentRunPanel = lazy(() => import('./components/agent/AgentRunPanel').then((m) => ({ default: m.AgentRunPanel })))
+const BasesView = lazy(() => import('./components/bases/BasesView').then((m) => ({ default: m.BasesView })))
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
@@ -510,6 +511,10 @@ export default function App() {
             ) : mainView === 'memory' ? (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><MemoryTimelinePanel /></Suspense>
+              </div>
+            ) : mainView === 'bases' ? (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Suspense fallback={null}><BasesView /></Suspense>
               </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>
