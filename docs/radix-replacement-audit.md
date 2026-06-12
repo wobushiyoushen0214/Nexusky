@@ -54,6 +54,7 @@ Already added:
 - Settings tab sections now use a shared `SettingsSection` composed with the local `Card` wrapper, so panel border/radius/background styling reads from shadcn-compatible `--card`, `--border`, and `--radius-*` tokens.
 - `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use a shared `SettingsLoadingState` composed with shared `Empty`/`Spinner` primitives and compact settings-local spacing.
 - `CloudSyncSettings` sync error state now uses shared `Alert` instead of custom error markup.
+- `CloudSyncSettings` info/config/status panels and `PluginsSettings` plugin rows now use shared `Card`, and plugin version labels now use shared `Badge`.
 - `PluginsSettings` and `KeysSettings` empty states now use shared `Empty` primitives instead of custom empty-state markup.
 - Settings CSS no longer carries legacy native checkbox selectors for `form-toggle` and `category-item`; those settings controls now rely on shared `Switch`/`Checkbox` token styling.
 - Removed the unmounted legacy `Settings.old.tsx` implementation so the active settings surface no longer carries a parallel custom-control copy.

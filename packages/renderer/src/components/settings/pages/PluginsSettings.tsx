@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import type { SettingsPlugin } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { SettingsLoadingState } from '../SettingsLoadingState'
+import { Badge } from '../../ui/badge'
+import { Card } from '../../ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../../ui/empty'
 import { Switch } from '../../ui/switch'
 import { SettingsSection } from '../SettingsSection'
@@ -66,11 +68,11 @@ export function PluginsSettings() {
         ) : (
           <div className="plugins-list">
             {plugins.map((plugin) => (
-              <div key={plugin.id} className={`plugin-card ${plugin.enabled ? 'enabled' : ''}`}>
+              <Card key={plugin.id} className={`plugin-card ${plugin.enabled ? 'enabled' : ''}`}>
                 <div className="plugin-info">
                   <div className="plugin-header">
                     <h3>{plugin.name}</h3>
-                    <span className="plugin-version">v{plugin.version}</span>
+                    <Badge variant="outline" className="plugin-version">v{plugin.version}</Badge>
                   </div>
                   {plugin.description && <p className="plugin-description">{plugin.description}</p>}
                   {plugin.author && <p className="plugin-author">by {plugin.author}</p>}
@@ -83,7 +85,7 @@ export function PluginsSettings() {
                     className="plugin-switch"
                   />
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}

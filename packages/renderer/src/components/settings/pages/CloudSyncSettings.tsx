@@ -5,6 +5,7 @@ import { toast } from '../../../stores/toast-store'
 import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Alert, AlertDescription } from '../../ui/alert'
 import { Button } from '../../ui/button'
+import { Card } from '../../ui/card'
 import {
   Select,
   SelectContent,
@@ -65,13 +66,13 @@ export function CloudSyncSettings() {
 
         {!status?.configured ? (
           <div className="not-configured">
-            <div className="info-card">
+            <Card className="info-card">
               <h3>{t('settings.cloudSync.notConfigured')}</h3>
               <p>{t('settings.cloudSync.notConfiguredDesc')}</p>
-            </div>
+            </Card>
 
             {configuring && (
-              <div className="config-form">
+              <Card className="config-form">
                 <div className="form-item">
                   <label className="form-label">{t('settings.cloudSync.provider')}</label>
                   <Select
@@ -100,7 +101,7 @@ export function CloudSyncSettings() {
                     {t('settings.cloudSync.configure')}
                   </Button>
                 </div>
-              </div>
+              </Card>
             )}
 
             {!configuring && (
@@ -111,7 +112,7 @@ export function CloudSyncSettings() {
           </div>
         ) : (
           <div className="sync-status">
-            <div className="status-card">
+            <Card className="status-card">
               <div className="status-row">
                 <span>{t('settings.cloudSync.provider')}:</span>
                 <strong>{status.provider}</strong>
@@ -133,7 +134,7 @@ export function CloudSyncSettings() {
                   <AlertDescription>{status.error}</AlertDescription>
                 </Alert>
               )}
-            </div>
+            </Card>
           </div>
         )}
       </SettingsSection>
