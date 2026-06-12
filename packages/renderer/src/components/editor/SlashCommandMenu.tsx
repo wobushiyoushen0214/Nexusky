@@ -4,6 +4,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { safeSet } from '../../utils/storage'
 import { Button } from '../ui/button'
+import { ScrollArea } from '../ui/scroll-area'
 import type { LocalPlugin } from '@shared/types/ipc'
 
 interface SlashItem {
@@ -275,6 +276,7 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
   }, [open, close])
 
   if (!open || filtered.length === 0) return null
+  const menuHeight = Math.min(320, filtered.length * 36 + 8)
 
   return (
     <div
@@ -286,48 +288,50 @@ export function SlashCommandMenu({ editor }: { editor: Editor | null }) {
         top: position.y,
         zIndex: 100,
         width: 240,
-        maxHeight: 320,
-        overflowY: 'auto',
+        overflow: 'hidden',
         background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
         border: '1px solid var(--glass-panel-border)',
         borderRadius: 10,
-        padding: 4,
         boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
         backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
         WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
       }}
     >
-      {filtered.map((item, i) => (
-        <Button
-          type="button"
-          variant="ghost"
-          key={item.id || item.title}
-          onClick={() => executeItem(item)}
-          style={{
-            width: '100%',
-            height: 36,
-            padding: '0 10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            gap: 10,
-            fontSize: 13,
-            color: 'var(--text-primary)',
-            background: i === selectedIndex ? 'var(--accent-muted)' : 'transparent',
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-          onMouseEnter={() => setSelectedIndex(i)}
-        >
-          <SlashIcon type={item.icon} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{item.title}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: -1 }}>{item.description}</div>
-          </div>
-        </Button>
-      ))}
+      <ScrollArea style={{ height: menuHeight }}>
+        <div style={{ padding: 4 }}>
+          {filtered.map((item, i) => (
+            <Button
+              type="button"
+              variant="ghost"
+              key={item.id || item.title}
+              onClick={() => executeItem(item)}
+              style={{
+                width: '100%',
+                height: 36,
+                padding: '0 10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                gap: 10,
+                fontSize: 13,
+                color: 'var(--text-primary)',
+                background: i === selectedIndex ? 'var(--accent-muted)' : 'transparent',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={() => setSelectedIndex(i)}
+            >
+              <SlashIcon type={item.icon} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{item.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: -1 }}>{item.description}</div>
+              </div>
+            </Button>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   )
 }
