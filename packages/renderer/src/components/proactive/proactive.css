@@ -30,16 +30,16 @@
   height: 32px;
   margin-right: 6px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md, 6px);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--muted-foreground, var(--text-secondary));
   cursor: pointer;
   transition: background 140ms ease-out, color 140ms ease-out;
 }
 
 .proactive-bell:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--muted, var(--bg-hover));
+  color: var(--foreground, var(--text-primary));
 }
 
 .proactive-bell__badge {
@@ -50,8 +50,8 @@
   height: 14px;
   padding: 0 4px;
   border-radius: 7px;
-  background: var(--accent);
-  color: oklch(0.96 0.005 270);
+  background: var(--primary, var(--accent));
+  color: var(--primary-foreground, oklch(0.96 0.005 270));
   font-size: 9px;
   font-weight: 600;
   line-height: 14px;
@@ -68,9 +68,9 @@
   max-height: 70vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel-bg, #1d1d20);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-  border-radius: 10px;
+  background: var(--popover, var(--panel-bg, #1d1d20));
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-soft)) 82%, transparent);
+  border-radius: var(--radius-lg, 10px);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   overflow: hidden;
 }
@@ -132,10 +132,10 @@
 .proactive-drawer__action {
   height: 24px;
   padding: 0 8px;
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-  border-radius: 5px;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-soft)) 78%, transparent);
+  border-radius: var(--radius-sm, 5px);
+  background: var(--secondary, var(--bg-hover));
+  color: var(--secondary-foreground, var(--text-secondary));
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -144,14 +144,14 @@
 }
 
 .proactive-drawer__action:hover:not(:disabled) {
-  background: var(--bg-hover-strong, rgba(255, 255, 255, 0.08));
-  border-color: var(--border-default, rgba(255, 255, 255, 0.14));
-  color: var(--text-primary);
+  background: var(--muted, var(--bg-hover-strong, rgba(255, 255, 255, 0.08)));
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 30%, var(--border, var(--border-default)));
+  color: var(--foreground, var(--text-primary));
 }
 
 .proactive-drawer__action--danger:hover:not(:disabled) {
-  border-color: rgba(248, 113, 113, 0.42);
-  color: var(--danger, oklch(0.65 0.15 25));
+  border-color: color-mix(in srgb, var(--destructive, var(--danger, #f87171)) 44%, var(--border, var(--border-default)));
+  color: var(--destructive, var(--danger, oklch(0.65 0.15 25)));
 }
 
 .proactive-drawer__action:disabled {
@@ -167,14 +167,14 @@
   justify-content: center;
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--muted-foreground, var(--text-secondary));
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 4px);
 }
 
 .proactive-drawer__close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--muted, var(--bg-hover));
+  color: var(--foreground, var(--text-primary));
 }
 
 .proactive-drawer__list {
@@ -250,27 +250,27 @@
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 500;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
+  background: var(--secondary, var(--bg-hover));
+  color: var(--secondary-foreground, var(--text-secondary));
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 4px);
   cursor: pointer;
   transition: background 120ms, color 120ms, border 120ms;
 }
 
 .proactive-item__btn:hover {
-  background: var(--bg-hover-strong, rgba(255, 255, 255, 0.08));
-  color: var(--text-primary);
+  background: var(--muted, var(--bg-hover-strong, rgba(255, 255, 255, 0.08)));
+  color: var(--foreground, var(--text-primary));
 }
 
 .proactive-item__btn--primary {
-  background: var(--accent);
-  color: oklch(0.96 0.005 270);
+  background: var(--primary, var(--accent));
+  color: var(--primary-foreground, oklch(0.96 0.005 270));
 }
 
 .proactive-item__btn--primary:hover {
-  background: var(--accent-strong, var(--accent));
-  color: oklch(0.96 0.005 270);
+  background: var(--accent-strong, var(--primary, var(--accent)));
+  color: var(--primary-foreground, oklch(0.96 0.005 270));
 }
 
 .proactive-item__snooze-content.ui-dropdown-menu-content {

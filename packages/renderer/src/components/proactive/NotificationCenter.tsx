@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
+import { Button } from '../ui/button'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 import type { ProactiveSuggestion } from '@shared/types/ipc'
 import './proactive.css'
@@ -67,8 +68,10 @@ export function NotificationCenter() {
   return (
     <div className="proactive-anchor" data-platform={platform}>
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen} modal={false}>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           className="proactive-bell"
           title={t('proactive.bellTitle')}
           aria-label={t('proactive.bellTitle')}
@@ -80,7 +83,7 @@ export function NotificationCenter() {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           {badge > 0 && <span className="proactive-bell__badge">{badge > 99 ? '99+' : badge}</span>}
-        </button>
+        </Button>
 
         <SheetContent
           side="right"
@@ -102,28 +105,34 @@ export function NotificationCenter() {
             <div className="proactive-drawer__tools">
               {hasSuggestions && (
                 <>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="xs"
                     className="proactive-drawer__action"
                     onClick={() => void handleRespondAll('opened')}
                     disabled={bulkDisabled}
                     aria-label={t('proactive.markAllRead')}
                   >
                     {t('proactive.markAllRead')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="destructive"
+                    size="xs"
                     className="proactive-drawer__action proactive-drawer__action--danger"
                     onClick={() => void handleRespondAll('dismissed')}
                     disabled={bulkDisabled}
                     aria-label={t('proactive.deleteAll')}
                   >
                     {t('proactive.deleteAll')}
-                  </button>
+                  </Button>
                 </>
               )}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 className="proactive-drawer__close"
                 onClick={() => setDrawerOpen(false)}
                 aria-label={t('common.close')}
@@ -132,7 +141,7 @@ export function NotificationCenter() {
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
-              </button>
+              </Button>
             </div>
           </div>
           <div className="proactive-drawer__list">
@@ -182,9 +191,9 @@ function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionI
       </div>
       {suggestion.body && <div className="proactive-item__body">{suggestion.body}</div>}
       <div className="proactive-item__actions">
-        <button type="button" className="proactive-item__btn proactive-item__btn--primary" onClick={onOpen}>
+        <Button type="button" size="xs" className="proactive-item__btn proactive-item__btn--primary" onClick={onOpen}>
           {t('proactive.open')}
-        </button>
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="proactive-item__btn">
@@ -204,9 +213,9 @@ function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionI
               ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <button type="button" className="proactive-item__btn" onClick={onDismiss}>
+        <Button type="button" variant="outline" size="xs" className="proactive-item__btn" onClick={onDismiss}>
           {t('proactive.dismiss')}
-        </button>
+        </Button>
       </div>
     </div>
   )
