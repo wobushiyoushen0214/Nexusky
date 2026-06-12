@@ -13,6 +13,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Spinner } from '../ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 type SortKey = 'updatedAt' | 'title' | 'filePath'
@@ -480,10 +481,15 @@ function EditablePropertyLine({
   }
 
   return (
-    <Button type="button" variant="ghost" onDoubleClick={onEdit} title={editHint} style={{ width: '100%', height: 'auto', minWidth: 0, display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', justifyContent: 'stretch', gap: 10, alignItems: 'baseline', padding: '4px 0', border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'text', textAlign: 'left' }}>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{value || '—'}</span>
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" variant="ghost" onDoubleClick={onEdit} aria-label={`${label} · ${editHint}`} style={{ width: '100%', height: 'auto', minWidth: 0, display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', justifyContent: 'stretch', gap: 10, alignItems: 'baseline', padding: '4px 0', border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'text', textAlign: 'left' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{value || '—'}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{editHint}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -528,20 +534,26 @@ function PropertyPills({
       </div>
     )
   }
+  const hint = `${label} · ${editHint}`
   return (
-    <Button type="button" variant="ghost" onDoubleClick={onEdit} title={`${label} · ${editHint}`} style={{ width: '100%', height: 'auto', minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'text', textAlign: 'left', justifyContent: 'stretch' }}>
-      <div style={{ marginBottom: 5, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-      <div style={{ display: 'flex', gap: 4, overflow: 'hidden', minHeight: 19 }}>
-        {items.length === 0 ? (
-          <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
-        ) : items.slice(0, 3).map((item) => (
-          <Badge key={item} variant={subtle ? 'secondary' : 'default'} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
-            {item}
-          </Badge>
-        ))}
-        {items.length > 3 && <Badge variant="secondary">+{items.length - 3}</Badge>}
-      </div>
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" variant="ghost" onDoubleClick={onEdit} aria-label={hint} style={{ width: '100%', height: 'auto', minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'text', textAlign: 'left', justifyContent: 'stretch' }}>
+          <div style={{ marginBottom: 5, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+          <div style={{ display: 'flex', gap: 4, overflow: 'hidden', minHeight: 19 }}>
+            {items.length === 0 ? (
+              <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
+            ) : items.slice(0, 3).map((item) => (
+              <Badge key={item} variant={subtle ? 'secondary' : 'default'} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                {item}
+              </Badge>
+            ))}
+            {items.length > 3 && <Badge variant="secondary">+{items.length - 3}</Badge>}
+          </div>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{hint}</TooltipContent>
+    </Tooltip>
   )
 }
 
