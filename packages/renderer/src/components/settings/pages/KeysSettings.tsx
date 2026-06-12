@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { KeybindingEntry } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { Button } from '../../ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from '../../ui/empty'
 import { Input } from '../../ui/input'
 import './KeysSettings.css'
 
@@ -57,9 +58,11 @@ export function KeysSettings() {
         </div>
 
         {bindings.length === 0 ? (
-          <div className="empty-state">
-            <p>{t('settings.keys.comingSoon')}</p>
-          </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>{t('settings.keys.comingSoon')}</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="keybindings-list">
             {bindings.map((binding) => (

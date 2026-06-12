@@ -872,6 +872,55 @@
   animation: spin 0.8s linear infinite;
 }
 
+.ui-empty {
+  min-width: 0;
+  min-height: 180px;
+  padding: 28px;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  border: 1px dashed color-mix(in srgb, var(--border, var(--border-color)) 82%, transparent);
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 76%, transparent);
+  color: var(--foreground, var(--text-primary));
+  text-align: center;
+}
+
+.ui-empty-header {
+  max-width: 44ch;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.ui-empty-title {
+  color: var(--foreground, var(--text-primary));
+  font-size: 14px;
+  font-weight: 640;
+  line-height: 1.4;
+}
+
+.ui-empty-description {
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.ui-empty-content {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 12px;
+}
+
 .ui-input,
 .ui-textarea {
   width: 100%;

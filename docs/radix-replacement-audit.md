@@ -22,7 +22,7 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, and `Spinner` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, `Spinner`, and `Empty` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers, including shared `Spinner` for its loading state.
 - `ConfirmModal` now uses `AlertDialog`.
@@ -30,7 +30,7 @@ Already added:
 - Settings sidebar now uses `Tabs`.
 - AI provider editor now uses `Dialog`, `Button`, `Badge`, `Input`, and `Select`.
 - Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, `Input`, and the shared `ConfirmModal`.
-- Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Input`, and `Button` where appropriate.
+- Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Input`, `Button`, `Spinner`, and `Empty` where appropriate.
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
 - `NotificationCenter` snooze actions now use `DropdownMenu`.
@@ -52,6 +52,7 @@ Already added:
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
 - `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use shared `Spinner` with compact settings-local spacing.
+- `PluginsSettings` and `KeysSettings` empty states now use shared `Empty` primitives instead of custom empty-state markup.
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
@@ -90,6 +91,7 @@ Reference docs checked through `pnpm dlx shadcn@latest docs`:
 - `progress`
 - `skeleton`
 - `spinner`
+- `empty`
 
 ## Replacement Principles
 
@@ -169,7 +171,7 @@ These need design cleanup or affect many small controls.
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox` | Done for goal/description fields, plan edit fields, action buttons, and dry-run checkbox. Execution view layout remains custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Input`, `Button`, `Select`, `Checkbox` | Done for toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
-| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button`, `Spinner` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, the Keys key-capture field, and settings page loading states. Remaining native inputs are specialized native color picker only. |
+| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button`, `Spinner`, `Empty` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, the Keys key-capture field, settings page loading states, and plugin/keybinding empty states. Remaining native inputs are specialized native color picker only. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button` | Done for silent-hour fields, threshold sliders, enable/per-kind options, and debug/reset actions while preserving save-on-change behavior. |
 
 ### P3: Optional / Polish
@@ -249,6 +251,10 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
 9. `sheet.tsx` - done
    - Wrap `radix-ui` `Dialog` with side-aware content.
    - Used by the proactive notification drawer.
+
+10. `empty.tsx` - done
+   - Provides shadcn-compatible empty state composition.
+   - Used by settings plugin and keybinding empty states.
 
 ## Detailed Migration Plan
 

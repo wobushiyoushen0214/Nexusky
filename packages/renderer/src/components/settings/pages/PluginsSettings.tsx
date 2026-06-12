@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SettingsPlugin } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../../ui/empty'
 import { Spinner } from '../../ui/spinner'
 import { Switch } from '../../ui/switch'
 import './PluginsSettings.css'
@@ -60,10 +61,12 @@ export function PluginsSettings() {
         </div>
 
         {plugins.length === 0 ? (
-          <div className="empty-state">
-            <p>{t('settings.plugins.noPlugins')}</p>
-            <p className="empty-hint">{t('settings.plugins.noPluginsHint')}</p>
-          </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>{t('settings.plugins.noPlugins')}</EmptyTitle>
+              <EmptyDescription>{t('settings.plugins.noPluginsHint')}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="plugins-list">
             {plugins.map((plugin) => (
