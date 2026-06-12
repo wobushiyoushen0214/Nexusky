@@ -196,9 +196,9 @@ function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionI
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" className="proactive-item__btn">
+            <Button type="button" variant="outline" size="xs" className="proactive-item__btn">
               {t('proactive.snooze')}
-            </button>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="proactive-item__snooze-content">
               {SNOOZE_OPTIONS.map((opt) => (

@@ -23,6 +23,7 @@ Already added:
 - `radix-ui` dependency.
 - `cmdk` dependency.
 - `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, and `Tooltip` wrappers.
+- The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers.
 - `ConfirmModal` now uses `AlertDialog`.
 - Settings shell now uses `Dialog` and `ScrollArea`.
@@ -50,7 +51,7 @@ Already added:
 - `ProactivePreferences` now uses shared `Checkbox` and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
 - `WelcomeScreen` now uses shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `ToggleGroup` for updated/created mode switching and shared `Button` for refresh while leaving timeline row layout custom.
-- `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
+- `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -129,7 +130,7 @@ These need design cleanup or affect many small controls.
 
 | Area | Current file | Recommended primitive | Notes |
 | --- | --- | --- | --- |
-| Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu`, `Button` | Done for drawer shell, snooze menu, bell, bulk actions, close, open, and dismiss controls. Snooze trigger remains a native button inside `DropdownMenuTrigger asChild` until the shared Button wrapper forwards refs. |
+| Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu`, `Button` | Done for drawer shell, snooze menu, bell, bulk actions, close, open, snooze, and dismiss controls. |
 | Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Done for pack summary/tier tabs and controls. Native list scrolling remains to preserve side/page layout sizing. |
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
 | Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Button` | Done for pack tier switching and tuning actions. Sliders remain native range inputs to preserve precise low-level tuning behavior. |

@@ -21,23 +21,24 @@ const buttonSizeClasses: Record<ButtonSize, string> = {
   icon: 'ui-button--icon'
 }
 
-export interface ButtonProps extends React.ComponentProps<'button'> {
+export interface ButtonProps extends React.ComponentPropsWithoutRef<'button'> {
   asChild?: boolean
   variant?: ButtonVariant
   size?: ButtonSize
 }
 
-export function Button({
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   asChild = false,
   className,
   variant = 'default',
   size = 'default',
   ...props
-}: ButtonProps) {
+}, ref) {
   const Comp = asChild ? Slot.Root : 'button'
 
   return (
     <Comp
+      ref={ref}
       data-slot="button"
       data-variant={variant}
       data-size={size}
@@ -45,4 +46,6 @@ export function Button({
       {...props}
     />
   )
-}
+})
+
+Button.displayName = 'Button'
