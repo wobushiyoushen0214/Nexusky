@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover'
+import { Spinner } from '../ui/spinner'
 import type { IPCChatMessage } from '@shared/types/ipc'
 import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
 
@@ -194,7 +195,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>AI {preview.actionLabel}结果</span>
               {preview.streaming && (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
+                  <Spinner aria-hidden="true" style={{ width: 10, height: 10, borderWidth: 1.5, color: 'var(--primary, var(--accent))', flexShrink: 0 }} />
                   生成中...
                 </span>
               )}

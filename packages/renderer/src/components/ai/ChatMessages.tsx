@@ -4,6 +4,7 @@ import { renderMarkdown } from './MessageBubble'
 import { buildChatHints, queueAiCommandDraft } from './ai-command-draft'
 import type { Message } from './MessageBubble'
 import { Button } from '../ui/button'
+import { Spinner } from '../ui/spinner'
 import './ChatMessages.css'
 
 interface ChatMessagesProps {
@@ -88,7 +89,7 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
               <div className="editor-content chat-md" style={{ fontSize: 13, lineHeight: 1.7, maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: renderMarkdown(streamContent) }} />
               {toolStatus && (
                 <div style={{ marginTop: 8, paddingTop: 6, boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
+                  <Spinner className="chat-stream-status__spinner chat-stream-status__spinner--compact" aria-hidden="true" />
                   <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{toolStatus}</span>
                 </div>
               )}
@@ -101,15 +102,11 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {toolStatus ? (
                   <>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
+                    <Spinner className="chat-stream-status__spinner" aria-hidden="true" />
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{toolStatus}</span>
                   </>
                 ) : (
-                  <>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite', opacity: 0.7 }} />
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.2s', opacity: 0.7 }} />
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite 0.4s', opacity: 0.7 }} />
-                  </>
+                  <Spinner className="chat-stream-status__spinner" aria-hidden="true" />
                 )}
                 {editElapsed > 0 && (
                   <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 4 }}>{editElapsed}s</span>

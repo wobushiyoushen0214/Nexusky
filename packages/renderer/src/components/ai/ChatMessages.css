@@ -25,3 +25,16 @@
   border-color: color-mix(in srgb, var(--primary, var(--accent)) 34%, var(--border, var(--border-subtle)));
   background: color-mix(in srgb, var(--muted, var(--control-hover)) 72%, transparent);
 }
+
+.chat-stream-status__spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+  color: var(--primary, var(--accent));
+  flex-shrink: 0;
+}
+
+.chat-stream-status__spinner--compact {
+  width: 10px;
+  height: 10px;
+}
