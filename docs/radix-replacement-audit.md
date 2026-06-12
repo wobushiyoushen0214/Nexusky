@@ -70,7 +70,7 @@ Already added:
 - `Editor` shell actions now use shared `Button` for empty-state quick actions, split-pane close, and sync status while preserving the TipTap editor surface and markdown rendering behavior.
 - `EditorToolbar` formatting, insert, voice, preview, side-panel, history, and export actions now use shared `Button` while preserving compact toolbar sizing and TipTap command behavior.
 - `Sidebar` shell controls now use shared `Button` for vault switching, create actions, sort/expand controls, favorites, and file-error recovery while preserving the existing file tree and virtual scrolling behavior.
-- `FileTree` row and more-action controls now use shared `Button` while preserving the non-virtual tree's drag/drop, expand/collapse, context menu, row height, and active-file behavior.
+- `FileTree` and `VirtualFileTree` row/more-action controls now use shared `Button` while preserving tree drag/drop, expand/collapse, context menu coordinates, row height, selection, virtual scrolling, and active-file behavior.
 - App shell right-panel close action now uses shared `Button`; native `TitleBar` window controls remain intentionally custom.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
@@ -191,7 +191,7 @@ These are lower impact or more visual than behavioral.
 | Editor shell actions | `Button` | Done for empty-state quick actions, split-pane close, and sync status. TipTap content, markdown rendering, and editor scrolling remain custom. |
 | Editor toolbar actions | `Button` | Done for formatting, insert, voice input, preview, side-panel, history, and export actions. TipTap command wiring and compact toolbar sizing remain custom. |
 | Sidebar shell controls | `Button` | Done for vault switcher, create file/folder actions, sort/collapse/expand controls, favorites, and file-error recovery. File tree row rendering and virtual scrolling remain custom. |
-| File tree rows | `Button` | Done for non-virtual `FileTree` row and more-action controls. Drag/drop, context menu coordinates, expand/collapse, and active row state remain custom. `VirtualFileTree` remains custom until its scroll/row-height assumptions are migrated separately. |
+| File tree rows | `Button` | Done for `FileTree` and `VirtualFileTree` row and more-action controls. Drag/drop, context menu coordinates, expand/collapse, active row state, multi-select, and virtual scroll math remain custom. |
 | App shell panel actions | `Button` | Done for right-panel close action. `TitleBar` native window controls remain custom by design. |
 | Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button`. Bigger architecture move remains optional because the current local toast store is lightweight. |
 

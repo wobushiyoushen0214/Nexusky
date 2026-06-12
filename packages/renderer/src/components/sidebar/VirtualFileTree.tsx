@@ -3,6 +3,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { VAULT_FILES_REFRESHED_EVENT, useVaultStore, type VaultFilesRefreshedDetail } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
+import { Button } from '../ui/button'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FlatNode {
@@ -578,7 +579,9 @@ function VirtualFileTreeItem({
           transition: 'background 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out',
         }}
       >
-        <button
+        <Button
+          type="button"
+          variant="ghost"
           draggable
           data-file-path={entry.path}
           onDragStart={handleDragStart}
@@ -590,7 +593,7 @@ function VirtualFileTreeItem({
           }}
           style={{
             flex: 1, height: ITEM_HEIGHT, paddingLeft: entry.isDirectory ? paddingLeft : paddingLeft + 16, paddingRight: 4,
-            display: 'flex', alignItems: 'center', gap: 6, borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, borderRadius: 8,
             border: 'none', background: 'transparent', cursor: 'pointer',
             fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--accent-text)' : 'var(--text-secondary)', textAlign: 'left', minWidth: 0,
           }}
@@ -609,8 +612,11 @@ function VirtualFileTreeItem({
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {entry.isDirectory ? entry.name : entry.name.replace(/\.md$/, '')}
           </span>
-        </button>
-        <button
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onPointerDown={(e) => {
             if (!hasOpenContextMenu) return
             suppressNextMenuOpenRef.current = true
@@ -639,7 +645,7 @@ function VirtualFileTreeItem({
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
           </svg>
-        </button>
+        </Button>
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={onCloseContextMenu} />}
       <ConfirmModal
