@@ -210,11 +210,13 @@
   color: var(--text-secondary);
 }
 
-.related-context-panel__count {
+.related-context-panel__count.ui-badge {
   margin-top: 2px;
+  height: 18px;
+  padding: 0 6px;
   font-size: 10px;
   line-height: 1.2;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground, var(--text-tertiary));
   font-variant-numeric: tabular-nums;
 }
 
@@ -324,8 +326,11 @@
   line-height: 1.2;
 }
 
-.related-context-pack__summary-counts {
-  color: var(--text-tertiary);
+.related-context-pack__summary-counts.ui-badge {
+  justify-self: start;
+  height: 18px;
+  padding: 0 6px;
+  color: var(--muted-foreground, var(--text-tertiary));
   font-size: 10px;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
@@ -392,8 +397,12 @@
   background: color-mix(in srgb, var(--accent-muted) 74%, var(--related-context-control));
 }
 
-.related-context-pack__tab span {
-  color: var(--text-tertiary);
+.related-context-pack__tab-count.ui-badge {
+  height: 14px;
+  min-width: 16px;
+  padding: 0 4px;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 9px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }

@@ -6,6 +6,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import { Alert, AlertDescription } from '../ui/alert'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Skeleton } from '../ui/skeleton'
@@ -225,7 +226,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       <div className="related-context-panel__header">
         <div>
           <div className="related-context-panel__eyebrow">{t('relatedContext.label')}</div>
-          <div className="related-context-panel__count">{countText}</div>
+          <Badge variant="secondary" className="related-context-panel__count">{countText}</Badge>
         </div>
         <div className="related-context-panel__actions">
           {showCarouselControls && (
@@ -289,9 +290,9 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
           >
             <span className="related-context-pack__summary-main">
               <span className="related-context-pack__summary-title">{t('relatedContext.pack.title')}</span>
-              <span className="related-context-pack__summary-counts">
+              <Badge variant="outline" className="related-context-pack__summary-counts">
                 {t('relatedContext.pack.summary', { hot: packSummary.hot, warm: packSummary.warm, cold: packSummary.cold })}
-              </span>
+              </Badge>
             </span>
             <span className="related-context-pack__summary-meta">
               {packSummary.budget > 0 ? t('relatedContext.pack.tokens', { used: packSummary.used, budget: packSummary.budget }) : t('relatedContext.pack.empty')}
@@ -311,7 +312,10 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
                       value={tier}
                       className="related-context-pack__tab"
                     >
-                      {t(`relatedContext.pack.tier.${tier}`)} <span>{getContextPackTierItems(inspection, tier).length}</span>
+                      {t(`relatedContext.pack.tier.${tier}`)}
+                      <Badge variant="secondary" className="related-context-pack__tab-count">
+                        {getContextPackTierItems(inspection, tier).length}
+                      </Badge>
                     </TabsTrigger>
                   ))}
                 </TabsList>
