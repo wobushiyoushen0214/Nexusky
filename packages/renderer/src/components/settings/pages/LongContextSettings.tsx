@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { MemoryConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { Button } from '../../ui/button'
+import { Input } from '../../ui/input'
 import { Switch } from '../../ui/switch'
 import './LongContextSettings.css'
 
@@ -79,8 +80,9 @@ export function LongContextSettings() {
 
           <div className="form-item">
             <label className="form-label">{t('settings.longContext.retentionDays')}</label>
-            <input
+            <Input
               type="number"
+              className="long-context-settings__number-input"
               value={config.retentionDays}
               onChange={(e) => setConfig({ ...config, retentionDays: parseInt(e.target.value) })}
               min={7}
@@ -91,8 +93,9 @@ export function LongContextSettings() {
 
           <div className="form-item">
             <label className="form-label">{t('settings.longContext.maxTokens')}</label>
-            <input
+            <Input
               type="number"
+              className="long-context-settings__number-input"
               value={config.maxTokens}
               onChange={(e) => setConfig({ ...config, maxTokens: parseInt(e.target.value) })}
               min={10000}

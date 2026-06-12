@@ -22,7 +22,7 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, and `Tooltip` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, and `Textarea` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers.
 - `ConfirmModal` now uses `AlertDialog`.
@@ -50,6 +50,7 @@ Already added:
 - `ChatSourceRow` now uses shared `Button`, `Popover`, and `ScrollArea` for citation lookup controls instead of custom absolute-positioned popovers and document listeners.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Checkbox` and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
+- `LongContextSettings` numeric fields now use shared `Input` while preserving the existing save flow and settings layout.
 - `WelcomeScreen` now uses shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `ToggleGroup` for updated/created mode switching and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
@@ -83,6 +84,7 @@ Reference docs checked through `pnpm dlx shadcn@latest docs`:
 - `alert-dialog`, `context-menu`, `dropdown-menu`, `tabs`
 - `command`, `sheet`, `popover`, `tooltip`
 - `select`, `switch`, `checkbox`, `radio-group`, `toggle-group`
+- `input`, `textarea`
 
 ## Replacement Principles
 
@@ -162,7 +164,7 @@ These need design cleanup or affect many small controls.
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Button`, `Checkbox` | Done for action buttons and dry-run checkbox. Plan editing and execution views remain custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Button`, `Select`, `Checkbox` | Done for toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
-| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Button` | Do after Settings shell/Tabs so controls inherit a stable structure. |
+| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button` | Done for core switch/select/button controls and `LongContextSettings` numeric inputs. Remaining native inputs are specialized flows such as key capture and color picker. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Checkbox`, `Button` | Done for enable/per-kind options and debug/reset actions. Native time inputs and range sliders remain custom to preserve current save-on-change behavior. |
 
 ### P3: Optional / Polish
@@ -227,7 +229,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Wrap `radix-ui` `ToggleGroup`.
    - Needed by Search mode controls and appearance option groups.
 
-6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx` - done
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx` - done
    - Needed for settings pages.
    - Should be introduced after the settings shell is migrated.
 

@@ -777,6 +777,61 @@
   border-bottom: 2px solid currentColor;
 }
 
+.ui-input,
+.ui-textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--input, var(--border-color));
+  border-radius: var(--radius-md, 7px);
+  background: var(--background, var(--bg-primary));
+  color: var(--foreground, var(--text-primary));
+  font: inherit;
+  font-size: 13px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease,
+    opacity 150ms ease;
+}
+
+.ui-input {
+  height: 34px;
+  padding: 0 10px;
+  line-height: 1;
+}
+
+.ui-textarea {
+  min-height: 84px;
+  padding: 9px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--muted-foreground, var(--text-tertiary));
+}
+
+.ui-input:hover,
+.ui-textarea:hover {
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 30%, var(--input, var(--border-color)));
+}
+
+.ui-input:focus,
+.ui-input:focus-visible,
+.ui-textarea:focus,
+.ui-textarea:focus-visible {
+  outline: none;
+  border-color: var(--ring, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, var(--accent)) 18%, transparent);
+}
+
+.ui-input:disabled,
+.ui-textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .ui-radio-group {
   display: grid;
   gap: 8px;

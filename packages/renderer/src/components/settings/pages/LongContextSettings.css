@@ -2,8 +2,6 @@
   padding: 0;
 }
 
-.long-context-settings input[type="number"] {
+.long-context-settings__number-input {
   width: min(240px, 100%);
-  padding: 0 12px;
-  font-size: 13px;
 }
