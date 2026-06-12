@@ -56,7 +56,7 @@ Already added:
 - `PluginsSettings` and `KeysSettings` empty states now use shared `Empty` primitives instead of custom empty-state markup.
 - Settings CSS no longer carries legacy native checkbox selectors for `form-toggle` and `category-item`; those settings controls now rely on shared `Switch`/`Checkbox` token styling.
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
-- `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
+- `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, shared `Button` for refresh and row actions, shared `Badge` for tag chips, and shared `Empty` for no-result state while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; drawer empty state uses shared `Empty`; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell, shared `Button` for close, sample selection, fix, and done actions, and shared `Spinner` for the scan state.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, and shared `Spinner` for in-progress plan rows, with hover/loading styling moved into local token-based CSS.
@@ -191,7 +191,7 @@ These are lower impact or more visual than behavioral.
 | Error boundary | `Alert`, `Button` | Done. Fallback error callout uses shared Alert, retry action uses shared Button, and fallback layout remains token-based local CSS. |
 | Citation source row | `Button`, `Popover`, `ScrollArea`, `Spinner` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS and shared loading feedback. |
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
-| Timeline view controls | `Input`, `ToggleGroup`, `Button` | Done for search, mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
+| Timeline view controls | `Input`, `ToggleGroup`, `Button`, `Badge`, `Empty` | Done for search, mode switching, refresh, row actions, tag chips, and empty state. Timeline rows still keep custom grid and marker layout through local styles. |
 | Demo flow | `Dialog`, `Button`, `Spinner`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Scan loading now uses shared `Spinner`; progress remains custom. |
 | Message bubble actions | `Button`, `Spinner` | Done for assistant copy, continue, and regenerate controls, plus in-progress plan row spinner. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |

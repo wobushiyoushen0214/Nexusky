@@ -4,7 +4,9 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import type { PropertyTableRow } from '@shared/types/ipc'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Empty, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 
@@ -159,9 +161,9 @@ export function TimelineView() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: '24px 30px 42px' }}>
         {groups.length === 0 ? (
-          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-            {t('timeline.empty')}
-          </div>
+          <Empty style={{ minHeight: 260, maxWidth: 520, margin: '0 auto' }}>
+            <EmptyTitle>{t('timeline.empty')}</EmptyTitle>
+          </Empty>
         ) : (
           <div style={{ maxWidth: 980, margin: '0 auto' }}>
             {groups.map(([day, items]) => {
@@ -198,7 +200,7 @@ export function TimelineView() {
                           </span>
                           <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', minWidth: 0 }}>
                             {tags.map((tag) => (
-                              <span key={tag} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
+                              <Badge key={tag} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tag}</Badge>
                             ))}
                           </span>
                         </Button>
