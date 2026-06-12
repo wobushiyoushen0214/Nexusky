@@ -73,7 +73,7 @@ Already added:
 - `PropertiesPanel` frontmatter fields now use shared `Input`/`Textarea`, save/reset actions use shared `Button`, and the no-current-file state uses shared `Empty`, while preserving the existing frontmatter parsing and save flow.
 - `BacklinksPanel` now uses shared `Button` for the collapse header, target open/create actions, and unlinked-mention conversion actions while preserving its compact link overview layout and row navigation behavior.
 - `OutlinePanel` now uses shared `Button` for heading navigation rows while preserving heading-level indentation, compact row sizing, and editor jump events.
-- `TagBar` now uses shared `Input` for inline tag entry and shared `Button` for tag removal/add-tag controls while preserving its compact chip layout and frontmatter update behavior.
+- `TagBar` now uses shared `Input` for inline tag entry, shared `Button` for tag removal/add-tag controls, and shared `Tooltip` for icon action hints while preserving its compact chip layout and frontmatter update behavior.
 - `EditorTabs` close actions now use shared `Button` and `Tooltip` while preserving the custom tab drag/reorder, middle-click close, and coordinate context menu behavior.
 - `SlashCommandMenu` command rows now use shared `Button` while preserving the existing slash trigger positioning, keyboard navigation, filtering, and command execution logic.
 - `Editor` shell actions now use shared `Button` for empty-state quick actions, split-pane close, and sync status while preserving the TipTap editor surface and markdown rendering behavior.
@@ -204,7 +204,7 @@ These are lower impact or more visual than behavioral.
 | Properties panel controls | `Input`, `Textarea`, `Button`, `Empty` | Done for title, aliases, tags, cssclasses, save, reset, and no-current-file empty state. Frontmatter parsing and save-to-editor behavior remain custom. |
 | Backlinks panel actions | `Button` | Done for collapse, target open/create, batch convert, item jump, and single mention conversion actions. The row navigation/list layout remains custom. |
 | Outline panel rows | `Button` | Done for heading navigation rows. Heading parsing and editor jump events remain custom. |
-| Tag bar controls | `Input`, `Button` | Done for inline tag entry, remove-tag, and add-tag controls. Frontmatter update flow remains custom. |
+| Tag bar controls | `Input`, `Button`, `Tooltip` | Done for inline tag entry, remove-tag, add-tag controls, and icon action hints. Frontmatter update flow remains custom. |
 | Editor tab close actions | `Button`, `Tooltip` | Done for per-tab close controls and close tooltips. The draggable tab container and context menu remain custom. |
 | Slash command rows | `Button` | Done for command row actions. The TipTap slash trigger, filtering, active-index keyboard handling, and fixed popover positioning remain custom. |
 | Editor shell actions | `Button` | Done for empty-state quick actions, split-pane close, and sync status. TipTap content, markdown rendering, and editor scrolling remain custom. |

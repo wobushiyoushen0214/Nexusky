@@ -3,6 +3,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { parseNoteProperties, updateFrontmatterProperty } from '../../utils/frontmatter'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 function normalizeTag(value: string): string {
   return value.trim().replace(/^#/, '')
@@ -91,31 +92,37 @@ export function TagBar() {
           }}
         >
           #{tag}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => removeTag(tag)}
-            style={{
-              width: 14,
-              height: 14,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '50%',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-tertiary)',
-              cursor: 'pointer',
-              fontSize: 12,
-              lineHeight: 1,
-              padding: 0,
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-          >
-            ×
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`移除标签 ${tag}`}
+                onClick={() => removeTag(tag)}
+                style={{
+                  width: 14,
+                  height: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+              >
+                ×
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{`移除标签 ${tag}`}</TooltipContent>
+          </Tooltip>
         </span>
       ))}
       {inputVisible ? (
@@ -139,37 +146,42 @@ export function TagBar() {
           }}
         />
       ) : (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => setInputVisible(true)}
-          style={{
-            width: 20,
-            height: 20,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '50%',
-            border: '1px dashed var(--border-default)',
-            background: 'transparent',
-            color: 'var(--text-tertiary)',
-            cursor: 'pointer',
-            fontSize: 13,
-            lineHeight: 1,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--text-secondary)'
-            e.currentTarget.style.color = 'var(--text-secondary)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border-default)'
-            e.currentTarget.style.color = 'var(--text-tertiary)'
-          }}
-          title="添加标签"
-        >
-          +
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="添加标签"
+              onClick={() => setInputVisible(true)}
+              style={{
+                width: 20,
+                height: 20,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                border: '1px dashed var(--border-default)',
+                background: 'transparent',
+                color: 'var(--text-tertiary)',
+                cursor: 'pointer',
+                fontSize: 13,
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--text-secondary)'
+                e.currentTarget.style.color = 'var(--text-secondary)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-default)'
+                e.currentTarget.style.color = 'var(--text-tertiary)'
+              }}
+            >
+              +
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>添加标签</TooltipContent>
+        </Tooltip>
       )}
     </div>
   )
