@@ -3,66 +3,82 @@
 }
 
 .frequency-options {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .frequency-btn {
-  flex: 1;
-  padding: 10px 16px;
-  background: var(--bg-elevated);
-  border: 1.5px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-secondary);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
 }
 
 .frequency-btn:hover {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border-color));
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-.frequency-btn.active {
-  background: var(--accent);
+.frequency-btn.active,
+.frequency-btn[data-state="on"] {
   border-color: var(--accent);
-  color: white;
+  background: var(--accent);
+  color: var(--text-on-accent, white);
 }
 
 .category-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px 12px;
 }
 
 .category-item {
+  min-height: 30px;
+  padding: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
 }
 
 .category-item:hover {
-  border-color: var(--accent);
-  background: var(--bg-hover);
-}
-
-.category-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.category-item span {
-  font-size: 13px;
+  border-color: transparent;
+  background: transparent;
   color: var(--text-primary);
+}
+
+.category-item span,
+.category-item label {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .frequency-options,
+  .category-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

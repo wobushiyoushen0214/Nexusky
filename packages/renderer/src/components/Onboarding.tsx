@@ -1,5 +1,11 @@
 import { useState } from 'react'
 import { safeGet, safeSet } from '../utils/storage'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from './ui/dialog'
 
 const ONBOARDING_KEY = 'nexusky-onboarding-done'
 
@@ -121,10 +127,16 @@ export function Onboarding({ onDone }: OnboardingProps) {
   const current = steps[step]
 
   return (
-    <div className="glass-overlay" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}>
-      <div className="glass-popover" style={{ width: 420, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 16, padding: '36px 32px 28px', textAlign: 'center', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', border: '1px solid var(--glass-panel-border)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
+    <Dialog open>
+      <DialogContent
+        showCloseButton={false}
+        className="glass-popover"
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+        style={{ width: 420, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 16, padding: '36px 32px 28px', textAlign: 'center', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', border: '1px solid var(--glass-panel-border)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+      >
         <div style={{ marginBottom: 20, opacity: 0.9 }}>{current.visual}</div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.3px' }}>{current.title}</h2>
+        <DialogTitle style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: 0 }}>{current.title}</DialogTitle>
         <p style={{ fontSize: 12, color: 'var(--accent)', marginBottom: 14, fontWeight: 500 }}>{current.subtitle}</p>
 
         {current.desc && (
@@ -159,27 +171,27 @@ export function Onboarding({ onDone }: OnboardingProps) {
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
           {step > 0 && (
-            <button onClick={() => setStep(step - 1)} style={{ height: 34, padding: '0 18px', fontSize: 13, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-default)', borderRadius: 8, cursor: 'pointer' }}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setStep(step - 1)}>
               上一步
-            </button>
+            </Button>
           )}
           {step < steps.length - 1 ? (
-            <button onClick={() => setStep(step + 1)} style={{ height: 34, padding: '0 22px', fontSize: 13, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
+            <Button type="button" size="sm" onClick={() => setStep(step + 1)}>
               继续
-            </button>
+            </Button>
           ) : (
-            <button onClick={handleFinish} style={{ height: 34, padding: '0 22px', fontSize: 13, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}>
+            <Button type="button" size="sm" onClick={handleFinish}>
               开始使用
-            </button>
+            </Button>
           )}
           {step < steps.length - 1 && (
-            <button onClick={handleFinish} style={{ height: 34, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-tertiary)', border: 'none', cursor: 'pointer' }}>
+            <Button type="button" variant="ghost" size="sm" onClick={handleFinish}>
               跳过
-            </button>
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

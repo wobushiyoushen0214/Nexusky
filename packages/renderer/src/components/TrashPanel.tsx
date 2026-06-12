@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { ConfirmModal } from './ConfirmModal'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
+import { ScrollArea } from './ui/scroll-area'
 import type { TrashEntry } from '@shared/types/ipc'
 
 interface TrashPanelProps {
@@ -42,30 +51,25 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
     toast('回收站已清空', 'info')
   }
 
-  if (!open) return null
-
   return (
     <>
-      <div
-        className="animate-overlay-in glass-overlay"
-        style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}
-        onClick={onClose}
-      >
-        <div
+      <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+        <DialogContent
+          showCloseButton={false}
           className="animate-scale-in glass-popover"
           style={{ width: 440, maxHeight: '60vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
-          onClick={(e) => e.stopPropagation()}
         >
-          <div className="glass-divider-bottom" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>回收站</span>
+          <DialogHeader className="glass-divider-bottom" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
+            <DialogTitle style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>回收站</DialogTitle>
             <div style={{ display: 'flex', gap: 8 }}>
               {items.length > 0 && (
-                <button onClick={() => setEmptyConfirmOpen(true)} style={{ fontSize: 11, color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}>清空</button>
+                <Button type="button" variant="destructive" size="xs" onClick={() => setEmptyConfirmOpen(true)}>清空</Button>
               )}
-              <button onClick={onClose} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>关闭</button>
+              <Button type="button" variant="ghost" size="xs" onClick={onClose}>关闭</Button>
             </div>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
+          </DialogHeader>
+          <ScrollArea style={{ flex: 1, minHeight: 0 }}>
+            <div style={{ padding: 8 }}>
             {items.length === 0 ? (
               <p style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>回收站为空</p>
             ) : (
@@ -75,20 +79,21 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
                     <span style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalName}</span>
                       {getTrashReasonLabel(item.reason) && (
-                        <span style={{ flexShrink: 0, fontSize: 10, color: 'var(--text-tertiary)' }}>{getTrashReasonLabel(item.reason)}</span>
+                        <Badge variant="secondary" style={{ flexShrink: 0 }}>{getTrashReasonLabel(item.reason)}</Badge>
                       )}
                     </span>
                     {item.originalPath && (
                       <span style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.originalPath}</span>
                     )}
                   </span>
-                  <button onClick={() => handleRestore(item)} style={{ fontSize: 10, color: 'oklch(55% 0.14 150)', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}>恢复</button>
+                  <Button type="button" variant="outline" size="xs" onClick={() => handleRestore(item)} style={{ flexShrink: 0 }}>恢复</Button>
                 </div>
               ))
             )}
-          </div>
-        </div>
-      </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
       <ConfirmModal
         open={emptyConfirmOpen}
         title="清空回收站"

@@ -3,6 +3,14 @@ import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { getErrorMessage } from '../utils/errors'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from './ui/dialog'
+import { ScrollArea } from './ui/scroll-area'
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import type { SearchIndexStatus } from '@shared/types/ipc'
 
 interface SearchResult {
@@ -255,18 +263,6 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     : mode === 'regex'
       ? '输入正则表达式后按 Enter 搜索'
       : '输入词语或短句查找相关内容'
-  const modeButtonStyle = (active: boolean): React.CSSProperties => ({
-    height: 26,
-    padding: '0 10px',
-    fontSize: 11,
-    borderRadius: 7,
-    cursor: 'pointer',
-    fontWeight: active ? 600 : 500,
-    background: active ? 'color-mix(in srgb, var(--accent-muted) 76%, var(--control-bg))' : 'transparent',
-    color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
-    border: active ? '1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle))' : '1px solid transparent',
-    boxShadow: active ? 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 55%, transparent)' : 'none'
-  })
   const resultButtonStyle = (active: boolean): React.CSSProperties => ({
     width: '100%',
     textAlign: 'left',
@@ -282,16 +278,13 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
   })
 
   return (
-    <div
-      className="animate-overlay-in glass-overlay"
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '13vh 24px 24px', background: 'color-mix(in srgb, var(--overlay-bg) 82%, transparent)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
-      onClick={onClose}
-    >
-      <div
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
         className="animate-scale-in glass-popover"
-        style={{ width: 'min(640px, calc(100vw - 48px))', maxHeight: '64vh', background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 92%, var(--glass-highlight)), var(--bg-glass-dense, var(--bg-glass-solid)))', border: '1px solid var(--glass-panel-border)', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 28px 90px color-mix(in srgb, var(--text-primary) 12%, transparent), inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
-        onClick={(e) => e.stopPropagation()}
+        style={{ top: '13vh', transform: 'translateX(-50%)', width: 'min(640px, calc(100vw - 48px))', maxHeight: '64vh', background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 92%, var(--glass-highlight)), var(--bg-glass-dense, var(--bg-glass-solid)))', border: '1px solid var(--glass-panel-border)', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 28px 90px color-mix(in srgb, var(--text-primary) 12%, transparent), inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 70%, transparent), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
       >
+        <DialogTitle style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>搜索</DialogTitle>
         <div className="glass-divider-bottom" style={{ padding: 12, background: 'linear-gradient(180deg, color-mix(in srgb, var(--control-bg) 64%, transparent), color-mix(in srgb, var(--bg-glass) 72%, transparent))', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
           <div className="glass-control" style={{ height: 40, padding: '0 8px 0 12px', display: 'flex', alignItems: 'center', gap: 10, borderRadius: 10, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', borderColor: 'color-mix(in srgb, var(--control-border) 72%, var(--glass-highlight))' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -334,30 +327,42 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
               style={{ flex: 1, minWidth: 0, height: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: 'var(--text-primary)' }}
             />
             {query && (
-              <button
+              <Button
+                type="button"
+                size="sm"
                 onClick={() => handleSearch()}
-                style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: '1px solid color-mix(in srgb, var(--accent) 82%, var(--glass-highlight))', borderRadius: 8, cursor: 'pointer', fontWeight: 600, boxShadow: '0 8px 18px var(--accent-glow)' }}
+                style={{ boxShadow: '0 8px 18px var(--accent-glow)' }}
               >
                 搜索
-              </button>
+              </Button>
             )}
             <kbd style={{ fontSize: 10, lineHeight: 1, color: 'var(--text-tertiary)', padding: '4px 6px', borderRadius: 6, background: 'color-mix(in srgb, var(--control-bg) 74%, transparent)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 50%, transparent)' }}>ESC</kbd>
           </div>
 
           <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 2, background: 'color-mix(in srgb, var(--control-bg) 70%, transparent)', border: '1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent)', borderRadius: 9, boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent)' }}>
-              <button onClick={() => setMode('keyword')} style={modeButtonStyle(mode === 'keyword')}>关键词</button>
-              <button onClick={() => setMode('related')} style={modeButtonStyle(mode === 'related')}>相关</button>
-              <button onClick={() => setMode('regex')} style={modeButtonStyle(mode === 'regex')}>正则</button>
-            </div>
+            <ToggleGroup
+              type="single"
+              value={mode}
+              onValueChange={(value) => {
+                if (value) setMode(value as SearchMode)
+              }}
+              style={{ padding: 2, background: 'color-mix(in srgb, var(--control-bg) 70%, transparent)', border: '1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent)', borderRadius: 9, boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 42%, transparent)' }}
+            >
+              <ToggleGroupItem value="keyword">关键词</ToggleGroupItem>
+              <ToggleGroupItem value="related">相关</ToggleGroupItem>
+              <ToggleGroupItem value="regex">正则</ToggleGroupItem>
+            </ToggleGroup>
             {mode === 'related' && (
-              <button
+              <Button
+                type="button"
+                variant={hasCompleteSearchIndex ? 'secondary' : 'outline'}
+                size="xs"
                 onClick={handleBuildIndex}
                 disabled={isIndexing}
-                style={{ ...modeButtonStyle(hasCompleteSearchIndex), marginLeft: 'auto', background: hasCompleteSearchIndex ? modeButtonStyle(true).background : 'color-mix(in srgb, var(--control-bg) 70%, transparent)', opacity: isIndexing ? 0.72 : 1, cursor: isIndexing ? 'default' : 'pointer' }}
+                style={{ marginLeft: 'auto' }}
               >
                 {isIndexing ? '索引中...' : hasCompleteSearchIndex ? '更新索引' : '建立本地索引'}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -397,7 +402,8 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
           )}
         </div>
 
-        <div ref={resultsRef} style={{ flex: 1, minHeight: 96, overflowY: 'auto', padding: 8, background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass) 58%, transparent), color-mix(in srgb, var(--bg-glass) 42%, transparent))' }}>
+        <ScrollArea style={{ flex: 1, minHeight: 96, background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass) 58%, transparent), color-mix(in srgb, var(--bg-glass) 42%, transparent))' }}>
+          <div ref={resultsRef} style={{ padding: 8 }}>
           {searching && (
             <div style={{ minHeight: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>搜索中...</div>
           )}
@@ -412,13 +418,16 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: 0, marginBottom: 8, padding: '0 2px' }}>搜索历史</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {history.map((h, i) => (
-                  <button
+                  <Button
                     key={i}
+                    type="button"
+                    variant="outline"
+                    size="xs"
                     onClick={() => handleHistoryClick(h)}
-                    style={{ height: 28, padding: '0 10px', fontSize: 11, borderRadius: 8, background: 'color-mix(in srgb, var(--control-bg) 78%, transparent)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', cursor: 'pointer', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 38%, transparent)' }}
+                    style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 38%, transparent)' }}
                   >
                     {h}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -444,8 +453,9 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
               </p>
             </button>
           ))}
-        </div>
-      </div>
-    </div>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   )
 }

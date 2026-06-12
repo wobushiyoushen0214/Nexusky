@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { ProactiveConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Button } from '../../ui/button'
+import { Checkbox } from '../../ui/checkbox'
+import { Switch } from '../../ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '../../ui/toggle-group'
 import './ProactiveSettings.css'
-
-interface ProactiveConfig {
-  enabled: boolean
-  frequency: 'low' | 'medium' | 'high'
-  categories: string[]
-}
 
 const AVAILABLE_CATEGORIES = [
   { id: 'note-suggestions', label: '笔记建议', labelEn: 'Note Suggestions' },
@@ -18,7 +17,7 @@ const AVAILABLE_CATEGORIES = [
 ]
 
 export function ProactiveSettings() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [config, setConfig] = useState<ProactiveConfig>({
     enabled: false,
     frequency: 'medium',
@@ -60,7 +59,7 @@ export function ProactiveSettings() {
   }
 
   if (loading) {
-    return <div className="proactive-settings"><p>Loading...</p></div>
+    return <div className="proactive-settings settings-loading"><p>{t('settings.loading')}</p></div>
   }
 
   return (
@@ -73,14 +72,14 @@ export function ProactiveSettings() {
 
         <div className="settings-form">
           <div className="form-item">
-            <label className="form-toggle">
-              <input
-                type="checkbox"
+            <div className="form-toggle">
+              <Switch
+                id="proactive-enabled"
                 checked={config.enabled}
-                onChange={(e) => setConfig({ ...config, enabled: e.target.checked })}
+                onCheckedChange={(checked) => setConfig({ ...config, enabled: checked })}
               />
-              <span>{t('settings.proactive.enabled')}</span>
-            </label>
+              <label htmlFor="proactive-enabled">{t('settings.proactive.enabled')}</label>
+            </div>
             <p className="form-hint">{t('settings.proactive.enabledHint')}</p>
           </div>
 
@@ -88,42 +87,46 @@ export function ProactiveSettings() {
             <>
               <div className="form-item">
                 <label className="form-label">{t('settings.proactive.frequency')}</label>
-                <div className="frequency-options">
-                  <button
-                    className={`frequency-btn ${config.frequency === 'low' ? 'active' : ''}`}
-                    onClick={() => setConfig({ ...config, frequency: 'low' })}
-                  >
+                <ToggleGroup
+                  type="single"
+                  value={config.frequency}
+                  onValueChange={(value) => {
+                    if (value) setConfig({ ...config, frequency: value as ProactiveConfig['frequency'] })
+                  }}
+                  className="frequency-options"
+                >
+                  <ToggleGroupItem value="low" className="frequency-btn">
                     {t('settings.proactive.frequencyLow')}
-                  </button>
-                  <button
-                    className={`frequency-btn ${config.frequency === 'medium' ? 'active' : ''}`}
-                    onClick={() => setConfig({ ...config, frequency: 'medium' })}
-                  >
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="medium" className="frequency-btn">
                     {t('settings.proactive.frequencyMedium')}
-                  </button>
-                  <button
-                    className={`frequency-btn ${config.frequency === 'high' ? 'active' : ''}`}
-                    onClick={() => setConfig({ ...config, frequency: 'high' })}
-                  >
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="high" className="frequency-btn">
                     {t('settings.proactive.frequencyHigh')}
-                  </button>
-                </div>
+                  </ToggleGroupItem>
+                </ToggleGroup>
                 <p className="form-hint">{t('settings.proactive.frequencyHint')}</p>
               </div>
 
               <div className="form-item">
                 <label className="form-label">{t('settings.proactive.categories')}</label>
                 <div className="category-list">
-                  {AVAILABLE_CATEGORIES.map((category) => (
-                    <label key={category.id} className="category-item">
-                      <input
-                        type="checkbox"
-                        checked={config.categories.includes(category.id)}
-                        onChange={() => toggleCategory(category.id)}
-                      />
-                      <span>{t('common.language') === 'zh-CN' ? category.label : category.labelEn}</span>
-                    </label>
-                  ))}
+                  {AVAILABLE_CATEGORIES.map((category) => {
+                    const checked = config.categories.includes(category.id)
+                    const label = i18n.language.startsWith('zh') ? category.label : category.labelEn
+                    const id = `proactive-category-${category.id}`
+                    return (
+                      <div key={category.id} className="category-item">
+                        <Checkbox
+                          id={id}
+                          checked={checked}
+                          onCheckedChange={() => toggleCategory(category.id)}
+                          aria-label={label}
+                        />
+                        <label htmlFor={id}>{label}</label>
+                      </div>
+                    )
+                  })}
                 </div>
                 <p className="form-hint">{t('settings.proactive.categoriesHint')}</p>
               </div>
@@ -131,9 +134,9 @@ export function ProactiveSettings() {
           )}
 
           <div className="form-actions">
-            <button className="btn-primary" onClick={handleSave}>
+            <Button type="button" size="sm" onClick={handleSave}>
               {t('common.save')}
-            </button>
+            </Button>
           </div>
         </div>
       </section>

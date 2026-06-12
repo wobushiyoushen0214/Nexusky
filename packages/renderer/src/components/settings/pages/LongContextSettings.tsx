@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { MemoryConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Button } from '../../ui/button'
+import { Switch } from '../../ui/switch'
 import './LongContextSettings.css'
-
-interface MemoryConfig {
-  enabled: boolean
-  autoGenerate: boolean
-  retentionDays: number
-  maxTokens: number
-}
 
 export function LongContextSettings() {
   const { t } = useTranslation()
@@ -45,7 +41,7 @@ export function LongContextSettings() {
   }
 
   if (loading) {
-    return <div className="long-context-settings"><p>Loading...</p></div>
+    return <div className="long-context-settings settings-loading"><p>{t('settings.loading')}</p></div>
   }
 
   return (
@@ -58,26 +54,26 @@ export function LongContextSettings() {
 
         <div className="settings-form">
           <div className="form-item">
-            <label className="form-toggle">
-              <input
-                type="checkbox"
+            <div className="form-toggle">
+              <Switch
+                id="long-context-enabled"
                 checked={config.enabled}
-                onChange={(e) => setConfig({ ...config, enabled: e.target.checked })}
+                onCheckedChange={(checked) => setConfig({ ...config, enabled: checked })}
               />
-              <span>{t('settings.longContext.enabled')}</span>
-            </label>
+              <label htmlFor="long-context-enabled">{t('settings.longContext.enabled')}</label>
+            </div>
             <p className="form-hint">{t('settings.longContext.enabledHint')}</p>
           </div>
 
           <div className="form-item">
-            <label className="form-toggle">
-              <input
-                type="checkbox"
+            <div className="form-toggle">
+              <Switch
+                id="long-context-auto-generate"
                 checked={config.autoGenerate}
-                onChange={(e) => setConfig({ ...config, autoGenerate: e.target.checked })}
+                onCheckedChange={(checked) => setConfig({ ...config, autoGenerate: checked })}
               />
-              <span>{t('settings.longContext.autoGenerate')}</span>
-            </label>
+              <label htmlFor="long-context-auto-generate">{t('settings.longContext.autoGenerate')}</label>
+            </div>
             <p className="form-hint">{t('settings.longContext.autoGenerateHint')}</p>
           </div>
 
@@ -107,9 +103,9 @@ export function LongContextSettings() {
           </div>
 
           <div className="form-actions">
-            <button className="btn-primary" onClick={handleSave}>
+            <Button type="button" size="sm" onClick={handleSave}>
               {t('common.save')}
-            </button>
+            </Button>
           </div>
         </div>
       </section>

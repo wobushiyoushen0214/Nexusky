@@ -10,6 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select'
 import { ScrollArea } from '../ui/scroll-area'
 import './AIProviderSettings.css'
 
@@ -289,10 +296,10 @@ export function AIProviderSettings() {
 
                 <div className="form-group">
                   <label>{t('settings.ai.providerType')}</label>
-                  <select
+                  <Select
                     value={editing.type}
-                    onChange={(e) => {
-                      const type = e.target.value as ProviderType
+                    onValueChange={(value) => {
+                      const type = value as ProviderType
                       const defaults = DEFAULT_BY_TYPE[type]
                       setAvailableModels([])
                       setEditing({
@@ -304,10 +311,15 @@ export function AIProviderSettings() {
                       })
                     }}
                   >
-                    {PROVIDER_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="provider-editor__select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROVIDER_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {providerRequiresApiKey(editing.type) && (
@@ -336,15 +348,19 @@ export function AIProviderSettings() {
                   <label>{t('settings.ai.model')}</label>
                   <div className="model-input-group">
                     {availableModels.length > 0 ? (
-                      <select
+                      <Select
                         value={editing.model}
-                        onChange={(e) => setEditing({ ...editing, model: e.target.value })}
+                        onValueChange={(value) => setEditing({ ...editing, model: value })}
                       >
-                        <option value="">{t('settings.ai.selectModel')}</option>
-                        {availableModels.map((model) => (
-                          <option key={model} value={model}>{model}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="provider-editor__select">
+                          <SelectValue placeholder={t('settings.ai.selectModel')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableModels.map((model) => (
+                            <SelectItem key={model} value={model}>{model}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <input
                         type="text"

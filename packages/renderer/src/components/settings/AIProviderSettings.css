@@ -300,6 +300,11 @@
   transition: all 0.15s;
 }
 
+.form-group .ui-select-trigger {
+  width: 100%;
+  min-height: 40px;
+}
+
 .form-group select {
   cursor: pointer;
 }
@@ -329,7 +334,9 @@
 }
 
 .model-input-group input,
-.model-input-group select {
+.model-input-group select,
+.model-input-group .ui-select-trigger,
+.provider-editor__select {
   flex: 1;
 }
 

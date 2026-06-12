@@ -476,6 +476,34 @@ export interface AIProviderValidationResult {
   error?: string
 }
 
+export interface SettingsSyncStatus {
+  configured: boolean
+  provider?: 'supabase' | 'webdav' | 's3'
+  lastSync?: number
+  status?: 'idle' | 'syncing' | 'error'
+  error?: string
+}
+
+export interface SettingsSyncConfig {
+  provider: 'supabase' | 'webdav' | 's3'
+  config: Record<string, string>
+}
+
+export interface SettingsPlugin {
+  id: string
+  name: string
+  version: string
+  enabled: boolean
+  description?: string
+  author?: string
+}
+
+export interface ProactiveConfig {
+  enabled: boolean
+  frequency: 'low' | 'medium' | 'high'
+  categories: string[]
+}
+
 export interface FetchModelsParams {
   type: 'openai' | 'openai-responses' | 'claude' | 'custom' | 'ollama' | 'codex'
   baseUrl: string
@@ -1521,6 +1549,12 @@ export interface IPCChannelMap {
   'memory:get-timeline': { params: { vaultPath: string }; result: MemoryCard[] }
   'memory:update-card': { params: { vaultPath: string; id: string; actions: MemoryCardUpdate }; result: void }
   'memory:explain-card': { params: { vaultPath: string; id: string }; result: string }
+  'settings:get-sync-status': { params: undefined; result: SettingsSyncStatus }
+  'settings:configure-sync': { params: SettingsSyncConfig; result: { ok: boolean } }
+  'settings:get-installed-plugins': { params: undefined; result: SettingsPlugin[] }
+  'settings:toggle-plugin': { params: { id: string; enabled: boolean }; result: { ok: boolean } }
+  'settings:get-proactive-config': { params: undefined; result: ProactiveConfig }
+  'settings:save-proactive-config': { params: ProactiveConfig; result: { ok: boolean } }
   'settings:get-keybindings': { params: undefined; result: KeybindingEntry[] }
   'settings:set-keybinding': { params: { id: string; key: string }; result: { ok: boolean; error?: string } }
   'settings:reset-keybinding': { params: { id: string }; result: { ok: boolean } }

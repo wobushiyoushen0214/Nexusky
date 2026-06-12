@@ -1,27 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { SettingsSyncConfig, SettingsSyncStatus } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Button } from '../../ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../ui/select'
 import './CloudSyncSettings.css'
-
-interface SyncStatus {
-  configured: boolean
-  provider?: 'supabase' | 'webdav' | 's3'
-  lastSync?: number
-  status?: 'idle' | 'syncing' | 'error'
-  error?: string
-}
-
-interface SyncConfig {
-  provider: 'supabase' | 'webdav' | 's3'
-  config: Record<string, string>
-}
 
 export function CloudSyncSettings() {
   const { t } = useTranslation()
-  const [status, setStatus] = useState<SyncStatus | null>(null)
+  const [status, setStatus] = useState<SettingsSyncStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [configuring, setConfiguring] = useState(false)
-  const [syncConfig, setSyncConfig] = useState<SyncConfig>({
+  const [syncConfig, setSyncConfig] = useState<SettingsSyncConfig>({
     provider: 'webdav',
     config: {},
   })
@@ -53,7 +49,7 @@ export function CloudSyncSettings() {
   }
 
   if (loading) {
-    return <div className="cloud-sync-settings"><p>Loading...</p></div>
+    return <div className="cloud-sync-settings settings-loading"><p>{t('settings.loading')}</p></div>
   }
 
   return (
@@ -75,33 +71,39 @@ export function CloudSyncSettings() {
               <div className="config-form">
                 <div className="form-item">
                   <label className="form-label">{t('settings.cloudSync.provider')}</label>
-                  <select
+                  <Select
                     value={syncConfig.provider}
-                    onChange={(e) =>
-                      setSyncConfig({ ...syncConfig, provider: e.target.value as any })
-                    }
+                    onValueChange={(value) => setSyncConfig({
+                      ...syncConfig,
+                      provider: value as SettingsSyncConfig['provider'],
+                    })}
                   >
-                    <option value="webdav">WebDAV</option>
-                    <option value="s3">Amazon S3</option>
-                    <option value="supabase">Supabase</option>
-                  </select>
+                    <SelectTrigger className="cloud-sync-provider-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="webdav">WebDAV</SelectItem>
+                      <SelectItem value="s3">Amazon S3</SelectItem>
+                      <SelectItem value="supabase">Supabase</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="form-actions">
-                  <button className="btn-secondary" onClick={() => setConfiguring(false)}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setConfiguring(false)}>
                     {t('common.cancel')}
-                  </button>
-                  <button className="btn-primary" onClick={handleConfigure}>
+                  </Button>
+                  <Button type="button" size="sm" onClick={handleConfigure}>
                     {t('settings.cloudSync.configure')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
             {!configuring && (
-              <button className="btn-configure" onClick={() => setConfiguring(true)}>
+              <Button type="button" size="sm" className="btn-configure" onClick={() => setConfiguring(true)}>
                 {t('settings.cloudSync.startConfiguration')}
-              </button>
+              </Button>
             )}
           </div>
         ) : (

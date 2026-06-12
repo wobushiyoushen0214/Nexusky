@@ -29,6 +29,11 @@
 .ui-dialog-close:focus-visible,
 .ui-alert-dialog-content:focus-visible,
 .ui-tabs-trigger:focus-visible,
+.ui-switch:focus-visible,
+.ui-checkbox:focus-visible,
+.ui-radio-group-item:focus-visible,
+.ui-select-trigger:focus-visible,
+.ui-toggle-group-item:focus-visible,
 .ui-scroll-area-viewport:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 52%, transparent);
   outline-offset: 2px;
@@ -313,4 +318,269 @@
 
 .ui-tabs-content {
   min-width: 0;
+}
+
+.ui-switch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border-color)) 86%, transparent);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.ui-switch[data-state="checked"] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.ui-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.ui-switch-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  transform: translateX(2px);
+  border-radius: 999px;
+  background: var(--bg-primary);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text-primary) 22%, transparent);
+  transition: transform 150ms ease;
+}
+
+.ui-switch[data-state="checked"] .ui-switch-thumb {
+  transform: translateX(18px);
+}
+
+.ui-checkbox {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border-color)) 86%, transparent);
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  color: var(--text-on-accent, white);
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.ui-checkbox[data-state="checked"] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.ui-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.ui-checkbox-indicator {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.ui-checkbox-indicator::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 4px;
+  height: 8px;
+  transform: rotate(45deg);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.ui-radio-group {
+  display: grid;
+  gap: 8px;
+}
+
+.ui-radio-group-item {
+  font: inherit;
+}
+
+.ui-select-trigger {
+  position: relative;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 32px 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.ui-select-trigger:hover {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border-color));
+}
+
+.ui-select-trigger[data-placeholder] {
+  color: var(--text-tertiary);
+}
+
+.ui-select-trigger[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.ui-select-trigger[data-state="open"] {
+  border-color: var(--accent);
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ui-select-icon {
+  position: absolute;
+  right: 12px;
+  width: 7px;
+  height: 7px;
+  pointer-events: none;
+}
+
+.ui-select-icon span {
+  display: block;
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg) translateY(-2px);
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.7;
+}
+
+.ui-select-content {
+  z-index: 1300;
+  min-width: var(--radix-select-trigger-width);
+  max-height: min(var(--radix-select-content-available-height), 280px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-default, var(--border-color)) 86%, transparent);
+  border-radius: 8px;
+  background: var(--bg-glass-solid, var(--bg-primary));
+  box-shadow: var(--shadow-popover, 0 12px 32px color-mix(in srgb, var(--text-primary) 18%, transparent));
+  backdrop-filter: blur(var(--glass-blur, 10px));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 10px));
+}
+
+.ui-select-viewport {
+  padding: 4px;
+}
+
+.ui-select-label {
+  padding: 7px 8px 5px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.ui-select-item {
+  position: relative;
+  min-height: 30px;
+  padding: 0 28px 0 9px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  outline: none;
+  user-select: none;
+}
+
+.ui-select-item[data-highlighted] {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ui-select-item[data-state="checked"] {
+  color: var(--accent);
+}
+
+.ui-select-item[data-disabled] {
+  pointer-events: none;
+  opacity: 0.48;
+}
+
+.ui-select-item-indicator {
+  position: absolute;
+  right: 9px;
+  width: 5px;
+  height: 9px;
+  transform: rotate(45deg);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.ui-select-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: color-mix(in srgb, var(--border-subtle, var(--border-color)) 82%, transparent);
+}
+
+.ui-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ui-toggle-group-item {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 620;
+  line-height: 1;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.ui-toggle-group-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ui-toggle-group-item[data-state="on"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent, white);
+}
+
+.ui-toggle-group-item[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.48;
 }

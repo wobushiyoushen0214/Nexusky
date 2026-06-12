@@ -32,6 +32,8 @@ release/
 
 # Misc
 *.tsbuildinfo
+__pycache__/
+*.py[cod]
 
 .ccpanes/
 

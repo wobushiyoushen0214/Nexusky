@@ -27,6 +27,8 @@ Already added:
 - Settings sidebar now uses `Tabs`.
 - AI provider editor now uses `Dialog`, `Button`, and `Badge`.
 - Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, and the shared `ConfirmModal`.
+- Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, and `Button` where appropriate.
+- `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions.
 
 Reference docs checked through `pnpm dlx shadcn@latest docs`:
 
@@ -133,11 +135,11 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Wrap `radix-ui` `DropdownMenu`.
    - Needed by snooze menus, column menus, sidebar vault menu, small action menus.
 
-5. `toggle-group.tsx`
+5. `toggle-group.tsx` - done
    - Wrap `radix-ui` `ToggleGroup`.
    - Needed by Search mode controls and appearance option groups.
 
-6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx` - done
    - Needed for settings pages.
    - Should be introduced after the settings shell is migrated.
 

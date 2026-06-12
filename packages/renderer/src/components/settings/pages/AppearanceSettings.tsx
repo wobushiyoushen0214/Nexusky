@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { THEME_IDS, useUIStore } from '../../../stores/ui-store'
 import type { Theme } from '../../../stores/ui-store'
+import { RadioGroup, RadioGroupItem } from '../../ui/radio-group'
 import './AppearanceSettings.css'
 
 const ACCENT_PRESETS = ['#7c6ef5', '#4facfe', '#4ec9a0', '#f0a050', '#e8577a', '#ffd60a', '#88c0d0', '#268bd2']
@@ -24,12 +25,16 @@ export function AppearanceSettings() {
           <p>{t('settings.theme.description')}</p>
         </div>
 
-        <div className="theme-grid">
+        <RadioGroup
+          value={theme}
+          onValueChange={(value) => setTheme(value as Theme)}
+          className="theme-grid"
+        >
           {THEME_IDS.map((themeId) => (
-            <button
+            <RadioGroupItem
               key={themeId}
-              className={`theme-item ${theme === themeId ? 'is-active' : ''}`}
-              onClick={() => setTheme(themeId as Theme)}
+              value={themeId}
+              className="theme-item"
             >
               <div className={`theme-preview theme-preview--${themeId}`}>
                 <div className="theme-preview__dots">
@@ -37,9 +42,10 @@ export function AppearanceSettings() {
                 </div>
               </div>
               <span className="theme-label">{t(`settings.theme.items.${themeId}.label`)}</span>
-            </button>
+              <span className="theme-detail">{t(`settings.theme.items.${themeId}.detail`)}</span>
+            </RadioGroupItem>
           ))}
-        </div>
+        </RadioGroup>
       </section>
 
       <section className="settings-section">
@@ -48,16 +54,22 @@ export function AppearanceSettings() {
           <p>{t('settings.accent.description')}</p>
         </div>
 
-        <div className="accent-list">
+        <RadioGroup
+          value={accentColor}
+          onValueChange={handleAccentChange}
+          className="accent-list"
+          aria-label={t('settings.accent.title')}
+        >
           {ACCENT_PRESETS.map((color) => (
-            <button
+            <RadioGroupItem
               key={color}
-              className={`accent-item ${accentColor === color ? 'is-active' : ''}`}
-              onClick={() => handleAccentChange(color)}
+              value={color}
+              className="accent-item"
+              aria-label={color}
             >
               <span className="accent-color" style={{ background: color }} />
               <span className="accent-check">✓</span>
-            </button>
+            </RadioGroupItem>
           ))}
 
           <div className="accent-custom">
@@ -75,7 +87,7 @@ export function AppearanceSettings() {
               className="accent-text"
             />
           </div>
-        </div>
+        </RadioGroup>
       </section>
 
       <section className="settings-section">
@@ -83,22 +95,20 @@ export function AppearanceSettings() {
           <h2>{t('settings.language.title')}</h2>
         </div>
 
-        <div className="language-list">
-          <button
-            className={`language-item ${language === 'zh-CN' ? 'is-active' : ''}`}
-            onClick={() => setLanguage('zh-CN')}
-          >
+        <RadioGroup
+          value={language}
+          onValueChange={(value) => setLanguage(value as 'zh-CN' | 'en')}
+          className="language-list"
+        >
+          <RadioGroupItem value="zh-CN" className="language-item">
             <span className="language-label">{t('settings.language.zhCN')}</span>
             <span className="language-check">✓</span>
-          </button>
-          <button
-            className={`language-item ${language === 'en' ? 'is-active' : ''}`}
-            onClick={() => setLanguage('en')}
-          >
+          </RadioGroupItem>
+          <RadioGroupItem value="en" className="language-item">
             <span className="language-label">{t('settings.language.en')}</span>
             <span className="language-check">✓</span>
-          </button>
-        </div>
+          </RadioGroupItem>
+        </RadioGroup>
       </section>
     </div>
   )

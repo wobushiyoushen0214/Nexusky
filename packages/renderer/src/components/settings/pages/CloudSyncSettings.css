@@ -2,103 +2,74 @@
   padding: 0;
 }
 
-.not-configured {
-  margin-top: 24px;
+.settings-loading {
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
 }
 
-.info-card {
-  padding: 20px;
-  background: var(--bg-elevated);
+.settings-loading p {
+  margin: 0;
+}
+
+.not-configured,
+.sync-status {
+  display: grid;
+  gap: 12px;
+}
+
+.info-card,
+.config-form,
+.status-card {
+  padding: 16px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  margin-bottom: 20px;
+  background: var(--bg-elevated);
 }
 
 .info-card h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
+  margin: 0 0 6px;
   color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .info-card p {
+  max-width: 62ch;
   margin: 0;
-  font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .config-form {
-  padding: 20px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  margin-bottom: 16px;
+  display: grid;
+  gap: 14px;
 }
 
-.config-form select {
+.config-form select,
+.config-form .ui-select-trigger,
+.cloud-sync-provider-select {
   width: 100%;
-  height: 38px;
-  padding: 0 12px;
-  font-size: 13px;
-  background: var(--bg-secondary);
-  border: 1.5px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
 }
 
 .btn-configure {
-  padding: 12px 24px;
-  background: var(--accent);
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-configure:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  padding: 8px 20px;
-  background: transparent;
-  border: 1.5px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-secondary:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--accent);
-}
-
-.sync-status {
-  margin-top: 24px;
+  justify-self: start;
 }
 
 .status-card {
-  padding: 20px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  display: grid;
 }
 
 .status-row {
+  min-height: 38px;
+  padding: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
+  justify-content: space-between;
+  gap: 16px;
   border-bottom: 1px solid var(--border-color);
   font-size: 13px;
 }
@@ -113,30 +84,32 @@
 
 .status-row strong {
   color: var(--text-primary);
+  font-weight: 650;
 }
 
 .status-idle {
-  color: var(--text-secondary);
+  color: var(--text-secondary) !important;
 }
 
 .status-syncing {
-  color: var(--accent);
+  color: var(--accent) !important;
 }
 
 .status-error {
-  color: #ef4444;
+  color: var(--color-error) !important;
 }
 
-.status-error {
+.status-error:not(strong) {
   margin-top: 12px;
   padding: 12px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 34%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-error) 9%, transparent);
 }
 
 .status-error p {
   margin: 0;
+  color: var(--color-error);
   font-size: 12px;
-  color: #ef4444;
+  line-height: 1.45;
 }

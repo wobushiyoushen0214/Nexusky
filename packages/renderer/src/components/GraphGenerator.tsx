@@ -4,6 +4,14 @@ import { useEditorStore } from '../stores/editor-store'
 import { useUIStore } from '../stores/ui-store'
 import { toast } from '../stores/toast-store'
 import { isCancellationError } from '../utils/errors'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
+import { ScrollArea } from './ui/scroll-area'
 
 interface GraphGeneratorProps {
   open: boolean
@@ -79,28 +87,22 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
     }
   }, [open, filePaths])
 
-  if (!open) return null
-
   const fileNames = filePaths.map((p) => p.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '')
 
   return (
-    <div
-      className="glass-overlay"
-      style={{ position: 'fixed', inset: 0, zIndex: 55, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}
-      onClick={handleClose}
-    >
-      <div
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
+      <DialogContent
+        showCloseButton={false}
         className="animate-scale-in glass-popover"
         style={{ width: 560, maxHeight: '80vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-panel-border)', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', display: 'flex', flexDirection: 'column', overflow: 'hidden', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="glass-divider-bottom" style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', flexShrink: 0, background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>AI 知识图谱生成</span>
-          <button onClick={handleClose} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+        <DialogHeader className="glass-divider-bottom" style={{ height: 44, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', flexShrink: 0, background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
+          <DialogTitle style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>AI 知识图谱生成</DialogTitle>
+          <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="关闭" style={{ width: 24, height: 24, borderRadius: 4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-          </button>
-        </div>
+          </Button>
+        </DialogHeader>
 
         {/* File list */}
         <div className="glass-divider-bottom" style={{ padding: '12px 18px', borderBottom: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
@@ -118,7 +120,8 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
         </div>
 
         {/* Progress / Result */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '16px 18px', minHeight: 200 }}>
+        <ScrollArea style={{ flex: 1, minHeight: 200 }}>
+          <div style={{ padding: '16px 18px', minHeight: 200 }}>
           {generating && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -142,27 +145,28 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
               准备生成...
             </div>
           )}
-        </div>
+          </div>
+        </ScrollArea>
 
         {/* Footer */}
         <div className="glass-divider-top" style={{ padding: '12px 18px', borderTop: '0', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-top)' }}>
           {!generating && result && (
             <>
-              <button onClick={handleGenerate} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>
+              <Button type="button" variant="outline" size="sm" onClick={handleGenerate}>
                 重新生成
-              </button>
-              <button onClick={handleSave} style={{ height: 32, padding: '0 14px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
+              </Button>
+              <Button type="button" size="sm" onClick={handleSave}>
                 保存为笔记
-              </button>
+              </Button>
             </>
           )}
           {generating && (
-            <button onClick={handleClose} style={{ height: 32, padding: '0 14px', fontSize: 12, color: 'var(--text-secondary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}>
+            <Button type="button" variant="outline" size="sm" onClick={handleClose}>
               取消
-            </button>
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

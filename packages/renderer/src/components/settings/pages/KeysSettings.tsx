@@ -1,18 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { KeybindingEntry } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Button } from '../../ui/button'
 import './KeysSettings.css'
-
-interface KeyBinding {
-  id: string
-  label: string
-  key: string
-  description: string
-}
 
 export function KeysSettings() {
   const { t } = useTranslation()
-  const [bindings, setBindings] = useState<KeyBinding[]>([])
+  const [bindings, setBindings] = useState<KeybindingEntry[]>([])
   const [editing, setEditing] = useState<string | null>(null)
 
   useEffect(() => {
@@ -60,43 +55,55 @@ export function KeysSettings() {
           <p>{t('settings.keys.description')}</p>
         </div>
 
-        <div className="keybindings-list">
-          {bindings.map((binding) => (
-            <div key={binding.id} className="keybinding-item">
-              <div className="keybinding-info">
-                <h4>{binding.label}</h4>
-                <p>{binding.description}</p>
+        {bindings.length === 0 ? (
+          <div className="empty-state">
+            <p>{t('settings.keys.comingSoon')}</p>
+          </div>
+        ) : (
+          <div className="keybindings-list">
+            {bindings.map((binding) => (
+              <div key={binding.id} className="keybinding-item">
+                <div className="keybinding-info">
+                  <h4>{binding.label}</h4>
+                  <p>{binding.description}</p>
+                </div>
+                <div className="keybinding-actions">
+                  {editing === binding.id ? (
+                    <input
+                      type="text"
+                      className="keybinding-input"
+                      placeholder={t('settings.keys.pressKey')}
+                      onKeyDown={(e) => handleKeyPress(binding.id, e)}
+                      onBlur={() => setEditing(null)}
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="keybinding-display"
+                        onClick={() => setEditing(binding.id)}
+                      >
+                        {binding.key || t('settings.keys.notSet')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="btn-reset"
+                        onClick={() => handleReset(binding.id)}
+                      >
+                        {t('common.reset')}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="keybinding-actions">
-                {editing === binding.id ? (
-                  <input
-                    type="text"
-                    className="keybinding-input"
-                    placeholder={t('settings.keys.pressKey')}
-                    onKeyDown={(e) => handleKeyPress(binding.id, e)}
-                    onBlur={() => setEditing(null)}
-                    autoFocus
-                  />
-                ) : (
-                  <>
-                    <button
-                      className="keybinding-display"
-                      onClick={() => setEditing(binding.id)}
-                    >
-                      {binding.key || t('settings.keys.notSet')}
-                    </button>
-                    <button
-                      className="btn-reset"
-                      onClick={() => handleReset(binding.id)}
-                    >
-                      {t('common.reset')}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )

@@ -1,20 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { SettingsPlugin } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Switch } from '../../ui/switch'
 import './PluginsSettings.css'
-
-interface Plugin {
-  id: string
-  name: string
-  version: string
-  enabled: boolean
-  description?: string
-  author?: string
-}
 
 export function PluginsSettings() {
   const { t } = useTranslation()
-  const [plugins, setPlugins] = useState<Plugin[]>([])
+  const [plugins, setPlugins] = useState<SettingsPlugin[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,7 +25,7 @@ export function PluginsSettings() {
     }
   }
 
-  const handleToggle = async (plugin: Plugin) => {
+  const handleToggle = async (plugin: SettingsPlugin) => {
     try {
       await window.api.invoke('settings:toggle-plugin', {
         id: plugin.id,
@@ -49,7 +42,7 @@ export function PluginsSettings() {
   }
 
   if (loading) {
-    return <div className="plugins-settings"><p>Loading...</p></div>
+    return <div className="plugins-settings settings-loading"><p>{t('settings.loading')}</p></div>
   }
 
   return (
@@ -78,14 +71,12 @@ export function PluginsSettings() {
                   {plugin.author && <p className="plugin-author">by {plugin.author}</p>}
                 </div>
                 <div className="plugin-actions">
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={plugin.enabled}
-                      onChange={() => handleToggle(plugin)}
-                    />
-                    <span className="toggle-slider"></span>
-                  </label>
+                  <Switch
+                    checked={plugin.enabled}
+                    onCheckedChange={() => handleToggle(plugin)}
+                    aria-label={plugin.name}
+                    className="plugin-switch"
+                  />
                 </div>
               </div>
             ))}
