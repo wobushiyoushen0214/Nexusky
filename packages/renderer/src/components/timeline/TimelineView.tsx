@@ -8,6 +8,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Empty, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
+import { ScrollArea } from '../ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 
 type TimelineMode = 'updatedAt' | 'createdAt'
@@ -159,60 +160,62 @@ export function TimelineView() {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '24px 30px 42px' }}>
-        {groups.length === 0 ? (
-          <Empty style={{ minHeight: 260, maxWidth: 520, margin: '0 auto' }}>
-            <EmptyTitle>{t('timeline.empty')}</EmptyTitle>
-          </Empty>
-        ) : (
-          <div style={{ maxWidth: 980, margin: '0 auto' }}>
-            {groups.map(([day, items]) => {
-              const stamp = items[0]?.[mode] || 0
-              return (
-                <section key={day} style={{ display: 'grid', gridTemplateColumns: '118px minmax(0, 1fr)', gap: 22, marginBottom: 30 }}>
-                  <div style={{ position: 'sticky', top: 0, height: 62, paddingTop: 2 }}>
-                    {stamp ? (
-                      <>
-                        <div style={{ fontSize: 30, lineHeight: 1, fontWeight: 760, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{formatDayNumber(stamp)}</div>
-                        <div style={{ marginTop: 5, fontSize: 11, color: 'var(--text-tertiary)' }}>{formatMonth(stamp)}</div>
-                      </>
-                    ) : (
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 650 }}>{t('timeline.unknownDate')}</div>
-                    )}
-                  </div>
-                  <div style={{ position: 'relative', paddingLeft: 20 }}>
-                    <div style={{ position: 'absolute', left: 5, top: 6, bottom: -20, width: 2, borderRadius: 999, background: 'linear-gradient(180deg, transparent, var(--glass-divider-line-strong) 10%, var(--glass-divider-highlight) 50%, var(--glass-divider-line) 90%, transparent)', boxShadow: '0 0 10px color-mix(in srgb, var(--glass-highlight) 28%, transparent)' }} />
-                    {items.map((row, index) => {
-                      const tags = getTextValues(row.properties.tags).slice(0, 3)
-                      return (
-                        <Button
-                          key={row.id}
-                          type="button"
-                          variant="ghost"
-                          onClick={() => openRow(row)}
-                          style={{ position: 'relative', width: '100%', height: 'auto', minHeight: 58, marginBottom: index === items.length - 1 ? 0 : 10, display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr) auto', alignItems: 'center', justifyContent: 'stretch', gap: 14, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', padding: '8px 10px' }}
-                        >
-                          <span style={{ position: 'absolute', left: -20, top: 25, width: 11, height: 11, borderRadius: 999, background: index === 0 ? 'var(--accent)' : 'var(--bg-elevated)', border: '1px solid var(--border-default)' }} />
-                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{row[mode] ? formatTime(row[mode]) : '--:--'}</span>
-                          <span style={{ minWidth: 0 }}>
-                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 680 }}>{row.title}</span>
-                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)' }}>{getFolder(row.filePath) || t('timeline.root')}</span>
-                          </span>
-                          <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', minWidth: 0 }}>
-                            {tags.map((tag) => (
-                              <Badge key={tag} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tag}</Badge>
-                            ))}
-                          </span>
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </section>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      <ScrollArea style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ padding: '24px 30px 42px' }}>
+          {groups.length === 0 ? (
+            <Empty style={{ minHeight: 260, maxWidth: 520, margin: '0 auto' }}>
+              <EmptyTitle>{t('timeline.empty')}</EmptyTitle>
+            </Empty>
+          ) : (
+            <div style={{ maxWidth: 980, margin: '0 auto' }}>
+              {groups.map(([day, items]) => {
+                const stamp = items[0]?.[mode] || 0
+                return (
+                  <section key={day} style={{ display: 'grid', gridTemplateColumns: '118px minmax(0, 1fr)', gap: 22, marginBottom: 30 }}>
+                    <div style={{ position: 'sticky', top: 0, height: 62, paddingTop: 2 }}>
+                      {stamp ? (
+                        <>
+                          <div style={{ fontSize: 30, lineHeight: 1, fontWeight: 760, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{formatDayNumber(stamp)}</div>
+                          <div style={{ marginTop: 5, fontSize: 11, color: 'var(--text-tertiary)' }}>{formatMonth(stamp)}</div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 650 }}>{t('timeline.unknownDate')}</div>
+                      )}
+                    </div>
+                    <div style={{ position: 'relative', paddingLeft: 20 }}>
+                      <div style={{ position: 'absolute', left: 5, top: 6, bottom: -20, width: 2, borderRadius: 999, background: 'linear-gradient(180deg, transparent, var(--glass-divider-line-strong) 10%, var(--glass-divider-highlight) 50%, var(--glass-divider-line) 90%, transparent)', boxShadow: '0 0 10px color-mix(in srgb, var(--glass-highlight) 28%, transparent)' }} />
+                      {items.map((row, index) => {
+                        const tags = getTextValues(row.properties.tags).slice(0, 3)
+                        return (
+                          <Button
+                            key={row.id}
+                            type="button"
+                            variant="ghost"
+                            onClick={() => openRow(row)}
+                            style={{ position: 'relative', width: '100%', height: 'auto', minHeight: 58, marginBottom: index === items.length - 1 ? 0 : 10, display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr) auto', alignItems: 'center', justifyContent: 'stretch', gap: 14, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', padding: '8px 10px' }}
+                          >
+                            <span style={{ position: 'absolute', left: -20, top: 25, width: 11, height: 11, borderRadius: 999, background: index === 0 ? 'var(--accent)' : 'var(--bg-elevated)', border: '1px solid var(--border-default)' }} />
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{row[mode] ? formatTime(row[mode]) : '--:--'}</span>
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 680 }}>{row.title}</span>
+                              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)' }}>{getFolder(row.filePath) || t('timeline.root')}</span>
+                            </span>
+                            <span style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', minWidth: 0 }}>
+                              {tags.map((tag) => (
+                                <Badge key={tag} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis' }}>{tag}</Badge>
+                              ))}
+                            </span>
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </section>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   )
 }
