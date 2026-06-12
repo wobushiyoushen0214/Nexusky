@@ -7,10 +7,10 @@
 }
 
 .long-context-debug-panel__section {
-  border: 1px solid var(--control-border, var(--border-subtle));
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-subtle)) 76%, transparent);
+  border-radius: var(--radius-lg, 8px);
   padding: 12px 13px;
-  background: var(--control-bg, var(--bg-elevated));
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 82%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 24%, transparent);
 }
 
@@ -22,34 +22,68 @@
   margin: 0 0 10px;
 }
 
-.long-context-debug-panel__tabs {
+.long-context-debug-panel__pack-tabs {
+  min-width: 0;
+}
+
+.long-context-debug-panel__tabs-row {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 10px;
 }
 
-.long-context-debug-panel__tab {
-  min-height: 26px;
-  padding: 3px 10px;
-  font-size: 11px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  cursor: pointer;
+.long-context-debug-panel__tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-subtle)) 68%, transparent);
+  border-radius: var(--radius-md, 7px);
+  background: color-mix(in srgb, var(--muted, var(--bg-hover)) 52%, transparent);
 }
 
-.long-context-debug-panel__tab.is-active {
-  background: color-mix(in srgb, var(--accent-muted) 82%, var(--control-bg));
-  color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--accent) 38%, var(--border-subtle));
+.long-context-debug-panel__tab {
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 11px;
+  border: 0;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--muted-foreground, var(--text-tertiary));
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.long-context-debug-panel__tab:hover {
+  background: color-mix(in srgb, var(--secondary, var(--bg-elevated)) 64%, transparent);
+  color: var(--foreground, var(--text-primary));
+}
+
+.long-context-debug-panel__tab[data-state="active"] {
+  background: color-mix(in srgb, var(--primary, var(--accent)) 14%, var(--card, var(--bg-elevated)));
+  color: var(--foreground, var(--text-primary));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary, var(--accent)) 24%, transparent);
+}
+
+.long-context-debug-panel__token-count {
+  margin-left: auto;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.long-context-debug-panel__tab-content {
+  min-width: 0;
 }
 
 .long-context-debug-panel__pack-item {
   padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border-faint);
-  background: color-mix(in srgb, var(--bg-base) 72%, var(--control-bg));
+  border-radius: var(--radius-md, 7px);
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-faint)) 54%, transparent);
+  background: color-mix(in srgb, var(--card, var(--bg-base)) 68%, transparent);
   margin-bottom: 6px;
 }
 
@@ -87,9 +121,9 @@
 
 .long-context-debug-panel__metric {
   padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-faint);
-  background: color-mix(in srgb, var(--bg-base) 72%, var(--control-bg));
+  border-radius: var(--radius-md, 7px);
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-faint)) 54%, transparent);
+  background: color-mix(in srgb, var(--card, var(--bg-base)) 68%, transparent);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -208,27 +242,6 @@
   display: flex;
   gap: 8px;
   margin-top: 12px;
-}
-
-.long-context-debug-panel__btn {
-  padding: 6px 14px;
-  font-size: 12px;
-  background: var(--accent);
-  color: var(--accent-contrast, var(--text-on-accent));
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.long-context-debug-panel__btn--ghost {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
-}
-
-.long-context-debug-panel__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .long-context-debug-panel__empty {

@@ -46,6 +46,7 @@ Already added:
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, and `ScrollArea` for citation lookup controls instead of custom absolute-positioned popovers and document listeners.
+- `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -127,6 +128,7 @@ These need design cleanup or affect many small controls.
 | Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu` | Drawer shape maps well to Sheet. Snooze menu maps to DropdownMenu. |
 | Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Done for pack summary/tier tabs and controls. Native list scrolling remains to preserve side/page layout sizing. |
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
+| Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Button` | Done for pack tier switching and tuning actions. Sliders remain native range inputs to preserve precise low-level tuning behavior. |
 | Related context card icon actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done. Title/aria-label retained. |
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Button`, `Select`, `Switch` | Done for side-panel controls only. Graph canvas, pan/zoom, and node interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |

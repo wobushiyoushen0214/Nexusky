@@ -6,12 +6,16 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
+import { Button } from '../ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { Sparkline } from './Sparkline'
 import './observability.css'
 
 type MetricPolarity = 'higherIsBetter' | 'lowerIsBetter'
 
 type PackTab = 'hot' | 'warm' | 'cold' | 'dropped'
+
+const PACK_TABS: PackTab[] = ['hot', 'warm', 'cold', 'dropped']
 
 export function LongContextDebugPanel() {
   const { t } = useTranslation()
@@ -99,28 +103,29 @@ export function LongContextDebugPanel() {
     <div className="long-context-debug-panel">
       <div className="long-context-debug-panel__section">
         <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.inspector')}</h3>
-        <div className="long-context-debug-panel__tabs">
-          {(['hot', 'warm', 'cold', 'dropped'] as PackTab[]).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={`long-context-debug-panel__tab${activeTab === tab ? ' is-active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {t(`longContextDebug.tier.${tab}`)} ({tab === 'dropped' ? inspection?.pack.droppedItems.length ?? 0 : (inspection?.pack[tab].length ?? 0)})
-            </button>
-          ))}
-          <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)' }}>
-            {inspection ? t('longContextDebug.tokens', { used: inspection.pack.estimatedTokens, budget: inspection.pack.tokenBudget }) : ''}
-          </span>
-        </div>
-        {tabItems.length === 0 ? (
-          <div className="long-context-debug-panel__empty">
-            {loading ? t('longContextDebug.loading') : t('longContextDebug.emptyTier')}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PackTab)} className="long-context-debug-panel__pack-tabs">
+          <div className="long-context-debug-panel__tabs-row">
+            <TabsList className="long-context-debug-panel__tabs">
+              {PACK_TABS.map((tab) => (
+                <TabsTrigger key={tab} value={tab} className="long-context-debug-panel__tab">
+                  {t(`longContextDebug.tier.${tab}`)} ({tab === 'dropped' ? inspection?.pack.droppedItems.length ?? 0 : (inspection?.pack[tab].length ?? 0)})
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <span className="long-context-debug-panel__token-count">
+              {inspection ? t('longContextDebug.tokens', { used: inspection.pack.estimatedTokens, budget: inspection.pack.tokenBudget }) : ''}
+            </span>
           </div>
-        ) : (
-          tabItems.map((item, idx) => <PackItemCard key={`${item.relationId || item.title}-${idx}`} item={item} />)
-        )}
+          <TabsContent value={activeTab} className="long-context-debug-panel__tab-content">
+            {tabItems.length === 0 ? (
+              <div className="long-context-debug-panel__empty">
+                {loading ? t('longContextDebug.loading') : t('longContextDebug.emptyTier')}
+              </div>
+            ) : (
+              tabItems.map((item, idx) => <PackItemCard key={`${item.relationId || item.title}-${idx}`} item={item} />)
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       <div className="long-context-debug-panel__section">
@@ -180,15 +185,15 @@ export function LongContextDebugPanel() {
             <SliderRow label={t('longContextDebug.pref.coldLimit')} value={draftPrefs.coldLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, coldLimit: v })} />
             <SliderRow label={t('longContextDebug.pref.archiveAfterDays')} value={draftPrefs.archiveAfterDays} min={60} max={365} step={10} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, archiveAfterDays: v })} />
             <div className="long-context-debug-panel__actions">
-              <button type="button" className="long-context-debug-panel__btn" onClick={() => void handleSavePrefs()} disabled={saving || !draftPrefs}>
+              <Button type="button" size="xs" onClick={() => void handleSavePrefs()} disabled={saving || !draftPrefs}>
                 {saving ? t('longContextDebug.saving') : t('longContextDebug.save')}
-              </button>
-              <button type="button" className="long-context-debug-panel__btn long-context-debug-panel__btn--ghost" onClick={handleResetPrefs} disabled={saving}>
+              </Button>
+              <Button type="button" variant="outline" size="xs" onClick={handleResetPrefs} disabled={saving}>
                 {t('longContextDebug.resetDefaults')}
-              </button>
-              <button type="button" className="long-context-debug-panel__btn long-context-debug-panel__btn--ghost" onClick={() => void refresh()} disabled={loading}>
+              </Button>
+              <Button type="button" variant="outline" size="xs" onClick={() => void refresh()} disabled={loading}>
                 {loading ? t('longContextDebug.loading') : t('longContextDebug.refresh')}
-              </button>
+              </Button>
             </div>
           </>
         )}
