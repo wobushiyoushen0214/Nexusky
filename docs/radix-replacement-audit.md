@@ -61,7 +61,7 @@ Already added:
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
 - `BasesView` toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline edit targets now use shared `Input`, `Button`, `Select`, and `Checkbox`.
-- `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions now use shared `Button`/`ToggleGroup` while preserving the compact glass chat layout and existing hover colors.
+- `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions now use shared `Button`/`ToggleGroup`/`Input` where appropriate while preserving the compact glass chat layout and existing hover colors.
 - `FindReplace` editor popover fields now use shared `Input`, and actions use shared `Button`, while preserving the compact floating editor tool layout and existing find/replace logic.
 - `PropertiesPanel` frontmatter fields now use shared `Input`/`Textarea`, and save/reset actions use shared `Button`, while preserving the existing frontmatter parsing and save flow.
 - `BacklinksPanel` now uses shared `Button` for the collapse header, target open/create actions, and unlinked-mention conversion actions while preserving its compact link overview layout and row navigation behavior.
@@ -186,7 +186,7 @@ These are lower impact or more visual than behavioral.
 | Demo flow | `Dialog`, `Button`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Spinner/progress remains custom. |
 | Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |
-| Chat panel actions | `Button`, `ToggleGroup` | Done for outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions. ChatPanel no longer uses raw `<button>` elements. |
+| Chat panel actions and batch inputs | `Button`, `ToggleGroup`, `Input` | Done for outbound preview actions, chat header actions, session list actions, batch-plan controls, batch-plan directory/topic/count inputs, folder picker actions, folder-picker new-directory input, edit preview actions, mention result rows, attachment removal controls, and composer icon actions. ChatPanel no longer uses raw `<button>` elements. Composer textarea and hidden file input remain native by design. |
 | Find/replace controls | `Input`, `Button` | Done for find/replace fields, case sensitivity, previous/next, close, replace, and replace-all actions. Editor text selection and search logic remain custom. |
 | Properties panel controls | `Input`, `Textarea`, `Button` | Done for title, aliases, tags, cssclasses, save, and reset controls. Frontmatter parsing and save-to-editor behavior remain custom. |
 | Backlinks panel actions | `Button` | Done for collapse, target open/create, batch convert, item jump, and single mention conversion actions. The row navigation/list layout remains custom. |
@@ -456,6 +456,16 @@ Reason:
 
 - Tiptap selection and cursor scroll logic depend on DOM container behavior.
 - Editor has explicit scroll-to-cursor and context menu handling.
+
+### Chat Composer and Upload Inputs
+
+Do not replace the ChatPanel composer textarea or hidden file input yet.
+
+Reason:
+
+- The composer textarea owns auto-height, paste handling, Enter-to-send, Escape-to-dismiss, and mention-list keyboard behavior.
+- The hidden file input is a native upload trigger with file type filtering and multiple attachment handling.
+- Regular ChatPanel batch-plan and folder-picker fields are safe to migrate and now use the shared `Input` wrapper.
 
 ### Graph Canvas / GraphView
 

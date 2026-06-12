@@ -7,6 +7,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
@@ -2170,14 +2171,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               {pendingBatchPlan.batches.map((batch, index) => (
                 <div key={`${index}:${batch.dir}:${batch.topic}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 62px 24px', gap: 6, alignItems: 'center', padding: '7px 9px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 7 }}>
                   <div style={{ minWidth: 0, display: 'grid', gap: 5 }}>
-                    <input
+                    <Input
                       value={batch.dir}
                       onChange={(e) => updatePendingBatchPlanBatch(index, { dir: e.currentTarget.value })}
                       placeholder="目录"
                       title="目录"
                       style={{ width: '100%', height: 24, padding: '0 7px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', minWidth: 0 }}
                     />
-                    <input
+                    <Input
                       value={batch.topic}
                       onChange={(e) => updatePendingBatchPlanBatch(index, { topic: e.currentTarget.value })}
                       placeholder="主题"
@@ -2185,7 +2186,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                       style={{ width: '100%', height: 24, padding: '0 7px', fontSize: 11, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-secondary)', outline: 'none', minWidth: 0 }}
                     />
                   </div>
-                  <input
+                  <Input
                     type="number"
                     min={1}
                     max={MAX_EDITABLE_BATCH_NOTE_COUNT}
@@ -2233,7 +2234,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               ))}
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input
+              <Input
                 autoFocus
                 placeholder="输入新目录名..."
                 onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) handleSelectFolder((e.target as HTMLInputElement).value.trim()) }}
