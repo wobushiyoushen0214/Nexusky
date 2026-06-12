@@ -43,7 +43,7 @@ Already added:
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` goal/description and plan edit fields now use shared `Textarea`/`Input`, action controls use shared `Button`, dry-run option uses shared `Checkbox`, plan/execute step labels use shared `Badge`, and empty states use shared `Empty`; the existing agent workflow layout remains custom.
 - `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
-- `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
+- `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, shared `Badge` for the history count, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, and `Empty`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, status/kicker chips use shared `Badge`, and the no-issue driver state uses shared `Empty`, with styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Alert` for the fallback error callout and shared `Button` for retry, with the fallback layout kept in token-based local CSS.
@@ -190,7 +190,7 @@ These are lower impact or more visual than behavioral.
 | Tool result panel | `Sheet`, `Button`, `ScrollArea` | Done with `modal={false}` and no overlay. It keeps the right-bottom non-modal result drawer behavior and prevents outside interactions from dismissing it. |
 | Vault health actions | `Button`, `Badge`, `Empty`, `Card`, `Progress` | Button migration done for skip and next-step actions. Badge migration done for scan steps, hero signals, and next-step kickers. Empty migration done for no-issue driver state. Cards/progress remain optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
-| History panel | `Button`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/empty styles into local token-based CSS. |
+| History panel | `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/count/empty styles into local token-based CSS. |
 | Tags panel | `Input`, `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Current tag input, tags, tag cloud, empty state, and filtered note list now use shared components with local token-based CSS. |
 | Error boundary | `Alert`, `Button` | Done. Fallback error callout uses shared Alert, retry action uses shared Button, and fallback layout remains token-based local CSS. |
 | Citation source row | `Button`, `Popover`, `ScrollArea`, `Spinner` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS and shared loading feedback. |

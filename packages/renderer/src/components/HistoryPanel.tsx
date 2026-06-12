@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { ScrollArea } from './ui/scroll-area'
@@ -73,9 +74,9 @@ export function HistoryPanel() {
         </div>
       ) : (
         <>
-          <div className="history-panel__count">
+          <Badge variant="secondary" className="history-panel__count">
             {snapshots.length} 个历史版本
-          </div>
+          </Badge>
           <ScrollArea className="history-panel__list">
             {snapshots.length === 0 && (
               <Empty className="history-panel__empty">

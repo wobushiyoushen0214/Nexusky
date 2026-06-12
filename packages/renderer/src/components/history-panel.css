@@ -22,14 +22,19 @@
   padding: 0 12px 8px;
 }
 
-.history-panel__eyebrow,
-.history-panel__count {
+.history-panel__eyebrow {
   color: var(--muted-foreground, var(--text-tertiary));
   font-size: 11px;
 }
 
-.history-panel__count {
-  padding: 0 12px 8px;
+.history-panel__count.ui-badge {
+  align-self: flex-start;
+  height: 18px;
+  margin: 0 12px 8px;
+  padding: 0 6px;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 .history-panel__action {
