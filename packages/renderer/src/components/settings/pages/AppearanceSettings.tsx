@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { THEME_IDS, useUIStore } from '../../../stores/ui-store'
 import type { Theme } from '../../../stores/ui-store'
+import { Input } from '../../ui/input'
 import { RadioGroup, RadioGroupItem } from '../../ui/radio-group'
 import './AppearanceSettings.css'
 
@@ -79,7 +80,7 @@ export function AppearanceSettings() {
               onChange={(e) => handleAccentChange(e.target.value)}
               className="accent-picker"
             />
-            <input
+            <Input
               type="text"
               value={customAccent}
               onChange={(e) => handleAccentChange(e.target.value)}
