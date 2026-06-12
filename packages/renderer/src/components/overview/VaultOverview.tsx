@@ -6,6 +6,7 @@ import { useOverviewData } from './hooks/useOverviewData'
 import { OverviewCard } from './OverviewCard'
 import { VitalityCard } from './VitalityCard'
 import { DonutChart } from '../charts/DonutChart'
+import { Button } from '../ui/button'
 import { DiaryHeatmapChart, TokenUsageAreaChart, type DiaryHeatmapPoint, type TokenUsagePoint } from './OverviewCharts'
 import './vault-overview.css'
 
@@ -218,14 +219,16 @@ export function VaultOverview() {
             <h1>{t('overviewPage.title')}</h1>
           </div>
           <div className="vault-overview__header-meta">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => void reload()}
               disabled={loading}
               aria-label={loading ? t('overviewPage.refreshing') : t('overviewPage.refresh')}
             >
               {loading ? t('overviewPage.refreshing') : t('overviewPage.refresh')}
-            </button>
+            </Button>
           </div>
         </header>
 

@@ -57,6 +57,7 @@ Already added:
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints, with hover styling moved into local token-based CSS.
 - `SearchPanel` result rows now use shared `Button` while preserving the existing async search result selection style.
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
+- `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -155,7 +156,7 @@ These are lower impact or more visual than behavioral.
 | --- | --- | --- |
 | Tool result panel | `Button`, `ScrollArea`; optional `Dialog` or `Sheet` only if behavior changes | Button and internal scroll migration done. It remains a non-modal result drawer, so do not force Dialog semantics unless product behavior changes. |
 | Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Button migration done for skip and next-step actions. Cards/badges/progress remain optional visual polish. |
-| Overview cards | `Card`, `Badge` | Be careful: user has been tuning glass/hover details manually. |
+| Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `ScrollArea` | Done. Kept the lightweight side-panel behavior and moved inline styles into local token-based CSS. |
 | Tags panel | `Button`, `Badge`, `ScrollArea` | Done. Current tags, tag cloud, and filtered note list now use shared components with local token-based CSS. |
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
