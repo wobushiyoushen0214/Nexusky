@@ -39,6 +39,7 @@ Already added:
 - `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`; preview close/footer actions and selection action buttons now use shared `Button` while preserving streaming cancellation and editor replace/append/copy behavior.
 - `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card title/actions use shared `Button`; relation labels use shared `Badge`.
 - `GraphPanel` side controls now use shared `Button`, `Select`, and `Switch` wrappers for panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
+- `GraphView` zoom toolbar actions now use shared `Button` while preserving the graph canvas node buttons, pan/zoom math, drag behavior, and raster renderer as custom interaction layers.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` action controls now use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow/editor layout remains custom.
 - `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
@@ -157,6 +158,7 @@ These need design cleanup or affect many small controls.
 | Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Button` | Done for pack tier switching and tuning actions. Sliders remain native range inputs to preserve precise low-level tuning behavior. |
 | Related context card actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done for title/open and icon feedback actions. Title/aria-label retained. |
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Button`, `Select`, `Switch` | Done for side-panel controls only. Graph canvas, pan/zoom, and node interaction layers remain custom. |
+| Graph canvas toolbar | `components/graph/GraphView.tsx` | `Button` | Done for zoom out, reset, zoom in, and fit-view toolbar actions. Graph node buttons and canvas interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Button`, `Checkbox` | Done for action buttons and dry-run checkbox. Plan editing and execution views remain custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Button`, `Select`, `Checkbox` | Done for toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |

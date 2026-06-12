@@ -7,6 +7,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
+import { Button } from '../ui/button'
 import { GraphMaintenanceNudge } from './GraphMaintenanceNudge'
 import { GraphPanel } from './GraphPanel'
 import { buildGraphGroupColorMap } from './graph-colors'
@@ -1569,10 +1570,10 @@ export function GraphView() {
         )}
 
         <div className="graph-canvas-toolbar">
-          <button type="button" title={t('canvas.zoomOut')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current / 1.16)}>-</button>
-          <button type="button" className="graph-canvas-zoom-readout" title={t('canvas.zoomReset')} onClick={() => zoomAtViewportPoint(1)}>{Math.round(zoomValue * 100)}%</button>
-          <button type="button" title={t('canvas.zoomIn')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current * 1.16)}>+</button>
-          <button type="button" title={t('canvas.fitView')} onClick={fitToView}>Fit</button>
+          <Button type="button" variant="ghost" size="icon" title={t('canvas.zoomOut')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current / 1.16)} style={{ width: 28, height: 28, padding: 0 }}>-</Button>
+          <Button type="button" variant="ghost" className="graph-canvas-zoom-readout" title={t('canvas.zoomReset')} onClick={() => zoomAtViewportPoint(1)} style={{ minWidth: 46, height: 28, padding: 0 }}>{Math.round(zoomValue * 100)}%</Button>
+          <Button type="button" variant="ghost" size="icon" title={t('canvas.zoomIn')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current * 1.16)} style={{ width: 28, height: 28, padding: 0 }}>+</Button>
+          <Button type="button" variant="ghost" title={t('canvas.fitView')} onClick={fitToView} style={{ minWidth: 28, height: 28, padding: 0 }}>Fit</Button>
         </div>
       </div>
 
