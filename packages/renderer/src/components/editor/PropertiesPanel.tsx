@@ -4,6 +4,8 @@ import { useEditorStore } from '../../stores/editor-store'
 import { parseNoteProperties, updateNoteProperties, type NoteProperties } from '../../utils/frontmatter'
 import { toast } from '../../stores/toast-store'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Textarea } from '../ui/textarea'
 
 function listToText(values: string[]): string {
   return values.join('\n')
@@ -78,19 +80,19 @@ export function PropertiesPanel() {
       </div>
 
       <PropertyField label={t('propertiesPanel.title')} hint={t('propertiesPanel.titleHint')}>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('propertiesPanel.titlePlaceholder')} style={inputStyle} />
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('propertiesPanel.titlePlaceholder')} style={propertyInputStyle} />
       </PropertyField>
 
       <PropertyField label={t('propertiesPanel.aliases')} hint={t('propertiesPanel.aliasesHint')}>
-        <textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder={t('propertiesPanel.aliasesPlaceholder')} rows={4} style={textareaStyle} />
+        <Textarea value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder={t('propertiesPanel.aliasesPlaceholder')} rows={4} style={propertyTextareaStyle} />
       </PropertyField>
 
       <PropertyField label={t('propertiesPanel.tags')} hint={t('propertiesPanel.tagsHint')}>
-        <textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t('propertiesPanel.tagsPlaceholder')} rows={4} style={textareaStyle} />
+        <Textarea value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t('propertiesPanel.tagsPlaceholder')} rows={4} style={propertyTextareaStyle} />
       </PropertyField>
 
       <PropertyField label={t('propertiesPanel.cssclasses')} hint={t('propertiesPanel.cssclassesHint')}>
-        <textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder={t('propertiesPanel.cssclassesPlaceholder')} rows={3} style={textareaStyle} />
+        <Textarea value={cssclasses} onChange={(e) => setCssclasses(e.target.value)} placeholder={t('propertiesPanel.cssclassesPlaceholder')} rows={3} style={propertyTextareaStyle} />
       </PropertyField>
 
       <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
@@ -147,24 +149,16 @@ function PropertyField({ label, hint, children }: { label: string; hint: string;
   )
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
+const propertyInputStyle: React.CSSProperties = {
   height: 32,
-  padding: '0 10px',
   borderRadius: 6,
-  border: '1px solid var(--border-default)',
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  fontSize: 12,
-  outline: 'none'
+  fontSize: 12
 }
 
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle,
-  height: 'auto',
+const propertyTextareaStyle: React.CSSProperties = {
   minHeight: 72,
-  padding: '8px 10px',
-  resize: 'vertical',
+  borderRadius: 6,
+  fontSize: 12,
   lineHeight: 1.45,
   fontFamily: 'inherit'
 }
