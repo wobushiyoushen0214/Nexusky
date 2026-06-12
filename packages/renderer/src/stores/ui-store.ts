@@ -28,7 +28,7 @@ const WORKSPACE_KEYS = {
 }
 const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const WORKSPACE_DEFAULT_VERSION_KEY = 'nexusky-workspace-default-version'
-const WORKSPACE_DEFAULT_VERSION = 'overview-first-v2'
+const WORKSPACE_DEFAULT_VERSION = 'overview-first-v3'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
@@ -387,16 +387,14 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   openFilesSidebar: () => {
     const rightPanel = getAvailableRightPanel('editor', get().rightPanel)
-    const layout = saveWorkspaceLayout(get().workspaceScope, {
+    // The file sidebar is a working surface, not the persisted startup view.
+    // Keep the current session active state correct without replacing the
+    // default overview-first workspace layout.
+    set({
       mainView: 'editor',
       rightPanel,
-      sidebarCollapsed: false
-    })
-    set({
-      mainView: layout.mainView,
-      rightPanel: layout.rightPanel,
-      sidebarCollapsed: layout.sidebarCollapsed,
-      ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {})
+      sidebarCollapsed: false,
+      ...(rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(rightPanel) } : {})
     })
   },
   toggleSidebar: () => {
