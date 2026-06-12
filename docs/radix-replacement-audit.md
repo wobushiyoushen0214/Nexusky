@@ -47,6 +47,7 @@ Already added:
 - `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, and `ScrollArea` for citation lookup controls instead of custom absolute-positioned popovers and document listeners.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
+- `ProactivePreferences` now uses shared `Checkbox` and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -135,7 +136,7 @@ These need design cleanup or affect many small controls.
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Button`, `Checkbox` | Done for action buttons and dry-run checkbox. Plan editing and execution views remain custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Button`, `ToggleGroup`, `DropdownMenu`, `Select` | Wait until existing `bases` type errors are resolved. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Button` | Do after Settings shell/Tabs so controls inherit a stable structure. |
-| Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Switch`, `Select`, `Button` | Form semantics improve, visual change should be restrained. |
+| Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Checkbox`, `Button` | Done for enable/per-kind options and debug/reset actions. Native time inputs and range sliders remain custom to preserve current save-on-change behavior. |
 
 ### P3: Optional / Polish
 

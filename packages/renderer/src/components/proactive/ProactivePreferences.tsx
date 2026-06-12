@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useVaultStore } from '../../stores/vault-store'
 import type { ProactiveUserPrefs, ProactiveSuggestionKind, ProactiveTriggerThresholds } from '@shared/types/ipc'
+import { useVaultStore } from '../../stores/vault-store'
+import { Button } from '../ui/button'
+import { Checkbox } from '../ui/checkbox'
+import './proactive.css'
 
 const KIND_ORDER: ProactiveSuggestionKind[] = [
   'relation',
@@ -16,48 +19,6 @@ const DEFAULT_TRIGGER_THRESHOLDS: ProactiveTriggerThresholds = {
   staleIslandDays: 30,
   themeKeywordOverlapMin: 3,
   overdueTaskMin: 3
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  color: 'var(--text-secondary)',
-  marginBottom: 4
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '6px 8px',
-  fontSize: 13,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.08))',
-  background: 'transparent',
-  color: 'var(--text-primary)',
-  borderRadius: 4
-}
-
-const rowStyle: React.CSSProperties = {
-  marginBottom: 12
-}
-
-const sectionStyle: React.CSSProperties = {
-  marginBottom: 18
-}
-
-const buttonStyle: React.CSSProperties = {
-  padding: '6px 14px',
-  fontSize: 12,
-  border: '1px solid var(--border-soft, rgba(255,255,255,0.12))',
-  background: 'transparent',
-  color: 'var(--text-secondary)',
-  borderRadius: 4,
-  cursor: 'pointer'
-}
-
-const debugResultStyle: React.CSSProperties = {
-  marginTop: 8,
-  fontSize: 11,
-  color: 'var(--text-tertiary, rgba(255,255,255,0.5))',
-  fontFamily: 'monospace'
 }
 
 export function ProactivePreferencesTab() {
@@ -86,108 +47,124 @@ export function ProactivePreferencesTab() {
   }
 
   if (!prefs) {
-    return <div style={{ padding: 12, fontSize: 12, color: 'var(--text-tertiary)' }}>...</div>
+    return <div className="proactive-preferences__empty">...</div>
   }
 
   return (
-    <div style={{ padding: 4 }}>
-      <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+    <div className="proactive-preferences">
+      <h3 className="proactive-preferences__title">
         {t('settings.proactive.title')}
       </h3>
-      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 18 }}>
+      <p className="proactive-preferences__description">
         {t('settings.proactive.description')}
       </p>
 
-      <div style={sectionStyle}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input
-            type="checkbox"
+      <div className="proactive-preferences__section">
+        <div className="proactive-preferences__check-row">
+          <Checkbox
+            id="proactive-enabled"
             checked={prefs.enabled}
-            onChange={(e) => save({ ...prefs, enabled: e.target.checked })}
+            onCheckedChange={(checked) => void save({ ...prefs, enabled: checked === true })}
           />
-          <span style={{ fontSize: 13 }}>{t('settings.proactive.enabled')}</span>
-        </label>
+          <label htmlFor="proactive-enabled" className="proactive-preferences__check-label">
+            {t('settings.proactive.enabled')}
+          </label>
+        </div>
       </div>
 
-      <div style={sectionStyle}>
-        <div style={{ ...labelStyle, marginBottom: 8 }}>{t('settings.proactive.perKind')}</div>
+      <div className="proactive-preferences__section">
+        <div className="proactive-preferences__section-title">{t('settings.proactive.perKind')}</div>
         {KIND_ORDER.map((kind) => (
-          <label key={kind} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <input
-              type="checkbox"
+          <div key={kind} className="proactive-preferences__check-row proactive-preferences__check-row--compact">
+            <Checkbox
+              id={`proactive-kind-${kind}`}
               checked={prefs.perKindEnabled[kind]}
-              onChange={(e) => save({
+              onCheckedChange={(checked) => void save({
                 ...prefs,
-                perKindEnabled: { ...prefs.perKindEnabled, [kind]: e.target.checked }
+                perKindEnabled: { ...prefs.perKindEnabled, [kind]: checked === true }
               })}
             />
-            <span style={{ fontSize: 12 }}>{t(`settings.proactive.kind.${kind}`)}</span>
-          </label>
+            <label htmlFor={`proactive-kind-${kind}`} className="proactive-preferences__check-label proactive-preferences__check-label--compact">
+              {t(`settings.proactive.kind.${kind}`)}
+            </label>
+          </div>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>{t('settings.proactive.silentHoursStart')}</label>
+      <div className="proactive-preferences__time-grid">
+        <div className="proactive-preferences__field">
+          <label className="proactive-preferences__label" htmlFor="proactive-silent-start">{t('settings.proactive.silentHoursStart')}</label>
           <input
+            id="proactive-silent-start"
+            className="proactive-preferences__input"
             type="text"
             value={prefs.silentHoursStart ?? ''}
             placeholder="22:00"
             onChange={(e) => save({ ...prefs, silentHoursStart: e.target.value || undefined })}
-            style={inputStyle}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>{t('settings.proactive.silentHoursEnd')}</label>
+        <div className="proactive-preferences__field">
+          <label className="proactive-preferences__label" htmlFor="proactive-silent-end">{t('settings.proactive.silentHoursEnd')}</label>
           <input
+            id="proactive-silent-end"
+            className="proactive-preferences__input"
             type="text"
             value={prefs.silentHoursEnd ?? ''}
             placeholder="08:00"
             onChange={(e) => save({ ...prefs, silentHoursEnd: e.target.value || undefined })}
-            style={inputStyle}
           />
         </div>
       </div>
 
-      <div style={rowStyle}>
-        <label style={labelStyle}>{t('settings.proactive.maxPerDay')}: {prefs.maxPerDay}</label>
+      <div className="proactive-preferences__range-row">
+        <label className="proactive-preferences__label" htmlFor="proactive-max-per-day">
+          {t('settings.proactive.maxPerDay')}: <span className="proactive-preferences__range-value">{prefs.maxPerDay}</span>
+        </label>
         <input
+          id="proactive-max-per-day"
+          className="proactive-preferences__range"
           type="range"
           min={1}
           max={20}
           value={prefs.maxPerDay}
           onChange={(e) => save({ ...prefs, maxPerDay: Number(e.target.value) })}
-          style={{ width: '100%' }}
         />
       </div>
 
-      <div style={rowStyle}>
-        <label style={labelStyle}>{t('settings.proactive.defaultSnoozeDays')}: {prefs.defaultSnoozeDays}</label>
+      <div className="proactive-preferences__range-row">
+        <label className="proactive-preferences__label" htmlFor="proactive-default-snooze">
+          {t('settings.proactive.defaultSnoozeDays')}: <span className="proactive-preferences__range-value">{prefs.defaultSnoozeDays}</span>
+        </label>
         <input
+          id="proactive-default-snooze"
+          className="proactive-preferences__range"
           type="range"
           min={1}
           max={30}
           value={prefs.defaultSnoozeDays}
           onChange={(e) => save({ ...prefs, defaultSnoozeDays: Number(e.target.value) })}
-          style={{ width: '100%' }}
         />
       </div>
 
-      <div style={rowStyle}>
-        <label style={labelStyle}>{t('settings.proactive.importanceFloor')}: {prefs.importanceFloor}</label>
+      <div className="proactive-preferences__range-row">
+        <label className="proactive-preferences__label" htmlFor="proactive-importance-floor">
+          {t('settings.proactive.importanceFloor')}: <span className="proactive-preferences__range-value">{prefs.importanceFloor}</span>
+        </label>
         <input
+          id="proactive-importance-floor"
+          className="proactive-preferences__range"
           type="range"
           min={0}
           max={100}
           value={prefs.importanceFloor}
           onChange={(e) => save({ ...prefs, importanceFloor: Number(e.target.value) })}
-          style={{ width: '100%' }}
         />
       </div>
 
-      <div style={{ borderTop: '1px solid var(--border-soft, rgba(255,255,255,0.06))', paddingTop: 12, marginTop: 8 }}>
-        <div style={{ ...labelStyle, marginBottom: 8, fontWeight: 600 }}>{t('settings.proactive.triggerThresholds')}</div>
+      <div className="proactive-preferences__thresholds">
+        <div className="proactive-preferences__section-title">{t('settings.proactive.triggerThresholds')}</div>
         {renderThresholdSlider(
+          'proactive-threshold-high-score',
           t('settings.proactive.highScoreThreshold'),
           prefs.triggerThresholds.highScoreThreshold,
           0,
@@ -197,6 +174,7 @@ export function ProactivePreferencesTab() {
           (v) => v.toFixed(2)
         )}
         {renderThresholdSlider(
+          'proactive-threshold-recent-hours',
           t('settings.proactive.highScoreRecentHours'),
           prefs.triggerThresholds.highScoreRecentHours,
           1,
@@ -206,6 +184,7 @@ export function ProactivePreferencesTab() {
           (v) => `${v} h`
         )}
         {renderThresholdSlider(
+          'proactive-threshold-stale-island',
           t('settings.proactive.staleIslandDays'),
           prefs.triggerThresholds.staleIslandDays,
           7,
@@ -215,6 +194,7 @@ export function ProactivePreferencesTab() {
           (v) => `${v} d`
         )}
         {renderThresholdSlider(
+          'proactive-threshold-theme-overlap',
           t('settings.proactive.themeKeywordOverlapMin'),
           prefs.triggerThresholds.themeKeywordOverlapMin,
           1,
@@ -223,6 +203,7 @@ export function ProactivePreferencesTab() {
           (v) => save({ ...prefs, triggerThresholds: { ...prefs.triggerThresholds, themeKeywordOverlapMin: v } })
         )}
         {renderThresholdSlider(
+          'proactive-threshold-overdue-task',
           t('settings.proactive.overdueTaskMin'),
           prefs.triggerThresholds.overdueTaskMin,
           1,
@@ -232,10 +213,11 @@ export function ProactivePreferencesTab() {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-        <button
+      <div className="proactive-preferences__actions">
+        <Button
           type="button"
-          style={buttonStyle}
+          variant="outline"
+          size="xs"
           disabled={!vaultPath || saving}
           onClick={async () => {
             if (!vaultPath) return
@@ -250,10 +232,11 @@ export function ProactivePreferencesTab() {
           }}
         >
           {t('settings.proactive.debugRun')}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          style={buttonStyle}
+          variant="outline"
+          size="xs"
           onClick={async () => {
             const defaults = await window.api.invoke('proactive:set-prefs', { prefs: {
               enabled: true,
@@ -269,14 +252,15 @@ export function ProactivePreferencesTab() {
           }}
         >
           {t('settings.proactive.resetPrefs')}
-        </button>
+        </Button>
       </div>
-      {debugResult && <div style={debugResultStyle}>{debugResult}</div>}
+      {debugResult && <div className="proactive-preferences__debug-result">{debugResult}</div>}
     </div>
   )
 }
 
 function renderThresholdSlider(
+  id: string,
   label: string,
   value: number,
   min: number,
@@ -286,18 +270,19 @@ function renderThresholdSlider(
   format: (v: number) => string = (v) => String(v)
 ) {
   return (
-    <div style={{ marginBottom: 10 }} key={label}>
-      <label style={labelStyle}>
-        {label}: <span style={{ color: 'var(--text-primary)' }}>{format(value)}</span>
+    <div className="proactive-preferences__range-row" key={label}>
+      <label className="proactive-preferences__label" htmlFor={id}>
+        {label}: <span className="proactive-preferences__range-value">{format(value)}</span>
       </label>
       <input
+        id={id}
+        className="proactive-preferences__range"
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: '100%' }}
       />
     </div>
   )
