@@ -72,8 +72,13 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring, var(--accent)) 14%, transparent);
 }
 
+.agent-run-panel__input {
+  height: 30px;
+}
+
 .agent-run-panel__textarea {
   min-height: 60px;
+  line-height: 1.45;
 }
 
 .agent-run-panel__actions {

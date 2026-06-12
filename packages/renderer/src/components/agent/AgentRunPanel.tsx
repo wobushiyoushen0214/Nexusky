@@ -13,6 +13,8 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
+import { Input } from '../ui/input'
+import { Textarea } from '../ui/textarea'
 import './agent.css'
 
 interface RunDetail {
@@ -278,7 +280,7 @@ export function AgentRunPanel() {
           <div>
             <div className="agent-run-panel__field">
               <label className="agent-run-panel__label">{t('agent.fields.goal')}</label>
-              <textarea
+              <Textarea
                 className="agent-run-panel__textarea"
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
@@ -287,7 +289,7 @@ export function AgentRunPanel() {
             </div>
             <div className="agent-run-panel__field">
               <label className="agent-run-panel__label">{t('agent.fields.description')}</label>
-              <textarea
+              <Textarea
                 className="agent-run-panel__textarea"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -415,13 +417,13 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
                 <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onDelete(step.index)}>{t('agent.plan.delete')}</Button>
               </div>
             </div>
-            <input
+            <Input
               className="agent-run-panel__input"
               value={step.description}
               onChange={(e) => onUpdate(step.index, { description: e.target.value })}
             />
             <div style={{ marginTop: 4 }}>
-              <input
+              <Input
                 className="agent-run-panel__input"
                 value={step.expectedEffect}
                 placeholder={t('agent.plan.expectedPlaceholder')}
