@@ -65,7 +65,7 @@ Already added:
 - `MessageBubble` now uses shared `Button` and `Tooltip` for assistant copy, continue, and regenerate actions, and shared `Spinner` for in-progress plan rows, with hover/loading styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints and shared `Spinner` for streaming/tool status, with hover/loading styling moved into local token-based CSS.
 - `SearchPanel` search input now uses shared `Input`, result rows use shared `Button`, local search-index progress uses shared `Progress`, and result-area loading/empty states use shared `Spinner`/`Empty`, while preserving the existing transparent search slot, keyboard navigation, async search, and result selection behavior.
-- `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
+- `Toast` notification close controls now use shared `Button` and `Tooltip` while keeping the lightweight local toast store and compact glass popover styling.
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
 - `BasesView` toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, inline edit targets, property pills, and main empty/loading state now use shared `Input`, `Button`, `Select`, `Checkbox`, `Badge`, `Empty`, and `Spinner`.
 - `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attached note/document chips, attachment removal controls, and composer icon actions now use shared `Button`/`ToggleGroup`/`Input`/`Badge` where appropriate while preserving the compact glass chat layout and existing hover colors.
@@ -214,7 +214,7 @@ These are lower impact or more visual than behavioral.
 | File tree rows | `Input`, `Button` | Done for `FileTree` and `VirtualFileTree` rename/create inputs plus row and more-action controls. Drag/drop, context menu coordinates, expand/collapse, active row state, multi-select, and virtual scroll math remain custom. |
 | ActivityBar controls | `Button` | Done as a thin wrapper only. Existing rail layout, liquid indicator, dimensions, hover colors, and active-state logic remain custom and visually unchanged. |
 | App shell panel actions | `Button` | Done for right-panel close action. `TitleBar` native window controls remain custom by design. |
-| Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button`. Bigger architecture move remains optional because the current local toast store is lightweight. |
+| Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button` and `Tooltip`. Bigger architecture move remains optional because the current local toast store is lightweight. |
 
 ## Components to Add Next
 

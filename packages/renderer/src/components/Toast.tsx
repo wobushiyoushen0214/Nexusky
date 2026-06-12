@@ -1,5 +1,6 @@
 import { useToastStore, type ToastType } from '../stores/toast-store'
 import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 const typeStyles: Record<ToastType, { bg: string; border: string; color: string }> = {
   success: { bg: 'color-mix(in srgb, oklch(68% 0.15 150) 12%, var(--bg-glass-dense, var(--panel-bg)))', border: 'oklch(68% 0.15 150 / 0.32)', color: 'oklch(55% 0.14 150)' },
@@ -51,22 +52,27 @@ export function ToastViewport({
             }}
           >
             <span style={{ flex: 1 }}>{t.message}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemove(t.id)}
-              aria-label="Close notification"
-              style={{
-                width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 4, border: 'none', background: 'transparent',
-                color: style.color, cursor: 'pointer', opacity: 0.6, flexShrink: 0,
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onRemove(t.id)}
+                  aria-label="Close notification"
+                  style={{
+                    width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: 4, border: 'none', background: 'transparent',
+                    color: style.color, cursor: 'pointer', opacity: 0.6, flexShrink: 0,
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Close notification</TooltipContent>
+            </Tooltip>
           </div>
         )
       })}
