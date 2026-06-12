@@ -12,6 +12,7 @@ import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Slider } from '../ui/slider'
 import { Spinner } from '../ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { Sparkline } from './Sparkline'
 import './observability.css'
 
@@ -273,13 +274,17 @@ function MetricCard({
         {trend && (() => {
           const trendTitle = `${trend.deltaText} · ${t('longContextDebug.trend.vsPrior', { window: trend.window })}`
           return (
-            <span
-              className={`long-context-debug-panel__metric-trend ${trend.className}`}
-              title={trendTitle}
-              aria-label={trendTitle}
-            >
-              {trend.text}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={`long-context-debug-panel__metric-trend ${trend.className}`}
+                  aria-label={trendTitle}
+                >
+                  {trend.text}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{trendTitle}</TooltipContent>
+            </Tooltip>
           )
         })()}
       </div>
