@@ -5,6 +5,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { VirtualFileTree } from './VirtualFileTree'
 import { ContextMenu } from '../ContextMenu'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import { safeGet, safeSet } from '../../utils/storage'
 import type { FileEntry } from '@shared/types/ipc'
 
@@ -231,7 +232,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       {/* New file input */}
       {isCreating && (
         <div style={{ padding: '8px 12px 0' }}>
-          <input
+          <Input
             autoFocus
             value={newFileName}
             onChange={(e) => setNewFileName(e.target.value)}
@@ -259,12 +260,12 @@ export function Sidebar({ width = 240 }: { width?: number }) {
 
       {/* Filter + Sort */}
       <div className="glass-divider-bottom" style={{ margin: '0 6px 6px', padding: 6, display: 'flex', gap: 5, flexWrap: 'wrap', borderRadius: 12, background: 'color-mix(in srgb, var(--panel-bg-soft) 34%, transparent)', boxShadow: 'none' }}>
-        <input
+        <Input
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}
           placeholder="筛选..."
           style={{
-            flex: 1, minWidth: 60, height: 26, padding: '0 8px', fontSize: 12,
+            flex: 1, width: 'auto', minWidth: 60, height: 26, padding: '0 8px', fontSize: 12,
             background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', border: 0,
             borderRadius: 8, color: 'var(--text-primary)', outline: 'none',
             boxShadow: 'none',
