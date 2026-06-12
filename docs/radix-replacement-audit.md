@@ -31,7 +31,7 @@ Already added:
 - AI provider editor now uses `Dialog`, `Button`, `Badge`, `Input`, and `Select`.
 - Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, `Input`, `Badge`, `Tooltip`, `Empty`, `Spinner`, and the shared `ConfirmModal`.
 - Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Input`, `Button`, `Spinner`, `Empty`, and `Card` where appropriate.
-- `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions; `TrashPanel` also uses shared `Empty`, and `GraphGenerator` also uses shared `Badge` for selected-file chips and shared `Spinner` for generation status.
+- `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions; `Onboarding` uses `DialogDescription` for step copy, `TrashPanel` also uses shared `Empty`, and `GraphGenerator` also uses shared `Badge` for selected-file chips and shared `Spinner` for generation status.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
 - `NotificationCenter` snooze actions now use `DropdownMenu`.
 - The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
@@ -160,7 +160,7 @@ These have more custom keyboard behavior or more UI branches.
 | Context menus | `components/ContextMenu.tsx` | Manual fixed menu, manual outside click/Escape | `ContextMenu` or `DropdownMenu` | Good, but coordinate-based callers need a careful bridge. |
 | Graph generator modal | `components/GraphGenerator.tsx` | Custom glass overlay/modal | `Dialog` + `ScrollArea` + `Badge` + `Spinner` | Done for modal shell, selected-file chips, and generation status. Streaming graph content remains domain-specific. |
 | Trash modal | `components/TrashPanel.tsx` | Custom overlay/list | `Dialog` + `ScrollArea` + `AlertDialog` + `Empty` | Done for dialog shell, scroll area, empty state, and destructive confirmation through shared `ConfirmModal`. |
-| Onboarding modal | `components/Onboarding.tsx` | Custom overlay/popover | `Dialog` | Simple. |
+| Onboarding modal | `components/Onboarding.tsx` | Custom overlay/popover | `Dialog` | Done for the modal shell, title, step description, and step actions. Step illustrations remain custom SVG content. |
 | AI writing preview | `components/editor/AIWritingMenu.tsx` | Custom modal + floating menu | `Dialog`, `Popover`, `Button`, `Tooltip`, `Spinner` | Done for preview shell, floating selection action bar, preview close/footer actions, inline action buttons, action hints, and preview streaming status. Streaming cancellation and editor replace/append/copy behavior remain custom. |
 
 ### P2: Useful, But Should Wait

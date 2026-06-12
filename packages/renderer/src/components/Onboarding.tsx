@@ -4,6 +4,7 @@ import { Button } from './ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from './ui/dialog'
 
@@ -137,11 +138,12 @@ export function Onboarding({ onDone }: OnboardingProps) {
       >
         <div style={{ marginBottom: 20, opacity: 0.9 }}>{current.visual}</div>
         <DialogTitle style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: 0 }}>{current.title}</DialogTitle>
-        <p style={{ fontSize: 12, color: 'var(--accent)', marginBottom: 14, fontWeight: 500 }}>{current.subtitle}</p>
-
-        {current.desc && (
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 20, whiteSpace: 'pre-line' }}>{current.desc}</p>
-        )}
+        <DialogDescription style={{ margin: `0 0 ${current.desc ? 20 : 14}px`, padding: 0 }}>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--accent)', marginBottom: current.desc ? 14 : 0, fontWeight: 500 }}>{current.subtitle}</span>
+          {current.desc && (
+            <span style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{current.desc}</span>
+          )}
+        </DialogDescription>
 
         {current.shortcuts && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20, textAlign: 'left', padding: '0 20px' }}>
