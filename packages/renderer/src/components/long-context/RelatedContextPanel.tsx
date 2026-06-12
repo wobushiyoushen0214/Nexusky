@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { useVaultStore } from '../../stores/vault-store'
@@ -11,6 +11,7 @@ import { Button } from '../ui/button'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Skeleton } from '../ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { LongContextFeedbackType, LongContextInspection, LongContextMemoryTier, LongContextPackItemPayload, LongContextSuggestion, NoteSearchResult } from '@shared/types/ipc'
 import { RelatedContextCard } from './RelatedContextCard'
 import { getRelationTypeLabel } from './LongContextBadge'
@@ -231,43 +232,31 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
         <div className="related-context-panel__actions">
           {showCarouselControls && (
             <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
+              <PanelIconButton
                 className="related-context-panel__nav"
                 onClick={() => moveCarousel(-1)}
-                title={t('relatedContext.nav.previous')}
-                aria-label={t('relatedContext.nav.previous')}
+                label={t('relatedContext.nav.previous')}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
+              </PanelIconButton>
+              <PanelIconButton
                 className="related-context-panel__nav"
                 onClick={() => moveCarousel(1)}
-                title={t('relatedContext.nav.next')}
-                aria-label={t('relatedContext.nav.next')}
+                label={t('relatedContext.nav.next')}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
-              </Button>
+              </PanelIconButton>
             </>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
+          <PanelIconButton
             className="related-context-panel__refresh"
             onClick={() => loadSuggestions(true)}
             disabled={state === 'loading'}
-            title={t('relatedContext.nav.refresh')}
-            aria-label={t('relatedContext.nav.refresh')}
+            label={t('relatedContext.nav.refresh')}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a9 9 0 0 1-15 6.7" />
@@ -275,7 +264,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
               <path d="M18 3v5h-5" />
               <path d="M6 21v-5h5" />
             </svg>
-          </Button>
+          </PanelIconButton>
         </div>
       </div>
 
@@ -372,6 +361,39 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
         </div>
       )}
     </section>
+  )
+}
+
+function PanelIconButton({
+  label,
+  className,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string
+  className: string
+  disabled?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={className}
+          disabled={disabled}
+          aria-label={label}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 
