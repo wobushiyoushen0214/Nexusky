@@ -415,7 +415,9 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span className="agent-run-panel__label">{t('agent.plan.title', { count: detail.run.plan.length })}</span>
+        <Badge variant="secondary" className="agent-run-panel__plan-count">
+          {t('agent.plan.title', { count: detail.run.plan.length })}
+        </Badge>
       </div>
       {detail.run.rationale && <div className="agent-run-panel__rationale">{detail.run.rationale}</div>}
       <div style={{ marginTop: 8 }}>
