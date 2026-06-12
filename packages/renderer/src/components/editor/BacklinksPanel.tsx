@@ -3,6 +3,7 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { linkPlainMentionAtLine, linkPlainMentionsAtLines } from '../../utils/wikilink'
+import { Button } from '../ui/button'
 import type { BacklinkResult, OutgoingLinkResult, UnlinkedMentionResult } from '@shared/types/ipc'
 
 export const DEFAULT_BACKLINKS_PANEL_COLLAPSED = true
@@ -115,7 +116,9 @@ export function BacklinksPanel() {
 
   return (
     <div style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border-subtle) 34%, transparent)', background: 'color-mix(in srgb, var(--panel-bg-soft) 78%, transparent)', flexShrink: 0 }}>
-      <button
+      <Button
+        type="button"
+        variant="ghost"
         onClick={() => setCollapsed(!collapsed)}
         style={{
           width: '100%', height: 34, padding: '0 16px',
@@ -132,7 +135,7 @@ export function BacklinksPanel() {
           <polyline points="9 18 15 12 9 6" />
         </svg>
         链接概览 ({total})
-      </button>
+      </Button>
       {!collapsed && (
         <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--panel-bg-soft)' }}>
           {outgoingLinks.length > 0 && (
@@ -244,13 +247,15 @@ function OutgoingSection({
               {item.context}
             </p>
           )}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={(event) => { event.stopPropagation(); void handleOpenOrCreate(item) }}
-            style={{ display: 'inline-flex', alignItems: 'center', marginTop: 6, padding: 0, border: 'none', background: 'transparent', fontSize: 10, color: 'var(--text-tertiary)', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', height: 'auto', marginTop: 6, padding: 0, border: 'none', background: 'transparent', fontSize: 10, color: 'var(--text-tertiary)', cursor: 'pointer' }}
           >
             {item.resolved ? '打开目标' : '创建目标'}
-          </button>
+          </Button>
         </div>
       ))}
     </div>
@@ -292,14 +297,16 @@ function LinkSection({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '2px 2px 0' }}>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600 }}>{title}</span>
         {onLinkAllMentions && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             disabled={linkingAll}
             onClick={onLinkAllMentions}
-            style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 10, cursor: linkingAll ? 'not-allowed' : 'pointer', opacity: linkingAll ? 0.5 : 1 }}
+            style={{ height: 'auto', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 10, cursor: linkingAll ? 'not-allowed' : 'pointer', opacity: linkingAll ? 0.5 : 1 }}
           >
             {linkingAll ? '转换中...' : '全部转为链接'}
-          </button>
+          </Button>
         )}
       </div>
       {items.map((item, i) => {
@@ -320,13 +327,14 @@ function LinkSection({
               display: 'block', width: '100%'
             }}
           >
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
                 jumpToItem()
               }}
               style={{
-                textAlign: 'left', padding: 0, border: 'none',
+                height: 'auto', textAlign: 'left', padding: 0, border: 'none',
                 background: 'transparent', cursor: 'pointer', display: 'block', width: '100%'
               }}
             >
@@ -344,17 +352,19 @@ function LinkSection({
                   {item.context}
                 </p>
               )}
-            </button>
+            </Button>
             {'mention' in item && onLinkMention && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="xs"
                 onClick={() => {
                   onLinkMention(item)
                 }}
-                style={{ display: 'inline-flex', alignItems: 'center', marginTop: 6, padding: 0, border: 'none', background: 'transparent', fontSize: 10, color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                style={{ display: 'inline-flex', alignItems: 'center', height: 'auto', marginTop: 6, padding: 0, border: 'none', background: 'transparent', fontSize: 10, color: 'var(--text-tertiary)', cursor: 'pointer' }}
               >
                 转为链接
-              </button>
+              </Button>
             )}
           </div>
         )

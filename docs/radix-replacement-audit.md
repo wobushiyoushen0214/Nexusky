@@ -62,6 +62,7 @@ Already added:
 - `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions now use shared `Button`/`ToggleGroup` while preserving the compact glass chat layout and existing hover colors.
 - `FindReplace` editor popover actions now use shared `Button` while preserving the compact floating editor tool layout and existing find/replace logic.
 - `PropertiesPanel` save/reset actions now use shared `Button` while preserving the existing frontmatter parsing and save flow.
+- `BacklinksPanel` now uses shared `Button` for the collapse header, target open/create actions, and unlinked-mention conversion actions while preserving its compact link overview layout and row navigation behavior.
 - App shell right-panel close action now uses shared `Button`; native `TitleBar` window controls remain intentionally custom.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
@@ -174,6 +175,7 @@ These are lower impact or more visual than behavioral.
 | Chat panel actions | `Button`, `ToggleGroup` | Done for outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions. ChatPanel no longer uses raw `<button>` elements. |
 | Find/replace controls | `Button` | Done for case sensitivity, previous/next, close, replace, and replace-all actions. Editor text selection and search logic remain custom. |
 | Properties panel actions | `Button` | Done for save and reset actions. Frontmatter parsing, text inputs, and save-to-editor behavior remain custom. |
+| Backlinks panel actions | `Button` | Done for collapse, target open/create, batch convert, item jump, and single mention conversion actions. The row navigation/list layout remains custom. |
 | App shell panel actions | `Button` | Done for right-panel close action. `TitleBar` native window controls remain custom by design. |
 | Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button`. Bigger architecture move remains optional because the current local toast store is lightweight. |
 
