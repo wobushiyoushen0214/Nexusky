@@ -4,6 +4,7 @@ import { toast } from '../stores/toast-store'
 import { ConfirmModal } from './ConfirmModal'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Empty, EmptyDescription } from './ui/empty'
 import {
   Dialog,
   DialogContent,
@@ -71,7 +72,9 @@ export function TrashPanel({ open, onClose }: TrashPanelProps) {
           <ScrollArea style={{ flex: 1, minHeight: 0 }}>
             <div style={{ padding: 8 }}>
             {items.length === 0 ? (
-              <p style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>回收站为空</p>
+              <Empty style={{ padding: '32px 16px' }}>
+                <EmptyDescription>回收站为空</EmptyDescription>
+              </Empty>
             ) : (
               items.map((item) => (
                 <div key={item.path} style={{ padding: '8px 12px', borderRadius: 6, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--control-bg)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>
