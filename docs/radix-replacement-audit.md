@@ -43,6 +43,7 @@ Already added:
 - `ToolResultPanel` now uses shared `Button` for copy/close/source actions and `ScrollArea` for the result body while keeping the non-modal result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions and `ScrollArea` for history and preview scrolling.
 - `TagsPanel` now uses shared `Button`, `Badge`, and `ScrollArea`; inline tag chip/list styles were moved into token-based local CSS.
+- `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -139,7 +140,7 @@ These are lower impact or more visual than behavioral.
 | Area | Candidate primitive | Notes |
 | --- | --- | --- |
 | Tool result panel | `Button`, `ScrollArea`; optional `Dialog` or `Sheet` only if behavior changes | Button and internal scroll migration done. It remains a non-modal result drawer, so do not force Dialog semantics unless product behavior changes. |
-| Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Visual consistency only; no big interaction win. |
+| Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Button migration done for skip and next-step actions. Cards/badges/progress remain optional visual polish. |
 | Overview cards | `Card`, `Badge` | Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `ScrollArea` | Done. Kept the lightweight side-panel behavior and moved inline styles into local token-based CSS. |
 | Tags panel | `Button`, `Badge`, `ScrollArea` | Done. Current tags, tag cloud, and filtered note list now use shared components with local token-based CSS. |

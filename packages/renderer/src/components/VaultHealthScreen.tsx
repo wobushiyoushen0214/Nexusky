@@ -5,6 +5,7 @@ import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
+import { Button } from './ui/button'
 import './VaultHealthScreen.css'
 
 type VaultHealthNextStepId =
@@ -144,9 +145,9 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
             <h1>{t('vaultHealth.title')}</h1>
             <p>{t('vaultHealth.subtitle')}</p>
           </div>
-          <button type="button" onClick={dismiss} className="vault-health-skip">
+          <Button type="button" variant="outline" size="sm" onClick={dismiss} className="vault-health-skip">
             {t('vaultHealth.skip')}
-          </button>
+          </Button>
         </header>
 
         {error && (
@@ -305,8 +306,9 @@ interface NextStepButtonProps {
 
 function NextStepButton({ kicker, title, desc, onClick, disabled = false }: NextStepButtonProps) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={onClick}
       disabled={disabled}
       className="vault-health-next-step"
@@ -316,6 +318,6 @@ function NextStepButton({ kicker, title, desc, onClick, disabled = false }: Next
         <strong>{title}</strong>
         <span>{desc}</span>
       </span>
-    </button>
+    </Button>
   )
 }
