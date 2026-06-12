@@ -438,8 +438,10 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             </div>
           )}
           {results.map((r, i) => (
-            <button
+            <Button
               key={i}
+              type="button"
+              variant="ghost"
               onClick={() => handleResultClick(r)}
               style={resultButtonStyle(i === selectedIndex)}
               onMouseEnter={() => setSelectedIndex(i)}
@@ -451,7 +453,7 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
                 {mode === 'keyword' ? highlightText(r.line, query) : r.line}
               </p>
-            </button>
+            </Button>
           ))}
           </div>
         </ScrollArea>

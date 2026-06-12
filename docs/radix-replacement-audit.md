@@ -55,6 +55,8 @@ Already added:
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell and shared `Button` for close, sample selection, fix, and done actions.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints, with hover styling moved into local token-based CSS.
+- `SearchPanel` result rows now use shared `Button` while preserving the existing async search result selection style.
+- `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -163,7 +165,7 @@ These are lower impact or more visual than behavioral.
 | Demo flow | `Dialog`, `Button`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Spinner/progress remains custom. |
 | Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |
-| Toast system | Radix `Toast` or `sonner` | Bigger architectural choice. Current local toast store may be fine. |
+| Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button`. Bigger architecture move remains optional because the current local toast store is lightweight. |
 
 ## Components to Add Next
 
@@ -368,7 +370,7 @@ Current progress:
 
 - `CommandPalette`: migrated to `Dialog` + `Command`.
 - `QuickSwitcher`: migrated to `Dialog` + `Command`.
-- `SearchPanel`: remains on `Dialog` + `ToggleGroup` + `ScrollArea`; keep custom result behavior unless its async search/result preview model is redesigned.
+- `SearchPanel`: remains on `Dialog` + `ToggleGroup` + `ScrollArea`; result rows now use shared `Button`, but keep custom async search/result behavior unless its preview model is redesigned.
 
 ### Phase 6: Settings Controls
 
