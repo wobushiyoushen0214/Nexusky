@@ -28,7 +28,7 @@ Already added:
 - `ConfirmModal` now uses `AlertDialog`.
 - Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
-- AI provider editor now uses `Dialog`, `Button`, and `Badge`.
+- AI provider editor now uses `Dialog`, `Button`, `Badge`, `Input`, and `Select`.
 - Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, `Input`, and the shared `ConfirmModal`.
 - Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Input`, and `Button` where appropriate.
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions.
@@ -130,7 +130,7 @@ These replace duplicated modal/menu logic and improve accessibility immediately.
 | Confirm dialogs | `components/ConfirmModal.tsx` | Custom overlay, manual Escape/Enter, inline buttons | `AlertDialog` + `Button` | Best first migration. Used by delete/restore flows. |
 | Settings shell | `components/settings/Settings.tsx` | Custom dialog, manual focus, manual Escape | `Dialog` + `ScrollArea` | Preserve current CSS shape, replace interaction shell. |
 | Settings tabs | `components/settings/SettingsSidebar.tsx` | Manual `role="tablist"` buttons | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | Good keyboard win: arrows, Home/End if implemented by Radix. |
-| AI provider editor | `components/settings/AIProviderSettings.tsx` | Custom provider modal | `Dialog` + `Button` + `Badge` | Keep form markup first; migrate form controls later. |
+| AI provider editor | `components/settings/AIProviderSettings.tsx` | Custom provider modal | `Dialog` + `Button` + `Badge` + `Input` + `Select` | Done for editor shell, provider fields, model field, provider type/model selects, and provider actions. Request/probing logic remains domain-specific. |
 | Publish dialog | `components/PublishScopeDialog.tsx` | Custom `role="dialog"`, manual focus/overlay | `Dialog` + `ScrollArea`; nested destructive confirm via `AlertDialog` | Good candidate but larger file, split into steps. |
 | Memory timeline | `components/memory/MemoryTimelinePanel.tsx` | Already migrated partly | Already uses `Dialog`, `ScrollArea`, `Button`, `Badge` | Keep as reference pattern. |
 
@@ -165,7 +165,7 @@ These need design cleanup or affect many small controls.
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox` | Done for goal/description fields, plan edit fields, action buttons, and dry-run checkbox. Execution view layout remains custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Input`, `Button`, `Select`, `Checkbox` | Done for toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
-| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, and the Keys key-capture field. Remaining native inputs are specialized native color picker and AI provider editor fields. |
+| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, and the Keys key-capture field. Remaining native inputs are specialized native color picker only. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button` | Done for silent-hour fields, threshold sliders, enable/per-kind options, and debug/reset actions while preserving save-on-change behavior. |
 
 ### P3: Optional / Polish

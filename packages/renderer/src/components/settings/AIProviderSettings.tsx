@@ -4,6 +4,7 @@ import type { AIProviderConfig } from '@shared/types/ipc'
 import { toast } from '../../stores/toast-store'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import {
   Dialog,
   DialogContent,
@@ -301,7 +302,7 @@ export function AIProviderSettings() {
               <div className="provider-editor__scroll-content">
                 <div className="form-group">
                   <label>{t('settings.ai.providerName')}</label>
-                  <input
+                  <Input
                     type="text"
                     value={editing.name}
                     onChange={(e) => setEditing({ ...editing, name: e.target.value })}
@@ -341,7 +342,7 @@ export function AIProviderSettings() {
                 {providerRequiresApiKey(editing.type) && (
                   <div className="form-group">
                     <label>{t('settings.ai.apiKey')}</label>
-                    <input
+                    <Input
                       type="password"
                       value={editing.apiKey}
                       onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
@@ -352,7 +353,7 @@ export function AIProviderSettings() {
 
                 <div className="form-group">
                   <label>{editing.type === 'codex' ? t('settings.ai.cliPath') : t('settings.ai.baseUrl')}</label>
-                  <input
+                  <Input
                     type="text"
                     value={editing.baseUrl}
                     onChange={(e) => setEditing({
@@ -390,7 +391,7 @@ export function AIProviderSettings() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <input
+                      <Input
                         type="text"
                         value={editing.model}
                         onChange={(e) => setEditing({ ...editing, model: e.target.value })}
