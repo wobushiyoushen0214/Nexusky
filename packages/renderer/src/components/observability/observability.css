@@ -245,8 +245,18 @@
 }
 
 .long-context-debug-panel__empty {
+  min-height: 104px;
   padding: 16px;
-  text-align: center;
-  font-size: 11px;
   color: var(--text-tertiary);
+}
+
+.long-context-debug-panel__empty .ui-empty-title {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 520;
+}
+
+.long-context-debug-panel__empty-spinner {
+  width: 16px;
+  height: 16px;
 }

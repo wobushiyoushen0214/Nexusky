@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextUserPrefs } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
@@ -7,7 +7,9 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Button } from '../ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Slider } from '../ui/slider'
+import { Spinner } from '../ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { Sparkline } from './Sparkline'
 import './observability.css'
@@ -17,6 +19,17 @@ type MetricPolarity = 'higherIsBetter' | 'lowerIsBetter'
 type PackTab = 'hot' | 'warm' | 'cold' | 'dropped'
 
 const PACK_TABS: PackTab[] = ['hot', 'warm', 'cold', 'dropped']
+
+function DebugEmpty({ children, loading = false }: { children: ReactNode; loading?: boolean }) {
+  return (
+    <Empty className="long-context-debug-panel__empty">
+      {loading && <Spinner className="long-context-debug-panel__empty-spinner" aria-hidden="true" />}
+      <EmptyHeader>
+        <EmptyTitle>{children}</EmptyTitle>
+      </EmptyHeader>
+    </Empty>
+  )
+}
 
 export function LongContextDebugPanel() {
   const { t } = useTranslation()
@@ -97,7 +110,7 @@ export function LongContextDebugPanel() {
   }, [inspection, activeTab])
 
   if (!vaultPath) {
-    return <div className="long-context-debug-panel__empty">{t('longContextDebug.noVault')}</div>
+    return <DebugEmpty>{t('longContextDebug.noVault')}</DebugEmpty>
   }
 
   return (
@@ -119,9 +132,9 @@ export function LongContextDebugPanel() {
           </div>
           <TabsContent value={activeTab} className="long-context-debug-panel__tab-content">
             {tabItems.length === 0 ? (
-              <div className="long-context-debug-panel__empty">
+              <DebugEmpty loading={loading}>
                 {loading ? t('longContextDebug.loading') : t('longContextDebug.emptyTier')}
-              </div>
+              </DebugEmpty>
             ) : (
               tabItems.map((item, idx) => <PackItemCard key={`${item.relationId || item.title}-${idx}`} item={item} />)
             )}
@@ -132,7 +145,7 @@ export function LongContextDebugPanel() {
       <div className="long-context-debug-panel__section">
         <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.metrics')}</h3>
         {!metrics ? (
-          <div className="long-context-debug-panel__empty">{t('longContextDebug.loading')}</div>
+          <DebugEmpty loading>{t('longContextDebug.loading')}</DebugEmpty>
         ) : (
           (() => {
             const buckets = metrics.series.buckets
@@ -174,7 +187,7 @@ export function LongContextDebugPanel() {
       <div className="long-context-debug-panel__section">
         <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.tuning')}</h3>
         {!draftPrefs ? (
-          <div className="long-context-debug-panel__empty">{t('longContextDebug.loading')}</div>
+          <DebugEmpty loading>{t('longContextDebug.loading')}</DebugEmpty>
         ) : (
           <>
             <SliderRow label={t('longContextDebug.pref.confidenceThreshold')} value={draftPrefs.confidenceThreshold} min={0} max={1} step={0.01} fixed={2} onChange={(v) => setDraftPrefs({ ...draftPrefs, confidenceThreshold: v })} />

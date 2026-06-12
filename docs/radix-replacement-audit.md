@@ -48,7 +48,7 @@ Already added:
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, and `ScrollArea` for citation lookup controls instead of custom absolute-positioned popovers and document listeners.
-- `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
+- `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, and `Spinner` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
 - `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use shared `Spinner` with compact settings-local spacing.
@@ -166,7 +166,7 @@ These need design cleanup or affect many small controls.
 | Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu`, `Button`, `Empty` | Done for drawer shell, snooze menu, bell, bulk actions, close, open, snooze, dismiss controls, and empty state. |
 | Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge`, `Skeleton`, `Alert` | Done for pack summary/tier tabs, controls, loading placeholders, and error alert. Native list scrolling remains to preserve side/page layout sizing. |
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
-| Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Slider`, `Button` | Done for pack tier switching, tuning sliders, and tuning actions. |
+| Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Slider`, `Button`, `Empty`, `Spinner` | Done for pack tier switching, tuning sliders, tuning actions, empty states, and loading states. |
 | Related context card actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done for title/open and icon feedback actions. Title/aria-label retained. |
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Input`, `Button`, `Select`, `Switch` | Done for graph search and side-panel controls. Graph canvas, pan/zoom, and node interaction layers remain custom. |
 | Graph canvas toolbar | `components/graph/GraphView.tsx` | `Button` | Done for zoom out, reset, zoom in, and fit-view toolbar actions. Graph node buttons and canvas interaction layers remain custom. |
@@ -256,7 +256,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
 
 10. `empty.tsx` - done
    - Provides shadcn-compatible empty state composition.
-   - Used by settings plugin/keybinding, memory timeline, history panel, tags panel, notification drawer, and agent run panel empty states.
+   - Used by settings plugin/keybinding, memory timeline, history panel, tags panel, notification drawer, agent run panel, and long-context debug empty states.
 
 11. `alert.tsx` - done
    - Provides shadcn-compatible feedback/error state composition.
