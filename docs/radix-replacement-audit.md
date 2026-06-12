@@ -22,7 +22,7 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, and `Slider` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, and `Progress` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers.
 - `ConfirmModal` now uses `AlertDialog`.
@@ -57,7 +57,7 @@ Already added:
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell and shared `Button` for close, sample selection, fix, and done actions.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints, with hover styling moved into local token-based CSS.
-- `SearchPanel` search input now uses shared `Input`, and result rows use shared `Button`, while preserving the existing transparent search slot, keyboard navigation, async search, and result selection behavior.
+- `SearchPanel` search input now uses shared `Input`, result rows use shared `Button`, and local search-index progress uses shared `Progress`, while preserving the existing transparent search slot, keyboard navigation, async search, and result selection behavior.
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
 - `BasesView` toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline edit targets now use shared `Input`, `Button`, `Select`, and `Checkbox`.
@@ -86,6 +86,7 @@ Reference docs checked through `pnpm dlx shadcn@latest docs`:
 - `select`, `switch`, `checkbox`, `radio-group`, `toggle-group`
 - `input`, `textarea`
 - `slider`
+- `progress`
 
 ## Replacement Principles
 
@@ -142,7 +143,7 @@ These have more custom keyboard behavior or more UI branches.
 | --- | --- | --- | --- | --- |
 | Command palette | `components/CommandPalette.tsx` | Custom overlay, input, selected index, scrollIntoView | `Dialog` + `Command` | shadcn `Command` uses `cmdk`; requires adding `cmdk`. High UX value. |
 | Quick switcher | `components/QuickSwitcher.tsx` | Custom modal list, keyboard index handling | `Dialog` + `Command` | Similar to command palette, likely share a common command surface. |
-| Search panel | `components/SearchPanel.tsx` | Custom overlay, search input, mode buttons, result list keyboard | `Dialog` + `Input` + `ToggleGroup` + `ScrollArea` + `Button` | Done for shell, search input, mode controls, and result rows. Full `Command` may be too restrictive due async search modes. |
+| Search panel | `components/SearchPanel.tsx` | Custom overlay, search input, mode buttons, result list keyboard | `Dialog` + `Input` + `ToggleGroup` + `ScrollArea` + `Button` + `Progress` | Done for shell, search input, mode controls, result rows, and local index progress. Full `Command` may be too restrictive due async search modes. |
 | Context menus | `components/ContextMenu.tsx` | Manual fixed menu, manual outside click/Escape | `ContextMenu` or `DropdownMenu` | Good, but coordinate-based callers need a careful bridge. |
 | Graph generator modal | `components/GraphGenerator.tsx` | Custom glass overlay/modal | `Dialog` + `ScrollArea` | Straightforward. |
 | Trash modal | `components/TrashPanel.tsx` | Custom overlay/list | `Dialog` + `ScrollArea` + `AlertDialog` | Also uses `ConfirmModal`; migrate after ConfirmModal. |
@@ -231,7 +232,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Wrap `radix-ui` `ToggleGroup`.
    - Needed by Search mode controls and appearance option groups.
 
-6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx` - done
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx` - done
    - Needed for settings pages.
    - Should be introduced after the settings shell is migrated.
 

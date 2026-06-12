@@ -5,6 +5,7 @@ import { getErrorMessage } from '../utils/errors'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { Progress } from './ui/progress'
 import {
   Dialog,
   DialogContent,
@@ -384,17 +385,11 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
                 )}
               </div>
               {searchIndexStatus.state === 'indexing' && (
-                <div style={{ height: 4, overflow: 'hidden', borderRadius: 999, background: 'var(--bg-hover)' }}>
-                  <div
-                    style={{
-                      width: `${searchIndexPercent}%`,
-                      height: '100%',
-                      borderRadius: 999,
-                      background: 'var(--accent)',
-                      transition: 'width 180ms ease'
-                    }}
-                  />
-                </div>
+                <Progress
+                  value={searchIndexPercent}
+                  aria-label="本地检索索引进度"
+                  style={{ height: 4, background: 'var(--bg-hover)' }}
+                />
               )}
               {searchIndexStatus.message && searchIndexStatus.state !== 'error' && searchIndexStatus.state === 'indexing' && (
                 <div style={{ marginTop: 5, fontSize: 10, color: 'var(--text-tertiary)' }}>{searchIndexStatus.message}</div>
