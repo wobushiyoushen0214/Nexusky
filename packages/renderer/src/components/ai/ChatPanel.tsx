@@ -6,6 +6,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
+import { Button } from '../ui/button'
 import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
@@ -103,19 +104,25 @@ function OutboundPreviewPanel({
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button
+            <Button
+              type="button"
+              variant="default"
+              size="xs"
               onClick={onConfirm}
               disabled={!preview || loading || !preview.provider}
               style={{ height: 26, padding: '0 10px', fontSize: 11, background: preview && !loading && preview.provider ? 'var(--accent)' : 'var(--bg-hover)', color: preview && !loading && preview.provider ? 'var(--text-on-accent)' : 'var(--text-tertiary)', border: 'none', borderRadius: 5, cursor: preview && !loading && preview.provider ? 'pointer' : 'default', fontWeight: 500, whiteSpace: 'nowrap' }}
             >
               确认发送
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
               onClick={onCancel}
               style={{ height: 26, padding: '0 9px', fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}
             >
               取消
-            </button>
+            </Button>
           </div>
         </div>
         {preview && (
@@ -2018,7 +2025,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {/* Header */}
       <div className="glass-divider-bottom" style={{ padding: '0 10px 0 14px', height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 58%, transparent)', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => setShowSessions(!showSessions)}
             style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}
             onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
@@ -2027,8 +2037,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
             {sessions.length > 0 && <span>{sessions.length}</span>}
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
             onClick={handleNewSession}
             style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4 }}
             onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-text)'}
@@ -2036,23 +2049,23 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             title="新建会话"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          </button>
+          </Button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {messages.length > 0 && (
             <>
-              <button onClick={handleExport} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
+              <Button type="button" variant="ghost" size="xs" onClick={handleExport} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
               >
                 导出
-              </button>
-              <button onClick={handleClear} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
+              </Button>
+              <Button type="button" variant="ghost" size="xs" onClick={handleClear} style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, transition: 'color 100ms' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
               >
                 清空
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -2061,28 +2074,37 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {/* Session list panel */}
       {showSessions && (
         <div className="file-tree-scroll" style={{ margin: '0 12px 8px', maxHeight: 200, overflowY: 'auto', flexShrink: 0, borderRadius: 10, background: 'color-mix(in srgb, var(--control-bg) 58%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 60%, transparent)' }}>
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => handleSwitchSession(null)}
-            style={{ width: '100%', height: 30, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: !currentSessionId ? 'var(--accent-text)' : 'var(--text-secondary)', background: !currentSessionId ? 'var(--accent-muted)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            style={{ width: '100%', height: 30, padding: '0 14px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8, fontSize: 12, color: !currentSessionId ? 'var(--accent-text)' : 'var(--text-secondary)', background: !currentSessionId ? 'var(--accent-muted)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
           >
             默认对话
-          </button>
+          </Button>
           {sessions.map((s) => (
             <div key={s.id} style={{ display: 'flex', alignItems: 'center', height: 30, padding: '0 14px', background: s.id === currentSessionId ? 'var(--accent-muted)' : 'transparent' }}>
-              <button
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
                 onClick={() => handleSwitchSession(s.id)}
-                style={{ flex: 1, height: 30, display: 'flex', alignItems: 'center', fontSize: 12, color: s.id === currentSessionId ? 'var(--accent-text)' : 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                style={{ flex: 1, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', fontSize: 12, color: s.id === currentSessionId ? 'var(--accent-text)' : 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               >
                 {s.title}
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => handleDeleteSession(s.id)}
                 style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3, flexShrink: 0 }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -2237,13 +2259,13 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             backdropFilter: 'blur(var(--glass-blur)) saturate(150%)',
             WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)'
           }}>
-            <div className="glass-divider-bottom" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <div className="glass-divider-bottom" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: '1 1 auto', maxWidth: '100%' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                 </svg>
-                <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{editResult.filePath.split(/[\\/]/).pop()}</span>
-                <div style={{ display: 'flex', background: 'color-mix(in srgb, var(--control-bg) 72%, transparent)', borderRadius: 6, overflow: 'hidden', border: '1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 48%, transparent)' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: '1 1 auto', maxWidth: 180 }}>{editResult.filePath.split(/[\\/]/).pop()}</span>
+                <div style={{ display: 'flex', background: 'color-mix(in srgb, var(--control-bg) 72%, transparent)', borderRadius: 6, overflow: 'hidden', border: '1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 48%, transparent)', flexShrink: 0 }}>
                   <button
                     onClick={() => setEditPreviewMode('diff')}
                     style={{ height: 24, padding: '0 9px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 600, transition: 'all 100ms' }}
@@ -2261,7 +2283,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button
                   onClick={() => setEditPreviewExpanded(!editPreviewExpanded)}
-                  style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', transition: 'all 100ms', fontWeight: 500 }}
+                  style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', transition: 'all 100ms', fontWeight: 500, whiteSpace: 'nowrap' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--control-bg) 58%, transparent)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
@@ -2273,11 +2295,11 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
                   onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
-                  应用修改
+                  应用
                 </button>
                 <button
                   onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }}
-                  style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+                  style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--danger) 12%, transparent)'; e.currentTarget.style.color = 'var(--danger)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
                 >
