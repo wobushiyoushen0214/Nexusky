@@ -28,7 +28,7 @@ const WORKSPACE_KEYS = {
 }
 const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const WORKSPACE_DEFAULT_VERSION_KEY = 'nexusky-workspace-default-version'
-const WORKSPACE_DEFAULT_VERSION = 'overview-first-v5'
+const WORKSPACE_DEFAULT_VERSION = 'overview-first-v6'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
