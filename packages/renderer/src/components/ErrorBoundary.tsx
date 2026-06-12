@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Button } from './ui/button'
 import './error-boundary.css'
 
@@ -30,10 +31,12 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="error-boundary">
-          <p className="error-boundary__title">出了点问题</p>
-          <p className="error-boundary__message">
-            {this.state.error?.message || '未知错误'}
-          </p>
+          <Alert variant="destructive" className="error-boundary__alert">
+            <AlertTitle>出了点问题</AlertTitle>
+            <AlertDescription>
+              {this.state.error?.message || '未知错误'}
+            </AlertDescription>
+          </Alert>
           <Button
             type="button"
             variant="outline"

@@ -9,20 +9,13 @@
   color: var(--foreground, var(--text-primary));
 }
 
-.error-boundary__title {
-  margin: 0;
-  color: var(--foreground, var(--text-primary));
-  font-size: 15px;
-  font-weight: 500;
+.error-boundary__alert {
+  max-width: 400px;
+  text-align: center;
 }
 
-.error-boundary__message {
-  max-width: 400px;
-  margin: 0;
-  color: var(--muted-foreground, var(--text-tertiary));
-  font-size: 12px;
-  line-height: 1.6;
-  text-align: center;
+.error-boundary__alert .ui-alert-description {
+  justify-items: center;
 }
 
 .error-boundary__retry {

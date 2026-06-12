@@ -46,7 +46,7 @@ Already added:
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, and `Empty`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
-- `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
+- `ErrorBoundary` now uses shared `Alert` for the fallback error callout and shared `Button` for retry, with the fallback layout kept in token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, `ScrollArea`, and `Spinner` for citation lookup controls instead of custom absolute-positioned popovers, document listeners, and ad hoc loading text.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, and `Spinner` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
@@ -188,7 +188,7 @@ These are lower impact or more visual than behavioral.
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/empty styles into local token-based CSS. |
 | Tags panel | `Input`, `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Current tag input, tags, tag cloud, empty state, and filtered note list now use shared components with local token-based CSS. |
-| Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
+| Error boundary | `Alert`, `Button` | Done. Fallback error callout uses shared Alert, retry action uses shared Button, and fallback layout remains token-based local CSS. |
 | Citation source row | `Button`, `Popover`, `ScrollArea`, `Spinner` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS and shared loading feedback. |
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
 | Timeline view controls | `Input`, `ToggleGroup`, `Button` | Done for search, mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
