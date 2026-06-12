@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover'
+import { ScrollArea } from '../ui/scroll-area'
 import { Spinner } from '../ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { IPCChatMessage } from '@shared/types/ipc'
@@ -206,16 +207,20 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
             </Button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            <div className="glass-divider-right" style={{ padding: '12px 16px', borderRight: '0', overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: 'var(--glass-divider-shadow-right)' }}>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>原文</span>
-              <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview.originalText}</div>
-            </div>
-            <div style={{ padding: '12px 16px', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 11, color: 'var(--accent-text)', marginBottom: 6, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{preview.actionLabel}结果</span>
-              <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {preview.result || (preview.streaming ? <span style={{ color: 'var(--text-tertiary)' }}>等待 AI 响应...</span> : null)}
+            <ScrollArea className="glass-divider-right" style={{ height: '100%', minHeight: 0, borderRight: '0', boxShadow: 'var(--glass-divider-shadow-right)' }}>
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>原文</span>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{preview.originalText}</div>
               </div>
-            </div>
+            </ScrollArea>
+            <ScrollArea style={{ height: '100%', minHeight: 0 }}>
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 11, color: 'var(--accent-text)', marginBottom: 6, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{preview.actionLabel}结果</span>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {preview.result || (preview.streaming ? <span style={{ color: 'var(--text-tertiary)' }}>等待 AI 响应...</span> : null)}
+                </div>
+              </div>
+            </ScrollArea>
           </div>
           <div className="glass-divider-top" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, borderTop: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-top)' }}>
             <Button type="button" variant="outline" size="sm" onClick={handleCancel} style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>
