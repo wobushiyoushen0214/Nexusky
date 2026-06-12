@@ -47,7 +47,7 @@ Already added:
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, and `Empty`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, status/kicker chips use shared `Badge`, and the no-issue driver state uses shared `Empty`, with styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Alert` for the fallback error callout and shared `Button` for retry, with the fallback layout kept in token-based local CSS.
-- `ChatSourceRow` now uses shared `Button`, `Popover`, `ScrollArea`, and `Spinner` for citation lookup controls instead of custom absolute-positioned popovers, document listeners, and ad hoc loading text.
+- `ChatSourceRow` now uses shared `Button`, `Popover`, `ScrollArea`, `Spinner`, and compact `Empty` feedback for citation lookup controls instead of custom absolute-positioned popovers, document listeners, and ad hoc loading/empty text.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, `Spinner`, and `Empty` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.

@@ -125,6 +125,20 @@
   border-width: 1.5px;
 }
 
+.chat-source-row__empty.ui-empty {
+  min-height: 0;
+  margin-top: 4px;
+  padding: 8px 10px;
+  gap: 0;
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--muted, var(--bg-elevated)) 42%, transparent);
+}
+
+.chat-source-row__empty .ui-empty-description {
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .chat-source-row__lookup-item {
   margin-bottom: 6px;
 }

@@ -8,6 +8,7 @@ import { toast } from '../../stores/toast-store'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Button } from '../ui/button'
+import { Empty, EmptyDescription } from '../ui/empty'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ScrollArea } from '../ui/scroll-area'
 import { Spinner } from '../ui/spinner'
@@ -119,9 +120,11 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
             </div>
           )}
           {!loading && result && !result.found && (
-            <div className="chat-source-row__muted">
-              {provenance.hasContextPack ? t('citationLookup.noExtraRelations') : t('citationLookup.empty')}
-            </div>
+            <Empty className="chat-source-row__empty">
+              <EmptyDescription>
+                {provenance.hasContextPack ? t('citationLookup.noExtraRelations') : t('citationLookup.empty')}
+              </EmptyDescription>
+            </Empty>
           )}
           {!loading && result?.relations.length ? (
             <div>
