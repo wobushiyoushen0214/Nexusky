@@ -8,6 +8,7 @@ import { SAMPLE_WORKFLOW_VAULTS } from '../../../shared/src/workflow-samples'
 import { DemoTransformationFlow } from './demo/DemoTransformationFlow'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import './WelcomeScreen.css'
 
 export function WelcomeScreen() {
@@ -135,19 +136,23 @@ export function WelcomeScreen() {
                 {recentVaults.map((path) => {
                   const name = path.split(/[\\/]/).pop() || path
                   return (
-                    <Button
-                      key={path}
-                      type="button"
-                      variant="ghost"
-                      onClick={() => handleOpenRecent(path)}
-                      className="welcome-recent-item"
-                      title={path}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                      </svg>
-                      <span>{name}</span>
-                    </Button>
+                    <Tooltip key={path}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => handleOpenRecent(path)}
+                          className="welcome-recent-item"
+                          aria-label={path}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span>{name}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{path}</TooltipContent>
+                    </Tooltip>
                   )
                 })}
               </div>
