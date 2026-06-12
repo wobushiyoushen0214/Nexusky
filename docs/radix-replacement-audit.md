@@ -35,6 +35,7 @@ Already added:
 - The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
 - `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`.
+- `RelatedContextPanel` context-pack tiers now use `Tabs`; related context card actions use shared `Button`; relation labels use shared `Badge`.
 
 Reference docs checked through `pnpm dlx shadcn@latest docs`:
 
@@ -99,9 +100,9 @@ These need design cleanup or affect many small controls.
 | Area | Current file | Recommended primitive | Notes |
 | --- | --- | --- | --- |
 | Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu` | Drawer shape maps well to Sheet. Snooze menu maps to DropdownMenu. |
-| Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Good cleanup, but panel has side/page variants. |
-| Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Replace status spans with local Badge variants. |
-| Related context card icon actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Use title/aria-label consistently. |
+| Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Done for tier tabs and controls. Native list scrolling remains to preserve side/page layout sizing. |
+| Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
+| Related context card icon actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done. Title/aria-label retained. |
 | Bases controls | `components/bases/BasesView.tsx` | `Button`, `ToggleGroup`, `DropdownMenu`, `Select` | Wait until existing `bases` type errors are resolved. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Button` | Do after Settings shell/Tabs so controls inherit a stable structure. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Switch`, `Select`, `Button` | Form semantics improve, visual change should be restrained. |

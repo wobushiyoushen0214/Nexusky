@@ -5,6 +5,8 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
+import { Button } from '../ui/button'
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
 import type { LongContextFeedbackType, LongContextInspection, LongContextMemoryTier, LongContextPackItemPayload, LongContextSuggestion, NoteSearchResult } from '@shared/types/ipc'
 import { RelatedContextCard } from './RelatedContextCard'
 import { getRelationTypeLabel } from './LongContextBadge'
@@ -225,8 +227,10 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
         <div className="related-context-panel__actions">
           {showCarouselControls && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 className="related-context-panel__nav"
                 onClick={() => moveCarousel(-1)}
                 title={t('relatedContext.nav.previous')}
@@ -235,9 +239,11 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="15 18 9 12 15 6" />
                 </svg>
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 className="related-context-panel__nav"
                 onClick={() => moveCarousel(1)}
                 title={t('relatedContext.nav.next')}
@@ -246,11 +252,13 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
-              </button>
+              </Button>
             </>
           )}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             className="related-context-panel__refresh"
             onClick={() => loadSuggestions(true)}
             disabled={state === 'loading'}
@@ -263,7 +271,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
               <path d="M18 3v5h-5" />
               <path d="M6 21v-5h5" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -291,20 +299,19 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
 
           {packExpanded && (
             <div className="related-context-pack__body">
-              <div className="related-context-pack__tabs" role="tablist" aria-label={t('relatedContext.pack.tiers')}>
-                {(['hot', 'warm', 'cold'] as ContextPackTier[]).map((tier) => (
-                  <button
-                    key={tier}
-                    type="button"
-                    role="tab"
-                    aria-selected={activePackTier === tier}
-                    className={`related-context-pack__tab${activePackTier === tier ? ' is-active' : ''}`}
-                    onClick={() => setActivePackTier(tier)}
-                  >
-                    {t(`relatedContext.pack.tier.${tier}`)} <span>{getContextPackTierItems(inspection, tier).length}</span>
-                  </button>
-                ))}
-              </div>
+              <Tabs value={activePackTier} onValueChange={(value) => setActivePackTier(value as ContextPackTier)} className="related-context-pack__tabs">
+                <TabsList className="related-context-pack__tabs-list" aria-label={t('relatedContext.pack.tiers')}>
+                  {(['hot', 'warm', 'cold'] as ContextPackTier[]).map((tier) => (
+                    <TabsTrigger
+                      key={tier}
+                      value={tier}
+                      className="related-context-pack__tab"
+                    >
+                      {t(`relatedContext.pack.tier.${tier}`)} <span>{getContextPackTierItems(inspection, tier).length}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
 
               {activePackItems.length === 0 ? (
                 <div className="related-context-pack__empty">{t('relatedContext.pack.emptyTier')}</div>
@@ -335,7 +342,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       {state === 'error' && (
         <div className="related-context-panel__error">
           <span>{error}</span>
-          <button type="button" onClick={() => loadSuggestions(false)}>{t('relatedContext.retry')}</button>
+          <Button type="button" variant="ghost" size="xs" onClick={() => loadSuggestions(false)}>{t('relatedContext.retry')}</Button>
         </div>
       )}
 

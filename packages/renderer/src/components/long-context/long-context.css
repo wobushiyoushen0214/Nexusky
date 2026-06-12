@@ -358,6 +358,10 @@
 }
 
 .related-context-pack__tabs {
+  min-width: 0;
+}
+
+.related-context-pack__tabs-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
@@ -382,7 +386,8 @@
   background: transparent;
 }
 
-.related-context-pack__tab.is-active {
+.related-context-pack__tab.is-active,
+.related-context-pack__tab[data-state="active"] {
   color: var(--accent-text);
   background: color-mix(in srgb, var(--accent-muted) 74%, var(--related-context-control));
 }
