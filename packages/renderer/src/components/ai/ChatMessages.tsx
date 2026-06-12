@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { renderMarkdown } from './MessageBubble'
 import { buildChatHints, queueAiCommandDraft } from './ai-command-draft'
 import type { Message } from './MessageBubble'
+import { Button } from '../ui/button'
+import './ChatMessages.css'
 
 interface ChatMessagesProps {
   messages: Message[]
@@ -46,10 +48,13 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
         <div style={{ padding: '32px 16px' }}>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{editMode ? t('chatMessages.emptyTitleEdit') : t('chatMessages.emptyTitleChat')}</p>
           <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16 }}>{t('chatMessages.emptyHint')}</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="chat-hint-list">
             {chatHints.map((hint) => (
-              <button
+              <Button
                 key={hint.id}
+                type="button"
+                variant="ghost"
+                className="chat-hint-button"
                 onClick={() => {
                   if (hint.draft) {
                     queueAiCommandDraft(hint.draft, () => {})
@@ -57,22 +62,13 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
                     window.dispatchEvent(new CustomEvent('chat-hint-click', { detail: hint.event }))
                   }
                 }}
-                style={{
-                  width: '100%', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 10,
-                  fontSize: 12, color: 'var(--text-secondary)', background: 'color-mix(in srgb, var(--control-bg) 62%, transparent)',
-                  border: '1px solid color-mix(in srgb, var(--border-subtle) 54%, transparent)', borderRadius: 9, cursor: 'pointer', textAlign: 'left',
-                  boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 58%, transparent)',
-                  transition: 'border-color 100ms, background 100ms',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 34%, var(--border-subtle))'; e.currentTarget.style.background = 'color-mix(in srgb, var(--control-hover) 72%, transparent)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--border-subtle) 54%, transparent)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--control-bg) 62%, transparent)' }}
               >
                 <span style={{ width: 24, height: 20, borderRadius: 5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--accent-text)', background: 'var(--accent-muted)', flexShrink: 0 }}>{hint.mark}</span>
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block', color: 'var(--text-secondary)', fontWeight: 500 }}>{hint.title}</span>
                   <span style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hint.detail}</span>
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>

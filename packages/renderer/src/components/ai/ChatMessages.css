@@ -1,0 +1,27 @@
+.chat-hint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-hint-button {
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-subtle)) 54%, transparent);
+  border-radius: var(--radius-lg, 9px);
+  background: color-mix(in srgb, var(--secondary, var(--control-bg)) 62%, transparent);
+  color: var(--secondary-foreground, var(--text-secondary));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 58%, transparent);
+  font-size: 12px;
+  text-align: left;
+  white-space: normal;
+}
+
+.chat-hint-button:hover {
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 34%, var(--border, var(--border-subtle)));
+  background: color-mix(in srgb, var(--muted, var(--control-hover)) 72%, transparent);
+}
