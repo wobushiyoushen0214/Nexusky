@@ -7,6 +7,7 @@ import { useUIStore } from '../stores/ui-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Empty, EmptyDescription } from './ui/empty'
 import './VaultHealthScreen.css'
 
 type VaultHealthNextStepId =
@@ -207,7 +208,9 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
                   ))}
                 </div>
               ) : (
-                <div className="vault-health-driver is-empty">{t('vaultHealth.score.noIssues')}</div>
+                <Empty className="vault-health-driver is-empty">
+                  <EmptyDescription>{t('vaultHealth.score.noIssues')}</EmptyDescription>
+                </Empty>
               )}
             </section>
 

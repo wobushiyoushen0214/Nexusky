@@ -278,7 +278,17 @@
 
 .vault-health-driver.is-empty {
   display: block;
+  min-height: 30px;
+  padding: 6px 9px;
+  border-style: dashed;
   color: var(--text-tertiary);
+  text-align: left;
+}
+
+.vault-health-driver.is-empty .ui-empty-description {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .vault-health-metrics {
