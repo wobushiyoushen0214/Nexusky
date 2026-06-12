@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
 import { parseNoteProperties, updateFrontmatterProperty } from '../../utils/frontmatter'
+import { Button } from '../ui/button'
 
 function normalizeTag(value: string): string {
   return value.trim().replace(/^#/, '')
@@ -89,7 +90,10 @@ export function TagBar() {
           }}
         >
           #{tag}
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => removeTag(tag)}
             style={{
               width: 14,
@@ -110,7 +114,7 @@ export function TagBar() {
             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
           >
             ×
-          </button>
+          </Button>
         </span>
       ))}
       {inputVisible ? (
@@ -134,7 +138,10 @@ export function TagBar() {
           }}
         />
       ) : (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => setInputVisible(true)}
           style={{
             width: 20,
@@ -161,7 +168,7 @@ export function TagBar() {
           title="添加标签"
         >
           +
-        </button>
+        </Button>
       )}
     </div>
   )
