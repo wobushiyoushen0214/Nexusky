@@ -11,6 +11,7 @@ import './vault-overview.css'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const TOKEN_WINDOW_DAYS = 30
+const RECENT_UPDATE_WINDOW_DAYS = 7
 
 function normalizeTimestamp(value: number): number {
   return value < 10_000_000_000 ? value * 1000 : value
@@ -35,6 +36,22 @@ function formatCompactTokens(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`
   if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}K`
   return value.toLocaleString()
+}
+
+function formatCompactCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}K`
+  return value.toLocaleString()
+}
+
+function getRepairSignalCount(health: VaultHealthSummary | null): number {
+  if (!health) return 0
+  return health.unresolvedLinkCount +
+    health.orphanCount +
+    health.openTaskCount +
+    health.duplicateTitleCount +
+    health.missingMemoryCount +
+    health.staleNoteCount
 }
 
 function buildTokenUsageSeries(records: AIUsageRecord[], days = TOKEN_WINDOW_DAYS): TokenUsagePoint[] {
@@ -65,6 +82,14 @@ function buildTokenUsageSeries(records: AIUsageRecord[], days = TOKEN_WINDOW_DAY
   }
 
   return Array.from(byDate.values())
+}
+
+function getRecentUpdatedCount(notes: PropertyTableRow[], days = RECENT_UPDATE_WINDOW_DAYS): number {
+  const cutoff = Date.now() - days * DAY_MS
+  return notes.reduce((count, note) => {
+    const updatedAt = normalizeTimestamp(note.updatedAt)
+    return Number.isFinite(updatedAt) && updatedAt >= cutoff ? count + 1 : count
+  }, 0)
 }
 
 function isDiaryNote(note: PropertyTableRow): boolean {
@@ -152,12 +177,43 @@ export function VaultOverview() {
   }), [data.health, data.notes.length, t])
 
   const totalTokens = tokenUsageData.reduce((sum, point) => sum + point.totalTokens, 0)
+  const repairSignalCount = getRepairSignalCount(data.health)
+  const noteCount = data.health?.noteCount ?? data.notes.length
+  const linkCount = data.health?.linkCount ?? 0
+  const linkDensity = noteCount > 0 ? linkCount / noteCount : 0
+  const recentUpdatedCount = getRecentUpdatedCount(data.notes)
+  const summaryItems = [
+    {
+      label: t('overviewPage.summary.notes'),
+      value: formatCompactCount(noteCount),
+      detail: t('overviewPage.summary.notesDetail'),
+      tone: 'neutral' as const
+    },
+    {
+      label: t('overviewPage.summary.links'),
+      value: formatCompactCount(linkCount),
+      detail: t('overviewPage.summary.linksDetail', { count: linkDensity.toFixed(linkDensity >= 10 ? 0 : 1) }),
+      tone: linkDensity >= 3 ? 'good' as const : 'neutral' as const
+    },
+    {
+      label: t('overviewPage.summary.signals'),
+      value: formatCompactCount(repairSignalCount),
+      detail: repairSignalCount > 0 ? t('overviewPage.summary.signalsDetail') : t('overviewPage.summary.signalsClear'),
+      tone: repairSignalCount > 0 ? 'medium' as const : 'good' as const
+    },
+    {
+      label: t('overviewPage.summary.recentUpdates'),
+      value: formatCompactCount(recentUpdatedCount),
+      detail: recentUpdatedCount > 0 ? t('overviewPage.summary.recentUpdatesDetail') : t('overviewPage.summary.recentUpdatesEmpty'),
+      tone: recentUpdatedCount > 0 ? 'accent' as const : 'neutral' as const
+    }
+  ]
 
   return (
     <div className="vault-overview">
       <div className="vault-overview__shell">
         <header className="vault-overview__header">
-          <div>
+          <div className="vault-overview__header-title">
             <span className="vault-overview__eyebrow">{vaultName}</span>
             <h1>{t('overviewPage.title')}</h1>
           </div>
@@ -172,6 +228,16 @@ export function VaultOverview() {
             </button>
           </div>
         </header>
+
+        <section className="vault-overview__summary" aria-label={t('overviewPage.summary.title')}>
+          {summaryItems.map((item) => (
+            <div key={item.label} className={`vault-overview__metric vault-overview__metric--${item.tone}`}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <p>{item.detail}</p>
+            </div>
+          ))}
+        </section>
 
         <div className="vault-overview__dashboard">
           <VitalityCard health={data.health} />

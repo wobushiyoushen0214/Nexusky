@@ -58,6 +58,7 @@ interface UIState {
   toggleRightPanel: (panel: Panel) => void
   setMainView: (view: MainView) => void
   setWorkspaceScope: (scope: string) => void
+  openFilesSidebar: () => void
   toggleSidebar: () => void
   toggleFocusMode: () => void
   togglePreviewMode: () => void
@@ -256,13 +257,16 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scopedRightPanel = normalizeRightPanel(scoped?.rightPanel as string | undefined)
   const scopedMainView = normalizeMainView(scoped?.mainView)
   if (scoped && scopedMainView && scopedRightPanel && typeof scoped.sidebarCollapsed === 'boolean') {
+    if (!scoped.sidebarCollapsed && scopedMainView !== 'editor' && scopedMainView !== 'graph') {
+      return { ...scoped, mainView: 'editor', rightPanel: getAvailableRightPanel('editor', scopedRightPanel) }
+    }
     return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel) }
   }
   const mainView = getInitialMainView()
   const legacyOverviewMainView = safeGet(WORKSPACE_KEYS.mainView) === 'overview'
   return {
-    mainView,
-    rightPanel: getAvailableRightPanel(mainView, getInitialRightPanel()),
+    mainView: legacyOverviewMainView ? 'editor' : mainView,
+    rightPanel: getAvailableRightPanel(legacyOverviewMainView ? 'editor' : mainView, getInitialRightPanel()),
     sidebarCollapsed: legacyOverviewMainView ? false : getInitialSidebarCollapsed(),
   }
 }
@@ -358,14 +362,53 @@ export const useUIStore = create<UIState>((set, get) => ({
       rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel),
     })
   },
+  openFilesSidebar: () => {
+    const rightPanel = getAvailableRightPanel('editor', get().rightPanel)
+    const layout = saveWorkspaceLayout(get().workspaceScope, {
+      mainView: 'editor',
+      rightPanel,
+      sidebarCollapsed: false
+    })
+    set({
+      mainView: layout.mainView,
+      rightPanel: layout.rightPanel,
+      sidebarCollapsed: layout.sidebarCollapsed,
+      ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {})
+    })
+  },
   toggleSidebar: () => {
-    const next = !get().sidebarCollapsed
-    saveWorkspaceLayout(get().workspaceScope, { sidebarCollapsed: next })
-    set({ sidebarCollapsed: next })
+    const state = get()
+    const nextCollapsed = !state.sidebarCollapsed
+    if (!nextCollapsed && state.mainView !== 'editor' && state.mainView !== 'graph') {
+      state.openFilesSidebar()
+      return
+    }
+    const layout = saveWorkspaceLayout(state.workspaceScope, { sidebarCollapsed: nextCollapsed })
+    set({ sidebarCollapsed: layout.sidebarCollapsed })
   },
   toggleFocusMode: () => {
     const entering = !get().focusMode
-    set({ focusMode: entering, sidebarCollapsed: entering ? true : false, rightPanel: entering ? 'none' : get().rightPanel })
+    if (entering) {
+      set({ focusMode: true, sidebarCollapsed: true, rightPanel: 'none' })
+      return
+    }
+    if (get().mainView !== 'editor' && get().mainView !== 'graph') {
+      const rightPanel = getAvailableRightPanel('editor', get().rightPanel)
+      const layout = saveWorkspaceLayout(get().workspaceScope, {
+        mainView: 'editor',
+        rightPanel,
+        sidebarCollapsed: false
+      })
+      set({
+        focusMode: false,
+        mainView: layout.mainView,
+        rightPanel: layout.rightPanel,
+        sidebarCollapsed: layout.sidebarCollapsed,
+        ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {})
+      })
+      return
+    }
+    set({ focusMode: false, sidebarCollapsed: false, rightPanel: get().rightPanel })
   },
   togglePreviewMode: () => set({ previewMode: !get().previewMode }),
   setSidebarWidth: (width) => {

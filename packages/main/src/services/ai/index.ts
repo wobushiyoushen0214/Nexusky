@@ -54,6 +54,7 @@ class AIManager {
       config.type,
       config.apiKey,
       config.baseUrl,
+      config.authMode ?? '',
       config.model,
       config.name,
       config.inputCostPer1MTokens ?? '',
@@ -80,10 +81,10 @@ class AIManager {
       case 'codex':
         provider = new CodexCliProvider(config)
         break
+      case 'openai':
       case 'openai-responses':
         provider = new OpenAIResponsesProvider(config)
         break
-      case 'openai':
       case 'custom':
       default:
         provider = new OpenAIProvider(config)

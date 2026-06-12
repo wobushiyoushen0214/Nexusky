@@ -262,38 +262,12 @@
   color: oklch(0.96 0.005 270);
 }
 
-.proactive-item__snooze {
-  position: relative;
-}
-
-.proactive-item__snooze-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 9001;
+.proactive-item__snooze-content.ui-dropdown-menu-content {
   min-width: 110px;
-  background: var(--panel-bg, #1d1d20);
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
-  border-radius: 6px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
 }
 
-.proactive-item__snooze-option {
-  display: block;
-  width: 100%;
-  padding: 6px 12px;
-  text-align: left;
+.proactive-item__snooze-content .ui-dropdown-menu-item {
   font-size: 11px;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.proactive-item__snooze-option:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
 }
 
 .proactive-toast-container {

@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import { aiManager, AIProviderConfig, resolveActiveProviderId } from '../../services/ai'
 import { store } from '../../services/store'
 import { listOllamaModels } from '../../services/ai/ollama-provider'
+import { buildModelsUrlCandidates, CLAUDE_DEFAULT_MODELS, isOfficialClaudeBaseUrl, normalizeClaudeBaseUrlForSdk, normalizeProviderBaseUrl } from '../../services/ai/provider-url'
 import { transcribeAudio, type TranscribeAudioParams } from '../../services/ai/transcription'
 import { clearAIUsageRecords, getAICostBudget, getAIUsageSummary, listAIUsageRecords, setAICostBudget, type AIUsageQuery } from '../../services/ai/usage'
 import type { AICostBudget, FetchModelsParams, FetchModelsResult } from '@shared/types/ipc'
@@ -47,6 +48,7 @@ function normalizeProviderForStore(config: AIProviderConfig): AIProviderConfig {
     apiKey: (rest.apiKey || '').trim(),
     model: (rest.model || '').trim(),
     enabled: rest.enabled === true,
+    authMode: rest.type === 'claude' && (rest.authMode === 'api-key' || rest.authMode === 'auth-token') ? rest.authMode : undefined,
     inputCostPer1MTokens: typeof rest.inputCostPer1MTokens === 'number' ? rest.inputCostPer1MTokens : undefined,
     outputCostPer1MTokens: typeof rest.outputCostPer1MTokens === 'number' ? rest.outputCostPer1MTokens : undefined
   }
@@ -87,10 +89,77 @@ function persistProviders(providers: AIProviderConfig[], preferredActiveId?: str
 }
 
 function getFetchModelsBaseUrl(type: AIProviderConfig['type'], baseUrl: string): string {
-  const trimmed = baseUrl.trim().replace(/\/+$/, '')
+  const trimmed = normalizeProviderBaseUrl(baseUrl)
   if (type === 'openai' || type === 'openai-responses') return trimmed || 'https://api.openai.com/v1'
   if (type === 'ollama') return (trimmed || 'http://localhost:11434').replace(/\/v1$/, '')
+  if (type === 'claude') return normalizeClaudeBaseUrlForSdk(trimmed) || ''
   return trimmed
+}
+
+function extractModelIds(data: unknown): string[] {
+  const payload = data && typeof data === 'object' ? data as Record<string, unknown> : {}
+  const entries = Array.isArray(payload.data)
+    ? payload.data
+    : Array.isArray(payload.models)
+      ? payload.models
+      : []
+  const ids = entries
+    .map((entry) => {
+      if (typeof entry === 'string') return entry
+      if (entry && typeof entry === 'object') {
+        const id = (entry as Record<string, unknown>).id
+        return typeof id === 'string' ? id : ''
+      }
+      return ''
+    })
+    .map((id) => id.trim())
+    .filter((id): id is string => id.length > 0)
+  return Array.from(new Set(ids)).sort((a, b) => a.localeCompare(b))
+}
+
+async function fetchModelsFromCandidates(urls: string[], headers: Record<string, string>): Promise<FetchModelsResult> {
+  let lastError = '网络错误'
+
+  for (const url of urls) {
+    let timeout: ReturnType<typeof setTimeout> | null = null
+    try {
+      const controller = new AbortController()
+      timeout = setTimeout(() => controller.abort(), 30_000)
+
+      const response = await net.fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal
+      })
+
+      if (response.status === 401) {
+        return { ok: false, models: [], error: 'API Key 无效' }
+      }
+      if (response.status === 403) {
+        return { ok: false, models: [], error: 'API Key 无权限访问模型列表' }
+      }
+      if (response.status === 404 || response.status === 405) {
+        lastError = `模型列表端点不可用 (${response.status})`
+        continue
+      }
+      if (!response.ok) {
+        lastError = `模型列表请求失败 (${response.status})`
+        continue
+      }
+
+      const models = extractModelIds(await response.json())
+      return { ok: true, models }
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        return { ok: false, models: [], error: '请求超时' }
+      }
+      lastError = e instanceof Error ? e.message : '网络错误'
+    } finally {
+      if (timeout) clearTimeout(timeout)
+    }
+  }
+
+  return { ok: false, models: [], error: lastError }
 }
 
 function normalizeUsageQuery(params?: AIUsageQuery): AIUsageQuery {
@@ -302,7 +371,12 @@ export function registerAiProviderHandlers(): void {
     const { join } = require('path')
     const home = homedir()
     const os = platform()
-    const detected: { claude?: { apiKey: string; baseUrl: string; source?: string }; openai?: { apiKey: string; source?: string }; codex?: { command: string; source?: string }; skipped?: string[] } = { skipped: [] }
+    const detected: {
+      claude?: { apiKey: string; baseUrl: string; authMode?: AIProviderConfig['authMode']; source?: string }
+      openai?: { apiKey: string; source?: string }
+      codex?: { command: string; source?: string }
+      skipped?: string[]
+    } = { skipped: [] }
     const isUsableOpenAIKey = (key: unknown) => typeof key === 'string' && /^sk-[A-Za-z0-9_-]+/.test(key.trim())
 
     const claudePaths = [
@@ -316,7 +390,7 @@ export function registerAiProviderHandlers(): void {
         const data = JSON.parse(readFileSync(p, 'utf-8'))
         const env = data.env || {}
         if (env.ANTHROPIC_AUTH_TOKEN) {
-          detected.claude = { apiKey: env.ANTHROPIC_AUTH_TOKEN, baseUrl: env.ANTHROPIC_BASE_URL || '', source: 'Claude Code' }
+          detected.claude = { apiKey: env.ANTHROPIC_AUTH_TOKEN, baseUrl: env.ANTHROPIC_BASE_URL || '', authMode: 'auth-token', source: 'Claude Code' }
           break
         }
       } catch {}
@@ -347,7 +421,7 @@ export function registerAiProviderHandlers(): void {
     }
 
     if (!detected.claude && process.env.ANTHROPIC_API_KEY) {
-      detected.claude = { apiKey: process.env.ANTHROPIC_API_KEY, baseUrl: process.env.ANTHROPIC_BASE_URL || '', source: '环境变量 ANTHROPIC_API_KEY' }
+      detected.claude = { apiKey: process.env.ANTHROPIC_API_KEY, baseUrl: process.env.ANTHROPIC_BASE_URL || '', authMode: 'api-key', source: '环境变量 ANTHROPIC_API_KEY' }
     }
 
     const existing = getStoredProviders()
@@ -371,11 +445,12 @@ export function registerAiProviderHandlers(): void {
       addIfMissing({
         id: randomUUID(),
         name: hasCustomBase ? 'Claude 中转站 (本地检测)' : 'Claude (本地检测)',
-        type: hasCustomBase ? 'custom' : 'claude',
-        baseUrl: hasCustomBase ? `${detected.claude.baseUrl.replace(/\/+$/, '')}/v1` : '',
+        type: 'claude',
+        baseUrl: normalizeClaudeBaseUrlForSdk(detected.claude.baseUrl) || '',
         apiKey: detected.claude.apiKey,
         model: 'claude-sonnet-4-6',
-        enabled: true
+        enabled: true,
+        authMode: detected.claude.authMode
       }, (candidate) => candidate.apiKey === detected.claude!.apiKey)
     }
 
@@ -431,13 +506,23 @@ export function registerAiProviderHandlers(): void {
     try {
       const stored = params.providerId ? getStoredProviders().find((provider) => provider.id === params.providerId) : undefined
       const apiKey = params.apiKey || stored?.apiKey || ''
+      const authMode = params.authMode || stored?.authMode
       const baseUrl = getFetchModelsBaseUrl(params.type, params.baseUrl || stored?.baseUrl || '')
 
       if (params.type === 'claude') {
-        return {
-          ok: true,
-          models: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001']
+        if (!baseUrl || isOfficialClaudeBaseUrl(baseUrl)) {
+          return { ok: true, models: CLAUDE_DEFAULT_MODELS }
         }
+
+        if (!apiKey) return { ok: false, models: [], error: 'API Key 为空' }
+        const endpoints = buildModelsUrlCandidates(baseUrl)
+        if (endpoints.length === 0) return { ok: false, models: [], error: 'Base URL 为空' }
+        return fetchModelsFromCandidates(
+          endpoints,
+          authMode === 'api-key'
+            ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
+            : { Authorization: `Bearer ${apiKey}`, 'anthropic-version': '2023-06-01' }
+        )
       }
 
       if (params.type === 'ollama') {
@@ -448,46 +533,9 @@ export function registerAiProviderHandlers(): void {
       if (!apiKey) return { ok: false, models: [], error: 'API Key 为空' }
       if (!baseUrl) return { ok: false, models: [], error: 'Base URL 为空' }
 
-      const endpoints = [`${baseUrl}/models`, `${baseUrl}/v1/models`]
-
-      for (const url of endpoints) {
-        let timeout: ReturnType<typeof setTimeout> | null = null
-        try {
-          const controller = new AbortController()
-          timeout = setTimeout(() => controller.abort(), 30_000)
-
-          const response = await net.fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${apiKey}` },
-            signal: controller.signal
-          })
-
-          clearTimeout(timeout)
-          timeout = null
-
-          if (response.status === 401) {
-            return { ok: false, models: [], error: 'API Key 无效' }
-          }
-
-          if (!response.ok) continue
-
-          const data = await response.json() as { data?: { id?: string }[] }
-          const models = (data.data || [])
-            .map(m => m.id)
-            .filter((id): id is string => typeof id === 'string' && id.length > 0)
-
-          return { ok: true, models }
-        } catch (e) {
-          if (e instanceof Error && e.name === 'AbortError') {
-            return { ok: false, models: [], error: '请求超时' }
-          }
-          continue
-        } finally {
-          if (timeout) clearTimeout(timeout)
-        }
-      }
-
-      return { ok: false, models: [], error: '网络错误' }
+      const endpoints = buildModelsUrlCandidates(baseUrl)
+      if (endpoints.length === 0) return { ok: false, models: [], error: 'Base URL 为空' }
+      return fetchModelsFromCandidates(endpoints, { Authorization: `Bearer ${apiKey}` })
     } catch (e) {
       return { ok: false, models: [], error: e instanceof Error ? e.message : '网络错误' }
     }

@@ -20,7 +20,8 @@ Because of that, the safest direction is:
 Already added:
 
 - `radix-ui` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs` wrappers.
+- `cmdk` dependency.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu` wrappers.
 - `MemoryTimelinePanel` now uses those wrappers.
 - `ConfirmModal` now uses `AlertDialog`.
 - Settings shell now uses `Dialog` and `ScrollArea`.
@@ -29,6 +30,8 @@ Already added:
 - Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, and the shared `ConfirmModal`.
 - Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, and `Button` where appropriate.
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions.
+- `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
+- `NotificationCenter` snooze actions now use `DropdownMenu`.
 
 Reference docs checked through `pnpm dlx shadcn@latest docs`:
 
@@ -132,8 +135,9 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Needed by `ContextMenu.tsx` replacement.
 
 4. `dropdown-menu.tsx`
-   - Wrap `radix-ui` `DropdownMenu`.
-   - Needed by snooze menus, column menus, sidebar vault menu, small action menus.
+   - Done.
+   - Used by `NotificationCenter` snooze actions.
+   - Still useful for column menus, sidebar vault menu, and small action menus.
 
 5. `toggle-group.tsx` - done
    - Wrap `radix-ui` `ToggleGroup`.
@@ -147,8 +151,8 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Needed for small floating menus and icon-only controls.
 
 8. `command.tsx`
-   - Use shadcn `Command`, likely requires `cmdk`.
-   - Do this only when migrating `CommandPalette` and `QuickSwitcher`.
+   - Done with local `cmdk` wrapper.
+   - Used by `CommandPalette` and `QuickSwitcher`.
 
 ## Detailed Migration Plan
 
@@ -296,7 +300,13 @@ Why:
 
 Dependency:
 
-- shadcn `Command` uses `cmdk`; add it only when implementing Phase 5.
+- shadcn `Command` uses `cmdk`; added for `CommandPalette` and `QuickSwitcher`.
+
+Current progress:
+
+- `CommandPalette`: migrated to `Dialog` + `Command`.
+- `QuickSwitcher`: migrated to `Dialog` + `Command`.
+- `SearchPanel`: remains on `Dialog` + `ToggleGroup` + `ScrollArea`; keep custom result behavior unless its async search/result preview model is redesigned.
 
 ### Phase 6: Settings Controls
 
@@ -366,7 +376,7 @@ Reason:
 4. `Dialog` migration for `AIProviderSettings` editor modal.
 5. `Dialog` migration for `PublishScopeDialog`.
 6. Shared `ContextMenu` wrapper.
-7. Command palette and quick switcher.
+7. Command palette and quick switcher. - done
 8. Search panel controls.
 9. Settings form controls.
 10. Proactive notification sheet/dropdowns.

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { BaseAIProvider, ChatMessage, ChatStreamEvent, ChatContentPart, ChatUsageMeta, AIProviderConfig, ChatOptions, ToolCallEvent, ToolDefinition, AIProviderValidationResult } from './base-provider'
 import { getProviderRetryDelay, MAX_PROVIDER_RETRIES, normalizeProviderError, waitForProviderRetry } from './provider-errors'
 import { parseToolArguments } from './tool-arguments'
+import { ANTHROPIC_DEFAULT_BASE_URL, normalizeClaudeBaseUrlForSdk, shouldUseClaudeBearerAuth } from './provider-url'
 
 type AnthropicImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
 export const DEFAULT_CLAUDE_MAX_TOKENS = 8192
@@ -123,9 +124,12 @@ export class ClaudeProvider extends BaseAIProvider {
 
   constructor(config: AIProviderConfig) {
     super(config)
+    const baseURL = normalizeClaudeBaseUrlForSdk(config.baseUrl) || ANTHROPIC_DEFAULT_BASE_URL
+    const useBearerAuth = shouldUseClaudeBearerAuth(config.baseUrl, config.authMode)
     this.client = new Anthropic({
-      apiKey: config.apiKey,
-      baseURL: config.baseUrl || undefined
+      apiKey: useBearerAuth ? null : config.apiKey,
+      authToken: useBearerAuth ? config.apiKey : null,
+      baseURL
     })
   }
 
@@ -293,7 +297,8 @@ export class ClaudeProvider extends BaseAIProvider {
       })
       return { ok: true }
     } catch (error: unknown) {
-      return { ok: false, error: normalizeProviderError(error).message }
+      const normalized = normalizeProviderError(error)
+      return { ok: false, error: normalized.message }
     }
   }
 }

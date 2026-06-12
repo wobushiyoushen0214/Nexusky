@@ -85,7 +85,7 @@ export default function App() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const loadVault = useVaultStore((s) => s.loadVault)
-  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, publishScopeOpen, toggleRightPanel, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setPublishScopeOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore(
+  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, publishScopeOpen, toggleRightPanel, openFilesSidebar, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setPublishScopeOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore(
     useShallow((s) => ({
       rightPanel: s.rightPanel,
       sidebarCollapsed: s.sidebarCollapsed,
@@ -99,6 +99,7 @@ export default function App() {
       commandPaletteOpen: s.commandPaletteOpen,
       publishScopeOpen: s.publishScopeOpen,
       toggleRightPanel: s.toggleRightPanel,
+      openFilesSidebar: s.openFilesSidebar,
       toggleSidebar: s.toggleSidebar,
       toggleFocusMode: s.toggleFocusMode,
       resizeSidebar: s.resizeSidebar,
@@ -333,7 +334,9 @@ export default function App() {
       }
       if (matchesShortcut(e, getKey('sidebar'))) {
         e.preventDefault()
-        toggleSidebar()
+        const state = useUIStore.getState()
+        if (state.mainView === 'editor' && !state.sidebarCollapsed) toggleSidebar()
+        else openFilesSidebar()
       }
       if (matchesShortcut(e, getKey('command-palette'))) {
         e.preventDefault()

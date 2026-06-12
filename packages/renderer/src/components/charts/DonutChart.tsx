@@ -2,7 +2,7 @@
  * 环形占比图 - 使用 ECharts
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as echarts from 'echarts'
 
 type DonutTone = 'high' | 'medium' | 'low' | 'neutral'
@@ -176,6 +176,13 @@ export function DonutChart({
 }: DonutChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstanceRef = useRef<echarts.ECharts | null>(null)
+  const [themeKey, setThemeKey] = useState(0)
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setThemeKey(k => k + 1))
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const host = chartRef.current
@@ -273,7 +280,7 @@ export function DonutChart({
         chartInstanceRef.current = null
       }
     }
-  }, [data, height])
+  }, [data, height, themeKey])
 
   if (!data.length) return null
 

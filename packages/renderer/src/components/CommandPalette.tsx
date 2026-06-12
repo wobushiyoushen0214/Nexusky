@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/ui-store'
 import { useEditorStore } from '../stores/editor-store'
@@ -6,11 +6,21 @@ import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import { toolSurfaceCategoryToCommandCategory } from './tool-surface/tool-surface-category'
+import { Dialog, DialogContent, DialogTitle } from './ui/dialog'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from './ui/command'
 import type { LocalPlugin, PluginPanel, ToolSurfaceEntry } from '@shared/types/ipc'
 
 type CommandCategory = 'file' | 'search' | 'ai' | 'plugin' | 'graph' | 'sync' | 'export' | 'interface'
 
-interface Command {
+interface PaletteCommand {
   id: string
   label: string
   category: CommandCategory
@@ -28,11 +38,9 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
-  const [selectedIndex, setSelectedIndex] = useState(0)
   const [plugins, setPlugins] = useState<LocalPlugin[]>([])
   const [toolSurfaceEntries, setToolSurfaceEntries] = useState<ToolSurfaceEntry[]>([])
-  const inputRef = useRef<HTMLInputElement>(null)
-  const { setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setPublishScopeOpen, language } = useUIStore()
+  const { setRightPanel, setSearchOpen, setSettingsOpen, openFilesSidebar, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setPublishScopeOpen, language } = useUIStore()
   const { saveFile, currentFilePath, content } = useEditorStore()
   const { vaultPath } = useVaultStore()
 
@@ -57,7 +65,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     return false
   }, [currentFilePath, t])
 
-  const commands: Command[] = useMemo(() => [
+  const commands: PaletteCommand[] = useMemo(() => [
     { id: 'save', category: 'file', label: t('commandPalette.commands.save.label'), shortcut: 'Ctrl+S', keywords: ['save'], action: () => saveFile() },
     { id: 'new-note', category: 'file', label: t('commandPalette.commands.newNote.label'), shortcut: 'Ctrl+N', keywords: ['new', 'note'], action: () => window.dispatchEvent(new CustomEvent('create-new-note')) },
     { id: 'copy-wikilink', category: 'file', label: t('commandPalette.commands.copyWikilink.label'), description: t('commandPalette.commands.copyWikilink.description'), keywords: ['wikilink', 'copy', 'obsidian'], action: async () => {
@@ -217,7 +225,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     { id: 'view-context-pack', category: 'interface', label: t('commandPalette.commands.viewContextPack.label'), description: t('commandPalette.commands.viewContextPack.description'), keywords: ['context', 'memory', 'long-context', 'observability', 'tune'], action: () => { useUIStore.getState().setSettingsInitialTab('long-context'); setSettingsOpen(true) } },
     { id: 'open-agent-panel', category: 'interface', label: t('commandPalette.commands.openAgent.label'), description: t('commandPalette.commands.openAgent.description'), keywords: ['agent', 'plan', 'execute', 'autonomy'], action: () => setRightPanel('agent') },
     { id: 'new-window', category: 'interface', label: t('commandPalette.commands.newWindow.label'), description: t('commandPalette.commands.newWindow.description'), keywords: ['window', 'multi'], action: () => window.api.windowControls.newWindow() },
-    { id: 'sidebar', category: 'interface', label: t('commandPalette.commands.sidebar.label'), shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => toggleSidebar() },
+    { id: 'sidebar', category: 'interface', label: t('commandPalette.commands.sidebar.label'), shortcut: 'Ctrl+Shift+B', keywords: ['sidebar'], action: () => {
+      const state = useUIStore.getState()
+      if (state.mainView === 'editor' && !state.sidebarCollapsed) toggleSidebar()
+      else openFilesSidebar()
+    } },
     { id: 'reset-workspace', category: 'interface', label: t('commandPalette.commands.resetWorkspace.label'), description: t('commandPalette.commands.resetWorkspace.description'), keywords: ['workspace', 'layout', 'reset'], action: () => resetWorkspaceLayout() },
     { id: 'focus', category: 'interface', label: t('commandPalette.commands.focus.label'), shortcut: 'F11', keywords: ['focus'], action: () => toggleFocusMode() },
     { id: 'theme', category: 'interface', label: t('commandPalette.commands.theme.label'), keywords: ['theme'], action: () => toggleTheme() },
@@ -237,7 +249,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       keywords: ['plugin', 'panel', plugin.id, panel.id],
       action: () => openPluginPanel(plugin, panel)
     }))),
-    ...toolSurfaceEntries.map<Command>((entry) => ({
+    ...toolSurfaceEntries.map<PaletteCommand>((entry) => ({
       id: `tool:${entry.name}`,
       category: toolSurfaceCategoryToCommandCategory(entry.category),
       label: t(entry.labelKey, { defaultValue: entry.name }),
@@ -268,7 +280,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         }
       }
     })),
-  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setPublishScopeOpen, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, toolSurfaceEntries, t])
+  ], [saveFile, currentFilePath, content, vaultPath, setRightPanel, setSearchOpen, setSettingsOpen, openFilesSidebar, toggleSidebar, toggleTheme, toggleFocusMode, setMainView, resetWorkspaceLayout, setPublishScopeOpen, queueAiDraft, openPluginPanel, getCurrentNoteTitle, requireCurrentNote, plugins, toolSurfaceEntries, language, t])
 
   const filtered = query.trim()
     ? commands.filter((c) => {
@@ -277,7 +289,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     })
     : commands
 
-  const grouped = filtered.reduce<Record<string, Command[]>>((acc, command) => {
+  const grouped = filtered.reduce<Record<string, PaletteCommand[]>>((acc, command) => {
     if (!acc[command.category]) acc[command.category] = []
     acc[command.category].push(command)
     return acc
@@ -288,8 +300,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   useEffect(() => {
     if (open) {
       setQuery('')
-      setSelectedIndex(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
       if (vaultPath) {
         window.api.invoke('plugins:list', { vaultPath }).then(setPlugins).catch(() => setPlugins([]))
       }
@@ -299,104 +309,54 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     }
   }, [open, vaultPath])
 
-  const listRef = useRef<HTMLDivElement>(null)
-  const commandRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (filtered.length === 0) {
-      if (e.key === 'Escape') onClose()
-      return
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIndex((i) => {
-        const next = Math.min(i + 1, filtered.length - 1)
-        commandRefs.current[filtered[next]?.id]?.scrollIntoView({ block: 'nearest' })
-        return next
-      })
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIndex((i) => {
-        const next = Math.max(i - 1, 0)
-        commandRefs.current[filtered[next]?.id]?.scrollIntoView({ block: 'nearest' })
-        return next
-      })
-    } else if (e.key === 'Enter' && filtered[selectedIndex]) {
-      filtered[selectedIndex].action()
-      onClose()
-    } else if (e.key === 'Escape') {
-      onClose()
-    }
-  }
-
-  if (!open) return null
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh] glass-overlay"
-      style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
-      onClick={onClose}
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
     >
-      <div
-        className="glass-popover"
-        style={{ width: 500, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
-        onClick={(e) => e.stopPropagation()}
+      <DialogContent
+        className="command-surface-dialog command-palette-dialog"
+        overlayClassName="command-surface-overlay"
+        showCloseButton={false}
       >
-        <div className="glass-divider-bottom" style={{ padding: 12, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
-          <input
-            ref={inputRef}
+        <DialogTitle className="ui-sr-only">
+          {t('commandPalette.title', { defaultValue: 'Command Palette' })}
+        </DialogTitle>
+        <Command shouldFilter={false}>
+          <CommandInput
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0) }}
-            onKeyDown={handleKeyDown}
+            onValueChange={setQuery}
             placeholder={t('commandPalette.placeholder')}
-            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 14, color: 'var(--text-primary)' }}
           />
-        </div>
-        <div ref={listRef} style={{ maxHeight: 420, overflowY: 'auto', padding: 6 }}>
-          {filtered.length === 0 && (
-            <div style={{ padding: '20px 12px', color: 'var(--text-tertiary)', fontSize: 13 }}>{t('commandPalette.empty')}</div>
-          )}
-          {categoryOrder.filter((category) => grouped[category]?.length).map((category) => (
-            <div key={category} style={{ padding: '4px 0' }}>
-              <div style={{ padding: '5px 10px 4px', fontSize: 10, letterSpacing: 0, color: 'var(--text-tertiary)', fontWeight: 600 }}>
-                {t(`commandPalette.categories.${category}`)}
-              </div>
-              {grouped[category].map((cmd) => {
-                const i = filtered.findIndex((item) => item.id === cmd.id)
-                return (
-                  <button
+          <CommandList className="command-palette-list">
+            <CommandEmpty>{t('commandPalette.empty')}</CommandEmpty>
+            {categoryOrder.filter((category) => grouped[category]?.length).map((category) => (
+              <CommandGroup key={category} heading={t(`commandPalette.categories.${category}`)}>
+                {grouped[category].map((cmd) => (
+                  <CommandItem
                     key={cmd.id}
-                    ref={(el) => { commandRefs.current[cmd.id] = el }}
-                    onClick={() => { cmd.action(); onClose() }}
-                    style={{
-                      width: '100%',
-                      minHeight: 42,
-                      padding: '7px 10px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      fontSize: 13,
-                      color: i === selectedIndex ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      background: i === selectedIndex ? 'var(--accent-muted)' : 'transparent',
-                      border: 'none',
-                      borderRadius: 7,
-                      cursor: 'pointer',
-                      textAlign: 'left',
+                    value={cmd.id}
+                    onSelect={() => {
+                      cmd.action()
+                      onClose()
                     }}
                   >
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'block', color: 'inherit', fontWeight: i === selectedIndex ? 600 : 500 }}>{cmd.label}</span>
-                      {cmd.description && <span style={{ display: 'block', marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cmd.description}</span>}
+                    <span className="command-surface-item-main">
+                      <span className="command-surface-item-title">{cmd.label}</span>
+                      {cmd.description && (
+                        <span className="command-surface-item-description">{cmd.description}</span>
+                      )}
                     </span>
-                    {cmd.shortcut && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{cmd.shortcut}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+                    {cmd.shortcut && <CommandShortcut>{cmd.shortcut}</CommandShortcut>}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </DialogContent>
+    </Dialog>
   )
 }

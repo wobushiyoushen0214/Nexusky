@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import type {
   EasyInputMessage,
   FunctionTool,
+  ResponseCreateParamsNonStreaming,
   ResponseCreateParamsStreaming,
   ResponseFunctionToolCall,
   ResponseInput,
@@ -43,6 +44,11 @@ function toResponseUsageMeta(
   }
 }
 
+function isCodexResponsesModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase()
+  return normalized.includes('codex') || /^gpt-5\.\d+(?:$|[-_])/.test(normalized)
+}
+
 export class OpenAIResponsesProvider extends BaseAIProvider {
   override readonly capabilities = {
     streaming: true,
@@ -59,11 +65,13 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
     })
   }
 
-  private buildInput(messages: ChatMessage[]): ResponseInput {
+  private buildInput(messages: ChatMessage[]): { input: ResponseInput; instructions?: string } {
     const input: ResponseInput = []
+    const instructions: string[] = []
     for (const m of messages) {
       if (m.role === 'system') {
-        input.push({ role: 'developer', content: contentToString(m.content) } satisfies EasyInputMessage)
+        const content = contentToString(m.content).trim()
+        if (content) instructions.push(content)
       } else if (m.role === 'assistant' && m.tool_calls) {
         input.push(...m.tool_calls.map((toolCall): ResponseFunctionToolCall => ({
           type: 'function_call',
@@ -77,7 +85,47 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         input.push({ role: m.role, content: toResponseContent(m.content) } satisfies EasyInputMessage)
       }
     }
-    return input
+    return {
+      input,
+      instructions: instructions.length > 0 ? instructions.join('\n\n') : undefined
+    }
+  }
+
+  private buildStreamingRequest(
+    messages: ChatMessage[],
+    options?: ChatOptions,
+    tools?: FunctionTool[]
+  ): ResponseCreateParamsStreaming {
+    const { input, instructions } = this.buildInput(messages)
+    const codexRequest = isCodexResponsesModel(this.config.model)
+    const request: ResponseCreateParamsStreaming = {
+      model: this.config.model,
+      input,
+      stream: true,
+      ...(instructions !== undefined && { instructions }),
+      ...(tools && tools.length > 0 ? { tools } : {}),
+      ...(codexRequest
+        ? {
+            store: false,
+            include: ['reasoning.encrypted_content'],
+            tool_choice: 'auto',
+            parallel_tool_calls: false
+          }
+        : {
+            ...(options?.temperature !== undefined && { temperature: options.temperature })
+          })
+    }
+    return request
+  }
+
+  private buildValidationRequest(): ResponseCreateParamsNonStreaming {
+    const { input, instructions } = this.buildInput([{ role: 'user', content: 'hi' }])
+    return {
+      model: this.config.model,
+      input,
+      max_output_tokens: 5,
+      ...(instructions !== undefined && { instructions })
+    }
   }
 
   async *chatStream(messages: ChatMessage[], signal?: AbortSignal, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
@@ -99,13 +147,7 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
       }
 
       try {
-        const input = this.buildInput(messages)
-        const request: ResponseCreateParamsStreaming = {
-          model: this.config.model,
-          input,
-          stream: true,
-          ...(options?.temperature !== undefined && { temperature: options.temperature })
-        }
+        const request = this.buildStreamingRequest(messages, options)
         const stream = await this.client.responses.create(request, signal ? { signal } : undefined)
 
         let usage: ChatUsageMeta | undefined
@@ -160,15 +202,8 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
       }
 
       try {
-        const input = this.buildInput(messages)
         const responsesTools = toResponseTools(tools)
-
-        const request: ResponseCreateParamsStreaming = {
-          model: this.config.model,
-          input,
-          tools: responsesTools.length > 0 ? responsesTools : undefined,
-          stream: true
-        }
+        const request = this.buildStreamingRequest(messages, undefined, responsesTools)
         const stream = await this.client.responses.create(request, signal ? { signal } : undefined)
 
         const toolCalls = new Map<string, { id: string; name: string; arguments: string }>()
@@ -229,7 +264,15 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
 
   async validate(): Promise<AIProviderValidationResult> {
     try {
-      await this.client.models.list()
+      if (isCodexResponsesModel(this.config.model)) {
+        const request = this.buildStreamingRequest([{ role: 'user', content: 'hi' }])
+        const stream = await this.client.responses.create(request)
+        for await (const event of stream) {
+          if (event.type === 'response.completed') break
+        }
+      } else {
+        await this.client.responses.create(this.buildValidationRequest())
+      }
       return { ok: true }
     } catch (error: unknown) {
       return { ok: false, error: normalizeProviderError(error).message }

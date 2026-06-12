@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useProactiveStore } from '../../stores/proactive-store'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 import type { ProactiveSuggestion } from '@shared/types/ipc'
 import './proactive.css'
 
@@ -154,7 +160,6 @@ interface SuggestionItemProps {
 
 function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionItemProps) {
   const { t } = useTranslation()
-  const [snoozeMenuOpen, setSnoozeMenuOpen] = useState(false)
 
   return (
     <div className="proactive-item">
@@ -168,32 +173,25 @@ function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionI
         <button type="button" className="proactive-item__btn proactive-item__btn--primary" onClick={onOpen}>
           {t('proactive.open')}
         </button>
-        <div className="proactive-item__snooze">
-          <button
-            type="button"
-            className="proactive-item__btn"
-            onClick={() => setSnoozeMenuOpen((v) => !v)}
-          >
-            {t('proactive.snooze')}
-          </button>
-          {snoozeMenuOpen && (
-            <div className="proactive-item__snooze-menu">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="proactive-item__btn">
+              {t('proactive.snooze')}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="proactive-item__snooze-content">
               {SNOOZE_OPTIONS.map((opt) => (
-                <button
+                <DropdownMenuItem
                   key={opt.key}
-                  type="button"
-                  className="proactive-item__snooze-option"
-                  onClick={() => {
-                    setSnoozeMenuOpen(false)
+                  onSelect={() => {
                     onSnooze(opt.days)
                   }}
                 >
                   {t(`proactive.${opt.key}`)}
-                </button>
+                </DropdownMenuItem>
               ))}
-            </div>
-          )}
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <button type="button" className="proactive-item__btn" onClick={onDismiss}>
           {t('proactive.dismiss')}
         </button>

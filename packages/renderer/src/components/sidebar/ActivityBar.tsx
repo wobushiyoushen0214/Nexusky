@@ -21,7 +21,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export function ActivityBar() {
   const { t } = useTranslation()
-  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, toggleSidebar } = useUIStore()
+  const { setSearchOpen, toggleRightPanel, setSettingsOpen, setMainView, mainView, rightPanel, sidebarCollapsed, openFilesSidebar, toggleSidebar } = useUIStore()
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const { visibleIds, toggleVisibility } = useActivityBarStore()
 
@@ -42,11 +42,10 @@ export function ActivityBar() {
     },
     files: () => {
       const state = useUIStore.getState()
-      if (state.mainView !== 'editor') {
-        setMainView('editor')
-        if (state.sidebarCollapsed) toggleSidebar()
-      } else {
+      if (state.mainView === 'editor' && !state.sidebarCollapsed) {
         toggleSidebar()
+      } else {
+        openFilesSidebar()
       }
     },
     search: () => setSearchOpen(true),
@@ -73,10 +72,10 @@ export function ActivityBar() {
   const availabilityContext = { mainView, currentFilePath }
 
   const getActiveId = () => {
+    if (mainView !== 'graph' && !sidebarCollapsed) return 'files'
     if (mainView === 'overview') return 'overview'
     if (mainView === 'memory') return 'memory'
     if (useUIStore.getState().mainView === 'graph') return 'graph'
-    if (!sidebarCollapsed) return 'files'
     if (rightPanel === 'chat') return 'chat'
     if (rightPanel === 'outline') return 'outline'
     if (rightPanel === 'properties') return 'properties'

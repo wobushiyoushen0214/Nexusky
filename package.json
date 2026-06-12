@@ -54,6 +54,7 @@
         "@tiptap/starter-kit": "^2.10.0",
         "better-sqlite3": "^12.9.0",
         "chokidar": "^3.6.0",
+        "cmdk": "^1.1.1",
         "d3-drag": "^3.0.0",
         "d3-force": "^3.0.0",
         "d3-selection": "^3.0.0",

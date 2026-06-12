@@ -1,6 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
+import { Dialog, DialogContent, DialogTitle } from './ui/dialog'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from './ui/command'
 import type { NoteSearchResult } from '@shared/types/ipc'
 
 interface QuickSwitcherProps {
@@ -11,8 +20,6 @@ interface QuickSwitcherProps {
 export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<NoteSearchResult[]>([])
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const openFile = useEditorStore((s) => s.openFile)
 
@@ -20,8 +27,6 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
     if (open) {
       setQuery('')
       setResults([])
-      setSelectedIndex(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
 
@@ -55,113 +60,51 @@ export function QuickSwitcher({ open, onClose }: QuickSwitcherProps) {
     onClose()
   }
 
-  const listRef = useRef<HTMLDivElement>(null)
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIndex((i) => {
-        const next = Math.min(i + 1, results.length - 1)
-        scrollToItem(next)
-        return next
-      })
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIndex((i) => {
-        const next = Math.max(i - 1, 0)
-        scrollToItem(next)
-        return next
-      })
-    } else if (e.key === 'Enter' && results[selectedIndex]) {
-      handleSelect(results[selectedIndex])
-    } else if (e.key === 'Escape') {
-      onClose()
-    }
-  }
-
-  const scrollToItem = (index: number) => {
-    const container = listRef.current
-    if (!container) return
-    const item = container.children[index] as HTMLElement
-    if (item) item.scrollIntoView({ block: 'nearest' })
-  }
-
-  if (!open) return null
-
   return (
-    <div
-      className="animate-overlay-in glass-overlay"
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '18vh', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
-      onClick={onClose}
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
     >
-      <div
-        className="animate-scale-in glass-popover"
-        style={{ width: 520, background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
-        onClick={(e) => e.stopPropagation()}
+      <DialogContent
+        className="command-surface-dialog quick-switcher-dialog"
+        overlayClassName="command-surface-overlay"
+        showCloseButton={false}
       >
-        {/* Search input */}
-        <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            ref={inputRef}
+        <DialogTitle className="ui-sr-only">Quick switcher</DialogTitle>
+        <Command className="quick-switcher-input" shouldFilter={false}>
+          <CommandInput
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0) }}
-            onKeyDown={handleKeyDown}
+            onValueChange={setQuery}
             placeholder="搜索笔记..."
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text-primary)' }}
           />
-          <kbd style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 5, background: 'var(--control-bg)', border: '1px solid var(--control-border)', boxShadow: 'inset 0 1px 0 var(--glass-highlight)' }}>ESC</kbd>
-        </div>
-
-        {/* Divider */}
-        <div className="glass-divider-bottom" style={{ height: 1, boxShadow: 'var(--glass-divider-shadow-bottom)' }} />
-
-        {/* Results */}
-        <div ref={listRef} style={{ maxHeight: 340, overflowY: 'auto', padding: '6px' }}>
-          {results.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {query ? '没有找到匹配的笔记' : '暂无笔记'}
-            </div>
-          ) : (
-            results.map((result, i) => (
-              <button
-                key={result.id}
-                onClick={() => handleSelect(result)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '10px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  borderRadius: 8,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: i === selectedIndex ? 'var(--accent-muted)' : 'transparent',
-                  transition: 'background 80ms',
-                }}
-              >
-                <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span style={{ fontSize: 14, color: i === selectedIndex ? 'var(--accent-text)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {result.title}
-                  </span>
-                  {result.aliasMatch ? (
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      别名: {result.aliasMatch}
+          <CommandList className="quick-switcher-list">
+            <CommandEmpty>{query ? '没有找到匹配的笔记' : '暂无笔记'}</CommandEmpty>
+            {results.length > 0 && (
+              <CommandGroup>
+                {results.map((result) => (
+                  <CommandItem
+                    value={result.id}
+                    key={result.id}
+                    onSelect={() => handleSelect(result)}
+                  >
+                    <span className="command-surface-item-main">
+                      <span className="command-surface-item-title">{result.title}</span>
+                      {result.aliasMatch ? (
+                        <span className="command-surface-item-description">别名: {result.aliasMatch}</span>
+                      ) : null}
                     </span>
-                  ) : null}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'rtl', textAlign: 'right' }}>
-                  {result.filePath.replace(/[^\\/]+$/, '').replace(/[\\/]$/, '') || '/'}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+                    <span className="quick-switcher-path">
+                      {result.filePath.replace(/[^\\/]+$/, '').replace(/[\\/]$/, '') || '/'}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </DialogContent>
+    </Dialog>
   )
 }

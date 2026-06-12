@@ -241,7 +241,11 @@ export class OpenAIProvider extends BaseAIProvider {
 
   async validate(): Promise<AIProviderValidationResult> {
     try {
-      await this.client.models.list()
+      await this.client.chat.completions.create({
+        model: this.config.model,
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 5
+      })
       return { ok: true }
     } catch (error: unknown) {
       return { ok: false, error: normalizeProviderError(error).message }

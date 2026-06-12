@@ -6,6 +6,7 @@ export interface AIProviderConfig {
   apiKey: string
   model: string
   enabled: boolean
+  authMode?: 'api-key' | 'auth-token'
   inputCostPer1MTokens?: number
   outputCostPer1MTokens?: number
   hasApiKey?: boolean

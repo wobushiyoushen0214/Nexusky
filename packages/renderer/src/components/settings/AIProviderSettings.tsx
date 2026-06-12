@@ -33,7 +33,6 @@ const DEFAULT_BY_TYPE: Record<ProviderType, Pick<AIProviderConfig, 'baseUrl' | '
 
 const PROVIDER_TYPES: { label: string; value: ProviderType }[] = [
   { label: 'OpenAI', value: 'openai' },
-  { label: 'OpenAI Responses', value: 'openai-responses' },
   { label: 'Claude', value: 'claude' },
   { label: 'OpenAI 兼容', value: 'custom' },
   { label: 'Ollama', value: 'ollama' },
@@ -42,8 +41,8 @@ const PROVIDER_TYPES: { label: string; value: ProviderType }[] = [
 
 const PROVIDER_PRESETS: { label: string; type: ProviderType; baseUrl: string; model: string }[] = [
   { label: 'OpenAI', type: 'openai', baseUrl: '', model: 'gpt-4.1-mini' },
-  { label: 'OpenAI Responses', type: 'openai-responses', baseUrl: '', model: 'gpt-4.1-mini' },
-  { label: 'Claude', type: 'claude', baseUrl: '', model: 'claude-sonnet-4-6' },
+  { label: 'Claude 官方', type: 'claude', baseUrl: '', model: 'claude-sonnet-4-6' },
+  { label: 'Claude 中转', type: 'claude', baseUrl: 'https://api.example.com', model: 'claude-sonnet-4-6' },
   { label: 'OpenAI 兼容', type: 'custom', baseUrl: '', model: 'gpt-4.1-mini' },
   { label: 'DeepSeek', type: 'custom', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
   { label: 'Ollama', type: 'ollama', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' },
@@ -56,6 +55,20 @@ function providerRequiresApiKey(type: ProviderType): boolean {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
+}
+
+function canFetchModels(config: AIProviderConfig): boolean {
+  if (config.type === 'codex') return false
+  if (config.type === 'claude' && !config.baseUrl.trim()) return true
+  return !providerRequiresApiKey(config.type) || Boolean(config.apiKey || config.hasApiKey)
+}
+
+function getProviderTypeOptions(currentType: ProviderType): { label: string; value: ProviderType }[] {
+  if (PROVIDER_TYPES.some((type) => type.value === currentType)) return PROVIDER_TYPES
+  if (currentType === 'openai-responses') {
+    return [...PROVIDER_TYPES, { label: 'OpenAI Responses (旧)', value: 'openai-responses' }]
+  }
+  return PROVIDER_TYPES
 }
 
 export function AIProviderSettings() {
@@ -95,6 +108,7 @@ export function AIProviderSettings() {
         type: editing.type,
         baseUrl: editing.baseUrl,
         apiKey: editing.apiKey,
+        authMode: editing.authMode,
         providerId: editing.id || undefined,
       })
 
@@ -122,6 +136,7 @@ export function AIProviderSettings() {
         apiKey: editing.apiKey.trim(),
         model: editing.model.trim(),
         enabled: editing.enabled !== false,
+        authMode: editing.type === 'claude' ? editing.authMode : undefined,
       }
 
       if (!normalized.name) {
@@ -308,6 +323,7 @@ export function AIProviderSettings() {
                         apiKey: providerRequiresApiKey(type) ? editing.apiKey : '',
                         baseUrl: defaults.baseUrl,
                         model: defaults.model,
+                        authMode: undefined,
                       })
                     }}
                   >
@@ -315,7 +331,7 @@ export function AIProviderSettings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROVIDER_TYPES.map((type) => (
+                      {getProviderTypeOptions(editing.type).map((type) => (
                         <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -339,8 +355,20 @@ export function AIProviderSettings() {
                   <input
                     type="text"
                     value={editing.baseUrl}
-                    onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
-                    placeholder={editing.type === 'codex' ? 'codex' : editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
+                    onChange={(e) => setEditing({
+                      ...editing,
+                      baseUrl: e.target.value,
+                      authMode: editing.type === 'claude' ? undefined : editing.authMode,
+                    })}
+                    placeholder={
+                      editing.type === 'codex'
+                        ? 'codex'
+                        : editing.type === 'ollama'
+                          ? 'http://localhost:11434/v1'
+                          : editing.type === 'claude'
+                            ? 'https://api.example.com/anthropic'
+                            : 'https://api.example.com/v1'
+                    }
                   />
                 </div>
 
@@ -376,8 +404,7 @@ export function AIProviderSettings() {
                       onClick={handleFetchModels}
                       disabled={
                         fetchingModels ||
-                        editing.type === 'codex' ||
-                        (providerRequiresApiKey(editing.type) && !editing.apiKey && !editing.hasApiKey)
+                        !canFetchModels(editing)
                       }
                       className="btn-fetch-models"
                     >
@@ -404,6 +431,7 @@ export function AIProviderSettings() {
                             apiKey: providerRequiresApiKey(preset.type) ? editing.apiKey : '',
                             baseUrl: preset.baseUrl,
                             model: preset.model,
+                            authMode: preset.type === 'claude' && preset.baseUrl ? 'auth-token' : undefined,
                           })
                         }}
                       >

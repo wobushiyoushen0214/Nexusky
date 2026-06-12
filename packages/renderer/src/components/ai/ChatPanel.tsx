@@ -2224,47 +2224,75 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {/* Edit result preview */}
       {editResult && (
         <div style={{ padding: '8px 14px', flexShrink: 0, maxHeight: editPreviewExpanded ? 'calc(50% - 60px)' : 'none', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ background: 'var(--bg-base)', border: '1px solid var(--border-default)', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}>
-            <div className="glass-divider-bottom" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div style={{
+            background: 'color-mix(in srgb, var(--bg-glass-dense, var(--bg-glass-solid)) 76%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--glass-panel-border) 72%, transparent)',
+            borderRadius: 12,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: editPreviewExpanded ? 1 : 'none',
+            minHeight: 0,
+            boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--shadow-sm)',
+            backdropFilter: 'blur(var(--glass-blur)) saturate(150%)',
+            WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)'
+          }}>
+            <div className="glass-divider-bottom" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                 </svg>
-                <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500 }}>{editResult.filePath.split(/[\\/]/).pop()}</span>
-                <div style={{ display: 'flex', marginLeft: 8, background: 'var(--bg-surface)', borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{editResult.filePath.split(/[\\/]/).pop()}</span>
+                <div style={{ display: 'flex', background: 'color-mix(in srgb, var(--control-bg) 72%, transparent)', borderRadius: 6, overflow: 'hidden', border: '1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 48%, transparent)' }}>
                   <button
                     onClick={() => setEditPreviewMode('diff')}
-                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
+                    style={{ height: 24, padding: '0 9px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 600, transition: 'all 100ms' }}
                   >
                     Diff
                   </button>
                   <button
                     onClick={() => setEditPreviewMode('preview')}
-                    style={{ height: 22, padding: '0 8px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'preview' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'preview' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 500, transition: 'all 100ms' }}
+                    style={{ height: 24, padding: '0 9px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'preview' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'preview' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 600, transition: 'all 100ms' }}
                   >
                     预览
                   </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button
                   onClick={() => setEditPreviewExpanded(!editPreviewExpanded)}
-                  style={{ height: 24, padding: '0 8px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer', transition: 'all 100ms' }}
+                  style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', transition: 'all 100ms', fontWeight: 500 }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--control-bg) 58%, transparent)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                   {editPreviewExpanded ? '收起' : '展开'}
                 </button>
-                <button onClick={handleApplyEdit} style={{ height: 24, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 500 }}>应用修改</button>
-                <button onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }} style={{ height: 24, padding: '0 8px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}>放弃</button>
+                <button
+                  onClick={handleApplyEdit}
+                  style={{ height: 26, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  应用修改
+                </button>
+                <button
+                  onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }}
+                  style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--danger) 12%, transparent)'; e.currentTarget.style.color = 'var(--danger)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                >
+                  放弃
+                </button>
               </div>
             </div>
             {editPreviewMode === 'diff' ? (
-              <div style={{ maxHeight: editPreviewExpanded ? 'none' : 120, overflowY: 'auto', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}>
+              <div className="file-tree-scroll" style={{ maxHeight: editPreviewExpanded ? 'none' : 160, overflowY: 'auto', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}>
                 <DiffView original={editResult.original} modified={editResult.content} />
               </div>
             ) : (
               <div
-                className="editor-content"
-                style={{ padding: '12px 16px', maxHeight: editPreviewExpanded ? 'none' : 120, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}
+                className="editor-content file-tree-scroll"
+                style={{ padding: '12px 16px', maxHeight: editPreviewExpanded ? 'none' : 160, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-secondary)', flex: editPreviewExpanded ? 1 : 'none', minHeight: 0 }}
                 dangerouslySetInnerHTML={{ __html: renderMarkdown(editResult.content) }}
               />
             )}
@@ -2403,7 +2431,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
           )}
 
           {/* Input row */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', padding: '8px 8px 8px 12px', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 8px 8px 12px', gap: 6 }}>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -2472,28 +2500,29 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 </button>
               )}
               <textarea
-              ref={inputRef}
-              value={input}
-              onChange={handleInputChange}
-              onPaste={handleImagePaste}
-              onKeyDown={(e) => {
-                if (showMention && mentionResults.length > 0) {
-                  if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => Math.min(i + 1, mentionResults.length - 1)); return }
-                  if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex((i) => Math.max(i - 1, 0)); return }
-                  if (e.key === 'Enter') { e.preventDefault(); handleSelectMention(mentionResults[mentionIndex]); return }
-                }
-                if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }
-                if (e.key === 'Escape') setShowMention(false)
-              }}
-              placeholder={editMode ? (currentFilePath || editTarget ? '描述你想要的修改...' : '描述要生成的笔记内容...') : '提问，或 @ 引用笔记'}
-              rows={1}
-              onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
-              style={{
-                flex: 1, minHeight: 28, maxHeight: 120, padding: '4px 0', fontSize: 13,
-                background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none',
-                minWidth: 0, resize: 'none', lineHeight: 1.5, fontFamily: 'inherit',
-              }}
-            />
+                ref={inputRef}
+                className="ai-chat-textarea"
+                value={input}
+                onChange={handleInputChange}
+                onPaste={handleImagePaste}
+                onKeyDown={(e) => {
+                  if (showMention && mentionResults.length > 0) {
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex((i) => Math.min(i + 1, mentionResults.length - 1)); return }
+                    if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex((i) => Math.max(i - 1, 0)); return }
+                    if (e.key === 'Enter') { e.preventDefault(); handleSelectMention(mentionResults[mentionIndex]); return }
+                  }
+                  if (e.key === 'Enter' && !e.shiftKey && !showMention) { e.preventDefault(); handleSend() }
+                  if (e.key === 'Escape') setShowMention(false)
+                }}
+                placeholder={editMode ? (currentFilePath || editTarget ? '描述你想要的修改...' : '描述要生成的笔记内容...') : '提问，或 @ 引用笔记'}
+                rows={1}
+                onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
+                style={{
+                  flex: 1, minHeight: 28, maxHeight: 120, padding: '4px 0', fontSize: 13,
+                  background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none',
+                  minWidth: 0, resize: 'none', lineHeight: 1.5, fontFamily: 'inherit',
+                }}
+              />
             {isStreaming ? (
               <button
                 onClick={stopGeneration}

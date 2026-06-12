@@ -453,6 +453,7 @@ export interface AIProviderConfig {
   apiKey: string
   model: string
   enabled: boolean
+  authMode?: 'api-key' | 'auth-token'
   inputCostPer1MTokens?: number
   outputCostPer1MTokens?: number
   hasApiKey?: boolean
@@ -508,6 +509,7 @@ export interface FetchModelsParams {
   type: 'openai' | 'openai-responses' | 'claude' | 'custom' | 'ollama' | 'codex'
   baseUrl: string
   apiKey: string
+  authMode?: AIProviderConfig['authMode']
   providerId?: string
 }
 

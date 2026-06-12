@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import * as echarts from 'echarts'
 
@@ -13,10 +14,21 @@ export interface DiaryHeatmapPoint {
   value: number
 }
 
+export interface VitalityTrendPoint {
+  label: string
+  score: number
+}
+
 interface TokenUsageAreaChartProps {
   data: TokenUsagePoint[]
   inputLabel: string
   outputLabel: string
+  className?: string
+}
+
+interface VitalityTrendChartProps {
+  data: VitalityTrendPoint[]
+  scoreLabel: string
   className?: string
 }
 
@@ -188,6 +200,13 @@ function formatCompactNumber(value: number): string {
 export function TokenUsageAreaChart({ data, inputLabel, outputLabel, className = '' }: TokenUsageAreaChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstanceRef = useRef<echarts.ECharts | null>(null)
+  const [themeKey, setThemeKey] = React.useState(0)
+
+  React.useEffect(() => {
+    const observer = new MutationObserver(() => setThemeKey(k => k + 1))
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const host = chartRef.current
@@ -336,7 +355,147 @@ export function TokenUsageAreaChart({ data, inputLabel, outputLabel, className =
         chartInstanceRef.current = null
       }
     }
-  }, [data, inputLabel, outputLabel])
+  }, [data, inputLabel, outputLabel, themeKey])
+
+  return <div ref={chartRef} className={className} style={{ width: '100%', height: '100%' }} />
+}
+
+export function VitalityTrendChart({ data, scoreLabel, className = '' }: VitalityTrendChartProps) {
+  const chartRef = useRef<HTMLDivElement>(null)
+  const chartInstanceRef = useRef<echarts.ECharts | null>(null)
+  const [themeKey, setThemeKey] = React.useState(0)
+
+  React.useEffect(() => {
+    const observer = new MutationObserver(() => setThemeKey(k => k + 1))
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const host = chartRef.current
+    if (!host) return
+
+    if (!chartInstanceRef.current) {
+      chartInstanceRef.current = echarts.init(host, null, { renderer: 'canvas' })
+    }
+
+    const chart = chartInstanceRef.current
+    const palette = {
+      line: readColor(host, '--accent', '#3b6ee8'),
+      text: readColor(host, '--text-primary', '#202124'),
+      faint: readColor(host, '--text-tertiary', '#8a8f98'),
+      rule: readColor(host, '--maintenance-rule', 'rgba(128, 128, 128, 0.14)'),
+      tooltipBg: readColor(host, '--bg-elevated', '#f6f7f8'),
+      tooltipBorder: readColor(host, '--border-default', 'rgba(128, 128, 128, 0.32)')
+    }
+    const lastPoint = data[data.length - 1]
+
+    chart.setOption({
+      animationDuration: 180,
+      animationDurationUpdate: 180,
+      backgroundColor: 'transparent',
+      grid: {
+        left: 8,
+        right: 8,
+        bottom: 10,
+        top: 12,
+        containLabel: false
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: data.map((point) => point.label),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { show: false }
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        splitNumber: 2,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { show: false },
+        splitLine: {
+          lineStyle: {
+            color: palette.rule,
+            type: 'dashed'
+          }
+        }
+      },
+      series: [
+        {
+          name: scoreLabel,
+          type: 'line',
+          smooth: true,
+          showSymbol: false,
+          data: data.map((point) => point.score),
+          lineStyle: {
+            color: palette.line,
+            width: 2.5
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: withAlpha(palette.line, 0.2) },
+                { offset: 0.72, color: withAlpha(palette.line, 0.055) },
+                { offset: 1, color: withAlpha(palette.line, 0) }
+              ]
+            }
+          },
+          markPoint: lastPoint
+            ? {
+                silent: true,
+                symbol: 'circle',
+                symbolSize: 8,
+                data: [{ coord: [lastPoint.label, lastPoint.score] }],
+                label: { show: false },
+                itemStyle: {
+                  color: palette.tooltipBg,
+                  borderColor: palette.line,
+                  borderWidth: 2
+                }
+              }
+            : undefined
+        }
+      ],
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        backgroundColor: palette.tooltipBg,
+        borderColor: palette.tooltipBorder,
+        textStyle: {
+          color: palette.text,
+          fontSize: 11
+        },
+        formatter: (params: unknown) => {
+          const first = Array.isArray(params) ? params[0] as { data?: number; axisValueLabel?: string } : null
+          if (!first) return ''
+          return `${first.axisValueLabel || scoreLabel}<br/>${scoreLabel}: ${first.data ?? '-'}`
+        }
+      }
+    })
+
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => chart.resize())
+      resizeObserver.observe(host)
+    }
+
+    return () => {
+      resizeObserver?.disconnect()
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.dispose()
+        chartInstanceRef.current = null
+      }
+    }
+  }, [data, scoreLabel, themeKey])
 
   return <div ref={chartRef} className={className} style={{ width: '100%', height: '100%' }} />
 }
@@ -344,6 +503,13 @@ export function TokenUsageAreaChart({ data, inputLabel, outputLabel, className =
 export function DiaryHeatmapChart({ data, startDate, endDate, className = '' }: DiaryHeatmapChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstanceRef = useRef<echarts.ECharts | null>(null)
+  const [themeKey, setThemeKey] = React.useState(0)
+
+  React.useEffect(() => {
+    const observer = new MutationObserver(() => setThemeKey(k => k + 1))
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const host = chartRef.current
@@ -446,7 +612,7 @@ export function DiaryHeatmapChart({ data, startDate, endDate, className = '' }: 
         chartInstanceRef.current = null
       }
     }
-  }, [data, endDate, startDate])
+  }, [data, endDate, startDate, themeKey])
 
   return <div ref={chartRef} className={className} style={{ width: '100%', height: '100%' }} />
 }
