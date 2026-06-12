@@ -4,6 +4,7 @@ import { useEditorStore } from '../stores/editor-store'
 import { useUIStore } from '../stores/ui-store'
 import { toast } from '../stores/toast-store'
 import { isCancellationError } from '../utils/errors'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import {
   Dialog,
@@ -12,6 +13,7 @@ import {
   DialogTitle,
 } from './ui/dialog'
 import { ScrollArea } from './ui/scroll-area'
+import { Spinner } from './ui/spinner'
 
 interface GraphGeneratorProps {
   open: boolean
@@ -109,12 +111,12 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
           <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>分析 {filePaths.length} 个文件</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {fileNames.slice(0, 10).map((name, i) => (
-              <span key={i} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+              <Badge key={i} variant="outline">
                 {name}
-              </span>
+              </Badge>
             ))}
             {fileNames.length > 10 && (
-              <span style={{ fontSize: 11, padding: '2px 8px', color: 'var(--text-tertiary)' }}>+{fileNames.length - 10} 个</span>
+              <Badge variant="secondary">+{fileNames.length - 10} 个</Badge>
             )}
           </div>
         </div>
@@ -125,7 +127,7 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
           {generating && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1.2s infinite' }} />
+                <Spinner aria-hidden="true" style={{ width: 12, height: 12, borderWidth: 1.5 }} />
                 <span style={{ fontSize: 12, color: 'var(--accent-text)' }}>正在分析笔记关系...</span>
               </div>
               {progress && (
