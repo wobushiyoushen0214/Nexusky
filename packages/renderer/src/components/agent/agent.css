@@ -2,8 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--bg-primary, transparent);
-  color: var(--text-secondary);
+  background: var(--background, var(--bg-primary, transparent));
+  color: var(--secondary-foreground, var(--text-secondary));
   font-size: 12px;
 }
 
@@ -25,13 +25,11 @@
 }
 
 .agent-run-panel__history-btn {
-  padding: 4px 10px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--radius-sm, 6px);
   font-size: 11px;
-  background: transparent;
-  border: 1px solid var(--border-soft, rgba(255,255,255,0.1));
-  color: var(--text-secondary);
-  border-radius: 4px;
-  cursor: pointer;
+  font-weight: 520;
 }
 
 .agent-run-panel__body {
@@ -51,7 +49,7 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground, var(--text-tertiary));
 }
 
 .agent-run-panel__input,
@@ -59,13 +57,19 @@
   width: 100%;
   padding: 6px 8px;
   font-size: 12px;
-  background: var(--bg-elevated, rgba(255,255,255,0.04));
-  border: 1px solid var(--border-soft, rgba(255,255,255,0.08));
-  color: var(--text-primary);
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--secondary, var(--bg-elevated)) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--input, var(--border-soft, rgba(255,255,255,0.08))) 86%, transparent);
+  color: var(--foreground, var(--text-primary));
+  border-radius: var(--radius-sm, 6px);
   outline: none;
   resize: vertical;
   font-family: inherit;
+}
+
+.agent-run-panel__input:focus,
+.agent-run-panel__textarea:focus {
+  border-color: color-mix(in srgb, var(--ring, var(--accent)) 72%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring, var(--accent)) 14%, transparent);
 }
 
 .agent-run-panel__textarea {
@@ -79,24 +83,18 @@
 }
 
 .agent-run-panel__btn {
-  padding: 6px 12px;
-  font-size: 12px;
-  background: var(--accent);
-  color: var(--text-on-accent, #fff);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 11px;
 }
 
 .agent-run-panel__btn--ghost {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-soft, rgba(255,255,255,0.12));
+  color: var(--muted-foreground, var(--text-secondary));
 }
 
 .agent-run-panel__btn--danger {
-  background: var(--danger, #d83b3b);
-  color: #fff;
+  color: var(--destructive, var(--danger, #d83b3b));
 }
 
 .agent-run-panel__btn:disabled {
@@ -108,19 +106,19 @@
   margin-top: 8px;
   padding: 8px 10px;
   font-size: 11px;
-  color: var(--text-secondary);
-  background: var(--bg-elevated, rgba(255,255,255,0.03));
-  border-radius: 4px;
-  border-left: 3px solid var(--accent, rgba(124,110,240,0.6));
+  color: var(--secondary-foreground, var(--text-secondary));
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 56%, transparent);
+  border-radius: var(--radius-md, 8px);
+  border-left: 3px solid var(--primary, var(--accent, rgba(124,110,240,0.6)));
 }
 
 .agent-run-panel__plan-step,
 .agent-run-panel__exec-step {
   padding: 10px 12px;
   margin-bottom: 8px;
-  border: 1px solid var(--border-soft, rgba(255,255,255,0.06));
-  border-radius: 6px;
-  background: var(--bg-elevated, rgba(255,255,255,0.02));
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-soft, rgba(255,255,255,0.06))) 72%, transparent);
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 42%, transparent);
 }
 
 .agent-run-panel__step-head {
@@ -137,8 +135,8 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-radius: 999px;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
+  background: var(--muted, var(--bg-hover));
+  color: var(--muted-foreground, var(--text-secondary));
 }
 
 .agent-run-panel__step-status {
@@ -148,7 +146,7 @@
 }
 
 .agent-run-panel__step-status--pending { background: var(--bg-hover); color: var(--text-tertiary); }
-.agent-run-panel__step-status--running { background: var(--accent-muted, rgba(124,110,240,0.18)); color: var(--accent-text); }
+.agent-run-panel__step-status--running { background: color-mix(in srgb, var(--primary, var(--accent)) 16%, transparent); color: var(--primary, var(--accent-text)); }
 .agent-run-panel__step-status--completed { background: rgba(46,160,67,0.15); color: rgb(85,193,107); }
 .agent-run-panel__step-status--failed { background: rgba(216,59,59,0.15); color: rgb(255,120,120); }
 .agent-run-panel__step-status--skipped { background: var(--bg-hover); color: var(--text-tertiary); }
@@ -156,7 +154,7 @@
 
 .agent-run-panel__step-desc {
   font-size: 12px;
-  color: var(--text-primary);
+  color: var(--foreground, var(--text-primary));
   margin-bottom: 2px;
   font-weight: 500;
 }
@@ -177,9 +175,9 @@
   margin-top: 6px;
   padding: 6px 8px;
   font-size: 10px;
-  background: var(--bg-primary, rgba(0,0,0,0.18));
-  color: var(--text-tertiary);
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--background, var(--bg-primary)) 78%, rgba(0,0,0,0.18));
+  color: var(--muted-foreground, var(--text-tertiary));
+  border-radius: var(--radius-sm, 6px);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 220px;
@@ -194,18 +192,15 @@
 }
 
 .agent-run-panel__step-btn {
-  padding: 2px 8px;
+  height: 22px;
+  padding: 0 7px;
   font-size: 10px;
-  background: transparent;
-  border: 1px solid var(--border-soft, rgba(255,255,255,0.12));
-  color: var(--text-secondary);
-  border-radius: 4px;
-  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
 }
 
 .agent-run-panel__step-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--muted, var(--bg-hover));
+  color: var(--foreground, var(--text-primary));
 }
 
 .agent-run-panel__divider {
@@ -225,27 +220,54 @@
   font-size: 11px;
 }
 
+.agent-run-panel__status-actions,
+.agent-run-panel__step-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.agent-run-panel__step-controls {
+  gap: 4px;
+}
+
 .agent-run-panel__empty {
   padding: 30px 16px;
   text-align: center;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground, var(--text-tertiary));
   font-size: 11px;
 }
 
 .agent-run-panel__toggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--secondary-foreground, var(--text-secondary));
   cursor: pointer;
+}
+
+.agent-run-panel__toggle label {
+  cursor: pointer;
+}
+
+.agent-run-panel__toggle .ui-checkbox {
+  width: 14px;
+  height: 14px;
+  border-radius: calc(var(--radius-sm, 6px) - 2px);
+}
+
+.agent-run-panel__toggle .ui-checkbox-indicator::after {
+  top: 1px;
+  left: 4px;
+  width: 4px;
+  height: 8px;
 }
 
 .agent-run-panel__history {
   border-top: 0;
   box-shadow: var(--glass-divider-shadow-top);
   padding: 8px 14px;
-  background: var(--bg-elevated, rgba(255,255,255,0.02));
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 38%, transparent);
   max-height: 200px;
   overflow-y: auto;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentPlanStep,
@@ -11,6 +11,8 @@ import type {
 import { useVaultStore } from '../../stores/vault-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
+import { Button } from '../ui/button'
+import { Checkbox } from '../ui/checkbox'
 import './agent.css'
 
 interface RunDetail {
@@ -22,6 +24,7 @@ type Stage = 'idle' | 'goal' | 'plan' | 'execute'
 
 export function AgentRunPanel() {
   const { t } = useTranslation()
+  const dryRunId = useId()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const consumePendingAgentGoal = useUIStore((s) => s.consumePendingAgentGoal)
   const [stage, setStage] = useState<Stage>('idle')
@@ -239,9 +242,9 @@ export function AgentRunPanel() {
     <div className="agent-run-panel">
       <div className="agent-run-panel__header">
         <span className="agent-run-panel__title">{t('agent.title')}</span>
-        <button type="button" className="agent-run-panel__history-btn" onClick={() => { setHistoryOpen((v) => !v); if (!historyOpen) void refreshHistory() }}>
+        <Button type="button" variant="ghost" size="xs" className="agent-run-panel__history-btn" onClick={() => { setHistoryOpen((v) => !v); if (!historyOpen) void refreshHistory() }}>
           {historyOpen ? t('agent.history.close') : t('agent.history.open')}
-        </button>
+        </Button>
       </div>
 
       {historyOpen && (
@@ -264,9 +267,9 @@ export function AgentRunPanel() {
       <div className="agent-run-panel__body">
         {stage === 'idle' && (
           <div>
-            <button type="button" className="agent-run-panel__btn" onClick={() => setStage('goal')}>
+            <Button type="button" size="sm" className="agent-run-panel__btn" onClick={() => setStage('goal')}>
               {t('agent.idle.start')}
-            </button>
+            </Button>
             <div className="agent-run-panel__empty">{t('agent.idle.hint')}</div>
           </div>
         )}
@@ -291,14 +294,18 @@ export function AgentRunPanel() {
                 placeholder={t('agent.fields.descriptionPlaceholder')}
               />
             </div>
-            <label className="agent-run-panel__toggle">
-              <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-              {t('agent.fields.dryRun')}
-            </label>
+            <div className="agent-run-panel__toggle">
+              <Checkbox
+                id={dryRunId}
+                checked={dryRun}
+                onCheckedChange={(checked) => setDryRun(checked === true)}
+              />
+              <label htmlFor={dryRunId}>{t('agent.fields.dryRun')}</label>
+            </div>
             <div className="agent-run-panel__actions">
-              <button type="button" className="agent-run-panel__btn" onClick={() => void startPlan()} disabled={planning || !goal.trim()}>
+              <Button type="button" size="sm" className="agent-run-panel__btn" onClick={() => void startPlan()} disabled={planning || !goal.trim()}>
                 {planning ? t('agent.plan.generating') : t('agent.plan.generate')}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -332,33 +339,33 @@ export function AgentRunPanel() {
       {(stage === 'plan' || stage === 'execute') && detail && (
         <div className="agent-run-panel__status-bar">
           <span>{t('agent.statusBar.status', { status })}</span>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="agent-run-panel__status-actions">
             {isRunning && (
-              <button type="button" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={() => void pauseRun()}>
+              <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={() => void pauseRun()}>
                 {t('agent.execute.pause')}
-              </button>
+              </Button>
             )}
             {status === 'paused' && (
-              <button type="button" className="agent-run-panel__btn" onClick={() => void resumeRun()}>
+              <Button type="button" size="sm" className="agent-run-panel__btn" onClick={() => void resumeRun()}>
                 {t('agent.execute.resume')}
-              </button>
+              </Button>
             )}
             {isRunning && (
-              <button type="button" className="agent-run-panel__btn agent-run-panel__btn--danger" onClick={() => void cancelRun()}>
+              <Button type="button" variant="destructive" size="sm" className="agent-run-panel__btn agent-run-panel__btn--danger" onClick={() => void cancelRun()}>
                 {t('agent.execute.cancel')}
-              </button>
+              </Button>
             )}
             {isFinal && (
               <>
-                <button type="button" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={() => void reflect()}>
+                <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={() => void reflect()}>
                   {t('agent.execute.reflect')}
-                </button>
-                <button type="button" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={() => void rollbackRun()}>
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={() => void rollbackRun()}>
                   {t('agent.execute.rollbackAll')}
-                </button>
-                <button type="button" className="agent-run-panel__btn" onClick={restart}>
+                </Button>
+                <Button type="button" size="sm" className="agent-run-panel__btn" onClick={restart}>
                   {t('agent.execute.newRun')}
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -386,7 +393,7 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
         <div className="agent-run-panel__empty">{t('agent.plan.empty')}</div>
         {detail.run.rationale && <div className="agent-run-panel__rationale">{detail.run.rationale}</div>}
         <div className="agent-run-panel__actions">
-          <button type="button" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={onCancel}>{t('agent.plan.retry')}</button>
+          <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={onCancel}>{t('agent.plan.retry')}</Button>
         </div>
       </div>
     )
@@ -402,10 +409,10 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
           <div key={step.index} className="agent-run-panel__plan-step">
             <div className="agent-run-panel__step-head">
               <span className="agent-run-panel__step-kind">{step.kind}</span>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button type="button" className="agent-run-panel__step-btn" disabled={idx === 0} onClick={() => onMove(idx, -1)}>↑</button>
-                <button type="button" className="agent-run-panel__step-btn" disabled={idx === detail.run.plan.length - 1} onClick={() => onMove(idx, 1)}>↓</button>
-                <button type="button" className="agent-run-panel__step-btn" onClick={() => onDelete(step.index)}>{t('agent.plan.delete')}</button>
+              <div className="agent-run-panel__step-controls">
+                <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === 0} onClick={() => onMove(idx, -1)}>↑</Button>
+                <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === detail.run.plan.length - 1} onClick={() => onMove(idx, 1)}>↓</Button>
+                <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onDelete(step.index)}>{t('agent.plan.delete')}</Button>
               </div>
             </div>
             <input
@@ -429,9 +436,9 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
         ))}
       </div>
       <div className="agent-run-panel__actions">
-        <button type="button" className="agent-run-panel__btn" onClick={onExecute}>{t('agent.plan.execute')}</button>
-        <button type="button" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={onSave}>{t('agent.plan.save')}</button>
-        <button type="button" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={onCancel}>{t('agent.plan.discard')}</button>
+        <Button type="button" size="sm" className="agent-run-panel__btn" onClick={onExecute}>{t('agent.plan.execute')}</Button>
+        <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={onSave}>{t('agent.plan.save')}</Button>
+        <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={onCancel}>{t('agent.plan.discard')}</Button>
       </div>
     </div>
   )
@@ -490,10 +497,10 @@ function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectRes
           {step.preview && <pre className="agent-run-panel__preview">{step.preview}</pre>}
           {step.error && <pre className="agent-run-panel__preview" style={{ color: 'rgb(255,120,120)' }}>{step.error}</pre>}
           <div className="agent-run-panel__step-actions">
-            <button type="button" className="agent-run-panel__step-btn" onClick={() => onRetry(step.stepIndex)} disabled={step.status === 'running'}>{t('agent.execute.retry')}</button>
-            <button type="button" className="agent-run-panel__step-btn" onClick={() => onSkip(step.stepIndex)} disabled={step.status === 'completed' || step.status === 'skipped'}>{t('agent.execute.skip')}</button>
+            <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onRetry(step.stepIndex)} disabled={step.status === 'running'}>{t('agent.execute.retry')}</Button>
+            <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onSkip(step.stepIndex)} disabled={step.status === 'completed' || step.status === 'skipped'}>{t('agent.execute.skip')}</Button>
             {step.hasRollback && (
-              <button type="button" className="agent-run-panel__step-btn" onClick={() => onRollback(step.stepIndex)} disabled={step.status === 'rolled_back'}>{t('agent.execute.rollback')}</button>
+              <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onRollback(step.stepIndex)} disabled={step.status === 'rolled_back'}>{t('agent.execute.rollback')}</Button>
             )}
           </div>
         </div>
