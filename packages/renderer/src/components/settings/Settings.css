@@ -217,15 +217,6 @@
   line-height: 1.4;
 }
 
-.settings-dialog__content .form-toggle input[type="checkbox"],
-.settings-dialog__content .category-item input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
 .settings-dialog__content input[type="number"],
 .settings-dialog__content input[type="text"],
 .settings-dialog__content input[type="password"],

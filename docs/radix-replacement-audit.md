@@ -54,6 +54,7 @@ Already added:
 - `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use shared `Spinner` with compact settings-local spacing.
 - `CloudSyncSettings` sync error state now uses shared `Alert` instead of custom error markup.
 - `PluginsSettings` and `KeysSettings` empty states now use shared `Empty` primitives instead of custom empty-state markup.
+- Settings CSS no longer carries legacy native checkbox selectors for `form-toggle` and `category-item`; those settings controls now rely on shared `Switch`/`Checkbox` token styling.
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; drawer empty state uses shared `Empty`; notification button styling now reads from shadcn semantic tokens.
@@ -442,6 +443,7 @@ Current progress:
 
 - Current settings pages use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, and `Button` wrappers where applicable.
 - Shared settings controls now inherit shadcn-compatible radius and semantic color tokens through `components/ui/ui.css`.
+- Legacy native checkbox selectors were removed from `Settings.css` after the active settings pages moved to shared controls.
 - Legacy `Settings.old.tsx` still contains custom controls and is not mounted by the current Settings shell. `ProactivePreferences` and `LongContextDebugPanel` now use shared wrappers for their active controls, except for domain-specific rendering and layout.
 
 ## Do Not Replace Yet
