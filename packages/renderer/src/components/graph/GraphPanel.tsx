@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCancellationError, getErrorMessage } from '../../utils/errors'
+import { Button } from '../ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../ui/select'
+import { Switch } from '../ui/switch'
 import type { GraphData, GraphNode } from '@shared/types/ipc'
 
 interface GraphPanelProps {
@@ -142,11 +152,11 @@ export function GraphPanel(props: GraphPanelProps) {
   return (
     <>
       {collapsed && (
-        <button className="graph-panel-expand" onClick={() => onToggleCollapsed(false)}>
+        <Button type="button" variant="ghost" size="icon" className="graph-panel-expand" onClick={() => onToggleCollapsed(false)}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="9 18 15 12 9 6" />
           </svg>
-        </button>
+        </Button>
       )}
       <div
         className={`graph-panel file-tree-scroll${collapsed ? ' collapsed' : ''}${panelScrolling ? ' is-scrolling' : ''}`}
@@ -160,30 +170,33 @@ export function GraphPanel(props: GraphPanelProps) {
             </svg>
             {t('graph.title').toUpperCase()}
           </div>
-          <button className="graph-panel-collapse" onClick={() => onToggleCollapsed(true)}>
+          <Button type="button" variant="ghost" size="icon" className="graph-panel-collapse" onClick={() => onToggleCollapsed(true)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-          </button>
+          </Button>
         </div>
 
         {!collapsed && (
           <>
             <div className="graph-scope-strip">
-              <button
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
                 className={`graph-scope-pill${activeFolderPath == null ? ' active' : ''}`}
                 onClick={onOpenOverview}
               >
                 {t('graph.overview')}
-              </button>
+              </Button>
               {activeFolderPath != null && (
                 <>
                   <span className="graph-scope-current" title={activeFolderPath || t('graph.rootGroup')}>
                     {activeFolderPath || t('graph.rootGroup')}
                   </span>
-                  <button className="graph-scope-nav" onClick={onOpenParentFolder}>
+                  <Button type="button" variant="ghost" size="xs" className="graph-scope-nav" onClick={onOpenParentFolder}>
                     {t('graph.parent')}
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -196,42 +209,50 @@ export function GraphPanel(props: GraphPanelProps) {
                 placeholder={t('graph.search')}
                 className="graph-search"
               />
-              <label className="graph-filter-label">
-                {t('graph.linksGte')}
-                <select
-                  value={minLinks}
-                  onChange={(e) => setMinLinks(Number(e.target.value))}
-                  className="graph-filter-select"
-                >
-                  <option value={0}>{t('graph.all')}</option>
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                  <option value={5}>5</option>
-                </select>
-              </label>
+              <div className="graph-filter-label">
+                <span>{t('graph.linksGte')}</span>
+                <Select value={String(minLinks)} onValueChange={(value) => setMinLinks(Number(value))}>
+                  <SelectTrigger
+                    className="graph-filter-select"
+                    aria-label={t('graph.linksGte')}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="0">{t('graph.all')}</SelectItem>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="5">5</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="graph-panel-section">
               <div className="graph-panel-section-title">{t('graph.groups').toUpperCase()}</div>
               <div className="graph-groups-list">
-                {groupLegend.map((group) => {
+                {groupLegend.map((group, index) => {
                   const visible = !hiddenGroupIds.has(group.id)
+                  const switchId = `graph-group-${index}`
                   return (
-                    <label
+                    <div
                       key={group.id}
                       className={`graph-group-item${visible ? '' : ' muted'}`}
                       title={visible ? t('graph.hideGroup') : t('graph.showGroup')}
                     >
                       <span className="graph-group-dot" style={{ background: group.color }} />
-                      <span className="graph-group-name">{group.title}</span>
-                      <input
-                        type="checkbox"
+                      <label htmlFor={switchId} className="graph-group-name">{group.title}</label>
+                      <Switch
+                        id={switchId}
                         checked={visible}
-                        onChange={() => onToggleGroup(group.id)}
+                        onCheckedChange={() => onToggleGroup(group.id)}
+                        aria-label={visible ? t('graph.hideGroup') : t('graph.showGroup')}
+                        className="graph-toggle-switch graph-group-switch"
                       />
-                      <span className="graph-toggle-slider graph-group-switch" />
-                    </label>
+                    </div>
                   )
                 })}
                 {groupLegend.length === 0 && (
@@ -242,54 +263,82 @@ export function GraphPanel(props: GraphPanelProps) {
 
             <div className="graph-panel-section">
               <div className="graph-panel-section-title">{t('graph.display').toUpperCase()}</div>
-              <label className="graph-toggle">
-                <span>{t('graph.labels')}</span>
-                <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
-                <span className="graph-toggle-slider" />
-              </label>
-              <label className="graph-toggle">
-                <span>{t('graph.orphans')}</span>
-                <input type="checkbox" checked={showOrphans} onChange={(e) => setShowOrphans(e.target.checked)} />
-                <span className="graph-toggle-slider" />
-              </label>
-              <label className="graph-toggle">
-                <span>{t('graph.arrows')}</span>
-                <input type="checkbox" checked={showArrows} onChange={(e) => setShowArrows(e.target.checked)} />
-                <span className="graph-toggle-slider" />
-              </label>
-              <label className="graph-toggle">
-                <span>{t('graph.folders')}</span>
-                <input type="checkbox" checked={showFolders} onChange={(e) => setShowFolders(e.target.checked)} />
-                <span className="graph-toggle-slider" />
-              </label>
+              <div className="graph-toggle">
+                <label htmlFor="graph-toggle-labels" className="graph-toggle-label">{t('graph.labels')}</label>
+                <Switch
+                  id="graph-toggle-labels"
+                  checked={showLabels}
+                  onCheckedChange={setShowLabels}
+                  className="graph-toggle-switch"
+                />
+              </div>
+              <div className="graph-toggle">
+                <label htmlFor="graph-toggle-orphans" className="graph-toggle-label">{t('graph.orphans')}</label>
+                <Switch
+                  id="graph-toggle-orphans"
+                  checked={showOrphans}
+                  onCheckedChange={setShowOrphans}
+                  className="graph-toggle-switch"
+                />
+              </div>
+              <div className="graph-toggle">
+                <label htmlFor="graph-toggle-arrows" className="graph-toggle-label">{t('graph.arrows')}</label>
+                <Switch
+                  id="graph-toggle-arrows"
+                  checked={showArrows}
+                  onCheckedChange={setShowArrows}
+                  className="graph-toggle-switch"
+                />
+              </div>
+              <div className="graph-toggle">
+                <label htmlFor="graph-toggle-folders" className="graph-toggle-label">{t('graph.folders')}</label>
+                <Switch
+                  id="graph-toggle-folders"
+                  checked={showFolders}
+                  onCheckedChange={setShowFolders}
+                  className="graph-toggle-switch"
+                />
+              </div>
             </div>
 
             <div className="graph-panel-section">
               <div className="graph-panel-section-title">{t('graph.edgeTypes').toUpperCase()}</div>
-              <label className="graph-toggle">
-                <span className="graph-edge-legend">
+              <div className="graph-toggle">
+                <label htmlFor="graph-toggle-explicit-edges" className="graph-edge-legend">
                   <span className="graph-edge-swatch swatch-explicit" />
                   {t('graph.explicit')}
-                </span>
-                <input type="checkbox" checked={showExplicitEdges} onChange={(e) => setShowExplicitEdges(e.target.checked)} />
-                <span className="graph-toggle-slider" />
-              </label>
-              <label className="graph-toggle">
-                <span className="graph-edge-legend">
+                </label>
+                <Switch
+                  id="graph-toggle-explicit-edges"
+                  checked={showExplicitEdges}
+                  onCheckedChange={setShowExplicitEdges}
+                  className="graph-toggle-switch"
+                />
+              </div>
+              <div className="graph-toggle">
+                <label htmlFor="graph-toggle-inferred-edges" className="graph-edge-legend">
                   <span className="graph-edge-swatch swatch-inferred" />
                   {t('graph.inferred')}
-                </span>
-                <input type="checkbox" checked={showInferredEdges} onChange={(e) => setShowInferredEdges(e.target.checked)} />
-                <span className="graph-toggle-slider" />
-              </label>
-              <label className="graph-toggle">
-                <span className="graph-edge-legend">
+                </label>
+                <Switch
+                  id="graph-toggle-inferred-edges"
+                  checked={showInferredEdges}
+                  onCheckedChange={setShowInferredEdges}
+                  className="graph-toggle-switch"
+                />
+              </div>
+              <div className="graph-toggle">
+                <label htmlFor="graph-toggle-folder-edges" className="graph-edge-legend">
                   <span className="graph-edge-swatch swatch-folder" />
                   {t('graph.folderEdges')}
-                </span>
-                <input type="checkbox" checked={showFolderEdges} onChange={(e) => setShowFolderEdges(e.target.checked)} />
-                <span className="graph-toggle-slider" />
-              </label>
+                </label>
+                <Switch
+                  id="graph-toggle-folder-edges"
+                  checked={showFolderEdges}
+                  onCheckedChange={setShowFolderEdges}
+                  className="graph-toggle-switch"
+                />
+              </div>
             </div>
 
             <div className="graph-panel-section">
@@ -297,7 +346,10 @@ export function GraphPanel(props: GraphPanelProps) {
               <div className="graph-panel-info">
                 {t('graph.nodes', { count: graphData.nodes.length })} · {t('graph.connections', { count: graphData.edges.length })}
               </div>
-              <button
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 className="graph-back-btn"
                 style={{ marginTop: 8 }}
                 disabled={!!indexStatus}
@@ -307,8 +359,11 @@ export function GraphPanel(props: GraphPanelProps) {
                   <path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3"/><path d="M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
                 {t('graph.reindex')}
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 className="graph-back-btn"
                 style={{ marginTop: 8 }}
                 disabled={!!indexStatus}
@@ -318,8 +373,11 @@ export function GraphPanel(props: GraphPanelProps) {
                   <circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
                 </svg>
                 {t('graph.inferGlobal')}
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 className="graph-back-btn"
                 style={{ marginTop: 8 }}
                 disabled={!!indexStatus}
@@ -329,15 +387,18 @@ export function GraphPanel(props: GraphPanelProps) {
                   <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.4V11h3a3 3 0 0 1 3 3v1"/><path d="M6 11V9.4C4.8 8.8 4 7.5 4 6a4 4 0 0 1 8 0"/><rect x="2" y="17" width="8" height="5" rx="1"/><rect x="14" y="17" width="8" height="5" rx="1"/>
                 </svg>
                 {t('graph.memory.generate')}
-              </button>
+              </Button>
               {indexStatus && (
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   className="graph-back-btn"
                   style={{ marginTop: 8 }}
                   onClick={onStopAi}
                 >
                   {t('common.stop')}
-                </button>
+                </Button>
               )}
               {indexStatus && (
                 <div className="graph-panel-info" style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>
@@ -347,12 +408,12 @@ export function GraphPanel(props: GraphPanelProps) {
             </div>
 
             <div className="graph-panel-footer">
-              <button className="graph-back-btn" onClick={onBackToEditor}>
+              <Button type="button" variant="ghost" size="sm" className="graph-back-btn" onClick={onBackToEditor}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
                 </svg>
                 {t('graph.backToEditor')}
-              </button>
+              </Button>
             </div>
           </>
         )}

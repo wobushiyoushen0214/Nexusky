@@ -227,19 +227,25 @@
 
 .graph-filter-select {
   height: 26px;
+  min-height: 26px;
+  min-width: 72px;
   font-size: 10px;
-  background: var(--control-bg);
-  border: 1px solid var(--border-subtle);
-  border-radius: 7px;
-  color: var(--text-primary);
+  background: var(--secondary, var(--control-bg));
+  border: 1px solid var(--input, var(--border-subtle));
+  border-radius: var(--radius-md, 7px);
+  color: var(--foreground, var(--text-primary));
   outline: none;
-  padding: 0 6px;
+  padding: 0 24px 0 8px;
   cursor: pointer;
   transition: border-color 200ms;
 }
 
 .graph-filter-select:hover {
-  border-color: var(--border-default);
+  border-color: var(--border, var(--border-default));
+}
+
+.graph-filter-select .ui-select-icon {
+  right: 8px;
 }
 
 /* Toggle switch */
@@ -249,48 +255,38 @@
   justify-content: space-between;
   font-size: 11px;
   color: var(--text-secondary);
-  cursor: pointer;
   min-height: 28px;
   padding: 4px 0;
   user-select: none;
   position: relative;
 }
 
-.graph-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
+.graph-toggle-label {
+  min-width: 0;
 }
 
-.graph-toggle-slider {
+.graph-toggle-switch.ui-switch {
   width: 28px;
   height: 14px;
-  background: color-mix(in srgb, var(--text-tertiary) 22%, transparent);
+  border: 0;
   border-radius: 7px;
-  position: relative;
-  transition: background 200ms;
+  background: color-mix(in srgb, var(--muted-foreground, var(--text-tertiary)) 22%, transparent);
   flex-shrink: 0;
 }
 
-.graph-toggle-slider::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
+.graph-toggle-switch .ui-switch-thumb {
   width: 10px;
   height: 10px;
-  background: var(--panel-bg);
-  border-radius: 50%;
-  transition: transform 200ms;
+  transform: translate(2px, 2px);
+  background: var(--background, var(--panel-bg));
 }
 
-.graph-toggle input:checked + .graph-toggle-slider {
-  background: var(--accent);
+.graph-toggle-switch.ui-switch[data-state="checked"] {
+  background: var(--primary, var(--accent));
 }
 
-.graph-toggle input:checked + .graph-toggle-slider::after {
-  transform: translateX(14px);
+.graph-toggle-switch.ui-switch[data-state="checked"] .ui-switch-thumb {
+  transform: translate(16px, 2px);
 }
 
 .graph-panel-info {
@@ -335,30 +331,20 @@
   flex: 1;
 }
 
-.graph-group-item input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.graph-group-switch {
+.graph-group-switch.ui-switch {
   width: 24px;
   height: 12px;
   border-radius: 6px;
 }
 
-.graph-group-switch::after {
+.graph-group-switch .ui-switch-thumb {
   width: 8px;
   height: 8px;
+  transform: translate(2px, 2px);
 }
 
-.graph-group-item input:checked + .graph-group-switch {
-  background: var(--accent);
-}
-
-.graph-group-item input:checked + .graph-group-switch::after {
-  transform: translateX(12px);
+.graph-group-switch.ui-switch[data-state="checked"] .ui-switch-thumb {
+  transform: translate(14px, 2px);
 }
 
 /* Slider */
@@ -427,6 +413,7 @@
 .graph-back-btn {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 6px;
   font-size: 11px;
   color: var(--text-secondary);
