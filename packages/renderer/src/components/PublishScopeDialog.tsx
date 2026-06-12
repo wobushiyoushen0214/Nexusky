@@ -467,16 +467,24 @@ function PreviewMetric({ label, value, tone }: { label: string; value: number; t
 }
 
 function PreviewList({ title, empty, count, children }: { title: string; empty: string; count: number; children: ReactNode }) {
+  const listHeight = count > 0 ? Math.min(180, Math.max(44, Math.min(count, 12) * 32 + 12)) : undefined
+
   return (
     <div style={{ minHeight: 0, border: '1px solid var(--glass-divider-line)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-surface)', boxShadow: 'var(--glass-panel-edge-shadow)' }}>
       <div className="glass-divider-bottom" style={{ padding: '8px 10px', borderBottom: '0', boxShadow: 'var(--glass-divider-shadow-bottom)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{title}</div>
-      <div style={{ maxHeight: 180, overflow: 'auto', padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {count > 0 ? children : (
+      {count > 0 ? (
+        <ScrollArea style={{ height: listHeight }}>
+          <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {children}
+          </div>
+        </ScrollArea>
+      ) : (
+        <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Empty style={compactListEmptyStyle}>
             <EmptyDescription>{empty}</EmptyDescription>
           </Empty>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
