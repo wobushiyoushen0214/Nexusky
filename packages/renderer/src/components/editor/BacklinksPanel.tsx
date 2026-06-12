@@ -223,30 +223,29 @@ function OutgoingSection({
       {items.map((item, i) => (
         <div
           key={`outgoing-${item.targetTitle}-${i}`}
-          role="button"
-          tabIndex={0}
-          onClick={() => { jumpToSourceLine(item) }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return
-            event.preventDefault()
-            void jumpToSourceLine(item)
-          }}
           style={{
             textAlign: 'left', padding: '8px 10px', borderRadius: 8,
             background: 'var(--panel-bg)', border: '1px solid var(--border-subtle)',
-            cursor: 'pointer', display: 'block', width: '100%', position: 'relative',
+            display: 'block', width: '100%', position: 'relative',
             opacity: item.targetPath ? 1 : 0.72
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 500, color: item.targetPath ? 'var(--accent-text)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.targetTitle}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
-          </span>
-          {item.context && (
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {item.context}
-            </p>
-          )}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => { void jumpToSourceLine(item) }}
+            style={{ width: '100%', height: 'auto', minWidth: 0, display: 'block', padding: 0, border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', color: 'inherit' }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 500, color: item.targetPath ? 'var(--accent-text)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.targetTitle}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
+            </span>
+            {item.context && (
+              <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {item.context}
+              </span>
+            )}
+          </Button>
           <Button
             type="button"
             variant="ghost"
