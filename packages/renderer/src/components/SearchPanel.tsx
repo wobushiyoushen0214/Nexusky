@@ -4,8 +4,10 @@ import { useEditorStore } from '../stores/editor-store'
 import { getErrorMessage } from '../utils/errors'
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
 import { Button } from './ui/button'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
 import { Progress } from './ui/progress'
+import { Spinner } from './ui/spinner'
 import {
   Dialog,
   DialogContent,
@@ -278,6 +280,12 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
     outline: 'none',
     transition: 'background 120ms ease, border-color 120ms ease'
   })
+  const searchStateStyle: React.CSSProperties = {
+    minHeight: 88,
+    padding: 16,
+    border: 'none',
+    background: 'transparent'
+  }
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
@@ -401,13 +409,18 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
         <ScrollArea style={{ flex: 1, minHeight: 96, background: 'linear-gradient(180deg, color-mix(in srgb, var(--bg-glass) 58%, transparent), color-mix(in srgb, var(--bg-glass) 42%, transparent))' }}>
           <div ref={resultsRef} style={{ padding: 8 }}>
           {searching && (
-            <div style={{ minHeight: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>搜索中...</div>
+            <Empty style={searchStateStyle}>
+              <Spinner aria-hidden="true" />
+              <EmptyDescription>搜索中...</EmptyDescription>
+            </Empty>
           )}
           {!searching && results.length === 0 && query && (
-            <div style={{ minHeight: 88, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>无结果</div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>可以切换搜索模式或缩短关键词</div>
-            </div>
+            <Empty style={searchStateStyle}>
+              <EmptyHeader>
+                <EmptyTitle>无结果</EmptyTitle>
+                <EmptyDescription>可以切换搜索模式或缩短关键词</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
           {!searching && results.length === 0 && !query && history.length > 0 && (
             <div style={{ padding: '6px 8px' }}>
@@ -429,9 +442,9 @@ export function SearchPanel({ open, onClose }: SearchPanelProps) {
             </div>
           )}
           {!searching && results.length === 0 && !query && history.length === 0 && (
-            <div style={{ minHeight: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {emptyMessage}
-            </div>
+            <Empty style={searchStateStyle}>
+              <EmptyDescription>{emptyMessage}</EmptyDescription>
+            </Empty>
           )}
           {results.map((r, i) => (
             <Button
