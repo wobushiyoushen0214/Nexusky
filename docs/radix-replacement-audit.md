@@ -24,7 +24,7 @@ Already added:
 - `cmdk` dependency.
 - `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Alert`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, `Spinner`, `Empty`, and `Card` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
-- `MemoryTimelinePanel` now uses those wrappers, including shared `Spinner` for its loading state and shared `Empty` for its empty state.
+- `MemoryTimelinePanel` now uses those wrappers, including shared `Badge` for tier/count labels, shared `Spinner` for its loading state, and shared `Empty` for its empty state.
 - `ConfirmModal` now uses `AlertDialog`.
 - Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
@@ -145,7 +145,7 @@ These replace duplicated modal/menu logic and improve accessibility immediately.
 | Settings tabs | `components/settings/SettingsSidebar.tsx` | Manual `role="tablist"` buttons | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | Good keyboard win: arrows, Home/End if implemented by Radix. |
 | AI provider editor | `components/settings/AIProviderSettings.tsx` | Custom provider modal | `Dialog` + `Button` + `Badge` + `Input` + `Select` | Done for editor shell, provider fields, model field, provider type/model selects, and provider actions. Request/probing logic remains domain-specific. |
 | Publish dialog | `components/PublishScopeDialog.tsx` | Custom `role="dialog"`, manual focus/overlay | `Dialog` + `ScrollArea`; nested destructive confirm via `AlertDialog` | Good candidate but larger file, split into steps. |
-| Memory timeline | `components/memory/MemoryTimelinePanel.tsx` | Already migrated partly | Already uses `Dialog`, `ScrollArea`, `Button`, `Badge`, `Spinner`, `Empty` | Keep as reference pattern. |
+| Memory timeline | `components/memory/MemoryTimelinePanel.tsx` | Already migrated partly | Already uses `Dialog`, `ScrollArea`, `Button`, `Badge`, `Spinner`, `Empty` for modal shell, timeline actions, tier/count labels, loading, and empty states. |
 
 ### P1: Strong Candidates, Moderate Effort
 

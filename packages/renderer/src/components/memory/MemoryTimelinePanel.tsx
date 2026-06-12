@@ -257,7 +257,7 @@ export function MemoryTimelinePanel() {
           <h2>{t('memory.title')}</h2>
           <p className="memory-timeline-subtitle">{t('memory.subtitle')}</p>
         </div>
-        <span className="memory-timeline-count">{t('memory.count', { count: cards.length })}</span>
+        <Badge variant="secondary" className="memory-timeline-count">{t('memory.count', { count: cards.length })}</Badge>
       </header>
 
       <ScrollArea className="memory-timeline-scroll">

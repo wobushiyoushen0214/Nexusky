@@ -59,13 +59,14 @@
   line-height: 1.45;
 }
 
-.memory-timeline-count {
+.memory-timeline-count.ui-badge {
   flex: 0 0 auto;
+  height: 24px;
   margin-top: 1px;
   padding: 4px 8px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm, 7px);
   background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
-  color: var(--text-tertiary);
+  color: var(--muted-foreground, var(--text-tertiary));
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border-color)) 72%, transparent);
