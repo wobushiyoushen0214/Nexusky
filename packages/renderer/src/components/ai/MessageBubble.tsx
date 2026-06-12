@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { type ReactNode, memo, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
@@ -11,6 +11,7 @@ import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
 import { ChatSourceRow } from '../observability/ChatSourceRow'
 import { Button } from '../ui/button'
 import { Spinner } from '../ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import './MessageBubble.css'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -121,14 +122,7 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
 
   return (
     <div className="message-action-bar">
-      <Button
-        type="button"
-        variant="ghost"
-        size="xs"
-        className="message-action-button"
-        onClick={handleCopy}
-        title="复制"
-      >
+      <MessageActionButton label={copied ? '已复制' : '复制'} onClick={handleCopy}>
         {copied ? (
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -139,38 +133,44 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
           </svg>
         )}
         {copied ? '已复制' : '复制'}
-      </Button>
+      </MessageActionButton>
       {onContinue && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className="message-action-button"
-          onClick={onContinue}
-          title="继续生成"
-        >
+        <MessageActionButton label="继续生成" onClick={onContinue}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
           继续生成
-        </Button>
+        </MessageActionButton>
       )}
       {onRegenerate && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className="message-action-button"
-          onClick={onRegenerate}
-          title="重新生成"
-        >
+        <MessageActionButton label="重新生成" onClick={onRegenerate}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="1 4 1 10 7 10" /><polyline points="23 20 23 14 17 14" />
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
           </svg>
           重新生成
-        </Button>
+        </MessageActionButton>
       )}
     </div>
+  )
+}
+
+function MessageActionButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="message-action-button"
+          aria-label={label}
+          onClick={onClick}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
