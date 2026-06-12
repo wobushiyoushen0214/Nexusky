@@ -9,6 +9,8 @@ import type { ChatSource } from '@shared/types/ipc'
 import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
 import { ChatSourceRow } from '../observability/ChatSourceRow'
+import { Button } from '../ui/button'
+import './MessageBubble.css'
 
 marked.setOptions({ breaks: true, gfm: true })
 
@@ -109,13 +111,6 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, on
   )
 })
 
-const actionBtnStyle: React.CSSProperties = {
-  height: 20, padding: '0 8px', fontSize: 10, color: 'var(--text-tertiary)',
-  background: 'transparent', border: '1px solid transparent',
-  borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
-  transition: 'color 100ms, background 100ms',
-}
-
 function MessageActionBar({ content, onRegenerate, onContinue }: { content: string; onRegenerate?: () => void; onContinue?: () => void }) {
   const [copied, setCopied] = useState(false)
 
@@ -126,12 +121,13 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
   }
 
   return (
-    <div style={{ marginTop: 4, display: 'flex', gap: 4 }}>
-      <button
+    <div className="message-action-bar">
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        className="message-action-button"
         onClick={handleCopy}
-        style={actionBtnStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--control-bg)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent' }}
         title="复制"
       >
         {copied ? (
@@ -144,27 +140,29 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
           </svg>
         )}
         {copied ? '已复制' : '复制'}
-      </button>
+      </Button>
       {onContinue && (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="message-action-button"
           onClick={onContinue}
-          style={actionBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--control-bg)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent' }}
           title="继续生成"
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
           继续生成
-        </button>
+        </Button>
       )}
       {onRegenerate && (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="message-action-button"
           onClick={onRegenerate}
-          style={actionBtnStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--control-bg)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'transparent' }}
           title="重新生成"
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -172,7 +170,7 @@ function MessageActionBar({ content, onRegenerate, onContinue }: { content: stri
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
           </svg>
           重新生成
-        </button>
+        </Button>
       )}
     </div>
   )

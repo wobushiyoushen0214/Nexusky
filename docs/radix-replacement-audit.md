@@ -53,6 +53,7 @@ Already added:
 - `TimelineView` now uses shared `ToggleGroup` for updated/created mode switching and shared `Button` for refresh while leaving timeline row layout custom.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell and shared `Button` for close, sample selection, fix, and done actions.
+- `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -159,6 +160,7 @@ These are lower impact or more visual than behavioral.
 | Welcome screen | `Button` | Done for demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
 | Timeline view controls | `ToggleGroup`, `Button` | Done for mode switching and refresh. Timeline row buttons remain custom because they carry the grid and marker layout. |
 | Demo flow | `Dialog`, `Button`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Spinner/progress remains custom. |
+| Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Toast system | Radix `Toast` or `sonner` | Bigger architectural choice. Current local toast store may be fine. |
 
 ## Components to Add Next

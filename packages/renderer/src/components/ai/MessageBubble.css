@@ -1,0 +1,26 @@
+.message-action-bar {
+  margin-top: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.message-action-button {
+  height: 20px;
+  min-height: 20px;
+  padding: 0 8px;
+  gap: 3px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.message-action-button:hover {
+  background: var(--muted, var(--control-bg));
+  color: var(--secondary-foreground, var(--text-secondary));
+}
+
+.message-action-button svg {
+  flex: 0 0 auto;
+}
