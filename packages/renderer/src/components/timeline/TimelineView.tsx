@@ -5,6 +5,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import type { PropertyTableRow } from '@shared/types/ipc'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 
 type TimelineMode = 'updatedAt' | 'createdAt'
@@ -125,11 +126,11 @@ export function TimelineView() {
           </div>
         </div>
         <div style={{ maxWidth: 1080, margin: '18px auto 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('timeline.searchPlaceholder')}
-            style={{ width: 340, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', fontSize: 12 }}
+            style={{ width: 340, maxWidth: '100%', height: 32, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', outline: 'none', boxShadow: 'none', fontSize: 12 }}
           />
           <ToggleGroup
             type="single"

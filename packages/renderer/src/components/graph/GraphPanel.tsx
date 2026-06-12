@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCancellationError, getErrorMessage } from '../../utils/errors'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import {
   Select,
   SelectContent,
@@ -203,7 +204,7 @@ export function GraphPanel(props: GraphPanelProps) {
 
             <div className="graph-panel-section">
               <div className="graph-panel-section-title">{t('graph.filters').toUpperCase()}</div>
-              <input
+              <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('graph.search')}

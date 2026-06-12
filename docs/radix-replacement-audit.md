@@ -38,7 +38,7 @@ Already added:
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
 - `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`; preview close/footer actions and selection action buttons now use shared `Button` while preserving streaming cancellation and editor replace/append/copy behavior.
 - `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card title/actions use shared `Button`; relation labels use shared `Badge`.
-- `GraphPanel` side controls now use shared `Button`, `Select`, and `Switch` wrappers for panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
+- `GraphPanel` side controls now use shared `Input`, `Button`, `Select`, and `Switch` wrappers for graph search, panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
 - `GraphView` zoom toolbar actions now use shared `Button` while preserving the graph canvas node buttons, pan/zoom math, drag behavior, and raster renderer as custom interaction layers.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` goal/description and plan edit fields now use shared `Textarea`/`Input`, action controls use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow layout remains custom.
@@ -52,7 +52,7 @@ Already added:
 - `ProactivePreferences` now uses shared `Checkbox` and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields now use shared `Input` while preserving the existing save flow and settings layout.
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
-- `TimelineView` now uses shared `ToggleGroup` for updated/created mode switching and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
+- `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell and shared `Button` for close, sample selection, fix, and done actions.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
@@ -159,7 +159,7 @@ These need design cleanup or affect many small controls.
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
 | Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Button` | Done for pack tier switching and tuning actions. Sliders remain native range inputs to preserve precise low-level tuning behavior. |
 | Related context card actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done for title/open and icon feedback actions. Title/aria-label retained. |
-| Graph side panel controls | `components/graph/GraphPanel.tsx` | `Button`, `Select`, `Switch` | Done for side-panel controls only. Graph canvas, pan/zoom, and node interaction layers remain custom. |
+| Graph side panel controls | `components/graph/GraphPanel.tsx` | `Input`, `Button`, `Select`, `Switch` | Done for graph search and side-panel controls. Graph canvas, pan/zoom, and node interaction layers remain custom. |
 | Graph canvas toolbar | `components/graph/GraphView.tsx` | `Button` | Done for zoom out, reset, zoom in, and fit-view toolbar actions. Graph node buttons and canvas interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox` | Done for goal/description fields, plan edit fields, action buttons, and dry-run checkbox. Execution view layout remains custom. |
@@ -181,7 +181,7 @@ These are lower impact or more visual than behavioral.
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
 | Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
-| Timeline view controls | `ToggleGroup`, `Button` | Done for mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
+| Timeline view controls | `Input`, `ToggleGroup`, `Button` | Done for search, mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
 | Demo flow | `Dialog`, `Button`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Spinner/progress remains custom. |
 | Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |
