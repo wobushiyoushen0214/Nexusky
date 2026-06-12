@@ -57,7 +57,7 @@ Already added:
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell and shared `Button` for close, sample selection, fix, and done actions.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints, with hover styling moved into local token-based CSS.
-- `SearchPanel` result rows now use shared `Button` while preserving the existing async search result selection style.
+- `SearchPanel` search input now uses shared `Input`, and result rows use shared `Button`, while preserving the existing transparent search slot, keyboard navigation, async search, and result selection behavior.
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
 - `BasesView` toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline edit targets now use shared `Button`, `Select`, and `Checkbox`.
@@ -141,7 +141,7 @@ These have more custom keyboard behavior or more UI branches.
 | --- | --- | --- | --- | --- |
 | Command palette | `components/CommandPalette.tsx` | Custom overlay, input, selected index, scrollIntoView | `Dialog` + `Command` | shadcn `Command` uses `cmdk`; requires adding `cmdk`. High UX value. |
 | Quick switcher | `components/QuickSwitcher.tsx` | Custom modal list, keyboard index handling | `Dialog` + `Command` | Similar to command palette, likely share a common command surface. |
-| Search panel | `components/SearchPanel.tsx` | Custom overlay, mode buttons, result list keyboard | `Dialog` + `ToggleGroup` + `ScrollArea` + `Button` | Full `Command` may be too restrictive due async search modes. |
+| Search panel | `components/SearchPanel.tsx` | Custom overlay, search input, mode buttons, result list keyboard | `Dialog` + `Input` + `ToggleGroup` + `ScrollArea` + `Button` | Done for shell, search input, mode controls, and result rows. Full `Command` may be too restrictive due async search modes. |
 | Context menus | `components/ContextMenu.tsx` | Manual fixed menu, manual outside click/Escape | `ContextMenu` or `DropdownMenu` | Good, but coordinate-based callers need a careful bridge. |
 | Graph generator modal | `components/GraphGenerator.tsx` | Custom glass overlay/modal | `Dialog` + `ScrollArea` | Straightforward. |
 | Trash modal | `components/TrashPanel.tsx` | Custom overlay/list | `Dialog` + `ScrollArea` + `AlertDialog` | Also uses `ConfirmModal`; migrate after ConfirmModal. |
