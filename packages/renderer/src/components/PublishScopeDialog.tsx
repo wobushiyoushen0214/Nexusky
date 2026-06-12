@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { getErrorMessage } from '../utils/errors'
 import { ConfirmModal } from './ConfirmModal'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
+import { ScrollArea } from './ui/scroll-area'
 import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
 
 type PublishScopeType = PublishScope['type']
@@ -31,8 +40,6 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
   const [publishing, setPublishing] = useState(false)
   const [unpublishing, setUnpublishing] = useState(false)
   const [confirmUnpublish, setConfirmUnpublish] = useState(false)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const overlayPointerDownRef = useRef(false)
 
   useEffect(() => {
     if (!open) return
@@ -47,8 +54,6 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
     setPublishing(false)
     setUnpublishing(false)
     setConfirmUnpublish(false)
-    const timer = window.setTimeout(() => dialogRef.current?.querySelector<HTMLButtonElement>('button[data-primary="true"]')?.focus(), 50)
-    return () => window.clearTimeout(timer)
   }, [open])
 
   useEffect(() => {
@@ -60,15 +65,6 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
       if (storedTarget?.access) setAccess(storedTarget.access)
     }).catch(() => setTarget(null))
   }, [open, vaultPath])
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [open, onClose])
 
   useEffect(() => {
     setPreview(null)
@@ -151,39 +147,25 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
     }
   }
 
-  if (!open) return null
-
   return (
-    <div
-      className="animate-overlay-in glass-overlay"
-      style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' }}
-      onPointerDown={(event) => {
-        overlayPointerDownRef.current = event.target === event.currentTarget
-      }}
-      onClick={(event) => {
-        if (overlayPointerDownRef.current && event.target === event.currentTarget) onClose()
-        overlayPointerDownRef.current = false
-      }}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="publish-scope-dialog-title"
-        className="animate-scale-in glass-popover"
-        style={{ width: 760, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 14, boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', overflow: 'hidden', display: 'flex', flexDirection: 'column', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="glass-divider-bottom" style={{ padding: '16px 18px 14px', borderBottom: '0', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
-          <h3 id="publish-scope-dialog-title" style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{t('commandPalette.publishScope.title')}</h3>
-          <p style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>{t('commandPalette.publishScope.description')}</p>
-        </div>
+    <>
+      <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+        <DialogContent
+          showCloseButton={false}
+          className="animate-scale-in glass-popover"
+          style={{ width: 760, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 40px)', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 14, boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', overflow: 'hidden', display: 'flex', flexDirection: 'column', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+        >
+          <DialogHeader className="glass-divider-bottom" style={{ padding: '16px 18px 14px', borderBottom: '0', background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
+            <DialogTitle style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{t('commandPalette.publishScope.title')}</DialogTitle>
+            <DialogDescription style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.6, color: 'var(--text-tertiary)' }}>{t('commandPalette.publishScope.description')}</DialogDescription>
+          </DialogHeader>
 
-        <div style={{ padding: 18, overflow: 'auto', display: 'grid', gridTemplateColumns: 'minmax(260px, 0.82fr) minmax(320px, 1fr)', gap: 16 }}>
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {target && (
-              <PublishTargetPanel target={target} disabled={!canUnpublish} onUnpublish={() => setConfirmUnpublish(true)} />
-            )}
+          <ScrollArea style={{ flex: 1, minHeight: 0 }}>
+            <div style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(260px, 0.82fr) minmax(320px, 1fr)', gap: 16 }}>
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {target && (
+                  <PublishTargetPanel target={target} disabled={!canUnpublish} onUnpublish={() => setConfirmUnpublish(true)} />
+                )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {(['all', 'folder', 'tag', 'property'] as PublishScopeType[]).map((type) => {
@@ -249,26 +231,28 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
 
             <AccessModeControl value={access} onChange={setAccess} />
 
-            <button type="button" onClick={handlePreview} disabled={!canPreview} style={{ ...primaryButtonStyle, width: 'fit-content', opacity: canPreview ? 1 : 0.55, cursor: canPreview ? 'pointer' : 'not-allowed' }}>
-              {previewing ? t('commandPalette.publishScope.previewing') : t('commandPalette.publishScope.preview')}
-            </button>
-          </section>
+                <Button type="button" size="sm" onClick={handlePreview} disabled={!canPreview} style={{ width: 'fit-content' }}>
+                  {previewing ? t('commandPalette.publishScope.previewing') : t('commandPalette.publishScope.preview')}
+                </Button>
+              </section>
 
-          <PublishPreviewPanel preview={preview} loading={previewing} hasIssues={hasIssues} />
-        </div>
+              <PublishPreviewPanel preview={preview} loading={previewing} hasIssues={hasIssues} />
+            </div>
+          </ScrollArea>
 
-        <div className="glass-divider-top" style={{ padding: '12px 18px 16px', borderTop: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, boxShadow: 'var(--glass-divider-shadow-top)' }}>
-          <span style={{ fontSize: 11, color: hasIssues ? 'var(--warning, #d97706)' : 'var(--text-tertiary)' }}>
-            {preview ? (hasIssues ? t('commandPalette.publishScope.issueHint') : t('commandPalette.publishScope.readyHint')) : t('commandPalette.publishScope.previewRequired')}
-          </span>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button type="button" onClick={onClose} disabled={publishing || previewing || unpublishing} style={secondaryButtonStyle}>{t('commandPalette.publishScope.cancel')}</button>
-            <button type="button" onClick={handlePublish} disabled={!canPublish} style={{ ...primaryButtonStyle, opacity: canPublish ? 1 : 0.55, cursor: canPublish ? 'pointer' : 'not-allowed' }}>
-              {publishing ? t('commandPalette.publishScope.publishing') : t('commandPalette.publishScope.publish')}
-            </button>
+          <div className="glass-divider-top" style={{ padding: '12px 18px 16px', borderTop: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, boxShadow: 'var(--glass-divider-shadow-top)' }}>
+            <span style={{ fontSize: 11, color: hasIssues ? 'var(--warning, #d97706)' : 'var(--text-tertiary)' }}>
+              {preview ? (hasIssues ? t('commandPalette.publishScope.issueHint') : t('commandPalette.publishScope.readyHint')) : t('commandPalette.publishScope.previewRequired')}
+            </span>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={publishing || previewing || unpublishing}>{t('commandPalette.publishScope.cancel')}</Button>
+              <Button type="button" size="sm" onClick={handlePublish} disabled={!canPublish}>
+                {publishing ? t('commandPalette.publishScope.publishing') : t('commandPalette.publishScope.publish')}
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
       <ConfirmModal
         open={confirmUnpublish}
         title={t('commandPalette.publishScope.unpublishConfirmTitle')}
@@ -279,7 +263,7 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
         onConfirm={handleUnpublish}
         onCancel={() => setConfirmUnpublish(false)}
       />
-    </div>
+    </>
   )
 }
 
@@ -379,9 +363,9 @@ function PublishTargetPanel({ target, disabled, onUnpublish }: { target: Publish
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('commandPalette.publishScope.currentTarget')}</div>
           <div title={target.outputPath} style={{ marginTop: 3, fontSize: 11, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.outputPath}</div>
         </div>
-        <button type="button" onClick={onUnpublish} disabled={disabled} style={{ ...dangerButtonStyle, opacity: disabled ? 0.55 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
+        <Button type="button" variant="destructive" size="xs" onClick={onUnpublish} disabled={disabled}>
           {t('commandPalette.publishScope.unpublish')}
-        </button>
+        </Button>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         <span style={pillStyle}>{t(`commandPalette.publishScope.access.${target.access}.label`)}</span>
@@ -534,36 +518,6 @@ const rowStyle: React.CSSProperties = {
   borderRadius: 6,
   fontSize: 11,
   background: 'var(--bg-elevated)'
-}
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: '7px 14px',
-  borderRadius: 6,
-  border: '1px solid var(--border-subtle)',
-  background: 'transparent',
-  color: 'var(--text-secondary)',
-  fontSize: 12,
-  cursor: 'pointer'
-}
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: '7px 14px',
-  borderRadius: 6,
-  border: 'none',
-  background: 'var(--accent)',
-  color: 'var(--text-on-accent)',
-  fontSize: 12,
-  fontWeight: 600
-}
-
-const dangerButtonStyle: React.CSSProperties = {
-  padding: '6px 10px',
-  borderRadius: 6,
-  border: '1px solid color-mix(in srgb, var(--danger) 36%, var(--glass-border))',
-  background: 'var(--danger-muted)',
-  color: 'var(--danger)',
-  fontSize: 11,
-  fontWeight: 700
 }
 
 const pillStyle: React.CSSProperties = {

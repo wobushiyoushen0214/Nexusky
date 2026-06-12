@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SettingsSidebar, type SettingsTab } from './SettingsSidebar'
 import { AppearanceSettings } from './pages/AppearanceSettings'
@@ -8,6 +8,15 @@ import { PluginsSettings } from './pages/PluginsSettings'
 import { KeysSettings } from './pages/KeysSettings'
 import { ProactiveSettings } from './pages/ProactiveSettings'
 import { LongContextSettings } from './pages/LongContextSettings'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog'
+import { ScrollArea } from '../ui/scroll-area'
+import { Tabs, TabsContent } from '../ui/tabs'
 import './Settings.css'
 
 interface SettingsProps {
@@ -18,63 +27,68 @@ interface SettingsProps {
 export function Settings({ open, onClose }: SettingsProps) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
-  const dialogRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [open, onClose])
-
-  useEffect(() => {
-    if (open && dialogRef.current) {
-      dialogRef.current.focus()
-    }
-  }, [open])
-
-  if (!open) return null
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) onClose()
+  }
 
   return (
-    <div className="settings-overlay" onClick={onClose}>
-      <div
-        ref={dialogRef}
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
         className="settings-dialog"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-        tabIndex={-1}
+        overlayClassName="settings-overlay"
+        showCloseButton={false}
       >
-        <header className="settings-dialog__header">
-          <h1 id="settings-title">{t('settings.title')}</h1>
-          <button
-            className="settings-dialog__close"
-            onClick={onClose}
-            aria-label={t('common.close')}
-          >
-            ×
-          </button>
-        </header>
+        <DialogHeader className="settings-dialog__header">
+          <DialogTitle className="settings-dialog__title">{t('settings.title')}</DialogTitle>
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="settings-dialog__close"
+              aria-label={t('common.close')}
+            >
+              ×
+            </button>
+          </DialogClose>
+        </DialogHeader>
 
-        <div className="settings-dialog__body">
-          <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <Tabs
+          value={activeTab}
+          orientation="vertical"
+          onValueChange={(value) => setActiveTab(value as SettingsTab)}
+          className="settings-dialog__tabs"
+        >
+          <div className="settings-dialog__body">
+            <SettingsSidebar />
 
-          <main className="settings-dialog__content">
-            {activeTab === 'appearance' && <AppearanceSettings />}
-            {activeTab === 'ai' && <AIProviderSettings />}
-            {activeTab === 'cloud' && <CloudSyncSettings />}
-            {activeTab === 'plugins' && <PluginsSettings />}
-            {activeTab === 'keys' && <KeysSettings />}
-            {activeTab === 'proactive' && <ProactiveSettings />}
-            {activeTab === 'long-context' && <LongContextSettings />}
-          </main>
-        </div>
-      </div>
-    </div>
+            <main className="settings-dialog__content-shell" aria-label={t(`settings.tabs.${activeTab}`)}>
+              <ScrollArea className="settings-dialog__content">
+                <TabsContent value="appearance" className="settings-dialog__tab-panel">
+                  <AppearanceSettings />
+                </TabsContent>
+                <TabsContent value="ai" className="settings-dialog__tab-panel">
+                  <AIProviderSettings />
+                </TabsContent>
+                <TabsContent value="cloud" className="settings-dialog__tab-panel">
+                  <CloudSyncSettings />
+                </TabsContent>
+                <TabsContent value="plugins" className="settings-dialog__tab-panel">
+                  <PluginsSettings />
+                </TabsContent>
+                <TabsContent value="keys" className="settings-dialog__tab-panel">
+                  <KeysSettings />
+                </TabsContent>
+                <TabsContent value="proactive" className="settings-dialog__tab-panel">
+                  <ProactiveSettings />
+                </TabsContent>
+                <TabsContent value="long-context" className="settings-dialog__tab-panel">
+                  <LongContextSettings />
+                </TabsContent>
+              </ScrollArea>
+            </main>
+          </div>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   )
 }

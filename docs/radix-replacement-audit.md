@@ -1,0 +1,394 @@
+# Radix / shadcn Component Replacement Audit
+
+Date: 2026-06-12
+
+Scope: `packages/renderer/src`
+
+Constraint: `ActivityBar` visual style must remain unchanged. If its menu logic is ever migrated, keep the existing left rail layout, sizing, colors, icons, hover behavior, and active state intact.
+
+## Current State
+
+The renderer is a Vite React app with Tailwind v4 and a mostly custom component layer. The shadcn CLI detects this repository as a `Manual` project, not an initialized shadcn project. There is no `components.json`, no standard alias such as `@/components/ui`, and no existing shadcn registry component set.
+
+Because of that, the safest direction is:
+
+1. Do not run `shadcn init` unless we explicitly decide to adopt its project config.
+2. Keep using local wrappers under `packages/renderer/src/components/ui`.
+3. Use `radix-ui` primitives behind those wrappers.
+4. Map visual styling to existing Nexusky tokens in CSS, not shadcn default CSS variables.
+
+Already added:
+
+- `radix-ui` dependency.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs` wrappers.
+- `MemoryTimelinePanel` now uses those wrappers.
+- `ConfirmModal` now uses `AlertDialog`.
+- Settings shell now uses `Dialog` and `ScrollArea`.
+- Settings sidebar now uses `Tabs`.
+- AI provider editor now uses `Dialog`, `Button`, and `Badge`.
+- Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, and the shared `ConfirmModal`.
+
+Reference docs checked through `pnpm dlx shadcn@latest docs`:
+
+- `button`, `badge`, `dialog`, `scroll-area`
+- `alert-dialog`, `context-menu`, `dropdown-menu`, `tabs`
+- `command`, `sheet`, `popover`, `tooltip`
+- `select`, `switch`, `checkbox`, `radio-group`, `toggle-group`
+
+## Replacement Principles
+
+Use Radix where it removes hard manual interaction work:
+
+- Focus trapping, Escape handling, overlay dismissal.
+- Keyboard navigation in menus, tabs, command lists, radio groups.
+- ARIA roles and state attributes.
+- Controlled/uncontrolled state consistency.
+- Portal and stacking behavior.
+
+Do not use Radix where native behavior is tightly coupled to custom logic:
+
+- Editor scrolling and cursor visibility.
+- Virtualized file trees that depend on exact `scrollTop`.
+- Graph/canvas interactions.
+- Native titlebar/window controls.
+
+Use local wrappers rather than raw Radix imports in feature code. This keeps tokens, sizes, focus rings, and density consistent.
+
+## Priority Matrix
+
+### P0: High-Value, Low-Risk
+
+These replace duplicated modal/menu logic and improve accessibility immediately.
+
+| Area | Current file | Current pattern | Recommended primitive | Notes |
+| --- | --- | --- | --- | --- |
+| Confirm dialogs | `components/ConfirmModal.tsx` | Custom overlay, manual Escape/Enter, inline buttons | `AlertDialog` + `Button` | Best first migration. Used by delete/restore flows. |
+| Settings shell | `components/settings/Settings.tsx` | Custom dialog, manual focus, manual Escape | `Dialog` + `ScrollArea` | Preserve current CSS shape, replace interaction shell. |
+| Settings tabs | `components/settings/SettingsSidebar.tsx` | Manual `role="tablist"` buttons | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | Good keyboard win: arrows, Home/End if implemented by Radix. |
+| AI provider editor | `components/settings/AIProviderSettings.tsx` | Custom provider modal | `Dialog` + `Button` + `Badge` | Keep form markup first; migrate form controls later. |
+| Publish dialog | `components/PublishScopeDialog.tsx` | Custom `role="dialog"`, manual focus/overlay | `Dialog` + `ScrollArea`; nested destructive confirm via `AlertDialog` | Good candidate but larger file, split into steps. |
+| Memory timeline | `components/memory/MemoryTimelinePanel.tsx` | Already migrated partly | Already uses `Dialog`, `ScrollArea`, `Button`, `Badge` | Keep as reference pattern. |
+
+### P1: Strong Candidates, Moderate Effort
+
+These have more custom keyboard behavior or more UI branches.
+
+| Area | Current file | Current pattern | Recommended primitive | Notes |
+| --- | --- | --- | --- | --- |
+| Command palette | `components/CommandPalette.tsx` | Custom overlay, input, selected index, scrollIntoView | `Dialog` + `Command` | shadcn `Command` uses `cmdk`; requires adding `cmdk`. High UX value. |
+| Quick switcher | `components/QuickSwitcher.tsx` | Custom modal list, keyboard index handling | `Dialog` + `Command` | Similar to command palette, likely share a common command surface. |
+| Search panel | `components/SearchPanel.tsx` | Custom overlay, mode buttons, result list keyboard | `Dialog` + `ToggleGroup` + `ScrollArea` + `Button` | Full `Command` may be too restrictive due async search modes. |
+| Context menus | `components/ContextMenu.tsx` | Manual fixed menu, manual outside click/Escape | `ContextMenu` or `DropdownMenu` | Good, but coordinate-based callers need a careful bridge. |
+| Graph generator modal | `components/GraphGenerator.tsx` | Custom glass overlay/modal | `Dialog` + `ScrollArea` | Straightforward. |
+| Trash modal | `components/TrashPanel.tsx` | Custom overlay/list | `Dialog` + `ScrollArea` + `AlertDialog` | Also uses `ConfirmModal`; migrate after ConfirmModal. |
+| Onboarding modal | `components/Onboarding.tsx` | Custom overlay/popover | `Dialog` | Simple. |
+| AI writing preview | `components/editor/AIWritingMenu.tsx` | Custom modal + floating menu | Preview: `Dialog`; inline menu: `Popover` | Split preview and inline suggestion menu. |
+
+### P2: Useful, But Should Wait
+
+These need design cleanup or affect many small controls.
+
+| Area | Current file | Recommended primitive | Notes |
+| --- | --- | --- | --- |
+| Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu` | Drawer shape maps well to Sheet. Snooze menu maps to DropdownMenu. |
+| Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Good cleanup, but panel has side/page variants. |
+| Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Replace status spans with local Badge variants. |
+| Related context card icon actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Use title/aria-label consistently. |
+| Bases controls | `components/bases/BasesView.tsx` | `Button`, `ToggleGroup`, `DropdownMenu`, `Select` | Wait until existing `bases` type errors are resolved. |
+| Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Button` | Do after Settings shell/Tabs so controls inherit a stable structure. |
+| Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Switch`, `Select`, `Button` | Form semantics improve, visual change should be restrained. |
+
+### P3: Optional / Polish
+
+These are lower impact or more visual than behavioral.
+
+| Area | Candidate primitive | Notes |
+| --- | --- | --- |
+| Tool result panel | `Dialog` or `Sheet` | Only if it behaves like an overlay. If it is an inline result panel, keep custom. |
+| Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Visual consistency only; no big interaction win. |
+| Overview cards | `Card`, `Badge` | Be careful: user has been tuning glass/hover details manually. |
+| Demo flow | `Dialog`, `Button`, `Progress` | Demo-only, lower priority. |
+| Toast system | Radix `Toast` or `sonner` | Bigger architectural choice. Current local toast store may be fine. |
+
+## Components to Add Next
+
+Recommended local wrappers under `packages/renderer/src/components/ui`:
+
+1. `alert-dialog.tsx` - done
+   - Wrap `radix-ui` `AlertDialog`.
+   - Use existing `Button`.
+   - Needed by `ConfirmModal`.
+
+2. `tabs.tsx` - done
+   - Wrap `radix-ui` `Tabs`.
+   - Add CSS classes for vertical settings layout and compact horizontal tabs.
+   - Needed by Settings and long-context packs.
+
+3. `context-menu.tsx`
+   - Wrap `radix-ui` `ContextMenu`.
+   - Support item shape: `label`, `icon`, `danger`, `disabled`, `onSelect`.
+   - Needed by `ContextMenu.tsx` replacement.
+
+4. `dropdown-menu.tsx`
+   - Wrap `radix-ui` `DropdownMenu`.
+   - Needed by snooze menus, column menus, sidebar vault menu, small action menus.
+
+5. `toggle-group.tsx`
+   - Wrap `radix-ui` `ToggleGroup`.
+   - Needed by Search mode controls and appearance option groups.
+
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`
+   - Needed for settings pages.
+   - Should be introduced after the settings shell is migrated.
+
+7. `popover.tsx`, `tooltip.tsx`
+   - Needed for small floating menus and icon-only controls.
+
+8. `command.tsx`
+   - Use shadcn `Command`, likely requires `cmdk`.
+   - Do this only when migrating `CommandPalette` and `QuickSwitcher`.
+
+## Detailed Migration Plan
+
+### Phase 1: Foundation
+
+Keep `ActivityBar` untouched.
+
+Tasks:
+
+1. Add wrappers:
+   - `alert-dialog`
+   - `tabs`
+   - `context-menu`
+   - `dropdown-menu`
+   - `toggle-group`
+2. Extend `ui.css` with shared state styles:
+   - `[data-state="open"]`
+   - `[data-state="active"]`
+   - `[data-disabled]`
+   - danger item styles
+3. Avoid global reset or shadcn theme import.
+
+Validation:
+
+- `pnpm run build`
+- `git diff --check`
+- Manual smoke test: open/close modal, Escape, outside click, Tab focus.
+
+### Phase 2: Replace ConfirmModal
+
+Current problem:
+
+- Manual Escape and Enter handling.
+- Manual overlay pointer tracking.
+- No built-in focus trap.
+- Inline styling makes design consistency hard.
+
+Target:
+
+```tsx
+<AlertDialog open={open} onOpenChange={(next) => !next && onCancel()}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>{title}</AlertDialogTitle>
+      <AlertDialogDescription>{message}</AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+      <AlertDialogAction>{confirmText}</AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+Consumers:
+
+- `TrashPanel.tsx`
+- `sidebar/FileTree.tsx`
+- `sidebar/VirtualFileTree.tsx`
+- `PublishScopeDialog.tsx`
+- `GraphView.tsx`
+- `ChatPanel.tsx`
+
+Risk:
+
+- Enter-to-confirm behavior may change. Radix does not automatically confirm on Enter unless focus is on the action. This is usually safer.
+
+### Phase 3: Replace Settings Shell
+
+Current files:
+
+- `settings/Settings.tsx`
+- `settings/SettingsSidebar.tsx`
+- `settings/Settings.css`
+
+Target:
+
+- Outer shell: `Dialog`.
+- Sidebar tabs: `Tabs`.
+- Content region: `TabsContent`.
+- Content scroll: `ScrollArea`.
+- Close button: existing `Button`.
+
+Design constraint:
+
+- Preserve current visual proportions and close hover behavior.
+- Do not reintroduce left active border on tabs.
+- Do not enlarge buttons.
+
+Benefits:
+
+- Focus trap.
+- Escape handling.
+- Better tab semantics.
+- Less custom modal code.
+
+### Phase 4: Replace Local ContextMenu
+
+Current file:
+
+- `components/ContextMenu.tsx`
+
+Current usage:
+
+- `sidebar/FileTree.tsx`
+- `sidebar/VirtualFileTree.tsx`
+- `sidebar/Sidebar.tsx`
+- `editor/Editor.tsx`
+- `sidebar/ActivityBar.tsx`
+
+Important constraint:
+
+- `ActivityBar` style remains unchanged. If migrated, only the menu primitive changes; the rail button rendering stays exactly as-is.
+
+Recommended approach:
+
+1. Create a compatibility wrapper first:
+   - Keep props `{ x, y, items, onClose }`.
+   - Internally render a Radix `ContextMenu` or `DropdownMenu` anchored to a virtual trigger.
+2. If virtual positioning becomes awkward, use Radix `DropdownMenu` with a fixed-position wrapper first.
+3. Migrate callers one by one.
+
+Risk:
+
+- Radix `ContextMenu` is trigger-oriented. Current code opens menus from explicit mouse coordinates. A bridge layer is needed.
+- Virtualized file tree context menus need careful close behavior.
+
+### Phase 5: Command Surfaces
+
+Current files:
+
+- `CommandPalette.tsx`
+- `QuickSwitcher.tsx`
+- `SearchPanel.tsx`
+
+Recommended split:
+
+- `CommandPalette` and `QuickSwitcher`: `Dialog` + shadcn `Command`.
+- `SearchPanel`: `Dialog` + `ToggleGroup` + `ScrollArea` first. Consider `Command` later only for result list behavior.
+
+Why:
+
+- CommandPalette and QuickSwitcher are classic command-list UIs.
+- SearchPanel is not only command selection; it has async search modes, index status, progress, history, and result preview.
+
+Dependency:
+
+- shadcn `Command` uses `cmdk`; add it only when implementing Phase 5.
+
+### Phase 6: Settings Controls
+
+Candidate controls:
+
+- Appearance color theme: `RadioGroup` or `ToggleGroup`.
+- Binary settings: `Switch`.
+- Provider enable/active states: `Button`, `Badge`, maybe `RadioGroup` only if a single active provider must be explicit.
+- Select fields: `Select`.
+- Checkboxes: `Checkbox`.
+
+Rule:
+
+- Do not convert every input at once. Start with one settings page and establish density, label layout, error states, and disabled states.
+
+## Do Not Replace Yet
+
+### ActivityBar
+
+Do not alter visual rendering. The user explicitly asked to keep it unchanged.
+
+Possible future safe change:
+
+- Replace only the right-click menu internals with the shared context menu wrapper.
+- Keep `ActivityBar.tsx` button DOM/styling stable.
+
+### VirtualFileTree Scroll Container
+
+Do not replace the main scroll container with Radix `ScrollArea` right now.
+
+Reason:
+
+- It relies on exact `scrollTop`, item height, overscan, and keyboard scrolling.
+- Radix wraps content in a viewport. It can work, but requires a careful ref rewrite and regression testing.
+
+### Editor Scroll Container
+
+Do not replace editor scroll with Radix `ScrollArea`.
+
+Reason:
+
+- Tiptap selection and cursor scroll logic depend on DOM container behavior.
+- Editor has explicit scroll-to-cursor and context menu handling.
+
+### Graph Canvas / GraphView
+
+Do not replace graph interaction layers with Radix.
+
+Reason:
+
+- Canvas/pointer/zoom interactions are domain-specific.
+- Radix is useful for surrounding menus/dialogs, not the graph core.
+
+### TitleBar
+
+Do not replace native window controls.
+
+Reason:
+
+- It controls Electron window behavior and platform-like hit targets.
+
+## Suggested Implementation Order
+
+1. `AlertDialog` wrapper and `ConfirmModal` replacement.
+2. `Dialog` migration for Settings shell.
+3. `Tabs` migration for SettingsSidebar.
+4. `Dialog` migration for `AIProviderSettings` editor modal.
+5. `Dialog` migration for `PublishScopeDialog`.
+6. Shared `ContextMenu` wrapper.
+7. Command palette and quick switcher.
+8. Search panel controls.
+9. Settings form controls.
+10. Proactive notification sheet/dropdowns.
+
+## Quality Checklist
+
+For every migration:
+
+- Escape closes overlays.
+- Outside click behavior matches current behavior.
+- Focus returns to the trigger when possible.
+- Tab order is predictable.
+- Arrow-key behavior works for menus/tabs/lists.
+- Dialog has a visible or screen-reader `Title`.
+- No ActivityBar visual changes.
+- No new hardcoded raw colors in feature components.
+- `pnpm run build` passes.
+- `pnpm run typecheck` result is checked; current unrelated known failure is `"bases"` not assignable to `MainView`.
+
+## Current Known Typecheck Issue
+
+`pnpm run typecheck` currently fails outside the Radix migration work:
+
+- `packages/renderer/src/App.tsx`: `"bases"` is not assignable to `MainView`.
+- `packages/renderer/src/stores/ui-store.ts`: `"bases"` is not assignable to `MainView | undefined`.
+
+This should be fixed separately before using typecheck as a clean migration gate.

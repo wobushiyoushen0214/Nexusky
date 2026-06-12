@@ -7,8 +7,8 @@ export function buildMemoryTimeline(vaultPath: string): MemoryCard[] {
   const relations = db.prepare(`
     SELECT
       ar.id,
-      ar.source_note_id as sourceNoteId,
-      ar.target_note_id as targetNoteId,
+      ar.source_id as sourceNoteId,
+      ar.target_id as targetNoteId,
       ar.relation_type as relationType,
       ar.confidence,
       ar.last_seen_at as lastSeenAt,
@@ -18,8 +18,8 @@ export function buildMemoryTimeline(vaultPath: string): MemoryCard[] {
       n2.title as targetTitle,
       n2.file_path as targetFilePath
     FROM ai_relations ar
-    LEFT JOIN notes n1 ON ar.source_note_id = n1.id
-    LEFT JOIN notes n2 ON ar.target_note_id = n2.id
+    LEFT JOIN notes n1 ON ar.source_id = n1.id
+    LEFT JOIN notes n2 ON ar.target_id = n2.id
     WHERE ar.confidence >= 0.3
     ORDER BY ar.last_seen_at DESC
     LIMIT 200

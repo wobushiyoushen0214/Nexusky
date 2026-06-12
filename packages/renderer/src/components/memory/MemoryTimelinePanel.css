@@ -2,8 +2,9 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 32px;
+  padding: 22px;
   overflow: hidden;
+  background: var(--bg-primary);
 }
 
 .memory-timeline-panel--loading,
@@ -13,10 +14,19 @@
   color: var(--text-secondary);
 }
 
+.memory-timeline-panel--empty p,
+.memory-timeline-panel--loading p {
+  margin: 0;
+  max-width: 280px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .memory-timeline-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-color);
+  width: 28px;
+  height: 28px;
+  border: 2px solid color-mix(in srgb, var(--border-default, var(--border-color)) 78%, transparent);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -24,218 +34,387 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .memory-timeline-header {
-  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.memory-timeline-heading {
+  min-width: 0;
 }
 
 .memory-timeline-header h2 {
-  margin: 0 0 8px;
-  font-size: 24px;
-  font-weight: 700;
+  margin: 0 0 5px;
+  font-size: 17px;
+  font-weight: 660;
+  color: var(--text-primary);
+  letter-spacing: 0;
 }
 
 .memory-timeline-subtitle {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.memory-timeline-count {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border-color)) 72%, transparent);
+}
+
+.memory-timeline-scroll {
+  flex: 1;
+  min-height: 0;
+  padding-right: 2px;
 }
 
 .memory-timeline-list {
-  flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  padding: 2px 8px 14px 0;
 }
 
 .memory-card {
-  padding: 20px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  border-left-width: 3px;
-  border-radius: 8px;
-  transition: all 0.2s;
+  position: relative;
+  display: grid;
+  grid-template-columns: 82px 22px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 74px;
+  padding: 0;
+  background: transparent;
 }
 
-.memory-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.memory-card__date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding-top: 15px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.memory-card--hot {
-  border-left-color: #ef4444;
+.memory-card__date-day {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
 }
 
-.memory-card--warm {
-  border-left-color: #f59e0b;
+.memory-card__date-year {
+  color: color-mix(in srgb, var(--text-tertiary) 78%, transparent);
+  font-size: 10px;
+  line-height: 1.2;
 }
 
-.memory-card--cold {
-  border-left-color: #6b7280;
+.memory-card__rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-height: 100%;
 }
 
-.memory-card__header {
+.memory-card__rail::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  bottom: -16px;
+  width: 1px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--border-subtle, var(--border-color)) 48%, transparent) 16px,
+    color-mix(in srgb, var(--accent) 20%, var(--border-subtle, var(--border-color))) 50%,
+    color-mix(in srgb, var(--border-subtle, var(--border-color)) 42%, transparent)
+  );
+}
+
+.memory-card:first-child .memory-card__rail::after {
+  top: 18px;
+}
+
+.memory-card:last-child .memory-card__rail::after {
+  bottom: calc(100% - 20px);
+}
+
+.memory-card__dot {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--bg-primary),
+    0 0 0 5px color-mix(in srgb, var(--accent-muted) 70%, transparent);
+}
+
+.memory-card--warm .memory-card__dot {
+  opacity: 0.64;
+}
+
+.memory-card--cold .memory-card__dot {
+  opacity: 0.36;
+}
+
+.memory-card.is-pinned .memory-card__dot {
+  box-shadow:
+    0 0 0 3px var(--bg-primary),
+    0 0 0 6px color-mix(in srgb, var(--accent-muted) 92%, transparent);
+}
+
+.memory-card__surface {
+  min-width: 0;
+  padding: 12px 12px 11px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border-color)) 82%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 64%, transparent), transparent 180%),
+    color-mix(in srgb, var(--bg-surface, var(--bg-primary)) 68%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight, var(--bg-elevated)) 38%, transparent);
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.memory-card:hover .memory-card__surface {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 72%, transparent), transparent 180%),
+    color-mix(in srgb, var(--bg-hover) 48%, var(--bg-surface, var(--bg-primary)));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight, var(--bg-elevated)) 48%, transparent);
+}
+
+.memory-card__topline {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
-.memory-card__header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+.memory-card__title-block {
+  min-width: 0;
   flex: 1;
 }
 
-.memory-card__tier {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
+.memory-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.memory-card__tier--hot {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-}
-
-.memory-card__tier--warm {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-}
-
-.memory-card__tier--cold {
-  background: rgba(107, 114, 128, 0.15);
-  color: #6b7280;
+.memory-card__title-row h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 610;
+  line-height: 1.45;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .memory-card__meta {
   display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
-  font-size: 13px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.memory-card__meta span + span::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin: 0 8px 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-tertiary) 48%, transparent);
+}
+
+.memory-card__tier {
+  flex: 0 0 auto;
+}
+
+.memory-card--warm .memory-card__tier {
+  background: color-mix(in srgb, var(--accent-muted) 34%, transparent);
+  color: color-mix(in srgb, var(--accent-text, var(--accent)) 78%, var(--text-secondary));
+}
+
+.memory-card--cold .memory-card__tier {
+  background: color-mix(in srgb, var(--bg-hover) 58%, transparent);
   color: var(--text-tertiary);
 }
 
 .memory-card__sources {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.memory-card__source-label {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 22px;
 }
 
 .memory-card__source {
-  padding: 6px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  max-width: 220px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
   border-radius: 6px;
-  font-size: 13px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border-color)) 74%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 50%, transparent);
   color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.memory-card__source:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--accent);
+  font-size: 11px;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .memory-card__more {
-  padding: 6px 12px;
-  font-size: 13px;
   color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 22px;
 }
 
 .memory-card__actions {
+  flex: 0 0 auto;
   display: flex;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-color);
+  align-items: center;
+  gap: 2px;
+  margin-top: -2px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle, var(--border-color)) 70%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-elevated) 42%, transparent);
+  opacity: 0.78;
+  transition: opacity 120ms ease;
+}
+
+.memory-card:hover .memory-card__actions,
+.memory-card:focus-within .memory-card__actions {
+  opacity: 1;
 }
 
 .memory-card__action {
-  padding: 6px 14px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.memory-card__action:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--accent);
+  font-weight: 500;
 }
 
 .memory-card__action.is-active {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
-}
-
-.memory-explanation-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  color: var(--accent-text, var(--accent));
 }
 
 .memory-explanation-content {
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  background: var(--bg-primary);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
+  width: min(600px, calc(100vw - 48px));
 }
 
-.memory-explanation-content header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.memory-explanation-content h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.memory-explanation-content button {
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary);
-  cursor: pointer;
+.memory-explanation-scroll {
+  min-height: 0;
+  max-height: calc(80vh - 58px);
 }
 
 .memory-explanation-body {
-  padding: 24px;
-  overflow-y: auto;
-  max-height: 60vh;
+  padding: 18px;
 }
 
 .memory-explanation-body p {
   margin: 0;
-  line-height: 1.6;
   color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+@media (max-width: 720px) {
+  .memory-timeline-panel {
+    padding: 16px;
+  }
+
+  .memory-timeline-header {
+    flex-direction: column;
+  }
+
+  .memory-timeline-count {
+    align-self: flex-start;
+  }
+
+  .memory-card {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .memory-card__date {
+    grid-column: 2;
+    grid-row: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-top: 0;
+    padding-left: 1px;
+  }
+
+  .memory-card__rail {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .memory-card__rail::after {
+    top: 10px;
+  }
+
+  .memory-card__dot {
+    margin-top: 8px;
+  }
+
+  .memory-card__surface {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .memory-card__topline {
+    flex-direction: column;
+  }
+
+  .memory-card__actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-top: 2px;
+  }
+
+  .memory-card__source {
+    max-width: min(220px, 100%);
+  }
 }

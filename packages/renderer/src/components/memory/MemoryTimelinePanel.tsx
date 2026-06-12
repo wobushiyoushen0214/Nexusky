@@ -1,13 +1,182 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import type { MemoryCard } from '@shared/types/ipc'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
+import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '../ui/dialog'
+import { ScrollArea } from '../ui/scroll-area'
 import './MemoryTimelinePanel.css'
 
+function getValidDate(value: number) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getTimelineAnchor(card: MemoryCard) {
+  return card.period.end || card.updatedAt || card.createdAt || card.period.start
+}
+
+function formatTimelineDate(value: number, locale: string) {
+  const date = getValidDate(value)
+  if (!date) return ''
+  return date.toLocaleDateString(locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+}
+
+function formatTimelineDay(value: number, locale: string) {
+  const date = getValidDate(value)
+  if (!date) return ''
+  return date.toLocaleDateString(locale, {
+    month: '2-digit',
+    day: '2-digit'
+  })
+}
+
+function formatTimelineYear(value: number, locale: string) {
+  const date = getValidDate(value)
+  if (!date) return ''
+  return date.toLocaleDateString(locale, {
+    year: 'numeric'
+  })
+}
+
+function formatTimelinePeriod(card: MemoryCard, locale: string) {
+  const start = formatTimelineDate(card.period.start, locale)
+  const end = formatTimelineDate(card.period.end, locale)
+  if (!start) return end
+  if (!end || start === end) return start
+  return `${start} - ${end}`
+}
+
+interface MemoryTimelineItemProps {
+  card: MemoryCard
+  locale: string
+  t: TFunction
+  onExplain: (card: MemoryCard) => void
+  onUpdate: (id: string, actions: { archived?: boolean; pinned?: boolean }) => void
+}
+
+function MemoryTimelineItem({ card, locale, t, onExplain, onUpdate }: MemoryTimelineItemProps) {
+  const tier = card.tier.toLowerCase()
+  const badgeVariant: 'default' | 'secondary' | 'outline' =
+    tier === 'cold' ? 'secondary' : tier === 'warm' ? 'outline' : 'default'
+  const visibleSources = card.sources.slice(0, 3)
+  const anchor = getTimelineAnchor(card)
+
+  return (
+    <article
+      role="listitem"
+      className={`memory-card memory-card--${tier} ${card.userActions.pinned ? 'is-pinned' : ''}`}
+    >
+      <time className="memory-card__date" dateTime={getValidDate(anchor)?.toISOString()}>
+        <span className="memory-card__date-day">{formatTimelineDay(anchor, locale)}</span>
+        <span className="memory-card__date-year">{formatTimelineYear(anchor, locale)}</span>
+      </time>
+
+      <div className="memory-card__rail" aria-hidden="true">
+        <span className="memory-card__dot" />
+      </div>
+
+      <div className="memory-card__surface">
+        <div className="memory-card__topline">
+          <div className="memory-card__title-block">
+            <div className="memory-card__title-row">
+              <h3>{card.title}</h3>
+              <Badge className="memory-card__tier" variant={badgeVariant}>
+                {t(`memory.tier.${tier}`)}
+              </Badge>
+            </div>
+            <div className="memory-card__meta">
+              <span>{formatTimelinePeriod(card, locale)}</span>
+              <span>
+                {Math.round(card.confidence * 100)}% {t('memory.confidence')}
+              </span>
+            </div>
+          </div>
+
+          <div className="memory-card__actions" aria-label={t('memory.actions')}>
+            <MemoryActionButton onClick={() => onExplain(card)}>
+              {t('memory.explain')}
+            </MemoryActionButton>
+            <MemoryActionButton
+              active={card.userActions.pinned}
+              onClick={() => onUpdate(card.id, { pinned: !card.userActions.pinned })}
+            >
+              {card.userActions.pinned ? t('memory.unpin') : t('memory.pin')}
+            </MemoryActionButton>
+            <MemoryActionButton onClick={() => onUpdate(card.id, { archived: true })}>
+              {t('memory.archive')}
+            </MemoryActionButton>
+          </div>
+        </div>
+
+        {visibleSources.length > 0 && (
+          <div className="memory-card__sources" aria-label={t('memory.sources')}>
+            <span className="memory-card__source-label">{t('memory.sources')}</span>
+            {visibleSources.map((source, idx) => (
+              <MemorySourceChip
+                key={`${source.noteId}-${idx}`}
+                title={source.filePath || source.title}
+              >
+                {source.title}
+              </MemorySourceChip>
+            ))}
+            {card.sources.length > visibleSources.length && (
+              <span className="memory-card__more">
+                +{card.sources.length - visibleSources.length} {t('memory.moreSources')}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function MemorySourceChip({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <span className="memory-card__source" title={title}>
+      {children}
+    </span>
+  )
+}
+
+function MemoryActionButton({
+  active = false,
+  children,
+  onClick
+}: {
+  active?: boolean
+  children: ReactNode
+  onClick: () => void
+}) {
+  return (
+    <Button
+      type="button"
+      variant={active ? 'secondary' : 'ghost'}
+      size="xs"
+      onClick={onClick}
+      className={`memory-card__action ${active ? 'is-active' : ''}`}
+    >
+      {children}
+    </Button>
+  )
+}
+
 export function MemoryTimelinePanel() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const [cards, setCards] = useState<MemoryCard[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,6 +222,11 @@ export function MemoryTimelinePanel() {
     }
   }
 
+  const closeExplanation = () => {
+    setSelectedCard(null)
+    setExplanation('')
+  }
+
   if (loading) {
     return (
       <div className="memory-timeline-panel memory-timeline-panel--loading">
@@ -73,85 +247,42 @@ export function MemoryTimelinePanel() {
   return (
     <div className="memory-timeline-panel">
       <header className="memory-timeline-header">
-        <h2>{t('memory.title')}</h2>
-        <p className="memory-timeline-subtitle">{t('memory.subtitle')}</p>
+        <div className="memory-timeline-heading">
+          <h2>{t('memory.title')}</h2>
+          <p className="memory-timeline-subtitle">{t('memory.subtitle')}</p>
+        </div>
+        <span className="memory-timeline-count">{t('memory.count', { count: cards.length })}</span>
       </header>
 
-      <div className="memory-timeline-list">
-        {cards.map((card) => (
-          <div key={card.id} className={`memory-card memory-card--${card.tier.toLowerCase()}`}>
-            <div className="memory-card__header">
-              <h3>{card.title}</h3>
-              <span className={`memory-card__tier memory-card__tier--${card.tier.toLowerCase()}`}>
-                {t(`memory.tier.${card.tier.toLowerCase()}`)}
-              </span>
-            </div>
-
-            <div className="memory-card__meta">
-              <span className="memory-card__period">
-                {new Date(card.period.start).toLocaleDateString()} - {new Date(card.period.end).toLocaleDateString()}
-              </span>
-              <span className="memory-card__confidence">
-                {Math.round(card.confidence * 100)}% {t('memory.confidence')}
-              </span>
-            </div>
-
-            <div className="memory-card__sources">
-              {card.sources.slice(0, 3).map((source, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="memory-card__source"
-                  onClick={() => {/* 跳转到笔记 */}}
-                >
-                  {source.title}
-                </button>
-              ))}
-              {card.sources.length > 3 && (
-                <span className="memory-card__more">+{card.sources.length - 3} {t('memory.moreSources')}</span>
-              )}
-            </div>
-
-            <div className="memory-card__actions">
-              <button
-                type="button"
-                onClick={() => handleExplain(card)}
-                className="memory-card__action"
-              >
-                {t('memory.explain')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateCard(card.id, { pinned: !card.userActions.pinned })}
-                className={`memory-card__action ${card.userActions.pinned ? 'is-active' : ''}`}
-              >
-                {card.userActions.pinned ? t('memory.unpin') : t('memory.pin')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateCard(card.id, { archived: true })}
-                className="memory-card__action"
-              >
-                {t('memory.archive')}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {selectedCard && explanation && (
-        <div className="memory-explanation-modal" onClick={() => { setSelectedCard(null); setExplanation('') }}>
-          <div className="memory-explanation-content" onClick={(e) => e.stopPropagation()}>
-            <header>
-              <h3>{selectedCard.title}</h3>
-              <button type="button" onClick={() => { setSelectedCard(null); setExplanation('') }}>×</button>
-            </header>
-            <div className="memory-explanation-body">
-              <p>{explanation}</p>
-            </div>
-          </div>
+      <ScrollArea className="memory-timeline-scroll">
+        <div className="memory-timeline-list" role="list">
+          {cards.map((card) => (
+            <MemoryTimelineItem
+              key={card.id}
+              card={card}
+              locale={i18n.language}
+              t={t}
+              onExplain={handleExplain}
+              onUpdate={handleUpdateCard}
+            />
+          ))}
         </div>
-      )}
+      </ScrollArea>
+
+      <Dialog open={Boolean(selectedCard && explanation)} onOpenChange={(open) => { if (!open) closeExplanation() }}>
+        {selectedCard && explanation && (
+          <DialogContent className="memory-explanation-content" closeLabel={t('common.close')}>
+            <DialogHeader>
+              <DialogTitle>{selectedCard.title}</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="memory-explanation-scroll">
+              <div className="memory-explanation-body">
+                <p>{explanation}</p>
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   )
 }

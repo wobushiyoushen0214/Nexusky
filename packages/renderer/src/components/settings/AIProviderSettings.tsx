@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AIProviderConfig } from '@shared/types/ipc'
 import { toast } from '../../stores/toast-store'
+import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog'
+import { ScrollArea } from '../ui/scroll-area'
 import './AIProviderSettings.css'
 
 type ProviderType = AIProviderConfig['type']
@@ -178,6 +187,11 @@ export function AIProviderSettings() {
     }
   }
 
+  const closeEditor = () => {
+    setEditing(null)
+    setAvailableModels([])
+  }
+
   return (
     <div className="ai-provider-settings">
       <header className="settings-header">
@@ -189,37 +203,54 @@ export function AIProviderSettings() {
         {providers.map((provider) => {
           const isActive = provider.id === activeProviderId
           return (
-          <div key={provider.id} className={`provider-card ${isActive ? 'is-enabled' : 'is-inactive'}`}>
-            <div className="provider-card__info">
-              <div className="provider-header">
-                <button
-                  className={`provider-radio ${isActive ? 'is-active' : 'is-inactive'}`}
-                  onClick={() => handleSetActive(provider)}
-                  title={isActive ? t('settings.ai.active') : t('settings.ai.setActive')}
-                  aria-label={isActive ? t('settings.ai.active') : t('settings.ai.setActive')}
-                >
-                  <span className="radio-dot"></span>
-                </button>
-                <div>
-                  <div className="provider-title-row">
-                    <h3>{provider.name}</h3>
-                    <span className="provider-type">{provider.type}</span>
-                    {isActive && <span className="provider-badge">{t('settings.ai.active')}</span>}
+            <div key={provider.id} className={`provider-card ${isActive ? 'is-enabled' : 'is-inactive'}`}>
+              <div className="provider-card__info">
+                <div className="provider-header">
+                  <div className="provider-copy">
+                    <div className="provider-title-row">
+                      <h3>{provider.name}</h3>
+                      <Badge variant="outline" className="provider-type">{provider.type}</Badge>
+                      {isActive && <Badge className="provider-badge">{t('settings.ai.active')}</Badge>}
+                    </div>
+                    <p>{provider.model} · {provider.baseUrl || t('settings.ai.defaultEndpoint')}</p>
                   </div>
-                  <p>{provider.model} · {provider.baseUrl || t('settings.ai.defaultEndpoint')}</p>
                 </div>
               </div>
+              <div className="provider-card__actions" aria-label={`${provider.name} actions`}>
+                {!isActive && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="provider-action provider-action--primary"
+                    onClick={() => handleSetActive(provider)}
+                  >
+                    {t('settings.ai.setActive')}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="provider-action"
+                  onClick={() => setEditing(provider)}
+                >
+                  {t('common.edit')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="provider-action provider-action--danger"
+                  onClick={() => handleDelete(provider.id)}
+                >
+                  {t('common.delete')}
+                </Button>
+              </div>
             </div>
-            <div className="provider-card__actions">
-              {!isActive && <button onClick={() => handleSetActive(provider)}>{t('settings.ai.setActive')}</button>}
-              <button onClick={() => setEditing(provider)}>{t('common.edit')}</button>
-              <button onClick={() => handleDelete(provider.id)}>{t('common.delete')}</button>
-            </div>
-          </div>
           )
         })}
 
-        <button className="btn-add-provider" onClick={() => setEditing({
+        <Button type="button" variant="outline" size="sm" className="btn-add-provider" onClick={() => setEditing({
           id: '',
           name: 'New Provider',
           type: 'custom',
@@ -230,145 +261,155 @@ export function AIProviderSettings() {
           hasApiKey: false,
         })}>
           + {t('settings.ai.addProvider')}
-        </button>
+        </Button>
       </div>
 
-      {editing && (
-        <div className="provider-editor-modal" onClick={() => setEditing(null)}>
-          <div className="provider-editor" onClick={(e) => e.stopPropagation()}>
-            <header>
-              <h3>{editing.id ? t('settings.ai.editProvider') : t('settings.ai.addProvider')}</h3>
-              <button onClick={() => setEditing(null)}>×</button>
-            </header>
+      <Dialog open={Boolean(editing)} onOpenChange={(nextOpen) => !nextOpen && closeEditor()}>
+        {editing && (
+          <DialogContent
+            className="provider-editor"
+            overlayClassName="provider-editor-overlay"
+            closeLabel={t('common.close')}
+          >
+            <DialogHeader className="provider-editor__header">
+              <DialogTitle>{editing.id ? t('settings.ai.editProvider') : t('settings.ai.addProvider')}</DialogTitle>
+            </DialogHeader>
 
-            <div className="provider-editor__content">
-              <div className="form-group">
-                <label>{t('settings.ai.providerName')}</label>
-                <input
-                  type="text"
-                  value={editing.name}
-                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                  placeholder="My Provider"
-                />
-              </div>
+            <ScrollArea className="provider-editor__content">
+              <div className="provider-editor__scroll-content">
+                <div className="form-group">
+                  <label>{t('settings.ai.providerName')}</label>
+                  <input
+                    type="text"
+                    value={editing.name}
+                    onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    placeholder="My Provider"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>{t('settings.ai.providerType')}</label>
-                <select
-                  value={editing.type}
-                  onChange={(e) => {
-                    const type = e.target.value as ProviderType
-                    const defaults = DEFAULT_BY_TYPE[type]
-                    setAvailableModels([])
-                    setEditing({
-                      ...editing,
-                      type,
-                      apiKey: providerRequiresApiKey(type) ? editing.apiKey : '',
-                      baseUrl: defaults.baseUrl,
-                      model: defaults.model,
-                    })
-                  }}
-                >
-                  {PROVIDER_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {providerRequiresApiKey(editing.type) && (
-              <div className="form-group">
-                <label>{t('settings.ai.apiKey')}</label>
-                <input
-                  type="password"
-                  value={editing.apiKey}
-                  onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
-                  placeholder={editing.hasApiKey ? t('settings.ai.savedApiKeyPlaceholder') : 'sk-...'}
-                />
-              </div>
-              )}
-
-              <div className="form-group">
-                <label>{editing.type === 'codex' ? t('settings.ai.cliPath') : t('settings.ai.baseUrl')}</label>
-                <input
-                  type="text"
-                  value={editing.baseUrl}
-                  onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
-                  placeholder={editing.type === 'codex' ? 'codex' : editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>{t('settings.ai.model')}</label>
-                <div className="model-input-group">
-                  {availableModels.length > 0 ? (
-                    <select
-                      value={editing.model}
-                      onChange={(e) => setEditing({ ...editing, model: e.target.value })}
-                    >
-                      <option value="">{t('settings.ai.selectModel')}</option>
-                      {availableModels.map((model) => (
-                        <option key={model} value={model}>{model}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={editing.model}
-                      onChange={(e) => setEditing({ ...editing, model: e.target.value })}
-                      placeholder="gpt-4"
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleFetchModels}
-                    disabled={
-                      fetchingModels ||
-                      editing.type === 'codex' ||
-                      (providerRequiresApiKey(editing.type) && !editing.apiKey && !editing.hasApiKey)
-                    }
-                    className="btn-fetch-models"
+                <div className="form-group">
+                  <label>{t('settings.ai.providerType')}</label>
+                  <select
+                    value={editing.type}
+                    onChange={(e) => {
+                      const type = e.target.value as ProviderType
+                      const defaults = DEFAULT_BY_TYPE[type]
+                      setAvailableModels([])
+                      setEditing({
+                        ...editing,
+                        type,
+                        apiKey: providerRequiresApiKey(type) ? editing.apiKey : '',
+                        baseUrl: defaults.baseUrl,
+                        model: defaults.model,
+                      })
+                    }}
                   >
-                    {fetchingModels ? t('settings.ai.fetching') : t('settings.ai.fetchModels')}
-                  </button>
+                    {PROVIDER_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              <div className="provider-editor__presets">
-                <p>{t('settings.ai.quickSetup')}</p>
-                <div className="preset-buttons">
-                  {PROVIDER_PRESETS.map((preset) => (
-                    <button
-                      key={preset.label}
-                      onClick={() => {
-                        setAvailableModels([])
-                        setEditing({
-                          ...editing,
-                          name: preset.label,
-                          type: preset.type,
-                          apiKey: providerRequiresApiKey(preset.type) ? editing.apiKey : '',
-                          baseUrl: preset.baseUrl,
-                          model: preset.model,
-                        })
-                      }}
+                {providerRequiresApiKey(editing.type) && (
+                  <div className="form-group">
+                    <label>{t('settings.ai.apiKey')}</label>
+                    <input
+                      type="password"
+                      value={editing.apiKey}
+                      onChange={(e) => setEditing({ ...editing, apiKey: e.target.value })}
+                      placeholder={editing.hasApiKey ? t('settings.ai.savedApiKeyPlaceholder') : 'sk-...'}
+                    />
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>{editing.type === 'codex' ? t('settings.ai.cliPath') : t('settings.ai.baseUrl')}</label>
+                  <input
+                    type="text"
+                    value={editing.baseUrl}
+                    onChange={(e) => setEditing({ ...editing, baseUrl: e.target.value })}
+                    placeholder={editing.type === 'codex' ? 'codex' : editing.type === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.example.com/v1'}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{t('settings.ai.model')}</label>
+                  <div className="model-input-group">
+                    {availableModels.length > 0 ? (
+                      <select
+                        value={editing.model}
+                        onChange={(e) => setEditing({ ...editing, model: e.target.value })}
+                      >
+                        <option value="">{t('settings.ai.selectModel')}</option>
+                        {availableModels.map((model) => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editing.model}
+                        onChange={(e) => setEditing({ ...editing, model: e.target.value })}
+                        placeholder="gpt-4"
+                      />
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFetchModels}
+                      disabled={
+                        fetchingModels ||
+                        editing.type === 'codex' ||
+                        (providerRequiresApiKey(editing.type) && !editing.apiKey && !editing.hasApiKey)
+                      }
+                      className="btn-fetch-models"
                     >
-                      {preset.label}
-                    </button>
-                  ))}
+                      {fetchingModels ? t('settings.ai.fetching') : t('settings.ai.fetchModels')}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="provider-editor__presets">
+                  <p>{t('settings.ai.quickSetup')}</p>
+                  <div className="preset-buttons">
+                    {PROVIDER_PRESETS.map((preset) => (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        key={preset.label}
+                        onClick={() => {
+                          setAvailableModels([])
+                          setEditing({
+                            ...editing,
+                            name: preset.label,
+                            type: preset.type,
+                            apiKey: providerRequiresApiKey(preset.type) ? editing.apiKey : '',
+                            baseUrl: preset.baseUrl,
+                            model: preset.model,
+                          })
+                        }}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            </ScrollArea>
 
             <footer className="provider-editor__footer">
-              <button onClick={handleTest} disabled={testing}>
+              <Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={testing}>
                 {testing ? t('settings.ai.testing') : t('settings.ai.test')}
-              </button>
-              <button className="btn-primary" onClick={handleSave}>
+              </Button>
+              <Button type="button" size="sm" onClick={handleSave}>
                 {t('common.save')}
-              </button>
+              </Button>
             </footer>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   )
 }
