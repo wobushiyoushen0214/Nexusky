@@ -42,6 +42,7 @@ Already added:
 - `AgentRunPanel` action controls now use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow/editor layout remains custom.
 - `ToolResultPanel` now uses shared `Button` for copy/close/source actions and `ScrollArea` for the result body while keeping the non-modal result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions and `ScrollArea` for history and preview scrolling.
+- `TagsPanel` now uses shared `Button`, `Badge`, and `ScrollArea`; inline tag chip/list styles were moved into token-based local CSS.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -141,6 +142,7 @@ These are lower impact or more visual than behavioral.
 | Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Visual consistency only; no big interaction win. |
 | Overview cards | `Card`, `Badge` | Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `ScrollArea` | Done. Kept the lightweight side-panel behavior and moved inline styles into local token-based CSS. |
+| Tags panel | `Button`, `Badge`, `ScrollArea` | Done. Current tags, tag cloud, and filtered note list now use shared components with local token-based CSS. |
 | Demo flow | `Dialog`, `Button`, `Progress` | Demo-only, lower priority. |
 | Toast system | Radix `Toast` or `sonner` | Bigger architectural choice. Current local toast store may be fine. |
 
