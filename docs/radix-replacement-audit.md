@@ -60,7 +60,7 @@ Already added:
 - Removed the unmounted legacy `Settings.old.tsx` implementation so the active settings surface no longer carries a parallel custom-control copy.
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, shared `Button` for refresh and row actions, shared `Badge` for tag chips, and shared `Empty` for no-result state while preserving the custom timeline row grid/marker layout.
-- `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; bell count uses shared `Badge`; drawer empty state uses shared `Empty`; notification button styling now reads from shadcn semantic tokens.
+- `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; bell count and suggestion kind labels use shared `Badge`; drawer empty state uses shared `Empty`; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell, shared `Button` for close, sample selection, fix, and done actions, and shared `Spinner` for the scan state.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, and shared `Spinner` for in-progress plan rows, with hover/loading styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints and shared `Spinner` for streaming/tool status, with hover/loading styling moved into local token-based CSS.

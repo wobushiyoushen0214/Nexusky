@@ -191,7 +191,7 @@ function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionI
   return (
     <div className="proactive-item">
       <div className="proactive-item__head">
-        <span className="proactive-item__kind">{t(`proactive.kind.${suggestion.kind}`)}</span>
+        <Badge variant="secondary" className="proactive-item__kind">{t(`proactive.kind.${suggestion.kind}`)}</Badge>
         <span className="proactive-item__title">{suggestion.title}</span>
         <span className="proactive-item__importance">{suggestion.importance}</span>
       </div>
