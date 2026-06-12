@@ -7,6 +7,7 @@ import { getErrorMessage } from '../utils/errors'
 import { SAMPLE_WORKFLOW_VAULTS } from '../../../shared/src/workflow-samples'
 import { DemoTransformationFlow } from './demo/DemoTransformationFlow'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 import './WelcomeScreen.css'
 
 export function WelcomeScreen() {
@@ -96,7 +97,7 @@ export function WelcomeScreen() {
 
           {isCreating ? (
             <div className="welcome-create-form">
-              <input
+              <Input
                 autoFocus
                 value={vaultName}
                 onChange={(e) => setVaultName(e.target.value)}
