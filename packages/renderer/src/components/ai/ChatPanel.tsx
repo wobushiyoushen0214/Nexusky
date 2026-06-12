@@ -7,6 +7,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
 import { renderMarkdown } from './MessageBubble'
@@ -2286,20 +2287,28 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                 </svg>
                 <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: '1 1 auto', maxWidth: 180 }}>{editResult.filePath.split(/[\\/]/).pop()}</span>
-                <div style={{ display: 'flex', background: 'color-mix(in srgb, var(--control-bg) 72%, transparent)', borderRadius: 6, overflow: 'hidden', border: '1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 48%, transparent)', flexShrink: 0 }}>
-                  <button
-                    onClick={() => setEditPreviewMode('diff')}
-                    style={{ height: 24, padding: '0 9px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 600, transition: 'all 100ms' }}
+                <ToggleGroup
+                  type="single"
+                  value={editPreviewMode}
+                  onValueChange={(value) => {
+                    if (value === 'diff' || value === 'preview') setEditPreviewMode(value)
+                  }}
+                  style={{ display: 'flex', gap: 0, background: 'color-mix(in srgb, var(--control-bg) 72%, transparent)', borderRadius: 6, overflow: 'hidden', border: '1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 48%, transparent)', flexShrink: 0 }}
+                  aria-label="编辑预览模式"
+                >
+                  <ToggleGroupItem
+                    value="diff"
+                    style={{ minHeight: 24, height: 24, padding: '0 9px', fontSize: 10, border: 'none', borderRadius: 0, cursor: 'pointer', background: editPreviewMode === 'diff' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'diff' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 600, transition: 'all 100ms' }}
                   >
                     Diff
-                  </button>
-                  <button
-                    onClick={() => setEditPreviewMode('preview')}
-                    style={{ height: 24, padding: '0 9px', fontSize: 10, border: 'none', cursor: 'pointer', background: editPreviewMode === 'preview' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'preview' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 600, transition: 'all 100ms' }}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="preview"
+                    style={{ minHeight: 24, height: 24, padding: '0 9px', fontSize: 10, border: 'none', borderRadius: 0, cursor: 'pointer', background: editPreviewMode === 'preview' ? 'var(--accent)' : 'transparent', color: editPreviewMode === 'preview' ? 'var(--text-on-accent)' : 'var(--text-tertiary)', fontWeight: 600, transition: 'all 100ms' }}
                   >
                     预览
-                  </button>
-                </div>
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <Button
