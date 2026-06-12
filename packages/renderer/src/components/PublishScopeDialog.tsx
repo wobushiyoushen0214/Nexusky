@@ -4,6 +4,7 @@ import { useVaultStore } from '../stores/vault-store'
 import { toast } from '../stores/toast-store'
 import { getErrorMessage } from '../utils/errors'
 import { ConfirmModal } from './ConfirmModal'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
@@ -346,9 +347,15 @@ function PublishPreviewPanel({ preview, loading, hasIssues }: { preview: Publish
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{preview.scopeLabel}</div>
             <div style={{ marginTop: 3, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('commandPalette.publishScope.previewSummary', summary)}</div>
           </div>
-          <span style={{ flex: '0 0 auto', padding: '3px 7px', borderRadius: 999, border: '1px solid var(--border-subtle)', color: hasIssues ? 'var(--warning, #d97706)' : 'var(--success, #16a34a)', fontSize: 11, fontWeight: 700 }}>
+          <Badge
+            variant="outline"
+            style={{
+              flex: '0 0 auto',
+              color: hasIssues ? 'var(--warning, #d97706)' : 'var(--success, #16a34a)'
+            }}
+          >
             {hasIssues ? t('commandPalette.publishScope.hasIssues') : t('commandPalette.publishScope.noIssues')}
-          </span>
+          </Badge>
         </div>
 
         <div style={metricGridStyle}>
