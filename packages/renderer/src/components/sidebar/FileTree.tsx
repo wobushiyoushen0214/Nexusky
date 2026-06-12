@@ -4,6 +4,7 @@ import { useVaultStore } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FileTreeProps {
@@ -152,7 +153,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
   if (renaming) {
     return (
       <div style={{ paddingLeft: paddingLeft + (entry.isDirectory ? 0 : 16), paddingRight: 8 }}>
-        <input
+        <Input
           autoFocus
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
@@ -164,7 +165,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
           style={{
             width: '100%', height: 28, padding: '0 8px', fontSize: 12,
             background: 'var(--bg-elevated)', border: '1px solid var(--accent)',
-            borderRadius: 4, color: 'var(--text-primary)', outline: 'none'
+            borderRadius: 4, color: 'var(--text-primary)', outline: 'none', boxShadow: 'none'
           }}
         />
       </div>
@@ -238,7 +239,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
         </div>
         {expanded && creating && (
           <div style={{ paddingLeft: (depth + 1) * 14 + 8 + 16, paddingRight: 8, paddingTop: 2, paddingBottom: 2 }}>
-            <input
+            <Input
               autoFocus
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
@@ -251,7 +252,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
               style={{
                 width: '100%', height: 26, padding: '0 8px', fontSize: 12,
                 background: 'var(--bg-elevated)', border: '1px solid var(--accent)',
-                borderRadius: 4, color: 'var(--text-primary)', outline: 'none'
+                borderRadius: 4, color: 'var(--text-primary)', outline: 'none', boxShadow: 'none'
               }}
             />
           </div>

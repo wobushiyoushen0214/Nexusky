@@ -4,6 +4,7 @@ import { VAULT_FILES_REFRESHED_EVENT, useVaultStore, type VaultFilesRefreshedDet
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FlatNode {
@@ -535,13 +536,13 @@ function VirtualFileTreeItem({
   if (renaming) {
     return (
       <div style={{ height: ITEM_HEIGHT, paddingLeft: paddingLeft + (entry.isDirectory ? 0 : 16), paddingRight: 8, display: 'flex', alignItems: 'center' }}>
-        <input
+        <Input
           autoFocus
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setRenaming(false) }}
           onBlur={() => setRenaming(false)}
-          style={{ width: '100%', height: 24, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--accent)', borderRadius: 7, color: 'var(--text-primary)', outline: 'none' }}
+          style={{ width: '100%', height: 24, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--accent)', borderRadius: 7, color: 'var(--text-primary)', outline: 'none', boxShadow: 'none' }}
         />
       </div>
     )
