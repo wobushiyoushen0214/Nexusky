@@ -29,7 +29,7 @@ Already added:
 - Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
 - AI provider editor now uses `Dialog`, `Button`, `Badge`, `Input`, and `Select`.
-- Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, `Input`, `Badge`, `Empty`, `Spinner`, and the shared `ConfirmModal`.
+- Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, `Input`, `Badge`, `Tooltip`, `Empty`, `Spinner`, and the shared `ConfirmModal`.
 - Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Input`, `Button`, `Spinner`, `Empty`, and `Card` where appropriate.
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions; `GraphGenerator` also uses shared `Badge` for selected-file chips and shared `Spinner` for generation status.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
@@ -210,7 +210,7 @@ These are lower impact or more visual than behavioral.
 | Slash command rows | `Button` | Done for command row actions. The TipTap slash trigger, filtering, active-index keyboard handling, and fixed popover positioning remain custom. |
 | Editor shell actions | `Button`, `Tooltip` | Done for empty-state quick actions, split-pane close, sync status, and sync status hints. TipTap content, markdown rendering, and editor scrolling remain custom. |
 | Editor toolbar actions | `Button`, `Tooltip`, `Spinner` | Done for formatting, insert, voice input, preview, side-panel, history, export actions, and toolbar action hints. Voice transcription uses shared Spinner. TipTap command wiring and compact toolbar sizing remain custom. |
-| Publish scope inputs | `Input`, `Badge`, `Empty`, `Spinner` | Done for folder, tag, property key, and property value filters while preserving native `datalist` suggestions and publish preview/publish flow. Preview panel loading/empty states, child-list empty states, and status badge now use shared feedback primitives. |
+| Publish scope inputs | `Input`, `Badge`, `Tooltip`, `Empty`, `Spinner` | Done for folder, tag, property key, property value filters, and current target path hints while preserving native `datalist` suggestions and publish preview/publish flow. Preview panel loading/empty states, child-list empty states, and status badge now use shared feedback primitives. |
 | Sidebar shell controls | `Input`, `Button`, `Tooltip` | Done for create/filter fields, vault switcher, create file/folder actions, sort/collapse/expand controls, favorites, file-error recovery, and shell action hints. File tree row rendering and virtual scrolling remain custom. |
 | File tree rows | `Input`, `Button`, `Tooltip` | Done for `FileTree` and `VirtualFileTree` rename/create inputs, row and more-action controls, and more-action hints. Drag/drop, context menu coordinates, expand/collapse, active row state, multi-select, and virtual scroll math remain custom. |
 | ActivityBar controls | `Button` | Done as a thin wrapper only. Existing rail layout, liquid indicator, dimensions, hover colors, and active-state logic remain custom and visually unchanged. Overview remains the pinned first item and the default landing view. |

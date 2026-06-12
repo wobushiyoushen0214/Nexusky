@@ -17,6 +17,7 @@ import {
 } from './ui/dialog'
 import { ScrollArea } from './ui/scroll-area'
 import { Spinner } from './ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
 
@@ -395,7 +396,12 @@ function PublishTargetPanel({ target, disabled, onUnpublish }: { target: Publish
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('commandPalette.publishScope.currentTarget')}</div>
-          <div title={target.outputPath} style={{ marginTop: 3, fontSize: 11, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.outputPath}</div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div style={{ marginTop: 3, fontSize: 11, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.outputPath}</div>
+            </TooltipTrigger>
+            <TooltipContent>{target.outputPath}</TooltipContent>
+          </Tooltip>
         </div>
         <Button type="button" variant="destructive" size="xs" onClick={onUnpublish} disabled={disabled}>
           {t('commandPalette.publishScope.unpublish')}
