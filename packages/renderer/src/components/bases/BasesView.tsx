@@ -8,6 +8,7 @@ import { updateMarkdownProperty } from '../../utils/frontmatter'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
+import { Input } from '../ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
@@ -216,7 +217,7 @@ export function BasesView() {
       </div>
 
       <div className="glass-divider-bottom" style={{ padding: '10px 18px', display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 160px 160px 120px', gap: 8, borderBottom: '0', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
-        <input
+        <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('bases.searchPlaceholder')}
@@ -457,7 +458,7 @@ function EditablePropertyLine({
   if (editing) {
     return (
       <div>
-        <input
+        <Input
           autoFocus
           value={editValue}
           onChange={(event) => onChange(event.target.value)}
@@ -507,7 +508,7 @@ function PropertyPills({
   if (editing) {
     return (
       <div>
-        <input
+        <Input
           autoFocus
           value={editValue}
           onChange={(event) => onChange(event.target.value)}
@@ -547,7 +548,8 @@ const controlStyle: React.CSSProperties = {
   background: 'var(--bg-surface)',
   color: 'var(--text-primary)',
   fontSize: 12,
-  outline: 'none'
+  outline: 'none',
+  boxShadow: 'none'
 }
 
 const headerButtonStyle: React.CSSProperties = {
@@ -610,5 +612,6 @@ const cellInputStyle: React.CSSProperties = {
   background: 'var(--bg-surface)',
   color: 'var(--text-primary)',
   fontSize: 12,
-  outline: 'none'
+  outline: 'none',
+  boxShadow: 'none'
 }

@@ -60,7 +60,7 @@ Already added:
 - `SearchPanel` search input now uses shared `Input`, and result rows use shared `Button`, while preserving the existing transparent search slot, keyboard navigation, async search, and result selection behavior.
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
-- `BasesView` toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline edit targets now use shared `Button`, `Select`, and `Checkbox`.
+- `BasesView` toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline edit targets now use shared `Input`, `Button`, `Select`, and `Checkbox`.
 - `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions now use shared `Button`/`ToggleGroup` while preserving the compact glass chat layout and existing hover colors.
 - `FindReplace` editor popover fields now use shared `Input`, and actions use shared `Button`, while preserving the compact floating editor tool layout and existing find/replace logic.
 - `PropertiesPanel` frontmatter fields now use shared `Input`/`Textarea`, and save/reset actions use shared `Button`, while preserving the existing frontmatter parsing and save flow.
@@ -163,7 +163,7 @@ These need design cleanup or affect many small controls.
 | Graph canvas toolbar | `components/graph/GraphView.tsx` | `Button` | Done for zoom out, reset, zoom in, and fit-view toolbar actions. Graph node buttons and canvas interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox` | Done for goal/description fields, plan edit fields, action buttons, and dry-run checkbox. Execution view layout remains custom. |
-| Bases controls | `components/bases/BasesView.tsx` | `Button`, `Select`, `Checkbox` | Done for toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
+| Bases controls | `components/bases/BasesView.tsx` | `Input`, `Button`, `Select`, `Checkbox` | Done for toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button` | Done for core switch/select/button controls and `LongContextSettings` numeric inputs. Remaining native inputs are specialized flows such as key capture and color picker. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Checkbox`, `Button` | Done for enable/per-kind options and debug/reset actions. Native time inputs and range sliders remain custom to preserve current save-on-change behavior. |
 
