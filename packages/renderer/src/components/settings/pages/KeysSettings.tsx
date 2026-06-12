@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { KeybindingEntry } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { Button } from '../../ui/button'
+import { Input } from '../../ui/input'
 import './KeysSettings.css'
 
 export function KeysSettings() {
@@ -69,7 +70,7 @@ export function KeysSettings() {
                 </div>
                 <div className="keybinding-actions">
                   {editing === binding.id ? (
-                    <input
+                    <Input
                       type="text"
                       className="keybinding-input"
                       placeholder={t('settings.keys.pressKey')}
