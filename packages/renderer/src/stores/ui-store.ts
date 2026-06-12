@@ -28,7 +28,7 @@ const WORKSPACE_KEYS = {
 }
 const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const WORKSPACE_DEFAULT_VERSION_KEY = 'nexusky-workspace-default-version'
-const WORKSPACE_DEFAULT_VERSION = 'overview-first-v3'
+const WORKSPACE_DEFAULT_VERSION = 'overview-first-v4'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
@@ -260,14 +260,25 @@ function migrateOverviewFirstWorkspaceDefaults(): void {
   const migrated = Object.fromEntries(
     Object.entries(layouts).map(([scope, layout]) => {
       const mainView = normalizeMainView(layout?.mainView)
-      if (mainView !== 'editor') return [scope, layout]
+      const rightPanel = normalizeRightPanel(layout?.rightPanel as string | undefined) ?? 'none'
+      const sidebarCollapsed = typeof layout?.sidebarCollapsed === 'boolean'
+        ? layout.sidebarCollapsed
+        : DEFAULT_SIDEBAR_COLLAPSED
+
+      if (mainView === DEFAULT_MAIN_VIEW && rightPanel === 'none' && sidebarCollapsed === DEFAULT_SIDEBAR_COLLAPSED) {
+        return [scope, {
+          ...layout,
+          mainView: DEFAULT_MAIN_VIEW,
+          rightPanel: 'none',
+          sidebarCollapsed: DEFAULT_SIDEBAR_COLLAPSED,
+        }]
+      }
 
       changed = true
-      const rightPanel = getAvailableRightPanel(DEFAULT_MAIN_VIEW, normalizeRightPanel(layout?.rightPanel as string | undefined) ?? 'none')
       return [scope, {
         ...layout,
         mainView: DEFAULT_MAIN_VIEW,
-        rightPanel,
+        rightPanel: 'none',
         sidebarCollapsed: DEFAULT_SIDEBAR_COLLAPSED,
       }]
     })
