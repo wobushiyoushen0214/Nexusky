@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 interface TocItem {
   level: number
@@ -38,46 +39,49 @@ export function OutlinePanel() {
   return (
     <div className="file-tree-scroll" style={{ padding: '10px 8px', overflow: 'auto', height: '100%', background: 'transparent' }}>
       {items.map((item, i) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          key={i}
-          onClick={() => window.dispatchEvent(new CustomEvent('editor-goto-heading', { detail: { index: item.index } }))}
-          style={{
-            width: '100%',
-            minHeight: 28,
-            paddingLeft: 10 + (item.level - 1) * 14,
-            paddingRight: 10,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            fontSize: item.level === 1 ? 12 : 11,
-            fontWeight: item.level <= 2 ? 600 : 450,
-            color: item.level === 1 ? 'var(--text-primary)' : 'var(--text-secondary)',
-            background: 'transparent',
-            border: '1px solid transparent',
-            cursor: 'pointer',
-            textAlign: 'left',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            borderRadius: 8,
-            transition: 'background 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--control-bg)'
-            e.currentTarget.style.borderColor = 'var(--control-border)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.borderColor = 'transparent'
-          }}
-          title={item.text}
-        >
-          <span style={{ width: item.level <= 2 ? 5 : 3, height: item.level <= 2 ? 5 : 3, borderRadius: 999, background: item.level === 1 ? 'var(--accent)' : 'var(--border-default)', flexShrink: 0 }} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
-        </Button>
+        <Tooltip key={`${item.index}-${i}`}>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => window.dispatchEvent(new CustomEvent('editor-goto-heading', { detail: { index: item.index } }))}
+              style={{
+                width: '100%',
+                minHeight: 28,
+                paddingLeft: 10 + (item.level - 1) * 14,
+                paddingRight: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                fontSize: item.level === 1 ? 12 : 11,
+                fontWeight: item.level <= 2 ? 600 : 450,
+                color: item.level === 1 ? 'var(--text-primary)' : 'var(--text-secondary)',
+                background: 'transparent',
+                border: '1px solid transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                borderRadius: 8,
+                transition: 'background 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--control-bg)'
+                e.currentTarget.style.borderColor = 'var(--control-border)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }}
+            >
+              <span style={{ width: item.level <= 2 ? 5 : 3, height: item.level <= 2 ? 5 : 3, borderRadius: 999, background: item.level === 1 ? 'var(--accent)' : 'var(--border-default)', flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{item.text}</TooltipContent>
+        </Tooltip>
       ))}
     </div>
   )
