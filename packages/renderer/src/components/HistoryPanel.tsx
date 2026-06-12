@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
+import { Button } from './ui/button'
+import { ScrollArea } from './ui/scroll-area'
+import './history-panel.css'
 
 interface Snapshot {
   fileName: string
@@ -42,40 +45,46 @@ export function HistoryPanel() {
   }
 
   if (!currentFilePath) {
-    return <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>请先打开一个文件</div>
+    return <div className="history-panel__empty">请先打开一个文件</div>
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px 0' }}>
+    <div className="history-panel">
       {preview ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '0 12px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>预览</span>
-            <button onClick={() => setPreview(null)} style={{ fontSize: 10, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>返回列表</button>
+        <div className="history-panel__preview">
+          <div className="history-panel__header">
+            <span className="history-panel__eyebrow">预览</span>
+            <Button type="button" variant="ghost" size="xs" className="history-panel__action" onClick={() => setPreview(null)}>
+              返回列表
+            </Button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px', fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-            {preview}
-          </div>
+          <ScrollArea className="history-panel__preview-scroll">
+            <div className="history-panel__preview-content">{preview}</div>
+          </ScrollArea>
         </div>
       ) : (
         <>
-          <div style={{ padding: '0 12px 8px', fontSize: 11, color: 'var(--text-tertiary)' }}>
+          <div className="history-panel__count">
             {snapshots.length} 个历史版本
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
+          <ScrollArea className="history-panel__list">
             {snapshots.length === 0 && (
-              <p style={{ padding: '24px 8px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>暂无历史版本（保存后自动创建）</p>
+              <p className="history-panel__empty">暂无历史版本（保存后自动创建）</p>
             )}
             {snapshots.map((s) => (
-              <div key={s.fileName} style={{ padding: '8px 10px', borderRadius: 6, marginBottom: 4, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-                <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{s.timestamp.slice(0, 16).replace('T', ' ')}</p>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                  <button onClick={() => handlePreview(s)} style={{ fontSize: 10, color: 'var(--accent-text)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>预览</button>
-                  <button onClick={() => handleRestore(s)} style={{ fontSize: 10, color: '#4ade80', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>恢复</button>
+              <div key={s.fileName} className="history-panel__snapshot">
+                <p className="history-panel__snapshot-time">{s.timestamp.slice(0, 16).replace('T', ' ')}</p>
+                <div className="history-panel__snapshot-actions">
+                  <Button type="button" variant="ghost" size="xs" className="history-panel__action" onClick={() => void handlePreview(s)}>
+                    预览
+                  </Button>
+                  <Button type="button" variant="ghost" size="xs" className="history-panel__action history-panel__action--success" onClick={() => void handleRestore(s)}>
+                    恢复
+                  </Button>
                 </div>
               </div>
             ))}
-          </div>
+          </ScrollArea>
         </>
       )}
     </div>
