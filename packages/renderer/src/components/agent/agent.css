@@ -236,10 +236,20 @@
 }
 
 .agent-run-panel__empty {
+  min-height: 148px;
   padding: 30px 16px;
-  text-align: center;
+  color: var(--muted-foreground, var(--text-tertiary));
+}
+
+.agent-run-panel__empty--compact {
+  min-height: 88px;
+  padding: 18px 12px;
+}
+
+.agent-run-panel__empty .ui-empty-title {
   color: var(--muted-foreground, var(--text-tertiary));
   font-size: 11px;
+  font-weight: 520;
 }
 
 .agent-run-panel__toggle {

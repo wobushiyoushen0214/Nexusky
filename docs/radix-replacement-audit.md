@@ -41,7 +41,7 @@ Already added:
 - `GraphPanel` side controls now use shared `Input`, `Button`, `Select`, and `Switch` wrappers for graph search, panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
 - `GraphView` zoom toolbar actions now use shared `Button` while preserving the graph canvas node buttons, pan/zoom math, drag behavior, and raster renderer as custom interaction layers.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
-- `AgentRunPanel` goal/description and plan edit fields now use shared `Textarea`/`Input`, action controls use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow layout remains custom.
+- `AgentRunPanel` goal/description and plan edit fields now use shared `Textarea`/`Input`, action controls use shared `Button`, dry-run option uses shared `Checkbox`, and empty states use shared `Empty`; the existing agent workflow layout remains custom.
 - `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, and `Empty`; inline tag chip/list styles were moved into token-based local CSS.
@@ -171,7 +171,7 @@ These need design cleanup or affect many small controls.
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Input`, `Button`, `Select`, `Switch` | Done for graph search and side-panel controls. Graph canvas, pan/zoom, and node interaction layers remain custom. |
 | Graph canvas toolbar | `components/graph/GraphView.tsx` | `Button` | Done for zoom out, reset, zoom in, and fit-view toolbar actions. Graph node buttons and canvas interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
-| Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox` | Done for goal/description fields, plan edit fields, action buttons, and dry-run checkbox. Execution view layout remains custom. |
+| Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox`, `Empty` | Done for goal/description fields, plan edit fields, action buttons, dry-run checkbox, and empty states. Execution view layout remains custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Input`, `Button`, `Select`, `Checkbox` | Done for toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button`, `Spinner`, `Empty`, `Alert` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, the Keys key-capture field, settings page loading states, plugin/keybinding empty states, and CloudSync sync errors. Remaining native inputs are specialized native color picker only. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button`, `Spinner` | Done for silent-hour fields, threshold sliders, enable/per-kind options, loading state, and debug/reset actions while preserving save-on-change behavior. |
@@ -256,7 +256,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
 
 10. `empty.tsx` - done
    - Provides shadcn-compatible empty state composition.
-   - Used by settings plugin/keybinding, memory timeline, history panel, tags panel, and notification drawer empty states.
+   - Used by settings plugin/keybinding, memory timeline, history panel, tags panel, notification drawer, and agent run panel empty states.
 
 11. `alert.tsx` - done
    - Provides shadcn-compatible feedback/error state composition.

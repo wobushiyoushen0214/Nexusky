@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentPlanStep,
@@ -13,6 +13,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
+import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
 import { Textarea } from '../ui/textarea'
 import './agent.css'
@@ -23,6 +24,16 @@ interface RunDetail {
 }
 
 type Stage = 'idle' | 'goal' | 'plan' | 'execute'
+
+function AgentPanelEmpty({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+  return (
+    <Empty className={`agent-run-panel__empty${compact ? ' agent-run-panel__empty--compact' : ''}`}>
+      <EmptyHeader>
+        <EmptyTitle>{children}</EmptyTitle>
+      </EmptyHeader>
+    </Empty>
+  )
+}
 
 export function AgentRunPanel() {
   const { t } = useTranslation()
@@ -237,7 +248,7 @@ export function AgentRunPanel() {
   const stepRows = useMemo(() => detail?.steps || [], [detail])
 
   if (!vaultPath) {
-    return <div className="agent-run-panel__empty">{t('agent.noVault')}</div>
+    return <AgentPanelEmpty>{t('agent.noVault')}</AgentPanelEmpty>
   }
 
   return (
@@ -252,7 +263,7 @@ export function AgentRunPanel() {
       {historyOpen && (
         <div className="agent-run-panel__history">
           {history.length === 0 ? (
-            <div className="agent-run-panel__empty">{t('agent.history.empty')}</div>
+            <AgentPanelEmpty compact>{t('agent.history.empty')}</AgentPanelEmpty>
           ) : (
             history.map((run) => (
               <div key={run.id} className="agent-run-panel__history-row" onClick={() => void openHistoryRun(run.id)}>
@@ -272,7 +283,7 @@ export function AgentRunPanel() {
             <Button type="button" size="sm" className="agent-run-panel__btn" onClick={() => setStage('goal')}>
               {t('agent.idle.start')}
             </Button>
-            <div className="agent-run-panel__empty">{t('agent.idle.hint')}</div>
+            <AgentPanelEmpty compact>{t('agent.idle.hint')}</AgentPanelEmpty>
           </div>
         )}
 
@@ -392,7 +403,7 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
   if (detail.run.plan.length === 0) {
     return (
       <div>
-        <div className="agent-run-panel__empty">{t('agent.plan.empty')}</div>
+        <AgentPanelEmpty compact>{t('agent.plan.empty')}</AgentPanelEmpty>
         {detail.run.rationale && <div className="agent-run-panel__rationale">{detail.run.rationale}</div>}
         <div className="agent-run-panel__actions">
           <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={onCancel}>{t('agent.plan.retry')}</Button>
