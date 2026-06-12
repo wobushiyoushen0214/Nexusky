@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { LongContextFeedbackType, LongContextSuggestion } from '@shared/types/ipc'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { LongContextBadge } from './LongContextBadge'
 
 interface RelatedContextCardProps {
@@ -76,18 +77,22 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
 
 function IconButton({ title, active, onClick, children }: { title: string; active?: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className={`related-context-card__icon-button${active ? ' is-active' : ''}`}
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-    >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </svg>
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={`related-context-card__icon-button${active ? ' is-active' : ''}`}
+          aria-label={title}
+          onClick={onClick}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            {children}
+          </svg>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{title}</TooltipContent>
+    </Tooltip>
   )
 }
