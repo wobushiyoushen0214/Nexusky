@@ -15,7 +15,8 @@ Because of that, the safest direction is:
 1. Do not run `shadcn init` unless we explicitly decide to adopt its project config.
 2. Keep using local wrappers under `packages/renderer/src/components/ui`.
 3. Use `radix-ui` primitives behind those wrappers.
-4. Map visual styling to existing Nexusky tokens in CSS, not shadcn default CSS variables.
+4. Expose shadcn-compatible public CSS tokens and map them onto the existing Nexusky theme variables, so copied shadcn-style components can use `--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--border`, `--input`, `--ring`, and `--radius` without replacing the current glass theme.
+5. Keep the existing Nexusky `--accent` as the app's primary theme color because ActivityBar and many existing surfaces already depend on that meaning. Tailwind's shadcn `bg-accent` semantic maps through `--color-accent` to the compatibility accent surface instead of redefining the legacy app token.
 
 Already added:
 
@@ -36,6 +37,8 @@ Already added:
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
 - `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`.
 - `RelatedContextPanel` context-pack tiers now use `Tabs`; related context card actions use shared `Button`; relation labels use shared `Badge`.
+- `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
+- `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
 Reference docs checked through `pnpm dlx shadcn@latest docs`:
 
@@ -62,6 +65,19 @@ Do not use Radix where native behavior is tightly coupled to custom logic:
 - Native titlebar/window controls.
 
 Use local wrappers rather than raw Radix imports in feature code. This keeps tokens, sizes, focus rings, and density consistent.
+
+For styling new shared components, prefer the shadcn semantic token layer first:
+
+- Surface: `--background`, `--card`, `--popover`, `--secondary`, `--muted`
+- Text: `--foreground`, `--card-foreground`, `--popover-foreground`, `--secondary-foreground`, `--muted-foreground`
+- Action/state: `--primary`, `--primary-foreground`, `--destructive`, `--destructive-foreground`, `--ring`
+- Structure: `--border`, `--input`, `--radius`, `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`
+
+Keep Nexusky glass-specific tokens for the glass effect itself:
+
+- Blur/shadow/highlight: `--glass-blur`, `--glass-blur-strong`, `--glass-panel-border`, `--glass-panel-edge-shadow`, `--shadow-popover`
+
+Do not repurpose ActivityBar's active-state variables through shadcn tokens. Its visual style is intentionally independent.
 
 ## Priority Matrix
 
@@ -181,7 +197,8 @@ Tasks:
    - `[data-state="active"]`
    - `[data-disabled]`
    - danger item styles
-3. Avoid global reset or shadcn theme import.
+3. Add shadcn-compatible public CSS token mappings in `globals.css`.
+4. Avoid global reset or shadcn theme import.
 
 Validation:
 
@@ -293,6 +310,7 @@ Current progress:
 - `components/ui/context-menu.tsx` added.
 - `components/ContextMenu.tsx` now acts as a compatibility bridge for existing coordinate-based callers.
 - `ActivityBar` continues to use the shared compatibility component; its button rendering and rail styling were not migrated.
+- The compatibility bridge inherits shared menu radius/color/ring tokens from `components/ui/ui.css`.
 
 ### Phase 5: Command Surfaces
 
@@ -335,6 +353,12 @@ Candidate controls:
 Rule:
 
 - Do not convert every input at once. Start with one settings page and establish density, label layout, error states, and disabled states.
+
+Current progress:
+
+- Current settings pages use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, and `Button` wrappers where applicable.
+- Shared settings controls now inherit shadcn-compatible radius and semantic color tokens through `components/ui/ui.css`.
+- Legacy `Settings.old.tsx`, `ProactivePreferences.tsx`, and `LongContextDebugPanel.tsx` still contain custom controls but are not mounted by the current Settings shell.
 
 ## Do Not Replace Yet
 
