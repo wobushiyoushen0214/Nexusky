@@ -15,19 +15,25 @@ interface RelatedContextCardProps {
 export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }: RelatedContextCardProps) {
   const { t } = useTranslation()
   const evidence = suggestion.evidence.slice(0, 2)
+  const titleHint = suggestion.targetPath || suggestion.targetTitle
 
   return (
     <article className="related-context-card">
       <div className="related-context-card__header">
-        <Button
-          type="button"
-          variant="ghost"
-          className="related-context-card__title"
-          onClick={() => onOpen(suggestion)}
-          title={suggestion.targetPath || suggestion.targetTitle}
-        >
-          {suggestion.targetTitle}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              className="related-context-card__title"
+              aria-label={titleHint}
+              onClick={() => onOpen(suggestion)}
+            >
+              {suggestion.targetTitle}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{titleHint}</TooltipContent>
+        </Tooltip>
         <LongContextBadge type={suggestion.relationType} confidence={suggestion.confidence} />
       </div>
 
