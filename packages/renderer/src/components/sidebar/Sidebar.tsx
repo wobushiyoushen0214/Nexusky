@@ -6,6 +6,7 @@ import { VirtualFileTree } from './VirtualFileTree'
 import { ContextMenu } from '../ContextMenu'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { safeGet, safeSet } from '../../utils/storage'
 import type { FileEntry } from '@shared/types/ipc'
 
@@ -63,6 +64,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const [recentVaults, setRecentVaults] = useState<string[]>([])
 
   const sortedFiles = useMemo(() => sortFiles(filterFiles(files, filterQuery), sortBy), [files, filterQuery, sortBy])
+  const sortLabel = sortBy === 'name' ? '按名称排序（点击切换为按时间）' : '按修改时间排序（点击切换为按名称）'
 
   useEffect(() => {
     if (!vaultMenu) return
@@ -116,59 +118,74 @@ export function Sidebar({ width = 240 }: { width?: number }) {
     <aside className="animate-slide-in-left" style={{ width, height: '100%', minHeight: 0, background: 'transparent', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ height: 40, padding: '0 10px 0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'transparent' }}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          ref={vaultMenuButtonRef}
-          onClick={() => setVaultMenu(!vaultMenu)}
-          style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 0, cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 9 }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-          title="切换笔记空间"
-        >
-          {vaultPath?.split(/[\\/]/).pop()}
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              ref={vaultMenuButtonRef}
+              aria-label="切换笔记空间"
+              onClick={() => setVaultMenu(!vaultMenu)}
+              style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 0, cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 9 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              {vaultPath?.split(/[\\/]/).pop()}
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>切换笔记空间</TooltipContent>
+        </Tooltip>
         <div style={{ display: 'flex', gap: 2 }}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              if (isCreating && createType === 'file') { setIsCreating(false); setNewFileName('') }
-              else { setCreateType('file'); setIsCreating(true) }
-            }}
-            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 0, background: isCreating && createType === 'file' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent', color: isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'file' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
-            title="新建笔记 (Ctrl+N)"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              if (isCreating && createType === 'folder') { setIsCreating(false); setNewFileName('') }
-              else { setCreateType('folder'); setIsCreating(true) }
-            }}
-            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 0, background: isCreating && createType === 'folder' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent', color: isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'folder' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
-            title="新建文件夹"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
-            </svg>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="新建笔记 (Ctrl+N)"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (isCreating && createType === 'file') { setIsCreating(false); setNewFileName('') }
+                  else { setCreateType('file'); setIsCreating(true) }
+                }}
+                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 0, background: isCreating && createType === 'file' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent', color: isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'file' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'file' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>新建笔记 (Ctrl+N)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="新建文件夹"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (isCreating && createType === 'folder') { setIsCreating(false); setNewFileName('') }
+                  else { setCreateType('folder'); setIsCreating(true) }
+                }}
+                style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 0, background: isCreating && createType === 'folder' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent', color: isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)', cursor: 'pointer' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = isCreating && createType === 'folder' ? 'color-mix(in srgb, var(--accent-muted) 70%, var(--control-bg))' : 'transparent'; e.currentTarget.style.color = isCreating && createType === 'folder' ? 'var(--accent-text)' : 'var(--text-tertiary)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
+                </svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>新建文件夹</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -274,50 +291,65 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           onFocus={(e) => e.currentTarget.style.background = 'var(--control-hover)'}
           onBlur={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--control-bg) 82%, transparent)'}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            const next = sortBy === 'name' ? 'mtime' : 'name'
-            setSortBy(next)
-            safeSet('nexusky-sort', next)
-          }}
-          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
-          title={sortBy === 'name' ? '按名称排序（点击切换为按时间）' : '按修改时间排序（点击切换为按名称）'}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {sortBy === 'name' ? (
-              <><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="14" y2="12" /><line x1="4" y1="18" x2="8" y2="18" /></>
-            ) : (
-              <><circle cx="12" cy="12" r="1" /><polyline points="12 6 12 2" /><polyline points="12 22 12 18" /><path d="M5 12H2" /><path d="M22 12h-3" /></>
-            )}
-          </svg>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => { setDefaultExpanded(false); setTreeExpansionVersion((version) => version + 1) }}
-          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
-          title="折叠全部"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 12h16" /><path d="M12 2v6" /><path d="M12 16v6" /><path d="M8 6l4 4 4-4" /><path d="M8 18l4-4 4 4" />
-          </svg>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => { setDefaultExpanded(true); setTreeExpansionVersion((version) => version + 1) }}
-          style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
-          title="展开全部"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 12h16" /><path d="M12 4v4" /><path d="M12 16v4" /><path d="M8 8l4-4 4 4" /><path d="M8 16l4 4 4-4" />
-          </svg>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={sortLabel}
+              onClick={() => {
+                const next = sortBy === 'name' ? 'mtime' : 'name'
+                setSortBy(next)
+                safeSet('nexusky-sort', next)
+              }}
+              style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {sortBy === 'name' ? (
+                  <><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="14" y2="12" /><line x1="4" y1="18" x2="8" y2="18" /></>
+                ) : (
+                  <><circle cx="12" cy="12" r="1" /><polyline points="12 6 12 2" /><polyline points="12 22 12 18" /><path d="M5 12H2" /><path d="M22 12h-3" /></>
+                )}
+              </svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{sortLabel}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="折叠全部"
+              onClick={() => { setDefaultExpanded(false); setTreeExpansionVersion((version) => version + 1) }}
+              style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12h16" /><path d="M12 2v6" /><path d="M12 16v6" /><path d="M8 6l4 4 4-4" /><path d="M8 18l4-4 4 4" />
+              </svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>折叠全部</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="展开全部"
+              onClick={() => { setDefaultExpanded(true); setTreeExpansionVersion((version) => version + 1) }}
+              style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12h16" /><path d="M12 4v4" /><path d="M12 16v4" /><path d="M8 8l4-4 4 4" /><path d="M8 16l4 4 4-4" />
+              </svg>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>展开全部</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Favorites */}
