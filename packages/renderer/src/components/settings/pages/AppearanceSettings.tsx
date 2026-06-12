@@ -4,6 +4,7 @@ import { THEME_IDS, useUIStore } from '../../../stores/ui-store'
 import type { Theme } from '../../../stores/ui-store'
 import { Input } from '../../ui/input'
 import { RadioGroup, RadioGroupItem } from '../../ui/radio-group'
+import { SettingsSection } from '../SettingsSection'
 import './AppearanceSettings.css'
 
 const ACCENT_PRESETS = ['#7c6ef5', '#4facfe', '#4ec9a0', '#f0a050', '#e8577a', '#ffd60a', '#88c0d0', '#268bd2']
@@ -20,7 +21,7 @@ export function AppearanceSettings() {
 
   return (
     <div className="appearance-settings">
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.theme.title')}</h2>
           <p>{t('settings.theme.description')}</p>
@@ -47,9 +48,9 @@ export function AppearanceSettings() {
             </RadioGroupItem>
           ))}
         </RadioGroup>
-      </section>
+      </SettingsSection>
 
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.accent.title')}</h2>
           <p>{t('settings.accent.description')}</p>
@@ -89,9 +90,9 @@ export function AppearanceSettings() {
             />
           </div>
         </RadioGroup>
-      </section>
+      </SettingsSection>
 
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.language.title')}</h2>
         </div>
@@ -110,7 +111,7 @@ export function AppearanceSettings() {
             <span className="language-check">✓</span>
           </RadioGroupItem>
         </RadioGroup>
-      </section>
+      </SettingsSection>
     </div>
   )
 }

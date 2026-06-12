@@ -22,7 +22,7 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Alert`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, `Spinner`, and `Empty` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Alert`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, `Spinner`, `Empty`, and `Card` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers, including shared `Spinner` for its loading state and shared `Empty` for its empty state.
 - `ConfirmModal` now uses `AlertDialog`.
@@ -30,7 +30,7 @@ Already added:
 - Settings sidebar now uses `Tabs`.
 - AI provider editor now uses `Dialog`, `Button`, `Badge`, `Input`, and `Select`.
 - Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, `Input`, `Badge`, `Empty`, `Spinner`, and the shared `ConfirmModal`.
-- Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Input`, `Button`, `Spinner`, and `Empty` where appropriate.
+- Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Input`, `Button`, `Spinner`, `Empty`, and `Card` where appropriate.
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions; `GraphGenerator` also uses shared `Badge` for selected-file chips and shared `Spinner` for generation status.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
 - `NotificationCenter` snooze actions now use `DropdownMenu`.
@@ -51,6 +51,7 @@ Already added:
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, `Spinner`, and `Empty` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
+- Settings tab sections now use a shared `SettingsSection` composed with the local `Card` wrapper, so panel border/radius/background styling reads from shadcn-compatible `--card`, `--border`, and `--radius-*` tokens.
 - `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use a shared `SettingsLoadingState` composed with shared `Empty`/`Spinner` primitives and compact settings-local spacing.
 - `CloudSyncSettings` sync error state now uses shared `Alert` instead of custom error markup.
 - `PluginsSettings` and `KeysSettings` empty states now use shared `Empty` primitives instead of custom empty-state markup.
@@ -96,6 +97,7 @@ Reference docs checked through `pnpm dlx shadcn@latest docs`:
 - `spinner`
 - `empty`
 - `alert`
+- `card`
 
 ## Replacement Principles
 
@@ -241,7 +243,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Wrap `radix-ui` `ToggleGroup`.
    - Needed by Search mode controls and appearance option groups.
 
-6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx`, `skeleton.tsx`, `spinner.tsx` - done
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx`, `skeleton.tsx`, `spinner.tsx`, `card.tsx` - done
    - Needed for settings pages.
    - Should be introduced after the settings shell is migrated.
 
@@ -442,8 +444,9 @@ Rule:
 
 Current progress:
 
-- Current settings pages use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, and `Button` wrappers where applicable.
+- Current settings pages use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, `Button`, and `Card` wrappers where applicable.
 - Shared settings controls now inherit shadcn-compatible radius and semantic color tokens through `components/ui/ui.css`.
+- Shared settings section panels now inherit shadcn-compatible card, border, and radius tokens through `SettingsSection` and `components/ui/card.tsx`.
 - Legacy native checkbox selectors were removed from `Settings.css` after the active settings pages moved to shared controls.
 - The legacy unmounted `Settings.old.tsx` copy has been removed. `ProactivePreferences` and `LongContextDebugPanel` now use shared wrappers for their active controls, except for domain-specific rendering and layout.
 

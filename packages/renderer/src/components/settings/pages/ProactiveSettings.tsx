@@ -7,6 +7,7 @@ import { Button } from '../../ui/button'
 import { Checkbox } from '../../ui/checkbox'
 import { Switch } from '../../ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '../../ui/toggle-group'
+import { SettingsSection } from '../SettingsSection'
 import './ProactiveSettings.css'
 
 const AVAILABLE_CATEGORIES = [
@@ -65,7 +66,7 @@ export function ProactiveSettings() {
 
   return (
     <div className="proactive-settings">
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.proactive.title')}</h2>
           <p>{t('settings.proactive.description')}</p>
@@ -140,7 +141,7 @@ export function ProactiveSettings() {
             </Button>
           </div>
         </div>
-      </section>
+      </SettingsSection>
     </div>
   )
 }

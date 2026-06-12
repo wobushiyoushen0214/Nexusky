@@ -5,6 +5,7 @@ import { toast } from '../../../stores/toast-store'
 import { Button } from '../../ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from '../../ui/empty'
 import { Input } from '../../ui/input'
+import { SettingsSection } from '../SettingsSection'
 import './KeysSettings.css'
 
 export function KeysSettings() {
@@ -51,7 +52,7 @@ export function KeysSettings() {
 
   return (
     <div className="keys-settings">
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.keys.title')}</h2>
           <p>{t('settings.keys.description')}</p>
@@ -108,7 +109,7 @@ export function KeysSettings() {
             ))}
           </div>
         )}
-      </section>
+      </SettingsSection>
     </div>
   )
 }

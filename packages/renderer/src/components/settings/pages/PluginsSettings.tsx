@@ -5,6 +5,7 @@ import { toast } from '../../../stores/toast-store'
 import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../../ui/empty'
 import { Switch } from '../../ui/switch'
+import { SettingsSection } from '../SettingsSection'
 import './PluginsSettings.css'
 
 export function PluginsSettings() {
@@ -49,7 +50,7 @@ export function PluginsSettings() {
 
   return (
     <div className="plugins-settings">
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.plugins.title')}</h2>
           <p>{t('settings.plugins.description')}</p>
@@ -86,7 +87,7 @@ export function PluginsSettings() {
             ))}
           </div>
         )}
-      </section>
+      </SettingsSection>
     </div>
   )
 }

@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../ui/select'
+import { SettingsSection } from '../SettingsSection'
 import './CloudSyncSettings.css'
 
 export function CloudSyncSettings() {
@@ -56,7 +57,7 @@ export function CloudSyncSettings() {
 
   return (
     <div className="cloud-sync-settings">
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.cloudSync.title')}</h2>
           <p>{t('settings.cloudSync.description')}</p>
@@ -135,7 +136,7 @@ export function CloudSyncSettings() {
             </div>
           </div>
         )}
-      </section>
+      </SettingsSection>
     </div>
   )
 }

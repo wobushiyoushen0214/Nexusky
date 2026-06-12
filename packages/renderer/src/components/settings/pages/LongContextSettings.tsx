@@ -6,6 +6,7 @@ import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Button } from '../../ui/button'
 import { Input } from '../../ui/input'
 import { Switch } from '../../ui/switch'
+import { SettingsSection } from '../SettingsSection'
 import './LongContextSettings.css'
 
 export function LongContextSettings() {
@@ -48,7 +49,7 @@ export function LongContextSettings() {
 
   return (
     <div className="long-context-settings">
-      <section className="settings-section">
+      <SettingsSection>
         <div className="section-header">
           <h2>{t('settings.longContext.title')}</h2>
           <p>{t('settings.longContext.description')}</p>
@@ -112,7 +113,7 @@ export function LongContextSettings() {
             </Button>
           </div>
         </div>
-      </section>
+      </SettingsSection>
     </div>
   )
 }
