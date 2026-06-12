@@ -5,6 +5,7 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
+import { Alert, AlertDescription } from '../ui/alert'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
@@ -342,10 +343,12 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
       )}
 
       {state === 'error' && (
-        <div className="related-context-panel__error">
-          <span>{error}</span>
-          <Button type="button" variant="ghost" size="xs" onClick={() => loadSuggestions(false)}>{t('relatedContext.retry')}</Button>
-        </div>
+        <Alert variant="destructive" className="related-context-panel__error">
+          <AlertDescription className="related-context-panel__error-body">
+            <span>{error}</span>
+            <Button type="button" variant="ghost" size="xs" onClick={() => loadSuggestions(false)}>{t('relatedContext.retry')}</Button>
+          </AlertDescription>
+        </Alert>
       )}
 
       {suggestions.length > 0 && (

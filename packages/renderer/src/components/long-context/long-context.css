@@ -624,16 +624,18 @@
 }
 
 .related-context-panel__error {
-  padding: 10px 12px;
+  align-self: start;
+}
+
+.related-context-panel__error-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: var(--text-secondary);
-  font-size: 12px;
+  width: 100%;
 }
 
-.related-context-panel__error button {
+.related-context-panel__error-body button {
   height: 24px;
   padding: 0 8px;
   border-radius: var(--radius-sm, 6px);

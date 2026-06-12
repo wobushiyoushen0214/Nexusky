@@ -921,6 +921,47 @@
   font-size: 12px;
 }
 
+.ui-alert {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 78%, transparent);
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 72%, transparent);
+  color: var(--foreground, var(--text-primary));
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ui-alert--destructive {
+  border-color: color-mix(in srgb, var(--destructive, var(--color-error, var(--danger))) 34%, transparent);
+  background: color-mix(in srgb, var(--destructive, var(--color-error, var(--danger))) 9%, transparent);
+  color: var(--destructive, var(--color-error, var(--danger)));
+}
+
+.ui-alert-title {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.ui-alert-description {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  color: var(--muted-foreground, var(--text-secondary));
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ui-alert--destructive .ui-alert-description {
+  color: color-mix(in srgb, var(--destructive, var(--color-error, var(--danger))) 86%, var(--foreground, var(--text-primary)));
+}
+
 .ui-input,
 .ui-textarea {
   width: 100%;

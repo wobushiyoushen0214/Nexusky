@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SettingsSyncConfig, SettingsSyncStatus } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { Alert, AlertDescription } from '../../ui/alert'
 import { Button } from '../../ui/button'
 import { Spinner } from '../../ui/spinner'
 import {
@@ -132,9 +133,9 @@ export function CloudSyncSettings() {
                 </div>
               )}
               {status.error && (
-                <div className="status-error">
-                  <p>{status.error}</p>
-                </div>
+                <Alert variant="destructive" className="cloud-sync-status-alert">
+                  <AlertDescription>{status.error}</AlertDescription>
+                </Alert>
               )}
             </div>
           </div>
