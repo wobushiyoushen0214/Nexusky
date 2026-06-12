@@ -397,9 +397,9 @@ function PropertyNoteCard({
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <button onClick={onOpen} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontSize: 15, lineHeight: 1.35, fontWeight: 720, cursor: 'pointer', textAlign: 'left', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <Button type="button" variant="ghost" onClick={onOpen} style={{ width: 'fit-content', height: 'auto', border: 'none', background: 'transparent', padding: 0, color: 'var(--text-primary)', fontSize: 15, lineHeight: 1.35, fontWeight: 720, cursor: 'pointer', textAlign: 'left', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', justifyContent: 'flex-start' }}>
           {row.title}
-        </button>
+        </Button>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, color: 'var(--text-tertiary)', fontSize: 11 }}>
           <span style={{ flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{formatDate(row.updatedAt) || '—'}</span>
           <span style={{ width: 3, height: 3, borderRadius: 999, background: 'var(--border-default)', flexShrink: 0 }} />
@@ -473,10 +473,10 @@ function EditablePropertyLine({
   }
 
   return (
-    <button onDoubleClick={onEdit} title={editHint} style={{ width: '100%', minWidth: 0, display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', gap: 10, alignItems: 'baseline', padding: '4px 0', border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'text', textAlign: 'left' }}>
+    <Button type="button" variant="ghost" onDoubleClick={onEdit} title={editHint} style={{ width: '100%', height: 'auto', minWidth: 0, display: 'grid', gridTemplateColumns: '88px minmax(0, 1fr)', justifyContent: 'stretch', gap: 10, alignItems: 'baseline', padding: '4px 0', border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'text', textAlign: 'left' }}>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>{value || '—'}</span>
-    </button>
+    </Button>
   )
 }
 
@@ -522,7 +522,7 @@ function PropertyPills({
     )
   }
   return (
-    <button onDoubleClick={onEdit} title={`${label} · ${editHint}`} style={{ minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'text', textAlign: 'left' }}>
+    <Button type="button" variant="ghost" onDoubleClick={onEdit} title={`${label} · ${editHint}`} style={{ width: '100%', height: 'auto', minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'text', textAlign: 'left', justifyContent: 'stretch' }}>
       <div style={{ marginBottom: 5, color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
       <div style={{ display: 'flex', gap: 4, overflow: 'hidden', minHeight: 19 }}>
         {items.length === 0 ? (
@@ -534,7 +534,7 @@ function PropertyPills({
         ))}
         {items.length > 3 && <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>+{items.length - 3}</span>}
       </div>
-    </button>
+    </Button>
   )
 }
 
