@@ -112,10 +112,12 @@
   text-transform: inherit;
 }
 
-.proactive-drawer__count {
+.proactive-drawer__count.ui-badge {
+  height: 18px;
+  padding: 0 6px;
   font-size: 10px;
   font-weight: 500;
-  color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
+  color: var(--muted-foreground, var(--text-tertiary, rgba(255, 255, 255, 0.4)));
   letter-spacing: 0;
   text-transform: none;
   white-space: nowrap;

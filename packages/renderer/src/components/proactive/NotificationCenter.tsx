@@ -101,7 +101,7 @@ export function NotificationCenter() {
             <SheetTitle className="proactive-drawer__title">
               <span>{t('proactive.bellTitle')}</span>
               {hasSuggestions && (
-                <span className="proactive-drawer__count">{t('proactive.count', { count: suggestions.length })}</span>
+                <Badge variant="secondary" className="proactive-drawer__count">{t('proactive.count', { count: suggestions.length })}</Badge>
               )}
             </SheetTitle>
             <div className="proactive-drawer__tools">
