@@ -1,3 +1,5 @@
+import { cn } from '../../lib/utils'
+import { Empty, EmptyDescription } from '../ui/empty'
 import { Spinner } from '../ui/spinner'
 
 interface SettingsLoadingStateProps {
@@ -7,9 +9,9 @@ interface SettingsLoadingStateProps {
 
 export function SettingsLoadingState({ label, className }: SettingsLoadingStateProps) {
   return (
-    <div className={`${className ? `${className} ` : ''}settings-loading`}>
+    <Empty className={cn(className, 'settings-loading')}>
       <Spinner aria-hidden="true" />
-      <p>{label}</p>
-    </div>
+      <EmptyDescription>{label}</EmptyDescription>
+    </Empty>
   )
 }

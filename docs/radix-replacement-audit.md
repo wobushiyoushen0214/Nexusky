@@ -51,7 +51,7 @@ Already added:
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, `Spinner`, and `Empty` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
-- `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use a shared `SettingsLoadingState` composed with the shared `Spinner` and compact settings-local spacing.
+- `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use a shared `SettingsLoadingState` composed with shared `Empty`/`Spinner` primitives and compact settings-local spacing.
 - `CloudSyncSettings` sync error state now uses shared `Alert` instead of custom error markup.
 - `PluginsSettings` and `KeysSettings` empty states now use shared `Empty` primitives instead of custom empty-state markup.
 - Settings CSS no longer carries legacy native checkbox selectors for `form-toggle` and `category-item`; those settings controls now rely on shared `Switch`/`Checkbox` token styling.
