@@ -44,6 +44,9 @@
 }
 
 .long-context-debug-panel__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   min-height: 24px;
   padding: 0 9px;
   font-size: 11px;
@@ -66,6 +69,15 @@
   background: color-mix(in srgb, var(--primary, var(--accent)) 14%, var(--card, var(--bg-elevated)));
   color: var(--foreground, var(--text-primary));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary, var(--accent)) 24%, transparent);
+}
+
+.long-context-debug-panel__tab-count.ui-badge {
+  height: 15px;
+  min-width: 16px;
+  padding: 0 4px;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
 }
 
 .long-context-debug-panel__token-count.ui-badge {

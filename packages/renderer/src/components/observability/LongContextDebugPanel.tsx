@@ -110,6 +110,12 @@ export function LongContextDebugPanel() {
     return inspection.pack.droppedItems
   }, [inspection, activeTab])
 
+  const getTabCount = useCallback((tab: PackTab) => {
+    if (!inspection) return 0
+    if (tab === 'dropped') return inspection.pack.droppedItems.length
+    return inspection.pack[tab].length
+  }, [inspection])
+
   if (!vaultPath) {
     return <DebugEmpty>{t('longContextDebug.noVault')}</DebugEmpty>
   }
@@ -123,7 +129,10 @@ export function LongContextDebugPanel() {
             <TabsList className="long-context-debug-panel__tabs">
               {PACK_TABS.map((tab) => (
                 <TabsTrigger key={tab} value={tab} className="long-context-debug-panel__tab">
-                  {t(`longContextDebug.tier.${tab}`)} ({tab === 'dropped' ? inspection?.pack.droppedItems.length ?? 0 : (inspection?.pack[tab].length ?? 0)})
+                  {t(`longContextDebug.tier.${tab}`)}
+                  <Badge variant="secondary" className="long-context-debug-panel__tab-count">
+                    {getTabCount(tab)}
+                  </Badge>
                 </TabsTrigger>
               ))}
             </TabsList>
