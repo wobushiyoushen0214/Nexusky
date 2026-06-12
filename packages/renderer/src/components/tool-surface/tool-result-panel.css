@@ -10,10 +10,10 @@
   max-height: 60vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel-bg, #1d1d20);
-  border: 1px solid var(--glass-panel-border, var(--border-soft, rgba(255, 255, 255, 0.1)));
-  border-radius: 10px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), var(--glass-panel-edge-shadow);
+  background: var(--popover, var(--panel-bg, #1d1d20));
+  border: 1px solid var(--glass-panel-border, var(--border, var(--border-soft, rgba(255, 255, 255, 0.1))));
+  border-radius: var(--radius-xl, 12px);
+  box-shadow: var(--shadow-popover, 0 16px 36px rgba(0, 0, 0, 0.5)), var(--glass-panel-edge-shadow);
   overflow: hidden;
   animation: tool-result-slide-up 200ms ease-out;
 }
@@ -35,14 +35,14 @@
   justify-content: space-between;
   padding: 10px 14px;
   border-bottom: 0;
-  background: var(--bg-hover, rgba(255, 255, 255, 0.03));
+  background: color-mix(in srgb, var(--muted, var(--bg-hover)) 62%, transparent);
   box-shadow: var(--glass-divider-shadow-bottom);
 }
 
 .tool-result-panel__title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--popover-foreground, var(--foreground, var(--text-primary)));
 }
 
 .tool-result-panel__actions {
@@ -51,22 +51,15 @@
 }
 
 .tool-result-panel__btn {
-  padding: 4px 10px;
+  height: 24px;
+  padding: 0 9px;
   font-size: 11px;
-  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.1));
-  background: transparent;
-  color: var(--text-secondary);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 120ms, color 120ms;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: var(--radius-sm, 6px);
 }
 
-.tool-result-panel__btn:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
-  color: var(--text-primary);
+.tool-result-panel__btn--icon {
+  width: 24px;
+  padding: 0;
 }
 
 .tool-result-panel__btn:disabled {
@@ -76,14 +69,17 @@
 
 .tool-result-panel__body {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+}
+
+.tool-result-panel__body-content {
   padding: 12px 16px;
 }
 
 .tool-result-panel__markdown {
   font-size: 13px;
   line-height: 1.55;
-  color: var(--text-primary);
+  color: var(--popover-foreground, var(--foreground, var(--text-primary)));
 }
 
 .tool-result-panel__markdown h1,
@@ -101,20 +97,20 @@
 .tool-result-panel__markdown code {
   font-family: ui-monospace, monospace;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--secondary, var(--bg-elevated)) 70%, transparent);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm, 6px);
 }
 
 .tool-result-panel__markdown pre {
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--secondary, var(--bg-elevated)) 62%, transparent);
   padding: 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-md, 8px);
   overflow-x: auto;
 }
 
 .tool-result-panel__markdown a {
-  color: var(--accent);
+  color: var(--primary, var(--accent));
   cursor: pointer;
 }
 
@@ -134,7 +130,7 @@
 .tool-result-panel__sources-title {
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
+  color: var(--muted-foreground, var(--text-tertiary, rgba(255, 255, 255, 0.5)));
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -143,30 +139,32 @@
 .tool-result-panel__source {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 2px;
-  padding: 6px 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  text-align: left;
   width: 100%;
-  cursor: pointer;
-  transition: background 120ms;
+  height: auto;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  text-align: left;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .tool-result-panel__source:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
-  border-color: var(--border-soft, rgba(255, 255, 255, 0.1));
+  background: var(--muted, var(--bg-hover, rgba(255, 255, 255, 0.05)));
+  border-color: color-mix(in srgb, var(--border, var(--border-soft, rgba(255, 255, 255, 0.1))) 76%, transparent);
 }
 
 .tool-result-panel__source-title {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--popover-foreground, var(--foreground, var(--text-primary)));
 }
 
 .tool-result-panel__source-path {
   font-size: 10px;
-  color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
+  color: var(--muted-foreground, var(--text-tertiary, rgba(255, 255, 255, 0.4)));
   font-family: ui-monospace, monospace;
 }

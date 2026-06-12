@@ -8,6 +8,8 @@ import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
+import { Button } from '../ui/button'
+import { ScrollArea } from '../ui/scroll-area'
 import './tool-result-panel.css'
 
 interface ToolSurfaceResultDetail {
@@ -49,8 +51,10 @@ export function ToolResultPanel() {
       <div className="tool-result-panel__header">
         <div className="tool-result-panel__title">{labelText}</div>
         <div className="tool-result-panel__actions">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="xs"
             className="tool-result-panel__btn"
             disabled={copying}
             onClick={async () => {
@@ -59,10 +63,12 @@ export function ToolResultPanel() {
             }}
           >
             {t('toolSurface.copy')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="tool-result-panel__btn"
+            variant="ghost"
+            size="icon"
+            className="tool-result-panel__btn tool-result-panel__btn--icon"
             onClick={() => setResult(null)}
             aria-label={t('common.close')}
           >
@@ -70,42 +76,45 @@ export function ToolResultPanel() {
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
-      <div className="tool-result-panel__body">
-        <div
-          className="tool-result-panel__markdown"
-          dangerouslySetInnerHTML={{ __html: rendered }}
-        />
-        {result.sources.length > 0 && (
-          <div className="tool-result-panel__sources">
-            <div className="tool-result-panel__sources-title">
-              {t('toolSurface.sources')}
+      <ScrollArea className="tool-result-panel__body">
+        <div className="tool-result-panel__body-content">
+          <div
+            className="tool-result-panel__markdown"
+            dangerouslySetInnerHTML={{ __html: rendered }}
+          />
+          {result.sources.length > 0 && (
+            <div className="tool-result-panel__sources">
+              <div className="tool-result-panel__sources-title">
+                {t('toolSurface.sources')}
+              </div>
+              {result.sources.map((source, idx) => (
+                <Button
+                  key={`${source.filePath}-${idx}`}
+                  type="button"
+                  variant="ghost"
+                  className="tool-result-panel__source"
+                  onClick={() => {
+                    const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
+                    if (!fullPath) return
+                    const target = buildChatSourceNavigationTarget(source)
+                    setMainView('editor')
+                    const editorStore = useEditorStore.getState()
+                    if (target) void editorStore.openFileAt(fullPath, target)
+                    else void editorStore.openFile(fullPath)
+                  }}
+                  title={source.filePath}
+                >
+                  <span className="tool-result-panel__source-title">{source.title}</span>
+                  <span className="tool-result-panel__source-path">{source.filePath}</span>
+                </Button>
+              ))}
             </div>
-            {result.sources.map((source, idx) => (
-              <button
-                key={`${source.filePath}-${idx}`}
-                type="button"
-                className="tool-result-panel__source"
-                onClick={() => {
-                  const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
-                  if (!fullPath) return
-                  const target = buildChatSourceNavigationTarget(source)
-                  setMainView('editor')
-                  const editorStore = useEditorStore.getState()
-                  if (target) void editorStore.openFileAt(fullPath, target)
-                  else void editorStore.openFile(fullPath)
-                }}
-                title={source.filePath}
-              >
-                <span className="tool-result-panel__source-title">{source.title}</span>
-                <span className="tool-result-panel__source-path">{source.filePath}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   )
 }
