@@ -11,6 +11,7 @@ import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
+import { ScrollArea } from '../ui/scroll-area'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Spinner } from '../ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
@@ -294,61 +295,63 @@ export function BasesView() {
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 18px 34px' }}>
-        {filteredRows.length === 0 ? (
-          <Empty style={{ minHeight: 260, maxWidth: 520, margin: '0 auto' }}>
-            {loading && <Spinner aria-hidden="true" />}
-            <EmptyHeader>
-              <EmptyTitle>{loading ? t('bases.loading') : t('bases.empty')}</EmptyTitle>
-              {!loading && <EmptyDescription>{t('bases.emptyHint')}</EmptyDescription>}
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(210px, 260px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
-            <aside style={{ position: 'sticky', top: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={insightPanelStyle}>
-                <div style={sectionEyebrowStyle}>{t('bases.propertyMap')}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-                  <Metric label={t('bases.notesMetric')} value={String(rows.length)} />
-                  <Metric label={t('bases.shownMetric')} value={String(filteredRows.length)} />
-                  <Metric label={t('bases.tagsMetric')} value={String(allTags.length)} />
-                  <Metric label={t('bases.fieldsMetric')} value={String(allPropertyKeys.length)} />
+      <ScrollArea style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ padding: '20px 18px 34px' }}>
+          {filteredRows.length === 0 ? (
+            <Empty style={{ minHeight: 260, maxWidth: 520, margin: '0 auto' }}>
+              {loading && <Spinner aria-hidden="true" />}
+              <EmptyHeader>
+                <EmptyTitle>{loading ? t('bases.loading') : t('bases.empty')}</EmptyTitle>
+                {!loading && <EmptyDescription>{t('bases.emptyHint')}</EmptyDescription>}
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(210px, 260px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
+              <aside style={{ position: 'sticky', top: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={insightPanelStyle}>
+                  <div style={sectionEyebrowStyle}>{t('bases.propertyMap')}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+                    <Metric label={t('bases.notesMetric')} value={String(rows.length)} />
+                    <Metric label={t('bases.shownMetric')} value={String(filteredRows.length)} />
+                    <Metric label={t('bases.tagsMetric')} value={String(allTags.length)} />
+                    <Metric label={t('bases.fieldsMetric')} value={String(allPropertyKeys.length)} />
+                  </div>
                 </div>
-              </div>
-              <div style={insightPanelStyle}>
-                <div style={sectionEyebrowStyle}>{t('bases.tagLens')}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-                  <Button type="button" variant="ghost" size="xs" onClick={() => setSelectedTag('')} style={{ ...lensButtonStyle, background: selectedTag ? 'transparent' : 'var(--accent-muted)', color: selectedTag ? 'var(--text-secondary)' : 'var(--accent-text)' }}>
-                    {t('bases.allTags')}
-                  </Button>
-                  {allTags.slice(0, 14).map((tag) => (
-                    <Button key={tag} type="button" variant="ghost" size="xs" onClick={() => setSelectedTag(tag)} style={{ ...lensButtonStyle, background: selectedTag === tag ? 'var(--accent-muted)' : 'transparent', color: selectedTag === tag ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
-                      {tag}
+                <div style={insightPanelStyle}>
+                  <div style={sectionEyebrowStyle}>{t('bases.tagLens')}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                    <Button type="button" variant="ghost" size="xs" onClick={() => setSelectedTag('')} style={{ ...lensButtonStyle, background: selectedTag ? 'transparent' : 'var(--accent-muted)', color: selectedTag ? 'var(--text-secondary)' : 'var(--accent-text)' }}>
+                      {t('bases.allTags')}
                     </Button>
-                  ))}
+                    {allTags.slice(0, 14).map((tag) => (
+                      <Button key={tag} type="button" variant="ghost" size="xs" onClick={() => setSelectedTag(tag)} style={{ ...lensButtonStyle, background: selectedTag === tag ? 'var(--accent-muted)' : 'transparent', color: selectedTag === tag ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+                        {tag}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
+              </aside>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {filteredRows.map((row) => (
+                  <PropertyNoteCard
+                    key={row.id}
+                    row={row}
+                    propertyKeys={propertyKeys}
+                    editHint={t('bases.editHint')}
+                    editing={editing}
+                    highlighted={highlightedFilePath === row.filePath}
+                    onOpen={() => void openRow(row)}
+                    onEdit={(key, list) => startEdit(row, key, list)}
+                    onChange={(value) => setEditing(editing ? { ...editing, value } : editing)}
+                    onSave={saveEdit}
+                    onCancel={cancelEdit}
+                  />
+                ))}
               </div>
-            </aside>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {filteredRows.map((row) => (
-                <PropertyNoteCard
-                  key={row.id}
-                  row={row}
-                  propertyKeys={propertyKeys}
-                  editHint={t('bases.editHint')}
-                  editing={editing}
-                  highlighted={highlightedFilePath === row.filePath}
-                  onOpen={() => void openRow(row)}
-                  onEdit={(key, list) => startEdit(row, key, list)}
-                  onChange={(value) => setEditing(editing ? { ...editing, value } : editing)}
-                  onSave={saveEdit}
-                  onCancel={cancelEdit}
-                />
-              ))}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   )
 }
