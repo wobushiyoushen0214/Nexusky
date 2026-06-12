@@ -541,9 +541,9 @@
   align-items: center;
   gap: 10px;
   padding: 7px 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-subtle));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--panel-bg-soft) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary, var(--accent)) 26%, var(--border, var(--border-subtle)));
+  border-radius: var(--radius-lg, 10px);
+  background: color-mix(in srgb, var(--card, var(--panel-bg-soft)) 94%, transparent);
   box-shadow: var(--shadow-sm);
 }
 
@@ -561,9 +561,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--accent) 16%, var(--control-bg));
-  color: var(--text-primary);
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--primary, var(--accent)) 16%, var(--secondary, var(--control-bg)));
+  color: var(--foreground, var(--text-primary));
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
@@ -583,7 +583,7 @@
 }
 
 .graph-maintenance-nudge-title {
-  color: var(--text-primary);
+  color: var(--foreground, var(--text-primary));
   font-size: 11px;
   font-weight: 650;
   line-height: 1.2;
@@ -594,7 +594,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground, var(--text-tertiary));
   font-size: 10px;
   line-height: 1.2;
 }
@@ -611,10 +611,9 @@
 .graph-maintenance-icon-button,
 .graph-maintenance-nudge-collapse,
 .graph-maintenance-nudge-chip {
-  border: 1px solid var(--border-subtle);
-  background: var(--control-bg);
-  color: var(--text-secondary);
-  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-subtle)) 82%, transparent);
+  background: var(--secondary, var(--control-bg));
+  color: var(--secondary-foreground, var(--text-secondary));
   transition: background 150ms, border-color 150ms, color 150ms;
 }
 
@@ -622,8 +621,9 @@
   height: 24px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
   padding: 0 7px;
   font-size: 10px;
   white-space: nowrap;
@@ -632,25 +632,25 @@
 .graph-maintenance-pill .graph-maintenance-icon {
   width: 13px;
   height: 13px;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground, var(--text-tertiary));
 }
 
 .graph-maintenance-pill strong {
-  color: var(--text-primary);
+  color: var(--foreground, var(--text-primary));
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
 
 .graph-maintenance-pill:hover,
 .graph-maintenance-pill.active {
-  border-color: color-mix(in srgb, var(--accent) 58%, var(--border-default));
-  background: var(--accent-muted);
-  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 58%, var(--border, var(--border-default)));
+  background: color-mix(in srgb, var(--primary, var(--accent)) 14%, var(--secondary, var(--accent-muted)));
+  color: var(--foreground, var(--text-primary));
 }
 
 .graph-maintenance-pill:hover .graph-maintenance-icon,
 .graph-maintenance-pill.active .graph-maintenance-icon {
-  color: var(--text-primary);
+  color: var(--foreground, var(--text-primary));
 }
 
 .graph-maintenance-icon-button,
@@ -660,7 +660,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
   font-size: 12px;
   line-height: 1;
 }
@@ -668,23 +668,24 @@
 .graph-maintenance-icon-button:hover,
 .graph-maintenance-nudge-collapse:hover,
 .graph-maintenance-nudge-chip:hover {
-  border-color: var(--border-default);
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  border-color: var(--border, var(--border-default));
+  background: var(--muted, var(--bg-hover));
+  color: var(--foreground, var(--text-primary));
 }
 
 .graph-maintenance-nudge-chip {
   height: 30px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-md, 8px);
   padding: 0 8px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
 .graph-maintenance-nudge-chip-count {
-  color: var(--text-primary);
+  color: var(--foreground, var(--text-primary));
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;

@@ -5,6 +5,7 @@ import {
   type GraphMaintenanceFocus,
   type GraphMaintenanceSignals,
 } from './graph-types'
+import { Button } from '../ui/button'
 
 interface GraphMaintenanceNudgeProps {
   signals: GraphMaintenanceSignals | null
@@ -68,8 +69,9 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
 
   if (collapsed) {
     return (
-      <button
+      <Button
         type="button"
+        variant="outline"
         className="graph-maintenance-nudge-chip"
         title={t('graph.maintenance.expand')}
         aria-label={t('graph.maintenance.expand')}
@@ -77,7 +79,7 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
       >
         <span className="graph-maintenance-nudge-badge"><SparkIcon /></span>
         <span className="graph-maintenance-nudge-chip-count">{total}</span>
-      </button>
+      </Button>
     )
   }
 
@@ -92,9 +94,10 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
       </div>
       <div className="graph-maintenance-nudge-actions">
         {visibleItems.map((item) => (
-          <button
+          <Button
             key={item.focus}
             type="button"
+            variant="outline"
             className={`graph-maintenance-pill${focus === item.focus ? ' active' : ''}`}
             title={`${item.hint}${item.samples.length > 0 ? `: ${item.samples.join(', ')}` : ''}`}
             onClick={() => onSetFocus(item.focus)}
@@ -102,28 +105,32 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
             <MaintenanceFocusIcon focus={item.focus} />
             <span>{item.label}</span>
             <strong>{item.count}</strong>
-          </button>
+          </Button>
         ))}
         {focus !== 'all' && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             className="graph-maintenance-icon-button"
             title={t('graph.maintenance.all')}
             aria-label={t('graph.maintenance.all')}
             onClick={() => onSetFocus('all')}
           >
             <ClearFocusIcon />
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           className="graph-maintenance-nudge-collapse"
           title={t('graph.maintenance.collapse')}
           aria-label={t('graph.maintenance.collapse')}
           onClick={() => setCollapsed(true)}
         >
           <MinimizeIcon />
-        </button>
+        </Button>
       </div>
     </div>
   )
