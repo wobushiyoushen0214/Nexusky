@@ -29,7 +29,7 @@ Already added:
 - Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
 - AI provider editor now uses `Dialog`, `Button`, and `Badge`.
-- Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, and the shared `ConfirmModal`.
+- Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, `Input`, and the shared `ConfirmModal`.
 - Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, and `Button` where appropriate.
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
@@ -195,6 +195,7 @@ These are lower impact or more visual than behavioral.
 | Slash command rows | `Button` | Done for command row actions. The TipTap slash trigger, filtering, active-index keyboard handling, and fixed popover positioning remain custom. |
 | Editor shell actions | `Button` | Done for empty-state quick actions, split-pane close, and sync status. TipTap content, markdown rendering, and editor scrolling remain custom. |
 | Editor toolbar actions | `Button` | Done for formatting, insert, voice input, preview, side-panel, history, and export actions. TipTap command wiring and compact toolbar sizing remain custom. |
+| Publish scope inputs | `Input` | Done for folder, tag, property key, and property value filters while preserving native `datalist` suggestions and publish preview/publish flow. |
 | Sidebar shell controls | `Button` | Done for vault switcher, create file/folder actions, sort/collapse/expand controls, favorites, and file-error recovery. File tree row rendering and virtual scrolling remain custom. |
 | File tree rows | `Button` | Done for `FileTree` and `VirtualFileTree` row and more-action controls. Drag/drop, context menu coordinates, expand/collapse, active row state, multi-select, and virtual scroll math remain custom. |
 | ActivityBar controls | `Button` | Done as a thin wrapper only. Existing rail layout, liquid indicator, dimensions, hover colors, and active-state logic remain custom and visually unchanged. |

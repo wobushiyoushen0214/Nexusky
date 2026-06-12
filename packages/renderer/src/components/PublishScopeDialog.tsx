@@ -5,6 +5,7 @@ import { toast } from '../stores/toast-store'
 import { getErrorMessage } from '../utils/errors'
 import { ConfirmModal } from './ConfirmModal'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 import {
   Dialog,
   DialogContent,
@@ -203,7 +204,7 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
 
             {scopeType === 'folder' && (
               <Field label={t('commandPalette.publishScope.folderLabel')}>
-                <input list="publish-folder-options" value={folderPath} onChange={(event) => setFolderPath(event.target.value)} placeholder={t('commandPalette.publishScope.folderPlaceholder')} style={inputStyle} />
+                <Input list="publish-folder-options" value={folderPath} onChange={(event) => setFolderPath(event.target.value)} placeholder={t('commandPalette.publishScope.folderPlaceholder')} style={inputStyle} />
                 <datalist id="publish-folder-options">
                   {folders.map((folder) => <option key={folder} value={folder} />)}
                 </datalist>
@@ -212,7 +213,7 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
 
             {scopeType === 'tag' && (
               <Field label={t('commandPalette.publishScope.tagLabel')}>
-                <input list="publish-tag-options" value={tag} onChange={(event) => setTag(event.target.value)} placeholder={t('commandPalette.publishScope.tagPlaceholder')} style={inputStyle} />
+                <Input list="publish-tag-options" value={tag} onChange={(event) => setTag(event.target.value)} placeholder={t('commandPalette.publishScope.tagPlaceholder')} style={inputStyle} />
                 <datalist id="publish-tag-options">
                   {tags.map((item) => <option key={item.name} value={item.name}>{item.count}</option>)}
                 </datalist>
@@ -222,13 +223,13 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
             {scopeType === 'property' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <Field label={t('commandPalette.publishScope.propertyKeyLabel')}>
-                  <input list="publish-property-key-options" value={propertyKey} onChange={(event) => setPropertyKey(event.target.value)} placeholder={t('commandPalette.publishScope.propertyKeyPlaceholder')} style={inputStyle} />
+                  <Input list="publish-property-key-options" value={propertyKey} onChange={(event) => setPropertyKey(event.target.value)} placeholder={t('commandPalette.publishScope.propertyKeyPlaceholder')} style={inputStyle} />
                   <datalist id="publish-property-key-options">
                     {propertyKeys.map((key) => <option key={key} value={key} />)}
                   </datalist>
                 </Field>
                 <Field label={t('commandPalette.publishScope.propertyValueLabel')}>
-                  <input list="publish-property-value-options" value={propertyValue} onChange={(event) => setPropertyValue(event.target.value)} placeholder={t('commandPalette.publishScope.propertyValuePlaceholder')} style={inputStyle} />
+                  <Input list="publish-property-value-options" value={propertyValue} onChange={(event) => setPropertyValue(event.target.value)} placeholder={t('commandPalette.publishScope.propertyValuePlaceholder')} style={inputStyle} />
                   <datalist id="publish-property-value-options">
                     {propertyValues.map((value) => <option key={value} value={value} />)}
                   </datalist>
@@ -476,15 +477,9 @@ function flattenPropertyValues(value: unknown): string[] {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%',
   height: 32,
-  padding: '0 10px',
-  border: '1px solid var(--border-default)',
   borderRadius: 6,
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  fontSize: 12,
-  outline: 'none'
+  fontSize: 12
 }
 
 const previewPanelStyle: React.CSSProperties = {
