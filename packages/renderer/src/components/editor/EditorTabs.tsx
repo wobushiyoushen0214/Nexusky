@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
 import { ContextMenu } from '../ContextMenu'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 export const EditorTabs = memo(function EditorTabs() {
   const tabs = useEditorStore((s) => s.tabs)
@@ -43,6 +44,7 @@ export const EditorTabs = memo(function EditorTabs() {
       >
         {tabs.map((tab, i) => {
           const tabName = tab.path.split(/[\\/]/).pop()?.replace(/\.md$/, '')
+          const closeLabel = tabName ? `关闭 ${tabName}` : '关闭标签'
           const isActive = i === activeTabIndex
           return (
             <div
@@ -69,19 +71,24 @@ export const EditorTabs = memo(function EditorTabs() {
                 )}
               </span>
               <span className="editor-tab-title">{tabName}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="editor-tab-close"
-                onClick={(e) => { e.stopPropagation(); closeTab(i) }}
-                style={{ width: 20, height: 20, padding: 0 }}
-                title="关闭"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="editor-tab-close"
+                    aria-label={closeLabel}
+                    onClick={(e) => { e.stopPropagation(); closeTab(i) }}
+                    style={{ width: 20, height: 20, padding: 0 }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{closeLabel}</TooltipContent>
+              </Tooltip>
             </div>
           )
         })}
