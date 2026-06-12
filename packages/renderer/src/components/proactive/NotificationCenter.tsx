@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useProactiveStore } from '../../stores/proactive-store'
@@ -13,6 +13,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { ProactiveSuggestion } from '@shared/types/ipc'
 import './proactive.css'
 
@@ -70,13 +71,9 @@ export function NotificationCenter() {
   return (
     <div className="proactive-anchor" data-platform={platform}>
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen} modal={false}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
+        <NotificationIconButton
           className="proactive-bell"
-          title={t('proactive.bellTitle')}
-          aria-label={t('proactive.bellTitle')}
+          label={t('proactive.bellTitle')}
           onClick={() => setDrawerOpen(!drawerOpen)}
           style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
         >
@@ -85,7 +82,7 @@ export function NotificationCenter() {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           {badge > 0 && <Badge className="proactive-bell__badge">{badge > 99 ? '99+' : badge}</Badge>}
-        </Button>
+        </NotificationIconButton>
 
         <SheetContent
           side="right"
@@ -131,19 +128,16 @@ export function NotificationCenter() {
                   </Button>
                 </>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
+              <NotificationIconButton
                 className="proactive-drawer__close"
                 onClick={() => setDrawerOpen(false)}
-                aria-label={t('common.close')}
+                label={t('common.close')}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
-              </Button>
+              </NotificationIconButton>
             </div>
           </div>
           <div className="proactive-drawer__list">
@@ -175,6 +169,39 @@ export function NotificationCenter() {
         </SheetContent>
       </Sheet>
     </div>
+  )
+}
+
+function NotificationIconButton({
+  label,
+  className,
+  onClick,
+  style,
+  children,
+}: {
+  label: string
+  className: string
+  onClick: () => void
+  style?: CSSProperties
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={className}
+          aria-label={label}
+          onClick={onClick}
+          style={style}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 
