@@ -7,6 +7,7 @@ import { useUIStore } from '../stores/ui-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Card } from './ui/card'
 import { Empty, EmptyDescription } from './ui/empty'
 import './VaultHealthScreen.css'
 
@@ -175,44 +176,48 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
 
         {summary && (
           <>
-            <section className="vault-health-hero">
-              <div className="vault-health-hero__copy">
-                <div className="vault-health-kicker">{t('vaultHealth.hero.kicker')}</div>
-                <h2>
-                  {repairSignalCount > 0
-                    ? t('vaultHealth.hero.titleWithWork', { count: repairSignalCount })
-                    : t('vaultHealth.hero.title')}
-                </h2>
-                <p>{t('vaultHealth.hero.body')}</p>
-                <div className="vault-health-signals">
-                  <SignalLabel>{t('vaultHealth.hero.signal.local')}</SignalLabel>
-                  <SignalLabel>{t('vaultHealth.hero.signal.review')}</SignalLabel>
-                  <SignalLabel>{t('vaultHealth.hero.signal.context')}</SignalLabel>
+            <Card asChild>
+              <section className="vault-health-hero">
+                <div className="vault-health-hero__copy">
+                  <div className="vault-health-kicker">{t('vaultHealth.hero.kicker')}</div>
+                  <h2>
+                    {repairSignalCount > 0
+                      ? t('vaultHealth.hero.titleWithWork', { count: repairSignalCount })
+                      : t('vaultHealth.hero.title')}
+                  </h2>
+                  <p>{t('vaultHealth.hero.body')}</p>
+                  <div className="vault-health-signals">
+                    <SignalLabel>{t('vaultHealth.hero.signal.local')}</SignalLabel>
+                    <SignalLabel>{t('vaultHealth.hero.signal.review')}</SignalLabel>
+                    <SignalLabel>{t('vaultHealth.hero.signal.context')}</SignalLabel>
+                  </div>
                 </div>
-              </div>
-              <div className="vault-health-score-card" aria-label={t('vaultHealth.score.label')}>
-                <div className="vault-health-score-card__value">{summary.score}</div>
-                <div className="vault-health-score-card__label">{t('vaultHealth.score.label')} {t('vaultHealth.score.outOf')}</div>
-              </div>
-            </section>
+                <div className="vault-health-score-card" aria-label={t('vaultHealth.score.label')}>
+                  <div className="vault-health-score-card__value">{summary.score}</div>
+                  <div className="vault-health-score-card__label">{t('vaultHealth.score.label')} {t('vaultHealth.score.outOf')}</div>
+                </div>
+              </section>
+            </Card>
 
-            <section className="vault-health-drivers" aria-label={t('vaultHealth.score.why')}>
-              <div className="vault-health-section-heading">{t('vaultHealth.score.why')}</div>
-              {scoreDragFactors.length > 0 ? (
-                <div className="vault-health-driver-list">
-                  {scoreDragFactors.map((factor) => (
-                    <div key={factor.id} className="vault-health-driver">
-                      <span>{t(`vaultHealth.score.factor.${factor.id}`)}</span>
-                      <strong className={`is-${factor.status}`}>{t('vaultHealth.score.impact', { impact: factor.impact })}</strong>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Empty className="vault-health-driver is-empty">
-                  <EmptyDescription>{t('vaultHealth.score.noIssues')}</EmptyDescription>
-                </Empty>
-              )}
-            </section>
+            <Card asChild>
+              <section className="vault-health-drivers" aria-label={t('vaultHealth.score.why')}>
+                <div className="vault-health-section-heading">{t('vaultHealth.score.why')}</div>
+                {scoreDragFactors.length > 0 ? (
+                  <div className="vault-health-driver-list">
+                    {scoreDragFactors.map((factor) => (
+                      <div key={factor.id} className="vault-health-driver">
+                        <span>{t(`vaultHealth.score.factor.${factor.id}`)}</span>
+                        <strong className={`is-${factor.status}`}>{t('vaultHealth.score.impact', { impact: factor.impact })}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Empty className="vault-health-driver is-empty">
+                    <EmptyDescription>{t('vaultHealth.score.noIssues')}</EmptyDescription>
+                  </Empty>
+                )}
+              </section>
+            </Card>
 
             <section className="vault-health-metrics" aria-label={t('vaultHealth.title')}>
               <HealthMetric label={t('vaultHealth.metric.notes')} value={summary.noteCount} />
@@ -225,22 +230,24 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
               <HealthMetric label={t('vaultHealth.metric.staleNotes')} value={summary.staleNoteCount} />
             </section>
 
-            <section className="vault-health-next" aria-labelledby="vault-health-next-title">
-              <div className="vault-health-next__head">
-                <h2 id="vault-health-next-title">{t('vaultHealth.nextSteps')}</h2>
-              </div>
-              <div className="vault-health-next__list">
-                {nextSteps.map((step) => (
-                  <NextStepButton
-                    key={step.id}
-                    kicker={t(`vaultHealth.action.${step.id}.kicker`)}
-                    title={t(`vaultHealth.action.${step.id}.title`, { count: step.count ?? 0 })}
-                    desc={t(`vaultHealth.action.${step.id}.desc`)}
-                    onClick={() => { void runNextStep(step.id) }}
-                  />
-                ))}
-              </div>
-            </section>
+            <Card asChild>
+              <section className="vault-health-next" aria-labelledby="vault-health-next-title">
+                <div className="vault-health-next__head">
+                  <h2 id="vault-health-next-title">{t('vaultHealth.nextSteps')}</h2>
+                </div>
+                <div className="vault-health-next__list">
+                  {nextSteps.map((step) => (
+                    <NextStepButton
+                      key={step.id}
+                      kicker={t(`vaultHealth.action.${step.id}.kicker`)}
+                      title={t(`vaultHealth.action.${step.id}.title`, { count: step.count ?? 0 })}
+                      desc={t(`vaultHealth.action.${step.id}.desc`)}
+                      onClick={() => { void runNextStep(step.id) }}
+                    />
+                  ))}
+                </div>
+              </section>
+            </Card>
           </>
         )}
       </div>
@@ -257,14 +264,16 @@ interface StatePanelProps {
 
 function StatePanel({ title, desc, tone = 'default', children }: StatePanelProps) {
   return (
-    <section className={`vault-health-state is-${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
-      <div className="vault-health-state__mark" aria-hidden="true" />
-      <div className="vault-health-state__copy">
-        <h2>{title}</h2>
-        <p>{desc}</p>
-        {children}
-      </div>
-    </section>
+    <Card asChild>
+      <section className={`vault-health-state is-${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
+        <div className="vault-health-state__mark" aria-hidden="true" />
+        <div className="vault-health-state__copy">
+          <h2>{title}</h2>
+          <p>{desc}</p>
+          {children}
+        </div>
+      </section>
+    </Card>
   )
 }
 
@@ -293,10 +302,12 @@ interface HealthMetricProps {
 
 function HealthMetric({ label, value, tone = 'ok' }: HealthMetricProps) {
   return (
-    <div className={`vault-health-metric is-${tone}`}>
-      <span>{label}</span>
-      <strong>{value.toLocaleString()}</strong>
-    </div>
+    <Card asChild>
+      <div className={`vault-health-metric is-${tone}`}>
+        <span>{label}</span>
+        <strong>{value.toLocaleString()}</strong>
+      </div>
+    </Card>
   )
 }
 

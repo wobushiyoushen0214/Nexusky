@@ -45,7 +45,7 @@ Already added:
 - `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, shared `Tooltip` for close/source hints, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, shared `Badge` for the history count, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, `Tooltip`, and `Empty`; current tags, tag counts, tag chip/list styles were moved into token-based local CSS.
-- `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, status/kicker chips use shared `Badge`, and the no-issue driver state uses shared `Empty`, with styling aligned to shared tokens.
+- `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, status/kicker chips use shared `Badge`, state/hero/driver/metric/next-step panels use shared `Card`, and the no-issue driver state uses shared `Empty`, with styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Alert` for the fallback error callout and shared `Button` for retry, with the fallback layout kept in token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, `Tooltip`, `ScrollArea`, `Spinner`, and compact `Empty` feedback for citation lookup controls instead of custom absolute-positioned popovers, document listeners, native title hints, and ad hoc loading/empty text.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, shared `Badge` for tier/token count feedback, shared `Tooltip` for metric trend hints, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
@@ -189,7 +189,7 @@ These are lower impact or more visual than behavioral.
 | Area | Candidate primitive | Notes |
 | --- | --- | --- |
 | Tool result panel | `Sheet`, `Button`, `Tooltip`, `ScrollArea` | Done with `modal={false}` and no overlay. It keeps the right-bottom non-modal result drawer behavior, close/source tooltips, and prevents outside interactions from dismissing it. |
-| Vault health actions | `Button`, `Badge`, `Empty`, `Card`, `Progress` | Button migration done for skip and next-step actions. Badge migration done for scan steps, hero signals, and next-step kickers. Empty migration done for no-issue driver state. Cards/progress remain optional visual polish. |
+| Vault health actions | `Button`, `Badge`, `Empty`, `Card`, `Progress` | Button migration done for skip and next-step actions. Badge migration done for scan steps, hero signals, and next-step kickers. Empty migration done for no-issue driver state. Card migration done for state, hero, drivers, metrics, and next-step panels. Progress remains optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/count/empty styles into local token-based CSS. |
 | Tags panel | `Input`, `Button`, `Badge`, `ScrollArea`, `Tooltip`, `Empty` | Done. Current tag input, tags, tag count badges, tag action tooltips, tag cloud, empty state, and filtered note list now use shared components with local token-based CSS. |

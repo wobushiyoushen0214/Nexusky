@@ -72,9 +72,16 @@
 .vault-health-hero,
 .vault-health-drivers,
 .vault-health-next {
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: transparent;
+  border: 1px solid var(--border, var(--border-subtle));
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 52%, transparent);
+  color: var(--card-foreground, var(--text-primary));
+}
+
+.vault-health-drivers,
+.vault-health-next,
+.vault-health-metric {
+  gap: 0;
 }
 
 .vault-health-state {
@@ -302,8 +309,8 @@
   min-width: 0;
   min-height: 74px;
   padding: 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border: 1px solid var(--border, var(--border-subtle));
+  border-radius: var(--radius-lg, 8px);
   background: color-mix(in srgb, var(--bg-elevated) 78%, var(--bg-base));
 }
 
