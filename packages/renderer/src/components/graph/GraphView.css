@@ -9,25 +9,24 @@
   display: flex;
 }
 
-.graph-empty {
+.graph-empty.ui-empty {
   height: 100%;
   width: 100%;
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+  border: 0;
+  background: transparent;
 }
 
-.graph-empty-inner {
-  text-align: center;
-}
-
-.graph-empty-title {
+.graph-empty .ui-empty-title {
   font-size: 13px;
   color: var(--text-tertiary);
-  margin-bottom: 6px;
 }
 
-.graph-empty-hint {
+.graph-empty .ui-empty-description {
   font-size: 11px;
   color: var(--text-tertiary);
   opacity: 0.6;

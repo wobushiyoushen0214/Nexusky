@@ -8,6 +8,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { GraphMaintenanceNudge } from './GraphMaintenanceNudge'
 import { GraphPanel } from './GraphPanel'
 import { buildGraphGroupColorMap } from './graph-colors'
@@ -1390,12 +1391,12 @@ export function GraphView() {
 
   if (!graphData || graphData.nodes.length === 0) {
     return (
-      <div className="graph-empty">
-        <div className="graph-empty-inner">
-          <p className="graph-empty-title">{t('graph.emptyTitle')}</p>
-          <p className="graph-empty-hint">{t('graph.emptyHint')}</p>
-        </div>
-      </div>
+      <Empty className="graph-empty">
+        <EmptyHeader>
+          <EmptyTitle>{t('graph.emptyTitle')}</EmptyTitle>
+          <EmptyDescription>{t('graph.emptyHint')}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
