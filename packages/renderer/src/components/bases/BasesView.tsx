@@ -6,6 +6,7 @@ import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
 import { updateMarkdownProperty } from '../../utils/frontmatter'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
@@ -534,11 +535,11 @@ function PropertyPills({
         {items.length === 0 ? (
           <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span>
         ) : items.slice(0, 3).map((item) => (
-          <span key={item} style={{ maxWidth: 92, padding: '2px 6px', borderRadius: 999, background: subtle ? 'var(--bg-hover)' : 'var(--accent-muted)', color: subtle ? 'var(--text-secondary)' : 'var(--accent-text)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <Badge key={item} variant={subtle ? 'secondary' : 'default'} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
             {item}
-          </span>
+          </Badge>
         ))}
-        {items.length > 3 && <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>+{items.length - 3}</span>}
+        {items.length > 3 && <Badge variant="secondary">+{items.length - 3}</Badge>}
       </div>
     </Button>
   )
