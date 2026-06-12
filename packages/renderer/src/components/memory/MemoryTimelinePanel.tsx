@@ -7,6 +7,7 @@ import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Spinner } from '../ui/spinner'
 import {
   Dialog,
@@ -239,8 +240,12 @@ export function MemoryTimelinePanel() {
 
   if (cards.length === 0) {
     return (
-      <div className="memory-timeline-panel memory-timeline-panel--empty">
-        <p>{t('memory.empty')}</p>
+      <div className="memory-timeline-panel">
+        <Empty className="memory-timeline-empty">
+          <EmptyHeader>
+            <EmptyTitle>{t('memory.empty')}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       </div>
     )
   }

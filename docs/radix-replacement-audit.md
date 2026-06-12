@@ -24,7 +24,7 @@ Already added:
 - `cmdk` dependency.
 - `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, `Spinner`, and `Empty` wrappers.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
-- `MemoryTimelinePanel` now uses those wrappers, including shared `Spinner` for its loading state.
+- `MemoryTimelinePanel` now uses those wrappers, including shared `Spinner` for its loading state and shared `Empty` for its empty state.
 - `ConfirmModal` now uses `AlertDialog`.
 - Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
@@ -43,7 +43,7 @@ Already added:
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` goal/description and plan edit fields now use shared `Textarea`/`Input`, action controls use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow layout remains custom.
 - `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
-- `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions and `ScrollArea` for history and preview scrolling.
+- `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, and `ScrollArea`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
@@ -138,7 +138,7 @@ These replace duplicated modal/menu logic and improve accessibility immediately.
 | Settings tabs | `components/settings/SettingsSidebar.tsx` | Manual `role="tablist"` buttons | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | Good keyboard win: arrows, Home/End if implemented by Radix. |
 | AI provider editor | `components/settings/AIProviderSettings.tsx` | Custom provider modal | `Dialog` + `Button` + `Badge` + `Input` + `Select` | Done for editor shell, provider fields, model field, provider type/model selects, and provider actions. Request/probing logic remains domain-specific. |
 | Publish dialog | `components/PublishScopeDialog.tsx` | Custom `role="dialog"`, manual focus/overlay | `Dialog` + `ScrollArea`; nested destructive confirm via `AlertDialog` | Good candidate but larger file, split into steps. |
-| Memory timeline | `components/memory/MemoryTimelinePanel.tsx` | Already migrated partly | Already uses `Dialog`, `ScrollArea`, `Button`, `Badge` | Keep as reference pattern. |
+| Memory timeline | `components/memory/MemoryTimelinePanel.tsx` | Already migrated partly | Already uses `Dialog`, `ScrollArea`, `Button`, `Badge`, `Spinner`, `Empty` | Keep as reference pattern. |
 
 ### P1: Strong Candidates, Moderate Effort
 
@@ -183,7 +183,7 @@ These are lower impact or more visual than behavioral.
 | Tool result panel | `Sheet`, `Button`, `ScrollArea` | Done with `modal={false}` and no overlay. It keeps the right-bottom non-modal result drawer behavior and prevents outside interactions from dismissing it. |
 | Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Button migration done for skip and next-step actions. Cards/badges/progress remain optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
-| History panel | `Button`, `ScrollArea` | Done. Kept the lightweight side-panel behavior and moved inline styles into local token-based CSS. |
+| History panel | `Button`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/empty styles into local token-based CSS. |
 | Tags panel | `Input`, `Button`, `Badge`, `ScrollArea` | Done. Current tag input, tags, tag cloud, and filtered note list now use shared components with local token-based CSS. |
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
 | Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
@@ -254,7 +254,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
 
 10. `empty.tsx` - done
    - Provides shadcn-compatible empty state composition.
-   - Used by settings plugin and keybinding empty states.
+   - Used by settings plugin/keybinding, memory timeline, and history panel empty states.
 
 ## Detailed Migration Plan
 

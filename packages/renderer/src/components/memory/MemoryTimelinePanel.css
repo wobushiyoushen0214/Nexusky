@@ -7,14 +7,12 @@
   background: var(--bg-primary);
 }
 
-.memory-timeline-panel--loading,
-.memory-timeline-panel--empty {
+.memory-timeline-panel--loading {
   justify-content: center;
   align-items: center;
   color: var(--text-secondary);
 }
 
-.memory-timeline-panel--empty p,
 .memory-timeline-panel--loading p {
   margin: 0;
   max-width: 280px;
@@ -27,6 +25,11 @@
   width: 28px;
   height: 28px;
   margin-bottom: 12px;
+}
+
+.memory-timeline-empty {
+  min-height: 0;
+  height: 100%;
 }
 
 .memory-timeline-header {

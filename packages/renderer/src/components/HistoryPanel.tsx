@@ -3,6 +3,7 @@ import { useVaultStore } from '../stores/vault-store'
 import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
 import { Button } from './ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { ScrollArea } from './ui/scroll-area'
 import './history-panel.css'
 
@@ -45,7 +46,15 @@ export function HistoryPanel() {
   }
 
   if (!currentFilePath) {
-    return <div className="history-panel__empty">请先打开一个文件</div>
+    return (
+      <div className="history-panel history-panel--empty">
+        <Empty className="history-panel__empty">
+          <EmptyHeader>
+            <EmptyTitle>请先打开一个文件</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      </div>
+    )
   }
 
   return (
@@ -69,7 +78,11 @@ export function HistoryPanel() {
           </div>
           <ScrollArea className="history-panel__list">
             {snapshots.length === 0 && (
-              <p className="history-panel__empty">暂无历史版本（保存后自动创建）</p>
+              <Empty className="history-panel__empty">
+                <EmptyHeader>
+                  <EmptyTitle>暂无历史版本（保存后自动创建）</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
             )}
             {snapshots.map((s) => (
               <div key={s.fileName} className="history-panel__snapshot">
