@@ -277,8 +277,9 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
 
       {(inspection || hasPackItems) && (
         <div className={`related-context-pack${packExpanded ? ' is-expanded' : ''}`}>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             className="related-context-pack__summary"
             onClick={() => setPackExpanded((value) => !value)}
             aria-expanded={packExpanded}
@@ -295,7 +296,7 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </span>
-          </button>
+          </Button>
 
           {packExpanded && (
             <div className="related-context-pack__body">

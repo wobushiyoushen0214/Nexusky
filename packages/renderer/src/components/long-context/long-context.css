@@ -280,7 +280,7 @@
 
 .related-context-pack {
   border-bottom: 0;
-  background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+  background: color-mix(in srgb, var(--card, var(--bg-surface)) 78%, transparent);
 }
 
 .related-context-panel--side .related-context-pack {
@@ -304,11 +304,11 @@
   background: transparent;
   color: inherit;
   text-align: left;
-  cursor: pointer;
+  white-space: normal;
 }
 
 .related-context-pack__summary:hover {
-  background: color-mix(in srgb, var(--bg-hover) 48%, transparent);
+  background: color-mix(in srgb, var(--muted, var(--bg-hover)) 48%, transparent);
 }
 
 .related-context-pack__summary-main {
@@ -633,12 +633,9 @@
 .related-context-panel__error button {
   height: 24px;
   padding: 0 8px;
-  border-radius: 6px;
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--secondary-foreground, var(--text-secondary));
   font-size: 11px;
-  cursor: pointer;
 }
 
 @media (max-width: 760px) {

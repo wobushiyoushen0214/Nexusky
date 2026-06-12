@@ -36,7 +36,7 @@ Already added:
 - The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
 - `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`.
-- `RelatedContextPanel` context-pack tiers now use `Tabs`; related context card actions use shared `Button`; relation labels use shared `Badge`.
+- `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card actions use shared `Button`; relation labels use shared `Badge`.
 - `GraphPanel` side controls now use shared `Button`, `Select`, and `Switch` wrappers for panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` action controls now use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow/editor layout remains custom.
@@ -124,7 +124,7 @@ These need design cleanup or affect many small controls.
 | Area | Current file | Recommended primitive | Notes |
 | --- | --- | --- | --- |
 | Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu` | Drawer shape maps well to Sheet. Snooze menu maps to DropdownMenu. |
-| Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Done for tier tabs and controls. Native list scrolling remains to preserve side/page layout sizing. |
+| Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Done for pack summary/tier tabs and controls. Native list scrolling remains to preserve side/page layout sizing. |
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
 | Related context card icon actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done. Title/aria-label retained. |
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Button`, `Select`, `Switch` | Done for side-panel controls only. Graph canvas, pan/zoom, and node interaction layers remain custom. |
