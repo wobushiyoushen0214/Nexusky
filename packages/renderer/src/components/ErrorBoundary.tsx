@@ -1,4 +1,6 @@
 import { Component, type ReactNode } from 'react'
+import { Button } from './ui/button'
+import './error-boundary.css'
 
 interface Props {
   children: ReactNode
@@ -27,17 +29,20 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 32 }}>
-          <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>出了点问题</p>
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', maxWidth: 400, textAlign: 'center', lineHeight: 1.6 }}>
+        <div className="error-boundary">
+          <p className="error-boundary__title">出了点问题</p>
+          <p className="error-boundary__message">
             {this.state.error?.message || '未知错误'}
           </p>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="error-boundary__retry"
             onClick={this.handleReload}
-            style={{ padding: '6px 16px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer' }}
           >
             重试
-          </button>
+          </Button>
         </div>
       )
     }
