@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useEditorStore } from '../../stores/editor-store'
 import { parseNoteProperties, updateNoteProperties, type NoteProperties } from '../../utils/frontmatter'
 import { toast } from '../../stores/toast-store'
+import { Button } from '../ui/button'
 
 function listToText(values: string[]): string {
   return values.join('\n')
@@ -93,7 +94,10 @@ export function PropertiesPanel() {
       </PropertyField>
 
       <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
-        <button
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
           onClick={handleSave}
           disabled={!dirty || saving}
           style={{
@@ -109,9 +113,12 @@ export function PropertiesPanel() {
           }}
         >
           {saving ? t('propertiesPanel.saving') : t('propertiesPanel.save')}
-        </button>
+        </Button>
         {dirty && (
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => {
               setTitle(parsed.title)
               setAliases(listToText(parsed.aliases))
@@ -121,7 +128,7 @@ export function PropertiesPanel() {
             style={{ height: 30, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
           >
             {t('propertiesPanel.reset')}
-          </button>
+          </Button>
         )}
       </div>
     </div>
