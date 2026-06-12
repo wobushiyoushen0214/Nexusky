@@ -2135,25 +2135,34 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={addPendingBatchPlanBatch}
                   style={{ height: 28, padding: '0 10px', fontSize: 12, color: 'var(--accent-text)', background: 'var(--accent-muted)', border: '1px solid var(--accent-muted)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   添加目录
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
                   onClick={handleConfirmBatchPlan}
                   disabled={pendingBatchPlan.batches.length === 0}
                   style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: pendingBatchPlan.batches.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 500, whiteSpace: 'nowrap', opacity: pendingBatchPlan.batches.length === 0 ? 0.5 : 1 }}
                 >
                   开始生成
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPendingBatchPlan(null)}
                   style={{ height: 28, padding: '0 10px', fontSize: 12, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}
                 >
                   取消
-                </button>
+                </Button>
               </div>
             </div>
             <div style={{ display: 'grid', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
@@ -2184,13 +2193,16 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                     title="篇数"
                     style={{ width: 62, height: 28, padding: '0 7px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--accent-text)', outline: 'none' }}
                   />
-                  <button
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
                     onClick={() => removePendingBatchPlanBatch(index)}
                     title="移除该目录"
                     style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -2205,7 +2217,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>选择存放目录：</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {folderOptions.map((dir) => (
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   key={dir}
                   onClick={() => handleSelectFolder(dir)}
                   style={{ height: 28, padding: '0 12px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 100ms' }}
@@ -2213,7 +2228,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
                 >
                   {dir}
-                </button>
+                </Button>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -2223,7 +2238,10 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) handleSelectFolder((e.target as HTMLInputElement).value.trim()) }}
                 style={{ flex: 1, height: 30, padding: '0 10px', fontSize: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-primary)', outline: 'none' }}
               />
-              <button
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
                 onClick={(e) => {
                   const input = (e.currentTarget.previousElementSibling as HTMLInputElement)
                   if (input.value.trim()) handleSelectFolder(input.value.trim())
@@ -2231,13 +2249,16 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 style={{ height: 30, padding: '0 12px', fontSize: 12, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
               >
                 新建目录
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => { setPendingBatch(null); setFolderOptions([]) }}
                 style={{ height: 30, padding: '0 10px', fontSize: 12, color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, cursor: 'pointer' }}
               >
                 取消
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -2281,30 +2302,39 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
                   onClick={() => setEditPreviewExpanded(!editPreviewExpanded)}
                   style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', transition: 'all 100ms', fontWeight: 500, whiteSpace: 'nowrap' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--control-bg) 58%, transparent)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                   {editPreviewExpanded ? '收起' : '展开'}
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="xs"
                   onClick={handleApplyEdit}
                   style={{ height: 26, padding: '0 12px', fontSize: 11, background: 'var(--accent)', color: 'var(--text-on-accent)', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
                   onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
                   onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
                   应用
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
                   onClick={() => { setEditResult(null); setEditPreviewExpanded(false) }}
                   style={{ height: 26, padding: '0 9px', fontSize: 11, background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent)', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'color-mix(in srgb, var(--danger) 12%, transparent)'; e.currentTarget.style.color = 'var(--danger)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
                 >
                   放弃
-                </button>
+                </Button>
               </div>
             </div>
             {editPreviewMode === 'diff' ? (
