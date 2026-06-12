@@ -4,6 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { parseNoteProperties, updateNoteProperties, type NoteProperties } from '../../utils/frontmatter'
 import { toast } from '../../stores/toast-store'
 import { Button } from '../ui/button'
+import { Empty, EmptyDescription } from '../ui/empty'
 import { Input } from '../ui/input'
 import { Textarea } from '../ui/textarea'
 
@@ -64,8 +65,10 @@ export function PropertiesPanel() {
 
   if (!currentFilePath) {
     return (
-      <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>
-        {t('propertiesPanel.empty')}
+      <div style={{ height: '100%', padding: 14, display: 'flex' }}>
+        <Empty style={{ minHeight: 120, padding: 16 }}>
+          <EmptyDescription>{t('propertiesPanel.empty')}</EmptyDescription>
+        </Empty>
       </div>
     )
   }
