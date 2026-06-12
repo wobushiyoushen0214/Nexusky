@@ -1,8 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
+import {
+  ContextMenu as ContextMenuRoot,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from './ui/context-menu'
 
-interface ContextMenuItem {
+interface ContextMenuItemDef {
   label: string
-  icon?: React.ReactNode
+  icon?: ReactNode
   danger?: boolean
   disabled?: boolean
   onClick: () => void
@@ -11,86 +19,65 @@ interface ContextMenuItem {
 interface ContextMenuProps {
   x: number
   y: number
-  items: ContextMenuItem[]
+  items: ContextMenuItemDef[]
   onClose: () => void
 }
 
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
-  const ref = useRef<HTMLDivElement>(null)
+  const closedRef = useRef(false)
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKey)
-    }
+    closedRef.current = false
+  }, [x, y, items])
+
+  const closeOnce = useCallback(() => {
+    if (closedRef.current) return
+    closedRef.current = true
+    onClose()
   }, [onClose])
 
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) closeOnce()
+  }, [closeOnce])
+
   return (
-    <div
-      ref={ref}
-      className="glass-popover"
-      style={{
-        position: 'fixed',
-        left: x,
-        top: y,
-        zIndex: 9999,
-        minWidth: 160,
-        padding: 4,
-        background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
-        border: '1px solid var(--glass-panel-border)',
-        borderRadius: 12,
-        boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
-        backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
-        WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
-      }}
-    >
-      {items.map((item, i) => (
-        <button
-          key={i}
-          disabled={item.disabled}
-          onClick={() => {
-            if (item.disabled) return
-            item.onClick()
-            onClose()
-          }}
+    <ContextMenuRoot open onOpenChange={handleOpenChange}>
+      <ContextMenuTrigger asChild>
+        <span
+          aria-hidden="true"
           style={{
-            width: '100%',
-            height: 30,
-            padding: '0 10px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 12,
-            color: item.disabled
-              ? 'var(--text-tertiary)'
-              : item.danger
-                ? 'var(--danger)'
-                : 'var(--text-primary)',
-            background: 'transparent',
-            border: 'none',
-            borderRadius: 7,
-            cursor: item.disabled ? 'not-allowed' : 'pointer',
-            opacity: item.disabled ? 0.5 : 1,
-            textAlign: 'left',
+            position: 'fixed',
+            left: x,
+            top: y,
+            width: 1,
+            height: 1,
+            pointerEvents: 'none',
           }}
-          onMouseEnter={(e) => {
-            if (item.disabled) return
-            e.currentTarget.style.background = 'var(--bg-hover)'
-          }}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-        >
-          {item.icon}
-          {item.label}
-        </button>
-      ))}
-    </div>
+        />
+      </ContextMenuTrigger>
+      <ContextMenuContent
+        alignOffset={0}
+        collisionPadding={8}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        <ContextMenuGroup>
+          {items.map((item, index) => (
+            <ContextMenuItem
+              key={`${item.label}-${index}`}
+              disabled={item.disabled}
+              variant={item.danger ? 'danger' : 'default'}
+              onSelect={() => {
+                if (item.disabled) return
+                item.onClick()
+                closeOnce()
+              }}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </ContextMenuItem>
+          ))}
+        </ContextMenuGroup>
+      </ContextMenuContent>
+    </ContextMenuRoot>
   )
 }

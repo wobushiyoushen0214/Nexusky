@@ -21,7 +21,7 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, and `Tooltip` wrappers.
 - `MemoryTimelinePanel` now uses those wrappers.
 - `ConfirmModal` now uses `AlertDialog`.
 - Settings shell now uses `Dialog` and `ScrollArea`.
@@ -32,6 +32,9 @@ Already added:
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
 - `NotificationCenter` snooze actions now use `DropdownMenu`.
+- The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
+- `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
+- `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`.
 
 Reference docs checked through `pnpm dlx shadcn@latest docs`:
 
@@ -129,7 +132,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Add CSS classes for vertical settings layout and compact horizontal tabs.
    - Needed by Settings and long-context packs.
 
-3. `context-menu.tsx`
+3. `context-menu.tsx` - done
    - Wrap `radix-ui` `ContextMenu`.
    - Support item shape: `label`, `icon`, `danger`, `disabled`, `onSelect`.
    - Needed by `ContextMenu.tsx` replacement.
@@ -147,12 +150,16 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
    - Needed for settings pages.
    - Should be introduced after the settings shell is migrated.
 
-7. `popover.tsx`, `tooltip.tsx`
+7. `popover.tsx`, `tooltip.tsx` - done
    - Needed for small floating menus and icon-only controls.
 
 8. `command.tsx`
    - Done with local `cmdk` wrapper.
    - Used by `CommandPalette` and `QuickSwitcher`.
+
+9. `sheet.tsx` - done
+   - Wrap `radix-ui` `Dialog` with side-aware content.
+   - Used by the proactive notification drawer.
 
 ## Detailed Migration Plan
 
@@ -280,6 +287,12 @@ Risk:
 - Radix `ContextMenu` is trigger-oriented. Current code opens menus from explicit mouse coordinates. A bridge layer is needed.
 - Virtualized file tree context menus need careful close behavior.
 
+Current progress:
+
+- `components/ui/context-menu.tsx` added.
+- `components/ContextMenu.tsx` now acts as a compatibility bridge for existing coordinate-based callers.
+- `ActivityBar` continues to use the shared compatibility component; its button rendering and rail styling were not migrated.
+
 ### Phase 5: Command Surfaces
 
 Current files:
@@ -379,7 +392,7 @@ Reason:
 7. Command palette and quick switcher. - done
 8. Search panel controls.
 9. Settings form controls.
-10. Proactive notification sheet/dropdowns.
+10. Proactive notification sheet/dropdowns. - done
 
 ## Quality Checklist
 

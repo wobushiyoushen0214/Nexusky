@@ -76,7 +76,9 @@
 }
 
 .proactive-anchor[data-platform="win32"] .proactive-drawer,
-.proactive-anchor[data-platform="linux"] .proactive-drawer {
+.proactive-anchor[data-platform="linux"] .proactive-drawer,
+.proactive-drawer[data-platform="win32"],
+.proactive-drawer[data-platform="linux"] {
   right: 140px;
 }
 
@@ -100,6 +102,15 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+}
+
+.proactive-drawer__title.ui-sheet-title {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
 }
 
 .proactive-drawer__count {

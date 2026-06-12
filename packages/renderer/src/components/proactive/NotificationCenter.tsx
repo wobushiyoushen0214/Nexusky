@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
 import { useProactiveStore } from '../../stores/proactive-store'
@@ -8,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
+import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 import type { ProactiveSuggestion } from '@shared/types/ipc'
 import './proactive.css'
 
@@ -50,6 +52,7 @@ export function NotificationCenter() {
   const badge = useMemo(() => suggestions.length, [suggestions])
   const hasSuggestions = suggestions.length > 0
   const bulkDisabled = !vaultPath || !hasSuggestions || bulkStatus !== null
+  const platform = window.api?.platform ?? 'darwin'
 
   const handleRespondAll = async (status: 'opened' | 'dismissed') => {
     if (!vaultPath || bulkStatus !== null) return
@@ -62,31 +65,40 @@ export function NotificationCenter() {
   }
 
   return (
-    <div className="proactive-anchor" data-platform={window.api?.platform ?? 'darwin'}>
-      <button
-        type="button"
-        className="proactive-bell"
-        title={t('proactive.bellTitle')}
-        aria-label={t('proactive.bellTitle')}
-        onClick={() => setDrawerOpen(!drawerOpen)}
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        {badge > 0 && <span className="proactive-bell__badge">{badge > 99 ? '99+' : badge}</span>}
-      </button>
+    <div className="proactive-anchor" data-platform={platform}>
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen} modal={false}>
+        <button
+          type="button"
+          className="proactive-bell"
+          title={t('proactive.bellTitle')}
+          aria-label={t('proactive.bellTitle')}
+          onClick={() => setDrawerOpen(!drawerOpen)}
+          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          {badge > 0 && <span className="proactive-bell__badge">{badge > 99 ? '99+' : badge}</span>}
+        </button>
 
-      {drawerOpen && (
-        <div className="proactive-drawer" role="dialog" aria-label={t('proactive.bellTitle')}>
+        <SheetContent
+          side="right"
+          className="proactive-drawer"
+          data-platform={platform}
+          showOverlay={false}
+          showCloseButton={false}
+          aria-describedby={undefined}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
           <div className="proactive-drawer__header">
-            <div className="proactive-drawer__title">
+            <SheetTitle className="proactive-drawer__title">
               <span>{t('proactive.bellTitle')}</span>
               {hasSuggestions && (
                 <span className="proactive-drawer__count">{t('proactive.count', { count: suggestions.length })}</span>
               )}
-            </div>
+            </SheetTitle>
             <div className="proactive-drawer__tools">
               {hasSuggestions && (
                 <>
@@ -145,8 +157,8 @@ export function NotificationCenter() {
               ))
             )}
           </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

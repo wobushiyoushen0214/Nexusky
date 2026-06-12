@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
+import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
+import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover'
 import type { IPCChatMessage } from '@shared/types/ipc'
 import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
 
@@ -30,7 +32,6 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [selectedText, setSelectedText] = useState('')
   const [preview, setPreview] = useState<PreviewState | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const writingActiveRef = useRef(false)
 
@@ -57,18 +58,6 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
     }
     writingActiveRef.current = false
   }, [])
-
-  useEffect(() => {
-    if (!visible) return
-    const handleMouseDown = (e: MouseEvent) => {
-      if (menuRef.current && menuRef.current.contains(e.target as Node)) return
-      const editorEl = (e.target as HTMLElement).closest('.editor-content')
-      if (editorEl) return
-      setVisible(false)
-    }
-    document.addEventListener('mousedown', handleMouseDown)
-    return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [visible])
 
   useEffect(() => {
     if (!editor) return
@@ -185,10 +174,20 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
 
   if (preview) {
     return (
-      <div className="glass-overlay" style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--overlay-bg)', backdropFilter: 'blur(var(--glass-blur)) saturate(150%)', WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(150%)' } as React.CSSProperties}
-        onClick={(e) => { if (e.target === e.currentTarget) handleCancel() }}
+      <Dialog
+        open
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) handleCancel()
+        }}
       >
-        <div className="glass-popover" style={{ width: 640, maxHeight: '75vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-panel-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
+        <DialogContent
+          className="glass-popover"
+          showCloseButton={false}
+          aria-describedby={undefined}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          style={{ width: 640, maxWidth: 'calc(100vw - 48px)', maxHeight: '75vh', background: 'var(--bg-glass-dense, var(--bg-glass-solid))', borderRadius: 14, border: '1px solid var(--glass-panel-border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}
+        >
+          <DialogTitle className="ui-sr-only">AI {preview.actionLabel}结果</DialogTitle>
           <div className="glass-divider-bottom" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0', flexShrink: 0, background: 'var(--panel-bg-soft)', boxShadow: 'inset 0 1px 0 var(--glass-highlight), var(--glass-divider-shadow-bottom)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>AI {preview.actionLabel}结果</span>
@@ -229,32 +228,55 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
               替换原文
             </button>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     )
   }
 
   if (!visible) return null
 
   return (
-    <div
-      ref={menuRef}
-      className="glass-popover"
-      style={{
-        position: 'fixed',
-        left: Math.max(8, position.x),
-        top: Math.max(8, position.y),
-        zIndex: 100,
-        display: 'flex',
-        gap: 2,
-        padding: 4,
-        background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
-        border: '1px solid var(--glass-panel-border)',
-        borderRadius: 8,
-        boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
-        backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
-        WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
-      }}
+    <Popover open={visible} onOpenChange={setVisible}>
+      <PopoverAnchor asChild>
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            left: Math.max(8, position.x),
+            top: Math.max(8, position.y),
+            width: 1,
+            height: 1,
+            pointerEvents: 'none',
+          }}
+        />
+      </PopoverAnchor>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        sideOffset={0}
+        collisionPadding={8}
+        className="glass-popover"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => {
+          const target = event.target
+          if (target instanceof HTMLElement && target.closest('.editor-content')) event.preventDefault()
+        }}
+        onFocusOutside={(event) => {
+          const target = event.target
+          if (target instanceof HTMLElement && target.closest('.editor-content')) event.preventDefault()
+        }}
+        style={{
+          display: 'flex',
+          gap: 2,
+          padding: 4,
+          background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
+          border: '1px solid var(--glass-panel-border)',
+          borderRadius: 8,
+          boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
+          backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+          WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+        }}
     >
       {ACTIONS.map((action) => (
         <button
@@ -282,6 +304,7 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
           <span>{action.label}</span>
         </button>
       ))}
-    </div>
+      </PopoverContent>
+    </Popover>
   )
 }
