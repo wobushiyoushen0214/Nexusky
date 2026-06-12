@@ -31,6 +31,7 @@ import { EditorToolbar } from './EditorToolbar'
 import { AIWritingMenu } from './AIWritingMenu'
 import { ContextMenu } from '../ContextMenu'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { buildEditorToolMenuItems } from '../tool-surface/editor-tool-menu'
 import { useSyncStore } from '../../stores/sync-store'
 import { getErrorMessage } from '../../utils/errors'
@@ -853,22 +854,28 @@ function SyncIndicator() {
     success: lastSyncTime ? `上次同步: ${new Date(lastSyncTime).toLocaleTimeString()}` : '同步成功',
     error: lastError || '同步出错',
   }
+  const syncTitle = titles[status]
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="xs"
-      onClick={handleClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 4, height: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: colors[status], padding: 0, fontSize: 11 }}
-      title={titles[status]}
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: status === 'syncing' ? 'spin 1s linear infinite' : 'none' }}>
-        <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-      </svg>
-      {status === 'syncing' && <span>同步中</span>}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={handleClick}
+          aria-label={syncTitle}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, height: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: colors[status], padding: 0, fontSize: 11 }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: status === 'syncing' ? 'spin 1s linear infinite' : 'none' }}>
+            <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+          {status === 'syncing' && <span>同步中</span>}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{syncTitle}</TooltipContent>
+    </Tooltip>
   )
 }
 
