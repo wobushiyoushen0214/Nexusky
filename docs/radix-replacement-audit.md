@@ -47,7 +47,7 @@ Already added:
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, and `Empty`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
-- `ChatSourceRow` now uses shared `Button`, `Popover`, and `ScrollArea` for citation lookup controls instead of custom absolute-positioned popovers and document listeners.
+- `ChatSourceRow` now uses shared `Button`, `Popover`, `ScrollArea`, and `Spinner` for citation lookup controls instead of custom absolute-positioned popovers, document listeners, and ad hoc loading text.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, shared `Button` for tuning actions, and shared `Empty`/`Spinner` for empty and loading states, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, and `Spinner` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
@@ -189,7 +189,7 @@ These are lower impact or more visual than behavioral.
 | History panel | `Button`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/empty styles into local token-based CSS. |
 | Tags panel | `Input`, `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Current tag input, tags, tag cloud, empty state, and filtered note list now use shared components with local token-based CSS. |
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
-| Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
+| Citation source row | `Button`, `Popover`, `ScrollArea`, `Spinner` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS and shared loading feedback. |
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
 | Timeline view controls | `Input`, `ToggleGroup`, `Button` | Done for search, mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
 | Demo flow | `Dialog`, `Button`, `Spinner`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Scan loading now uses shared `Spinner`; progress remains custom. |

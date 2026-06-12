@@ -10,6 +10,7 @@ import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Button } from '../ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ScrollArea } from '../ui/scroll-area'
+import { Spinner } from '../ui/spinner'
 import { getChatSourceProvenance } from './chat-source-provenance'
 import './chat-source-row.css'
 
@@ -111,7 +112,12 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
               )}
             </div>
           )}
-          {loading && <div>{t('citationLookup.loading')}</div>}
+          {loading && (
+            <div className="chat-source-row__loading">
+              <Spinner aria-hidden="true" />
+              <span>{t('citationLookup.loading')}</span>
+            </div>
+          )}
           {!loading && result && !result.found && (
             <div className="chat-source-row__muted">
               {provenance.hasContextPack ? t('citationLookup.noExtraRelations') : t('citationLookup.empty')}

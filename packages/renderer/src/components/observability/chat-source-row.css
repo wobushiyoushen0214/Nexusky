@@ -111,6 +111,20 @@
   margin-top: 4px;
 }
 
+.chat-source-row__loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 10px;
+}
+
+.chat-source-row__loading .ui-spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+}
+
 .chat-source-row__lookup-item {
   margin-bottom: 6px;
 }
