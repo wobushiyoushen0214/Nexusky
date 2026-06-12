@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 
 interface FindReplaceProps {
   editor: Editor | null
@@ -135,7 +136,7 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
     }}>
       {/* Find row */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <input
+        <Input
           ref={findRef}
           value={findText}
           onChange={(e) => { setFindText(e.target.value); setCurrentMatch(0) }}
@@ -172,7 +173,7 @@ export function FindReplace({ editor, open, onClose }: FindReplaceProps) {
       </div>
       {/* Replace row */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <input
+        <Input
           value={replaceText}
           onChange={(e) => setReplaceText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleReplace(); if (e.key === 'Escape') onClose() }}

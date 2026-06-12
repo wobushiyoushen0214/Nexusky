@@ -62,7 +62,7 @@ Already added:
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
 - `BasesView` toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline edit targets now use shared `Button`, `Select`, and `Checkbox`.
 - `ChatPanel` outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions now use shared `Button`/`ToggleGroup` while preserving the compact glass chat layout and existing hover colors.
-- `FindReplace` editor popover actions now use shared `Button` while preserving the compact floating editor tool layout and existing find/replace logic.
+- `FindReplace` editor popover fields now use shared `Input`, and actions use shared `Button`, while preserving the compact floating editor tool layout and existing find/replace logic.
 - `PropertiesPanel` frontmatter fields now use shared `Input`/`Textarea`, and save/reset actions use shared `Button`, while preserving the existing frontmatter parsing and save flow.
 - `BacklinksPanel` now uses shared `Button` for the collapse header, target open/create actions, and unlinked-mention conversion actions while preserving its compact link overview layout and row navigation behavior.
 - `OutlinePanel` now uses shared `Button` for heading navigation rows while preserving heading-level indentation, compact row sizing, and editor jump events.
@@ -186,7 +186,7 @@ These are lower impact or more visual than behavioral.
 | Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |
 | Chat panel actions | `Button`, `ToggleGroup` | Done for outbound preview actions, chat header actions, session list actions, batch-plan controls, folder picker actions, edit preview actions, mention result rows, attachment removal controls, and composer icon actions. ChatPanel no longer uses raw `<button>` elements. |
-| Find/replace controls | `Button` | Done for case sensitivity, previous/next, close, replace, and replace-all actions. Editor text selection and search logic remain custom. |
+| Find/replace controls | `Input`, `Button` | Done for find/replace fields, case sensitivity, previous/next, close, replace, and replace-all actions. Editor text selection and search logic remain custom. |
 | Properties panel controls | `Input`, `Textarea`, `Button` | Done for title, aliases, tags, cssclasses, save, and reset controls. Frontmatter parsing and save-to-editor behavior remain custom. |
 | Backlinks panel actions | `Button` | Done for collapse, target open/create, batch convert, item jump, and single mention conversion actions. The row navigation/list layout remains custom. |
 | Outline panel rows | `Button` | Done for heading navigation rows. Heading parsing and editor jump events remain custom. |
