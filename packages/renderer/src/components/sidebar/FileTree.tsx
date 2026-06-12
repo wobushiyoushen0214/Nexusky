@@ -3,6 +3,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
+import { Button } from '../ui/button'
 import type { FileEntry } from '@shared/types/ipc'
 
 interface FileTreeProps {
@@ -189,16 +190,18 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
             transition: 'background 100ms',
           }}
         >
-          <button
+          <Button
+            type="button"
+            variant="ghost"
             draggable
             data-file-path={entry.path}
             onDragStart={handleDragStart}
             onClick={() => setExpanded(!expanded)}
             style={{
               flex: 1, height: 30, paddingLeft, paddingRight: 4,
-              display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, borderRadius: 6,
               border: 'none', cursor: 'pointer',
-              fontSize: 13, color: 'var(--text-secondary)', textAlign: 'left',
+              fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', textAlign: 'left',
               background: 'transparent', minWidth: 0,
             }}
           >
@@ -213,8 +216,11 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
             style={{
               width: 22, height: 22, flexShrink: 0, marginRight: 4,
@@ -228,7 +234,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
             </svg>
-          </button>
+          </Button>
         </div>
         {expanded && creating && (
           <div style={{ paddingLeft: (depth + 1) * 14 + 8 + 16, paddingRight: 8, paddingTop: 2, paddingBottom: 2 }}>
@@ -267,16 +273,19 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
           background: isActive ? 'var(--accent-muted)' : 'transparent',
         }}
       >
-        <button
+        <Button
+          type="button"
+          variant="ghost"
           draggable
           data-file-path={entry.path}
           onDragStart={handleDragStart}
           onClick={() => openFile(entry.path)}
           style={{
             flex: 1, height: 30, paddingLeft: paddingLeft + 16, paddingRight: 4,
-            display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6,
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, borderRadius: 6,
             border: 'none', background: 'transparent',
             cursor: 'pointer', fontSize: 13,
+            fontWeight: 400,
             color: isActive ? 'var(--accent-text)' : 'var(--text-secondary)',
             textAlign: 'left', minWidth: 0,
           }}
@@ -285,8 +294,11 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
           </svg>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name.replace(/\.md$/, '')}</span>
-        </button>
-        <button
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }) }}
           style={{
             width: 22, height: 22, flexShrink: 0, marginRight: 4,
@@ -300,7 +312,7 @@ function FileTreeItem({ entry, depth, defaultExpanded = true }: { entry: FileEnt
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
           </svg>
-        </button>
+        </Button>
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={menuItems} onClose={() => setContextMenu(null)} />}
       <ConfirmModal
