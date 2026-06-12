@@ -7,6 +7,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Button } from '../ui/button'
+import { Slider } from '../ui/slider'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { Sparkline } from './Sparkline'
 import './observability.css'
@@ -322,14 +323,14 @@ function SliderRow({ label, value, min, max, step, fixed, onChange }: SliderRowP
   return (
     <div className="long-context-debug-panel__tuning-row">
       <span className="long-context-debug-panel__tuning-label">{label}</span>
-      <input
-        type="range"
+      <Slider
         className="long-context-debug-panel__slider"
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        value={[value]}
+        onValueChange={([next]) => onChange(next)}
+        aria-label={label}
       />
       <span className="long-context-debug-panel__slider-value">{value.toFixed(fixed)}</span>
     </div>

@@ -4,6 +4,8 @@ import type { ProactiveUserPrefs, ProactiveSuggestionKind, ProactiveTriggerThres
 import { useVaultStore } from '../../stores/vault-store'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
+import { Input } from '../ui/input'
+import { Slider } from '../ui/slider'
 import './proactive.css'
 
 const KIND_ORDER: ProactiveSuggestionKind[] = [
@@ -94,7 +96,7 @@ export function ProactivePreferencesTab() {
       <div className="proactive-preferences__time-grid">
         <div className="proactive-preferences__field">
           <label className="proactive-preferences__label" htmlFor="proactive-silent-start">{t('settings.proactive.silentHoursStart')}</label>
-          <input
+          <Input
             id="proactive-silent-start"
             className="proactive-preferences__input"
             type="text"
@@ -105,7 +107,7 @@ export function ProactivePreferencesTab() {
         </div>
         <div className="proactive-preferences__field">
           <label className="proactive-preferences__label" htmlFor="proactive-silent-end">{t('settings.proactive.silentHoursEnd')}</label>
-          <input
+          <Input
             id="proactive-silent-end"
             className="proactive-preferences__input"
             type="text"
@@ -120,14 +122,14 @@ export function ProactivePreferencesTab() {
         <label className="proactive-preferences__label" htmlFor="proactive-max-per-day">
           {t('settings.proactive.maxPerDay')}: <span className="proactive-preferences__range-value">{prefs.maxPerDay}</span>
         </label>
-        <input
+        <Slider
           id="proactive-max-per-day"
           className="proactive-preferences__range"
-          type="range"
           min={1}
           max={20}
-          value={prefs.maxPerDay}
-          onChange={(e) => save({ ...prefs, maxPerDay: Number(e.target.value) })}
+          value={[prefs.maxPerDay]}
+          onValueChange={([value]) => void save({ ...prefs, maxPerDay: value })}
+          aria-label={t('settings.proactive.maxPerDay')}
         />
       </div>
 
@@ -135,14 +137,14 @@ export function ProactivePreferencesTab() {
         <label className="proactive-preferences__label" htmlFor="proactive-default-snooze">
           {t('settings.proactive.defaultSnoozeDays')}: <span className="proactive-preferences__range-value">{prefs.defaultSnoozeDays}</span>
         </label>
-        <input
+        <Slider
           id="proactive-default-snooze"
           className="proactive-preferences__range"
-          type="range"
           min={1}
           max={30}
-          value={prefs.defaultSnoozeDays}
-          onChange={(e) => save({ ...prefs, defaultSnoozeDays: Number(e.target.value) })}
+          value={[prefs.defaultSnoozeDays]}
+          onValueChange={([value]) => void save({ ...prefs, defaultSnoozeDays: value })}
+          aria-label={t('settings.proactive.defaultSnoozeDays')}
         />
       </div>
 
@@ -150,14 +152,14 @@ export function ProactivePreferencesTab() {
         <label className="proactive-preferences__label" htmlFor="proactive-importance-floor">
           {t('settings.proactive.importanceFloor')}: <span className="proactive-preferences__range-value">{prefs.importanceFloor}</span>
         </label>
-        <input
+        <Slider
           id="proactive-importance-floor"
           className="proactive-preferences__range"
-          type="range"
           min={0}
           max={100}
-          value={prefs.importanceFloor}
-          onChange={(e) => save({ ...prefs, importanceFloor: Number(e.target.value) })}
+          value={[prefs.importanceFloor]}
+          onValueChange={([value]) => void save({ ...prefs, importanceFloor: value })}
+          aria-label={t('settings.proactive.importanceFloor')}
         />
       </div>
 
@@ -274,15 +276,15 @@ function renderThresholdSlider(
       <label className="proactive-preferences__label" htmlFor={id}>
         {label}: <span className="proactive-preferences__range-value">{format(value)}</span>
       </label>
-      <input
+      <Slider
         id={id}
         className="proactive-preferences__range"
-        type="range"
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        value={[value]}
+        onValueChange={([next]) => onChange(next)}
+        aria-label={label}
       />
     </div>
   )

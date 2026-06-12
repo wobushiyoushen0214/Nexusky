@@ -44,6 +44,11 @@
   outline-offset: 2px;
 }
 
+.ui-slider-thumb:focus-visible {
+  outline: 2px solid var(--ring, color-mix(in srgb, var(--accent) 52%, transparent));
+  outline-offset: 2px;
+}
+
 .ui-sr-only {
   position: absolute;
   width: 1px;
@@ -775,6 +780,62 @@
   transform: rotate(45deg);
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
+}
+
+.ui-slider {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 18px;
+  align-items: center;
+  touch-action: none;
+  user-select: none;
+}
+
+.ui-slider-track {
+  position: relative;
+  height: 4px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted, var(--bg-hover)) 82%, transparent);
+}
+
+.ui-slider-range {
+  position: absolute;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary, var(--accent));
+}
+
+.ui-slider-thumb {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary, var(--accent)) 44%, var(--border, var(--border-color)));
+  border-radius: 999px;
+  background: var(--background, var(--bg-primary));
+  box-shadow:
+    0 1px 3px color-mix(in srgb, var(--foreground, var(--text-primary)) 18%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--primary, var(--accent)) 10%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.ui-slider-thumb:hover {
+  border-color: var(--primary, var(--accent));
+  transform: scale(1.04);
+}
+
+.ui-slider[data-disabled] {
+  opacity: 0.48;
+}
+
+.ui-slider[data-disabled] .ui-slider-thumb {
+  cursor: not-allowed;
 }
 
 .ui-input,
