@@ -57,8 +57,8 @@
 .related-context-panel--side .related-context-card {
   margin: 0 0 3px;
   padding: 10px 11px;
-  border-bottom: 0;
-  border-radius: 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg, 9px);
   background: transparent;
 }
 
@@ -171,8 +171,8 @@
 
 .related-context-panel--page .related-context-card {
   padding: 14px 15px;
-  border-bottom: 0;
-  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-subtle)) 76%, transparent);
+  border-radius: var(--radius-xl, 14px);
   background: var(--related-context-section-quiet);
 }
 
@@ -491,11 +491,17 @@
 }
 
 .related-context-card {
+  display: block;
+  gap: 0;
   padding: 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 38%, transparent);
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, var(--border-subtle)) 38%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--card-foreground, var(--text-primary));
 }
 
-.related-context-card:last-child {
+.related-context-panel:not(.related-context-panel--page) .related-context-card:last-child {
   border-bottom: none;
 }
 
