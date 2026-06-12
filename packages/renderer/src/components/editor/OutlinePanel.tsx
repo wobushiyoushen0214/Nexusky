@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
+import { Button } from '../ui/button'
 
 interface TocItem {
   level: number
@@ -37,7 +38,10 @@ export function OutlinePanel() {
   return (
     <div className="file-tree-scroll" style={{ padding: '10px 8px', overflow: 'auto', height: '100%', background: 'transparent' }}>
       {items.map((item, i) => (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           key={i}
           onClick={() => window.dispatchEvent(new CustomEvent('editor-goto-heading', { detail: { index: item.index } }))}
           style={{
@@ -73,7 +77,7 @@ export function OutlinePanel() {
         >
           <span style={{ width: item.level <= 2 ? 5 : 3, height: item.level <= 2 ? 5 : 3, borderRadius: 999, background: item.level === 1 ? 'var(--accent)' : 'var(--border-default)', flexShrink: 0 }} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.text}</span>
-        </button>
+        </Button>
       ))}
     </div>
   )
