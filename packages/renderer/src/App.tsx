@@ -22,6 +22,7 @@ import { GraphGenerator } from './components/GraphGenerator'
 import { NotificationCenter } from './components/proactive/NotificationCenter'
 import { ProactiveToast } from './components/proactive/ProactiveToast'
 import { ToolResultPanel } from './components/tool-surface/ToolResultPanel'
+import { Button } from './components/ui/button'
 import { getErrorMessage } from './utils/errors'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED } from './utils/css-snippets'
 import { applyThemePackage, THEME_PACKAGES_UPDATED } from './utils/theme-packages'
@@ -531,8 +532,12 @@ export default function App() {
                 {rightPanelTitle}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => toggleRightPanel(rightPanel)}
+                  aria-label={t('common.close')}
                   style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
@@ -540,7 +545,7 @@ export default function App() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
-                </button>
+                </Button>
               </div>
             </div>
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
