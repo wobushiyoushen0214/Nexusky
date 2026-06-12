@@ -18,6 +18,8 @@ type WorkspaceLayout = {
   rightPanel: Panel
   sidebarCollapsed: boolean
 }
+const DEFAULT_MAIN_VIEW: MainView = 'overview'
+const DEFAULT_SIDEBAR_COLLAPSED = true
 
 const WORKSPACE_KEYS = {
   mainView: 'nexusky-workspace-main-view',
@@ -229,18 +231,6 @@ function normalizeMainView(value: string | null | undefined): MainView | null {
   return value && MAIN_VIEW_IDS.includes(value as MainView) ? value as MainView : null
 }
 
-function getInitialMainView(): MainView {
-  return normalizeMainView(safeGet(WORKSPACE_KEYS.mainView)) || 'overview'
-}
-
-function getInitialRightPanel(): Panel {
-  return normalizeRightPanel(safeGet(WORKSPACE_KEYS.rightPanel)) || 'none'
-}
-
-function getInitialSidebarCollapsed(): boolean {
-  return safeGet(WORKSPACE_KEYS.sidebarCollapsed) === 'true'
-}
-
 function getSavedWorkspaceLayouts(): Record<string, WorkspaceLayout> {
   return safeGetJSON<Record<string, WorkspaceLayout>>(WORKSPACE_LAYOUTS_KEY, {})
 }
@@ -257,17 +247,15 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scopedRightPanel = normalizeRightPanel(scoped?.rightPanel as string | undefined)
   const scopedMainView = normalizeMainView(scoped?.mainView)
   if (scoped && scopedMainView && scopedRightPanel && typeof scoped.sidebarCollapsed === 'boolean') {
-    if (!scoped.sidebarCollapsed && scopedMainView !== 'editor' && scopedMainView !== 'graph') {
-      return { ...scoped, mainView: 'editor', rightPanel: getAvailableRightPanel('editor', scopedRightPanel) }
-    }
-    return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel) }
+    const sidebarCollapsed = scopedMainView === 'editor' || scopedMainView === 'graph'
+      ? scoped.sidebarCollapsed
+      : true
+    return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel), sidebarCollapsed }
   }
-  const mainView = getInitialMainView()
-  const legacyOverviewMainView = safeGet(WORKSPACE_KEYS.mainView) === 'overview'
   return {
-    mainView: legacyOverviewMainView ? 'editor' : mainView,
-    rightPanel: getAvailableRightPanel(legacyOverviewMainView ? 'editor' : mainView, getInitialRightPanel()),
-    sidebarCollapsed: legacyOverviewMainView ? false : getInitialSidebarCollapsed(),
+    mainView: DEFAULT_MAIN_VIEW,
+    rightPanel: 'none',
+    sidebarCollapsed: DEFAULT_SIDEBAR_COLLAPSED,
   }
 }
 
@@ -480,9 +468,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     safeRemove('nexusky-right-panel-width')
     safeRemove(RIGHT_PANEL_WIDTHS_KEY)
     set({
-      mainView: 'editor',
+      mainView: DEFAULT_MAIN_VIEW,
       rightPanel: 'none',
-      sidebarCollapsed: false,
+      sidebarCollapsed: DEFAULT_SIDEBAR_COLLAPSED,
       sidebarWidth: 240,
       rightPanelWidth: 360,
       focusMode: false

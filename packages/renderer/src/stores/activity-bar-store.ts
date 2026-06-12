@@ -3,6 +3,7 @@ import { ACTIVITY_BAR_REGISTRY } from '../components/sidebar/activity-bar-regist
 import { safeGetJSON, safeSetJSON } from '../utils/storage'
 
 const STORAGE_KEY = 'nexusky-activity-bar'
+const PRIMARY_ITEM_ID = 'overview'
 
 interface ActivityBarState {
   visibleIds: string[]
@@ -18,17 +19,22 @@ function getDefaults(): string[] {
     .map((item) => item.id)
 }
 
+function normalizeVisibleIds(ids: string[]): string[] {
+  const validIds = new Set(ACTIVITY_BAR_REGISTRY.map((i) => i.id))
+  const unique = ids.filter((id, index) => validIds.has(id) && ids.indexOf(id) === index)
+  const missingDefaultIds = getDefaults().filter((id) => !unique.includes(id))
+  const next = [...unique, ...missingDefaultIds]
+  return [PRIMARY_ITEM_ID, ...next.filter((id) => id !== PRIMARY_ITEM_ID)]
+}
+
 function load(): string[] {
   const config = safeGetJSON<{ visibleIds?: string[] }>(STORAGE_KEY, {})
   if (!Array.isArray(config.visibleIds)) return getDefaults()
-  const validIds = new Set(ACTIVITY_BAR_REGISTRY.map((i) => i.id))
-  const visibleIds = config.visibleIds.filter((id) => validIds.has(id))
-  const missingDefaultIds = getDefaults().filter((id) => !visibleIds.includes(id))
-  return [...visibleIds, ...missingDefaultIds]
+  return normalizeVisibleIds(config.visibleIds)
 }
 
 function save(visibleIds: string[]) {
-  safeSetJSON(STORAGE_KEY, { visibleIds })
+  safeSetJSON(STORAGE_KEY, { visibleIds: normalizeVisibleIds(visibleIds) })
 }
 
 export const useActivityBarStore = create<ActivityBarState>((set, get) => ({
@@ -41,21 +47,25 @@ export const useActivityBarStore = create<ActivityBarState>((set, get) => ({
     const next = current.includes(id)
       ? current.filter((i) => i !== id)
       : [...current, id]
-    save(next)
-    set({ visibleIds: next })
+    const normalized = normalizeVisibleIds(next)
+    save(normalized)
+    set({ visibleIds: normalized })
   },
 
   moveItem: (id, direction) => {
     const current = [...get().visibleIds]
     const idx = current.indexOf(id)
     if (idx === -1) return
+    const item = ACTIVITY_BAR_REGISTRY.find((i) => i.id === id)
+    if (item?.pinned) return
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     if (swapIdx < 0 || swapIdx >= current.length) return
     const swapItem = ACTIVITY_BAR_REGISTRY.find((i) => i.id === current[swapIdx])
     if (swapItem?.pinned) return
     ;[current[idx], current[swapIdx]] = [current[swapIdx], current[idx]]
-    save(current)
-    set({ visibleIds: current })
+    const normalized = normalizeVisibleIds(current)
+    save(normalized)
+    set({ visibleIds: normalized })
   },
 
   resetToDefaults: () => {
