@@ -28,7 +28,7 @@ const WORKSPACE_KEYS = {
 }
 const WORKSPACE_LAYOUTS_KEY = 'nexusky-workspace-layouts'
 const WORKSPACE_DEFAULT_VERSION_KEY = 'nexusky-workspace-default-version'
-const WORKSPACE_DEFAULT_VERSION = 'overview-first-v6'
+const WORKSPACE_DEFAULT_VERSION = 'overview-first-v7'
 const SIDEBAR_WIDTHS_KEY = 'nexusky-sidebar-widths'
 const RIGHT_PANEL_WIDTHS_KEY = 'nexusky-right-panel-widths'
 
@@ -296,7 +296,10 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scopedRightPanel = normalizeRightPanel(scoped?.rightPanel as string | undefined)
   const scopedMainView = normalizeMainView(scoped?.mainView)
   if (scoped && scopedMainView && scopedRightPanel && typeof scoped.sidebarCollapsed === 'boolean') {
-    const sidebarCollapsed = scopedMainView === 'editor' || scopedMainView === 'graph'
+    // Editor is a transient working surface; startup should land on the overview
+    // unless the user has explicitly persisted another top-level section.
+    if (scopedMainView === 'editor') return getDefaultWorkspaceLayout()
+    const sidebarCollapsed = scopedMainView === 'graph'
       ? scoped.sidebarCollapsed
       : true
     return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel), sidebarCollapsed }
