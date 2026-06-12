@@ -58,6 +58,7 @@ Already added:
 - `SearchPanel` result rows now use shared `Button` while preserving the existing async search result selection style.
 - `Toast` notification close controls now use shared `Button` while keeping the lightweight local toast store and compact glass popover styling.
 - `VaultOverview` header refresh action now uses shared `Button` while leaving overview card/chart glass styling untouched.
+- `BasesView` toolbar actions, tag/sort filters, column picker actions, column checkboxes, and tag lens controls now use shared `Button`, `Select`, and `Checkbox`; inline table edit targets remain custom.
 - `globals.css` now exposes a shadcn-compatible token bridge on top of the existing Nexusky theme variables, including Tailwind v4 `@theme inline` color/radius mappings.
 - `components/ui/ui.css` now consumes shadcn public semantic tokens for shared component color, ring, border, panel background, and radius while preserving Nexusky glass blur/shadow variables.
 
@@ -144,7 +145,7 @@ These need design cleanup or affect many small controls.
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Button`, `Select`, `Switch` | Done for side-panel controls only. Graph canvas, pan/zoom, and node interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Button`, `Checkbox` | Done for action buttons and dry-run checkbox. Plan editing and execution views remain custom. |
-| Bases controls | `components/bases/BasesView.tsx` | `Button`, `ToggleGroup`, `DropdownMenu`, `Select` | Unblocked: `bases` is now a real `MainView` and renders `BasesView`. Controls can be migrated in a follow-up batch. |
+| Bases controls | `components/bases/BasesView.tsx` | `Button`, `Select`, `Checkbox` | Done for toolbar actions, tag/sort filters, column picker actions, column checkboxes, and tag lens controls. Inline table edit targets remain custom to preserve double-click editing behavior. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Button` | Do after Settings shell/Tabs so controls inherit a stable structure. |
 | Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Checkbox`, `Button` | Done for enable/per-kind options and debug/reset actions. Native time inputs and range sliders remain custom to preserve current save-on-change behavior. |
 

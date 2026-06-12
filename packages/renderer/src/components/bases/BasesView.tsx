@@ -6,12 +6,16 @@ import { useVaultStore } from '../../stores/vault-store'
 import { toast } from '../../stores/toast-store'
 import { updateMarkdownProperty } from '../../utils/frontmatter'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
+import { Button } from '../ui/button'
+import { Checkbox } from '../ui/checkbox'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 type SortKey = 'updatedAt' | 'title' | 'filePath'
 type EditState = { rowId: string; key: string; value: string; list: boolean } | null
 
 const PRIMARY_COLUMNS = ['tags', 'aliases', 'cssclasses']
+const ALL_TAGS_VALUE = '__all__'
 
 function getColumnsStorageKey(vaultPath: string): string {
   return `nexusky-bases-columns:${encodeURIComponent(vaultPath)}`
@@ -189,19 +193,25 @@ export function BasesView() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setShowGuide((value) => !value)}
             style={headerButtonStyle}
           >
             {t('bases.guide')}
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={loadRows}
             disabled={loading}
             style={{ ...headerButtonStyle, cursor: loading ? 'default' : 'pointer' }}
           >
             {loading ? t('bases.loading') : t('bases.refresh')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -212,18 +222,35 @@ export function BasesView() {
           placeholder={t('bases.searchPlaceholder')}
           style={controlStyle}
         />
-        <select value={selectedTag} onChange={(e) => setSelectedTag(e.target.value)} style={controlStyle}>
-          <option value="">{t('bases.allTags')}</option>
-          {allTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-        </select>
-        <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={controlStyle}>
-          <option value="updatedAt">{t('bases.sortUpdated')}</option>
-          <option value="title">{t('bases.sortTitle')}</option>
-          <option value="filePath">{t('bases.sortPath')}</option>
-        </select>
-        <button onClick={() => setColumnsOpen((value) => !value)} style={headerButtonStyle}>
+        <Select
+          value={selectedTag || ALL_TAGS_VALUE}
+          onValueChange={(value) => setSelectedTag(value === ALL_TAGS_VALUE ? '' : value)}
+        >
+          <SelectTrigger style={controlStyle}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={ALL_TAGS_VALUE}>{t('bases.allTags')}</SelectItem>
+              {allTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
+          <SelectTrigger style={controlStyle}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="updatedAt">{t('bases.sortUpdated')}</SelectItem>
+              <SelectItem value="title">{t('bases.sortTitle')}</SelectItem>
+              <SelectItem value="filePath">{t('bases.sortPath')}</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <Button type="button" variant="outline" size="sm" onClick={() => setColumnsOpen((value) => !value)} style={headerButtonStyle}>
           {t('bases.columns', { count: propertyKeys.length })}
-        </button>
+        </Button>
       </div>
 
       {columnsOpen && (
@@ -234,8 +261,8 @@ export function BasesView() {
               <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('bases.columnsHint')}</div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button onClick={() => saveSelectedColumns(allPropertyKeys)} style={miniButtonStyle}>{t('bases.showAllColumns')}</button>
-              <button onClick={() => saveSelectedColumns(allPropertyKeys.slice(0, 8))} style={miniButtonStyle}>{t('bases.resetColumns')}</button>
+              <Button type="button" variant="outline" size="xs" onClick={() => saveSelectedColumns(allPropertyKeys)} style={miniButtonStyle}>{t('bases.showAllColumns')}</Button>
+              <Button type="button" variant="outline" size="xs" onClick={() => saveSelectedColumns(allPropertyKeys.slice(0, 8))} style={miniButtonStyle}>{t('bases.resetColumns')}</Button>
             </div>
           </div>
           {allPropertyKeys.length === 0 ? (
@@ -244,7 +271,7 @@ export function BasesView() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
               {allPropertyKeys.map((key) => (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: selectedPropertyKeys.includes(key) ? 'var(--accent-muted)' : 'var(--bg-base)', color: selectedPropertyKeys.includes(key) ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedPropertyKeys.includes(key)} onChange={() => toggleColumn(key)} style={{ width: 13, height: 13, accentColor: 'var(--accent)', flexShrink: 0 }} />
+                  <Checkbox checked={selectedPropertyKeys.includes(key)} onCheckedChange={() => toggleColumn(key)} style={{ flexShrink: 0 }} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{key}</span>
                 </label>
               ))}
@@ -283,13 +310,13 @@ export function BasesView() {
               <div style={insightPanelStyle}>
                 <div style={sectionEyebrowStyle}>{t('bases.tagLens')}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-                  <button onClick={() => setSelectedTag('')} style={{ ...lensButtonStyle, background: selectedTag ? 'transparent' : 'var(--accent-muted)', color: selectedTag ? 'var(--text-secondary)' : 'var(--accent-text)' }}>
+                  <Button type="button" variant="ghost" size="xs" onClick={() => setSelectedTag('')} style={{ ...lensButtonStyle, background: selectedTag ? 'transparent' : 'var(--accent-muted)', color: selectedTag ? 'var(--text-secondary)' : 'var(--accent-text)' }}>
                     {t('bases.allTags')}
-                  </button>
+                  </Button>
                   {allTags.slice(0, 14).map((tag) => (
-                    <button key={tag} onClick={() => setSelectedTag(tag)} style={{ ...lensButtonStyle, background: selectedTag === tag ? 'var(--accent-muted)' : 'transparent', color: selectedTag === tag ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
+                    <Button key={tag} type="button" variant="ghost" size="xs" onClick={() => setSelectedTag(tag)} style={{ ...lensButtonStyle, background: selectedTag === tag ? 'var(--accent-muted)' : 'transparent', color: selectedTag === tag ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
                       {tag}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
