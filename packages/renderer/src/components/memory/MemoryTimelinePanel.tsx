@@ -9,6 +9,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Spinner } from '../ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -149,9 +150,14 @@ function MemoryTimelineItem({ card, locale, t, onExplain, onUpdate }: MemoryTime
 
 function MemorySourceChip({ children, title }: { children: ReactNode; title: string }) {
   return (
-    <span className="memory-card__source" title={title}>
-      {children}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="memory-card__source">
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{title}</TooltipContent>
+    </Tooltip>
   )
 }
 
