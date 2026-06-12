@@ -184,8 +184,9 @@
 }
 
 .proactive-drawer__empty {
-  padding: 28px 14px;
-  text-align: center;
+  min-height: 132px;
+  margin: 8px 14px;
+  padding: 18px 14px;
   font-size: 12px;
   color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
 }
@@ -407,8 +408,11 @@
   font-size: 11px;
 }
 
-.proactive-preferences__empty {
+.proactive-preferences__loading {
   padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--muted-foreground, var(--text-tertiary));
   font-size: 12px;
 }

@@ -44,19 +44,19 @@ Already added:
 - `AgentRunPanel` goal/description and plan edit fields now use shared `Textarea`/`Input`, action controls use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow layout remains custom.
 - `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
-- `TagsPanel` now uses shared `Input`, `Button`, `Badge`, and `ScrollArea`; inline tag chip/list styles were moved into token-based local CSS.
+- `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, and `Empty`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, and `ScrollArea` for citation lookup controls instead of custom absolute-positioned popovers and document listeners.
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching, shared `Slider` for tuning controls, and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
-- `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
+- `ProactivePreferences` now uses shared `Input`, `Slider`, `Checkbox`, `Button`, and `Spinner` controls, with the settings form/loading styling moved from inline objects into token-based proactive CSS.
 - `LongContextSettings` numeric fields, the Appearance custom accent text field, and the Keys key-capture field now use shared `Input` while preserving the existing save flow and settings layout.
 - `CloudSyncSettings`, `PluginsSettings`, `ProactiveSettings`, and `LongContextSettings` loading states now use shared `Spinner` with compact settings-local spacing.
 - `CloudSyncSettings` sync error state now uses shared `Alert` instead of custom error markup.
 - `PluginsSettings` and `KeysSettings` empty states now use shared `Empty` primitives instead of custom empty-state markup.
 - `WelcomeScreen` now uses shared `Input` for vault-name creation and shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
 - `TimelineView` now uses shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
-- `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
+- `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; drawer empty state uses shared `Empty`; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell, shared `Button` for close, sample selection, fix, and done actions, and shared `Spinner` for the scan state.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, and shared `Spinner` for in-progress plan rows, with hover/loading styling moved into local token-based CSS.
 - `ChatMessages` now uses shared `Button` for empty-state prompt hints, with hover styling moved into local token-based CSS.
@@ -163,7 +163,7 @@ These need design cleanup or affect many small controls.
 
 | Area | Current file | Recommended primitive | Notes |
 | --- | --- | --- | --- |
-| Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu`, `Button` | Done for drawer shell, snooze menu, bell, bulk actions, close, open, snooze, and dismiss controls. |
+| Notification center | `components/proactive/NotificationCenter.tsx` | `Sheet`, `DropdownMenu`, `Button`, `Empty` | Done for drawer shell, snooze menu, bell, bulk actions, close, open, snooze, dismiss controls, and empty state. |
 | Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge`, `Skeleton`, `Alert` | Done for pack summary/tier tabs, controls, loading placeholders, and error alert. Native list scrolling remains to preserve side/page layout sizing. |
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
 | Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Slider`, `Button` | Done for pack tier switching, tuning sliders, and tuning actions. |
@@ -174,7 +174,7 @@ These need design cleanup or affect many small controls.
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Input`, `Textarea`, `Button`, `Checkbox` | Done for goal/description fields, plan edit fields, action buttons, and dry-run checkbox. Execution view layout remains custom. |
 | Bases controls | `components/bases/BasesView.tsx` | `Input`, `Button`, `Select`, `Checkbox` | Done for toolbar search, inline property edit fields, toolbar actions, tag/sort filters, column picker actions, column checkboxes, tag lens controls, note title actions, and inline double-click edit targets. |
 | Settings page controls | `components/settings/pages/*` | `Switch`, `Checkbox`, `RadioGroup`, `Select`, `Input`, `Button`, `Spinner`, `Empty`, `Alert` | Done for core switch/select/button controls, `LongContextSettings` numeric inputs, the Appearance custom accent text field, the Keys key-capture field, settings page loading states, plugin/keybinding empty states, and CloudSync sync errors. Remaining native inputs are specialized native color picker only. |
-| Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button` | Done for silent-hour fields, threshold sliders, enable/per-kind options, and debug/reset actions while preserving save-on-change behavior. |
+| Proactive preferences | `components/proactive/ProactivePreferences.tsx` | `Input`, `Slider`, `Checkbox`, `Button`, `Spinner` | Done for silent-hour fields, threshold sliders, enable/per-kind options, loading state, and debug/reset actions while preserving save-on-change behavior. |
 
 ### P3: Optional / Polish
 
@@ -186,7 +186,7 @@ These are lower impact or more visual than behavioral.
 | Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Button migration done for skip and next-step actions. Cards/badges/progress remain optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/empty styles into local token-based CSS. |
-| Tags panel | `Input`, `Button`, `Badge`, `ScrollArea` | Done. Current tag input, tags, tag cloud, and filtered note list now use shared components with local token-based CSS. |
+| Tags panel | `Input`, `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Current tag input, tags, tag cloud, empty state, and filtered note list now use shared components with local token-based CSS. |
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
 | Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
@@ -256,7 +256,7 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
 
 10. `empty.tsx` - done
    - Provides shadcn-compatible empty state composition.
-   - Used by settings plugin/keybinding, memory timeline, and history panel empty states.
+   - Used by settings plugin/keybinding, memory timeline, history panel, tags panel, and notification drawer empty states.
 
 11. `alert.tsx` - done
    - Provides shadcn-compatible feedback/error state composition.

@@ -5,6 +5,7 @@ import { parseNoteProperties, updateFrontmatterProperty } from '../utils/frontma
 import { cn } from '../lib/utils'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
 import './tags-panel.css'
@@ -147,7 +148,11 @@ export function TagsPanel() {
       <div className="tags-panel__all">
         <PanelHeading className="tags-panel__all-heading">所有标签</PanelHeading>
         {allTags.length === 0 ? (
-          <div className="tags-panel__empty">暂无标签</div>
+          <Empty className="tags-panel__empty">
+            <EmptyHeader>
+              <EmptyTitle>暂无标签</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <>
             <ScrollArea className={cn('tags-panel__tag-scroll', selectedTag && 'is-filtered')}>

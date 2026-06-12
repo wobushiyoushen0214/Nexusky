@@ -6,6 +6,7 @@ import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
 import { Input } from '../ui/input'
 import { Slider } from '../ui/slider'
+import { Spinner } from '../ui/spinner'
 import './proactive.css'
 
 const KIND_ORDER: ProactiveSuggestionKind[] = [
@@ -49,7 +50,12 @@ export function ProactivePreferencesTab() {
   }
 
   if (!prefs) {
-    return <div className="proactive-preferences__empty">...</div>
+    return (
+      <div className="proactive-preferences__loading">
+        <Spinner aria-hidden="true" />
+        <span>{t('settings.loading')}</span>
+      </div>
+    )
   }
 
   return (

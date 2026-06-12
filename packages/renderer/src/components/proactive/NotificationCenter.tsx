@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 import { Button } from '../ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 import type { ProactiveSuggestion } from '@shared/types/ipc'
 import './proactive.css'
@@ -146,7 +147,11 @@ export function NotificationCenter() {
           </div>
           <div className="proactive-drawer__list">
             {suggestions.length === 0 ? (
-              <div className="proactive-drawer__empty">{t('proactive.empty')}</div>
+              <Empty className="proactive-drawer__empty">
+                <EmptyHeader>
+                  <EmptyTitle>{t('proactive.empty')}</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
             ) : (
               suggestions.map((suggestion) => (
                 <SuggestionItem
