@@ -11,6 +11,7 @@ import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../u
 import { Button } from '../ui/button'
 import { ScrollArea } from '../ui/scroll-area'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import './tool-result-panel.css'
 
 interface ToolSurfaceResultDetail {
@@ -75,19 +76,24 @@ export function ToolResultPanel() {
             >
               {t('toolSurface.copy')}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="tool-result-panel__btn tool-result-panel__btn--icon"
-              onClick={() => setResult(null)}
-              aria-label={t('common.close')}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="tool-result-panel__btn tool-result-panel__btn--icon"
+                  onClick={() => setResult(null)}
+                  aria-label={t('common.close')}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('common.close')}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
         <ScrollArea className="tool-result-panel__body">
@@ -102,25 +108,28 @@ export function ToolResultPanel() {
                   {t('toolSurface.sources')}
                 </div>
                 {result.sources.map((source, idx) => (
-                  <Button
-                    key={`${source.filePath}-${idx}`}
-                    type="button"
-                    variant="ghost"
-                    className="tool-result-panel__source"
-                    onClick={() => {
-                      const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
-                      if (!fullPath) return
-                      const target = buildChatSourceNavigationTarget(source)
-                      setMainView('editor')
-                      const editorStore = useEditorStore.getState()
-                      if (target) void editorStore.openFileAt(fullPath, target)
-                      else void editorStore.openFile(fullPath)
-                    }}
-                    title={source.filePath}
-                  >
-                    <span className="tool-result-panel__source-title">{source.title}</span>
-                    <span className="tool-result-panel__source-path">{source.filePath}</span>
-                  </Button>
+                  <Tooltip key={`${source.filePath}-${idx}`}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="tool-result-panel__source"
+                        onClick={() => {
+                          const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
+                          if (!fullPath) return
+                          const target = buildChatSourceNavigationTarget(source)
+                          setMainView('editor')
+                          const editorStore = useEditorStore.getState()
+                          if (target) void editorStore.openFileAt(fullPath, target)
+                          else void editorStore.openFile(fullPath)
+                        }}
+                      >
+                        <span className="tool-result-panel__source-title">{source.title}</span>
+                        <span className="tool-result-panel__source-path">{source.filePath}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{source.filePath}</TooltipContent>
+                  </Tooltip>
                 ))}
               </div>
             )}

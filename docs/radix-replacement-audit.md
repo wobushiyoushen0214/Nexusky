@@ -42,7 +42,7 @@ Already added:
 - `GraphView` zoom toolbar actions now use shared `Button`, and the no-data state uses shared `Empty`, while preserving the graph canvas node buttons, pan/zoom math, drag behavior, and raster renderer as custom interaction layers.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` goal/description and plan edit fields now use shared `Textarea`/`Input`, action controls use shared `Button`, dry-run option uses shared `Checkbox`, plan count and plan/execute step labels use shared `Badge`, and empty states use shared `Empty`; the existing agent workflow layout remains custom.
-- `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
+- `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, shared `Tooltip` for close/source hints, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions, shared `Badge` for the history count, `ScrollArea` for history and preview scrolling, and `Empty` for no-file/no-history states.
 - `TagsPanel` now uses shared `Input`, `Button`, `Badge`, `ScrollArea`, `Tooltip`, and `Empty`; current tags, tag counts, tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, status/kicker chips use shared `Badge`, and the no-issue driver state uses shared `Empty`, with styling aligned to shared tokens.
@@ -187,7 +187,7 @@ These are lower impact or more visual than behavioral.
 
 | Area | Candidate primitive | Notes |
 | --- | --- | --- |
-| Tool result panel | `Sheet`, `Button`, `ScrollArea` | Done with `modal={false}` and no overlay. It keeps the right-bottom non-modal result drawer behavior and prevents outside interactions from dismissing it. |
+| Tool result panel | `Sheet`, `Button`, `Tooltip`, `ScrollArea` | Done with `modal={false}` and no overlay. It keeps the right-bottom non-modal result drawer behavior, close/source tooltips, and prevents outside interactions from dismissing it. |
 | Vault health actions | `Button`, `Badge`, `Empty`, `Card`, `Progress` | Button migration done for skip and next-step actions. Badge migration done for scan steps, hero signals, and next-step kickers. Empty migration done for no-issue driver state. Cards/progress remain optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Kept the lightweight side-panel behavior and moved inline/count/empty styles into local token-based CSS. |
