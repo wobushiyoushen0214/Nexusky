@@ -8,8 +8,10 @@ import { updateMarkdownProperty } from '../../utils/frontmatter'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { Spinner } from '../ui/spinner'
 import type { PropertyTableRow, PropertyValue } from '@shared/types/ipc'
 
 type SortKey = 'updatedAt' | 'title' | 'filePath'
@@ -292,10 +294,13 @@ export function BasesView() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 18px 34px' }}>
         {filteredRows.length === 0 ? (
-          <div style={{ minHeight: 260, display: 'grid', placeItems: 'center', color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center', lineHeight: 1.7 }}>
-            <div>{loading ? t('bases.loading') : t('bases.empty')}</div>
-            {!loading && <div style={{ marginTop: 6, fontSize: 12 }}>{t('bases.emptyHint')}</div>}
-          </div>
+          <Empty style={{ minHeight: 260, maxWidth: 520, margin: '0 auto' }}>
+            {loading && <Spinner aria-hidden="true" />}
+            <EmptyHeader>
+              <EmptyTitle>{loading ? t('bases.loading') : t('bases.empty')}</EmptyTitle>
+              {!loading && <EmptyDescription>{t('bases.emptyHint')}</EmptyDescription>}
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(210px, 260px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
             <aside style={{ position: 'sticky', top: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
