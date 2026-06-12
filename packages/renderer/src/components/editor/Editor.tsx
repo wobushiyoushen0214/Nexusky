@@ -30,6 +30,7 @@ import { useKeyBindingStore } from '../../stores/keybinding-store'
 import { EditorToolbar } from './EditorToolbar'
 import { AIWritingMenu } from './AIWritingMenu'
 import { ContextMenu } from '../ContextMenu'
+import { Button } from '../ui/button'
 import { buildEditorToolMenuItems } from '../tool-surface/editor-tool-menu'
 import { useSyncStore } from '../../stores/sync-store'
 import { getErrorMessage } from '../../utils/errors'
@@ -708,18 +709,23 @@ export function Editor() {
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Ctrl+O 快速切换</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => useUIStore.getState().setQuickSwitcherOpen(true)}
               style={{ height: 30, padding: '0 11px', borderRadius: 8, border: 0, background: 'var(--control-bg)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
             >
               快速切换
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              size="sm"
               onClick={() => window.dispatchEvent(new CustomEvent('create-new-note'))}
               style={{ height: 30, padding: '0 11px', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--accent-muted) 82%, var(--control-bg))', color: 'var(--accent-text)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
             >
               新建笔记
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -782,9 +788,9 @@ export function Editor() {
             <div className="glass-divider-left" style={{ width: '50%', boxShadow: 'var(--glass-divider-shadow-left)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div className="glass-divider-bottom" style={{ height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{splitPath.split(/[\\/]/).pop()?.replace(/\.md$/, '')}</span>
-              <button onClick={closeSplit} style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
+              <Button type="button" variant="ghost" size="icon" onClick={closeSplit} style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 4 }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
+              </Button>
             </div>
             <div className="editor-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', fontSize: 15, lineHeight: 1.7, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
               {splitContent}
@@ -849,9 +855,12 @@ function SyncIndicator() {
   }
 
   return (
-    <button
+    <Button
+      type="button"
+      variant="ghost"
+      size="xs"
       onClick={handleClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', cursor: 'pointer', color: colors[status], padding: 0, fontSize: 11 }}
+      style={{ display: 'flex', alignItems: 'center', gap: 4, height: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: colors[status], padding: 0, fontSize: 11 }}
       title={titles[status]}
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: status === 'syncing' ? 'spin 1s linear infinite' : 'none' }}>
@@ -859,7 +868,7 @@ function SyncIndicator() {
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
       </svg>
       {status === 'syncing' && <span>同步中</span>}
-    </button>
+    </Button>
   )
 }
 
