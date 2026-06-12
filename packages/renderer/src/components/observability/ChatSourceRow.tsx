@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { forwardRef, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChatSource, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
@@ -7,11 +7,12 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
-import { Button } from '../ui/button'
+import { Button, type ButtonProps } from '../ui/button'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ScrollArea } from '../ui/scroll-area'
 import { Spinner } from '../ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { getChatSourceProvenance } from './chat-source-provenance'
 import './chat-source-row.css'
 
@@ -19,6 +20,14 @@ interface ChatSourceRowProps {
   index: number
   source: ChatSource
 }
+
+const PopoverTooltipButton = forwardRef<HTMLButtonElement, ButtonProps>(function PopoverTooltipButton(props, ref) {
+  return (
+    <TooltipTrigger asChild>
+      <Button ref={ref} {...props} />
+    </TooltipTrigger>
+  )
+})
 
 export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
   const { t } = useTranslation()
@@ -62,41 +71,51 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
     if (next && !result && !loading) void fetchLookup()
   }, [result, loading, fetchLookup])
 
+  const openSourceLabel = t('citationLookup.openSource')
+  const whyLabel = t('citationLookup.why')
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <div className="chat-source-row">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={openSourceFile}
-          disabled={!source.filePath}
-          title={t('citationLookup.openSource')}
-          className="chat-source-row__source"
-        >
-          <span className="chat-source-row__title">
-            [{index + 1}] {source.title}
-          </span>
-          {(provenance.originLabelKey || provenance.explanation) && (
-            <span className="chat-source-row__meta">
-              {provenance.originLabelKey ? t(provenance.originLabelKey) : t('citationLookup.origin.source')}
-              {source.relationType ? ` · ${getRelationTypeLabel(source.relationType, t)}` : ''}
-              {source.memoryTier ? ` · ${t(`citationLookup.memoryTier.${source.memoryTier}`)}` : ''}
-              {provenance.explanation ? `: ${provenance.explanation}` : ''}
-            </span>
-          )}
-        </Button>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            title={t('citationLookup.why')}
-            aria-label={t('citationLookup.why')}
-            className="chat-source-row__why"
-          >
-            ?
-          </Button>
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={openSourceFile}
+              disabled={!source.filePath}
+              aria-label={openSourceLabel}
+              className="chat-source-row__source"
+            >
+              <span className="chat-source-row__title">
+                [{index + 1}] {source.title}
+              </span>
+              {(provenance.originLabelKey || provenance.explanation) && (
+                <span className="chat-source-row__meta">
+                  {provenance.originLabelKey ? t(provenance.originLabelKey) : t('citationLookup.origin.source')}
+                  {source.relationType ? ` · ${getRelationTypeLabel(source.relationType, t)}` : ''}
+                  {source.memoryTier ? ` · ${t(`citationLookup.memoryTier.${source.memoryTier}`)}` : ''}
+                  {provenance.explanation ? `: ${provenance.explanation}` : ''}
+                </span>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{openSourceLabel}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <PopoverTrigger asChild>
+            <PopoverTooltipButton
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={whyLabel}
+              className="chat-source-row__why"
+            >
+              ?
+            </PopoverTooltipButton>
+          </PopoverTrigger>
+          <TooltipContent>{whyLabel}</TooltipContent>
+        </Tooltip>
       </div>
       <PopoverContent align="start" side="bottom" className="chat-source-row__popover">
         <ScrollArea className="chat-source-row__popover-scroll">
