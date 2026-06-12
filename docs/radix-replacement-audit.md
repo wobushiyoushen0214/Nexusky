@@ -41,7 +41,7 @@ Already added:
 - `GraphPanel` side controls now use shared `Button`, `Select`, and `Switch` wrappers for panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` action controls now use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow/editor layout remains custom.
-- `ToolResultPanel` now uses shared `Button` for copy/close/source actions and `ScrollArea` for the result body while keeping the non-modal result drawer behavior.
+- `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions and `ScrollArea` for history and preview scrolling.
 - `TagsPanel` now uses shared `Button`, `Badge`, and `ScrollArea`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
@@ -154,7 +154,7 @@ These are lower impact or more visual than behavioral.
 
 | Area | Candidate primitive | Notes |
 | --- | --- | --- |
-| Tool result panel | `Button`, `ScrollArea`; optional `Dialog` or `Sheet` only if behavior changes | Button and internal scroll migration done. It remains a non-modal result drawer, so do not force Dialog semantics unless product behavior changes. |
+| Tool result panel | `Sheet`, `Button`, `ScrollArea` | Done with `modal={false}` and no overlay. It keeps the right-bottom non-modal result drawer behavior and prevents outside interactions from dismissing it. |
 | Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Button migration done for skip and next-step actions. Cards/badges/progress remain optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `ScrollArea` | Done. Kept the lightweight side-panel behavior and moved inline styles into local token-based CSS. |

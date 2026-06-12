@@ -10,6 +10,7 @@ import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { Button } from '../ui/button'
 import { ScrollArea } from '../ui/scroll-area'
+import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 import './tool-result-panel.css'
 
 interface ToolSurfaceResultDetail {
@@ -47,74 +48,85 @@ export function ToolResultPanel() {
   const labelText = t(result.labelKey, { defaultValue: result.toolName })
 
   return (
-    <div className="tool-result-panel" role="dialog" aria-label={labelText}>
-      <div className="tool-result-panel__header">
-        <div className="tool-result-panel__title">{labelText}</div>
-        <div className="tool-result-panel__actions">
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            className="tool-result-panel__btn"
-            disabled={copying}
-            onClick={async () => {
-              setCopying(true)
-              try { await navigator.clipboard.writeText(result.content) } finally { setCopying(false) }
-            }}
-          >
-            {t('toolSurface.copy')}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="tool-result-panel__btn tool-result-panel__btn--icon"
-            onClick={() => setResult(null)}
-            aria-label={t('common.close')}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </Button>
+    <Sheet open modal={false} onOpenChange={(open) => { if (!open) setResult(null) }}>
+      <SheetContent
+        side="right"
+        className="tool-result-panel"
+        showOverlay={false}
+        showCloseButton={false}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <SheetTitle className="ui-sr-only">{labelText}</SheetTitle>
+        <div className="tool-result-panel__header">
+          <div className="tool-result-panel__title">{labelText}</div>
+          <div className="tool-result-panel__actions">
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              className="tool-result-panel__btn"
+              disabled={copying}
+              onClick={async () => {
+                setCopying(true)
+                try { await navigator.clipboard.writeText(result.content) } finally { setCopying(false) }
+              }}
+            >
+              {t('toolSurface.copy')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="tool-result-panel__btn tool-result-panel__btn--icon"
+              onClick={() => setResult(null)}
+              aria-label={t('common.close')}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </Button>
+          </div>
         </div>
-      </div>
-      <ScrollArea className="tool-result-panel__body">
-        <div className="tool-result-panel__body-content">
-          <div
-            className="tool-result-panel__markdown"
-            dangerouslySetInnerHTML={{ __html: rendered }}
-          />
-          {result.sources.length > 0 && (
-            <div className="tool-result-panel__sources">
-              <div className="tool-result-panel__sources-title">
-                {t('toolSurface.sources')}
+        <ScrollArea className="tool-result-panel__body">
+          <div className="tool-result-panel__body-content">
+            <div
+              className="tool-result-panel__markdown"
+              dangerouslySetInnerHTML={{ __html: rendered }}
+            />
+            {result.sources.length > 0 && (
+              <div className="tool-result-panel__sources">
+                <div className="tool-result-panel__sources-title">
+                  {t('toolSurface.sources')}
+                </div>
+                {result.sources.map((source, idx) => (
+                  <Button
+                    key={`${source.filePath}-${idx}`}
+                    type="button"
+                    variant="ghost"
+                    className="tool-result-panel__source"
+                    onClick={() => {
+                      const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
+                      if (!fullPath) return
+                      const target = buildChatSourceNavigationTarget(source)
+                      setMainView('editor')
+                      const editorStore = useEditorStore.getState()
+                      if (target) void editorStore.openFileAt(fullPath, target)
+                      else void editorStore.openFile(fullPath)
+                    }}
+                    title={source.filePath}
+                  >
+                    <span className="tool-result-panel__source-title">{source.title}</span>
+                    <span className="tool-result-panel__source-path">{source.filePath}</span>
+                  </Button>
+                ))}
               </div>
-              {result.sources.map((source, idx) => (
-                <Button
-                  key={`${source.filePath}-${idx}`}
-                  type="button"
-                  variant="ghost"
-                  className="tool-result-panel__source"
-                  onClick={() => {
-                    const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
-                    if (!fullPath) return
-                    const target = buildChatSourceNavigationTarget(source)
-                    setMainView('editor')
-                    const editorStore = useEditorStore.getState()
-                    if (target) void editorStore.openFileAt(fullPath, target)
-                    else void editorStore.openFile(fullPath)
-                  }}
-                  title={source.filePath}
-                >
-                  <span className="tool-result-panel__source-title">{source.title}</span>
-                  <span className="tool-result-panel__source-path">{source.filePath}</span>
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
+            )}
+          </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
   )
 }

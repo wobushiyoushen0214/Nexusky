@@ -18,6 +18,18 @@
   animation: tool-result-slide-up 200ms ease-out;
 }
 
+.ui-sheet-content.tool-result-panel {
+  top: auto;
+  left: auto;
+  bottom: 20px;
+  right: 20px;
+  width: 480px;
+  height: auto;
+  max-width: calc(100vw - 40px);
+  max-height: 60vh;
+  gap: 0;
+}
+
 @keyframes tool-result-slide-up {
   from {
     opacity: 0;
