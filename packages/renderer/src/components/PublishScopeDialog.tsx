@@ -5,6 +5,7 @@ import { toast } from '../stores/toast-store'
 import { getErrorMessage } from '../utils/errors'
 import { ConfirmModal } from './ConfirmModal'
 import { Button } from './ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
 import {
   Dialog,
@@ -14,6 +15,7 @@ import {
   DialogTitle,
 } from './ui/dialog'
 import { ScrollArea } from './ui/scroll-area'
+import { Spinner } from './ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
 
@@ -297,10 +299,27 @@ export function summarizePublishPreview(preview: PublishPreviewResult | null): {
 function PublishPreviewPanel({ preview, loading, hasIssues }: { preview: PublishPreviewResult | null; loading: boolean; hasIssues: boolean }) {
   const { t } = useTranslation()
   if (loading) {
-    return <div style={previewPanelStyle}><div style={emptyPreviewStyle}>{t('commandPalette.publishScope.previewLoading')}</div></div>
+    return (
+      <div style={previewPanelStyle}>
+        <Empty style={emptyPreviewStyle}>
+          <Spinner aria-hidden="true" />
+          <EmptyHeader>
+            <EmptyTitle>{t('commandPalette.publishScope.previewLoading')}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      </div>
+    )
   }
   if (!preview) {
-    return <div style={previewPanelStyle}><div style={emptyPreviewStyle}>{t('commandPalette.publishScope.previewEmpty')}</div></div>
+    return (
+      <div style={previewPanelStyle}>
+        <Empty style={emptyPreviewStyle}>
+          <EmptyHeader>
+            <EmptyTitle>{t('commandPalette.publishScope.previewEmpty')}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      </div>
+    )
   }
 
   const summary = summarizePublishPreview(preview)
