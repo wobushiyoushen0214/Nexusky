@@ -4,6 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { VirtualFileTree } from './VirtualFileTree'
 import { ContextMenu } from '../ContextMenu'
+import { Button } from '../ui/button'
 import { safeGet, safeSet } from '../../utils/storage'
 import type { FileEntry } from '@shared/types/ipc'
 
@@ -114,7 +115,10 @@ export function Sidebar({ width = 240 }: { width?: number }) {
     <aside className="animate-slide-in-left" style={{ width, height: '100%', minHeight: 0, background: 'transparent', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ height: 40, padding: '0 10px 0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'transparent' }}>
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           ref={vaultMenuButtonRef}
           onClick={() => setVaultMenu(!vaultMenu)}
           style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 0, cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 9 }}
@@ -126,9 +130,12 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
             <polyline points="6 9 12 15 18 9" />
           </svg>
-        </button>
+        </Button>
         <div style={{ display: 'flex', gap: 2 }}>
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onMouseDown={(e) => {
               e.preventDefault()
               if (isCreating && createType === 'file') { setIsCreating(false); setNewFileName('') }
@@ -142,8 +149,11 @@ export function Sidebar({ width = 240 }: { width?: number }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onMouseDown={(e) => {
               e.preventDefault()
               if (isCreating && createType === 'folder') { setIsCreating(false); setNewFileName('') }
@@ -157,7 +167,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -172,7 +182,9 @@ export function Sidebar({ width = 240 }: { width?: number }) {
               <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 500 }}>笔记空间</span>
             </div>
             {recentVaults.filter((p) => p !== vaultPath).map((path) => (
-              <button
+              <Button
+                type="button"
+                variant="ghost"
                 key={path}
                 onClick={async () => {
                   setVaultMenu(false)
@@ -181,7 +193,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                   await refreshFiles()
                   await indexVault()
                 }}
-                style={{ width: '100%', height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
+                style={{ width: '100%', height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8, fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
@@ -192,15 +204,17 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                   <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{path.split(/[\\/]/).pop()}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{path}</div>
                 </div>
-              </button>
+              </Button>
             ))}
             {recentVaults.filter((p) => p !== vaultPath).length === 0 && (
               <div style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>暂无其他笔记空间</div>
             )}
             <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--border-subtle) 44%, transparent) 18%, color-mix(in srgb, var(--glass-highlight) 62%, transparent) 50%, color-mix(in srgb, var(--border-subtle) 34%, transparent) 82%, transparent)', margin: '4px 8px' }} />
-            <button
+            <Button
+              type="button"
+              variant="ghost"
               onClick={() => { setVaultMenu(false); selectVault() }}
-              style={{ width: '100%', height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
+              style={{ width: '100%', height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8, fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
@@ -209,7 +223,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                 <line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
               </svg>
               打开其他文件夹...
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -259,7 +273,10 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           onFocus={(e) => e.currentTarget.style.background = 'var(--control-hover)'}
           onBlur={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--control-bg) 82%, transparent)'}
         />
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => {
             const next = sortBy === 'name' ? 'mtime' : 'name'
             setSortBy(next)
@@ -275,8 +292,11 @@ export function Sidebar({ width = 240 }: { width?: number }) {
               <><circle cx="12" cy="12" r="1" /><polyline points="12 6 12 2" /><polyline points="12 22 12 18" /><path d="M5 12H2" /><path d="M22 12h-3" /></>
             )}
           </svg>
-        </button>
-        <button
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => { setDefaultExpanded(false); setTreeExpansionVersion((version) => version + 1) }}
           style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
           title="折叠全部"
@@ -284,8 +304,11 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 12h16" /><path d="M12 2v6" /><path d="M12 16v6" /><path d="M8 6l4 4 4-4" /><path d="M8 18l4-4 4 4" />
           </svg>
-        </button>
-        <button
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => { setDefaultExpanded(true); setTreeExpansionVersion((version) => version + 1) }}
           style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 0, background: 'color-mix(in srgb, var(--control-bg) 82%, transparent)', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0, boxShadow: 'none' }}
           title="展开全部"
@@ -293,7 +316,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 12h16" /><path d="M12 4v4" /><path d="M12 16v4" /><path d="M8 8l4-4 4 4" /><path d="M8 16l4 4 4-4" />
           </svg>
-        </button>
+        </Button>
       </div>
 
       {/* Favorites */}
@@ -303,12 +326,14 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           {favorites.map((fav) => {
             const name = fav.split(/[\\/]/).pop()?.replace(/\.md$/, '') || fav
             return (
-              <button
+              <Button
+                type="button"
+                variant="ghost"
                 key={fav}
                 onClick={() => openFile(fav)}
                 style={{
                   width: '100%', height: 26, paddingLeft: 8, paddingRight: 8,
-                  display: 'flex', alignItems: 'center', gap: 6, borderRadius: 5,
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, borderRadius: 5,
                   border: 'none', background: 'transparent', cursor: 'pointer',
                   fontSize: 12, color: 'var(--text-secondary)', textAlign: 'left',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -318,7 +343,7 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -341,18 +366,23 @@ export function Sidebar({ width = 240 }: { width?: number }) {
               <div style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'break-word' }}>{fileError}</div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
                 onClick={() => refreshFiles()}
                 style={{ height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
               >
                 重试
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                size="xs"
                 onClick={() => selectVault()}
                 style={{ height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 12, cursor: 'pointer' }}
               >
                 重新选择
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
