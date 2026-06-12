@@ -50,7 +50,7 @@ Already added:
 - `LongContextDebugPanel` now uses shared `Tabs` for pack tier switching and shared `Button` for tuning actions, with local observability styles mapped to shadcn semantic tokens.
 - `ProactivePreferences` now uses shared `Checkbox` and `Button` controls, with the settings form styling moved from inline objects into token-based proactive CSS.
 - `WelcomeScreen` now uses shared `Button` for demo, open/create, recent vault, and sample vault actions while preserving its existing entry-page styling.
-- `TimelineView` now uses shared `ToggleGroup` for updated/created mode switching and shared `Button` for refresh while leaving timeline row layout custom.
+- `TimelineView` now uses shared `ToggleGroup` for updated/created mode switching and shared `Button` for refresh and row actions while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell and shared `Button` for close, sample selection, fix, and done actions.
 - `MessageBubble` now uses shared `Button` for assistant copy, continue, and regenerate actions, with hover styling moved into local token-based CSS.
@@ -162,7 +162,7 @@ These are lower impact or more visual than behavioral.
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
 | Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
 | Welcome screen | `Button` | Done for demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
-| Timeline view controls | `ToggleGroup`, `Button` | Done for mode switching and refresh. Timeline row buttons remain custom because they carry the grid and marker layout. |
+| Timeline view controls | `ToggleGroup`, `Button` | Done for mode switching, refresh, and row actions. Timeline rows still keep custom grid and marker layout through local styles. |
 | Demo flow | `Dialog`, `Button`, `Progress` | Dialog/Button migration done for modal shell, close, sample selection, fix, and done actions. Spinner/progress remains custom. |
 | Message bubble actions | `Button` | Done for assistant copy, continue, and regenerate controls. Message body layout remains inline because it is role/content dependent. |
 | Chat message prompt hints | `Button` | Done for empty-state prompt hint actions. Streaming message layout remains custom. |

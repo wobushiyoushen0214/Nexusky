@@ -182,10 +182,12 @@ export function TimelineView() {
                     {items.map((row, index) => {
                       const tags = getTextValues(row.properties.tags).slice(0, 3)
                       return (
-                        <button
+                        <Button
                           key={row.id}
+                          type="button"
+                          variant="ghost"
                           onClick={() => openRow(row)}
-                          style={{ position: 'relative', width: '100%', minHeight: 58, marginBottom: index === items.length - 1 ? 0 : 10, display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr) auto', alignItems: 'center', gap: 14, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', padding: '8px 10px' }}
+                          style={{ position: 'relative', width: '100%', height: 'auto', minHeight: 58, marginBottom: index === items.length - 1 ? 0 : 10, display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr) auto', alignItems: 'center', justifyContent: 'stretch', gap: 14, border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', padding: '8px 10px' }}
                         >
                           <span style={{ position: 'absolute', left: -20, top: 25, width: 11, height: 11, borderRadius: 999, background: index === 0 ? 'var(--accent)' : 'var(--bg-elevated)', border: '1px solid var(--border-default)' }} />
                           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{row[mode] ? formatTime(row[mode]) : '--:--'}</span>
@@ -198,7 +200,7 @@ export function TimelineView() {
                               <span key={tag} style={{ maxWidth: 92, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 6px', borderRadius: 999, background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 10 }}>{tag}</span>
                             ))}
                           </span>
-                        </button>
+                        </Button>
                       )
                     })}
                   </div>
