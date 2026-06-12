@@ -26,7 +26,7 @@ Already added:
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers.
 - `ConfirmModal` now uses `AlertDialog`.
-- Settings shell now uses `Dialog` and `ScrollArea`.
+- Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
 - AI provider editor now uses `Dialog`, `Button`, and `Badge`.
 - Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, and the shared `ConfirmModal`.
@@ -37,7 +37,7 @@ Already added:
 - The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
 - `AIWritingMenu` preview now uses `Dialog`; its selection action bar now uses a coordinate-anchored `Popover`.
-- `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card actions use shared `Button`; relation labels use shared `Badge`.
+- `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; related context card title/actions use shared `Button`; relation labels use shared `Badge`.
 - `GraphPanel` side controls now use shared `Button`, `Select`, and `Switch` wrappers for panel actions, minimum-link filtering, group visibility, display toggles, and edge-type toggles. Graph canvas interaction layers remain custom.
 - `GraphMaintenanceNudge` now uses shared `Button` for focus pills, clear, collapse, and expand controls while preserving graph canvas behavior.
 - `AgentRunPanel` action controls now use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow/editor layout remains custom.
@@ -134,7 +134,7 @@ These need design cleanup or affect many small controls.
 | Related context tabs | `components/long-context/RelatedContextPanel.tsx` | `Tabs`, `ScrollArea`, `Button`, `Badge` | Done for pack summary/tier tabs and controls. Native list scrolling remains to preserve side/page layout sizing. |
 | Long context badges | `components/long-context/LongContextBadge.tsx` | `Badge` | Done. Uses local Badge with existing class styling. |
 | Long context debug panel | `components/observability/LongContextDebugPanel.tsx` | `Tabs`, `Button` | Done for pack tier switching and tuning actions. Sliders remain native range inputs to preserve precise low-level tuning behavior. |
-| Related context card icon actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done. Title/aria-label retained. |
+| Related context card actions | `components/long-context/RelatedContextCard.tsx` | `Button` with `variant="ghost"` and `size="icon"` | Done for title/open and icon feedback actions. Title/aria-label retained. |
 | Graph side panel controls | `components/graph/GraphPanel.tsx` | `Button`, `Select`, `Switch` | Done for side-panel controls only. Graph canvas, pan/zoom, and node interaction layers remain custom. |
 | Graph maintenance nudge | `components/graph/GraphMaintenanceNudge.tsx` | `Button` | Done for focus, clear, collapse, and expand controls. Graph canvas interaction layers remain custom. |
 | Agent run controls | `components/agent/AgentRunPanel.tsx` | `Button`, `Checkbox` | Done for action buttons and dry-run checkbox. Plan editing and execution views remain custom. |

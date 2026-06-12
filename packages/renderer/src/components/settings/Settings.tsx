@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog'
+import { Button } from '../ui/button'
 import { ScrollArea } from '../ui/scroll-area'
 import { Tabs, TabsContent } from '../ui/tabs'
 import './Settings.css'
@@ -42,13 +43,15 @@ export function Settings({ open, onClose }: SettingsProps) {
         <DialogHeader className="settings-dialog__header">
           <DialogTitle className="settings-dialog__title">{t('settings.title')}</DialogTitle>
           <DialogClose asChild>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               className="settings-dialog__close"
               aria-label={t('common.close')}
             >
               ×
-            </button>
+            </Button>
           </DialogClose>
         </DialogHeader>
 

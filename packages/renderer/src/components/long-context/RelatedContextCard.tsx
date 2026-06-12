@@ -18,14 +18,15 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
   return (
     <article className="related-context-card">
       <div className="related-context-card__header">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           className="related-context-card__title"
           onClick={() => onOpen(suggestion)}
           title={suggestion.targetPath || suggestion.targetTitle}
         >
           {suggestion.targetTitle}
-        </button>
+        </Button>
         <LongContextBadge type={suggestion.relationType} confidence={suggestion.confidence} />
       </div>
 
