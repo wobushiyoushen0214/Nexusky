@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from './ui/dialog'
 import { ScrollArea } from './ui/scroll-area'
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
 
 type PublishScopeType = PublishScope['type']
@@ -167,32 +168,38 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
                   <PublishTargetPanel target={target} disabled={!canUnpublish} onUnpublish={() => setConfirmUnpublish(true)} />
                 )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {(['all', 'folder', 'tag', 'property'] as PublishScopeType[]).map((type) => {
-                const selected = scopeType === type
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    data-primary={type === 'all' ? 'true' : undefined}
-                    onClick={() => setScopeType(type)}
-                    style={{
-                      minHeight: 46,
-                      padding: '8px 10px',
-                      borderRadius: 8,
-                      border: selected ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
-                      background: selected ? 'var(--accent-muted)' : 'var(--bg-surface)',
-                      color: selected ? 'var(--accent-text)' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{t(`commandPalette.publishScope.types.${type}.label`)}</span>
-                    <span style={{ display: 'block', marginTop: 3, fontSize: 11, lineHeight: 1.35, color: selected ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>{t(`commandPalette.publishScope.types.${type}.hint`)}</span>
-                  </button>
-                )
-              })}
-            </div>
+                <ToggleGroup
+                  type="single"
+                  value={scopeType}
+                  onValueChange={(nextValue) => {
+                    if (nextValue) setScopeType(nextValue as PublishScopeType)
+                  }}
+                  style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}
+                >
+                  {(['all', 'folder', 'tag', 'property'] as PublishScopeType[]).map((type) => {
+                    const selected = scopeType === type
+                    return (
+                      <ToggleGroupItem
+                        key={type}
+                        value={type}
+                        aria-label={t(`commandPalette.publishScope.types.${type}.label`)}
+                        style={{
+                          minHeight: 46,
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          border: selected ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                          background: selected ? 'var(--accent-muted)' : 'var(--bg-surface)',
+                          color: selected ? 'var(--accent-text)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{t(`commandPalette.publishScope.types.${type}.label`)}</span>
+                        <span style={{ display: 'block', marginTop: 3, fontSize: 11, lineHeight: 1.35, color: selected ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>{t(`commandPalette.publishScope.types.${type}.hint`)}</span>
+                      </ToggleGroupItem>
+                    )
+                  })}
+                </ToggleGroup>
 
             {scopeType === 'folder' && (
               <Field label={t('commandPalette.publishScope.folderLabel')}>
@@ -380,14 +387,21 @@ function AccessModeControl({ value, onChange }: { value: PublishAccessMode; onCh
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('commandPalette.publishScope.accessLabel')}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <ToggleGroup
+        type="single"
+        value={value}
+        onValueChange={(nextValue) => {
+          if (nextValue) onChange(nextValue as PublishAccessMode)
+        }}
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}
+      >
         {(['public', 'private'] as PublishAccessMode[]).map((mode) => {
           const selected = value === mode
           return (
-            <button
+            <ToggleGroupItem
               key={mode}
-              type="button"
-              onClick={() => onChange(mode)}
+              value={mode}
+              aria-label={t(`commandPalette.publishScope.access.${mode}.label`)}
               style={{
                 minHeight: 54,
                 padding: '8px 10px',
@@ -401,10 +415,10 @@ function AccessModeControl({ value, onChange }: { value: PublishAccessMode; onCh
             >
               <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{t(`commandPalette.publishScope.access.${mode}.label`)}</span>
               <span style={{ display: 'block', marginTop: 3, fontSize: 11, lineHeight: 1.35, color: selected ? 'var(--accent-text)' : 'var(--text-tertiary)' }}>{t(`commandPalette.publishScope.access.${mode}.hint`)}</span>
-            </button>
+            </ToggleGroupItem>
           )
         })}
-      </div>
+      </ToggleGroup>
       <div style={{ fontSize: 10.5, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>{t('commandPalette.publishScope.accessBoundary')}</div>
     </section>
   )

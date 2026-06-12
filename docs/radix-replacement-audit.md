@@ -29,7 +29,7 @@ Already added:
 - Settings shell now uses `Dialog`, `ScrollArea`, and shared `Button` for the Radix close action.
 - Settings sidebar now uses `Tabs`.
 - AI provider editor now uses `Dialog`, `Button`, and `Badge`.
-- Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, and the shared `ConfirmModal`.
+- Publish scope dialog now uses `Dialog`, `ScrollArea`, `Button`, `ToggleGroup`, and the shared `ConfirmModal`.
 - Settings page controls now use local `Switch`, `Checkbox`, `RadioGroup`, `Select`, `ToggleGroup`, and `Button` where appropriate.
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
