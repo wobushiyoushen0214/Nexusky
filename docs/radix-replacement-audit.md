@@ -44,7 +44,7 @@ Already added:
 - `AgentRunPanel` action controls now use shared `Button`, and the dry-run option uses shared `Checkbox`; the existing agent workflow/editor layout remains custom.
 - `ToolResultPanel` now uses non-modal shared `Sheet`, shared `Button` for copy/close/source actions, and `ScrollArea` for the result body while keeping the right-bottom result drawer behavior.
 - `HistoryPanel` now uses shared `Button` for preview/restore/navigation actions and `ScrollArea` for history and preview scrolling.
-- `TagsPanel` now uses shared `Button`, `Badge`, and `ScrollArea`; inline tag chip/list styles were moved into token-based local CSS.
+- `TagsPanel` now uses shared `Input`, `Button`, `Badge`, and `ScrollArea`; inline tag chip/list styles were moved into token-based local CSS.
 - `VaultHealthScreen` action controls now use shared `Button` for skip and next-step actions, with button styling aligned to shared tokens.
 - `ErrorBoundary` now uses shared `Button` for retry, with the inline fallback layout moved into token-based local CSS.
 - `ChatSourceRow` now uses shared `Button`, `Popover`, and `ScrollArea` for citation lookup controls instead of custom absolute-positioned popovers and document listeners.
@@ -66,7 +66,7 @@ Already added:
 - `PropertiesPanel` frontmatter fields now use shared `Input`/`Textarea`, and save/reset actions use shared `Button`, while preserving the existing frontmatter parsing and save flow.
 - `BacklinksPanel` now uses shared `Button` for the collapse header, target open/create actions, and unlinked-mention conversion actions while preserving its compact link overview layout and row navigation behavior.
 - `OutlinePanel` now uses shared `Button` for heading navigation rows while preserving heading-level indentation, compact row sizing, and editor jump events.
-- `TagBar` now uses shared `Button` for tag removal and add-tag controls while preserving its compact inline chip layout and frontmatter update behavior.
+- `TagBar` now uses shared `Input` for inline tag entry and shared `Button` for tag removal/add-tag controls while preserving its compact chip layout and frontmatter update behavior.
 - `EditorTabs` close actions now use shared `Button` while preserving the custom tab drag/reorder, middle-click close, and coordinate context menu behavior.
 - `SlashCommandMenu` command rows now use shared `Button` while preserving the existing slash trigger positioning, keyboard navigation, filtering, and command execution logic.
 - `Editor` shell actions now use shared `Button` for empty-state quick actions, split-pane close, and sync status while preserving the TipTap editor surface and markdown rendering behavior.
@@ -177,7 +177,7 @@ These are lower impact or more visual than behavioral.
 | Vault health actions | `Button`, `Card`, `Badge`, `Progress` | Button migration done for skip and next-step actions. Cards/badges/progress remain optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Button`, `ScrollArea` | Done. Kept the lightweight side-panel behavior and moved inline styles into local token-based CSS. |
-| Tags panel | `Button`, `Badge`, `ScrollArea` | Done. Current tags, tag cloud, and filtered note list now use shared components with local token-based CSS. |
+| Tags panel | `Input`, `Button`, `Badge`, `ScrollArea` | Done. Current tag input, tags, tag cloud, and filtered note list now use shared components with local token-based CSS. |
 | Error boundary | `Button` | Done. Retry action uses shared Button and fallback layout moved out of inline styles. |
 | Citation source row | `Button`, `Popover`, `ScrollArea` | Done. Citation lookup explanation now uses shared Popover with token-based local CSS. |
 | Welcome screen | `Input`, `Button` | Done for vault-name creation input plus demo, open/create, recent vault, and sample vault actions. Existing entry-page layout and visual classes remain in place. |
@@ -190,7 +190,7 @@ These are lower impact or more visual than behavioral.
 | Properties panel controls | `Input`, `Textarea`, `Button` | Done for title, aliases, tags, cssclasses, save, and reset controls. Frontmatter parsing and save-to-editor behavior remain custom. |
 | Backlinks panel actions | `Button` | Done for collapse, target open/create, batch convert, item jump, and single mention conversion actions. The row navigation/list layout remains custom. |
 | Outline panel rows | `Button` | Done for heading navigation rows. Heading parsing and editor jump events remain custom. |
-| Tag bar controls | `Button` | Done for remove-tag and add-tag controls. Native text input remains custom for the inline tag editing flow. |
+| Tag bar controls | `Input`, `Button` | Done for inline tag entry, remove-tag, and add-tag controls. Frontmatter update flow remains custom. |
 | Editor tab close actions | `Button` | Done for per-tab close controls. The draggable tab container and context menu remain custom. |
 | Slash command rows | `Button` | Done for command row actions. The TipTap slash trigger, filtering, active-index keyboard handling, and fixed popover positioning remain custom. |
 | Editor shell actions | `Button` | Done for empty-state quick actions, split-pane close, and sync status. TipTap content, markdown rendering, and editor scrolling remain custom. |

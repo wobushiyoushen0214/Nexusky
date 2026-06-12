@@ -5,6 +5,7 @@ import { parseNoteProperties, updateFrontmatterProperty } from '../utils/frontma
 import { cn } from '../lib/utils'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
 import './tags-panel.css'
 
@@ -117,7 +118,7 @@ export function TagsPanel() {
               </Badge>
             ))}
             {inputVisible ? (
-              <input
+              <Input
                 className="tags-panel__input"
                 ref={inputRef}
                 value={inputValue}

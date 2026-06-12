@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
 import { parseNoteProperties, updateFrontmatterProperty } from '../../utils/frontmatter'
 import { Button } from '../ui/button'
+import { Input } from '../ui/input'
 
 function normalizeTag(value: string): string {
   return value.trim().replace(/^#/, '')
@@ -118,7 +119,7 @@ export function TagBar() {
         </span>
       ))}
       {inputVisible ? (
-        <input
+        <Input
           ref={inputRef}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
