@@ -6,6 +6,7 @@ import { Button } from '../ui/button'
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog'
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover'
 import { Spinner } from '../ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { IPCChatMessage } from '@shared/types/ipc'
 import { analyzeWritingStyle, formatWritingStylePrompt } from '@shared/writing-style'
 
@@ -281,33 +282,37 @@ export function AIWritingMenu({ editor }: AIWritingMenuProps) {
         }}
     >
       {ACTIONS.map((action) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          key={action.id}
-          onClick={() => handleAction(action)}
-          style={{
-            height: 28,
-            padding: '0 8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 11,
-            color: 'var(--text-secondary)',
-            background: 'transparent',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-          title={action.label}
-        >
-          <span>{action.icon}</span>
-          <span>{action.label}</span>
-        </Button>
+        <Tooltip key={action.id}>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              onClick={() => handleAction(action)}
+              aria-label={action.label}
+              style={{
+                height: 28,
+                padding: '0 8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                color: 'var(--text-secondary)',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              <span>{action.icon}</span>
+              <span>{action.label}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{action.label}</TooltipContent>
+        </Tooltip>
       ))}
       </PopoverContent>
     </Popover>
