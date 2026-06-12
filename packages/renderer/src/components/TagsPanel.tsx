@@ -8,6 +8,7 @@ import { Button } from './ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import './tags-panel.css'
 
 interface TagInfo {
@@ -106,16 +107,21 @@ export function TagsPanel() {
             {currentTags.map((tag) => (
               <Badge key={tag} variant="default" className="tags-panel__current-tag">
                 {tag}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="tags-panel__remove-tag"
-                  onClick={() => removeTag(tag)}
-                  aria-label={`移除标签 ${tag}`}
-                >
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="tags-panel__remove-tag"
+                      onClick={() => removeTag(tag)}
+                      aria-label={`移除标签 ${tag}`}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{`移除标签 ${tag}`}</TooltipContent>
+                </Tooltip>
               </Badge>
             ))}
             {inputVisible ? (
@@ -129,17 +135,21 @@ export function TagsPanel() {
                 placeholder="标签名..."
               />
             ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="tags-panel__add-tag"
-                onClick={() => setInputVisible(true)}
-                title="添加标签"
-                aria-label="添加标签"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="tags-panel__add-tag"
+                    onClick={() => setInputVisible(true)}
+                    aria-label="添加标签"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>添加标签</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -158,23 +168,26 @@ export function TagsPanel() {
             <ScrollArea className={cn('tags-panel__tag-scroll', selectedTag && 'is-filtered')}>
               <div className="tags-panel__cloud">
                 {allTags.map((tag) => (
-                  <Button
-                    key={tag.name}
-                    type="button"
-                    variant={selectedTag === tag.name ? 'default' : currentTags.includes(tag.name) ? 'secondary' : 'outline'}
-                    size="xs"
-                    className={cn(
-                      'tags-panel__tag-chip',
-                      selectedTag === tag.name && 'is-selected',
-                      currentTags.includes(tag.name) && 'is-current'
-                    )}
-                    onClick={() => setSelectedTag(selectedTag === tag.name ? null : tag.name)}
-                    onDoubleClick={() => addExistingTag(tag.name)}
-                    title="单击筛选笔记，双击添加到当前文件"
-                  >
-                    <span>{tag.name}</span>
-                    <Badge variant="secondary" className="tags-panel__tag-count">{tag.count}</Badge>
-                  </Button>
+                  <Tooltip key={tag.name}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant={selectedTag === tag.name ? 'default' : currentTags.includes(tag.name) ? 'secondary' : 'outline'}
+                        size="xs"
+                        className={cn(
+                          'tags-panel__tag-chip',
+                          selectedTag === tag.name && 'is-selected',
+                          currentTags.includes(tag.name) && 'is-current'
+                        )}
+                        onClick={() => setSelectedTag(selectedTag === tag.name ? null : tag.name)}
+                        onDoubleClick={() => addExistingTag(tag.name)}
+                      >
+                        <span>{tag.name}</span>
+                        <Badge variant="secondary" className="tags-panel__tag-count">{tag.count}</Badge>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>单击筛选笔记，双击添加到当前文件</TooltipContent>
+                  </Tooltip>
                 ))}
               </div>
             </ScrollArea>
