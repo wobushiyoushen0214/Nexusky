@@ -6,6 +6,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Slider } from '../ui/slider'
@@ -126,9 +127,9 @@ export function LongContextDebugPanel() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            <span className="long-context-debug-panel__token-count">
+            <Badge variant="secondary" className="long-context-debug-panel__token-count">
               {inspection ? t('longContextDebug.tokens', { used: inspection.pack.estimatedTokens, budget: inspection.pack.tokenBudget }) : ''}
-            </span>
+            </Badge>
           </div>
           <TabsContent value={activeTab} className="long-context-debug-panel__tab-content">
             {tabItems.length === 0 ? (
