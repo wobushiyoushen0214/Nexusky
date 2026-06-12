@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errors'
 import type { SampleVault, TransformationResult, VaultStats } from '@shared/types/ipc'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Card } from '../ui/card'
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Spinner } from '../ui/spinner'
 import './DemoTransformationFlow.css'
@@ -90,20 +91,21 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
             <p className="demo-intro">{t('demo.intro')}</p>
             <div className="demo-sample-grid">
               {samples.map((sample) => (
-                <Button
-                  key={sample.id}
-                  type="button"
-                  variant="ghost"
-                  onClick={() => handleSelectVault(sample)}
-                  className="demo-sample-card"
-                >
-                  <h3>{sample.name}</h3>
-                  <p>{sample.description}</p>
-                  <div className="demo-sample-stats">
-                    <span>{sample.noteCount} {t('demo.notes')}</span>
-                    <Badge variant="outline" className="demo-issue-count">{sample.scenario}</Badge>
-                  </div>
-                </Button>
+                <Card key={sample.id} asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => handleSelectVault(sample)}
+                    className="demo-sample-card"
+                  >
+                    <h3>{sample.name}</h3>
+                    <p>{sample.description}</p>
+                    <div className="demo-sample-stats">
+                      <span>{sample.noteCount} {t('demo.notes')}</span>
+                      <Badge variant="outline" className="demo-issue-count">{sample.scenario}</Badge>
+                    </div>
+                  </Button>
+                </Card>
               ))}
             </div>
           </div>
@@ -120,22 +122,15 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
           <div className="demo-step-content">
             <h3>{t('demo.issues.found')}</h3>
             <div className="demo-issues-list">
-              <div className="demo-issue-item">
-                <span>{t('demo.issues.brokenLinks')}</span>
-                <Badge variant="outline" className="demo-issue-count">{beforeStats.unresolvedLinkCount}</Badge>
-              </div>
-              <div className="demo-issue-item">
-                <span>{t('demo.issues.orphanNotes')}</span>
-                <Badge variant="outline" className="demo-issue-count">{beforeStats.orphanCount}</Badge>
-              </div>
-              <div className="demo-issue-item">
-                <span>{t('demo.issues.missingProperties')}</span>
-                <Badge variant="outline" className="demo-issue-count">{beforeStats.missingPropertyCount}</Badge>
-              </div>
-              <div className="demo-health-score">
-                <span>{t('demo.healthScore')}</span>
-                <strong className="demo-score-bad">{beforeStats.healthScore}</strong>
-              </div>
+              <IssueMetric label={t('demo.issues.brokenLinks')} value={beforeStats.unresolvedLinkCount} />
+              <IssueMetric label={t('demo.issues.orphanNotes')} value={beforeStats.orphanCount} />
+              <IssueMetric label={t('demo.issues.missingProperties')} value={beforeStats.missingPropertyCount} />
+              <Card asChild>
+                <div className="demo-health-score">
+                  <span>{t('demo.healthScore')}</span>
+                  <strong className="demo-score-bad">{beforeStats.healthScore}</strong>
+                </div>
+              </Card>
             </div>
             <Button
               type="button"
@@ -152,50 +147,38 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
           <div className="demo-step-content">
             <h3>{t('demo.transformation.complete')}</h3>
             <div className="demo-comparison">
-              <div className="demo-comparison-column">
-                <span className="demo-comparison-label">{t('demo.before')}</span>
-                <div className="demo-comparison-stats">
-                  <div className="demo-stat-item">
-                    <span>{t('demo.issues.brokenLinks')}</span>
-                    <strong>{result.beforeStats.unresolvedLinkCount}</strong>
-                  </div>
-                  <div className="demo-stat-item">
-                    <span>{t('demo.issues.orphanNotes')}</span>
-                    <strong>{result.beforeStats.orphanCount}</strong>
-                  </div>
-                  <div className="demo-stat-item">
-                    <span>{t('demo.healthScore')}</span>
-                    <strong className="demo-score-bad">{result.beforeStats.healthScore}</strong>
+              <Card asChild>
+                <div className="demo-comparison-column">
+                  <span className="demo-comparison-label">{t('demo.before')}</span>
+                  <div className="demo-comparison-stats">
+                    <StatItem label={t('demo.issues.brokenLinks')} value={result.beforeStats.unresolvedLinkCount} />
+                    <StatItem label={t('demo.issues.orphanNotes')} value={result.beforeStats.orphanCount} />
+                    <StatItem label={t('demo.healthScore')} value={result.beforeStats.healthScore} valueClassName="demo-score-bad" />
                   </div>
                 </div>
-              </div>
+              </Card>
               <div className="demo-comparison-arrow">→</div>
-              <div className="demo-comparison-column">
-                <span className="demo-comparison-label">{t('demo.after')}</span>
-                <div className="demo-comparison-stats">
-                  <div className="demo-stat-item">
-                    <span>{t('demo.issues.brokenLinks')}</span>
-                    <strong className="demo-stat-improved">{result.afterStats.unresolvedLinkCount}</strong>
-                  </div>
-                  <div className="demo-stat-item">
-                    <span>{t('demo.issues.orphanNotes')}</span>
-                    <strong className="demo-stat-improved">{result.afterStats.orphanCount}</strong>
-                  </div>
-                  <div className="demo-stat-item">
-                    <span>{t('demo.healthScore')}</span>
-                    <strong className="demo-score-good">{result.afterStats.healthScore}</strong>
+              <Card asChild>
+                <div className="demo-comparison-column">
+                  <span className="demo-comparison-label">{t('demo.after')}</span>
+                  <div className="demo-comparison-stats">
+                    <StatItem label={t('demo.issues.brokenLinks')} value={result.afterStats.unresolvedLinkCount} valueClassName="demo-stat-improved" />
+                    <StatItem label={t('demo.issues.orphanNotes')} value={result.afterStats.orphanCount} valueClassName="demo-stat-improved" />
+                    <StatItem label={t('demo.healthScore')} value={result.afterStats.healthScore} valueClassName="demo-score-good" />
                   </div>
                 </div>
+              </Card>
+            </div>
+            <Card asChild>
+              <div className="demo-fixes-applied">
+                <p className="demo-fixes-label">{t('demo.fixesApplied')}</p>
+                <ul className="demo-fixes-list">
+                  {result.fixes.slice(0, 5).map((fix, idx) => (
+                    <li key={idx}>{fix.type}: {fix.count} {fix.examples[0] ? `(${fix.examples[0]})` : ''}</li>
+                  ))}
+                </ul>
               </div>
-            </div>
-            <div className="demo-fixes-applied">
-              <p className="demo-fixes-label">{t('demo.fixesApplied')}</p>
-              <ul className="demo-fixes-list">
-                {result.fixes.slice(0, 5).map((fix, idx) => (
-                  <li key={idx}>{fix.type}: {fix.count} {fix.examples[0] ? `(${fix.examples[0]})` : ''}</li>
-                ))}
-              </ul>
-            </div>
+            </Card>
             <Button type="button" onClick={onClose} className="demo-done-button">
               {t('demo.done')}
             </Button>
@@ -203,5 +186,25 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function IssueMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <Card asChild>
+      <div className="demo-issue-item">
+        <span>{label}</span>
+        <Badge variant="outline" className="demo-issue-count">{value}</Badge>
+      </div>
+    </Card>
+  )
+}
+
+function StatItem({ label, value, valueClassName }: { label: string; value: number; valueClassName?: string }) {
+  return (
+    <div className="demo-stat-item">
+      <span>{label}</span>
+      <strong className={valueClassName}>{value}</strong>
+    </div>
   )
 }

@@ -84,9 +84,10 @@
   min-height: 0;
   display: block;
   padding: 20px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--card, var(--bg-secondary)) 84%, transparent);
+  border: 1px solid var(--border, var(--border-color));
+  border-radius: var(--radius-lg, 8px);
+  color: var(--card-foreground, var(--text-primary));
   text-align: left;
   white-space: normal;
   cursor: pointer;
@@ -94,9 +95,9 @@
 }
 
 .demo-sample-card:hover {
-  border-color: var(--accent-color);
+  border-color: var(--primary, var(--accent-color));
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--foreground, var(--text-primary)) 10%, transparent);
 }
 
 .demo-sample-card h3 {
@@ -155,13 +156,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: var(--bg-secondary);
-  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 76%, transparent);
+  border-radius: var(--radius-md, 6px);
+  background: color-mix(in srgb, var(--card, var(--bg-secondary)) 78%, transparent);
+  color: var(--card-foreground, var(--text-primary));
 }
 
 .demo-health-score {
   margin-top: 8px;
-  border: 1px solid var(--border-color);
 }
 
 .demo-issue-item .demo-issue-count {
@@ -221,6 +223,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 78%, transparent);
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-secondary)) 74%, transparent);
 }
 
 .demo-comparison-label {
@@ -241,8 +247,8 @@
   display: flex;
   justify-content: space-between;
   padding: 8px 12px;
-  background: var(--bg-secondary);
-  border-radius: 4px;
+  background: var(--muted, var(--bg-secondary));
+  border-radius: var(--radius-sm, 4px);
   font-size: 13px;
 }
 
@@ -259,8 +265,10 @@
 
 .demo-fixes-applied {
   padding: 16px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 78%, transparent);
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-secondary)) 78%, transparent);
+  color: var(--card-foreground, var(--text-primary));
   margin: 24px 0;
 }
 
