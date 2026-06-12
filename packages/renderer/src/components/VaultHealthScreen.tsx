@@ -5,6 +5,7 @@ import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
 import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import './VaultHealthScreen.css'
 
@@ -266,18 +267,18 @@ function StatePanel({ title, desc, tone = 'default', children }: StatePanelProps
 
 function ScanStep({ label }: { label: string }) {
   return (
-    <span className="vault-health-scan-step">
+    <Badge variant="outline" className="vault-health-scan-step">
       <span aria-hidden="true" />
       {label}
-    </span>
+    </Badge>
   )
 }
 
 function SignalLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="vault-health-signal">
+    <Badge variant="outline" className="vault-health-signal">
       {children}
-    </span>
+    </Badge>
   )
 }
 
@@ -313,7 +314,7 @@ function NextStepButton({ kicker, title, desc, onClick, disabled = false }: Next
       disabled={disabled}
       className="vault-health-next-step"
     >
-      <span className="vault-health-next-step__kicker">{kicker}</span>
+      <Badge className="vault-health-next-step__kicker">{kicker}</Badge>
       <span className="vault-health-next-step__copy">
         <strong>{title}</strong>
         <span>{desc}</span>
