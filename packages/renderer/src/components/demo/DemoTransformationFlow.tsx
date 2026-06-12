@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import type { SampleVault, TransformationResult, VaultStats } from '@shared/types/ipc'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Spinner } from '../ui/spinner'
@@ -100,7 +101,7 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
                   <p>{sample.description}</p>
                   <div className="demo-sample-stats">
                     <span>{sample.noteCount} {t('demo.notes')}</span>
-                    <span className="demo-issue-count">{sample.scenario}</span>
+                    <Badge variant="outline" className="demo-issue-count">{sample.scenario}</Badge>
                   </div>
                 </Button>
               ))}
@@ -121,15 +122,15 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
             <div className="demo-issues-list">
               <div className="demo-issue-item">
                 <span>{t('demo.issues.brokenLinks')}</span>
-                <strong className="demo-issue-count">{beforeStats.unresolvedLinkCount}</strong>
+                <Badge variant="outline" className="demo-issue-count">{beforeStats.unresolvedLinkCount}</Badge>
               </div>
               <div className="demo-issue-item">
                 <span>{t('demo.issues.orphanNotes')}</span>
-                <strong className="demo-issue-count">{beforeStats.orphanCount}</strong>
+                <Badge variant="outline" className="demo-issue-count">{beforeStats.orphanCount}</Badge>
               </div>
               <div className="demo-issue-item">
                 <span>{t('demo.issues.missingProperties')}</span>
-                <strong className="demo-issue-count">{beforeStats.missingPropertyCount}</strong>
+                <Badge variant="outline" className="demo-issue-count">{beforeStats.missingPropertyCount}</Badge>
               </div>
               <div className="demo-health-score">
                 <span>{t('demo.healthScore')}</span>

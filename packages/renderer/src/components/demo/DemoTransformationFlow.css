@@ -120,6 +120,9 @@
 }
 
 .demo-issue-count {
+  flex-shrink: 0;
+  border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
   color: var(--color-warning);
   font-weight: 500;
 }
@@ -161,9 +164,10 @@
   border: 1px solid var(--border-color);
 }
 
-.demo-issue-item strong {
-  font-size: 18px;
-  color: var(--color-warning);
+.demo-issue-item .demo-issue-count {
+  min-width: 32px;
+  height: 22px;
+  font-size: 12px;
 }
 
 .demo-score-bad {
