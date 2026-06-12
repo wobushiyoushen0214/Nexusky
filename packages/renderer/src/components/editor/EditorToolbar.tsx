@@ -6,10 +6,28 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { Button } from '../ui/button'
 import { Spinner } from '../ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { calculateMarkdownTableFormulas } from '@shared/markdown/table-formulas'
 
 interface ToolbarProps {
   editor: Editor
+}
+
+interface ToolbarButtonProps extends React.ComponentProps<typeof Button> {
+  label: string
+}
+
+function ToolbarButton({ label, children, ...props }: ToolbarButtonProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button aria-label={label} {...props}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -150,124 +168,125 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
     margin: '0 3px',
     flexShrink: 0,
   }
+  const voiceInputLabel = recording ? '停止录音并转写' : transcribing ? '正在转写语音' : '语音输入'
 
   return (
     <div className="editor-toolbar" style={{ width: '100%', height: 40, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, boxShadow: 'none', background: 'linear-gradient(180deg, var(--editor-tab-toolbar-surface, color-mix(in srgb, var(--panel-bg-soft) 86%, transparent)), color-mix(in srgb, var(--panel-bg-soft) 62%, transparent))' }}>
       {/* Headings */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('heading', { level: 1 }))}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        title="标题 1"
+        label="标题 1"
       >
         <span style={{ fontSize: 12, fontWeight: 700 }}>H1</span>
-      </Button>
-      <Button
+      </ToolbarButton>
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('heading', { level: 2 }))}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        title="标题 2"
+        label="标题 2"
       >
         <span style={{ fontSize: 12, fontWeight: 700 }}>H2</span>
-      </Button>
-      <Button
+      </ToolbarButton>
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('heading', { level: 3 }))}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        title="标题 3"
+        label="标题 3"
       >
         <span style={{ fontSize: 12, fontWeight: 700 }}>H3</span>
-      </Button>
+      </ToolbarButton>
 
       <div style={sepStyle} />
 
       {/* Bold */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('bold'))}
         onClick={() => editor.chain().focus().toggleBold().run()}
-        title="粗体 (Ctrl+B)"
+        label="粗体 (Ctrl+B)"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" /><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Italic */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('italic'))}
         onClick={() => editor.chain().focus().toggleItalic().run()}
-        title="斜体 (Ctrl+I)"
+        label="斜体 (Ctrl+I)"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="4" x2="10" y2="4" /><line x1="14" y1="20" x2="5" y2="20" /><line x1="15" y1="4" x2="9" y2="20" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Strikethrough */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('strike'))}
         onClick={() => editor.chain().focus().toggleStrike().run()}
-        title="删除线 (Ctrl+Shift+X)"
+        label="删除线 (Ctrl+Shift+X)"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M16 4H9a3 3 0 0 0-3 3v0a3 3 0 0 0 3 3h6" /><path d="M8 20h7a3 3 0 0 0 3-3v0a3 3 0 0 0-3-3H4" /><line x1="4" y1="12" x2="20" y2="12" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Code */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('code'))}
         onClick={() => editor.chain().focus().toggleCode().run()}
-        title="行内代码 (Ctrl+E)"
+        label="行内代码 (Ctrl+E)"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       <div style={sepStyle} />
 
       {/* Bullet list */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('bulletList'))}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        title="无序列表"
+        label="无序列表"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
           <circle cx="4" cy="6" r="1" fill="currentColor" /><circle cx="4" cy="12" r="1" fill="currentColor" /><circle cx="4" cy="18" r="1" fill="currentColor" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Ordered list */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('orderedList'))}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        title="有序列表"
+        label="有序列表"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
@@ -275,112 +294,112 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
           <text x="2" y="14" fontSize="8" fill="currentColor" stroke="none" fontFamily="sans-serif">2</text>
           <text x="2" y="20" fontSize="8" fill="currentColor" stroke="none" fontFamily="sans-serif">3</text>
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Blockquote */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('blockquote'))}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        title="引用"
+        label="引用"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
           <path d="M10 8c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h2v-2H10v-2h2V8h-2zm6 0c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h2v-2h-2v-2h2V8h-2z" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Code block */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('codeBlock'))}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        title="代码块"
+        label="代码块"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" /><polyline points="9 8 5 12 9 16" /><polyline points="15 8 19 12 15 16" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       <div style={sepStyle} />
 
       {/* Task list */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('taskList'))}
         onClick={() => editor.chain().focus().toggleTaskList().run()}
-        title="任务列表"
+        label="任务列表"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="5" width="6" height="6" rx="1" /><line x1="13" y1="8" x2="21" y2="8" /><rect x="3" y="13" width="6" height="6" rx="1" /><line x1="13" y1="16" x2="21" y2="16" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Table */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(false)}
         onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        title="插入表格"
+        label="插入表格"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Table formulas */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(false)}
         onClick={calculateTableFormulas}
-        title="计算表格公式"
+        label="计算表格公式"
       >
         <span style={{ fontSize: 12, fontStyle: 'italic', fontWeight: 700 }}>fx</span>
-      </Button>
+      </ToolbarButton>
 
       {/* Highlight */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(editor.isActive('highlight'))}
         onClick={() => editor.chain().focus().toggleHighlight().run()}
-        title="高亮"
+        label="高亮"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       <div style={sepStyle} />
 
       {/* Horizontal rule */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(false)}
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="分割线"
+        label="分割线"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <line x1="3" y1="12" x2="21" y2="12" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       <div style={{ flex: 1 }} />
 
       {/* Voice input */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
@@ -393,7 +412,7 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
         }}
         onClick={toggleVoiceInput}
         disabled={transcribing}
-        title={recording ? '停止录音并转写' : transcribing ? '正在转写语音' : '语音输入'}
+        label={voiceInputLabel}
       >
         {transcribing ? (
           <Spinner className="editor-toolbar__spinner" aria-hidden="true" />
@@ -405,30 +424,30 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
             <line x1="8" y1="22" x2="16" y2="22" />
           </svg>
         )}
-      </Button>
+      </ToolbarButton>
 
       {/* Preview toggle */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(previewMode)}
         onClick={togglePreviewMode}
-        title="预览模式 (Ctrl+Shift+V)"
+        label="预览模式 (Ctrl+Shift+V)"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Outline */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(rightPanel === 'outline')}
         onClick={() => toggleRightPanel('outline')}
-        title={t('panels.outline')}
+        label={t('panels.outline')}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="8" y1="6" x2="21" y2="6" />
@@ -438,39 +457,39 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
           <line x1="3" y1="12" x2="3.01" y2="12" />
           <line x1="3" y1="18" x2="3.01" y2="18" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Tags */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(rightPanel === 'tags')}
         onClick={() => toggleRightPanel('tags')}
-        title={t('panels.tags')}
+        label={t('panels.tags')}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
           <line x1="7" y1="7" x2="7.01" y2="7" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* History */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
         style={btnStyle(false)}
         onClick={() => useUIStore.getState().toggleRightPanel('history')}
-        title="版本历史"
+        label="版本历史"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
         </svg>
-      </Button>
+      </ToolbarButton>
 
       {/* Export */}
-      <Button
+      <ToolbarButton
         type="button"
         variant="ghost"
         size="icon"
@@ -481,12 +500,12 @@ export const EditorToolbar = memo(function EditorToolbar({ editor }: ToolbarProp
           const title = currentFilePath.split(/[\\/]/).pop()?.replace(/\.md$/, '') || 'note'
           await window.api.invoke('export:pdf', { content, title })
         }}
-        title="导出 PDF"
+        label="导出 PDF"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><polyline points="9 15 12 18 15 15" />
         </svg>
-      </Button>
+      </ToolbarButton>
     </div>
   )
 })
