@@ -29,7 +29,7 @@ function normalizeVisibleIds(ids: string[]): string[] {
 
 function load(): string[] {
   const config = safeGetJSON<{ visibleIds?: string[] }>(STORAGE_KEY, {})
-  if (!Array.isArray(config.visibleIds)) return getDefaults()
+  if (!Array.isArray(config.visibleIds)) return normalizeVisibleIds(getDefaults())
   return normalizeVisibleIds(config.visibleIds)
 }
 
@@ -69,7 +69,7 @@ export const useActivityBarStore = create<ActivityBarState>((set, get) => ({
   },
 
   resetToDefaults: () => {
-    const defaults = getDefaults()
+    const defaults = normalizeVisibleIds(getDefaults())
     save(defaults)
     set({ visibleIds: defaults })
   },
