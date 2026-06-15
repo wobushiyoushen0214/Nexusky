@@ -15,10 +15,10 @@
   display: grid;
   grid-template-rows: auto auto 1fr;
   gap: 7px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 84%, transparent);
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 82%, transparent);
+  color: var(--secondary-foreground, var(--text-secondary));
   cursor: pointer;
   text-align: left;
   transition:
@@ -29,16 +29,16 @@
 }
 
 .theme-item:hover {
-  border-color: color-mix(in srgb, var(--accent) 34%, var(--border-color));
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 34%, var(--border, var(--border-color)));
+  background: color-mix(in srgb, var(--secondary, var(--bg-hover)) 86%, transparent);
+  color: var(--foreground, var(--text-primary));
 }
 
 .theme-item.is-active,
 .theme-item[data-state="checked"] {
-  border-color: color-mix(in srgb, var(--accent) 48%, var(--border-color));
-  background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 48%, var(--border, var(--border-color)));
+  background: color-mix(in srgb, var(--primary, var(--accent)) 7%, var(--card, var(--bg-elevated)));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary, var(--accent)) 14%, transparent);
 }
 
 .theme-preview {
@@ -47,8 +47,8 @@
   aspect-ratio: 1.72;
   min-height: 48px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
-  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 84%, transparent);
+  border-radius: var(--radius-md, 7px);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
 }
 
@@ -126,7 +126,7 @@
 .theme-label {
   min-width: 0;
   overflow: hidden;
-  color: var(--text-primary);
+  color: var(--card-foreground, var(--text-primary));
   font-size: 12px;
   font-weight: 650;
   line-height: 1.25;
@@ -137,7 +137,7 @@
 .theme-detail {
   min-width: 0;
   overflow: hidden;
-  color: var(--text-tertiary);
+  color: var(--muted-foreground, var(--text-tertiary));
   font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -157,7 +157,7 @@
   height: 36px;
   padding: 4px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--radius-lg, 10px);
   background: transparent;
   cursor: pointer;
   transition:
@@ -168,16 +168,16 @@
 .accent-item:hover,
 .accent-item.is-active,
 .accent-item[data-state="checked"] {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-color));
-  background: var(--bg-hover);
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 40%, var(--border, var(--border-color)));
+  background: var(--secondary, var(--bg-hover));
 }
 
 .accent-color {
   display: block;
   width: 100%;
   height: 100%;
-  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--foreground, var(--text-primary)) 12%, transparent);
+  border-radius: var(--radius-md, 8px);
 }
 
 .accent-check {
@@ -203,16 +203,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border-left: 1px solid var(--border-color);
+  border-left: 1px solid var(--border, var(--border-color));
 }
 
 .accent-picker {
   width: 36px;
   height: 36px;
   padding: 4px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: var(--bg-secondary);
+  border: 1px solid var(--input, var(--border-color));
+  border-radius: var(--radius-lg, 10px);
+  background: var(--secondary, var(--bg-secondary));
   cursor: pointer;
 }
 
@@ -247,9 +247,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 84%, transparent);
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 82%, transparent);
   cursor: pointer;
   transition:
     background 150ms ease,
@@ -257,24 +257,24 @@
 }
 
 .language-item:hover {
-  border-color: color-mix(in srgb, var(--accent) 34%, var(--border-color));
-  background: var(--bg-hover);
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 34%, var(--border, var(--border-color)));
+  background: var(--secondary, var(--bg-hover));
 }
 
 .language-item.is-active,
 .language-item[data-state="checked"] {
-  border-color: color-mix(in srgb, var(--accent) 48%, var(--border-color));
-  background: color-mix(in srgb, var(--accent) 7%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 48%, var(--border, var(--border-color)));
+  background: color-mix(in srgb, var(--primary, var(--accent)) 7%, var(--card, var(--bg-elevated)));
 }
 
 .language-label {
-  color: var(--text-primary);
+  color: var(--card-foreground, var(--text-primary));
   font-size: 13px;
   font-weight: 650;
 }
 
 .language-check {
-  color: var(--accent);
+  color: var(--primary, var(--accent));
   font-size: 14px;
   font-weight: 800;
   opacity: 0;
