@@ -2446,14 +2446,24 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                     : (currentFilePath?.split(/[\\/]/).pop()?.replace(/\.md$/, '') || '无目标文件（生成新笔记）')}
               </span>
               {(editTarget || (!editUnbound && currentFilePath)) && (
-                <Button type="button" variant="ghost" size="icon" onClick={() => { setEditTarget(null); setEditUnbound(true) }} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }} title="取消绑定，切换为生成新文件">
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" aria-label="取消绑定，切换为生成新文件" onClick={() => { setEditTarget(null); setEditUnbound(true) }} style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>取消绑定，切换为生成新文件</TooltipContent>
+                </Tooltip>
               )}
               {editUnbound && !editTarget && currentFilePath && (
-                <Button type="button" variant="secondary" size="xs" onClick={() => setEditUnbound(false)} style={{ fontSize: 10, padding: '1px 6px', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3 }} title="重新绑定当前文件">
-                  绑定当前
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="button" variant="secondary" size="xs" aria-label="重新绑定当前文件" onClick={() => setEditUnbound(false)} style={{ fontSize: 10, padding: '1px 6px', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 3 }}>
+                      绑定当前
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>重新绑定当前文件</TooltipContent>
+                </Tooltip>
               )}
             </div>
           )}
