@@ -303,7 +303,7 @@
   grid-area: composition;
 }
 
-.vault-overview__card-head {
+.vault-overview__card-head.ui-card-header {
   position: relative;
   min-width: 0;
   min-height: 54px;
@@ -332,7 +332,7 @@
   gap: 3px;
 }
 
-.vault-overview__card-title h2 {
+.vault-overview__card-title-text.ui-card-title {
   margin: 0;
   color: var(--overview-text-primary);
   font-size: 14px;
@@ -341,8 +341,9 @@
   line-height: 1.25;
 }
 
-.vault-overview__card-title span {
+.vault-overview__card-subtitle.ui-card-description {
   min-width: 0;
+  margin: 0;
   overflow: hidden;
   color: var(--overview-text-tertiary);
   font-size: 11px;
@@ -351,6 +352,14 @@
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.vault-overview__card-content.ui-card-content {
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
 }
 
 .vault-overview__chart-frame,

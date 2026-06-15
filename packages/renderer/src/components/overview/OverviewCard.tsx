@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Card } from '../ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 
 interface OverviewCardProps {
   title: string
@@ -13,14 +13,16 @@ export function OverviewCard({ title, subtitle, action, children, className = ''
   return (
     <Card asChild className={`vault-overview__card${className ? ` ${className}` : ''}`}>
       <section aria-label={title}>
-        <div className="vault-overview__card-head">
+        <CardHeader className="vault-overview__card-head">
           <div className="vault-overview__card-title">
-            <h2>{title}</h2>
-            {subtitle && <span>{subtitle}</span>}
+            <CardTitle className="vault-overview__card-title-text">{title}</CardTitle>
+            {subtitle && <CardDescription className="vault-overview__card-subtitle">{subtitle}</CardDescription>}
           </div>
           {action && <div className="vault-overview__card-action">{action}</div>}
-        </div>
-        {children}
+        </CardHeader>
+        <CardContent className="vault-overview__card-content">
+          {children}
+        </CardContent>
       </section>
     </Card>
   )
