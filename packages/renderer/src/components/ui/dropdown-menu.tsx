@@ -62,6 +62,31 @@ export function DropdownMenuItem({
   )
 }
 
+export function DropdownMenuCheckboxItem({
+  className,
+  children,
+  checked,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem>) {
+  return (
+    <DropdownMenuPrimitive.CheckboxItem
+      data-slot="dropdown-menu-checkbox-item"
+      className={cn('ui-dropdown-menu-checkbox-item', className)}
+      checked={checked}
+      {...props}
+    >
+      <span className="ui-dropdown-menu-checkbox-indicator">
+        <DropdownMenuPrimitive.ItemIndicator>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      <span className="ui-dropdown-menu-checkbox-label">{children}</span>
+    </DropdownMenuPrimitive.CheckboxItem>
+  )
+}
+
 export function DropdownMenuSeparator({
   className,
   ...props

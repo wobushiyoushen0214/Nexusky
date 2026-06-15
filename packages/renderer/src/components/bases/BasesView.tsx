@@ -8,7 +8,14 @@ import { updateMarkdownProperty } from '../../utils/frontmatter'
 import { safeGetJSON, safeSetJSON } from '../../utils/storage'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
-import { Checkbox } from '../ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
 import { ScrollArea } from '../ui/scroll-area'
@@ -254,37 +261,52 @@ export function BasesView() {
             </SelectGroup>
           </SelectContent>
         </Select>
-        <Button type="button" variant="outline" size="sm" onClick={() => setColumnsOpen((value) => !value)} style={headerButtonStyle}>
-          {t('bases.columns', { count: propertyKeys.length })}
-        </Button>
+        <DropdownMenu open={columnsOpen} onOpenChange={setColumnsOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" style={headerButtonStyle}>
+              {t('bases.columns', { count: propertyKeys.length })}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={8}
+            style={{ width: 360, padding: 10, borderRadius: 10, background: 'var(--popover, var(--bg-glass-dense, var(--bg-surface)))' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '2px 2px 8px' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{t('bases.columnsTitle')}</div>
+                <div style={{ marginTop: 2, fontSize: 11, lineHeight: 1.45, color: 'var(--text-tertiary)' }}>{t('bases.columnsHint')}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <Button type="button" variant="outline" size="xs" onClick={() => saveSelectedColumns(allPropertyKeys)} style={miniButtonStyle}>{t('bases.showAllColumns')}</Button>
+                <Button type="button" variant="outline" size="xs" onClick={() => saveSelectedColumns(allPropertyKeys.slice(0, 8))} style={miniButtonStyle}>{t('bases.resetColumns')}</Button>
+              </div>
+            </div>
+            <DropdownMenuSeparator />
+            {allPropertyKeys.length === 0 ? (
+              <DropdownMenuItem disabled style={{ justifyContent: 'center', minHeight: 34 }}>
+                {t('bases.noCustomColumns')}
+              </DropdownMenuItem>
+            ) : (
+              <ScrollArea style={{ maxHeight: 280 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 4, padding: '2px 0' }}>
+                  {allPropertyKeys.map((key) => (
+                    <DropdownMenuCheckboxItem
+                      key={key}
+                      checked={selectedPropertyKeys.includes(key)}
+                      onCheckedChange={() => toggleColumn(key)}
+                      onSelect={(event) => event.preventDefault()}
+                      style={{ minWidth: 0, minHeight: 30, borderRadius: 7 }}
+                    >
+                      {key}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-
-      {columnsOpen && (
-        <div style={{ margin: '12px 18px 0', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{t('bases.columnsTitle')}</div>
-              <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>{t('bases.columnsHint')}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <Button type="button" variant="outline" size="xs" onClick={() => saveSelectedColumns(allPropertyKeys)} style={miniButtonStyle}>{t('bases.showAllColumns')}</Button>
-              <Button type="button" variant="outline" size="xs" onClick={() => saveSelectedColumns(allPropertyKeys.slice(0, 8))} style={miniButtonStyle}>{t('bases.resetColumns')}</Button>
-            </div>
-          </div>
-          {allPropertyKeys.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{t('bases.noCustomColumns')}</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-              {allPropertyKeys.map((key) => (
-                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: selectedPropertyKeys.includes(key) ? 'var(--accent-muted)' : 'var(--bg-base)', color: selectedPropertyKeys.includes(key) ? 'var(--accent-text)' : 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-                  <Checkbox checked={selectedPropertyKeys.includes(key)} onCheckedChange={() => toggleColumn(key)} style={{ flexShrink: 0 }} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{key}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {showGuide && (
         <div style={{ margin: '12px 18px 0', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.7, flexShrink: 0 }}>
