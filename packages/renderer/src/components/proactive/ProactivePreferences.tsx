@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { ProactiveUserPrefs, ProactiveSuggestionKind, ProactiveTriggerThresholds } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
 import { Button } from '../ui/button'
-import { Card, CardContent, CardHeader } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Checkbox } from '../ui/checkbox'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Input } from '../ui/input'
@@ -86,7 +86,7 @@ export function ProactivePreferencesTab() {
 
       <Card className="proactive-preferences__section">
         <CardHeader className="proactive-preferences__section-header">
-          <div className="proactive-preferences__section-title">{t('settings.proactive.perKind')}</div>
+          <CardTitle className="proactive-preferences__section-title">{t('settings.proactive.perKind')}</CardTitle>
         </CardHeader>
         <CardContent className="proactive-preferences__section-content">
           {KIND_ORDER.map((kind) => (
@@ -187,7 +187,7 @@ export function ProactivePreferencesTab() {
 
       <Card className="proactive-preferences__section proactive-preferences__thresholds">
         <CardHeader className="proactive-preferences__section-header">
-          <div className="proactive-preferences__section-title">{t('settings.proactive.triggerThresholds')}</div>
+          <CardTitle className="proactive-preferences__section-title">{t('settings.proactive.triggerThresholds')}</CardTitle>
         </CardHeader>
         <CardContent className="proactive-preferences__section-content">
           {renderThresholdSlider(
