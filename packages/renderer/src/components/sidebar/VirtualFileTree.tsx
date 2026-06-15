@@ -4,9 +4,11 @@ import { VAULT_FILES_REFRESHED_EVENT, useVaultStore, type VaultFilesRefreshedDet
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { FileEntry } from '@shared/types/ipc'
+import './file-tree.css'
 
 interface FlatNode {
   entry: FileEntry
@@ -346,9 +348,11 @@ export function VirtualFileTree({ entries, defaultExpanded = true, expansionVers
 
   if (entries.length === 0) {
     return (
-      <div style={{ flex: 1, minHeight: 0, padding: '32px 8px', textAlign: 'center' }}>
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>空笔记库</p>
-      </div>
+      <Empty className="file-tree-empty file-tree-empty--virtual">
+        <EmptyHeader>
+          <EmptyTitle>空笔记库</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     )
   }
 

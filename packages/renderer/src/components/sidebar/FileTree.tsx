@@ -4,9 +4,11 @@ import { useVaultStore } from '../../stores/vault-store'
 import { ContextMenu } from '../ContextMenu'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { FileEntry } from '@shared/types/ipc'
+import './file-tree.css'
 
 interface FileTreeProps {
   entries: FileEntry[]
@@ -17,9 +19,11 @@ interface FileTreeProps {
 export function FileTree({ entries, depth = 0, defaultExpanded = true }: FileTreeProps) {
   if (entries.length === 0) {
     return depth === 0 ? (
-      <div style={{ padding: '32px 8px', textAlign: 'center' }}>
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>空笔记库</p>
-      </div>
+      <Empty className="file-tree-empty">
+        <EmptyHeader>
+          <EmptyTitle>空笔记库</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     ) : null
   }
 

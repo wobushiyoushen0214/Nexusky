@@ -1,0 +1,19 @@
+.file-tree-empty.ui-empty {
+  min-height: 96px;
+  padding: 28px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground, var(--text-tertiary));
+  text-align: center;
+}
+
+.file-tree-empty--virtual.ui-empty {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.file-tree-empty .ui-empty-title {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
