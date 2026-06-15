@@ -271,6 +271,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
+  gap: 0;
   overflow: hidden;
   border: 1px solid var(--overview-glass-border);
   border-radius: var(--overview-card-radius);

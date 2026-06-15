@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Card } from '../ui/card'
 
 interface OverviewCardProps {
   title: string
@@ -10,15 +11,17 @@ interface OverviewCardProps {
 
 export function OverviewCard({ title, subtitle, action, children, className = '' }: OverviewCardProps) {
   return (
-    <section className={`vault-overview__card${className ? ` ${className}` : ''}`} aria-label={title}>
-      <div className="vault-overview__card-head">
-        <div className="vault-overview__card-title">
-          <h2>{title}</h2>
-          {subtitle && <span>{subtitle}</span>}
+    <Card asChild className={`vault-overview__card${className ? ` ${className}` : ''}`}>
+      <section aria-label={title}>
+        <div className="vault-overview__card-head">
+          <div className="vault-overview__card-title">
+            <h2>{title}</h2>
+            {subtitle && <span>{subtitle}</span>}
+          </div>
+          {action && <div className="vault-overview__card-action">{action}</div>}
         </div>
-        {action && <div className="vault-overview__card-action">{action}</div>}
-      </div>
-      {children}
-    </section>
+        {children}
+      </section>
+    </Card>
   )
 }

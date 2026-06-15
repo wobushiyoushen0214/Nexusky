@@ -7,6 +7,7 @@ import { OverviewCard } from './OverviewCard'
 import { VitalityCard } from './VitalityCard'
 import { DonutChart } from '../charts/DonutChart'
 import { Button } from '../ui/button'
+import { Card } from '../ui/card'
 import { DiaryHeatmapChart, TokenUsageAreaChart, type DiaryHeatmapPoint, type TokenUsagePoint } from './OverviewCharts'
 import './vault-overview.css'
 
@@ -234,11 +235,11 @@ export function VaultOverview() {
 
         <section className="vault-overview__summary" aria-label={t('overviewPage.summary.title')}>
           {summaryItems.map((item) => (
-            <div key={item.label} className={`vault-overview__metric vault-overview__metric--${item.tone}`}>
+            <Card key={item.label} className={`vault-overview__metric vault-overview__metric--${item.tone}`}>
               <span>{item.label}</span>
               <strong>{item.value}</strong>
               <p>{item.detail}</p>
-            </div>
+            </Card>
           ))}
         </section>
 

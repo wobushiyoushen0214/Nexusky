@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
+import { Card } from '../ui/card'
 import { VitalityTrendChart, type VitalityTrendPoint } from './OverviewCharts'
 import './VitalityCard.css'
 
@@ -30,9 +31,9 @@ export function VitalityCard({ health }: VitalityCardProps) {
 
   if (!health) {
     return (
-      <div className="vitality-card vitality-card--loading">
+      <Card className="vitality-card vitality-card--loading">
         <p>{t('overviewPage.vitality.scanning')}</p>
-      </div>
+      </Card>
     )
   }
 
@@ -46,7 +47,7 @@ export function VitalityCard({ health }: VitalityCardProps) {
   const trendClass = scoreDelta > 0 ? 'trend-up' : scoreDelta < 0 ? 'trend-down' : 'trend-neutral'
 
   return (
-    <div className={`vitality-card vitality-card--${scoreColor}`}>
+    <Card className={`vitality-card vitality-card--${scoreColor}`}>
       <div className="vitality-card__header">
         <div>
           <h3>{t('overviewPage.vitality.title')}</h3>
@@ -79,6 +80,6 @@ export function VitalityCard({ health }: VitalityCardProps) {
           <strong>{t(`overviewPage.vitality.status.${scoreColor}`)}</strong>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
