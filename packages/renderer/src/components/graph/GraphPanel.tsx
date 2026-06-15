@@ -12,6 +12,7 @@ import {
   SelectValue
 } from '../ui/select'
 import { Switch } from '../ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { GraphData, GraphNode } from '@shared/types/ipc'
 
 interface GraphPanelProps {
@@ -192,9 +193,14 @@ export function GraphPanel(props: GraphPanelProps) {
               </Button>
               {activeFolderPath != null && (
                 <>
-                  <span className="graph-scope-current" title={activeFolderPath || t('graph.rootGroup')}>
-                    {activeFolderPath || t('graph.rootGroup')}
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="graph-scope-current">
+                        {activeFolderPath || t('graph.rootGroup')}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{activeFolderPath || t('graph.rootGroup')}</TooltipContent>
+                  </Tooltip>
                   <Button type="button" variant="ghost" size="xs" className="graph-scope-nav" onClick={onOpenParentFolder}>
                     {t('graph.parent')}
                   </Button>
@@ -238,19 +244,24 @@ export function GraphPanel(props: GraphPanelProps) {
                 {groupLegend.map((group, index) => {
                   const visible = !hiddenGroupIds.has(group.id)
                   const switchId = `graph-group-${index}`
+                  const groupHint = visible ? t('graph.hideGroup') : t('graph.showGroup')
                   return (
                     <div
                       key={group.id}
                       className={`graph-group-item${visible ? '' : ' muted'}`}
-                      title={visible ? t('graph.hideGroup') : t('graph.showGroup')}
                     >
                       <span className="graph-group-dot" style={{ background: group.color }} />
-                      <label htmlFor={switchId} className="graph-group-name">{group.title}</label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <label htmlFor={switchId} className="graph-group-name">{group.title}</label>
+                        </TooltipTrigger>
+                        <TooltipContent>{groupHint}</TooltipContent>
+                      </Tooltip>
                       <Switch
                         id={switchId}
                         checked={visible}
                         onCheckedChange={() => onToggleGroup(group.id)}
-                        aria-label={visible ? t('graph.hideGroup') : t('graph.showGroup')}
+                        aria-label={groupHint}
                         className="graph-toggle-switch graph-group-switch"
                       />
                     </div>
