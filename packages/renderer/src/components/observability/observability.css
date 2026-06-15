@@ -108,20 +108,25 @@
   margin-bottom: 6px;
 }
 
-.long-context-debug-panel__pack-item-content.ui-card-content {
-  padding: 8px 10px;
+.long-context-debug-panel__pack-item-header.ui-card-header {
+  padding: 8px 10px 0;
+  gap: 2px;
 }
 
-.long-context-debug-panel__pack-item-title {
+.long-context-debug-panel__pack-item-content.ui-card-content {
+  padding: 0 10px 8px;
+}
+
+.long-context-debug-panel__pack-item-title.ui-card-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--card-foreground, var(--text-primary));
 }
 
-.long-context-debug-panel__pack-item-meta {
+.long-context-debug-panel__pack-item-meta.ui-card-description {
   font-size: 10px;
   color: var(--text-tertiary);
-  margin-top: 2px;
+  line-height: 1.35;
 }
 
 .long-context-debug-panel__pack-item-reason {

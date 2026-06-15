@@ -8,7 +8,7 @@ import { toast } from '../../stores/toast-store'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Slider } from '../ui/slider'
 import { Spinner } from '../ui/spinner'
@@ -261,14 +261,16 @@ function PackItemCard({ item }: { item: LongContextPackItemPayload }) {
   return (
     <Card asChild className="long-context-debug-panel__pack-item">
       <article>
-        <CardContent className="long-context-debug-panel__pack-item-content">
-          <div className="long-context-debug-panel__pack-item-title">{item.title}</div>
-          <div className="long-context-debug-panel__pack-item-meta">
+        <CardHeader className="long-context-debug-panel__pack-item-header">
+          <CardTitle className="long-context-debug-panel__pack-item-title">{item.title}</CardTitle>
+          <CardDescription className="long-context-debug-panel__pack-item-meta">
             {item.relationType && <span>{getRelationTypeLabel(item.relationType, t)} · </span>}
             {typeof item.confidence === 'number' && <span>{t('longContextDebug.packItem.confidence')} {Math.round(item.confidence * 100)}% · </span>}
             {typeof item.score === 'number' && <span>{t('longContextDebug.packItem.score')} {item.score.toFixed(2)}</span>}
             {item.droppedReason && <span> · {t(`longContextDebug.droppedReason.${item.droppedReason}`)}</span>}
-          </div>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="long-context-debug-panel__pack-item-content">
           {item.reason && <div className="long-context-debug-panel__pack-item-reason">{item.reason}</div>}
           {item.evidence.length > 0 && (
             <div className="long-context-debug-panel__pack-item-evidence">
