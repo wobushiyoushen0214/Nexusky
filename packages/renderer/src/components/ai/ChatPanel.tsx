@@ -2532,68 +2532,78 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 onChange={(event) => { void handleAttachFiles(event.currentTarget.files) }}
                 style={{ display: 'none' }}
               />
-              <Button
-                onClick={() => { updateEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
-                type="button"
-                variant="ghost"
-                size="icon"
-                style={{
-                  width: 28,
-                  height: 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: editMode ? 'var(--accent-muted)' : 'transparent',
-                  color: editMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  transition: 'background 150ms, color 150ms',
-                  flexShrink: 0,
-                }}
-                title={editMode ? '切换到对话模式' : '切换到编辑模式'}
-                aria-label={editMode ? '切换到对话模式' : '切换到编辑模式'}
-              >
-                {editMode ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                )}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => { updateEditMode(!editMode); setEditTarget(null); setEditHistory([]); setEditUnbound(false) }}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: editMode ? 'var(--accent-muted)' : 'transparent',
+                      color: editMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                      border: 'none',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'background 150ms, color 150ms',
+                      flexShrink: 0,
+                    }}
+                    aria-label={editMode ? '切换到对话模式' : '切换到编辑模式'}
+                  >
+                    {editMode ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{editMode ? '切换到对话模式' : '切换到编辑模式'}</TooltipContent>
+              </Tooltip>
               {!editMode && (
-                <Button
-                  onClick={() => {
-                    if (!canUseVaultTools) {
-                      updateAgentMode(false)
-                      toast(vaultToolsDisabledTitle || '当前 Provider 不支持 Vault 工具', 'info')
-                      return
-                    }
-                    updateAgentMode(!agentMode)
-                  }}
-                  disabled={!canUseVaultTools}
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: agentMode ? 'var(--accent-muted)' : 'transparent',
-                    color: agentMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                    border: 'none',
-                    borderRadius: 8,
-                    cursor: canUseVaultTools ? 'pointer' : 'not-allowed',
-                    opacity: canUseVaultTools ? 1 : 0.55,
-                    transition: 'background 150ms, color 150ms',
-                    flexShrink: 0,
-                  }}
-                  title={canUseVaultTools ? vaultToolsBoundaryTitle : vaultToolsDisabledTitle}
-                  aria-label="切换 Vault 工具"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+                      <Button
+                        onClick={() => {
+                          if (!canUseVaultTools) {
+                            updateAgentMode(false)
+                            toast(vaultToolsDisabledTitle || '当前 Provider 不支持 Vault 工具', 'info')
+                            return
+                          }
+                          updateAgentMode(!agentMode)
+                        }}
+                        disabled={!canUseVaultTools}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: agentMode ? 'var(--accent-muted)' : 'transparent',
+                          color: agentMode ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                          border: 'none',
+                          borderRadius: 8,
+                          cursor: canUseVaultTools ? 'pointer' : 'not-allowed',
+                          opacity: canUseVaultTools ? 1 : 0.55,
+                          transition: 'background 150ms, color 150ms',
+                          flexShrink: 0,
+                        }}
+                        aria-label="切换 Vault 工具"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{canUseVaultTools ? vaultToolsBoundaryTitle : vaultToolsDisabledTitle}</TooltipContent>
+                </Tooltip>
               )}
               <textarea
                 ref={inputRef}
@@ -2620,45 +2630,54 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                 }}
               />
             {isStreaming ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={stopGeneration}
-                style={{
-                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'var(--bg-surface)', color: 'var(--text-secondary)',
-                  border: '1.5px solid var(--border-default)', borderRadius: 8,
-                  cursor: 'pointer', flexShrink: 0, transition: 'border-color 100ms',
-                }}
-                title="停止生成"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="4" y="4" width="16" height="16" rx="2" />
-                </svg>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="停止生成"
+                    onClick={stopGeneration}
+                    style={{
+                      width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'var(--bg-surface)', color: 'var(--text-secondary)',
+                      border: '1.5px solid var(--border-default)', borderRadius: 8,
+                      cursor: 'pointer', flexShrink: 0, transition: 'border-color 100ms',
+                    }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                    </svg>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>停止生成</TooltipContent>
+              </Tooltip>
             ) : (
               <>
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                type="button"
-                variant="ghost"
-                size="icon"
-                style={{
-                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'transparent', color: 'var(--text-tertiary)',
-                  border: 'none', borderRadius: 8,
-                  cursor: 'pointer',
-                  transition: 'background 150ms, color 150ms',
-                  flexShrink: 0,
-                }}
-                title="添加图片、笔记或文档附件"
-                aria-label="添加附件"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.4 11.6l-8.8 8.8a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.7 9.7a2 2 0 0 1-2.8-2.8l8.9-8.9" />
-                </svg>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    style={{
+                      width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', color: 'var(--text-tertiary)',
+                      border: 'none', borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'background 150ms, color 150ms',
+                      flexShrink: 0,
+                    }}
+                    aria-label="添加图片、笔记或文档附件"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.4 11.6l-8.8 8.8a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.7 9.7a2 2 0 0 1-2.8-2.8l8.9-8.9" />
+                    </svg>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>添加图片、笔记或文档附件</TooltipContent>
+              </Tooltip>
               <Button
                 type="button"
                 variant="default"
