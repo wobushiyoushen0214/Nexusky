@@ -301,20 +301,33 @@
 .agent-run-panel__history-row.ui-card {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
   width: 100%;
-  padding: 5px 6px;
+  padding: 0;
   border: 0;
   border-radius: var(--radius-sm, 6px);
   background: transparent;
+}
+
+.agent-run-panel__history-row-button.ui-button {
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 5px 6px;
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
 }
 
-.agent-run-panel__history-row.ui-card:hover {
+.agent-run-panel__history-row-button.ui-button:hover {
   background: var(--bg-hover);
+}
+
+.agent-run-panel__history-row-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

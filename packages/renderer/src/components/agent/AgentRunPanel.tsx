@@ -268,13 +268,19 @@ export function AgentRunPanel() {
             <AgentPanelEmpty compact>{t('agent.history.empty')}</AgentPanelEmpty>
           ) : (
             history.map((run) => (
-              <Card key={run.id} asChild className="agent-run-panel__history-row">
-                <button type="button" onClick={() => void openHistoryRun(run.id)}>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{run.goal}</span>
+              <Card key={run.id} className="agent-run-panel__history-row">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="agent-run-panel__history-row-button"
+                  onClick={() => void openHistoryRun(run.id)}
+                >
+                  <span className="agent-run-panel__history-row-title">{run.goal}</span>
                   <span className={`agent-run-panel__step-status agent-run-panel__step-status--${run.status === 'awaiting_user' ? 'pending' : run.status === 'running' ? 'running' : run.status === 'completed' ? 'completed' : run.status === 'failed' || run.status === 'cancelled' ? 'failed' : 'pending'}`}>
                     {run.status}
                   </span>
-                </button>
+                </Button>
               </Card>
             ))
           )}
