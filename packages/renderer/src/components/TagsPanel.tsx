@@ -5,6 +5,7 @@ import { parseNoteProperties, updateFrontmatterProperty } from '../utils/frontma
 import { cn } from '../lib/utils'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Card, CardContent } from './ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
@@ -101,58 +102,62 @@ export function TagsPanel() {
   return (
     <div className="tags-panel">
       {currentFilePath && (
-        <div className="tags-panel__current glass-divider-bottom">
-          <PanelHeading>当前文件标签</PanelHeading>
-          <div className="tags-panel__cloud">
-            {currentTags.map((tag) => (
-              <Badge key={tag} variant="default" className="tags-panel__current-tag">
-                {tag}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="tags-panel__remove-tag"
-                      onClick={() => removeTag(tag)}
-                      aria-label={`移除标签 ${tag}`}
-                    >
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{`移除标签 ${tag}`}</TooltipContent>
-                </Tooltip>
-              </Badge>
-            ))}
-            {inputVisible ? (
-              <Input
-                className="tags-panel__input"
-                ref={inputRef}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={addTag}
-                placeholder="标签名..."
-              />
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="tags-panel__add-tag"
-                    onClick={() => setInputVisible(true)}
-                    aria-label="添加标签"
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>添加标签</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        </div>
+        <Card asChild className="tags-panel__current">
+          <section>
+            <CardContent className="tags-panel__current-content">
+              <PanelHeading>当前文件标签</PanelHeading>
+              <div className="tags-panel__cloud">
+                {currentTags.map((tag) => (
+                  <Badge key={tag} variant="default" className="tags-panel__current-tag">
+                    {tag}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="tags-panel__remove-tag"
+                          onClick={() => removeTag(tag)}
+                          aria-label={`移除标签 ${tag}`}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{`移除标签 ${tag}`}</TooltipContent>
+                    </Tooltip>
+                  </Badge>
+                ))}
+                {inputVisible ? (
+                  <Input
+                    className="tags-panel__input"
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onBlur={addTag}
+                    placeholder="标签名..."
+                  />
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="tags-panel__add-tag"
+                        onClick={() => setInputVisible(true)}
+                        aria-label="添加标签"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>添加标签</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </CardContent>
+          </section>
+        </Card>
       )}
 
       <div className="tags-panel__all">

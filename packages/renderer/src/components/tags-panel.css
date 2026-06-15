@@ -7,11 +7,18 @@
   color: var(--secondary-foreground, var(--text-secondary));
 }
 
-.tags-panel__current {
+.tags-panel__current.ui-card {
   flex-shrink: 0;
-  padding: 12px 12px 10px;
+  gap: 0;
+  border-width: 0 0 1px;
+  border-color: color-mix(in srgb, var(--border, var(--border-subtle)) 72%, transparent);
+  border-radius: 0;
   background: color-mix(in srgb, var(--card, var(--panel-bg-soft)) 54%, transparent);
-  box-shadow: var(--glass-divider-shadow-bottom);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 14%, transparent);
+}
+
+.tags-panel__current-content.ui-card-content {
+  padding: 12px 12px 10px;
 }
 
 .tags-panel__heading {
