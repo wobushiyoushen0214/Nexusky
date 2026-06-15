@@ -6,6 +6,7 @@ import { getErrorMessage } from '../utils/errors'
 import { ConfirmModal } from './ConfirmModal'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
 import {
@@ -20,6 +21,7 @@ import { Spinner } from './ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
+import './publish-scope-dialog.css'
 
 type PublishScopeType = PublishScope['type']
 
@@ -392,26 +394,28 @@ function PublishPreviewPanel({ preview, loading, hasIssues }: { preview: Publish
 function PublishTargetPanel({ target, disabled, onUnpublish }: { target: PublishTarget; disabled: boolean; onUnpublish: () => void }) {
   const { t } = useTranslation()
   return (
-    <section style={{ padding: 10, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('commandPalette.publishScope.currentTarget')}</div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div style={{ marginTop: 3, fontSize: 11, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.outputPath}</div>
-            </TooltipTrigger>
-            <TooltipContent>{target.outputPath}</TooltipContent>
-          </Tooltip>
-        </div>
-        <Button type="button" variant="destructive" size="xs" onClick={onUnpublish} disabled={disabled}>
-          {t('commandPalette.publishScope.unpublish')}
-        </Button>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        <span style={pillStyle}>{t(`commandPalette.publishScope.access.${target.access}.label`)}</span>
-        <span style={pillStyle}>{t('commandPalette.publishScope.targetSummary', { count: target.files, scope: target.scopeLabel })}</span>
-      </div>
-    </section>
+    <Card asChild className="publish-target">
+      <section>
+        <CardHeader className="publish-target__header">
+          <div className="publish-target__title-block">
+            <CardTitle className="publish-target__title">{t('commandPalette.publishScope.currentTarget')}</CardTitle>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="publish-target__path">{target.outputPath}</div>
+              </TooltipTrigger>
+              <TooltipContent>{target.outputPath}</TooltipContent>
+            </Tooltip>
+          </div>
+          <Button type="button" variant="destructive" size="xs" onClick={onUnpublish} disabled={disabled}>
+            {t('commandPalette.publishScope.unpublish')}
+          </Button>
+        </CardHeader>
+        <CardContent className="publish-target__meta">
+          <Badge variant="outline" className="publish-target__pill">{t(`commandPalette.publishScope.access.${target.access}.label`)}</Badge>
+          <Badge variant="outline" className="publish-target__pill">{t('commandPalette.publishScope.targetSummary', { count: target.files, scope: target.scopeLabel })}</Badge>
+        </CardContent>
+      </section>
+    </Card>
   )
 }
 
@@ -584,16 +588,4 @@ const rowStyle: React.CSSProperties = {
   borderRadius: 6,
   fontSize: 11,
   background: 'var(--bg-elevated)'
-}
-
-const pillStyle: React.CSSProperties = {
-  padding: '3px 7px',
-  borderRadius: 999,
-  border: '1px solid var(--border-subtle)',
-  color: 'var(--text-tertiary)',
-  fontSize: 10.5,
-  maxWidth: '100%',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap'
 }
