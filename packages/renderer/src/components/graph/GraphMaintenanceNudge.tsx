@@ -6,6 +6,7 @@ import {
   type GraphMaintenanceSignals,
 } from './graph-types'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 interface GraphMaintenanceNudgeProps {
   signals: GraphMaintenanceSignals | null
@@ -69,17 +70,21 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
 
   if (collapsed) {
     return (
-      <Button
-        type="button"
-        variant="outline"
-        className="graph-maintenance-nudge-chip"
-        title={t('graph.maintenance.expand')}
-        aria-label={t('graph.maintenance.expand')}
-        onClick={() => setCollapsed(false)}
-      >
-        <span className="graph-maintenance-nudge-badge"><SparkIcon /></span>
-        <span className="graph-maintenance-nudge-chip-count">{total}</span>
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="graph-maintenance-nudge-chip"
+            aria-label={t('graph.maintenance.expand')}
+            onClick={() => setCollapsed(false)}
+          >
+            <span className="graph-maintenance-nudge-badge"><SparkIcon /></span>
+            <span className="graph-maintenance-nudge-chip-count">{total}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{t('graph.maintenance.expand')}</TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -93,44 +98,58 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
         </span>
       </div>
       <div className="graph-maintenance-nudge-actions">
-        {visibleItems.map((item) => (
-          <Button
-            key={item.focus}
-            type="button"
-            variant="outline"
-            className={`graph-maintenance-pill${focus === item.focus ? ' active' : ''}`}
-            title={`${item.hint}${item.samples.length > 0 ? `: ${item.samples.join(', ')}` : ''}`}
-            onClick={() => onSetFocus(item.focus)}
-          >
-            <MaintenanceFocusIcon focus={item.focus} />
-            <span>{item.label}</span>
-            <strong>{item.count}</strong>
-          </Button>
-        ))}
+        {visibleItems.map((item) => {
+          const hint = `${item.hint}${item.samples.length > 0 ? `: ${item.samples.join(', ')}` : ''}`
+          return (
+            <Tooltip key={item.focus}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={`graph-maintenance-pill${focus === item.focus ? ' active' : ''}`}
+                  onClick={() => onSetFocus(item.focus)}
+                >
+                  <MaintenanceFocusIcon focus={item.focus} />
+                  <span>{item.label}</span>
+                  <strong>{item.count}</strong>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{hint}</TooltipContent>
+            </Tooltip>
+          )
+        })}
         {focus !== 'all' && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="graph-maintenance-icon-button"
-            title={t('graph.maintenance.all')}
-            aria-label={t('graph.maintenance.all')}
-            onClick={() => onSetFocus('all')}
-          >
-            <ClearFocusIcon />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="graph-maintenance-icon-button"
+                aria-label={t('graph.maintenance.all')}
+                onClick={() => onSetFocus('all')}
+              >
+                <ClearFocusIcon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('graph.maintenance.all')}</TooltipContent>
+          </Tooltip>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="graph-maintenance-nudge-collapse"
-          title={t('graph.maintenance.collapse')}
-          aria-label={t('graph.maintenance.collapse')}
-          onClick={() => setCollapsed(true)}
-        >
-          <MinimizeIcon />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="graph-maintenance-nudge-collapse"
+              aria-label={t('graph.maintenance.collapse')}
+              onClick={() => setCollapsed(true)}
+            >
+              <MinimizeIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('graph.maintenance.collapse')}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
