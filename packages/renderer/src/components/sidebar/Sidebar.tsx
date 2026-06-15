@@ -1,10 +1,19 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { VirtualFileTree } from './VirtualFileTree'
 import { ContextMenu } from '../ContextMenu'
 import { Button } from '../ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 import { Input } from '../ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { safeGet, safeSet } from '../../utils/storage'
@@ -58,25 +67,12 @@ export function Sidebar({ width = 240 }: { width?: number }) {
   const [sortBy, setSortBy] = useState<SortMode>(getInitialSortMode)
   const [defaultExpanded, setDefaultExpanded] = useState(true)
   const [treeExpansionVersion, setTreeExpansionVersion] = useState(0)
-  const [vaultMenu, setVaultMenu] = useState(false)
-  const vaultMenuRef = useRef<HTMLDivElement>(null)
-  const vaultMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const [vaultMenuOpen, setVaultMenuOpen] = useState(false)
   const [recentVaults, setRecentVaults] = useState<string[]>([])
 
   const sortedFiles = useMemo(() => sortFiles(filterFiles(files, filterQuery), sortBy), [files, filterQuery, sortBy])
   const sortLabel = sortBy === 'name' ? '按名称排序（点击切换为按时间）' : '按修改时间排序（点击切换为按名称）'
-
-  useEffect(() => {
-    if (!vaultMenu) return
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (vaultMenuRef.current?.contains(target)) return
-      if (vaultMenuButtonRef.current?.contains(target)) return
-      setVaultMenu(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [vaultMenu])
+  const otherRecentVaults = recentVaults.filter((p) => p !== vaultPath)
 
   useEffect(() => {
     window.api.invoke('vault:get-recent', undefined).then(setRecentVaults)
@@ -114,19 +110,26 @@ export function Sidebar({ width = 240 }: { width?: number }) {
     await openFile(path)
   }
 
+  const handleSwitchVault = async (path: string) => {
+    setVaultMenuOpen(false)
+    const { setVaultPath, refreshFiles, indexVault } = useVaultStore.getState()
+    setVaultPath(path)
+    await refreshFiles()
+    await indexVault()
+  }
+
   return (
     <aside className="animate-slide-in-left" style={{ width, height: '100%', minHeight: 0, background: 'transparent', display: 'flex', flexDirection: 'column', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ height: 40, padding: '0 10px 0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'transparent' }}>
-        <Tooltip>
-          <TooltipTrigger asChild>
+        <DropdownMenu open={vaultMenuOpen} onOpenChange={setVaultMenuOpen}>
+          <DropdownMenuTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              ref={vaultMenuButtonRef}
               aria-label="切换笔记空间"
-              onClick={() => setVaultMenu(!vaultMenu)}
+              title="切换笔记空间"
               style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 0, cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 9 }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)' }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
@@ -136,9 +139,66 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>切换笔记空间</TooltipContent>
-        </Tooltip>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            sideOffset={8}
+            className="glass-popover"
+            style={{
+              width: Math.max(180, width - 16),
+              background: 'var(--bg-glass-dense, var(--bg-glass-solid))',
+              border: '1px solid var(--glass-panel-border)',
+              borderRadius: 12,
+              padding: '6px 4px',
+              boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)',
+              backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+              WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)',
+            }}
+          >
+            <DropdownMenuLabel style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              笔记空间
+            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              {otherRecentVaults.map((path) => (
+                <DropdownMenuItem
+                  key={path}
+                  onSelect={() => { void handleSwitchVault(path) }}
+                  style={{ minHeight: 34, padding: '0 10px', alignItems: 'center', gap: 8, color: 'var(--text-primary)', borderRadius: 8 }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{path.split(/[\\/]/).pop()}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{path}</div>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+              {otherRecentVaults.length === 0 && (
+                <DropdownMenuItem disabled style={{ minHeight: 32, justifyContent: 'center', padding: '0 10px', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  暂无其他笔记空间
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--border-subtle) 44%, transparent) 18%, color-mix(in srgb, var(--glass-highlight) 62%, transparent) 50%, color-mix(in srgb, var(--border-subtle) 34%, transparent) 82%, transparent)', margin: '4px 8px' }} />
+            <DropdownMenuItem
+              onSelect={() => {
+                setVaultMenuOpen(false)
+                selectVault()
+              }}
+              style={{ minHeight: 34, padding: '0 10px', alignItems: 'center', gap: 8, color: 'var(--accent-text)', borderRadius: 8 }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                <line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
+              </svg>
+              打开其他文件夹...
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div style={{ display: 'flex', gap: 2 }}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -188,63 +248,6 @@ export function Sidebar({ width = 240 }: { width?: number }) {
           </Tooltip>
         </div>
       </div>
-
-      {/* Vault switcher dropdown */}
-      {vaultMenu && (
-        <div ref={vaultMenuRef} style={{ position: 'absolute', top: 48, left: 8, right: 8, zIndex: 100 }}>
-          <div className="glass-popover" style={{ background: 'var(--bg-glass-dense, var(--bg-glass-solid))', border: '1px solid var(--glass-panel-border)', borderRadius: 12, padding: '6px 4px', boxShadow: 'var(--shadow-popover), var(--glass-panel-edge-shadow)', backdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)', WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(170%)' }}>
-            <div style={{ padding: '4px 10px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-              </svg>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 500 }}>笔记空间</span>
-            </div>
-            {recentVaults.filter((p) => p !== vaultPath).map((path) => (
-              <Button
-                type="button"
-                variant="ghost"
-                key={path}
-                onClick={async () => {
-                  setVaultMenu(false)
-                  const { setVaultPath, refreshFiles, indexVault } = useVaultStore.getState()
-                  setVaultPath(path)
-                  await refreshFiles()
-                  await indexVault()
-                }}
-                style={{ width: '100%', height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8, fontSize: 12, color: 'var(--text-primary)', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--text-tertiary)' }}>
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{path.split(/[\\/]/).pop()}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{path}</div>
-                </div>
-              </Button>
-            ))}
-            {recentVaults.filter((p) => p !== vaultPath).length === 0 && (
-              <div style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>暂无其他笔记空间</div>
-            )}
-            <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--border-subtle) 44%, transparent) 18%, color-mix(in srgb, var(--glass-highlight) 62%, transparent) 50%, color-mix(in srgb, var(--border-subtle) 34%, transparent) 82%, transparent)', margin: '4px 8px' }} />
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => { setVaultMenu(false); selectVault() }}
-              style={{ width: '100%', height: 34, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8, fontSize: 12, color: 'var(--accent-text)', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left', transition: 'background 80ms' }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                <line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
-              </svg>
-              打开其他文件夹...
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* New file input */}
       {isCreating && (
