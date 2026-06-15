@@ -634,7 +634,10 @@
   color: var(--muted-foreground, var(--text-tertiary));
 }
 
-.graph-maintenance-pill strong {
+.graph-maintenance-pill-count.ui-badge {
+  height: 16px;
+  min-width: 16px;
+  padding: 0 5px;
   color: var(--foreground, var(--text-primary));
   font-size: 10px;
   font-variant-numeric: tabular-nums;
@@ -683,7 +686,10 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-.graph-maintenance-nudge-chip-count {
+.graph-maintenance-nudge-chip-count.ui-badge {
+  height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
   color: var(--foreground, var(--text-primary));
   font-size: 11px;
   font-weight: 700;

@@ -5,6 +5,7 @@ import {
   type GraphMaintenanceFocus,
   type GraphMaintenanceSignals,
 } from './graph-types'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
@@ -80,7 +81,7 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
             onClick={() => setCollapsed(false)}
           >
             <span className="graph-maintenance-nudge-badge"><SparkIcon /></span>
-            <span className="graph-maintenance-nudge-chip-count">{total}</span>
+            <Badge variant="secondary" className="graph-maintenance-nudge-chip-count">{total}</Badge>
           </Button>
         </TooltipTrigger>
         <TooltipContent>{t('graph.maintenance.expand')}</TooltipContent>
@@ -111,7 +112,7 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
                 >
                   <MaintenanceFocusIcon focus={item.focus} />
                   <span>{item.label}</span>
-                  <strong>{item.count}</strong>
+                  <Badge variant="secondary" className="graph-maintenance-pill-count">{item.count}</Badge>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{hint}</TooltipContent>
