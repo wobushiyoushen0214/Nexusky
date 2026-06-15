@@ -242,6 +242,14 @@
   gap: 6px;
 }
 
+.agent-run-panel__status-chip.ui-badge {
+  height: 20px;
+  padding: 0 7px;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
 .agent-run-panel__step-controls {
   gap: 4px;
 }

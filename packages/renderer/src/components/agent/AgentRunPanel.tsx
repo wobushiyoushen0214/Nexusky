@@ -361,7 +361,9 @@ export function AgentRunPanel() {
 
       {(stage === 'plan' || stage === 'execute') && detail && (
         <div className="agent-run-panel__status-bar">
-          <span>{t('agent.statusBar.status', { status })}</span>
+          <Badge variant="secondary" className="agent-run-panel__status-chip">
+            {t('agent.statusBar.status', { status })}
+          </Badge>
           <div className="agent-run-panel__status-actions">
             {isRunning && (
               <Button type="button" variant="ghost" size="sm" className="agent-run-panel__btn agent-run-panel__btn--ghost" onClick={() => void pauseRun()}>
