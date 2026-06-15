@@ -34,7 +34,7 @@ Already added:
 - `GraphGenerator`, `TrashPanel`, `Onboarding`, and `SearchPanel` now use `Dialog`/`ScrollArea` and shared controls for their overlay shells/actions; `Onboarding` uses `DialogDescription` for step copy, `TrashPanel` also uses shared `Empty`, and `GraphGenerator` also uses shared `Badge` for selected-file chips, shared `Spinner` for generation status, shared `Empty` for the pre-generation placeholder, and shared `ScrollArea` for generated code output.
 - `CommandPalette` and `QuickSwitcher` now use `Dialog` + `Command` instead of custom overlay/input/list keyboard handling.
 - `NotificationCenter` snooze actions now use `DropdownMenu`.
-- The shared coordinate-based `ContextMenu` compatibility layer now uses the local Radix `ContextMenu` wrapper while keeping the old `{ x, y, items, onClose }` caller API.
+- The shared coordinate-based `ContextMenu` compatibility layer keeps the old `{ x, y, items, onClose }` caller API and uses fixed viewport positioning with shared menu styles/tokens. Radix `ContextMenu` remains available for true trigger-based context menus, but it is not used for this coordinate bridge because it needs a real context-menu trigger event to calculate pointer anchoring.
 - `NotificationCenter` drawer now uses the local `Sheet` wrapper with the existing lightweight non-modal visual treatment.
 - `AIWritingMenu` preview now uses `Dialog` and shared `ScrollArea` panes; its selection action bar now uses a coordinate-anchored `Popover`; preview close/footer actions and selection action buttons now use shared `Button`; selection action hints use shared `Tooltip`; preview streaming status uses shared `Spinner` while preserving streaming cancellation and editor replace/append/copy behavior.
 - `RelatedContextPanel` context-pack summary and tiers now use shared `Button`/`Tabs`; panel counts, pack summary counts, tier counts, and relation labels use shared `Badge`; pack tier items now use shared `Card` composition with `CardHeader`/`CardTitle`/`CardDescription`/`CardContent`; related context cards use shared `Card`; pack tier empty state uses shared `Empty`; panel navigation/refresh icon actions and related context card title/open/feedback actions use shared `Tooltip`; loading placeholders use shared `Skeleton`; error state uses shared `Alert`.
@@ -162,7 +162,7 @@ These have more custom keyboard behavior or more UI branches.
 | Command palette | `components/CommandPalette.tsx` | Custom overlay, input, selected index, scrollIntoView | `Dialog` + `Command` | shadcn `Command` uses `cmdk`; requires adding `cmdk`. High UX value. |
 | Quick switcher | `components/QuickSwitcher.tsx` | Custom modal list, keyboard index handling | `Dialog` + `Command` | Similar to command palette, likely share a common command surface. |
 | Search panel | `components/SearchPanel.tsx` | Custom overlay, search input, mode buttons, result list keyboard | `Dialog` + `Input` + `ToggleGroup` + `ScrollArea` + `Button` + `Progress` + `Empty` + `Spinner` | Done for shell, search input, mode controls, result rows, local index progress, and result-area loading/empty states. Full `Command` may be too restrictive due async search modes. |
-| Context menus | `components/ContextMenu.tsx` | Manual fixed menu, manual outside click/Escape | `ContextMenu` or `DropdownMenu` | Good, but coordinate-based callers need a careful bridge. |
+| Context menus | `components/ContextMenu.tsx` | Coordinate bridge with fixed viewport positioning, outside click/Escape, shared menu styles/tokens | Keep coordinate bridge for existing callers; use Radix `ContextMenu` only for true trigger-based menus | Done for the shared compatibility bridge. Do not reopen the old left-top positioning regression by controlling Radix `ContextMenu` without a real trigger event. |
 | Graph generator modal | `components/GraphGenerator.tsx` | Custom glass overlay/modal | `Dialog` + `ScrollArea` + `Badge` + `Spinner` + `Empty` | Done for modal shell, selected-file chips, generation status, pre-generation placeholder, and generated code output scrolling. Streaming graph generation content remains domain-specific. |
 | Trash modal | `components/TrashPanel.tsx` | Custom overlay/list | `Dialog` + `ScrollArea` + `AlertDialog` + `Empty` | Done for dialog shell, scroll area, empty state, and destructive confirmation through shared `ConfirmModal`. |
 | Onboarding modal | `components/Onboarding.tsx` | Custom overlay/popover | `Dialog` | Done for the modal shell, title, step description, and step actions. Step illustrations remain custom SVG content. |
@@ -239,8 +239,8 @@ Recommended local wrappers under `packages/renderer/src/components/ui`:
 
 3. `context-menu.tsx` - done
    - Wrap `radix-ui` `ContextMenu`.
-   - Support item shape: `label`, `icon`, `danger`, `disabled`, `onSelect`.
-   - Needed by `ContextMenu.tsx` replacement.
+   - Available for future trigger-based menus.
+   - Existing coordinate-based callers stay on `components/ContextMenu.tsx`, which uses fixed positioning and shared menu styles/tokens instead of controlling Radix without a real trigger event.
 
 4. `dropdown-menu.tsx`
    - Done.
@@ -394,8 +394,8 @@ Recommended approach:
 
 1. Create a compatibility wrapper first:
    - Keep props `{ x, y, items, onClose }`.
-   - Internally render a Radix `ContextMenu` or `DropdownMenu` anchored to a virtual trigger.
-2. If virtual positioning becomes awkward, use Radix `DropdownMenu` with a fixed-position wrapper first.
+   - Use explicit fixed viewport positioning for this coordinate API, with collision padding and shared menu styles/tokens.
+2. Use Radix `ContextMenu` only where the menu can be opened from a real `ContextMenuTrigger`.
 3. Migrate callers one by one.
 
 Risk:
@@ -406,9 +406,9 @@ Risk:
 Current progress:
 
 - `components/ui/context-menu.tsx` added.
-- `components/ContextMenu.tsx` now acts as a compatibility bridge for existing coordinate-based callers.
+- `components/ContextMenu.tsx` now acts as a fixed-position compatibility bridge for existing coordinate-based callers.
 - `ActivityBar` continues to use the shared compatibility component; its button rendering and rail styling were not migrated.
-- The compatibility bridge inherits shared menu radius/color/ring tokens from `components/ui/ui.css`.
+- The compatibility bridge inherits shared menu radius/color/ring tokens from `components/ui/ui.css` and avoids controlling Radix `ContextMenu` without a trigger event.
 
 ### Phase 5: Command Surfaces
 
