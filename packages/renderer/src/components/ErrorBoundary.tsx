@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Button } from './ui/button'
+import { Card } from './ui/card'
 import './error-boundary.css'
 
 interface Props {
@@ -31,21 +32,23 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="error-boundary">
-          <Alert variant="destructive" className="error-boundary__alert">
-            <AlertTitle>出了点问题</AlertTitle>
-            <AlertDescription>
-              {this.state.error?.message || '未知错误'}
-            </AlertDescription>
-          </Alert>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="error-boundary__retry"
-            onClick={this.handleReload}
-          >
-            重试
-          </Button>
+          <Card className="error-boundary__card">
+            <Alert variant="destructive" className="error-boundary__alert">
+              <AlertTitle>出了点问题</AlertTitle>
+              <AlertDescription>
+                {this.state.error?.message || '未知错误'}
+              </AlertDescription>
+            </Alert>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="error-boundary__retry"
+              onClick={this.handleReload}
+            >
+              重试
+            </Button>
+          </Card>
         </div>
       )
     }

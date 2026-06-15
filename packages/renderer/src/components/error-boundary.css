@@ -3,14 +3,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 16px;
   padding: 32px;
   color: var(--foreground, var(--text-primary));
 }
 
+.error-boundary__card {
+  width: min(440px, 100%);
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-color: var(--border, var(--border-color));
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 82%, transparent);
+  color: var(--card-foreground, var(--foreground, var(--text-primary)));
+}
+
 .error-boundary__alert {
-  max-width: 400px;
+  width: 100%;
   text-align: center;
 }
 
