@@ -8,6 +8,7 @@ import { toast } from '../../stores/toast-store'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader } from '../ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Slider } from '../ui/slider'
 import { Spinner } from '../ui/spinner'
@@ -123,106 +124,124 @@ export function LongContextDebugPanel() {
 
   return (
     <div className="long-context-debug-panel">
-      <div className="long-context-debug-panel__section">
-        <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.inspector')}</h3>
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PackTab)} className="long-context-debug-panel__pack-tabs">
-          <div className="long-context-debug-panel__tabs-row">
-            <TabsList className="long-context-debug-panel__tabs">
-              {PACK_TABS.map((tab) => (
-                <TabsTrigger key={tab} value={tab} className="long-context-debug-panel__tab">
-                  {t(`longContextDebug.tier.${tab}`)}
-                  <Badge variant="secondary" className="long-context-debug-panel__tab-count">
-                    {getTabCount(tab)}
-                  </Badge>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <Badge variant="secondary" className="long-context-debug-panel__token-count">
-              {inspection ? t('longContextDebug.tokens', { used: inspection.pack.estimatedTokens, budget: inspection.pack.tokenBudget }) : ''}
-            </Badge>
-          </div>
-          <TabsContent value={activeTab} className="long-context-debug-panel__tab-content">
-            {tabItems.length === 0 ? (
-              <DebugEmpty loading={loading}>
-                {loading ? t('longContextDebug.loading') : t('longContextDebug.emptyTier')}
-              </DebugEmpty>
-            ) : (
-              tabItems.map((item, idx) => <PackItemCard key={`${item.relationId || item.title}-${idx}`} item={item} />)
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      <div className="long-context-debug-panel__section">
-        <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.metrics')}</h3>
-        {!metrics ? (
-          <DebugEmpty loading>{t('longContextDebug.loading')}</DebugEmpty>
-        ) : (
-          (() => {
-            const buckets = metrics.series.buckets
-            const shownSeries = buckets.map((b) => b.shown)
-            return (
-              <div className="long-context-debug-panel__metrics-grid">
-                <MetricCard
-                  label={t('longContextDebug.metric.usefulRate')}
-                  value={metrics.rates.usefulRate}
-                  rateSeries={buckets.map((b) => b.usefulRate)}
-                  shownSeries={shownSeries}
-                  polarity="higherIsBetter"
-                />
-                <MetricCard
-                  label={t('longContextDebug.metric.openRate')}
-                  value={metrics.rates.openRate}
-                  rateSeries={buckets.map((b) => b.openRate)}
-                  shownSeries={shownSeries}
-                  polarity="higherIsBetter"
-                />
-                <MetricCard
-                  label={t('longContextDebug.metric.notRelatedRate')}
-                  value={metrics.rates.notRelatedRate}
-                  rateSeries={buckets.map((b) => b.notRelatedRate)}
-                  shownSeries={shownSeries}
-                  polarity="lowerIsBetter"
-                />
+      <Card asChild className="long-context-debug-panel__section">
+        <section>
+          <CardHeader className="long-context-debug-panel__section-header">
+            <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.inspector')}</h3>
+          </CardHeader>
+          <CardContent className="long-context-debug-panel__section-content">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PackTab)} className="long-context-debug-panel__pack-tabs">
+              <div className="long-context-debug-panel__tabs-row">
+                <TabsList className="long-context-debug-panel__tabs">
+                  {PACK_TABS.map((tab) => (
+                    <TabsTrigger key={tab} value={tab} className="long-context-debug-panel__tab">
+                      {t(`longContextDebug.tier.${tab}`)}
+                      <Badge variant="secondary" className="long-context-debug-panel__tab-count">
+                        {getTabCount(tab)}
+                      </Badge>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                <Badge variant="secondary" className="long-context-debug-panel__token-count">
+                  {inspection ? t('longContextDebug.tokens', { used: inspection.pack.estimatedTokens, budget: inspection.pack.tokenBudget }) : ''}
+                </Badge>
               </div>
-            )
-          })()
-        )}
-        {metrics && (
-          <div style={{ marginTop: 10, fontSize: 10, color: 'var(--text-tertiary)' }}>
-            {t('longContextDebug.counts.shown')} {metrics.counts.suggestionShown} · {t('longContextDebug.counts.opened')} {metrics.counts.suggestionOpened} · {t('longContextDebug.counts.useful')} {metrics.counts.suggestionUseful} · {t('longContextDebug.counts.relations')} {metrics.counts.relationCreated} · {t('longContextDebug.counts.themes')} {metrics.counts.themeCreated}
-          </div>
-        )}
-      </div>
+              <TabsContent value={activeTab} className="long-context-debug-panel__tab-content">
+                {tabItems.length === 0 ? (
+                  <DebugEmpty loading={loading}>
+                    {loading ? t('longContextDebug.loading') : t('longContextDebug.emptyTier')}
+                  </DebugEmpty>
+                ) : (
+                  tabItems.map((item, idx) => <PackItemCard key={`${item.relationId || item.title}-${idx}`} item={item} />)
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </section>
+      </Card>
 
-      <div className="long-context-debug-panel__section">
-        <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.tuning')}</h3>
-        {!draftPrefs ? (
-          <DebugEmpty loading>{t('longContextDebug.loading')}</DebugEmpty>
-        ) : (
-          <>
-            <SliderRow label={t('longContextDebug.pref.confidenceThreshold')} value={draftPrefs.confidenceThreshold} min={0} max={1} step={0.01} fixed={2} onChange={(v) => setDraftPrefs({ ...draftPrefs, confidenceThreshold: v })} />
-            <SliderRow label={t('longContextDebug.pref.tokenBudget')} value={draftPrefs.tokenBudget} min={200} max={8000} step={100} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, tokenBudget: v })} />
-            <SliderRow label={t('longContextDebug.pref.decayHalfLifeDays')} value={draftPrefs.decayHalfLifeDays} min={30} max={365} step={5} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, decayHalfLifeDays: v })} />
-            <SliderRow label={t('longContextDebug.pref.topN')} value={draftPrefs.topN} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, topN: v })} />
-            <SliderRow label={t('longContextDebug.pref.hotLimit')} value={draftPrefs.hotLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, hotLimit: v })} />
-            <SliderRow label={t('longContextDebug.pref.warmLimit')} value={draftPrefs.warmLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, warmLimit: v })} />
-            <SliderRow label={t('longContextDebug.pref.coldLimit')} value={draftPrefs.coldLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, coldLimit: v })} />
-            <SliderRow label={t('longContextDebug.pref.archiveAfterDays')} value={draftPrefs.archiveAfterDays} min={60} max={365} step={10} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, archiveAfterDays: v })} />
-            <div className="long-context-debug-panel__actions">
-              <Button type="button" size="xs" onClick={() => void handleSavePrefs()} disabled={saving || !draftPrefs}>
-                {saving ? t('longContextDebug.saving') : t('longContextDebug.save')}
-              </Button>
-              <Button type="button" variant="outline" size="xs" onClick={handleResetPrefs} disabled={saving}>
-                {t('longContextDebug.resetDefaults')}
-              </Button>
-              <Button type="button" variant="outline" size="xs" onClick={() => void refresh()} disabled={loading}>
-                {loading ? t('longContextDebug.loading') : t('longContextDebug.refresh')}
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+      <Card asChild className="long-context-debug-panel__section">
+        <section>
+          <CardHeader className="long-context-debug-panel__section-header">
+            <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.metrics')}</h3>
+          </CardHeader>
+          <CardContent className="long-context-debug-panel__section-content">
+            {!metrics ? (
+              <DebugEmpty loading>{t('longContextDebug.loading')}</DebugEmpty>
+            ) : (
+              (() => {
+                const buckets = metrics.series.buckets
+                const shownSeries = buckets.map((b) => b.shown)
+                return (
+                  <div className="long-context-debug-panel__metrics-grid">
+                    <MetricCard
+                      label={t('longContextDebug.metric.usefulRate')}
+                      value={metrics.rates.usefulRate}
+                      rateSeries={buckets.map((b) => b.usefulRate)}
+                      shownSeries={shownSeries}
+                      polarity="higherIsBetter"
+                    />
+                    <MetricCard
+                      label={t('longContextDebug.metric.openRate')}
+                      value={metrics.rates.openRate}
+                      rateSeries={buckets.map((b) => b.openRate)}
+                      shownSeries={shownSeries}
+                      polarity="higherIsBetter"
+                    />
+                    <MetricCard
+                      label={t('longContextDebug.metric.notRelatedRate')}
+                      value={metrics.rates.notRelatedRate}
+                      rateSeries={buckets.map((b) => b.notRelatedRate)}
+                      shownSeries={shownSeries}
+                      polarity="lowerIsBetter"
+                    />
+                  </div>
+                )
+              })()
+            )}
+            {metrics && (
+              <div className="long-context-debug-panel__counts">
+                {t('longContextDebug.counts.shown')} {metrics.counts.suggestionShown} · {t('longContextDebug.counts.opened')} {metrics.counts.suggestionOpened} · {t('longContextDebug.counts.useful')} {metrics.counts.suggestionUseful} · {t('longContextDebug.counts.relations')} {metrics.counts.relationCreated} · {t('longContextDebug.counts.themes')} {metrics.counts.themeCreated}
+              </div>
+            )}
+          </CardContent>
+        </section>
+      </Card>
+
+      <Card asChild className="long-context-debug-panel__section">
+        <section>
+          <CardHeader className="long-context-debug-panel__section-header">
+            <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.tuning')}</h3>
+          </CardHeader>
+          <CardContent className="long-context-debug-panel__section-content">
+            {!draftPrefs ? (
+              <DebugEmpty loading>{t('longContextDebug.loading')}</DebugEmpty>
+            ) : (
+              <>
+                <SliderRow label={t('longContextDebug.pref.confidenceThreshold')} value={draftPrefs.confidenceThreshold} min={0} max={1} step={0.01} fixed={2} onChange={(v) => setDraftPrefs({ ...draftPrefs, confidenceThreshold: v })} />
+                <SliderRow label={t('longContextDebug.pref.tokenBudget')} value={draftPrefs.tokenBudget} min={200} max={8000} step={100} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, tokenBudget: v })} />
+                <SliderRow label={t('longContextDebug.pref.decayHalfLifeDays')} value={draftPrefs.decayHalfLifeDays} min={30} max={365} step={5} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, decayHalfLifeDays: v })} />
+                <SliderRow label={t('longContextDebug.pref.topN')} value={draftPrefs.topN} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, topN: v })} />
+                <SliderRow label={t('longContextDebug.pref.hotLimit')} value={draftPrefs.hotLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, hotLimit: v })} />
+                <SliderRow label={t('longContextDebug.pref.warmLimit')} value={draftPrefs.warmLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, warmLimit: v })} />
+                <SliderRow label={t('longContextDebug.pref.coldLimit')} value={draftPrefs.coldLimit} min={1} max={10} step={1} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, coldLimit: v })} />
+                <SliderRow label={t('longContextDebug.pref.archiveAfterDays')} value={draftPrefs.archiveAfterDays} min={60} max={365} step={10} fixed={0} onChange={(v) => setDraftPrefs({ ...draftPrefs, archiveAfterDays: v })} />
+                <div className="long-context-debug-panel__actions">
+                  <Button type="button" size="xs" onClick={() => void handleSavePrefs()} disabled={saving || !draftPrefs}>
+                    {saving ? t('longContextDebug.saving') : t('longContextDebug.save')}
+                  </Button>
+                  <Button type="button" variant="outline" size="xs" onClick={handleResetPrefs} disabled={saving}>
+                    {t('longContextDebug.resetDefaults')}
+                  </Button>
+                  <Button type="button" variant="outline" size="xs" onClick={() => void refresh()} disabled={loading}>
+                    {loading ? t('longContextDebug.loading') : t('longContextDebug.refresh')}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </section>
+      </Card>
     </div>
   )
 }
@@ -230,21 +249,25 @@ export function LongContextDebugPanel() {
 function PackItemCard({ item }: { item: LongContextPackItemPayload }) {
   const { t } = useTranslation()
   return (
-    <div className="long-context-debug-panel__pack-item">
-      <div className="long-context-debug-panel__pack-item-title">{item.title}</div>
-      <div className="long-context-debug-panel__pack-item-meta">
-        {item.relationType && <span>{getRelationTypeLabel(item.relationType, t)} · </span>}
-        {typeof item.confidence === 'number' && <span>{t('longContextDebug.packItem.confidence')} {Math.round(item.confidence * 100)}% · </span>}
-        {typeof item.score === 'number' && <span>{t('longContextDebug.packItem.score')} {item.score.toFixed(2)}</span>}
-        {item.droppedReason && <span> · {t(`longContextDebug.droppedReason.${item.droppedReason}`)}</span>}
-      </div>
-      {item.reason && <div className="long-context-debug-panel__pack-item-reason">{item.reason}</div>}
-      {item.evidence.length > 0 && (
-        <div className="long-context-debug-panel__pack-item-evidence">
-          {item.evidence.slice(0, 3).map((e, i) => <div key={i}>“{e}”</div>)}
-        </div>
-      )}
-    </div>
+    <Card asChild className="long-context-debug-panel__pack-item">
+      <article>
+        <CardContent className="long-context-debug-panel__pack-item-content">
+          <div className="long-context-debug-panel__pack-item-title">{item.title}</div>
+          <div className="long-context-debug-panel__pack-item-meta">
+            {item.relationType && <span>{getRelationTypeLabel(item.relationType, t)} · </span>}
+            {typeof item.confidence === 'number' && <span>{t('longContextDebug.packItem.confidence')} {Math.round(item.confidence * 100)}% · </span>}
+            {typeof item.score === 'number' && <span>{t('longContextDebug.packItem.score')} {item.score.toFixed(2)}</span>}
+            {item.droppedReason && <span> · {t(`longContextDebug.droppedReason.${item.droppedReason}`)}</span>}
+          </div>
+          {item.reason && <div className="long-context-debug-panel__pack-item-reason">{item.reason}</div>}
+          {item.evidence.length > 0 && (
+            <div className="long-context-debug-panel__pack-item-evidence">
+              {item.evidence.slice(0, 3).map((e, i) => <div key={i}>“{e}”</div>)}
+            </div>
+          )}
+        </CardContent>
+      </article>
+    </Card>
   )
 }
 
@@ -268,31 +291,33 @@ function MetricCard({
   const sparkLabel = t('longContextDebug.sparklineLabel', { label, days: rateSeries.length })
 
   return (
-    <div className="long-context-debug-panel__metric">
-      <div className="long-context-debug-panel__metric-header">
-        <div className="long-context-debug-panel__metric-value">{pct}%</div>
-        {trend && (() => {
-          const trendTitle = `${trend.deltaText} · ${t('longContextDebug.trend.vsPrior', { window: trend.window })}`
-          return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className={`long-context-debug-panel__metric-trend ${trend.className}`}
-                  aria-label={trendTitle}
-                >
-                  {trend.text}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{trendTitle}</TooltipContent>
-            </Tooltip>
-          )
-        })()}
-      </div>
-      <div className="long-context-debug-panel__metric-label">{label}</div>
-      <div className="long-context-debug-panel__metric-spark">
-        <Sparkline points={rateSeries} tone={sparkTone} ariaLabel={sparkLabel} width={140} height={26} />
-      </div>
-    </div>
+    <Card className="long-context-debug-panel__metric">
+      <CardContent className="long-context-debug-panel__metric-content">
+        <div className="long-context-debug-panel__metric-header">
+          <div className="long-context-debug-panel__metric-value">{pct}%</div>
+          {trend && (() => {
+            const trendTitle = `${trend.deltaText} · ${t('longContextDebug.trend.vsPrior', { window: trend.window })}`
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`long-context-debug-panel__metric-trend ${trend.className}`}
+                    aria-label={trendTitle}
+                  >
+                    {trend.text}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{trendTitle}</TooltipContent>
+              </Tooltip>
+            )
+          })()}
+        </div>
+        <div className="long-context-debug-panel__metric-label">{label}</div>
+        <div className="long-context-debug-panel__metric-spark">
+          <Sparkline points={rateSeries} tone={sparkTone} ariaLabel={sparkLabel} width={140} height={26} />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
