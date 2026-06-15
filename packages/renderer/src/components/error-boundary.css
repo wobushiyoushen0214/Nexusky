@@ -18,6 +18,16 @@
   color: var(--card-foreground, var(--foreground, var(--text-primary)));
 }
 
+.error-boundary__content.ui-card-content,
+.error-boundary__footer.ui-card-footer {
+  width: 100%;
+  padding: 0;
+}
+
+.error-boundary__footer.ui-card-footer {
+  justify-content: center;
+}
+
 .error-boundary__alert {
   width: 100%;
   text-align: center;
