@@ -192,7 +192,7 @@ These are lower impact or more visual than behavioral.
 
 | Area | Candidate primitive | Notes |
 | --- | --- | --- |
-| Tool result panel | `Sheet`, `Card`, `Button`, `Tooltip`, `ScrollArea` | Done with `modal={false}` and no overlay. Source sections now use shared Card; it keeps the right-bottom non-modal result drawer behavior, close/source tooltips, and prevents outside interactions from dismissing it. |
+| Tool result panel | `Sheet`, `Card`, `CardTitle`, `Button`, `Tooltip`, `ScrollArea` | Done with `modal={false}` and no overlay. Source sections now use shared Card composition; it keeps the right-bottom non-modal result drawer behavior, close/source tooltips, and prevents outside interactions from dismissing it. |
 | Vault health actions | `Button`, `Badge`, `Empty`, `Card`, `Progress` | Done for skip and next-step actions, scan/hero/next-step chips, no-issue driver state, state/hero/driver/metric/next-step panels, and score completion progress. |
 | Overview cards | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `Badge`, `Empty` | Shared `Card` is now used for summary metric cards, the vitality card, and chart card surfaces; `OverviewCard` chart panels now use shared Card composition; the vitality score chip uses shared `Badge`; composition empty feedback uses shared `Empty`, with existing glass CSS and chart interactions preserved. |
 | History panel | `Card`, `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Snapshot rows now use shared Card; kept the lightweight side-panel behavior and moved inline/count/empty styles into local token-based CSS. |

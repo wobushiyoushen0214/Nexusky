@@ -9,7 +9,7 @@ import { useVaultStore } from '../../stores/vault-store'
 import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { Button } from '../ui/button'
-import { Card, CardContent, CardHeader } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { ScrollArea } from '../ui/scroll-area'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
@@ -106,9 +106,9 @@ export function ToolResultPanel() {
             {result.sources.length > 0 && (
               <Card className="tool-result-panel__sources">
                 <CardHeader className="tool-result-panel__sources-header">
-                  <div className="tool-result-panel__sources-title">
+                  <CardTitle className="tool-result-panel__sources-title">
                     {t('toolSurface.sources')}
-                  </div>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="tool-result-panel__sources-content">
                   {result.sources.map((source, idx) => (

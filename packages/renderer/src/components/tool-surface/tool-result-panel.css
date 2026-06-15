@@ -153,7 +153,7 @@
   gap: 4px;
 }
 
-.tool-result-panel__sources-title {
+.tool-result-panel__sources-title.ui-card-title {
   font-size: 10px;
   font-weight: 600;
   color: var(--muted-foreground, var(--text-tertiary, rgba(255, 255, 255, 0.5)));
