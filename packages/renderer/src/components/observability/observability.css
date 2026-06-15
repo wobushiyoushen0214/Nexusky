@@ -20,7 +20,7 @@
   padding: 0;
 }
 
-.long-context-debug-panel__section-title {
+.long-context-debug-panel__section-title.ui-card-title {
   font-size: 11px;
   font-weight: 650;
   color: var(--text-secondary);

@@ -8,7 +8,7 @@ import { toast } from '../../stores/toast-store'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
-import { Card, CardContent, CardHeader } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Slider } from '../ui/slider'
 import { Spinner } from '../ui/spinner'
@@ -127,7 +127,7 @@ export function LongContextDebugPanel() {
       <Card asChild className="long-context-debug-panel__section">
         <section>
           <CardHeader className="long-context-debug-panel__section-header">
-            <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.inspector')}</h3>
+            <CardTitle className="long-context-debug-panel__section-title">{t('longContextDebug.inspector')}</CardTitle>
           </CardHeader>
           <CardContent className="long-context-debug-panel__section-content">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PackTab)} className="long-context-debug-panel__pack-tabs">
@@ -163,7 +163,7 @@ export function LongContextDebugPanel() {
       <Card asChild className="long-context-debug-panel__section">
         <section>
           <CardHeader className="long-context-debug-panel__section-header">
-            <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.metrics')}</h3>
+            <CardTitle className="long-context-debug-panel__section-title">{t('longContextDebug.metrics')}</CardTitle>
           </CardHeader>
           <CardContent className="long-context-debug-panel__section-content">
             {!metrics ? (
@@ -221,7 +221,7 @@ export function LongContextDebugPanel() {
       <Card asChild className="long-context-debug-panel__section">
         <section>
           <CardHeader className="long-context-debug-panel__section-header">
-            <h3 className="long-context-debug-panel__section-title">{t('longContextDebug.tuning')}</h3>
+            <CardTitle className="long-context-debug-panel__section-title">{t('longContextDebug.tuning')}</CardTitle>
           </CardHeader>
           <CardContent className="long-context-debug-panel__section-content">
             {!draftPrefs ? (
