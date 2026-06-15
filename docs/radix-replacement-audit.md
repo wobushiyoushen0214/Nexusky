@@ -6,6 +6,8 @@ Scope: `packages/renderer/src`
 
 Constraint: `ActivityBar` visual style must remain unchanged. If its menu logic is ever migrated, keep the existing left rail layout, sizing, colors, icons, hover behavior, and active state intact.
 
+Closure status: the planned local wrapper set and the component migrations listed below are complete. Remaining native or custom elements are intentionally retained because they are tied to Electron window controls, graph/canvas pointer behavior, upload/composer input behavior, virtual/editor scroll mechanics, or the protected `ActivityBar` visual system.
+
 ## Current State
 
 The renderer is a Vite React app with Tailwind v4 and a mostly custom component layer. The shadcn CLI detects this repository as a `Manual` project, not an initialized shadcn project. There is no `components.json`, no standard alias such as `@/components/ui`, and no existing shadcn registry component set.
@@ -223,66 +225,64 @@ These are lower impact or more visual than behavioral.
 | App shell panel actions | `Button` | Done for right-panel close action. `TitleBar` native window controls remain custom by design. |
 | Toast system | Radix `Toast` or `sonner` | Close action now uses shared `Button` and `Tooltip`. Bigger architecture move remains optional because the current local toast store is lightweight. |
 
-## Components to Add Next
+## Local Wrappers Added
 
-Recommended local wrappers under `packages/renderer/src/components/ui`:
+Local wrappers under `packages/renderer/src/components/ui`:
 
-1. `alert-dialog.tsx` - done
+1. `alert-dialog.tsx`
    - Wrap `radix-ui` `AlertDialog`.
    - Use existing `Button`.
    - Needed by `ConfirmModal`.
 
-2. `tabs.tsx` - done
+2. `tabs.tsx`
    - Wrap `radix-ui` `Tabs`.
    - Add CSS classes for vertical settings layout and compact horizontal tabs.
    - Needed by Settings and long-context packs.
 
-3. `context-menu.tsx` - done
+3. `context-menu.tsx`
    - Wrap `radix-ui` `ContextMenu`.
-   - Available for future trigger-based menus.
+   - Available for trigger-based menus.
    - Existing coordinate-based callers stay on `components/ContextMenu.tsx`, which uses fixed positioning and shared menu styles/tokens instead of controlling Radix without a real trigger event.
 
 4. `dropdown-menu.tsx`
-   - Done.
    - Used by `NotificationCenter` snooze actions.
    - Also used by the sidebar vault switcher.
    - Also used by the Bases column picker.
    - Still useful for small action menus.
 
-5. `toggle-group.tsx` - done
+5. `toggle-group.tsx`
    - Wrap `radix-ui` `ToggleGroup`.
    - Needed by Search mode controls and appearance option groups.
 
-6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx`, `skeleton.tsx`, `spinner.tsx`, `card.tsx` - done
-   - Needed for settings pages.
-   - Should be introduced after the settings shell is migrated.
+6. `switch.tsx`, `checkbox.tsx`, `radio-group.tsx`, `select.tsx`, `input.tsx`, `textarea.tsx`, `slider.tsx`, `progress.tsx`, `skeleton.tsx`, `spinner.tsx`, `card.tsx`
+   - Used across settings pages, overview panels, observability surfaces, and feedback states.
 
-7. `popover.tsx`, `tooltip.tsx` - done
+7. `popover.tsx`, `tooltip.tsx`
    - Needed for small floating menus and icon-only controls.
 
 8. `command.tsx`
-   - Done with local `cmdk` wrapper.
+   - Uses a local `cmdk` wrapper.
    - Used by `CommandPalette` and `QuickSwitcher`.
 
-9. `sheet.tsx` - done
+9. `sheet.tsx`
    - Wrap `radix-ui` `Dialog` with side-aware content.
    - Used by the proactive notification drawer.
 
-10. `empty.tsx` - done
+10. `empty.tsx`
    - Provides shadcn-compatible empty state composition.
    - Used by settings plugin/keybinding, memory timeline, history panel, tags panel, notification drawer, agent run panel, and long-context debug empty states.
 
-11. `alert.tsx` - done
+11. `alert.tsx`
    - Provides shadcn-compatible feedback/error state composition.
    - Used by related context and CloudSync error states.
 
-## Detailed Migration Plan
+## Executed Migration Plan
 
 ### Phase 1: Foundation
 
 Keep `ActivityBar` untouched.
 
-Tasks:
+Completed tasks:
 
 1. Add wrappers:
    - `alert-dialog`
@@ -298,7 +298,7 @@ Tasks:
 3. Add shadcn-compatible public CSS token mappings in `globals.css`.
 4. Avoid global reset or shadcn theme import.
 
-Validation:
+Validation used throughout:
 
 - `pnpm run build`
 - `git diff --check`
@@ -313,7 +313,7 @@ Current problem:
 - No built-in focus trap.
 - Inline styling makes design consistency hard.
 
-Target:
+Implemented target:
 
 ```tsx
 <AlertDialog open={open} onOpenChange={(next) => !next && onCancel()}>
@@ -351,7 +351,7 @@ Current files:
 - `settings/SettingsSidebar.tsx`
 - `settings/Settings.css`
 
-Target:
+Implemented target:
 
 - Outer shell: `Dialog`.
 - Sidebar tabs: `Tabs`.
@@ -390,7 +390,7 @@ Important constraint:
 
 - `ActivityBar` style remains unchanged. If migrated, only the menu primitive changes; the rail button rendering stays exactly as-is.
 
-Recommended approach:
+Implemented approach:
 
 1. Create a compatibility wrapper first:
    - Keep props `{ x, y, items, onClose }`.
@@ -418,7 +418,7 @@ Current files:
 - `QuickSwitcher.tsx`
 - `SearchPanel.tsx`
 
-Recommended split:
+Implemented split:
 
 - `CommandPalette` and `QuickSwitcher`: `Dialog` + shadcn `Command`.
 - `SearchPanel`: `Dialog` + `ToggleGroup` + `ScrollArea` first. Consider `Command` later only for result list behavior.
@@ -428,7 +428,7 @@ Why:
 - CommandPalette and QuickSwitcher are classic command-list UIs.
 - SearchPanel is not only command selection; it has async search modes, index status, progress, history, and result preview.
 
-Dependency:
+Dependency added:
 
 - shadcn `Command` uses `cmdk`; added for `CommandPalette` and `QuickSwitcher`.
 
@@ -440,7 +440,7 @@ Current progress:
 
 ### Phase 6: Settings Controls
 
-Candidate controls:
+Migrated controls:
 
 - Appearance color theme: `RadioGroup` or `ToggleGroup`.
 - Binary settings: `Switch`.
@@ -460,21 +460,21 @@ Current progress:
 - Legacy native checkbox selectors were removed from `Settings.css` after the active settings pages moved to shared controls.
 - The legacy unmounted `Settings.old.tsx` copy has been removed. `ProactivePreferences` and `LongContextDebugPanel` now use shared wrappers for their active controls and compact feedback labels, except for domain-specific rendering and layout.
 
-## Do Not Replace Yet
+## Intentionally Retained Custom Surfaces
 
 ### ActivityBar
 
 Do not alter visual rendering. The user explicitly asked to keep it unchanged.
 
-Possible future safe change:
+Completed safe change:
 
-- Replace only the right-click menu internals with the shared context menu wrapper.
+- The right-click menu internals use the shared coordinate context menu wrapper.
 - Keep `ActivityBar.tsx` button DOM/styling stable.
 - Keep `Overview` pinned first; opening the file sidebar should activate `Files`, not leave `Overview` highlighted.
 
 ### VirtualFileTree Scroll Container
 
-Do not replace the main scroll container with Radix `ScrollArea` right now.
+Do not replace the main scroll container with Radix `ScrollArea`.
 
 Reason:
 
@@ -492,7 +492,7 @@ Reason:
 
 ### Chat Composer and Upload Inputs
 
-Do not replace the ChatPanel composer textarea or hidden file input yet.
+Do not replace the ChatPanel composer textarea or hidden file input.
 
 Reason:
 
@@ -517,7 +517,7 @@ Reason:
 
 - It controls Electron window behavior and platform-like hit targets.
 
-## Suggested Implementation Order
+## Completed Implementation Order
 
 1. `AlertDialog` wrapper and `ConfirmModal` replacement.
 2. `Dialog` migration for Settings shell.
@@ -525,10 +525,10 @@ Reason:
 4. `Dialog` migration for `AIProviderSettings` editor modal.
 5. `Dialog` migration for `PublishScopeDialog`.
 6. Shared `ContextMenu` wrapper.
-7. Command palette and quick switcher. - done
+7. Command palette and quick switcher.
 8. Search panel controls.
 9. Settings form controls.
-10. Proactive notification sheet/dropdowns. - done
+10. Proactive notification sheet/dropdowns.
 
 ## Quality Checklist
 
