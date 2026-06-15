@@ -7,24 +7,17 @@
   background: var(--bg-primary);
 }
 
-.memory-timeline-panel--loading {
-  justify-content: center;
-  align-items: center;
-  color: var(--text-secondary);
-}
-
-.memory-timeline-panel--loading p {
-  margin: 0;
-  max-width: 280px;
-  text-align: center;
-  font-size: 13px;
-  line-height: 1.55;
+.memory-timeline-loading.ui-empty {
+  min-height: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground, var(--text-secondary));
 }
 
 .memory-timeline-spinner {
   width: 28px;
   height: 28px;
-  margin-bottom: 12px;
 }
 
 .memory-timeline-empty {

@@ -7,7 +7,7 @@ import { toast } from '../../stores/toast-store'
 import { getErrorMessage } from '../../utils/errors'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
-import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Spinner } from '../ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import {
@@ -237,9 +237,11 @@ export function MemoryTimelinePanel() {
 
   if (loading) {
     return (
-      <div className="memory-timeline-panel memory-timeline-panel--loading">
-        <Spinner className="memory-timeline-spinner" aria-hidden="true" />
-        <p>{t('memory.loading')}</p>
+      <div className="memory-timeline-panel">
+        <Empty className="memory-timeline-loading">
+          <Spinner className="memory-timeline-spinner" aria-hidden="true" />
+          <EmptyDescription>{t('memory.loading')}</EmptyDescription>
+        </Empty>
       </div>
     )
   }
