@@ -8,7 +8,7 @@ import { toast } from '../../stores/toast-store'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Button, type ButtonProps } from '../ui/button'
-import { Card, CardContent } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ScrollArea } from '../ui/scroll-area'
@@ -122,10 +122,12 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
         <ScrollArea className="chat-source-row__popover-scroll">
           {provenance.hasContextPack && (
             <Card className="chat-source-row__section-card">
-              <CardContent className="chat-source-row__section-content">
-                <div className="chat-source-row__section-title">
+              <CardHeader className="chat-source-row__section-header">
+                <CardTitle className="chat-source-row__section-title">
                   {t('citationLookup.contextPackReason')}
-                </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="chat-source-row__section-content">
                 {provenance.explanation && <div>{provenance.explanation}</div>}
                 {provenance.evidence.length > 0 && (
                   <div className="chat-source-row__muted">
@@ -150,10 +152,12 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
           )}
           {!loading && result?.relations.length ? (
             <Card className="chat-source-row__section-card">
-              <CardContent className="chat-source-row__section-content">
-                <div className="chat-source-row__section-title">
+              <CardHeader className="chat-source-row__section-header">
+                <CardTitle className="chat-source-row__section-title">
                   {t('citationLookup.relations')}
-                </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="chat-source-row__section-content">
                 {result.relations.slice(0, 8).map((r) => (
                   <div key={r.relationId} className="chat-source-row__lookup-item">
                     <div className="chat-source-row__lookup-title">
@@ -186,10 +190,12 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
           ) : null}
           {!loading && result?.themes.length ? (
             <Card className="chat-source-row__section-card chat-source-row__themes">
-              <CardContent className="chat-source-row__section-content">
-                <div className="chat-source-row__section-title">
+              <CardHeader className="chat-source-row__section-header">
+                <CardTitle className="chat-source-row__section-title">
                   {t('citationLookup.themes')}
-                </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="chat-source-row__section-content">
                 {result.themes.slice(0, 5).map((th) => (
                   <div key={th.id} className="chat-source-row__lookup-item">
                     <div className="chat-source-row__lookup-title">{th.title}</div>

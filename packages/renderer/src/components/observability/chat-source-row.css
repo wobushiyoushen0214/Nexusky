@@ -97,12 +97,16 @@
   margin-bottom: 0;
 }
 
-.chat-source-row__section-content.ui-card-content {
-  padding: 8px 10px;
+.chat-source-row__section-header.ui-card-header {
+  padding: 8px 10px 0;
 }
 
-.chat-source-row__section-title {
-  margin-bottom: 4px;
+.chat-source-row__section-content.ui-card-content {
+  padding: 4px 10px 8px;
+}
+
+.chat-source-row__section-title.ui-card-title {
+  margin: 0;
   color: var(--muted-foreground, var(--text-tertiary));
   font-size: 10px;
   font-weight: 600;
