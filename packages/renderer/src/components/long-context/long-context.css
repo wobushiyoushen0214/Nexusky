@@ -423,19 +423,20 @@
   background: color-mix(in srgb, var(--related-context-control, var(--bg-elevated)) 42%, transparent);
 }
 
-.related-context-pack__item-content.ui-card-content {
-  padding: 9px 10px;
-}
-
-.related-context-pack__item-header {
+.related-context-pack__item-header.ui-card-header {
   min-width: 0;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
+  padding: 9px 10px 0;
 }
 
-.related-context-pack__item-title {
+.related-context-pack__item-content.ui-card-content {
+  padding: 0 10px 9px;
+}
+
+.related-context-pack__item-title.ui-card-title {
   min-width: 0;
   color: var(--text-primary);
   font-size: 12px;
@@ -446,7 +447,7 @@
   white-space: nowrap;
 }
 
-.related-context-pack__item-meta {
+.related-context-pack__item-meta.ui-card-description {
   flex: 0 0 auto;
   color: var(--text-tertiary);
   font-size: 10px;

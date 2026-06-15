@@ -8,7 +8,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
-import { Card, CardContent } from '../ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Skeleton } from '../ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
@@ -409,11 +409,17 @@ function ContextPackItemRow({ item }: { item: LongContextPackItemPayload }) {
   return (
     <Card asChild className="related-context-pack__item">
       <article>
+        <CardHeader className="related-context-pack__item-header">
+          <CardTitle asChild className="related-context-pack__item-title">
+            <span>{item.title}</span>
+          </CardTitle>
+          {meta && (
+            <CardDescription asChild className="related-context-pack__item-meta">
+              <span>{meta}</span>
+            </CardDescription>
+          )}
+        </CardHeader>
         <CardContent className="related-context-pack__item-content">
-          <div className="related-context-pack__item-header">
-            <span className="related-context-pack__item-title">{item.title}</span>
-            {meta && <span className="related-context-pack__item-meta">{meta}</span>}
-          </div>
           <p className="related-context-pack__item-reason">{item.reason}</p>
           {item.evidence.length > 0 && (
             <div className="related-context-pack__item-evidence">
