@@ -303,6 +303,7 @@
 
 .welcome-samples {
   grid-area: samples;
+  gap: 0;
   overflow: hidden;
 }
 

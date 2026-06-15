@@ -7,6 +7,7 @@ import { getErrorMessage } from '../utils/errors'
 import { SAMPLE_WORKFLOW_VAULTS } from '../../../shared/src/workflow-samples'
 import { DemoTransformationFlow } from './demo/DemoTransformationFlow'
 import { Button } from './ui/button'
+import { Card } from './ui/card'
 import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import './WelcomeScreen.css'
@@ -57,138 +58,144 @@ export function WelcomeScreen() {
     <div className="welcome-screen">
       {showDemo && <DemoTransformationFlow onClose={() => setShowDemo(false)} />}
       <main className="welcome-shell" aria-labelledby="welcome-title">
-        <section className="welcome-hero">
-          <div className="welcome-brandmark" aria-hidden="true">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-              <path d="M12 3L2 7l10 4 10-4-10-4z" fill="currentColor" opacity="0.9" />
-              <path d="M2 17l10 4 10-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
-              <path d="M2 12l10 4 10-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
-            </svg>
-          </div>
-          <div>
-            <h1 id="welcome-title" className="welcome-title">Nexusky</h1>
-            <p className="welcome-subtitle">{t('welcome.subtitle')}</p>
-          </div>
-          <div className="welcome-signals" aria-label={t('welcome.subtitle')}>
-            <WelcomeSignal>{t('welcome.signal.local')}</WelcomeSignal>
-            <WelcomeSignal>{t('welcome.signal.memory')}</WelcomeSignal>
-            <WelcomeSignal>{t('welcome.signal.review')}</WelcomeSignal>
-          </div>
-          <div className="welcome-loop" aria-hidden="true">
-            <WelcomeLoopStep index="01" label={t('vaultHealth.title')} />
-            <WelcomeLoopStep index="02" label={t('activityBar.graph')} />
-            <WelcomeLoopStep index="03" label={t('activityBar.maintenance')} />
-          </div>
-          <Button type="button" onClick={() => setShowDemo(true)} className="welcome-demo-button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
-            </svg>
-            {t('welcome.demo.button')}
-          </Button>
-        </section>
-
-        <section className="welcome-start-panel" aria-label={t('welcome.action.open')}>
-          <div className="welcome-panel-header">
-            <div>
-              <div className="welcome-panel-kicker">{t('welcome.signal.local')}</div>
-              <h2>{t('welcome.action.open')}</h2>
+        <Card asChild>
+          <section className="welcome-hero">
+            <div className="welcome-brandmark" aria-hidden="true">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3L2 7l10 4 10-4-10-4z" fill="currentColor" opacity="0.9" />
+                <path d="M2 17l10 4 10-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                <path d="M2 12l10 4 10-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+              </svg>
             </div>
-          </div>
+            <div>
+              <h1 id="welcome-title" className="welcome-title">Nexusky</h1>
+              <p className="welcome-subtitle">{t('welcome.subtitle')}</p>
+            </div>
+            <div className="welcome-signals" aria-label={t('welcome.subtitle')}>
+              <WelcomeSignal>{t('welcome.signal.local')}</WelcomeSignal>
+              <WelcomeSignal>{t('welcome.signal.memory')}</WelcomeSignal>
+              <WelcomeSignal>{t('welcome.signal.review')}</WelcomeSignal>
+            </div>
+            <div className="welcome-loop" aria-hidden="true">
+              <WelcomeLoopStep index="01" label={t('vaultHealth.title')} />
+              <WelcomeLoopStep index="02" label={t('activityBar.graph')} />
+              <WelcomeLoopStep index="03" label={t('activityBar.maintenance')} />
+            </div>
+            <Button type="button" onClick={() => setShowDemo(true)} className="welcome-demo-button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+              </svg>
+              {t('welcome.demo.button')}
+            </Button>
+          </section>
+        </Card>
 
-          {isCreating ? (
-            <div className="welcome-create-form">
-              <Input
-                autoFocus
-                value={vaultName}
-                onChange={(e) => setVaultName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreate()
-                  if (e.key === 'Escape') { setIsCreating(false); setVaultName('') }
-                }}
-                placeholder={t('welcome.create.placeholder')}
-                className="welcome-input"
-              />
-              <div className="welcome-action-row">
-                <Button type="button" onClick={handleCreate} className="welcome-button is-primary">
-                  {t('welcome.create.confirm')}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => { setIsCreating(false); setVaultName('') }} className="welcome-button">
-                  {t('welcome.create.cancel')}
-                </Button>
+        <Card asChild>
+          <section className="welcome-start-panel" aria-label={t('welcome.action.open')}>
+            <div className="welcome-panel-header">
+              <div>
+                <div className="welcome-panel-kicker">{t('welcome.signal.local')}</div>
+                <h2>{t('welcome.action.open')}</h2>
               </div>
             </div>
-          ) : (
-            <div className="welcome-action-stack">
-              <Button type="button" onClick={selectVault} className="welcome-button is-primary">
-                {t('welcome.action.open')}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setIsCreating(true)} className="welcome-button">
-                {t('welcome.action.create')}
-              </Button>
-            </div>
-          )}
 
-          {recentVaults.length > 0 && !isCreating && (
-            <div className="welcome-recent">
-              <p className="welcome-section-label">{t('welcome.recent')}</p>
-              <div className="welcome-recent-list">
-                {recentVaults.map((path) => {
-                  const name = path.split(/[\\/]/).pop() || path
-                  return (
-                    <Tooltip key={path}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => handleOpenRecent(path)}
-                          className="welcome-recent-item"
-                          aria-label={path}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                          </svg>
-                          <span>{name}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{path}</TooltipContent>
-                    </Tooltip>
-                  )
-                })}
+            {isCreating ? (
+              <div className="welcome-create-form">
+                <Input
+                  autoFocus
+                  value={vaultName}
+                  onChange={(e) => setVaultName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreate()
+                    if (e.key === 'Escape') { setIsCreating(false); setVaultName('') }
+                  }}
+                  placeholder={t('welcome.create.placeholder')}
+                  className="welcome-input"
+                />
+                <div className="welcome-action-row">
+                  <Button type="button" onClick={handleCreate} className="welcome-button is-primary">
+                    {t('welcome.create.confirm')}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => { setIsCreating(false); setVaultName('') }} className="welcome-button">
+                    {t('welcome.create.cancel')}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            ) : (
+              <div className="welcome-action-stack">
+                <Button type="button" onClick={selectVault} className="welcome-button is-primary">
+                  {t('welcome.action.open')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsCreating(true)} className="welcome-button">
+                  {t('welcome.action.create')}
+                </Button>
+              </div>
+            )}
 
-        <section className="welcome-samples" aria-labelledby="welcome-samples-title">
-          <div className="welcome-samples-head">
-            <div>
-              <div className="welcome-panel-kicker">{t('welcome.samples.label')}</div>
-              <h2 id="welcome-samples-title">{t('welcome.samples.label')}</h2>
+            {recentVaults.length > 0 && !isCreating && (
+              <div className="welcome-recent">
+                <p className="welcome-section-label">{t('welcome.recent')}</p>
+                <div className="welcome-recent-list">
+                  {recentVaults.map((path) => {
+                    const name = path.split(/[\\/]/).pop() || path
+                    return (
+                      <Tooltip key={path}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => handleOpenRecent(path)}
+                            className="welcome-recent-item"
+                            aria-label={path}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <span>{name}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{path}</TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        </Card>
+
+        <Card asChild>
+          <section className="welcome-samples" aria-labelledby="welcome-samples-title">
+            <div className="welcome-samples-head">
+              <div>
+                <div className="welcome-panel-kicker">{t('welcome.samples.label')}</div>
+                <h2 id="welcome-samples-title">{t('welcome.samples.label')}</h2>
+              </div>
+              <p>{t('welcome.samples.description')}</p>
             </div>
-            <p>{t('welcome.samples.description')}</p>
-          </div>
-          <div className="welcome-sample-list">
-            {SAMPLE_WORKFLOW_VAULTS.map((sample) => (
-              <Button
-                key={sample.id}
-                type="button"
-                variant="ghost"
-                onClick={() => handleCreateSample(sample.id)}
-                disabled={creatingSample !== null}
-                className="welcome-sample-item"
-              >
-                <span className="welcome-sample-copy">
-                  <strong>{t(`welcome.samples.${sample.id}.title`)}</strong>
-                  <span>{t(`welcome.samples.${sample.id}.description`)}</span>
-                </span>
-                <span className="welcome-sample-action">
-                  {creatingSample === sample.id ? t('welcome.samples.creating') : t('welcome.samples.open')}
-                </span>
-              </Button>
-            ))}
-          </div>
-        </section>
+            <div className="welcome-sample-list">
+              {SAMPLE_WORKFLOW_VAULTS.map((sample) => (
+                <Button
+                  key={sample.id}
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handleCreateSample(sample.id)}
+                  disabled={creatingSample !== null}
+                  className="welcome-sample-item"
+                >
+                  <span className="welcome-sample-copy">
+                    <strong>{t(`welcome.samples.${sample.id}.title`)}</strong>
+                    <span>{t(`welcome.samples.${sample.id}.description`)}</span>
+                  </span>
+                  <span className="welcome-sample-action">
+                    {creatingSample === sample.id ? t('welcome.samples.creating') : t('welcome.samples.open')}
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </section>
+        </Card>
       </main>
     </div>
   )
