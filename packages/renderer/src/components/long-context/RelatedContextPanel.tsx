@@ -8,6 +8,7 @@ import { getErrorMessage } from '../../utils/errors'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Card, CardContent } from '../ui/card'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Skeleton } from '../ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs'
@@ -406,19 +407,23 @@ function ContextPackItemRow({ item }: { item: LongContextPackItemPayload }) {
   ].filter(Boolean).join(' · ')
 
   return (
-    <div className="related-context-pack__item">
-      <div className="related-context-pack__item-header">
-        <span className="related-context-pack__item-title">{item.title}</span>
-        {meta && <span className="related-context-pack__item-meta">{meta}</span>}
-      </div>
-      <p className="related-context-pack__item-reason">{item.reason}</p>
-      {item.evidence.length > 0 && (
-        <div className="related-context-pack__item-evidence">
-          {item.evidence.slice(0, 2).map((line, index) => (
-            <span key={`${item.title}-${index}`}>{line}</span>
-          ))}
-        </div>
-      )}
-    </div>
+    <Card asChild className="related-context-pack__item">
+      <article>
+        <CardContent className="related-context-pack__item-content">
+          <div className="related-context-pack__item-header">
+            <span className="related-context-pack__item-title">{item.title}</span>
+            {meta && <span className="related-context-pack__item-meta">{meta}</span>}
+          </div>
+          <p className="related-context-pack__item-reason">{item.reason}</p>
+          {item.evidence.length > 0 && (
+            <div className="related-context-pack__item-evidence">
+              {item.evidence.slice(0, 2).map((line, index) => (
+                <span key={`${item.title}-${index}`}>{line}</span>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </article>
+    </Card>
   )
 }

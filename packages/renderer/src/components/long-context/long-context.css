@@ -138,9 +138,12 @@
 }
 
 .related-context-panel--page .related-context-pack__item {
-  padding: 11px 12px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--related-context-control) 48%, transparent);
+}
+
+.related-context-panel--page .related-context-pack__item-content.ui-card-content {
+  padding: 11px 12px;
 }
 
 .related-context-panel--page .related-context-panel__list,
@@ -412,12 +415,16 @@
   gap: 5px;
 }
 
-.related-context-pack__item {
+.related-context-pack__item.ui-card {
   min-width: 0;
-  padding: 9px 10px;
-  border: 0;
+  gap: 0;
+  border-color: transparent;
   border-radius: 9px;
   background: color-mix(in srgb, var(--related-context-control, var(--bg-elevated)) 42%, transparent);
+}
+
+.related-context-pack__item-content.ui-card-content {
+  padding: 9px 10px;
 }
 
 .related-context-pack__item-header {
