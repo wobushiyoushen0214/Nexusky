@@ -4,22 +4,29 @@ import { cn } from '../../lib/utils'
 import './ui.css'
 
 const DEFAULT_DELAY_DURATION = 500
+const TooltipProviderContext = React.createContext(false)
 
 export function TooltipProvider({
   delayDuration = DEFAULT_DELAY_DURATION,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
-    <TooltipPrimitive.Provider
-      data-slot="tooltip-provider"
-      delayDuration={delayDuration}
-      {...props}
-    />
+    <TooltipProviderContext.Provider value={true}>
+      <TooltipPrimitive.Provider
+        data-slot="tooltip-provider"
+        delayDuration={delayDuration}
+        {...props}
+      />
+    </TooltipProviderContext.Provider>
   )
 }
 
 export function Tooltip(props: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  const hasProvider = React.useContext(TooltipProviderContext)
+  const root = <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+
+  if (hasProvider) return root
+  return <TooltipProvider>{root}</TooltipProvider>
 }
 
 export function TooltipTrigger(props: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
