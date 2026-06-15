@@ -4,6 +4,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { VirtualFileTree } from './VirtualFileTree'
 import { ContextMenu } from '../ContextMenu'
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Button } from '../ui/button'
 import {
   DropdownMenu,
@@ -403,17 +404,16 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       >
         {fileError ? (
           <div style={{ flex: 1, minHeight: 0, padding: '18px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>无法读取笔记空间</div>
-              <div style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--text-tertiary)', wordBreak: 'break-word' }}>{fileError}</div>
-            </div>
+            <Alert variant="destructive">
+              <AlertTitle>无法读取笔记空间</AlertTitle>
+              <AlertDescription style={{ wordBreak: 'break-word' }}>{fileError}</AlertDescription>
+            </Alert>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button
                 type="button"
                 variant="outline"
                 size="xs"
                 onClick={() => refreshFiles()}
-                style={{ height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
               >
                 重试
               </Button>
@@ -421,7 +421,6 @@ export function Sidebar({ width = 240 }: { width?: number }) {
                 type="button"
                 size="xs"
                 onClick={() => selectVault()}
-                style={{ height: 26, padding: '0 10px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-muted)', color: 'var(--accent-text)', fontSize: 12, cursor: 'pointer' }}
               >
                 重新选择
               </Button>
@@ -430,9 +429,10 @@ export function Sidebar({ width = 240 }: { width?: number }) {
         ) : (
           <>
             {indexError && (
-              <div style={{ flexShrink: 0, margin: '0 4px 8px 0', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)', fontSize: 11, lineHeight: 1.5 }}>
-                索引失败：{indexError}
-              </div>
+              <Alert variant="destructive" style={{ flexShrink: 0, margin: '0 4px 8px 0' }}>
+                <AlertTitle>索引失败</AlertTitle>
+                <AlertDescription style={{ wordBreak: 'break-word' }}>{indexError}</AlertDescription>
+              </Alert>
             )}
             <VirtualFileTree entries={sortedFiles} defaultExpanded={defaultExpanded} expansionVersion={treeExpansionVersion} />
           </>
