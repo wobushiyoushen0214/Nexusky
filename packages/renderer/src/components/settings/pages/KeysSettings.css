@@ -7,24 +7,24 @@
   gap: 10px;
 }
 
-.keybinding-item {
+.keybinding-item.ui-card {
   min-width: 0;
   padding: 12px 14px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-elevated);
+  border-color: color-mix(in srgb, var(--border, var(--border-color)) 84%, transparent);
+  border-radius: var(--radius-lg, 8px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 82%, transparent);
   transition:
     background 150ms ease,
     border-color 150ms ease;
 }
 
-.keybinding-item:hover {
-  border-color: color-mix(in srgb, var(--accent) 34%, var(--border-color));
-  background: var(--bg-hover);
+.keybinding-item.ui-card:hover {
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 34%, var(--border, var(--border-color)));
+  background: color-mix(in srgb, var(--secondary, var(--bg-hover)) 86%, transparent);
 }
 
 .keybinding-info {
@@ -91,7 +91,7 @@
 }
 
 @media (max-width: 640px) {
-  .keybinding-item {
+  .keybinding-item.ui-card {
     grid-template-columns: minmax(0, 1fr);
   }
 
