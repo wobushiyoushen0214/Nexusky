@@ -8,6 +8,7 @@ import { toast } from '../../stores/toast-store'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Button, type ButtonProps } from '../ui/button'
+import { Card, CardContent } from '../ui/card'
 import { Empty, EmptyDescription } from '../ui/empty'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ScrollArea } from '../ui/scroll-area'
@@ -120,17 +121,19 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
       <PopoverContent align="start" side="bottom" className="chat-source-row__popover">
         <ScrollArea className="chat-source-row__popover-scroll">
           {provenance.hasContextPack && (
-            <div className="chat-source-row__section glass-divider-bottom">
-              <div className="chat-source-row__section-title">
-                {t('citationLookup.contextPackReason')}
-              </div>
-              {provenance.explanation && <div>{provenance.explanation}</div>}
-              {provenance.evidence.length > 0 && (
-                <div className="chat-source-row__muted">
-                  {provenance.evidence.join(' · ')}
+            <Card className="chat-source-row__section-card">
+              <CardContent className="chat-source-row__section-content">
+                <div className="chat-source-row__section-title">
+                  {t('citationLookup.contextPackReason')}
                 </div>
-              )}
-            </div>
+                {provenance.explanation && <div>{provenance.explanation}</div>}
+                {provenance.evidence.length > 0 && (
+                  <div className="chat-source-row__muted">
+                    {provenance.evidence.join(' · ')}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
           {loading && (
             <div className="chat-source-row__loading">
@@ -146,54 +149,58 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
             </Empty>
           )}
           {!loading && result?.relations.length ? (
-            <div>
-              <div className="chat-source-row__section-title">
-                {t('citationLookup.relations')}
-              </div>
-              {result.relations.slice(0, 8).map((r) => (
-                <div key={r.relationId} className="chat-source-row__lookup-item">
-                  <div className="chat-source-row__lookup-title">
-                    {getRelationTypeLabel(r.relationType, t)} → {r.targetTitle}
-                  </div>
-                  <div className="chat-source-row__lookup-meta">
-                    {t('citationLookup.score')}={r.score.toFixed(2)}, {t('citationLookup.confidence')}={Math.round(r.confidence * 100)}%
-                  </div>
-                  {r.reason && <div className="chat-source-row__lookup-reason">{r.reason}</div>}
-                  {r.targetPath && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      className="chat-source-row__open-target"
-                      onClick={() => {
-                        const full = resolveVaultSourcePath(vaultPath, r.targetPath!)
-                        if (!full) return
-                        setMainView('editor')
-                        void useEditorStore.getState().openFile(full)
-                      }}
-                    >
-                      {t('citationLookup.openTarget')}
-                    </Button>
-                  )}
+            <Card className="chat-source-row__section-card">
+              <CardContent className="chat-source-row__section-content">
+                <div className="chat-source-row__section-title">
+                  {t('citationLookup.relations')}
                 </div>
-              ))}
-            </div>
+                {result.relations.slice(0, 8).map((r) => (
+                  <div key={r.relationId} className="chat-source-row__lookup-item">
+                    <div className="chat-source-row__lookup-title">
+                      {getRelationTypeLabel(r.relationType, t)} → {r.targetTitle}
+                    </div>
+                    <div className="chat-source-row__lookup-meta">
+                      {t('citationLookup.score')}={r.score.toFixed(2)}, {t('citationLookup.confidence')}={Math.round(r.confidence * 100)}%
+                    </div>
+                    {r.reason && <div className="chat-source-row__lookup-reason">{r.reason}</div>}
+                    {r.targetPath && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        className="chat-source-row__open-target"
+                        onClick={() => {
+                          const full = resolveVaultSourcePath(vaultPath, r.targetPath!)
+                          if (!full) return
+                          setMainView('editor')
+                          void useEditorStore.getState().openFile(full)
+                        }}
+                      >
+                        {t('citationLookup.openTarget')}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           ) : null}
           {!loading && result?.themes.length ? (
-            <div className="chat-source-row__themes">
-              <div className="chat-source-row__section-title">
-                {t('citationLookup.themes')}
-              </div>
-              {result.themes.slice(0, 5).map((th) => (
-                <div key={th.id} className="chat-source-row__lookup-item">
-                  <div className="chat-source-row__lookup-title">{th.title}</div>
-                  {th.summary && <div className="chat-source-row__lookup-reason">{th.summary}</div>}
-                  <div className="chat-source-row__lookup-meta">
-                    strength={th.strength.toFixed(2)}, evidence={th.evidenceCount}
-                  </div>
+            <Card className="chat-source-row__section-card chat-source-row__themes">
+              <CardContent className="chat-source-row__section-content">
+                <div className="chat-source-row__section-title">
+                  {t('citationLookup.themes')}
                 </div>
-              ))}
-            </div>
+                {result.themes.slice(0, 5).map((th) => (
+                  <div key={th.id} className="chat-source-row__lookup-item">
+                    <div className="chat-source-row__lookup-title">{th.title}</div>
+                    {th.summary && <div className="chat-source-row__lookup-reason">{th.summary}</div>}
+                    <div className="chat-source-row__lookup-meta">
+                      strength={th.strength.toFixed(2)}, evidence={th.evidenceCount}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           ) : null}
         </ScrollArea>
       </PopoverContent>
