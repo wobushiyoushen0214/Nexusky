@@ -50,7 +50,14 @@ export function Settings({ open, onClose }: SettingsProps) {
               className="settings-dialog__close"
               aria-label={t('common.close')}
             >
-              ×
+              <svg
+                className="settings-dialog__close-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </Button>
           </DialogClose>
         </DialogHeader>
