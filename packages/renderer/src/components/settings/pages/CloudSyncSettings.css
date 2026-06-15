@@ -11,30 +11,32 @@
 .info-card.ui-card,
 .config-form.ui-card,
 .status-card.ui-card {
-  padding: 16px;
   gap: 0;
   border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 82%, transparent);
   border-radius: var(--radius-lg, 8px);
   background: color-mix(in srgb, var(--card, var(--bg-elevated)) 72%, transparent);
 }
 
-.info-card h3 {
-  margin: 0 0 6px;
+.info-card__header.ui-card-header {
+  padding: 16px;
+}
+
+.info-card__title.ui-card-title {
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 650;
   line-height: 1.35;
 }
 
-.info-card p {
+.info-card__description.ui-card-description {
   max-width: 62ch;
-  margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.55;
 }
 
-.config-form.ui-card {
+.config-form__content.ui-card-content {
+  padding: 16px;
   display: grid;
   gap: 14px;
 }
@@ -49,7 +51,8 @@
   justify-self: start;
 }
 
-.status-card.ui-card {
+.status-card__content.ui-card-content {
+  padding: 16px;
   display: grid;
 }
 

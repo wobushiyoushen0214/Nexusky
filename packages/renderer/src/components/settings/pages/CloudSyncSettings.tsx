@@ -6,10 +6,11 @@ import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Alert, AlertDescription } from '../../ui/alert'
 import { Badge } from '../../ui/badge'
 import { Button } from '../../ui/button'
-import { Card } from '../../ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -68,40 +69,48 @@ export function CloudSyncSettings() {
         {!status?.configured ? (
           <div className="not-configured">
             <Card className="info-card">
-              <h3>{t('settings.cloudSync.notConfigured')}</h3>
-              <p>{t('settings.cloudSync.notConfiguredDesc')}</p>
+              <CardHeader className="info-card__header">
+                <CardTitle className="info-card__title">{t('settings.cloudSync.notConfigured')}</CardTitle>
+                <CardDescription className="info-card__description">
+                  {t('settings.cloudSync.notConfiguredDesc')}
+                </CardDescription>
+              </CardHeader>
             </Card>
 
             {configuring && (
               <Card className="config-form">
-                <div className="form-item">
-                  <label className="form-label">{t('settings.cloudSync.provider')}</label>
-                  <Select
-                    value={syncConfig.provider}
-                    onValueChange={(value) => setSyncConfig({
-                      ...syncConfig,
-                      provider: value as SettingsSyncConfig['provider'],
-                    })}
-                  >
-                    <SelectTrigger className="cloud-sync-provider-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="webdav">WebDAV</SelectItem>
-                      <SelectItem value="s3">Amazon S3</SelectItem>
-                      <SelectItem value="supabase">Supabase</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <CardContent className="config-form__content">
+                  <div className="form-item">
+                    <label className="form-label">{t('settings.cloudSync.provider')}</label>
+                    <Select
+                      value={syncConfig.provider}
+                      onValueChange={(value) => setSyncConfig({
+                        ...syncConfig,
+                        provider: value as SettingsSyncConfig['provider'],
+                      })}
+                    >
+                      <SelectTrigger className="cloud-sync-provider-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="webdav">WebDAV</SelectItem>
+                          <SelectItem value="s3">Amazon S3</SelectItem>
+                          <SelectItem value="supabase">Supabase</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="form-actions">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setConfiguring(false)}>
-                    {t('common.cancel')}
-                  </Button>
-                  <Button type="button" size="sm" onClick={handleConfigure}>
-                    {t('settings.cloudSync.configure')}
-                  </Button>
-                </div>
+                  <div className="form-actions">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setConfiguring(false)}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button type="button" size="sm" onClick={handleConfigure}>
+                      {t('settings.cloudSync.configure')}
+                    </Button>
+                  </div>
+                </CardContent>
               </Card>
             )}
 
@@ -114,27 +123,29 @@ export function CloudSyncSettings() {
         ) : (
           <div className="sync-status">
             <Card className="status-card">
-              <div className="status-row">
-                <span>{t('settings.cloudSync.provider')}:</span>
-                <Badge variant="secondary" className="cloud-sync-status-badge">{status.provider}</Badge>
-              </div>
-              <div className="status-row">
-                <span>{t('settings.cloudSync.status')}:</span>
-                <Badge variant="secondary" className={`cloud-sync-status-badge status-${status.status}`}>
-                  {t(`settings.cloudSync.status_${status.status}`)}
-                </Badge>
-              </div>
-              {status.lastSync && (
+              <CardContent className="status-card__content">
                 <div className="status-row">
-                  <span>{t('settings.cloudSync.lastSync')}:</span>
-                  <Badge variant="outline" className="cloud-sync-status-badge">{new Date(status.lastSync).toLocaleString()}</Badge>
+                  <span>{t('settings.cloudSync.provider')}:</span>
+                  <Badge variant="secondary" className="cloud-sync-status-badge">{status.provider}</Badge>
                 </div>
-              )}
-              {status.error && (
-                <Alert variant="destructive" className="cloud-sync-status-alert">
-                  <AlertDescription>{status.error}</AlertDescription>
-                </Alert>
-              )}
+                <div className="status-row">
+                  <span>{t('settings.cloudSync.status')}:</span>
+                  <Badge variant="secondary" className={`cloud-sync-status-badge status-${status.status}`}>
+                    {t(`settings.cloudSync.status_${status.status}`)}
+                  </Badge>
+                </div>
+                {status.lastSync && (
+                  <div className="status-row">
+                    <span>{t('settings.cloudSync.lastSync')}:</span>
+                    <Badge variant="outline" className="cloud-sync-status-badge">{new Date(status.lastSync).toLocaleString()}</Badge>
+                  </div>
+                )}
+                {status.error && (
+                  <Alert variant="destructive" className="cloud-sync-status-alert">
+                    <AlertDescription>{status.error}</AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
             </Card>
           </div>
         )}
