@@ -13,6 +13,7 @@ import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Card } from '../ui/card'
 import { Checkbox } from '../ui/checkbox'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Input } from '../ui/input'
@@ -267,12 +268,14 @@ export function AgentRunPanel() {
             <AgentPanelEmpty compact>{t('agent.history.empty')}</AgentPanelEmpty>
           ) : (
             history.map((run) => (
-              <div key={run.id} className="agent-run-panel__history-row" onClick={() => void openHistoryRun(run.id)}>
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{run.goal}</span>
-                <span className={`agent-run-panel__step-status agent-run-panel__step-status--${run.status === 'awaiting_user' ? 'pending' : run.status === 'running' ? 'running' : run.status === 'completed' ? 'completed' : run.status === 'failed' || run.status === 'cancelled' ? 'failed' : 'pending'}`}>
-                  {run.status}
-                </span>
-              </div>
+              <Card key={run.id} asChild className="agent-run-panel__history-row">
+                <button type="button" onClick={() => void openHistoryRun(run.id)}>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{run.goal}</span>
+                  <span className={`agent-run-panel__step-status agent-run-panel__step-status--${run.status === 'awaiting_user' ? 'pending' : run.status === 'running' ? 'running' : run.status === 'completed' ? 'completed' : run.status === 'failed' || run.status === 'cancelled' ? 'failed' : 'pending'}`}>
+                    {run.status}
+                  </span>
+                </button>
+              </Card>
             ))
           )}
         </div>
@@ -422,33 +425,35 @@ function PlanEditor({ detail, onUpdate, onDelete, onMove, onSave, onExecute, onC
       {detail.run.rationale && <div className="agent-run-panel__rationale">{detail.run.rationale}</div>}
       <div style={{ marginTop: 8 }}>
         {detail.run.plan.map((step, idx) => (
-          <div key={step.index} className="agent-run-panel__plan-step">
-            <div className="agent-run-panel__step-head">
-              <Badge variant="secondary" className="agent-run-panel__step-kind">{step.kind}</Badge>
-              <div className="agent-run-panel__step-controls">
-                <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === 0} onClick={() => onMove(idx, -1)}>↑</Button>
-                <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === detail.run.plan.length - 1} onClick={() => onMove(idx, 1)}>↓</Button>
-                <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onDelete(step.index)}>{t('agent.plan.delete')}</Button>
+          <Card key={step.index} asChild className="agent-run-panel__plan-step">
+            <section>
+              <div className="agent-run-panel__step-head">
+                <Badge variant="secondary" className="agent-run-panel__step-kind">{step.kind}</Badge>
+                <div className="agent-run-panel__step-controls">
+                  <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === 0} onClick={() => onMove(idx, -1)}>↑</Button>
+                  <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" disabled={idx === detail.run.plan.length - 1} onClick={() => onMove(idx, 1)}>↓</Button>
+                  <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onDelete(step.index)}>{t('agent.plan.delete')}</Button>
+                </div>
               </div>
-            </div>
-            <Input
-              className="agent-run-panel__input"
-              value={step.description}
-              onChange={(e) => onUpdate(step.index, { description: e.target.value })}
-            />
-            <div style={{ marginTop: 4 }}>
               <Input
                 className="agent-run-panel__input"
-                value={step.expectedEffect}
-                placeholder={t('agent.plan.expectedPlaceholder')}
-                onChange={(e) => onUpdate(step.index, { expectedEffect: e.target.value })}
+                value={step.description}
+                onChange={(e) => onUpdate(step.index, { description: e.target.value })}
               />
-            </div>
-            {step.toolName && <div className="agent-run-panel__step-tool" style={{ marginTop: 4 }}>tool: {step.toolName}</div>}
-            {Object.keys(step.args || {}).length > 0 && (
-              <pre className="agent-run-panel__preview" style={{ marginTop: 4 }}>{JSON.stringify(step.args, null, 2)}</pre>
-            )}
-          </div>
+              <div style={{ marginTop: 4 }}>
+                <Input
+                  className="agent-run-panel__input"
+                  value={step.expectedEffect}
+                  placeholder={t('agent.plan.expectedPlaceholder')}
+                  onChange={(e) => onUpdate(step.index, { expectedEffect: e.target.value })}
+                />
+              </div>
+              {step.toolName && <div className="agent-run-panel__step-tool" style={{ marginTop: 4 }}>tool: {step.toolName}</div>}
+              {Object.keys(step.args || {}).length > 0 && (
+                <pre className="agent-run-panel__preview" style={{ marginTop: 4 }}>{JSON.stringify(step.args, null, 2)}</pre>
+              )}
+            </section>
+          </Card>
         ))}
       </div>
       <div className="agent-run-panel__actions">
@@ -500,26 +505,28 @@ function ExecuteView({ detail, stepRows, onRetry, onSkip, onRollback, reflectRes
         </div>
       )}
       {stepRows.map((step) => (
-        <div key={step.id} className="agent-run-panel__exec-step">
-          <div className="agent-run-panel__step-head">
-            <Badge variant="secondary" className="agent-run-panel__step-kind">{step.kind}</Badge>
-            <Badge variant="secondary" className={`agent-run-panel__step-status agent-run-panel__step-status--${step.status}`}>
-              {step.status}
-            </Badge>
-          </div>
-          <div className="agent-run-panel__step-desc">{step.description}</div>
-          {step.expectedEffect && <div className="agent-run-panel__step-expected">{step.expectedEffect}</div>}
-          {step.toolName && <div className="agent-run-panel__step-tool">tool: {step.toolName}</div>}
-          {step.preview && <pre className="agent-run-panel__preview">{step.preview}</pre>}
-          {step.error && <pre className="agent-run-panel__preview" style={{ color: 'rgb(255,120,120)' }}>{step.error}</pre>}
-          <div className="agent-run-panel__step-actions">
-            <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onRetry(step.stepIndex)} disabled={step.status === 'running'}>{t('agent.execute.retry')}</Button>
-            <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onSkip(step.stepIndex)} disabled={step.status === 'completed' || step.status === 'skipped'}>{t('agent.execute.skip')}</Button>
-            {step.hasRollback && (
-              <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onRollback(step.stepIndex)} disabled={step.status === 'rolled_back'}>{t('agent.execute.rollback')}</Button>
-            )}
-          </div>
-        </div>
+        <Card key={step.id} asChild className="agent-run-panel__exec-step">
+          <article>
+            <div className="agent-run-panel__step-head">
+              <Badge variant="secondary" className="agent-run-panel__step-kind">{step.kind}</Badge>
+              <Badge variant="secondary" className={`agent-run-panel__step-status agent-run-panel__step-status--${step.status}`}>
+                {step.status}
+              </Badge>
+            </div>
+            <div className="agent-run-panel__step-desc">{step.description}</div>
+            {step.expectedEffect && <div className="agent-run-panel__step-expected">{step.expectedEffect}</div>}
+            {step.toolName && <div className="agent-run-panel__step-tool">tool: {step.toolName}</div>}
+            {step.preview && <pre className="agent-run-panel__preview">{step.preview}</pre>}
+            {step.error && <pre className="agent-run-panel__preview" style={{ color: 'rgb(255,120,120)' }}>{step.error}</pre>}
+            <div className="agent-run-panel__step-actions">
+              <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onRetry(step.stepIndex)} disabled={step.status === 'running'}>{t('agent.execute.retry')}</Button>
+              <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onSkip(step.stepIndex)} disabled={step.status === 'completed' || step.status === 'skipped'}>{t('agent.execute.skip')}</Button>
+              {step.hasRollback && (
+                <Button type="button" variant="outline" size="xs" className="agent-run-panel__step-btn" onClick={() => onRollback(step.stepIndex)} disabled={step.status === 'rolled_back'}>{t('agent.execute.rollback')}</Button>
+              )}
+            </div>
+          </article>
+        </Card>
       ))}
     </div>
   )

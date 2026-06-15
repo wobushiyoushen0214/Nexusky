@@ -117,11 +117,12 @@
   border-left: 3px solid var(--primary, var(--accent, rgba(124,110,240,0.6)));
 }
 
-.agent-run-panel__plan-step,
-.agent-run-panel__exec-step {
+.agent-run-panel__plan-step.ui-card,
+.agent-run-panel__exec-step.ui-card {
+  gap: 0;
   padding: 10px 12px;
   margin-bottom: 8px;
-  border: 1px solid color-mix(in srgb, var(--border, var(--border-soft, rgba(255,255,255,0.06))) 72%, transparent);
+  border-color: color-mix(in srgb, var(--border, var(--border-soft, rgba(255,255,255,0.06))) 72%, transparent);
   border-radius: var(--radius-md, 8px);
   background: color-mix(in srgb, var(--card, var(--bg-elevated)) 42%, transparent);
 }
@@ -297,18 +298,23 @@
   overflow-y: auto;
 }
 
-.agent-run-panel__history-row {
+.agent-run-panel__history-row.ui-card {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
-  padding: 4px 0;
-  border-bottom: 1px dashed var(--border-faint, rgba(255,255,255,0.04));
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
 
-.agent-run-panel__history-row:hover {
+.agent-run-panel__history-row.ui-card:hover {
   background: var(--bg-hover);
-}
-
-.agent-run-panel__history-row:last-child {
-  border-bottom: none;
 }
