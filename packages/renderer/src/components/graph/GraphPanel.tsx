@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCancellationError, getErrorMessage } from '../../utils/errors'
 import { Button } from '../ui/button'
@@ -263,6 +263,7 @@ export function GraphPanel(props: GraphPanelProps) {
                         onCheckedChange={() => onToggleGroup(group.id)}
                         aria-label={groupHint}
                         className="graph-toggle-switch graph-group-switch"
+                        style={{ '--graph-switch-color': group.color } as CSSProperties}
                       />
                     </div>
                   )
