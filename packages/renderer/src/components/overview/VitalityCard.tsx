@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
+import { Badge } from '../ui/badge'
 import { Card } from '../ui/card'
 import { VitalityTrendChart, type VitalityTrendPoint } from './OverviewCharts'
 import './VitalityCard.css'
@@ -53,10 +54,12 @@ export function VitalityCard({ health }: VitalityCardProps) {
           <h3>{t('overviewPage.vitality.title')}</h3>
           <span>{t('overviewPage.vitality.last7days')}</span>
         </div>
-        <div className="vitality-card__score-badge" aria-label={`${t('overviewPage.vitality.scoreLabel')} ${score}`}>
-          <strong>{score}</strong>
-          <span>{t('overviewPage.vitality.scoreSuffix')}</span>
-        </div>
+        <Badge asChild variant="outline" className="vitality-card__score-badge">
+          <div aria-label={`${t('overviewPage.vitality.scoreLabel')} ${score}`}>
+            <strong>{score}</strong>
+            <span>{t('overviewPage.vitality.scoreSuffix')}</span>
+          </div>
+        </Badge>
       </div>
 
       <div className="vitality-card__chart" aria-label={t('overviewPage.vitality.trendChart')}>

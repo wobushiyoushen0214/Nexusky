@@ -94,10 +94,16 @@
 
 .vitality-card__score-badge {
   flex: 0 0 auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   display: flex;
   align-items: baseline;
   gap: 3px;
   color: var(--overview-text-primary);
+  line-height: 1;
 }
 
 .vitality-card__score-badge strong {
