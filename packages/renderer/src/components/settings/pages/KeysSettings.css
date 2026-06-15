@@ -27,26 +27,29 @@
   background: color-mix(in srgb, var(--secondary, var(--bg-hover)) 86%, transparent);
 }
 
-.keybinding-info {
+.keybinding-info.ui-card-header {
   min-width: 0;
+  padding: 0;
+  gap: 0;
 }
 
-.keybinding-info h4 {
-  margin: 0 0 4px;
+.keybinding-title.ui-card-title {
+  margin: 0;
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 650;
   line-height: 1.35;
 }
 
-.keybinding-info p {
-  margin: 0;
+.keybinding-description.ui-card-description {
+  margin: 4px 0 0;
   color: var(--text-tertiary);
   font-size: 12px;
   line-height: 1.45;
 }
 
-.keybinding-actions {
+.keybinding-actions.ui-card-content {
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
