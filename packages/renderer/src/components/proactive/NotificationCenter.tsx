@@ -11,6 +11,7 @@ import {
 } from '../ui/dropdown-menu'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Card } from '../ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
@@ -216,24 +217,25 @@ function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionI
   const { t } = useTranslation()
 
   return (
-    <div className="proactive-item">
-      <div className="proactive-item__head">
-        <Badge variant="secondary" className="proactive-item__kind">{t(`proactive.kind.${suggestion.kind}`)}</Badge>
-        <span className="proactive-item__title">{suggestion.title}</span>
-        <span className="proactive-item__importance">{suggestion.importance}</span>
-      </div>
-      {suggestion.body && <div className="proactive-item__body">{suggestion.body}</div>}
-      <div className="proactive-item__actions">
-        <Button type="button" size="xs" className="proactive-item__btn proactive-item__btn--primary" onClick={onOpen}>
-          {t('proactive.open')}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="xs" className="proactive-item__btn">
-              {t('proactive.snooze')}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="proactive-item__snooze-content">
+    <Card asChild>
+      <div className="proactive-item">
+        <div className="proactive-item__head">
+          <Badge variant="secondary" className="proactive-item__kind">{t(`proactive.kind.${suggestion.kind}`)}</Badge>
+          <span className="proactive-item__title">{suggestion.title}</span>
+          <span className="proactive-item__importance">{suggestion.importance}</span>
+        </div>
+        {suggestion.body && <div className="proactive-item__body">{suggestion.body}</div>}
+        <div className="proactive-item__actions">
+          <Button type="button" size="xs" className="proactive-item__btn proactive-item__btn--primary" onClick={onOpen}>
+            {t('proactive.open')}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="xs" className="proactive-item__btn">
+                {t('proactive.snooze')}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="proactive-item__snooze-content">
               {SNOOZE_OPTIONS.map((opt) => (
                 <DropdownMenuItem
                   key={opt.key}
@@ -244,13 +246,14 @@ function SuggestionItem({ suggestion, onOpen, onSnooze, onDismiss }: SuggestionI
                   {t(`proactive.${opt.key}`)}
                 </DropdownMenuItem>
               ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button type="button" variant="outline" size="xs" className="proactive-item__btn" onClick={onDismiss}>
-          {t('proactive.dismiss')}
-        </Button>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button type="button" variant="outline" size="xs" className="proactive-item__btn" onClick={onDismiss}>
+            {t('proactive.dismiss')}
+          </Button>
+        </div>
       </div>
-    </div>
+    </Card>
   )
 }
 
