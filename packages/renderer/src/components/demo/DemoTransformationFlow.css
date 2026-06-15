@@ -166,6 +166,23 @@
   margin-top: 8px;
 }
 
+.demo-health-score__meter {
+  min-width: 96px;
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.demo-health-score__progress {
+  width: 96px;
+  height: 5px;
+  background: color-mix(in srgb, var(--muted, var(--bg-hover)) 76%, transparent);
+}
+
+.demo-health-score__progress .ui-progress-indicator {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-error) 68%, transparent), var(--color-error));
+}
+
 .demo-issue-item .demo-issue-count {
   min-width: 32px;
   height: 22px;

@@ -7,6 +7,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
+import { Progress } from '../ui/progress'
 import { Spinner } from '../ui/spinner'
 import './DemoTransformationFlow.css'
 
@@ -128,7 +129,14 @@ export function DemoTransformationFlow({ onClose }: { onClose: () => void }) {
               <Card asChild>
                 <div className="demo-health-score">
                   <span>{t('demo.healthScore')}</span>
-                  <strong className="demo-score-bad">{beforeStats.healthScore}</strong>
+                  <div className="demo-health-score__meter">
+                    <strong className="demo-score-bad">{beforeStats.healthScore}</strong>
+                    <Progress
+                      className="demo-health-score__progress"
+                      value={beforeStats.healthScore}
+                      aria-label={t('demo.healthScore')}
+                    />
+                  </div>
                 </div>
               </Card>
             </div>
