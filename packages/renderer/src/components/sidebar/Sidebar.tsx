@@ -123,23 +123,29 @@ export function Sidebar({ width = 240 }: { width?: number }) {
       {/* Header */}
       <div style={{ height: 40, padding: '0 10px 0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'transparent' }}>
         <DropdownMenu open={vaultMenuOpen} onOpenChange={setVaultMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label="切换笔记空间"
-              title="切换笔记空间"
-              style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 0, cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 9 }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-            >
-              {vaultPath?.split(/[\\/]/).pop()}
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </Button>
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span style={{ display: 'inline-flex', minWidth: 0 }}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="切换笔记空间"
+                    style={{ minWidth: 0, height: 30, fontSize: 13, fontWeight: 650, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'transparent', border: 0, cursor: 'pointer', padding: '0 7px', display: 'flex', alignItems: 'center', gap: 5, borderRadius: 9 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--control-bg)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {vaultPath?.split(/[\\/]/).pop()}
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </Button>
+                </DropdownMenuTrigger>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>切换笔记空间</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent
             align="start"
             sideOffset={8}
