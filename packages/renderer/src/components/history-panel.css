@@ -67,12 +67,16 @@
   padding: 0 8px;
 }
 
-.history-panel__snapshot {
-  padding: 8px 10px;
+.history-panel__snapshot.ui-card {
+  gap: 0;
   margin-bottom: 4px;
-  border: 1px solid color-mix(in srgb, var(--border, var(--border-subtle)) 78%, transparent);
+  border-color: color-mix(in srgb, var(--border, var(--border-subtle)) 78%, transparent);
   border-radius: var(--radius-sm, 6px);
   background: color-mix(in srgb, var(--card, var(--bg-elevated)) 54%, transparent);
+}
+
+.history-panel__snapshot-content.ui-card-content {
+  padding: 8px 10px;
 }
 
 .history-panel__snapshot-time {
