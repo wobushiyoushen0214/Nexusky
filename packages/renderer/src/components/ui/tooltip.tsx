@@ -3,8 +3,10 @@ import { Tooltip as TooltipPrimitive } from 'radix-ui'
 import { cn } from '../../lib/utils'
 import './ui.css'
 
+const DEFAULT_DELAY_DURATION = 500
+
 export function TooltipProvider({
-  delayDuration = 500,
+  delayDuration = DEFAULT_DELAY_DURATION,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
@@ -17,7 +19,11 @@ export function TooltipProvider({
 }
 
 export function Tooltip(props: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  return (
+    <TooltipPrimitive.Provider delayDuration={props.delayDuration ?? DEFAULT_DELAY_DURATION}>
+      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    </TooltipPrimitive.Provider>
+  )
 }
 
 export function TooltipTrigger(props: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
@@ -44,4 +50,3 @@ export function TooltipContent({
     </TooltipPortal>
   )
 }
-
