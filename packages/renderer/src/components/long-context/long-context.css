@@ -512,11 +512,18 @@
   border-bottom: none;
 }
 
-.related-context-card__header {
+.related-context-card__header.ui-card-header {
+  padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
+}
+
+.related-context-card__title-shell.ui-card-title {
+  min-width: 0;
+  font: inherit;
+  line-height: normal;
 }
 
 .related-context-card__title {
@@ -542,6 +549,10 @@
 
 .related-context-card__title:hover {
   color: var(--accent-text);
+}
+
+.related-context-card__content.ui-card-content {
+  padding: 0;
 }
 
 .related-context-card__why {
@@ -610,8 +621,9 @@
   opacity: 0.36;
 }
 
-.related-context-card__footer {
+.related-context-card__footer.ui-card-footer {
   margin-top: 10px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;

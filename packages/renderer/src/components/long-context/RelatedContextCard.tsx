@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { LongContextFeedbackType, LongContextSuggestion } from '@shared/types/ipc'
 import { Button } from '../ui/button'
-import { Card } from '../ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { LongContextBadge } from './LongContextBadge'
 
@@ -21,36 +21,40 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
   return (
     <Card asChild>
       <article className="related-context-card">
-        <div className="related-context-card__header">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className="related-context-card__title"
-                aria-label={titleHint}
-                onClick={() => onOpen(suggestion)}
-              >
-                {suggestion.targetTitle}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{titleHint}</TooltipContent>
-          </Tooltip>
+        <CardHeader className="related-context-card__header">
+          <CardTitle className="related-context-card__title-shell">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="related-context-card__title"
+                  aria-label={titleHint}
+                  onClick={() => onOpen(suggestion)}
+                >
+                  {suggestion.targetTitle}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{titleHint}</TooltipContent>
+            </Tooltip>
+          </CardTitle>
           <LongContextBadge type={suggestion.relationType} confidence={suggestion.confidence} />
-        </div>
+        </CardHeader>
 
-        <div className="related-context-card__why">{t('relatedContext.card.whyThis')}</div>
-        <p className="related-context-card__reason">{suggestion.reason}</p>
+        <CardContent className="related-context-card__content">
+          <div className="related-context-card__why">{t('relatedContext.card.whyThis')}</div>
+          <p className="related-context-card__reason">{suggestion.reason}</p>
 
-        {evidence.length > 0 && (
-          <ul className="related-context-card__evidence">
-            {evidence.map((item, index) => (
-              <li key={`${suggestion.relationId}-${index}`}>{item}</li>
-            ))}
-          </ul>
-        )}
+          {evidence.length > 0 && (
+            <ul className="related-context-card__evidence">
+              {evidence.map((item, index) => (
+                <li key={`${suggestion.relationId}-${index}`}>{item}</li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
 
-        <div className="related-context-card__footer">
+        <CardFooter className="related-context-card__footer">
           <span className="related-context-card__score">{t('relatedContext.card.score', { score: Math.round(suggestion.score * 100) })}</span>
           <div className="related-context-card__actions">
             <IconButton title={t('relatedContext.card.open')} onClick={() => onOpen(suggestion)}>
@@ -78,7 +82,7 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
               <path d="M6 6l12 12" />
             </IconButton>
           </div>
-        </div>
+        </CardFooter>
       </article>
     </Card>
   )
