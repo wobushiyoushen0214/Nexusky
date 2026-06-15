@@ -201,7 +201,17 @@ export function LongContextDebugPanel() {
             )}
             {metrics && (
               <div className="long-context-debug-panel__counts">
-                {t('longContextDebug.counts.shown')} {metrics.counts.suggestionShown} · {t('longContextDebug.counts.opened')} {metrics.counts.suggestionOpened} · {t('longContextDebug.counts.useful')} {metrics.counts.suggestionUseful} · {t('longContextDebug.counts.relations')} {metrics.counts.relationCreated} · {t('longContextDebug.counts.themes')} {metrics.counts.themeCreated}
+                {[
+                  [t('longContextDebug.counts.shown'), metrics.counts.suggestionShown],
+                  [t('longContextDebug.counts.opened'), metrics.counts.suggestionOpened],
+                  [t('longContextDebug.counts.useful'), metrics.counts.suggestionUseful],
+                  [t('longContextDebug.counts.relations'), metrics.counts.relationCreated],
+                  [t('longContextDebug.counts.themes'), metrics.counts.themeCreated],
+                ].map(([label, value]) => (
+                  <Badge key={label} variant="secondary" className="long-context-debug-panel__count-chip">
+                    {label} {value}
+                  </Badge>
+                ))}
               </div>
             )}
           </CardContent>

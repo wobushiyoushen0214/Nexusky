@@ -212,8 +212,17 @@
 
 .long-context-debug-panel__counts {
   margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.long-context-debug-panel__count-chip.ui-badge {
+  height: 18px;
+  padding: 0 6px;
   color: var(--muted-foreground, var(--text-tertiary));
   font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 .sparkline {
