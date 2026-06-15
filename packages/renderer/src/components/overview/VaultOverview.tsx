@@ -8,6 +8,7 @@ import { VitalityCard } from './VitalityCard'
 import { DonutChart } from '../charts/DonutChart'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
+import { Empty, EmptyDescription } from '../ui/empty'
 import { DiaryHeatmapChart, TokenUsageAreaChart, type DiaryHeatmapPoint, type TokenUsagePoint } from './OverviewCharts'
 import './vault-overview.css'
 
@@ -287,7 +288,11 @@ export function VaultOverview() {
             {compositionData.length > 0 ? (
               <DonutChart data={compositionData} className="vault-overview__chart vault-overview__chart--donut" />
             ) : (
-              <div className="vault-overview__empty">{loading ? t('overviewPage.loading') : t('overviewPage.charts.composition.empty')}</div>
+              <Empty className="vault-overview__empty">
+                <EmptyDescription>
+                  {loading ? t('overviewPage.loading') : t('overviewPage.charts.composition.empty')}
+                </EmptyDescription>
+              </Empty>
             )}
           </OverviewCard>
         </div>
