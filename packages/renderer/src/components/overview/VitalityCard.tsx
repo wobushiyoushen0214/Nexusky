@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
 import { Badge } from '../ui/badge'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card'
+import { Spinner } from '../ui/spinner'
 import { VitalityTrendChart, type VitalityTrendPoint } from './OverviewCharts'
 import './VitalityCard.css'
 
@@ -33,7 +34,8 @@ export function VitalityCard({ health }: VitalityCardProps) {
   if (!health) {
     return (
       <Card className="vitality-card vitality-card--loading">
-        <CardContent className="vitality-card__loading-content">
+        <CardContent className="vitality-card__loading-content" role="status" aria-live="polite">
+          <Spinner className="vitality-card__loading-spinner" aria-hidden="true" />
           <p>{t('overviewPage.vitality.scanning')}</p>
         </CardContent>
       </Card>

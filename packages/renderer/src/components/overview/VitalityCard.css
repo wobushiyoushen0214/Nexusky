@@ -56,10 +56,20 @@
 
 .vitality-card__loading-content.ui-card-content {
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .vitality-card__loading-content p {
   margin: 0;
+}
+
+.vitality-card__loading-spinner.ui-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 1.5px;
+  color: var(--overview-text-tertiary);
 }
 
 .vitality-card__header.ui-card-header {
