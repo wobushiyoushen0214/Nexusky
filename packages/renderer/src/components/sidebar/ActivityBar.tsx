@@ -5,7 +5,6 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useActivityBarStore } from '../../stores/activity-bar-store'
 import { ACTIVITY_BAR_REGISTRY, isActivityBarItemAvailable } from './activity-bar-registry'
 import { ContextMenu } from '../ContextMenu'
-import { Button } from '../ui/button'
 
 const iconMap: Record<string, React.ReactNode> = {
   overview: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>,
@@ -130,25 +129,12 @@ export function ActivityBar() {
           const isActive = item!.id === activeId
           const isDisabled = !isActivityBarItemAvailable(item!, availabilityContext)
           return (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
+            <button
               key={item!.id}
               className={`activity-bar__button${isActive ? ' is-active' : ''}${isDisabled ? ' is-disabled' : ''}`}
               onClick={isDisabled ? undefined : actionMap[item!.id]}
               disabled={isDisabled}
               title={`${t(item!.labelKey)}${item!.shortcut ? ` (${item!.shortcut})` : ''}${isDisabled ? ` - ${t('activityBar.requiresCurrentFile')}` : ''}`}
-              onMouseEnter={(e) => {
-                if (isActive || isDisabled) return
-                e.currentTarget.style.background = 'var(--control-bg)'
-                e.currentTarget.style.color = 'var(--text-secondary)'
-              }}
-              onMouseLeave={(e) => {
-                if (isActive || isDisabled) return
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = 'var(--text-tertiary)'
-              }}
               style={{
                 width: 34,
                 height: 34,
@@ -157,8 +143,6 @@ export function ActivityBar() {
                 justifyContent: 'center',
                 borderRadius: 9,
                 border: '1px solid transparent',
-                background: 'transparent',
-                color: isActive ? 'var(--activity-active-color)' : isDisabled ? 'var(--border-default)' : 'var(--text-tertiary)',
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 opacity: isDisabled ? 0.55 : 1,
                 position: 'relative',
@@ -171,7 +155,7 @@ export function ActivityBar() {
               <span className="activity-bar__button-icon">
                 {iconMap[item!.id]}
               </span>
-            </Button>
+            </button>
           )
         })}
 
@@ -179,10 +163,7 @@ export function ActivityBar() {
 
       {/* Bottom: settings */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 0 }}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
+        <button
           onClick={() => setSettingsOpen(true)}
           title={t('activityBar.settings') + ' (Ctrl+,)'}
           style={{
@@ -208,7 +189,7 @@ export function ActivityBar() {
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-        </Button>
+        </button>
       </div>
 
       {/* Right-click context menu for customization */}
