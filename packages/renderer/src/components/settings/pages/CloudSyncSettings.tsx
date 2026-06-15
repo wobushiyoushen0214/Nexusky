@@ -4,6 +4,7 @@ import type { SettingsSyncConfig, SettingsSyncStatus } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Alert, AlertDescription } from '../../ui/alert'
+import { Badge } from '../../ui/badge'
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
 import {
@@ -115,18 +116,18 @@ export function CloudSyncSettings() {
             <Card className="status-card">
               <div className="status-row">
                 <span>{t('settings.cloudSync.provider')}:</span>
-                <strong>{status.provider}</strong>
+                <Badge variant="secondary" className="cloud-sync-status-badge">{status.provider}</Badge>
               </div>
               <div className="status-row">
                 <span>{t('settings.cloudSync.status')}:</span>
-                <strong className={`status-${status.status}`}>
+                <Badge variant="secondary" className={`cloud-sync-status-badge status-${status.status}`}>
                   {t(`settings.cloudSync.status_${status.status}`)}
-                </strong>
+                </Badge>
               </div>
               {status.lastSync && (
                 <div className="status-row">
                   <span>{t('settings.cloudSync.lastSync')}:</span>
-                  <strong>{new Date(status.lastSync).toLocaleString()}</strong>
+                  <Badge variant="outline" className="cloud-sync-status-badge">{new Date(status.lastSync).toLocaleString()}</Badge>
                 </div>
               )}
               {status.error && (
