@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useVaultStore } from '../../stores/vault-store'
@@ -9,6 +9,7 @@ import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
 import { Button } from '../ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { GraphMaintenanceNudge } from './GraphMaintenanceNudge'
 import { GraphPanel } from './GraphPanel'
 import { buildGraphGroupColorMap } from './graph-colors'
@@ -40,6 +41,41 @@ const GRAPH_MIN_ZOOM = 0.18
 const GRAPH_MAX_ZOOM = 2.4
 const GRAPH_FOCUS_ZOOM = 1.15
 const DEFAULT_GRAPH_WORLD: GraphCanvasWorld = getGraphCanvasWorld(1200, 800, 1)
+
+function GraphToolbarButton({
+  label,
+  children,
+  className,
+  size,
+  style,
+  onClick
+}: {
+  label: string
+  children: ReactNode
+  className?: string
+  size?: 'icon'
+  style?: CSSProperties
+  onClick: () => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size={size}
+          className={className}
+          aria-label={label}
+          onClick={onClick}
+          style={style}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 interface GraphCanvasNode extends SimNode {
   noteCount?: number
@@ -1571,10 +1607,10 @@ export function GraphView() {
         )}
 
         <div className="graph-canvas-toolbar">
-          <Button type="button" variant="ghost" size="icon" title={t('canvas.zoomOut')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current / 1.16)} style={{ width: 28, height: 28, padding: 0 }}>-</Button>
-          <Button type="button" variant="ghost" className="graph-canvas-zoom-readout" title={t('canvas.zoomReset')} onClick={() => zoomAtViewportPoint(1)} style={{ minWidth: 46, height: 28, padding: 0 }}>{Math.round(zoomValue * 100)}%</Button>
-          <Button type="button" variant="ghost" size="icon" title={t('canvas.zoomIn')} onClick={() => zoomAtViewportPoint(desiredZoomRef.current * 1.16)} style={{ width: 28, height: 28, padding: 0 }}>+</Button>
-          <Button type="button" variant="ghost" title={t('canvas.fitView')} onClick={fitToView} style={{ minWidth: 28, height: 28, padding: 0 }}>Fit</Button>
+          <GraphToolbarButton label={t('canvas.zoomOut')} size="icon" onClick={() => zoomAtViewportPoint(desiredZoomRef.current / 1.16)} style={{ width: 28, height: 28, padding: 0 }}>-</GraphToolbarButton>
+          <GraphToolbarButton label={t('canvas.zoomReset')} className="graph-canvas-zoom-readout" onClick={() => zoomAtViewportPoint(1)} style={{ minWidth: 46, height: 28, padding: 0 }}>{Math.round(zoomValue * 100)}%</GraphToolbarButton>
+          <GraphToolbarButton label={t('canvas.zoomIn')} size="icon" onClick={() => zoomAtViewportPoint(desiredZoomRef.current * 1.16)} style={{ width: 28, height: 28, padding: 0 }}>+</GraphToolbarButton>
+          <GraphToolbarButton label={t('canvas.fitView')} onClick={fitToView} style={{ minWidth: 28, height: 28, padding: 0 }}>Fit</GraphToolbarButton>
         </div>
       </div>
 
