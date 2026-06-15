@@ -157,15 +157,8 @@
   min-width: 0;
 }
 
-.long-context-debug-panel__metric-content.ui-card-content {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.long-context-debug-panel__metric-header {
+.long-context-debug-panel__metric-header.ui-card-header {
+  padding: 10px 12px 0;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -173,7 +166,15 @@
   min-width: 0;
 }
 
-.long-context-debug-panel__metric-value {
+.long-context-debug-panel__metric-content.ui-card-content {
+  padding: 6px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.long-context-debug-panel__metric-value.ui-card-title {
   font-size: 18px;
   font-weight: 600;
   color: var(--card-foreground, var(--text-primary));
@@ -198,10 +199,11 @@
   color: var(--accent-danger, #f87171);
 }
 
-.long-context-debug-panel__metric-label {
+.long-context-debug-panel__metric-label.ui-card-description {
   font-size: 10px;
   color: var(--text-tertiary);
   letter-spacing: 0;
+  line-height: 1.35;
 }
 
 .long-context-debug-panel__metric-spark {

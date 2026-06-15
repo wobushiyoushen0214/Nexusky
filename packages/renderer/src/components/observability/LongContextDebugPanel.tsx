@@ -304,27 +304,27 @@ function MetricCard({
 
   return (
     <Card className="long-context-debug-panel__metric">
+      <CardHeader className="long-context-debug-panel__metric-header">
+        <CardTitle className="long-context-debug-panel__metric-value">{pct}%</CardTitle>
+        {trend && (() => {
+          const trendTitle = `${trend.deltaText} · ${t('longContextDebug.trend.vsPrior', { window: trend.window })}`
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={`long-context-debug-panel__metric-trend ${trend.className}`}
+                  aria-label={trendTitle}
+                >
+                  {trend.text}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{trendTitle}</TooltipContent>
+            </Tooltip>
+          )
+        })()}
+      </CardHeader>
       <CardContent className="long-context-debug-panel__metric-content">
-        <div className="long-context-debug-panel__metric-header">
-          <div className="long-context-debug-panel__metric-value">{pct}%</div>
-          {trend && (() => {
-            const trendTitle = `${trend.deltaText} · ${t('longContextDebug.trend.vsPrior', { window: trend.window })}`
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className={`long-context-debug-panel__metric-trend ${trend.className}`}
-                    aria-label={trendTitle}
-                  >
-                    {trend.text}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{trendTitle}</TooltipContent>
-              </Tooltip>
-            )
-          })()}
-        </div>
-        <div className="long-context-debug-panel__metric-label">{label}</div>
+        <CardDescription className="long-context-debug-panel__metric-label">{label}</CardDescription>
         <div className="long-context-debug-panel__metric-spark">
           <Sparkline points={rateSeries} tone={sparkTone} ariaLabel={sparkLabel} width={140} height={26} />
         </div>
