@@ -1,0 +1,15 @@
+.mermaid-renderer__error.ui-alert {
+  margin: 8px;
+  padding: 8px 12px;
+  border-color: color-mix(in srgb, var(--destructive, var(--danger)) 34%, var(--border, var(--border-subtle)));
+  border-radius: var(--radius-md, 6px);
+  background: color-mix(in srgb, var(--destructive, var(--danger)) 12%, var(--card, var(--bg-elevated)));
+  color: var(--destructive, var(--danger));
+  font-size: 11px;
+}
+
+.mermaid-renderer__error .ui-alert-description {
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.45;
+}

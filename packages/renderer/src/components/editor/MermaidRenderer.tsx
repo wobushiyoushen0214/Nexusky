@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
+import { Alert, AlertDescription } from '../ui/alert'
+import './mermaid-renderer.css'
 
 let mermaidInstance: typeof import('mermaid').default | null = null
 let mermaidLoading: Promise<typeof import('mermaid').default> | null = null
@@ -64,9 +66,9 @@ export function MermaidRenderer({ code }: { code: string }) {
 
   if (error) {
     return (
-      <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--danger)', background: 'var(--danger-muted)', borderRadius: 6 }}>
-        Mermaid 语法错误: {error}
-      </div>
+      <Alert variant="destructive" className="mermaid-renderer__error">
+        <AlertDescription>Mermaid 语法错误: {error}</AlertDescription>
+      </Alert>
     )
   }
 
