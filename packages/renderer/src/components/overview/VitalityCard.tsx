@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
 import { Badge } from '../ui/badge'
-import { Card } from '../ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card'
 import { VitalityTrendChart, type VitalityTrendPoint } from './OverviewCharts'
 import './VitalityCard.css'
 
@@ -33,7 +33,9 @@ export function VitalityCard({ health }: VitalityCardProps) {
   if (!health) {
     return (
       <Card className="vitality-card vitality-card--loading">
-        <p>{t('overviewPage.vitality.scanning')}</p>
+        <CardContent className="vitality-card__loading-content">
+          <p>{t('overviewPage.vitality.scanning')}</p>
+        </CardContent>
       </Card>
     )
   }
@@ -49,10 +51,10 @@ export function VitalityCard({ health }: VitalityCardProps) {
 
   return (
     <Card className={`vitality-card vitality-card--${scoreColor}`}>
-      <div className="vitality-card__header">
+      <CardHeader className="vitality-card__header">
         <div>
-          <h3>{t('overviewPage.vitality.title')}</h3>
-          <span>{t('overviewPage.vitality.last7days')}</span>
+          <CardTitle className="vitality-card__title">{t('overviewPage.vitality.title')}</CardTitle>
+          <CardDescription className="vitality-card__subtitle">{t('overviewPage.vitality.last7days')}</CardDescription>
         </div>
         <Badge asChild variant="outline" className="vitality-card__score-badge">
           <div aria-label={`${t('overviewPage.vitality.scoreLabel')} ${score}`}>
@@ -60,17 +62,17 @@ export function VitalityCard({ health }: VitalityCardProps) {
             <span>{t('overviewPage.vitality.scoreSuffix')}</span>
           </div>
         </Badge>
-      </div>
+      </CardHeader>
 
-      <div className="vitality-card__chart" aria-label={t('overviewPage.vitality.trendChart')}>
+      <CardContent className="vitality-card__chart" aria-label={t('overviewPage.vitality.trendChart')}>
         <VitalityTrendChart
           className="vitality-card__echart"
           data={trendData}
           scoreLabel={t('overviewPage.vitality.scoreLabel')}
         />
-      </div>
+      </CardContent>
 
-      <div className="vitality-card__summary">
+      <CardFooter className="vitality-card__summary">
         <div className="vitality-card__metric">
           <span>{t('overviewPage.vitality.trend')}</span>
           <strong className={trendClass}>
@@ -82,7 +84,7 @@ export function VitalityCard({ health }: VitalityCardProps) {
           <span>{t('overviewPage.vitality.statusLabel')}</span>
           <strong>{t(`overviewPage.vitality.status.${scoreColor}`)}</strong>
         </div>
-      </div>
+      </CardFooter>
     </Card>
   )
 }
