@@ -138,10 +138,10 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
             </Card>
           )}
           {loading && (
-            <div className="chat-source-row__loading">
+            <Empty className="chat-source-row__loading" role="status" aria-live="polite">
               <Spinner aria-hidden="true" />
-              <span>{t('citationLookup.loading')}</span>
-            </div>
+              <EmptyDescription>{t('citationLookup.loading')}</EmptyDescription>
+            </Empty>
           )}
           {!loading && result && !result.found && (
             <Empty className="chat-source-row__empty">
