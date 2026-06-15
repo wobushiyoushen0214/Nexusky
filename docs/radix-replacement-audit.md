@@ -22,7 +22,7 @@ Already added:
 
 - `radix-ui` dependency.
 - `cmdk` dependency.
-- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Alert`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, `Spinner`, `Empty`, and `Card` wrappers.
+- `Button`, `Badge`, `Dialog`, `ScrollArea`, `AlertDialog`, `Alert`, `Tabs`, `Command`, `DropdownMenu`, `ContextMenu`, `Sheet`, `Popover`, `Tooltip`, `Input`, `Textarea`, `Slider`, `Progress`, `Skeleton`, `Spinner`, `Empty`, and `Card` wrappers. `Card` slot helpers support `asChild` so feature code can keep semantic heading/paragraph elements while using shared `CardHeader`/`CardTitle`/`CardDescription`/`CardContent`/`CardFooter` styling.
 - The shared `Button` wrapper now forwards refs so it can be used safely as a Radix `asChild` trigger/action.
 - `MemoryTimelinePanel` now uses those wrappers, including shared `Badge` for tier/count labels, shared `Tooltip` for source hints, shared `Spinner` for its loading state, and shared `Empty` for its empty state.
 - `ConfirmModal` now uses `AlertDialog`.
@@ -61,7 +61,7 @@ Already added:
 - `KeysSettings` keybinding rows now use shared `Card` composition with `CardHeader`/`CardContent` while retaining the compact two-column settings layout and existing key capture/reset controls.
 - Settings CSS no longer carries legacy native checkbox selectors for `form-toggle` and `category-item`; those settings controls now rely on shared `Switch`/`Checkbox` token styling.
 - Removed the unmounted legacy `Settings.old.tsx` implementation so the active settings surface no longer carries a parallel custom-control copy.
-- `WelcomeScreen` now uses shared `Card` for entry-page hero/start/sample surfaces, shared `Input` for vault-name creation, shared `Button` for demo, open/create, recent vault, and sample vault actions, and shared `Tooltip` for recent vault path hints while preserving its existing entry-page styling.
+- `WelcomeScreen` now uses shared `Card` for entry-page hero/start/sample surfaces; hero/start/sample panels are composed with `CardHeader`/`CardTitle`/`CardDescription`/`CardContent`/`CardFooter` where applicable; vault-name creation uses shared `Input`; demo, open/create, recent vault, and sample vault actions use shared `Button`; and recent vault path hints use shared `Tooltip` while preserving existing entry-page styling and semantic `h1`/`h2` headings.
 - `TimelineView` now uses shared `ScrollArea` for the main content scroll, shared `Input` for timeline search, shared `ToggleGroup` for updated/created mode switching, shared `Button` for refresh and row actions, shared `Badge` for tag chips, and shared `Empty` for no-result state while preserving the custom timeline row grid/marker layout.
 - `NotificationCenter` now uses shared `Button` for bell, bulk actions, close, open, snooze, and dismiss controls; bell and drawer close icon actions use shared `Tooltip`; suggestion items use shared `Card`; bell count, drawer count, and suggestion kind labels use shared `Badge`; drawer empty state uses shared `Empty`; notification button styling now reads from shadcn semantic tokens.
 - `DemoTransformationFlow` now uses shared `Dialog` for the demo modal shell, shared `Card` for sample cards, issue rows, comparison columns, and fixes summary, shared `Button` for close, sample selection, fix, and done actions, shared `Spinner` for the scan state, shared `Badge` for scenario/problem count labels, and shared `Progress` for the pre-fix health score.

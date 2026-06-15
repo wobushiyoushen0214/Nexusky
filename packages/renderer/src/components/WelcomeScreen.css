@@ -39,6 +39,17 @@
   gap: 18px;
 }
 
+.welcome-hero-header,
+.welcome-hero-content {
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.welcome-hero-footer {
+  padding: 0;
+}
+
 .welcome-demo-button {
   width: fit-content;
   padding: 10px 20px;
@@ -156,6 +167,7 @@
 
 .welcome-panel-header,
 .welcome-samples-head {
+  padding: 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -184,6 +196,14 @@
 .welcome-create-form {
   display: grid;
   gap: 8px;
+}
+
+.welcome-start-content {
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .welcome-action-row {
@@ -311,6 +331,10 @@
   padding: 15px 16px 13px;
   border-bottom: 0;
   box-shadow: var(--glass-divider-shadow-bottom);
+}
+
+.welcome-samples-content {
+  padding: 0;
 }
 
 .welcome-samples-head p {
