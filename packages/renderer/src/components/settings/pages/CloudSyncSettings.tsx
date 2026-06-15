@@ -79,6 +79,9 @@ export function CloudSyncSettings() {
 
             {configuring && (
               <Card className="config-form">
+                <CardHeader className="config-form__header">
+                  <CardTitle className="config-form__title">{t('settings.cloudSync.configure')}</CardTitle>
+                </CardHeader>
                 <CardContent className="config-form__content">
                   <div className="form-item">
                     <label className="form-label">{t('settings.cloudSync.provider')}</label>
@@ -123,6 +126,9 @@ export function CloudSyncSettings() {
         ) : (
           <div className="sync-status">
             <Card className="status-card">
+              <CardHeader className="status-card__header">
+                <CardTitle className="status-card__title">{t('settings.cloudSync.status')}</CardTitle>
+              </CardHeader>
               <CardContent className="status-card__content">
                 <div className="status-row">
                   <span>{t('settings.cloudSync.provider')}:</span>
