@@ -5,7 +5,7 @@ import { parseNoteProperties, updateFrontmatterProperty } from '../utils/frontma
 import { cn } from '../lib/utils'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
-import { Card, CardContent } from './ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
@@ -104,8 +104,12 @@ export function TagsPanel() {
       {currentFilePath && (
         <Card asChild className="tags-panel__current">
           <section>
+            <CardHeader className="tags-panel__current-header">
+              <CardTitle asChild className="tags-panel__current-title">
+                <PanelHeading>当前文件标签</PanelHeading>
+              </CardTitle>
+            </CardHeader>
             <CardContent className="tags-panel__current-content">
-              <PanelHeading>当前文件标签</PanelHeading>
               <div className="tags-panel__cloud">
                 {currentTags.map((tag) => (
                   <Badge key={tag} variant="default" className="tags-panel__current-tag">
