@@ -4,6 +4,7 @@ import type { ProactiveConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Button } from '../../ui/button'
+import { Card } from '../../ui/card'
 import { Checkbox } from '../../ui/checkbox'
 import { Switch } from '../../ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '../../ui/toggle-group'
@@ -118,15 +119,17 @@ export function ProactiveSettings() {
                     const label = i18n.language.startsWith('zh') ? category.label : category.labelEn
                     const id = `proactive-category-${category.id}`
                     return (
-                      <div key={category.id} className="category-item">
-                        <Checkbox
-                          id={id}
-                          checked={checked}
-                          onCheckedChange={() => toggleCategory(category.id)}
-                          aria-label={label}
-                        />
-                        <label htmlFor={id}>{label}</label>
-                      </div>
+                      <Card key={category.id} asChild className="category-item">
+                        <div data-state={checked ? 'checked' : 'unchecked'}>
+                          <Checkbox
+                            id={id}
+                            checked={checked}
+                            onCheckedChange={() => toggleCategory(category.id)}
+                            aria-label={label}
+                          />
+                          <label htmlFor={id}>{label}</label>
+                        </div>
+                      </Card>
                     )
                   })}
                 </div>

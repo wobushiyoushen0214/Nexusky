@@ -11,10 +11,10 @@
 .frequency-btn {
   min-height: 34px;
   padding: 0 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 7px;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 84%, transparent);
+  border-radius: var(--radius-md, 7px);
+  background: color-mix(in srgb, var(--secondary, var(--bg-secondary)) 86%, transparent);
+  color: var(--secondary-foreground, var(--text-secondary));
   cursor: pointer;
   font-size: 13px;
   font-weight: 650;
@@ -26,16 +26,16 @@
 }
 
 .frequency-btn:hover {
-  border-color: color-mix(in srgb, var(--accent) 36%, var(--border-color));
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 36%, var(--border, var(--border-color)));
+  background: var(--secondary, var(--bg-hover));
+  color: var(--foreground, var(--text-primary));
 }
 
 .frequency-btn.active,
 .frequency-btn[data-state="on"] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--text-on-accent, white);
+  border-color: var(--primary, var(--accent));
+  background: var(--primary, var(--accent));
+  color: var(--primary-foreground, var(--text-on-accent, white));
 }
 
 .category-list {
@@ -44,26 +44,32 @@
   gap: 6px 12px;
 }
 
-.category-item {
+.category-item.ui-card {
   min-height: 30px;
-  padding: 0;
+  padding: 6px 8px;
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--border, var(--border-color)) 52%, transparent);
+  border-radius: var(--radius-md, 7px);
+  background: color-mix(in srgb, var(--card, var(--bg-elevated)) 36%, transparent);
+  color: var(--card-foreground, var(--text-primary));
   cursor: pointer;
   transition:
     background 150ms ease,
     border-color 150ms ease;
 }
 
-.category-item:hover {
-  border-color: transparent;
-  background: transparent;
-  color: var(--text-primary);
+.category-item.ui-card:hover {
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 28%, var(--border, var(--border-color)));
+  background: color-mix(in srgb, var(--secondary, var(--bg-hover)) 68%, transparent);
+  color: var(--foreground, var(--text-primary));
+}
+
+.category-item.ui-card[data-state="checked"] {
+  border-color: color-mix(in srgb, var(--primary, var(--accent)) 38%, var(--border, var(--border-color)));
+  background: color-mix(in srgb, var(--primary, var(--accent)) 8%, var(--card, var(--bg-elevated)));
 }
 
 .category-item span,
