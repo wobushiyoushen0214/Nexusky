@@ -3,7 +3,9 @@ import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { toast } from '../../stores/toast-store'
 import { linkPlainMentionAtLine, linkPlainMentionsAtLines } from '../../utils/wikilink'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Card } from '../ui/card'
 import type { BacklinkResult, OutgoingLinkResult, UnlinkedMentionResult } from '@shared/types/ipc'
 
 export const DEFAULT_BACKLINKS_PANEL_COLLAPSED = true
@@ -134,7 +136,10 @@ export function BacklinksPanel() {
         >
           <polyline points="9 18 15 12 9 6" />
         </svg>
-        链接概览 ({total})
+        <span>链接概览</span>
+        <Badge variant="secondary" style={{ height: 16, padding: '0 5px', fontSize: 10 }}>
+          {total}
+        </Badge>
       </Button>
       {!collapsed && (
         <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--panel-bg-soft)' }}>
@@ -221,12 +226,12 @@ function OutgoingSection({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, padding: '2px 2px 0' }}>出链</div>
       {items.map((item, i) => (
-        <div
+        <Card
           key={`outgoing-${item.targetTitle}-${i}`}
           style={{
             textAlign: 'left', padding: '8px 10px', borderRadius: 8,
             background: 'var(--panel-bg)', border: '1px solid var(--border-subtle)',
-            display: 'block', width: '100%', position: 'relative',
+            display: 'block', gap: 0, width: '100%', position: 'relative',
             opacity: item.targetPath ? 1 : 0.72
           }}
         >
@@ -238,7 +243,9 @@ function OutgoingSection({
           >
             <span style={{ fontSize: 12, fontWeight: 500, color: item.targetPath ? 'var(--accent-text)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.targetTitle}</span>
-              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
+              <Badge variant="secondary" style={{ height: 16, padding: '0 5px', fontSize: 10, flexShrink: 0 }}>
+                L{item.line}
+              </Badge>
             </span>
             {item.context && (
               <span style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -255,7 +262,7 @@ function OutgoingSection({
           >
             {item.resolved ? '打开目标' : '创建目标'}
           </Button>
-        </div>
+        </Card>
       ))}
     </div>
   )
@@ -318,12 +325,12 @@ function LinkSection({
         }
 
         return (
-          <div
+          <Card
             key={`${title}-${item.sourcePath}-${i}`}
             style={{
               textAlign: 'left', padding: '8px 10px', borderRadius: 8,
               background: 'var(--panel-bg)', border: '1px solid var(--border-subtle)',
-              display: 'block', width: '100%'
+              display: 'block', gap: 0, width: '100%'
             }}
           >
             <Button
@@ -340,10 +347,14 @@ function LinkSection({
               <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sourceTitle}</span>
                 {'mention' in item && (
-                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line} · 提到 {item.mention}</span>
+                  <Badge variant="secondary" style={{ height: 16, padding: '0 5px', fontSize: 10, flexShrink: 0 }}>
+                    L{item.line} · 提到 {item.mention}
+                  </Badge>
                 )}
                 {!('mention' in item) && (
-                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>L{item.line}</span>
+                  <Badge variant="secondary" style={{ height: 16, padding: '0 5px', fontSize: 10, flexShrink: 0 }}>
+                    L{item.line}
+                  </Badge>
                 )}
               </span>
               {item.context && (
@@ -365,7 +376,7 @@ function LinkSection({
                 转为链接
               </Button>
             )}
-          </div>
+          </Card>
         )
       })}
     </div>
