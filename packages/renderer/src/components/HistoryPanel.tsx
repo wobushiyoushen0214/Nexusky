@@ -4,7 +4,7 @@ import { useEditorStore } from '../stores/editor-store'
 import { toast } from '../stores/toast-store'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
-import { Card, CardContent } from './ui/card'
+import { Card, CardFooter, CardHeader, CardTitle } from './ui/card'
 import { Empty, EmptyHeader, EmptyTitle } from './ui/empty'
 import { ScrollArea } from './ui/scroll-area'
 import './history-panel.css'
@@ -89,17 +89,19 @@ export function HistoryPanel() {
             {snapshots.map((s) => (
               <Card asChild key={s.fileName} className="history-panel__snapshot">
                 <article>
-                  <CardContent className="history-panel__snapshot-content">
-                    <p className="history-panel__snapshot-time">{s.timestamp.slice(0, 16).replace('T', ' ')}</p>
-                    <div className="history-panel__snapshot-actions">
-                      <Button type="button" variant="ghost" size="xs" className="history-panel__action" onClick={() => void handlePreview(s)}>
-                        预览
-                      </Button>
-                      <Button type="button" variant="ghost" size="xs" className="history-panel__action history-panel__action--success" onClick={() => void handleRestore(s)}>
-                        恢复
-                      </Button>
-                    </div>
-                  </CardContent>
+                  <CardHeader className="history-panel__snapshot-header">
+                    <CardTitle asChild className="history-panel__snapshot-time">
+                      <time dateTime={s.timestamp}>{s.timestamp.slice(0, 16).replace('T', ' ')}</time>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardFooter className="history-panel__snapshot-actions">
+                    <Button type="button" variant="ghost" size="xs" className="history-panel__action" onClick={() => void handlePreview(s)}>
+                      预览
+                    </Button>
+                    <Button type="button" variant="ghost" size="xs" className="history-panel__action history-panel__action--success" onClick={() => void handleRestore(s)}>
+                      恢复
+                    </Button>
+                  </CardFooter>
                 </article>
               </Card>
             ))}

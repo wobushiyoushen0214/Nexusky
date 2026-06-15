@@ -75,20 +75,23 @@
   background: color-mix(in srgb, var(--card, var(--bg-elevated)) 54%, transparent);
 }
 
-.history-panel__snapshot-content.ui-card-content {
-  padding: 8px 10px;
+.history-panel__snapshot-header.ui-card-header {
+  padding: 8px 10px 0;
+  gap: 0;
 }
 
-.history-panel__snapshot-time {
+.history-panel__snapshot-time.ui-card-title {
   margin: 0;
   color: var(--secondary-foreground, var(--text-secondary));
   font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
-.history-panel__snapshot-actions {
+.history-panel__snapshot-actions.ui-card-footer {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
+  padding: 6px 10px 8px;
 }
 
 .history-panel__empty {
