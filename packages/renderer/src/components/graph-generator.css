@@ -1,0 +1,13 @@
+.graph-generator-empty.ui-empty {
+  min-height: 120px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground, var(--text-tertiary));
+  font-size: 13px;
+}
+
+.graph-generator-empty .ui-empty-description {
+  color: inherit;
+  font-size: inherit;
+}

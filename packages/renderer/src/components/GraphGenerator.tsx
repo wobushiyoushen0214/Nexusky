@@ -6,6 +6,7 @@ import { toast } from '../stores/toast-store'
 import { isCancellationError } from '../utils/errors'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Empty, EmptyDescription } from './ui/empty'
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
 } from './ui/dialog'
 import { ScrollArea } from './ui/scroll-area'
 import { Spinner } from './ui/spinner'
+import './graph-generator.css'
 
 interface GraphGeneratorProps {
   open: boolean
@@ -139,9 +141,9 @@ export function GraphGenerator({ open, filePaths, onClose }: GraphGeneratorProps
             <GraphCodeBlock maxHeight={400} color="var(--text-primary)">{result}</GraphCodeBlock>
           )}
           {!generating && !result && !progress && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, color: 'var(--text-tertiary)', fontSize: 13 }}>
-              准备生成...
-            </div>
+            <Empty className="graph-generator-empty">
+              <EmptyDescription>准备生成...</EmptyDescription>
+            </Empty>
           )}
           </div>
         </ScrollArea>
