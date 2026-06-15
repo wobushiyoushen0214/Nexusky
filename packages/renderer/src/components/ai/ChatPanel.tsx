@@ -2187,14 +2187,14 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                       value={batch.dir}
                       onChange={(e) => updatePendingBatchPlanBatch(index, { dir: e.currentTarget.value })}
                       placeholder="目录"
-                      title="目录"
+                      aria-label="目录"
                       style={{ width: '100%', height: 24, padding: '0 7px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-primary)', outline: 'none', minWidth: 0 }}
                     />
                     <Input
                       value={batch.topic}
                       onChange={(e) => updatePendingBatchPlanBatch(index, { topic: e.currentTarget.value })}
                       placeholder="主题"
-                      title="主题"
+                      aria-label="主题"
                       style={{ width: '100%', height: 24, padding: '0 7px', fontSize: 11, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--text-secondary)', outline: 'none', minWidth: 0 }}
                     />
                   </div>
@@ -2204,19 +2204,24 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
                     max={MAX_EDITABLE_BATCH_NOTE_COUNT}
                     value={batch.count}
                     onChange={(e) => updatePendingBatchPlanBatch(index, { count: normalizeEditableBatchCount(e.currentTarget.value) })}
-                    title="篇数"
+                    aria-label="篇数"
                     style={{ width: 62, height: 28, padding: '0 7px', fontSize: 12, background: 'var(--bg-base)', border: '1px solid var(--border-subtle)', borderRadius: 5, color: 'var(--accent-text)', outline: 'none' }}
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removePendingBatchPlanBatch(index)}
-                    title="移除该目录"
-                    style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}
-                  >
-                    ×
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="移除该目录"
+                        onClick={() => removePendingBatchPlanBatch(index)}
+                        style={{ width: 24, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 5, cursor: 'pointer' }}
+                      >
+                        ×
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>移除该目录</TooltipContent>
+                  </Tooltip>
                 </div>
               ))}
             </div>
