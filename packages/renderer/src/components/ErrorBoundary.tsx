@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from 'react'
-import { Alert, AlertDescription, AlertTitle } from './ui/alert'
+import { Alert, AlertDescription } from './ui/alert'
 import { Button } from './ui/button'
-import { Card, CardContent, CardFooter } from './ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card'
 import './error-boundary.css'
 
 interface Props {
@@ -33,9 +33,11 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="error-boundary">
           <Card className="error-boundary__card">
+            <CardHeader className="error-boundary__header">
+              <CardTitle className="error-boundary__title">出了点问题</CardTitle>
+            </CardHeader>
             <CardContent className="error-boundary__content">
               <Alert variant="destructive" className="error-boundary__alert">
-                <AlertTitle>出了点问题</AlertTitle>
                 <AlertDescription>
                   {this.state.error?.message || '未知错误'}
                 </AlertDescription>

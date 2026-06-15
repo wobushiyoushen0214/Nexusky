@@ -18,10 +18,22 @@
   color: var(--card-foreground, var(--foreground, var(--text-primary)));
 }
 
+.error-boundary__header.ui-card-header,
 .error-boundary__content.ui-card-content,
 .error-boundary__footer.ui-card-footer {
   width: 100%;
   padding: 0;
+}
+
+.error-boundary__header.ui-card-header {
+  justify-items: center;
+  gap: 0;
+}
+
+.error-boundary__title.ui-card-title {
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
 }
 
 .error-boundary__footer.ui-card-footer {
