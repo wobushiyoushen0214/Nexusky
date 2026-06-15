@@ -1,3 +1,31 @@
+.chat-messages-empty {
+  align-items: flex-start;
+  padding: 32px 16px;
+  text-align: left;
+}
+
+.chat-messages-empty .ui-empty-header {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.chat-messages-empty .ui-empty-title {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.chat-messages-empty .ui-empty-description {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.chat-messages-empty .ui-empty-content {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .chat-hint-list {
   display: flex;
   flex-direction: column;

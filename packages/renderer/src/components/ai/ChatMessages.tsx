@@ -4,6 +4,7 @@ import { renderMarkdown } from './MessageBubble'
 import { buildChatHints, queueAiCommandDraft } from './ai-command-draft'
 import type { Message } from './MessageBubble'
 import { Button } from '../ui/button'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Spinner } from '../ui/spinner'
 import './ChatMessages.css'
 
@@ -46,33 +47,37 @@ export const ChatMessages = memo(function ChatMessages({ messages, isStreaming, 
   return (
     <div ref={scrollRef} className="file-tree-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px 10px' }}>
       {messages.length === 0 && !isStreaming && (
-        <div style={{ padding: '32px 16px' }}>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>{editMode ? t('chatMessages.emptyTitleEdit') : t('chatMessages.emptyTitleChat')}</p>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16 }}>{t('chatMessages.emptyHint')}</p>
-          <div className="chat-hint-list">
-            {chatHints.map((hint) => (
-              <Button
-                key={hint.id}
-                type="button"
-                variant="ghost"
-                className="chat-hint-button"
-                onClick={() => {
-                  if (hint.draft) {
-                    queueAiCommandDraft(hint.draft, () => {})
-                  } else {
-                    window.dispatchEvent(new CustomEvent('chat-hint-click', { detail: hint.event }))
-                  }
-                }}
-              >
-                <span style={{ width: 24, height: 20, borderRadius: 5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--accent-text)', background: 'var(--accent-muted)', flexShrink: 0 }}>{hint.mark}</span>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: 'block', color: 'var(--text-secondary)', fontWeight: 500 }}>{hint.title}</span>
-                  <span style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hint.detail}</span>
-                </span>
-              </Button>
-            ))}
-          </div>
-        </div>
+        <Empty className="chat-messages-empty">
+          <EmptyHeader>
+            <EmptyTitle>{editMode ? t('chatMessages.emptyTitleEdit') : t('chatMessages.emptyTitleChat')}</EmptyTitle>
+            <EmptyDescription>{t('chatMessages.emptyHint')}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <div className="chat-hint-list">
+              {chatHints.map((hint) => (
+                <Button
+                  key={hint.id}
+                  type="button"
+                  variant="ghost"
+                  className="chat-hint-button"
+                  onClick={() => {
+                    if (hint.draft) {
+                      queueAiCommandDraft(hint.draft, () => {})
+                    } else {
+                      window.dispatchEvent(new CustomEvent('chat-hint-click', { detail: hint.event }))
+                    }
+                  }}
+                >
+                  <span style={{ width: 24, height: 20, borderRadius: 5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--accent-text)', background: 'var(--accent-muted)', flexShrink: 0 }}>{hint.mark}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', color: 'var(--text-secondary)', fontWeight: 500 }}>{hint.title}</span>
+                    <span style={{ display: 'block', color: 'var(--text-tertiary)', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hint.detail}</span>
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </EmptyContent>
+        </Empty>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {messages.map((msg, i) => {
