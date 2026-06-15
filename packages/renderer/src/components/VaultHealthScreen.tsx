@@ -9,6 +9,7 @@ import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { Empty, EmptyDescription } from './ui/empty'
+import { Progress } from './ui/progress'
 import './VaultHealthScreen.css'
 
 type VaultHealthNextStepId =
@@ -194,6 +195,11 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
                 </div>
                 <div className="vault-health-score-card" aria-label={t('vaultHealth.score.label')}>
                   <div className="vault-health-score-card__value">{summary.score}</div>
+                  <Progress
+                    className="vault-health-score-card__progress"
+                    value={summary.score}
+                    aria-label={t('vaultHealth.score.label')}
+                  />
                   <div className="vault-health-score-card__label">{t('vaultHealth.score.label')} {t('vaultHealth.score.outOf')}</div>
                 </div>
               </section>

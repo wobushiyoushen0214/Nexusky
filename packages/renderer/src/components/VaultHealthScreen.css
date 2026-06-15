@@ -232,6 +232,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+.vault-health-score-card__progress {
+  width: min(118px, 100%);
+  height: 5px;
+  justify-self: center;
+  background: color-mix(in srgb, var(--muted, var(--bg-hover)) 72%, transparent);
+}
+
+.vault-health-score-card__progress .ui-progress-indicator {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary, var(--accent)) 68%, transparent), var(--primary, var(--accent)));
+}
+
 .vault-health-score-card__label {
   color: var(--text-tertiary);
   font-size: 11px;
