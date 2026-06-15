@@ -9,6 +9,7 @@ import { useVaultStore } from '../../stores/vault-store'
 import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader } from '../ui/card'
 import { ScrollArea } from '../ui/scroll-area'
 import { Sheet, SheetContent, SheetTitle } from '../ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
@@ -103,35 +104,39 @@ export function ToolResultPanel() {
               dangerouslySetInnerHTML={{ __html: rendered }}
             />
             {result.sources.length > 0 && (
-              <div className="tool-result-panel__sources">
-                <div className="tool-result-panel__sources-title">
-                  {t('toolSurface.sources')}
-                </div>
-                {result.sources.map((source, idx) => (
-                  <Tooltip key={`${source.filePath}-${idx}`}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="tool-result-panel__source"
-                        onClick={() => {
-                          const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
-                          if (!fullPath) return
-                          const target = buildChatSourceNavigationTarget(source)
-                          setMainView('editor')
-                          const editorStore = useEditorStore.getState()
-                          if (target) void editorStore.openFileAt(fullPath, target)
-                          else void editorStore.openFile(fullPath)
-                        }}
-                      >
-                        <span className="tool-result-panel__source-title">{source.title}</span>
-                        <span className="tool-result-panel__source-path">{source.filePath}</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{source.filePath}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
+              <Card className="tool-result-panel__sources">
+                <CardHeader className="tool-result-panel__sources-header">
+                  <div className="tool-result-panel__sources-title">
+                    {t('toolSurface.sources')}
+                  </div>
+                </CardHeader>
+                <CardContent className="tool-result-panel__sources-content">
+                  {result.sources.map((source, idx) => (
+                    <Tooltip key={`${source.filePath}-${idx}`}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="tool-result-panel__source"
+                          onClick={() => {
+                            const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
+                            if (!fullPath) return
+                            const target = buildChatSourceNavigationTarget(source)
+                            setMainView('editor')
+                            const editorStore = useEditorStore.getState()
+                            if (target) void editorStore.openFileAt(fullPath, target)
+                            else void editorStore.openFile(fullPath)
+                          }}
+                        >
+                          <span className="tool-result-panel__source-title">{source.title}</span>
+                          <span className="tool-result-panel__source-path">{source.filePath}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{source.filePath}</TooltipContent>
+                    </Tooltip>
+                  ))}
+                </CardContent>
+              </Card>
             )}
           </div>
         </ScrollArea>

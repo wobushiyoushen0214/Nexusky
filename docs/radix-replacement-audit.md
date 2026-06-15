@@ -189,7 +189,7 @@ These are lower impact or more visual than behavioral.
 
 | Area | Candidate primitive | Notes |
 | --- | --- | --- |
-| Tool result panel | `Sheet`, `Button`, `Tooltip`, `ScrollArea` | Done with `modal={false}` and no overlay. It keeps the right-bottom non-modal result drawer behavior, close/source tooltips, and prevents outside interactions from dismissing it. |
+| Tool result panel | `Sheet`, `Card`, `Button`, `Tooltip`, `ScrollArea` | Done with `modal={false}` and no overlay. Source sections now use shared Card; it keeps the right-bottom non-modal result drawer behavior, close/source tooltips, and prevents outside interactions from dismissing it. |
 | Vault health actions | `Button`, `Badge`, `Empty`, `Card`, `Progress` | Button migration done for skip and next-step actions. Badge migration done for scan steps, hero signals, and next-step kickers. Empty migration done for no-issue driver state. Card migration done for state, hero, drivers, metrics, and next-step panels. Progress remains optional visual polish. |
 | Overview cards | `Card`, `Badge` | Header refresh action now uses shared `Button`. Be careful: user has been tuning glass/hover details manually. |
 | History panel | `Card`, `Button`, `Badge`, `ScrollArea`, `Empty` | Done. Snapshot rows now use shared Card; kept the lightweight side-panel behavior and moved inline/count/empty styles into local token-based CSS. |
