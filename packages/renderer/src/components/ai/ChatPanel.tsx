@@ -9,6 +9,7 @@ import { ConfirmModal } from '../ConfirmModal'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group'
 import { ChatMessages } from './ChatMessages'
 import { DiffView } from './DiffView'
@@ -2028,31 +2029,41 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
       {/* Header */}
       <div className="glass-divider-bottom" style={{ padding: '0 10px 0 14px', height: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexShrink: 0, background: 'color-mix(in srgb, var(--panel-bg-soft) 58%, transparent)', boxShadow: 'var(--glass-divider-shadow-bottom)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={() => setShowSessions(!showSessions)}
-            style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-            title="会话列表"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-            {sessions.length > 0 && <span>{sessions.length}</span>}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={handleNewSession}
-            style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4 }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-text)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-            title="新建会话"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                aria-label="会话列表"
+                onClick={() => setShowSessions(!showSessions)}
+                style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                {sessions.length > 0 && <span>{sessions.length}</span>}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>会话列表</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                aria-label="新建会话"
+                onClick={handleNewSession}
+                style={{ fontSize: 11, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4 }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-text)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>新建会话</TooltipContent>
+          </Tooltip>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {messages.length > 0 && (
