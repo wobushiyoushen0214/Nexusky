@@ -99,31 +99,48 @@ async function graphRequest<T = unknown>(path: string, options: { method?: strin
 }
 async function refreshAccessToken(): Promise<void> {
   const config = getConfig()
-  if (!config || !config.refreshToken) throw new Error('无法刷新 token')
+  if (!config || !config.refreshToken) {
+    logger.error('OneDrive token refresh failed: no config or refresh token')
+    throw new Error('无法刷新 token')
+  }
 
-  const body = new URLSearchParams({
-    client_id: config.clientId,
-    refresh_token: config.refreshToken,
-    grant_type: 'refresh_token',
-    scope: 'Files.ReadWrite.All offline_access'
-  })
+  try {
+    const body = new URLSearchParams({
+      client_id: config.clientId,
+      refresh_token: config.refreshToken,
+      grant_type: 'refresh_token',
+      scope: 'Files.ReadWrite.All offline_access'
+    })
 
-  const response = await net.fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
-  })
+    const response = await net.fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    })
 
-  if (!response.ok) throw new Error('Token 刷新失败')
+    if (!response.ok) {
+      const errorText = await response.text()
+      logger.error('OneDrive token refresh failed', { status: response.status, error: errorText })
+      throw new Error('Token 刷新失败')
+    }
 
-  const data = await response.json() as Partial<OneDriveTokenResponse>
-  if (!data.access_token || !data.expires_in) throw new Error('Token 刷新响应无效')
-  saveConfig({
-    ...config,
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token || config.refreshToken,
-    expiresAt: Date.now() + data.expires_in * 1000
-  })
+    const data = await response.json() as Partial<OneDriveTokenResponse>
+    if (!data.access_token || !data.expires_in) {
+      logger.error('OneDrive token refresh response invalid', { data })
+      throw new Error('Token 刷新响应无效')
+    }
+
+    saveConfig({
+      ...config,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || config.refreshToken,
+      expiresAt: Date.now() + data.expires_in * 1000
+    })
+    logger.info('OneDrive token refreshed successfully')
+  } catch (error) {
+    logger.error('OneDrive token refresh exception', { error })
+    throw error
+  }
 }
 
 export async function startOneDriveAuth(clientId: string): Promise<{ success: boolean; error?: string }> {
@@ -262,23 +279,45 @@ export class OneDriveSyncProvider implements SyncProvider {
       try {
         const encodedPath = path.split('/').map(encodeURIComponent).join('/')
         const data = await graphRequest<OneDriveChildrenResponse>(`/me/drive/root:${encodedPath}:/children`)
-        for (const item of data.value || []) {
+
+        if (!data.value) return
+
+        // 批量处理文件夹和文件
+        const folders: OneDriveDriveItem[] = []
+        const files: OneDriveDriveItem[] = []
+
+        for (const item of data.value) {
           if (item.folder) {
-            await listFolder(`${path}/${item.name}`)
+            folders.push(item)
           } else {
-            const relPath = `${path}/${item.name}`.replace(folder + '/', '')
-            if (!shouldSyncRelPath(relPath)) continue
-            results.push({
-              path: relPath,
-              hash: item.file?.hashes?.sha256Hash || item.eTag || '',
-              updatedAt: item.lastModifiedDateTime
-            })
+            files.push(item)
           }
         }
-      } catch { /* folder may not exist yet */ }
+
+        // 递归处理文件夹
+        await Promise.all(folders.map(item => listFolder(`${path}/${item.name}`)))
+
+        // 处理文件
+        for (const item of files) {
+          const relPath = `${path}/${item.name}`.replace(folder + '/', '')
+          if (!shouldSyncRelPath(relPath)) continue
+
+          // 使用 SHA256 hash 如果可用，否则使用 eTag
+          const hash = item.file?.hashes?.sha256Hash || item.eTag || ''
+          results.push({
+            path: relPath,
+            hash,
+            updatedAt: item.lastModifiedDateTime
+          })
+        }
+      } catch (error) {
+        logger.error('OneDrive listFolder failed', { path, error })
+        // 文件夹可能不存在，静默失败
+      }
     }
 
     await listFolder(folder)
+    logger.info('OneDrive listRemoteFiles completed', { count: results.length })
     return results
   }
 

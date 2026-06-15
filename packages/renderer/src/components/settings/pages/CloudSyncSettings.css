@@ -50,6 +50,37 @@
   gap: 14px;
 }
 
+.form-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.form-item {
+  display: grid;
+  gap: 6px;
+}
+
+.form-label {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.form-hint {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
 .config-form select,
 .config-form .ui-select-trigger,
 .cloud-sync-provider-select {
@@ -63,6 +94,7 @@
 .status-card__content.ui-card-content {
   padding: 12px 16px 16px;
   display: grid;
+  gap: 12px;
 }
 
 .status-row {
@@ -97,6 +129,14 @@
   color: var(--text-secondary) !important;
 }
 
+.status-ok {
+  color: var(--color-success) !important;
+}
+
+.status-conflict {
+  color: var(--color-warning) !important;
+}
+
 .status-syncing {
   color: var(--accent) !important;
 }
@@ -105,6 +145,109 @@
   color: var(--color-error) !important;
 }
 
+.status-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md, 6px);
+  background: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.stat-value {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-warning .stat-value {
+  color: var(--color-warning);
+}
+
+.stat-error .stat-value {
+  color: var(--color-error);
+}
+
+.sync-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .cloud-sync-status-alert {
+  margin-top: 0;
+}
+
+.icloud-debug-alert {
   margin-top: 12px;
+}
+
+.icloud-debug-info {
+  font-size: 13px;
+}
+
+.icloud-debug-info ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.icloud-debug-info li {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+.icloud-debug-info code {
+  display: block;
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+
+.icloud-debug-info .status-success {
+  color: var(--color-success);
+  font-weight: 550;
+}
+
+.icloud-debug-info .status-error {
+  color: var(--color-error);
+  font-weight: 550;
+}
+
+.icloud-permission-hint {
+  margin-top: 12px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  border-radius: var(--radius-md, 6px);
+  border-left: 3px solid var(--color-warning);
+}
+
+.icloud-permission-hint p {
+  margin: 8px 0;
+}
+
+.icloud-permission-hint ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.icloud-permission-hint li {
+  margin: 4px 0;
 }

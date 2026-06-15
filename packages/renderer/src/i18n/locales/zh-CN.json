@@ -1388,17 +1388,68 @@
       "title": "云端同步",
       "description": "同步你的笔记到云端",
       "notConfigured": "未配置云端同步",
-      "notConfiguredDesc": "云端同步功能尚未配置，敬请期待",
+      "notConfiguredDesc": "云端同步功能尚未配置，选择一个云存储提供商开始配置",
       "provider": "提供商",
       "status": "状态",
       "lastSync": "最后同步",
+      "lastDirection": "同步方向",
       "configure": "配置",
       "startConfiguration": "开始配置",
       "configured": "配置成功",
       "configureFailed": "配置失败",
+      "loadFailed": "加载配置失败",
+      "testConnection": "测试连接",
+      "connectionSuccess": "连接测试成功",
+      "connectionFailed": "连接测试失败",
+      "authenticate": "认证",
+      "authFailed": "认证失败",
+      "save": "保存",
+      "reconfigure": "重新配置",
       "status_idle": "空闲",
+      "status_ok": "正常",
+      "status_conflict": "有冲突",
       "status_syncing": "同步中",
-      "status_error": "错误"
+      "status_error": "错误",
+      "direction_sync": "双向同步",
+      "direction_pull": "仅拉取",
+      "offlineQueue": "离线队列中有 {{count}} 个文件等待同步",
+      "icloud": {
+        "path": "iCloud 路径",
+        "pathPlaceholder": "自动检测或手动输入",
+        "pathHint": "留空以自动检测 iCloud Drive 路径"
+      },
+      "onedrive": {
+        "clientId": "客户端 ID",
+        "clientIdPlaceholder": "Azure 应用程序客户端 ID",
+        "clientIdHint": "在 Azure Portal 中创建应用并获取客户端 ID",
+        "folder": "OneDrive 文件夹",
+        "authenticated": "已认证"
+      },
+      "webdav": {
+        "url": "WebDAV 地址",
+        "username": "用户名",
+        "usernamePlaceholder": "用户名",
+        "password": "密码",
+        "passwordPlaceholder": "密码",
+        "folder": "文件夹路径"
+      },
+      "s3": {
+        "endpoint": "端点地址",
+        "region": "区域",
+        "bucket": "存储桶",
+        "prefix": "前缀路径",
+        "accessKeyId": "访问密钥 ID",
+        "accessKeyIdPlaceholder": "访问密钥 ID",
+        "secretAccessKey": "访问密钥",
+        "secretAccessKeyPlaceholder": "访问密钥"
+      },
+      "stats": {
+        "total": "总文件数",
+        "pushed": "已推送",
+        "pulled": "已拉取",
+        "conflicts": "冲突",
+        "errors": "错误"
+      }
     },
     "plugins": {
       "title": "插件",
@@ -1419,22 +1470,6 @@
       "saveFailed": "保存失败",
       "reset": "已重置",
       "resetFailed": "重置失败"
-    },
-    "proactive": {
-      "title": "主动建议",
-      "description": "AI 主动提供建议和洞察",
-      "comingSoon": "主动建议功能即将推出",
-      "enabled": "启用主动建议",
-      "enabledHint": "让 AI 主动分析你的笔记并提供建议",
-      "frequency": "建议频率",
-      "frequencyLow": "低",
-      "frequencyMedium": "中",
-      "frequencyHigh": "高",
-      "frequencyHint": "AI 提供建议的频率",
-      "categories": "建议类别",
-      "categoriesHint": "选择你想接收的建议类型",
-      "saved": "保存成功",
-      "saveFailed": "保存失败"
     },
     "longContext": {
       "title": "记忆账本",
@@ -1552,6 +1587,14 @@
       "title": "主动建议",
       "description": "在后台分析笔记关系、长期主题和任务时主动给出值得关注的提示。",
       "enabled": "启用主动建议",
+      "enabledHint": "让 AI 主动分析你的笔记并提供建议。",
+      "frequency": "建议频率",
+      "frequencyLow": "低",
+      "frequencyMedium": "中",
+      "frequencyHigh": "高",
+      "frequencyHint": "控制 AI 主动给出建议的频率。",
+      "categories": "建议类别",
+      "categoriesHint": "选择你想接收的建议类型。",
       "silentHoursStart": "静音开始（HH:mm）",
       "silentHoursEnd": "静音结束（HH:mm）",
       "maxPerDay": "每日最多展示",
@@ -1571,7 +1614,9 @@
         "maintenance": "维护提醒"
       },
       "debugRun": "立即跑一轮（调试）",
-      "resetPrefs": "恢复默认偏好"
+      "resetPrefs": "恢复默认偏好",
+      "saved": "保存成功",
+      "saveFailed": "保存失败"
     }
   },
   "proactive": {

@@ -479,14 +479,14 @@ export interface AIProviderValidationResult {
 
 export interface SettingsSyncStatus {
   configured: boolean
-  provider?: 'supabase' | 'webdav' | 's3'
+  provider?: 'icloud' | 'onedrive' | 'webdav' | 's3' | 'supabase'
   lastSync?: number
   status?: 'idle' | 'syncing' | 'error'
   error?: string
 }
 
 export interface SettingsSyncConfig {
-  provider: 'supabase' | 'webdav' | 's3'
+  provider: 'icloud' | 'onedrive' | 'webdav' | 's3' | 'supabase'
   config: Record<string, string>
 }
 
@@ -1360,6 +1360,7 @@ export interface IPCChannelMap {
   'cloud:get-s3-config': { params: undefined; result: { endpoint: string; region: string; bucket: string; prefix?: string; hasAccessKeyId: boolean; hasSecretAccessKey: boolean } }
   'cloud:save-s3-config': { params: { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string; prefix?: string }; result: void }
   'cloud:get-icloud-path': { params: undefined; result: string | null }
+  'cloud:get-icloud-attempted-paths': { params: undefined; result: Array<{ path: string; exists: boolean; accessible: boolean }> }
   'cloud:set-icloud-path': { params: { path: string }; result: void }
   'cloud:push-index': { params: { vaultPath: string }; result: boolean }
   'cloud:pull-index': { params: { vaultPath: string }; result: boolean }

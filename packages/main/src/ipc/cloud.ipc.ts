@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
+import { existsSync } from 'fs'
 import { store } from '../services/store'
 import {
   pushFile,
@@ -124,6 +125,25 @@ export function registerCloudIPC(): void {
   ipcMain.handle('cloud:get-icloud-path', () => {
     const provider = getProvider('icloud') as ICloudSyncProvider
     return provider.getBasePath()
+  })
+
+  ipcMain.handle('cloud:get-icloud-attempted-paths', () => {
+    const provider = getProvider('icloud') as ICloudSyncProvider
+    const attemptedPaths = provider.getAttemptedPaths()
+    const results = attemptedPaths.map(path => ({
+      path,
+      exists: existsSync(path),
+      accessible: (() => {
+        try {
+          const { readdirSync } = require('fs')
+          readdirSync(path)
+          return true
+        } catch {
+          return false
+        }
+      })()
+    }))
+    return results
   })
 
   ipcMain.handle('cloud:set-icloud-path', (_event, params: { path: string }) => {

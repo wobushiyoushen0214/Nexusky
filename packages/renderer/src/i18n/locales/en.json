@@ -1388,17 +1388,68 @@
       "title": "Cloud Sync",
       "description": "Sync your notes to the cloud",
       "notConfigured": "Cloud sync not configured",
-      "notConfiguredDesc": "Cloud sync feature is not configured yet, coming soon",
+      "notConfiguredDesc": "Cloud sync feature is not configured yet, choose a cloud storage provider to get started",
       "provider": "Provider",
       "status": "Status",
       "lastSync": "Last sync",
+      "lastDirection": "Sync direction",
       "configure": "Configure",
       "startConfiguration": "Start Configuration",
       "configured": "Configured successfully",
       "configureFailed": "Configuration failed",
+      "loadFailed": "Failed to load configuration",
+      "testConnection": "Test Connection",
+      "connectionSuccess": "Connection test successful",
+      "connectionFailed": "Connection test failed",
+      "authenticate": "Authenticate",
+      "authFailed": "Authentication failed",
+      "save": "Save",
+      "reconfigure": "Reconfigure",
       "status_idle": "Idle",
+      "status_ok": "OK",
+      "status_conflict": "Conflict",
       "status_syncing": "Syncing",
-      "status_error": "Error"
+      "status_error": "Error",
+      "direction_sync": "Two-way sync",
+      "direction_pull": "Pull only",
+      "offlineQueue": "{{count}} files waiting in offline queue",
+      "icloud": {
+        "path": "iCloud Path",
+        "pathPlaceholder": "Auto-detect or enter manually",
+        "pathHint": "Leave empty to auto-detect iCloud Drive path"
+      },
+      "onedrive": {
+        "clientId": "Client ID",
+        "clientIdPlaceholder": "Azure Application Client ID",
+        "clientIdHint": "Create an app in Azure Portal and get the client ID",
+        "folder": "OneDrive Folder",
+        "authenticated": "Authenticated"
+      },
+      "webdav": {
+        "url": "WebDAV URL",
+        "username": "Username",
+        "usernamePlaceholder": "Username",
+        "password": "Password",
+        "passwordPlaceholder": "Password",
+        "folder": "Folder Path"
+      },
+      "s3": {
+        "endpoint": "Endpoint",
+        "region": "Region",
+        "bucket": "Bucket",
+        "prefix": "Prefix",
+        "accessKeyId": "Access Key ID",
+        "accessKeyIdPlaceholder": "Access Key ID",
+        "secretAccessKey": "Secret Access Key",
+        "secretAccessKeyPlaceholder": "Secret Access Key"
+      },
+      "stats": {
+        "total": "Total Files",
+        "pushed": "Pushed",
+        "pulled": "Pulled",
+        "conflicts": "Conflicts",
+        "errors": "Errors"
+      }
     },
     "plugins": {
       "title": "Plugins",
@@ -1419,22 +1470,6 @@
       "saveFailed": "Save failed",
       "reset": "Reset",
       "resetFailed": "Reset failed"
-    },
-    "proactive": {
-      "title": "Proactive Suggestions",
-      "description": "AI proactively provides suggestions and insights",
-      "comingSoon": "Proactive suggestions feature coming soon",
-      "enabled": "Enable proactive suggestions",
-      "enabledHint": "Let AI analyze your notes and provide proactive suggestions",
-      "frequency": "Suggestion frequency",
-      "frequencyLow": "Low",
-      "frequencyMedium": "Medium",
-      "frequencyHigh": "High",
-      "frequencyHint": "How often AI provides suggestions",
-      "categories": "Suggestion categories",
-      "categoriesHint": "Choose which types of suggestions you want to receive",
-      "saved": "Saved successfully",
-      "saveFailed": "Save failed"
     },
     "longContext": {
       "title": "Memory Ledger",
@@ -1552,6 +1587,14 @@
       "title": "Proactive suggestions",
       "description": "Surface noteworthy hints while the app analyzes relations, long-term themes, and tasks in the background.",
       "enabled": "Enable proactive suggestions",
+      "enabledHint": "Let AI analyze your notes and provide proactive suggestions.",
+      "frequency": "Suggestion frequency",
+      "frequencyLow": "Low",
+      "frequencyMedium": "Medium",
+      "frequencyHigh": "High",
+      "frequencyHint": "Controls how often AI provides suggestions.",
+      "categories": "Suggestion categories",
+      "categoriesHint": "Choose which types of suggestions you want to receive.",
       "silentHoursStart": "Silent hours start (HH:mm)",
       "silentHoursEnd": "Silent hours end (HH:mm)",
       "maxPerDay": "Max suggestions per day",
@@ -1571,7 +1614,9 @@
         "maintenance": "Maintenance"
       },
       "debugRun": "Run one cycle now (debug)",
-      "resetPrefs": "Reset to defaults"
+      "resetPrefs": "Reset to defaults",
+      "saved": "Saved successfully",
+      "saveFailed": "Save failed"
     }
   },
   "proactive": {
