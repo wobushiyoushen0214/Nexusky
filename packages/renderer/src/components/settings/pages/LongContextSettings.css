@@ -2,6 +2,51 @@
   padding: 0;
 }
 
+.long-context-settings__number-field {
+  width: min(260px, 100%);
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .long-context-settings__number-input {
-  width: min(240px, 100%);
+  width: 100%;
+  padding-right: 62px;
+  font-variant-numeric: tabular-nums;
+}
+
+.long-context-settings__number-input::-webkit-outer-spin-button,
+.long-context-settings__number-input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.long-context-settings__number-input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.long-context-settings__number-unit {
+  position: absolute;
+  right: 12px;
+  max-width: 52px;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.long-context-settings__number-unit::before {
+  content: '';
+  width: 1px;
+  height: 12px;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: -1px;
+  background: var(--border-color);
 }
