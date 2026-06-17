@@ -482,5 +482,5 @@ function trimText(value: string, max: number): string {
 }
 
 function unixNow(): number {
-  return Math.floor(Date.now() / 1000)
+  return Date.now() // 返回毫秒时间戳
 }

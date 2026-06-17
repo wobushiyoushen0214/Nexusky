@@ -1,23 +1,35 @@
 /* Overview is a compact vault analytics workspace. */
 
 .vault-overview {
-  --overview-bg: color-mix(in srgb, var(--panel-bg-soft) 42%, transparent);
+  --overview-bg-base: color-mix(in srgb, var(--panel-bg-soft) 42%, transparent);
+  --overview-bg:
+    radial-gradient(circle at 12% 2%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 30%),
+    radial-gradient(circle at 82% 6%, color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 18%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 30%, transparent), transparent 44%),
+    var(--overview-bg-base);
   --overview-panel: color-mix(in srgb, var(--panel-bg-soft) 54%, transparent);
   --overview-panel-hover: var(--control-bg);
-  --overview-glass-card-fill: color-mix(in srgb, var(--bg-glass-solid, var(--panel-bg-soft)) 66%, transparent);
-  --overview-glass-card: linear-gradient(180deg, color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 10%, transparent) 0%, transparent 38%),
+  --overview-glass-card-fill: color-mix(in srgb, var(--bg-glass-solid, var(--panel-bg-soft)) 56%, transparent);
+  --overview-glass-card: linear-gradient(180deg, color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 16%, transparent) 0%, transparent 44%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent), transparent 58%),
     var(--overview-glass-card-fill);
-  --overview-glass-card-hover: linear-gradient(180deg, color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 14%, transparent) 0%, transparent 42%),
-    color-mix(in srgb, var(--bg-glass-hover, var(--control-bg)) 72%, transparent);
-  --overview-glass-well: color-mix(in srgb, var(--control-bg) 72%, transparent);
-  --overview-glass-border: color-mix(in srgb, var(--glass-border, var(--border-default)) 72%, transparent);
-  --overview-glass-highlight: color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 42%, transparent);
-  --overview-glass-blur: 10px;
-  --overview-glass-blur-soft: 8px;
+  --overview-glass-card-hover: linear-gradient(180deg, color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 22%, transparent) 0%, transparent 46%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent 62%),
+    color-mix(in srgb, var(--bg-glass-hover, var(--control-bg)) 62%, transparent);
+  --overview-glass-well: color-mix(in srgb, var(--control-bg) 58%, transparent);
+  --overview-glass-border: color-mix(in srgb, var(--glass-border, var(--border-default)) 78%, transparent);
+  --overview-glass-highlight: color-mix(in srgb, var(--glass-highlight, var(--border-shine)) 58%, transparent);
+  --overview-glass-blur: 12px;
+  --overview-glass-blur-soft: 9px;
   --overview-glass-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--overview-glass-highlight) 36%, transparent),
-    0 1px 4px color-mix(in srgb, var(--text-primary) 4%, transparent);
-  --overview-glass-texture: linear-gradient(120deg, color-mix(in srgb, var(--overview-glass-highlight) 8%, transparent), transparent 32%, transparent 100%);
+    inset 0 1px 0 color-mix(in srgb, var(--overview-glass-highlight) 68%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--overview-glass-highlight) 10%, transparent),
+    0 1px 5px color-mix(in srgb, var(--text-primary) 4%, transparent);
+  --overview-glass-shadow-hover:
+    inset 0 1px 0 color-mix(in srgb, var(--overview-glass-highlight) 78%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--overview-glass-highlight) 14%, transparent),
+    0 2px 8px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  --overview-glass-texture: linear-gradient(120deg, color-mix(in srgb, var(--overview-glass-highlight) 18%, transparent), transparent 34%, transparent 100%);
   --overview-scratch-horizontal: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--overview-glass-highlight) 18%, transparent) 16%, color-mix(in srgb, var(--text-primary) 9%, transparent) 48%, color-mix(in srgb, var(--overview-glass-highlight) 18%, transparent) 58%, transparent 100%);
   --overview-scratch-vertical: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--overview-glass-highlight) 18%, transparent) 18%, color-mix(in srgb, var(--text-primary) 8%, transparent) 50%, color-mix(in srgb, var(--overview-glass-highlight) 18%, transparent) 60%, transparent 100%);
   --overview-text-primary: var(--text-primary);
@@ -154,14 +166,12 @@
   align-content: start;
   gap: 4px;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 10%, transparent), transparent 52%),
-    var(--overview-glass-card-fill);
+  background: var(--overview-glass-card);
   border: 1px solid var(--overview-glass-border);
   border-radius: var(--overview-card-radius);
   box-shadow: var(--overview-glass-shadow);
-  backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.04);
-  -webkit-backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.04);
+  backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.12);
+  -webkit-backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.12);
   transition:
     background 150ms var(--overview-ease),
     box-shadow 150ms var(--overview-ease);
@@ -172,7 +182,7 @@
   position: absolute;
   inset: 0;
   background: var(--overview-glass-texture);
-  opacity: 0.1;
+  opacity: 0.34;
   pointer-events: none;
   z-index: 0;
 }
@@ -192,9 +202,7 @@
 
 .vault-overview__metric:hover {
   background: var(--overview-glass-card-hover);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--overview-glass-highlight) 38%, transparent),
-    0 1px 6px color-mix(in srgb, var(--text-primary) 4%, transparent);
+  box-shadow: var(--overview-glass-shadow-hover);
 }
 
 .vault-overview__metric-value.ui-card-title {
@@ -274,6 +282,7 @@
 
 .vault-overview__card {
   position: relative;
+  isolation: isolate;
   min-width: 0;
   min-height: 0;
   padding: 0;
@@ -285,18 +294,33 @@
   border-radius: var(--overview-card-radius);
   background: var(--overview-glass-card);
   box-shadow: var(--overview-glass-shadow);
-  backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.06);
-  -webkit-backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.06);
+  backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.14);
+  -webkit-backdrop-filter: blur(var(--overview-glass-blur)) saturate(1.14);
   transition:
     background 150ms var(--overview-ease),
     box-shadow 150ms var(--overview-ease);
 }
 
+.vault-overview__card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 10%, transparent), transparent 52%),
+    var(--overview-glass-texture);
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.vault-overview__card > * {
+  position: relative;
+  z-index: 1;
+}
+
 .vault-overview__card:hover {
   background: var(--overview-glass-card-hover);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--overview-glass-highlight) 42%, transparent),
-    0 2px 8px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  box-shadow: var(--overview-glass-shadow-hover);
 }
 
 .vault-overview__card--tokens {
@@ -393,10 +417,15 @@
   display: grid;
   place-items: center;
   border-radius: var(--overview-card-radius);
-  background: var(--overview-glass-well);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--overview-glass-highlight) 10%, transparent), transparent 58%),
+    var(--overview-glass-well);
   border: 1px solid var(--overview-glass-border);
-  backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.12);
-  -webkit-backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.12);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--overview-glass-highlight) 48%, transparent),
+    0 1px 4px color-mix(in srgb, var(--text-primary) 3%, transparent);
+  backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.16);
+  -webkit-backdrop-filter: blur(var(--overview-glass-blur-soft)) saturate(1.16);
   color: var(--overview-text-tertiary);
   font-size: 12px;
   font-weight: 500;

@@ -1,6 +1,14 @@
 import { getDatabase } from '../database'
 import type { MemoryCard } from '@shared/types/ipc'
 
+/** Normalise a stored timestamp to milliseconds.
+ *  SQLite DDL uses unixepoch() (seconds) as default, while code uses Date.now() (ms).
+ *  If the value looks like seconds (< 100000000000), convert to ms. */
+function normalizeTs(ts: number): number {
+  if (ts <= 0) return 0
+  return ts < 100_000_000_000 ? ts * 1000 : ts
+}
+
 export function buildMemoryTimeline(vaultPath: string): MemoryCard[] {
   const db = getDatabase(vaultPath)
 
@@ -13,14 +21,16 @@ export function buildMemoryTimeline(vaultPath: string): MemoryCard[] {
       ar.confidence,
       ar.last_seen_at as lastSeenAt,
       ar.first_seen_at as firstSeenAt,
-      n1.title as sourceTitle,
-      n1.file_path as sourceFilePath,
-      n2.title as targetTitle,
-      n2.file_path as targetFilePath
+      COALESCE(n1.title, '') as sourceTitle,
+      COALESCE(n1.file_path, '') as sourceFilePath,
+      COALESCE(n2.title, '') as targetTitle,
+      COALESCE(n2.file_path, '') as targetFilePath
     FROM ai_relations ar
     LEFT JOIN notes n1 ON ar.source_id = n1.id
     LEFT JOIN notes n2 ON ar.target_id = n2.id
     WHERE ar.confidence >= 0.3
+      AND ar.last_seen_at > 0
+      AND ar.first_seen_at > 0
     ORDER BY ar.last_seen_at DESC
     LIMIT 200
   `).all() as Array<{
@@ -39,6 +49,12 @@ export function buildMemoryTimeline(vaultPath: string): MemoryCard[] {
 
   if (relations.length === 0) {
     return []
+  }
+
+  // Normalise timestamps: stored values might be seconds (unixepoch) or milliseconds (Date.now())
+  for (const r of relations) {
+    r.lastSeenAt = normalizeTs(r.lastSeenAt)
+    r.firstSeenAt = normalizeTs(r.firstSeenAt)
   }
 
   const clusters = clusterRelationsByTopic(relations)
@@ -100,13 +116,13 @@ function clusterRelationsByTopic(relations: Array<any>): RelationCluster[] {
     .slice(0, 50)
 }
 
-function extractTopic(relationType: string, sourceTitle: string, targetTitle: string): string {
+function extractTopic(relationType: string, sourceTitle: string | null, targetTitle: string | null): string {
   const keywords = new Set<string>()
 
   const words = [
-    ...sourceTitle.toLowerCase().split(/\s+/),
-    ...targetTitle.toLowerCase().split(/\s+/)
-  ]
+    ...(sourceTitle || '').toLowerCase().split(/\s+/),
+    ...(targetTitle || '').toLowerCase().split(/\s+/)
+  ].filter(w => w.length > 0)
 
   for (const word of words) {
     if (word.length > 4 && !['about', 'notes', 'draft', 'review'].includes(word)) {
@@ -122,7 +138,7 @@ function extractTopic(relationType: string, sourceTitle: string, targetTitle: st
 }
 
 function getMonthKey(timestamp: number): string {
-  const date = new Date(timestamp * 1000)
+  const date = new Date(timestamp) // timestamp 现在是毫秒
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
@@ -134,27 +150,27 @@ function buildMemoryCardFromCluster(cluster: RelationCluster): MemoryCard {
     noteIds.add(rel.sourceNoteId)
     noteIds.add(rel.targetNoteId)
 
-    if (!noteMap.has(rel.sourceNoteId)) {
+    if (!noteMap.has(rel.sourceNoteId) && rel.sourceTitle) {
       noteMap.set(rel.sourceNoteId, {
         title: rel.sourceTitle,
-        filePath: rel.sourceFilePath,
+        filePath: rel.sourceFilePath || '',
         relevance: rel.confidence
       })
     }
 
-    if (!noteMap.has(rel.targetNoteId)) {
+    if (!noteMap.has(rel.targetNoteId) && rel.targetTitle) {
       noteMap.set(rel.targetNoteId, {
         title: rel.targetTitle,
-        filePath: rel.targetFilePath,
+        filePath: rel.targetFilePath || '',
         relevance: rel.confidence
       })
     }
   }
 
   const avgConfidence = cluster.relations.reduce((sum, r) => sum + r.confidence, 0) / cluster.relations.length
-  const recency = Date.now() / 1000 - cluster.periodEnd
-  const tier = recency < 7 * 24 * 60 * 60 ? 'Hot'
-    : recency < 30 * 24 * 60 * 60 ? 'Warm'
+  const recency = Date.now() - cluster.periodEnd // 毫秒差值
+  const tier = recency < 7 * 24 * 60 * 60 * 1000 ? 'Hot'
+    : recency < 30 * 24 * 60 * 60 * 1000 ? 'Warm'
     : 'Cold'
 
   const title = generateMemoryTitle(cluster.topic, cluster.periodStart, cluster.periodEnd)
@@ -181,14 +197,14 @@ function buildMemoryCardFromCluster(cluster: RelationCluster): MemoryCard {
       archived: false,
       pinned: false
     },
-    createdAt: Math.floor(Date.now() / 1000),
-    updatedAt: Math.floor(Date.now() / 1000)
+    createdAt: Date.now(), // 毫秒时间戳
+    updatedAt: Date.now()  // 毫秒时间戳
   }
 }
 
 function generateMemoryTitle(topic: string, periodStart: number, periodEnd: number): string {
-  const startDate = new Date(periodStart * 1000)
-  const endDate = new Date(periodEnd * 1000)
+  const startDate = new Date(periodStart) // 直接使用毫秒时间戳
+  const endDate = new Date(periodEnd)
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const startMonth = monthNames[startDate.getMonth()]
@@ -209,7 +225,7 @@ export function updateMemoryCard(vaultPath: string, id: string, archived: boolea
       archived = excluded.archived,
       pinned = excluded.pinned,
       updated_at = excluded.updated_at
-  `).run(id, archived ? 1 : 0, pinned ? 1 : 0, Math.floor(Date.now() / 1000))
+  `).run(id, archived ? 1 : 0, pinned ? 1 : 0, Date.now()) // 使用毫秒时间戳
 }
 
 export function explainMemoryCard(vaultPath: string, id: string): string {

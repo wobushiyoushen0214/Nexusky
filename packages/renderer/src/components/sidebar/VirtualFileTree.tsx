@@ -511,6 +511,29 @@ function VirtualFileTreeItem({
   }
 
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [creating, setCreating] = useState<'file' | 'folder' | null>(null)
+  const [createName, setCreateName] = useState('')
+
+  const handleCreate = async () => {
+    if (!creating || !createName.trim()) { setCreating(null); return }
+    const basePath = entry.isDirectory ? entry.path : entry.path.substring(0, entry.path.lastIndexOf('/'))
+    if (creating === 'folder') {
+      const folderPath = `${basePath}/${createName.trim()}`
+      await window.api.invoke('file:create', { path: `${folderPath}/.gitkeep`, content: '', vaultPath: vaultPath || undefined })
+    } else {
+      const name = createName.trim().endsWith('.md') ? createName.trim() : `${createName.trim()}.md`
+      const path = `${basePath}/${name}`
+      await window.api.invoke('file:create', { path, content: `# ${createName.trim().replace(/\.md$/, '')}\n\n`, vaultPath: vaultPath || undefined })
+      await refreshFiles()
+      await openFile(path)
+      setCreating(null)
+      setCreateName('')
+      return
+    }
+    setCreating(null)
+    setCreateName('')
+    await refreshFiles()
+  }
 
   const handleDelete = async () => {
     await window.api.invoke('file:delete', { path: entry.path, vaultPath: vaultPath || undefined })
@@ -526,6 +549,8 @@ function VirtualFileTreeItem({
   }
 
   const menuItems = entry.isDirectory ? [
+    { label: '新建笔记', onClick: () => { setCreating('file'); onToggle(entry.path) } },
+    { label: '新建文件夹', onClick: () => { setCreating('folder'); onToggle(entry.path) } },
     { label: '索引知识图谱', onClick: () => window.dispatchEvent(new CustomEvent('index-and-show-graph', { detail: { path: entry.path, isDirectory: true } })) },
     { label: '在访达中显示', onClick: () => window.api.invoke('file:reveal', { path: entry.path }) },
     { label: '重命名', onClick: () => { setNewName(entry.name); setRenaming(true) } },
@@ -537,6 +562,29 @@ function VirtualFileTreeItem({
     { label: '重命名', onClick: () => { setNewName(entry.name.replace(/\.md$/, '')); setRenaming(true) } },
     { label: '删除', danger: true, onClick: () => setDeleteConfirm(true) },
   ]
+
+  if (creating) {
+    const label = creating === 'folder' ? 'folder name' : 'note name'
+    return (
+      <div style={{ height: ITEM_HEIGHT, paddingLeft: paddingLeft, paddingRight: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ flexShrink: 0, color: 'var(--text-tertiary)', opacity: 0.72 }}>
+          {creating === 'folder'
+            ? <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            : <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></>
+          }
+        </svg>
+        <Input
+          autoFocus
+          value={createName}
+          onChange={(e) => setCreateName(e.target.value)}
+          placeholder={label}
+          onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate(); if (e.key === 'Escape') { setCreating(null); setCreateName('') } }}
+          onBlur={() => { if (!createName.trim()) { setCreating(null); setCreateName('') } }}
+          style={{ width: '100%', height: 24, padding: '0 8px', fontSize: 12, background: 'var(--control-bg)', border: '1px solid var(--accent)', borderRadius: 7, color: 'var(--text-primary)', outline: 'none' }}
+        />
+      </div>
+    )
+  }
 
   if (renaming) {
     return (

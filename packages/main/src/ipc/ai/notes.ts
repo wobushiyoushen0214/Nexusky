@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'
 import { join, relative } from 'path'
 import { aiManager } from '../../services/ai'
+import { getAppLanguage } from '../../services/app-language'
 import { getErrorMessage as getErrorMessageShared } from '@shared/utils/errors'
 import { startAiTask, finishAiTask } from '../../services/ai-task-control'
 import { consumeStream } from '../streams/consume-stream'
@@ -246,7 +247,7 @@ ${getJsonValueLanguageInstruction(language)}` },
           const note = findNoteByPath.get(relPath) as { id: string; title: string; file_path: string; content_hash: string } | undefined
           if (!note) continue
           const content = readFileSync(fp, 'utf-8')
-          await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, controller.signal)
+          await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, params.language, controller.signal)
         }
 
         if (!controller.signal.aborted) {
@@ -297,7 +298,7 @@ ipcMain.handle('ai:infer-links', async (event, params: { vaultPath: string; file
       const existing = readMemory(params.vaultPath, note.id)
       if (existing && existing.contentHash === note.content_hash) continue
       const content = readFileSync(fp, 'utf-8')
-      await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash)
+      await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, getAppLanguage())
     }
 
     const result = refreshInferredLinksFromMemory(params.vaultPath)
@@ -380,7 +381,7 @@ ipcMain.handle('ai:generate-memories', async (event, params: { vaultPath: string
       }
 
       const content = readFileSync(fullPath, 'utf-8')
-      const result = await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, controller.signal)
+      const result = await generateMemory(params.vaultPath, note.id, note.title, note.file_path, content, note.content_hash, getAppLanguage(), controller.signal)
       if (controller.signal.aborted) return { success: false, error: '已取消', generated, skipped, failed, total: notes.length, totalNotes, limited: totalNotes > notes.length }
       if (result) generated++
       else failed++

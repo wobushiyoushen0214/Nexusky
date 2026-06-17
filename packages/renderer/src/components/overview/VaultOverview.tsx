@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AIUsageRecord, PropertyTableRow, VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
@@ -171,8 +171,25 @@ export function VaultOverview() {
   const { data, loading, reload } = useOverviewData(vaultPath)
   const vaultName = vaultPath?.split(/[\\/]/).pop() || ''
 
+  const [heatmap, setHeatmap] = useState<{ data: DiaryHeatmapPoint[]; startDate: string; endDate: string; editCount: number }>({
+    data: [], startDate: '', endDate: '', editCount: 0,
+  })
+
+  useEffect(() => {
+    if (!vaultPath) return
+    const year = new Date().getFullYear()
+    const startDate = `${year}-01-01`
+    const endDate = `${year}-12-31`
+    window.api.invoke('memory:get-heatmap', { vaultPath, startDate, endDate })
+      .then((rows: Array<{ date: string; count: number }>) => {
+        const data = rows.map(r => ({ date: r.date, value: r.count }))
+        const editCount = data.reduce((s, p) => s + p.value, 0)
+        setHeatmap({ data, startDate, endDate, editCount })
+      })
+      .catch(() => {})
+  }, [vaultPath])
+
   const tokenUsageData = useMemo(() => buildTokenUsageSeries(data.usageRecords), [data.usageRecords])
-  const diaryHeatmap = useMemo(() => buildDiaryHeatmap(data.notes), [data.notes])
   const compositionData = useMemo(() => buildCompositionData(data.health, data.notes.length, {
     active: t('overviewPage.charts.composition.active'),
     orphan: t('overviewPage.charts.composition.orphan'),
@@ -267,16 +284,16 @@ export function VaultOverview() {
           <OverviewCard
             title={t('overviewPage.charts.diary.title')}
             subtitle={t('overviewPage.charts.diary.subtitle', {
-              count: diaryHeatmap.diaryCount,
-              edits: diaryHeatmap.editCount
+              count: 0,
+              edits: heatmap.editCount
             })}
             className="vault-overview__card--diary"
           >
             <div className="vault-overview__chart-frame">
               <DiaryHeatmapChart
-                data={diaryHeatmap.data}
-                startDate={diaryHeatmap.startDate}
-                endDate={diaryHeatmap.endDate}
+                data={heatmap.data}
+                startDate={heatmap.startDate}
+                endDate={heatmap.endDate}
                 className="vault-overview__chart"
               />
             </div>

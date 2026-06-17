@@ -70,14 +70,14 @@ interface Blocker {
   updatedAt: number
 }
 
-const WEEK_SECONDS = 7 * 86_400
-const RESURFACED_AFTER_SECONDS = 30 * 86_400
+const WEEK_MILLISECONDS = 7 * 86_400 * 1000
+const RESURFACED_AFTER_MILLISECONDS = 30 * 86_400 * 1000
 
 export function generateCognitiveReview(params: GenerateCognitiveReviewParams): CognitiveReviewResult {
   const db = getDatabase(params.vaultPath)
-  const until = params.until ?? Math.floor(Date.now() / 1000)
-  const since = params.since ?? until - WEEK_SECONDS
-  const generatedAt = Math.floor(Date.now() / 1000)
+  const until = params.until ?? Date.now() // 使用毫秒时间戳
+  const since = params.since ?? until - WEEK_MILLISECONDS
+  const generatedAt = Date.now() // 使用毫秒时间戳
 
   const newRelations = getNewRelations(db, since, until)
   const themeChanges = getThemeChanges(db, since, until)
@@ -166,7 +166,7 @@ function getResurfacedContexts(db: Database.Database, since: number, until: numb
       AND first_seen_at <= ?
     ORDER BY score DESC, last_seen_at DESC
     LIMIT 8
-  `).all(since, until, since - RESURFACED_AFTER_SECONDS) as RelationReviewRow[]
+  `).all(since, until, since - RESURFACED_AFTER_MILLISECONDS) as RelationReviewRow[]
 }
 
 function getThemeChanges(db: Database.Database, since: number, until: number): ThemeReviewRow[] {

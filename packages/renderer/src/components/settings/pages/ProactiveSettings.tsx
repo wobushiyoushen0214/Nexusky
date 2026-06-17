@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProactiveConfig } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
+import { safeSet, safeGet } from '../../../utils/storage'
 import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
@@ -27,6 +28,7 @@ export function ProactiveSettings() {
     categories: [],
   })
   const [loading, setLoading] = useState(true)
+  const [completionEnabled, setCompletionEnabled] = useState(safeGet('nexusky-ai-completion-enabled') === '1')
 
   useEffect(() => {
     loadConfig()
@@ -137,6 +139,21 @@ export function ProactiveSettings() {
               </div>
             </>
           )}
+
+          <div className="form-item">
+            <div className="form-toggle">
+              <Switch
+                id="ai-completion-enabled"
+                checked={completionEnabled}
+                onCheckedChange={(checked) => {
+                  setCompletionEnabled(checked)
+                  safeSet('nexusky-ai-completion-enabled', checked ? '1' : '0')
+                }}
+              />
+              <label htmlFor="ai-completion-enabled">{t('settings.proactive.completionTitle')}</label>
+            </div>
+            <p className="form-hint">{t('settings.proactive.completionHint')}</p>
+          </div>
 
           <div className="form-actions">
             <Button type="button" size="sm" onClick={handleSave}>

@@ -48,7 +48,7 @@ export interface RelationRefreshResult {
 
 export function upsertRelation(vaultPath: string, relation: UpsertRelationInput): string {
   const db = getDatabase(vaultPath)
-  const now = Math.floor(Date.now() / 1000)
+  const now = Date.now() // 使用毫秒时间戳
   const existing = db.prepare(`
     SELECT id, strength, status
     FROM ai_relations
@@ -204,7 +204,7 @@ export function refreshRelationScores(params: {
   archiveScoreThreshold?: number
 }): RelationRefreshResult {
   const db = getDatabase(params.vaultPath)
-  const now = params.now ?? Math.floor(Date.now() / 1000)
+  const now = params.now ?? Date.now() // 使用毫秒时间戳
   const limit = Math.max(1, Math.min(params.limit ?? 500, 2000))
   const prefs = getLongContextPrefs()
   const archiveAfterDays = params.archiveAfterDays ?? prefs.archiveAfterDays
@@ -274,7 +274,7 @@ export function submitRelationFeedback(params: {
   const relation = db.prepare('SELECT * FROM ai_relations WHERE id = ?').get(params.relationId) as RelationRow | undefined
   if (!relation) throw new Error(`Relation not found: ${params.relationId}`)
 
-  const now = Math.floor(Date.now() / 1000)
+  const now = Date.now() // 使用毫秒时间戳
   db.prepare(`
     INSERT INTO relation_feedback (id, relation_id, feedback_type, note, created_at)
     VALUES (?, ?, ?, ?, ?)

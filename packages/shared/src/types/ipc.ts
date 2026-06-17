@@ -1552,6 +1552,7 @@ export interface IPCChannelMap {
   'memory:get-timeline': { params: { vaultPath: string }; result: MemoryCard[] }
   'memory:update-card': { params: { vaultPath: string; id: string; actions: MemoryCardUpdate }; result: void }
   'memory:explain-card': { params: { vaultPath: string; id: string }; result: string }
+  'memory:get-heatmap': { params: { vaultPath: string; startDate?: string; endDate?: string }; result: Array<{ date: string; count: number }> }
   'settings:get-sync-status': { params: undefined; result: SettingsSyncStatus }
   'settings:configure-sync': { params: SettingsSyncConfig; result: { ok: boolean } }
   'settings:get-installed-plugins': { params: undefined; result: SettingsPlugin[] }

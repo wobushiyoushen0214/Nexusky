@@ -422,6 +422,17 @@ function createLongContextSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_ai_relations_type
       ON ai_relations(relation_type, score DESC);
 
+    CREATE TABLE IF NOT EXISTS heatmap_daily (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(date, event_type)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_heatmap_daily_date
+      ON heatmap_daily(date DESC);
+
     CREATE TABLE IF NOT EXISTS long_term_themes (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,

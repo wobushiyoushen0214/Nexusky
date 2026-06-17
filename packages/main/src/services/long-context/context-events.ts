@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { getDatabase } from '../database'
+import { recordHeatmapEvent } from '../heatmap'
 
 export type LongContextEventType =
   | 'note_created'
@@ -73,7 +74,7 @@ interface ContextEventRow {
 
 export function recordContextEvent(params: RecordContextEventParams): void {
   const db = getDatabase(params.vaultPath)
-  const now = params.createdAt ?? Math.floor(Date.now() / 1000)
+  const now = params.createdAt ?? Date.now() // 使用毫秒时间戳
   db.prepare(`
     INSERT INTO context_events (
       id, event_type, entity_type, entity_id, entity_title, entity_path,
@@ -91,9 +92,12 @@ export function recordContextEvent(params: RecordContextEventParams): void {
     params.metadata ? JSON.stringify(params.metadata) : null,
     now
   )
+
+  // Update heatmap incrementally
+  recordHeatmapEvent(params.vaultPath, params.eventType, now)
 }
 
-const DAY_SECONDS = 86400
+const DAY_MILLISECONDS = 86400 * 1000
 const DEFAULT_SERIES_WINDOW_DAYS = 30
 
 export function getLongContextMetrics(params: {
@@ -122,7 +126,7 @@ export function getLongContextMetrics(params: {
 
   const seriesRange = resolveSeriesRange(params.since, params.until)
   const bucketMap = new Map<number, LongContextMetricsBucket>()
-  for (let t = seriesRange.start; t < seriesRange.end; t += DAY_SECONDS) {
+  for (let t = seriesRange.start; t < seriesRange.end; t += DAY_MILLISECONDS) {
     bucketMap.set(t, emptyBucket(t))
   }
 
@@ -140,7 +144,7 @@ export function getLongContextMetrics(params: {
       if (feedbackType === 'not_related') counts.suggestionNotRelated += 1
     }
 
-    const bucketStart = Math.floor(row.createdAt / DAY_SECONDS) * DAY_SECONDS
+    const bucketStart = Math.floor(row.createdAt / DAY_MILLISECONDS) * DAY_MILLISECONDS
     if (bucketStart < seriesRange.start || bucketStart >= seriesRange.end) continue
     const bucket = bucketMap.get(bucketStart)
     if (!bucket) continue
@@ -171,7 +175,7 @@ export function getLongContextMetrics(params: {
       notRelatedRate: ratio(counts.suggestionNotRelated, counts.suggestionShown)
     },
     series: {
-      bucketSizeSec: DAY_SECONDS,
+      bucketSizeSec: DAY_MILLISECONDS,
       buckets
     }
   }
@@ -191,12 +195,12 @@ function emptyBucket(bucketStart: number): LongContextMetricsBucket {
 }
 
 function resolveSeriesRange(since?: number, until?: number): { start: number; end: number } {
-  const nowSec = Math.floor(Date.now() / 1000)
-  const rawUntil = until ?? nowSec
-  const rawSince = since ?? rawUntil - DEFAULT_SERIES_WINDOW_DAYS * DAY_SECONDS
-  const start = Math.floor(rawSince / DAY_SECONDS) * DAY_SECONDS
-  const endAligned = Math.floor(rawUntil / DAY_SECONDS) * DAY_SECONDS + DAY_SECONDS
-  return { start, end: Math.max(endAligned, start + DAY_SECONDS) }
+  const nowMs = Date.now() // 使用毫秒时间戳
+  const rawUntil = until ?? nowMs
+  const rawSince = since ?? rawUntil - DEFAULT_SERIES_WINDOW_DAYS * DAY_MILLISECONDS
+  const start = Math.floor(rawSince / DAY_MILLISECONDS) * DAY_MILLISECONDS
+  const endAligned = Math.floor(rawUntil / DAY_MILLISECONDS) * DAY_MILLISECONDS + DAY_MILLISECONDS
+  return { start, end: Math.max(endAligned, start + DAY_MILLISECONDS) }
 }
 
 function buildWindowWhere(since?: number, until?: number): { where: string; values: number[] } {

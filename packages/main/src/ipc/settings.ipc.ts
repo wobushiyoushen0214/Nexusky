@@ -1,5 +1,7 @@
 import { ipcMain } from 'electron'
+import type { ProactiveConfig } from '@shared/types/ipc'
 import { store } from '../services/store'
+import { getProactivePrefs, setProactivePrefs } from '../services/proactive/proactive-prefs'
 
 export interface KeybindingEntry {
   id: string
@@ -30,6 +32,14 @@ const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   maxTokens: 100000
 }
 
+const DEFAULT_PROACTIVE_CONFIG: ProactiveConfig = {
+  enabled: true,
+  frequency: 'medium',
+  categories: []
+}
+
+const VALID_PROACTIVE_FREQUENCIES = new Set<ProactiveConfig['frequency']>(['low', 'medium', 'high'])
+
 function getStoredKeybindings(): Record<string, string> {
   return (store.get('keybindings') as Record<string, string> | undefined) || {}
 }
@@ -45,6 +55,30 @@ function mergeKeybindings(): KeybindingEntry[] {
 function getMemoryConfig(): MemoryConfig {
   const stored = store.get('memoryConfig') as Partial<MemoryConfig> | undefined
   return { ...DEFAULT_MEMORY_CONFIG, ...stored }
+}
+
+function normalizeProactiveConfig(input: Partial<ProactiveConfig> | undefined): ProactiveConfig {
+  const frequency = input?.frequency && VALID_PROACTIVE_FREQUENCIES.has(input.frequency)
+    ? input.frequency
+    : DEFAULT_PROACTIVE_CONFIG.frequency
+  const categories = Array.isArray(input?.categories)
+    ? Array.from(new Set(input.categories.filter((category): category is string => typeof category === 'string' && category.length > 0)))
+    : DEFAULT_PROACTIVE_CONFIG.categories
+
+  return {
+    enabled: typeof input?.enabled === 'boolean' ? input.enabled : DEFAULT_PROACTIVE_CONFIG.enabled,
+    frequency,
+    categories
+  }
+}
+
+function getProactiveConfig(): ProactiveConfig {
+  const stored = store.get('proactiveConfig') as Partial<ProactiveConfig> | undefined
+  return normalizeProactiveConfig({
+    ...DEFAULT_PROACTIVE_CONFIG,
+    enabled: getProactivePrefs().enabled,
+    ...stored
+  })
 }
 
 export function registerSettingsIPC(): void {
@@ -72,6 +106,17 @@ export function registerSettingsIPC(): void {
 
   ipcMain.handle('settings:save-memory-config', (_event, params: MemoryConfig) => {
     store.set('memoryConfig', params)
+    return { ok: true }
+  })
+
+  ipcMain.handle('settings:get-proactive-config', () => {
+    return getProactiveConfig()
+  })
+
+  ipcMain.handle('settings:save-proactive-config', (_event, params: ProactiveConfig) => {
+    const next = normalizeProactiveConfig(params)
+    store.set('proactiveConfig', next)
+    setProactivePrefs({ enabled: next.enabled })
     return { ok: true }
   })
 }

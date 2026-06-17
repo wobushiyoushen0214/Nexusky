@@ -353,7 +353,7 @@ function upsertTheme(db: Database.Database, candidate: ThemeCandidate, draft: Th
   const title = draft.title || candidate.keyword
   const id = createThemeId(title)
   const existing = db.prepare('SELECT id FROM long_term_themes WHERE id = ?').get(id) as { id: string } | undefined
-  const now = Math.floor(Date.now() / 1000)
+  const now = Date.now() // 使用毫秒时间戳
   const keywords = Array.from(new Set([candidate.keyword, ...draft.keywords])).slice(0, 10)
   db.prepare(`
     INSERT INTO long_term_themes (

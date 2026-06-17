@@ -82,28 +82,34 @@ export function LongContextSettings() {
 
           <div className="form-item">
             <label className="form-label">{t('settings.longContext.retentionDays')}</label>
-            <Input
-              type="number"
-              className="long-context-settings__number-input"
-              value={config.retentionDays}
-              onChange={(e) => setConfig({ ...config, retentionDays: parseInt(e.target.value) })}
-              min={7}
-              max={365}
-            />
+            <div className="long-context-settings__number-field">
+              <Input
+                type="number"
+                className="long-context-settings__number-input"
+                value={config.retentionDays}
+                onChange={(e) => setConfig({ ...config, retentionDays: parseInt(e.target.value) })}
+                min={7}
+                max={365}
+              />
+              <span className="long-context-settings__number-unit">{t('settings.longContext.daysUnit')}</span>
+            </div>
             <p className="form-hint">{t('settings.longContext.retentionDaysHint')}</p>
           </div>
 
           <div className="form-item">
             <label className="form-label">{t('settings.longContext.maxTokens')}</label>
-            <Input
-              type="number"
-              className="long-context-settings__number-input"
-              value={config.maxTokens}
-              onChange={(e) => setConfig({ ...config, maxTokens: parseInt(e.target.value) })}
-              min={10000}
-              max={1000000}
-              step={10000}
-            />
+            <div className="long-context-settings__number-field">
+              <Input
+                type="number"
+                className="long-context-settings__number-input"
+                value={config.maxTokens}
+                onChange={(e) => setConfig({ ...config, maxTokens: parseInt(e.target.value) })}
+                min={10000}
+                max={1000000}
+                step={10000}
+              />
+              <span className="long-context-settings__number-unit">{t('settings.longContext.tokensUnit')}</span>
+            </div>
             <p className="form-hint">{t('settings.longContext.maxTokensHint')}</p>
           </div>
 

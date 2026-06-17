@@ -1483,6 +1483,8 @@
       "retentionDaysHint": "How long to keep memory ledgers (days)",
       "maxTokens": "Max tokens",
       "maxTokensHint": "Maximum token limit per memory ledger",
+      "daysUnit": "days",
+      "tokensUnit": "tokens",
       "saved": "Saved successfully",
       "saveFailed": "Save failed"
     },
@@ -1616,7 +1618,9 @@
       "debugRun": "Run one cycle now (debug)",
       "resetPrefs": "Reset to defaults",
       "saved": "Saved successfully",
-      "saveFailed": "Save failed"
+      "saveFailed": "Save failed",
+      "completionTitle": "AI Completion",
+      "completionHint": "Inline AI text completion while typing in the editor"
     }
   },
   "proactive": {

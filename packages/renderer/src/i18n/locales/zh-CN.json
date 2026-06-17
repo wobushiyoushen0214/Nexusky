@@ -1483,6 +1483,8 @@
       "retentionDaysHint": "记忆账本的保留时长（天）",
       "maxTokens": "最大 Token 数",
       "maxTokensHint": "单个记忆账本的最大 token 限制",
+      "daysUnit": "天",
+      "tokensUnit": "tokens",
       "saved": "保存成功",
       "saveFailed": "保存失败"
     },
@@ -1616,7 +1618,9 @@
       "debugRun": "立即跑一轮（调试）",
       "resetPrefs": "恢复默认偏好",
       "saved": "保存成功",
-      "saveFailed": "保存失败"
+      "saveFailed": "保存失败",
+      "completionTitle": "AI 补全",
+      "completionHint": "自动补全：编辑笔记时 AI 实时续写内容"
     }
   },
   "proactive": {

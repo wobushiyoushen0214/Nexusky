@@ -8,6 +8,7 @@ import { getDatabase } from './database'
 import { logger } from './logger'
 import { readFileSync } from 'fs'
 import { generateMemory, readMemory, deleteMemory } from './memory'
+import { getAppLanguage } from './app-language'
 import { refreshInferredLinksFromMemory } from './memory-links'
 import { cancelLongContextAnalysis, scheduleIndexedNoteLongContext, scheduleVaultLongContextMaintenance } from './long-context/background'
 
@@ -73,7 +74,7 @@ export function startWatching(vaultPath: string): void {
           const db = getDatabase(vaultPath)
           const note = db.prepare('SELECT title, file_path FROM notes WHERE id = ?').get(noteId) as { title: string; file_path: string } | undefined
           if (note) {
-            generateMemory(vaultPath, noteId, note.title, note.file_path, content, contentHash)
+            generateMemory(vaultPath, noteId, note.title, note.file_path, content, contentHash, getAppLanguage())
               .then((memory) => {
                 if (!memory) return
                 refreshInferredLinksFromMemory(vaultPath)

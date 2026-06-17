@@ -1,5 +1,7 @@
 import { getDatabase } from './database'
 import { aiManager } from './ai'
+import { getAiOutputLanguageInstruction } from './ai/language'
+import { getAppLanguage } from './app-language'
 
 const CHUNK_SIZE = 400
 const CHUNK_OVERLAP = 50
@@ -350,9 +352,12 @@ async function rerankWithChat(query: string, candidates: { noteId: string; title
 
   const snippets = candidates.slice(0, 10).map((c, i) => `[${i}] ${c.title}: ${c.chunk.slice(0, 200)}`).join('\n\n')
 
-  const prompt = `你是一个语义相关性评估器。用户搜索: "${query}"
+  const lang = getAppLanguage()
+  const langInstr = getAiOutputLanguageInstruction(lang)
+  const prompt = `You are a semantic relevance evaluator. User searched: "${query}"
 
-以下是候选文档片段，请按与搜索意图的语义相关性从高到低排序，只返回编号数组（如 [2,0,5,1,3,4]），不要解释。
+Below are candidate document snippets. Rank them by semantic relevance to the search intent, from most relevant to least. Return only an array of indices (e.g. [2,0,5,1,3,4]), no explanation.
+${langInstr}
 
 ${snippets}`
 

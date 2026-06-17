@@ -9,8 +9,12 @@
 }
 
 .frequency-btn {
+  width: 100%;
+  min-width: 0;
   min-height: 34px;
   padding: 0 10px;
+  justify-content: center;
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border, var(--border-color)) 84%, transparent);
   border-radius: var(--radius-md, 7px);
   background: color-mix(in srgb, var(--secondary, var(--bg-secondary)) 86%, transparent);
@@ -19,6 +23,8 @@
   font-size: 13px;
   font-weight: 650;
   line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition:
     background 150ms ease,
     border-color 150ms ease,

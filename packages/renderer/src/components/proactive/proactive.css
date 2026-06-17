@@ -65,6 +65,7 @@
   z-index: 9000;
   width: 360px;
   max-height: 70vh;
+  height: auto !important;
   display: flex;
   flex-direction: column;
   background: var(--popover, var(--panel-bg, #1d1d20));

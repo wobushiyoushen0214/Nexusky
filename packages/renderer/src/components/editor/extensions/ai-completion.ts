@@ -14,6 +14,10 @@ interface CompletionState {
 
 const EMPTY_STATE: CompletionState = { text: '', pos: -1, decorations: DecorationSet.empty }
 
+// Local LRU cache to skip IPC/LLM for repeated prefixes
+const localCache = new Map<string, string>()
+const MAX_LOCAL_CACHE = 48
+
 function isInlineCompletionEnabled(): boolean {
   return safeGet(INLINE_COMPLETION_KEY) === '1'
 }
@@ -124,8 +128,23 @@ export const AICompletion = Extension.create({
 
                 const textBefore = state.doc.textBetween(Math.max(0, from - 500), from)
                 if (textBefore.length < 10) return
-                const fullText = state.doc.textBetween(0, state.doc.content.size, '\n')
-                const styleSource = fullText.slice(Math.max(0, fullText.length - 6000))
+
+                // Check local cache first — avoid IPC entirely on cache hit
+                const localKey = textBefore.slice(-200)
+                const localCached = localCache.get(localKey)
+                if (localCached !== undefined) {
+                  if (view.state.selection.from !== from) return
+                  const current = pluginKey.getState(view.state) as CompletionState
+                  if (current.text) return
+                  lastRequestText = textBefore
+                  lastResult = localCached
+                  view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: localCached, pos: from, ghost: getOrCreateGhost() } }))
+                  return
+                }
+
+                // Extract only last 6000 chars instead of full document
+                const docSize = state.doc.content.size
+                const styleSource = state.doc.textBetween(Math.max(0, docSize - 6000), docSize, '\n')
 
                 if (textBefore === lastRequestText && lastResult) {
                   view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: lastResult, pos: from, ghost: getOrCreateGhost() } }))
@@ -147,8 +166,16 @@ export const AICompletion = Extension.create({
 
                 lastRequestText = textBefore
                 lastResult = result
+
+                // Populate local cache
+                localCache.set(localKey, result)
+                if (localCache.size > MAX_LOCAL_CACHE) {
+                  const first = localCache.keys().next().value
+                  if (first) localCache.delete(first)
+                }
+
                 view.dispatch(view.state.tr.setMeta(pluginKey, { set: { text: result, pos: from, ghost: getOrCreateGhost() } }))
-              }, 800)
+              }, 400)
             },
             destroy() {
               if (debounceTimer) clearTimeout(debounceTimer)

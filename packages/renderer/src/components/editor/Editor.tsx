@@ -264,13 +264,21 @@ export function Editor() {
       const chars = text.length
       const words = text.trim().split(/\s+/).filter(Boolean).length
       setLiveStats({ chars, words, readTime: Math.max(1, Math.ceil(words / 200)) })
-      markdownTimer.current = setTimeout(() => {
+      const syncMarkdown = () => {
+        const { isDirty } = useEditorStore.getState()
+        if (!isDirty) return
         const markdown = editor.storage.markdown.getMarkdown()
+        if (markdown === serializedBodyRef.current) return
         const fullContent = useEditorStore.getState().content
         const previousSerialized = serializedBodyRef.current || stripFrontmatter(fullContent)
         setContent(mergeEditorMarkdownContent(fullContent, previousSerialized, markdown))
         serializedBodyRef.current = markdown
-      }, 1000)
+      }
+      flushMarkdownRef.current = () => {
+        if (markdownTimer.current) clearTimeout(markdownTimer.current)
+        syncMarkdown()
+      }
+      markdownTimer.current = setTimeout(syncMarkdown, 1000)
     }
   })
 
@@ -281,14 +289,19 @@ export function Editor() {
     editor.view.dom.setAttribute('lang', language)
   }, [editor, language])
 
-  // Scroll to cursor after selection changes
+  // Scroll to cursor after selection changes, with guard against unnecessary jumps
   useEffect(() => {
     if (!editor) return
     let scrollTimer: ReturnType<typeof setTimeout> | null = null
+    let lastCursorPos = -1
     const scrollToCursor = () => {
       if (scrollTimer) clearTimeout(scrollTimer)
       scrollTimer = setTimeout(() => {
-        const { node } = editor.view.domAtPos(editor.state.selection.from)
+        const cur = editor.state.selection.from
+        // Don't scroll if cursor didn't move (e.g. triggered by store update after save)
+        if (cur === lastCursorPos) return
+        lastCursorPos = cur
+        const { node } = editor.view.domAtPos(cur)
         const el = node instanceof HTMLElement ? node : node.parentElement
         if (el && editorAreaRef.current) {
           const container = editorAreaRef.current
@@ -414,26 +427,19 @@ export function Editor() {
     return () => cleanup()
   }, [editor, currentFilePath])
 
-  // Unified auto-save: debounced 3s idle + window blur, with dedup guard
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Save on Cmd+S only — no auto-save
+  const flushMarkdownRef = useRef<() => void>(() => {})
   const isSaving = useRef(false)
   const scheduleSave = () => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = null
     if (isSaving.current) return
     const { isDirty, currentFilePath: fp } = useEditorStore.getState()
     if (!isDirty || !fp) return
     isSaving.current = true
+    flushMarkdownRef.current()
     useEditorStore.getState().saveFile().finally(() => { isSaving.current = false })
   }
 
-  useEffect(() => {
-    if (!isDirty || !currentFilePath) return
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(scheduleSave, 3000)
-    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current) }
-  }, [isDirty, content])
-
+  // Save on window blur (prevent data loss on window switch)
   useEffect(() => {
     const handleBlur = () => scheduleSave()
     window.addEventListener('blur', handleBlur)
@@ -457,6 +463,7 @@ export function Editor() {
       const getKey = useKeyBindingStore.getState().getKey
       if (matchesShortcut(e, getKey('save'))) {
         e.preventDefault()
+        flushMarkdownRef.current()
         useEditorStore.getState().saveFile()
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'w') {

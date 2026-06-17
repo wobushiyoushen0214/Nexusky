@@ -2,6 +2,9 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlink
 import { join } from 'path'
 import { aiManager } from './ai'
 import { extractJsonFromText } from './ai/json'
+import { getAiOutputLanguageInstruction } from './ai/language'
+import { getAppLanguage } from './app-language'
+import type { AppLanguage } from '@shared/types/ipc'
 
 export interface NoteMemory {
   noteId: string
@@ -101,6 +104,7 @@ export async function generateMemory(
   filePath: string,
   content: string,
   contentHash: string,
+  language?: AppLanguage,
   signal?: AbortSignal
 ): Promise<NoteMemory | null> {
   const config = aiManager.getActiveConfig()
@@ -114,6 +118,7 @@ export async function generateMemory(
     : 'Note content:'
 
   let result = ''
+  const langInstruction = getAiOutputLanguageInstruction(language ?? getAppLanguage())
   try {
     for await (const chunk of provider.chatStream([
       { role: 'system', content: `Analyze note content and extract structured memory. Output pure JSON only — no other text.
@@ -131,7 +136,8 @@ concepts (3-8): Core technical concepts or terms the note covers.
 topics (2-4): Knowledge domain tags the note belongs to.
 - Use second-level category granularity: "Frontend Frameworks" not "Programming", "State Management" not "Software Engineering"
 
-summary (50-150 chars): What this note covers, what problem it solves, and its core conclusion. Write in the same language as the note content.
+summary (50-150 chars): What this note covers, what problem it solves, and its core conclusion.
+${langInstruction}
 </fields>` },
       { role: 'user', content: `Note title: ${title}\nNote path: ${filePath}\n\n${contentLabel}\n${contentExcerpt.text}` }
     ], signal)) {
