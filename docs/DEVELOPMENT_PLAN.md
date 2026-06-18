@@ -468,6 +468,19 @@
 - 日志接口不能被任意公开写入。
 - 管理后台继续通过 cookie 访问。
 
+实施记录（2026-06-18）：
+
+- `website/src/lib/log-ingestion.ts` 集中处理日志写入 token/HMAC 校验、CORS 白名单、IP 维度基础限流和服务端脱敏。
+- `website/src/app/api/logs/route.ts` 的 `POST /api/logs` 改为 fail closed：未配置 `LOG_INGESTION_TOKEN` 或 `LOG_INGESTION_HMAC_SECRET` 时拒绝写入；`GET /api/logs` 继续使用管理员 cookie。
+- `packages/main/src/services/logger.ts` 只在运行环境提供 `NEXUSKY_LOG_INGESTION_TOKEN` 或 `NEXUSKY_LOG_INGESTION_HMAC_SECRET` 时远程上报，避免把写入密钥硬编码进客户端。
+- `website/vercel.json` 移除 `/api/logs` 的 wildcard CORS；`website/supabase-schema.sql` 移除匿名 insert policy，写入只走网站后端 service role。
+- `website/README.md` 和 `.env.local.example` 记录生产环境变量、CORS 白名单、限流参数和密钥轮换方式。
+
+验证项：
+
+- Focused tests 覆盖未配置凭证拒绝、token/HMAC 通过、限流、脱敏、Vercel 不返回 `Access-Control-Allow-Origin: *`、Supabase 不再保留匿名 insert。
+- Website lint/build 需要在提交前通过；若外部依赖导致 build 失败，需记录失败原因和可复现命令。
+
 ### Phase 6：巨石模块拆分
 
 目标：降低后续迭代风险，不做大规模重写。

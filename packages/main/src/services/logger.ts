@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { randomUUID } from 'crypto'
+import { createHmac, randomUUID } from 'crypto'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { redact } from './redact'
@@ -52,6 +52,26 @@ function getDeviceId(): string {
 const queue: LogPayload[] = []
 let flushing = false
 
+function buildIngestionHeaders(body: string): Record<string, string> | null {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = process.env.NEXUSKY_LOG_INGESTION_TOKEN?.trim()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+    return headers
+  }
+
+  const hmacSecret = process.env.NEXUSKY_LOG_INGESTION_HMAC_SECRET?.trim()
+  if (hmacSecret) {
+    const timestamp = String(Date.now())
+    const signature = createHmac('sha256', hmacSecret).update(`${timestamp}.${body}`).digest('hex')
+    headers['X-Nexusky-Log-Timestamp'] = timestamp
+    headers['X-Nexusky-Log-Signature'] = `sha256=${signature}`
+    return headers
+  }
+
+  return null
+}
+
 async function flush() {
   if (!telemetryEnabled()) {
     queue.length = 0
@@ -62,17 +82,31 @@ async function flush() {
 
   while (queue.length > 0) {
     const item = queue.shift()!
+    const body = JSON.stringify({
+      ...item,
+      app_version: app.getVersion(),
+      platform: `${process.platform}-${process.arch}`,
+      device_id: getDeviceId(),
+    })
+    const headers = buildIngestionHeaders(body)
+    if (!headers) {
+      queue.length = 0
+      break
+    }
+
     try {
-      await fetch(REPORT_URL, {
+      const response = await fetch(REPORT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...item,
-          app_version: app.getVersion(),
-          platform: `${process.platform}-${process.arch}`,
-          device_id: getDeviceId(),
-        }),
+        headers,
+        body,
       })
+      if (!response.ok) {
+        if (response.status === 429 || response.status >= 500) {
+          queue.unshift(item)
+          break
+        }
+        // 401/403/400 是部署或凭证配置问题，继续重试只会堆积队列。
+      }
     } catch {
       // 网络失败时放回队列头部，下次重试
       queue.unshift(item)

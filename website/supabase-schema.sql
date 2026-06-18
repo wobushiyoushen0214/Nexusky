@@ -18,8 +18,11 @@ create index idx_error_logs_device_id on error_logs (device_id);
 -- 启用 RLS
 alter table error_logs enable row level security;
 
--- 允许匿名插入（客户端上报）
-create policy "allow_insert" on error_logs for insert with check (true);
+-- 日志写入只能通过网站后端 service_role 完成；不要开放匿名客户端插入。
+drop policy if exists "allow_insert" on error_logs;
+drop policy if exists "allow_service_insert" on error_logs;
+create policy "allow_service_insert" on error_logs for insert with check (auth.role() = 'service_role');
 
 -- 只允许 service_role 读取（网站后端用 service_role key）
+drop policy if exists "allow_service_read" on error_logs;
 create policy "allow_service_read" on error_logs for select using (auth.role() = 'service_role');
