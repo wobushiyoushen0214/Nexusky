@@ -60,6 +60,15 @@ Nexusky 的编辑器和索引已经覆盖常见 Obsidian/Markdown 结构：
 - API Key 等敏感配置通过本地配置和 Electron `safeStorage` 处理；Nexusky 不把明文密钥写进 Markdown vault。
 - BYO sync 只会上传到你显式配置的后端；托管备份和托管发布仍是未来能力，不是当前迁移前提。
 
+## 安装包来源验证
+
+- 优先从 GitHub Releases 下载安装包，不要从第三方镜像安装未知版本。
+- Windows 安装包应带有 Nexusky 发布方签名；可以在 PowerShell 中运行 `Get-AuthenticodeSignature .\Nexusky-Setup.exe` 检查。
+- macOS 安装包应通过 Developer ID 签名和 Apple notarization；安装后可运行 `spctl --assess --type execute --verbose /Applications/Nexusky.app` 检查。
+- 每个正式 release 会附带 SHA256SUMS 文件；下载后可用 `shasum -a 256 <文件名>` 或 `Get-FileHash <文件名> -Algorithm SHA256` 对照。
+- 自动更新失败时，回到 GitHub Releases 手动下载最新版本，并按上面的签名和 hash 步骤验证。
+- 维护者发布前使用 `docs/RELEASE_TRUST_CHECKLIST.md` 作为签名、公证、hash 和 fallback 检查清单。
+
 ## 恢复路径
 
 - Markdown 文件写入前会保存 `.history` 快照。

@@ -4,9 +4,10 @@ import { isVersionNewer } from './version'
 import { getTelemetryPrefs, logger, setTelemetryPrefs } from './logger'
 import { safeOpenExternal } from './external-url'
 import { setAppLanguage } from './app-language'
-import type { AppLanguage } from '@shared/types/ipc'
+import type { AppLanguage, UpdaterRecoveryCode, UpdaterRecoveryError } from '@shared/types/ipc'
 
 let updateAvailable = false
+const RELEASES_FALLBACK_URL = 'https://github.com/wobushiyoushen0214/Nexusky/releases'
 
 export function setupAutoUpdater(): void {
   autoUpdater.autoDownload = false
@@ -47,7 +48,7 @@ export function setupAutoUpdater(): void {
   })
 
   autoUpdater.on('error', (err) => {
-    logger.error('Auto-updater error', err)
+    broadcastUpdaterError('update_runtime_error', err)
   })
 
   ipcMain.handle('updater:check', async () => {
@@ -57,13 +58,18 @@ export function setupAutoUpdater(): void {
       const available = isVersionNewer(version, app.getVersion())
       updateAvailable = available
       return { available, version: available ? version : undefined }
-    } catch {
-      return { available: false }
+    } catch (error) {
+      return { available: false, error: broadcastUpdaterError('update_check_failed', error) }
     }
   })
 
   ipcMain.handle('updater:download', async () => {
-    await autoUpdater.downloadUpdate()
+    try {
+      await autoUpdater.downloadUpdate()
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: broadcastUpdaterError('update_download_failed', error) }
+    }
   })
 
   ipcMain.handle('updater:install', () => {
@@ -92,6 +98,29 @@ export function setupAutoUpdater(): void {
 
   // Check for updates 30 seconds after launch
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(() => {})
+    autoUpdater.checkForUpdates().catch((error) => {
+      broadcastUpdaterError('update_check_failed', error)
+    })
   }, 30000)
+}
+
+export function buildUpdaterRecoveryError(code: UpdaterRecoveryCode, error: unknown): UpdaterRecoveryError {
+  const rawMessage = error instanceof Error ? error.message : String(error || '')
+  return {
+    code,
+    message: rawMessage.trim() || 'Update failed. Download the latest release manually.',
+    fallbackUrl: RELEASES_FALLBACK_URL
+  }
+}
+
+function broadcastUpdaterError(code: UpdaterRecoveryCode, error: unknown): UpdaterRecoveryError {
+  const payload = buildUpdaterRecoveryError(code, error)
+  logger.error('Auto-updater error', error)
+  const windows = BrowserWindow.getAllWindows()
+  for (const win of windows) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('updater:error', payload)
+    }
+  }
+  return payload
 }

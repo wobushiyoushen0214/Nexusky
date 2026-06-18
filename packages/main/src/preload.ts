@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AINotesProgress, AIStreamEvent, AgentStepUpdateEvent, ChatEvidenceState, ChatSource, IPCChannelMap, IPCChannel, ProactiveSuggestion, SearchIndexStatus } from '@shared/types/ipc'
+import type { AINotesProgress, AIStreamEvent, AgentStepUpdateEvent, ChatEvidenceState, ChatSource, IPCChannelMap, IPCChannel, ProactiveSuggestion, SearchIndexStatus, UpdaterRecoveryError } from '@shared/types/ipc'
 
 type InvokeFunction = <K extends IPCChannel>(
   channel: K,
@@ -102,6 +102,11 @@ const api = {
     const handler = () => callback()
     ipcRenderer.on('updater:downloaded', handler)
     return () => { ipcRenderer.removeListener('updater:downloaded', handler) }
+  },
+  onUpdaterError: (callback: (data: UpdaterRecoveryError) => void) => {
+    const handler = (_event: unknown, data: UpdaterRecoveryError) => callback(data)
+    ipcRenderer.on('updater:error', handler)
+    return () => { ipcRenderer.removeListener('updater:error', handler) }
   },
   onQuickCapture: (callback: () => void) => {
     const handler = () => callback()

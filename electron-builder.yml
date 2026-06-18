@@ -16,8 +16,10 @@ publish:
   provider: github
   releaseType: release
 win:
-  sign: false
-  verifyUpdateCodeSignature: false
+  verifyUpdateCodeSignature: true
+  signAndEditExecutable: true
+  publisherName:
+    - Nexusky
   target:
     - target: nsis
       arch: [x64]
@@ -27,8 +29,9 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
 mac:
-  identity: null
-  notarize: false
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: true
   target:
     - target: dmg
       arch: [arm64, x64]

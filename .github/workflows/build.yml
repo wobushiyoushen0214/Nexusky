@@ -21,14 +21,39 @@ jobs:
       - run: python -m pip install setuptools
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
+      - name: Verify Windows signing secrets
+        shell: pwsh
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WIN_CSC_LINK) -or [string]::IsNullOrWhiteSpace($env:WIN_CSC_KEY_PASSWORD)) {
+            throw "Windows release builds require WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD secrets."
+          }
       - run: pnpm exec electron-builder --win nsis --x64 --publish always
         env:
           GH_TOKEN: ${{ github.token }}
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - name: Generate Windows checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/*.exe -File |
+            Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content dist/SHA256SUMS-windows.txt -Encoding ascii
+      - name: Attach Windows checksums
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$env:GITHUB_REF_NAME" dist/SHA256SUMS-windows.txt --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-windows
           path: |
             dist/*.exe
+            dist/SHA256SUMS-windows.txt
             !dist/__uninstaller*
 
   build-mac-x64:
@@ -42,9 +67,34 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
+      - name: Verify macOS signing and notarization secrets
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          test -n "$MAC_CSC_LINK" || { echo "MAC_CSC_LINK is required"; exit 1; }
+          test -n "$MAC_CSC_KEY_PASSWORD" || { echo "MAC_CSC_KEY_PASSWORD is required"; exit 1; }
+          test -n "$APPLE_API_KEY" || { echo "APPLE_API_KEY is required"; exit 1; }
+          test -n "$APPLE_API_KEY_ID" || { echo "APPLE_API_KEY_ID is required"; exit 1; }
+          test -n "$APPLE_API_ISSUER" || { echo "APPLE_API_ISSUER is required"; exit 1; }
       - run: pnpm exec electron-builder --mac --x64 --publish always
         env:
           GH_TOKEN: ${{ github.token }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      - name: Generate macOS x64 checksums
+        run: shasum -a 256 dist/*.dmg dist/*.zip > dist/SHA256SUMS-mac-x64.txt
+      - name: Attach macOS x64 checksums
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/SHA256SUMS-mac-x64.txt --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-mac-x64
@@ -52,6 +102,7 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/latest-mac.yml
+            dist/SHA256SUMS-mac-x64.txt
 
   build-mac-arm64:
     runs-on: macos-latest
@@ -64,9 +115,34 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
+      - name: Verify macOS signing and notarization secrets
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          test -n "$MAC_CSC_LINK" || { echo "MAC_CSC_LINK is required"; exit 1; }
+          test -n "$MAC_CSC_KEY_PASSWORD" || { echo "MAC_CSC_KEY_PASSWORD is required"; exit 1; }
+          test -n "$APPLE_API_KEY" || { echo "APPLE_API_KEY is required"; exit 1; }
+          test -n "$APPLE_API_KEY_ID" || { echo "APPLE_API_KEY_ID is required"; exit 1; }
+          test -n "$APPLE_API_ISSUER" || { echo "APPLE_API_ISSUER is required"; exit 1; }
       - run: pnpm exec electron-builder --mac --arm64 --publish always
         env:
           GH_TOKEN: ${{ github.token }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      - name: Generate macOS arm64 checksums
+        run: shasum -a 256 dist/*.dmg dist/*.zip > dist/SHA256SUMS-mac-arm64.txt
+      - name: Attach macOS arm64 checksums
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/SHA256SUMS-mac-arm64.txt --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-mac-arm64
@@ -74,6 +150,7 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/latest-mac.yml
+            dist/SHA256SUMS-mac-arm64.txt
 
   build-linux:
     runs-on: ubuntu-latest
@@ -89,7 +166,16 @@ jobs:
       - run: pnpm exec electron-builder --linux AppImage --x64 --publish always
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Generate Linux checksums
+        run: shasum -a 256 dist/*.AppImage > dist/SHA256SUMS-linux.txt
+      - name: Attach Linux checksums
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/SHA256SUMS-linux.txt --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: nexusky-linux
-          path: dist/*.AppImage
+          path: |
+            dist/*.AppImage
+            dist/SHA256SUMS-linux.txt

@@ -907,6 +907,35 @@ pnpm test
 
 - 额外尝试运行 `tests/accessibility-components.test.ts`，失败点为该测试从 `Settings.tsx` 引入已不存在的 named exports，以及 Dialog SSR 渲染为空；属于既有测试老化问题，不作为 P1-3.1 focused 验收依据。
 
+### 2026-06-18：P1-3.2 分发信任闭环首轮
+
+已完成：
+
+- `electron-builder.yml`：Windows 不再关闭 update code signature verification，启用 `verifyUpdateCodeSignature: true` 和 `signAndEditExecutable: true`；macOS 启用 hardened runtime 和 `notarize: true`，不再显式 `identity: null`。
+- `.github/workflows/build.yml`：Windows release build 在构建前校验 `WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`；macOS x64 / arm64 release build 在构建前校验 `MAC_CSC_LINK` / `MAC_CSC_KEY_PASSWORD` / `APPLE_API_KEY` / `APPLE_API_KEY_ID` / `APPLE_API_ISSUER`。
+- `.github/workflows/build.yml`：签名 secrets 通过 electron-builder 支持的 `CSC_LINK` / `CSC_KEY_PASSWORD` 和 Apple notarization env 注入，正式 release 不再允许静默产出未签名安装包。
+- `.github/workflows/build.yml`：Windows、macOS x64、macOS arm64、Linux release artifacts 生成 SHA256SUMS，并在 tag release 上通过 `gh release upload --clobber` 附加到 GitHub Release。
+- `packages/main/src/services/updater.ts`、`packages/shared/src/types/ipc.ts`、`packages/main/src/preload.ts`：自动更新检查 / 下载失败返回 recoverable error，包含错误码、消息和 GitHub Releases fallback URL；主进程同时广播 `updater:error` allowlisted event。
+- 新增 `docs/RELEASE_TRUST_CHECKLIST.md`：记录维护者发布前需要确认的签名、公证、hash 和 fallback 检查。
+- `docs/MIGRATION_GUIDE.md`：新增“安装包来源验证”章节，说明用户如何检查 Windows 签名、macOS notarization 和 SHA256SUMS。
+- `tests/workflow-config.test.ts`：旧的“允许 unsigned artifacts”断言改为正式 release 必须签名、公证和生成 checksum 的约束，并覆盖文档入口。
+
+设计/实现约束：
+
+- 没有把证书本身写入仓库；正式发布依赖 GitHub Secrets。
+- 本轮不新增 updater UI；只把失败路径变成可恢复的 typed payload，避免无 UI 承接的大改。
+- 本地开发打包仍可用于 smoke，但 tag / workflow release gate 会 fail fast，避免 v1.0 前正式构建绕过签名。
+- Release checksum 只作为用户可验证的公开产物；自动更新仍依赖 electron-updater 的签名和元数据校验链路。
+
+已验证：
+
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node scripts/vitest-electron.mjs run tests/workflow-config.test.ts tests/version.test.ts`，10 tests passed。
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node scripts/vitest-electron.mjs run tests/docs-links.test.ts`
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node_modules/.bin/tsc -p packages/main/tsconfig.json --noEmit`
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node_modules/.bin/tsc -p packages/renderer/tsconfig.json --noEmit`
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node_modules/.bin/tsc -p packages/shared/tsconfig.json --noEmit`
+- `git diff --check`
+
 ### 2026-06-18：P1-1.3 Context Pack 反馈可见
 
 已完成：

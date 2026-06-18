@@ -1107,6 +1107,25 @@ export interface CloudSyncConflict {
   remoteUpdatedAt: string
 }
 
+export type UpdaterRecoveryCode = 'update_check_failed' | 'update_download_failed' | 'update_runtime_error'
+
+export interface UpdaterRecoveryError {
+  code: UpdaterRecoveryCode
+  message: string
+  fallbackUrl: string
+}
+
+export interface UpdaterCheckResult {
+  available: boolean
+  version?: string
+  error?: UpdaterRecoveryError
+}
+
+export interface UpdaterDownloadResult {
+  ok: boolean
+  error?: UpdaterRecoveryError
+}
+
 export interface IPCChannelMap {
   'file:read': { params: { path: string }; result: string }
   'file:read-with-hash': { params: { path: string; vaultPath?: string }; result: FileReadWithHashResult }
@@ -1400,8 +1419,8 @@ export interface IPCChannelMap {
   'cloud:get-sync-exclude': { params: undefined; result: string[] }
   'cloud:set-sync-exclude': { params: { paths: string[] }; result: void }
   'cloud:set-online': { params: { online: boolean }; result: void }
-  'updater:check': { params: undefined; result: { available: boolean; version?: string } }
-  'updater:download': { params: undefined; result: void }
+  'updater:check': { params: undefined; result: UpdaterCheckResult }
+  'updater:download': { params: undefined; result: UpdaterDownloadResult }
   'updater:install': { params: undefined; result: void }
   'app:get-version': { params: undefined; result: string }
   'app:set-language': { params: { language?: AppLanguage }; result: { language: AppLanguage } }
