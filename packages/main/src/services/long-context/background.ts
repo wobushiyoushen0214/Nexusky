@@ -12,6 +12,7 @@ import type { RelationClassifierProvider } from './relation-classifier'
 import { runProactiveCycle } from '../proactive/proactive-orchestrator'
 import { pruneExpired, deleteExpiredSuggestions } from '../proactive/proactive-store'
 import { getAppLanguage } from '../app-language'
+import { logger } from '../logger'
 import type { AppLanguage } from '@shared/types/ipc'
 
 export interface LongContextAnalysisJob {
@@ -28,6 +29,7 @@ interface QueueState {
   pending: Map<string, LongContextAnalysisJob>
   timer: ReturnType<typeof setTimeout> | null
   running: boolean
+  activeControllers: Set<AbortController>
 }
 
 export interface RunLongContextBackgroundCycleParams extends LongContextAnalysisJob {
@@ -40,6 +42,7 @@ export interface RunLongContextBackgroundCycleParams extends LongContextAnalysis
   reviewMinIntervalSeconds?: number
   relationProvider?: RelationClassifierProvider
   themeProvider?: ThemeExtractorProvider
+  signal?: AbortSignal
 }
 
 export interface LongContextBackgroundCycleResult {
@@ -57,6 +60,7 @@ export interface RunVaultLongContextMaintenanceParams {
   relationProvider?: RelationClassifierProvider
   themeProvider?: ThemeExtractorProvider
   language?: AppLanguage
+  signal?: AbortSignal
 }
 
 export interface VaultLongContextMaintenanceResult {
@@ -67,10 +71,12 @@ export interface VaultLongContextMaintenanceResult {
 const DEFAULT_DEBOUNCE_MS = 30_000
 const DEFAULT_BATCH_LIMIT = 3
 const DEFAULT_RECENT_NOTE_LIMIT = 3
-const THEME_MIN_INTERVAL_SECONDS = 60 * 60
+const HOUR_MS = 60 * 60 * 1000
+const DAY_MS = 86_400 * 1000
+const THEME_MIN_INTERVAL_MS = HOUR_MS
 const THEME_RELATION_EVENT_THRESHOLD = 3
-const REVIEW_INTERVAL_SECONDS = 7 * 86_400
-const REVIEW_WINDOW_SECONDS = 7 * 86_400
+const REVIEW_INTERVAL_MS = 7 * DAY_MS
+const REVIEW_WINDOW_MS = 7 * DAY_MS
 
 const queues = new Map<string, QueueState>()
 const maintenanceTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -81,7 +87,12 @@ export function scheduleLongContextAnalysis(params: LongContextAnalysisJob): voi
   if (queue.timer) clearTimeout(queue.timer)
   queue.timer = setTimeout(() => {
     queue.timer = null
-    void drainLongContextQueue(params.vaultPath)
+    void drainLongContextQueue(params.vaultPath).catch((error) => {
+      logger.warn('Long-context queue drain failed', {
+        vaultPath: params.vaultPath,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
   }, DEFAULT_DEBOUNCE_MS)
 }
 
@@ -91,8 +102,12 @@ export function cancelLongContextAnalysis(vaultPath?: string): void {
     const queue = queues.get(target)
     if (!queue) continue
     if (queue.timer) clearTimeout(queue.timer)
+    for (const controller of queue.activeControllers) {
+      controller.abort()
+    }
     queue.pending.clear()
     queue.timer = null
+    queue.activeControllers.clear()
     queues.delete(target)
   }
   const timerTargets = vaultPath ? [vaultPath] : Array.from(maintenanceTimers.keys())
@@ -129,7 +144,18 @@ export function scheduleVaultLongContextMaintenance(vaultPath: string): void {
   if (existing) clearTimeout(existing)
   const timer = setTimeout(() => {
     maintenanceTimers.delete(vaultPath)
-    void runVaultLongContextMaintenance({ vaultPath })
+    const controller = new AbortController()
+    const queue = getQueue(vaultPath)
+    queue.activeControllers.add(controller)
+    void runVaultLongContextMaintenance({ vaultPath, signal: controller.signal })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          logger.warn('Long-context maintenance failed', { vaultPath, error: error instanceof Error ? error.message : String(error) })
+        }
+      })
+      .finally(() => {
+        queue.activeControllers.delete(controller)
+      })
   }, DEFAULT_DEBOUNCE_MS)
   maintenanceTimers.set(vaultPath, timer)
 }
@@ -137,6 +163,7 @@ export function scheduleVaultLongContextMaintenance(vaultPath: string): void {
 export async function runVaultLongContextMaintenance(
   params: RunVaultLongContextMaintenanceParams
 ): Promise<VaultLongContextMaintenanceResult> {
+  if (params.signal?.aborted) return { analyzed: 0 }
   const db = getDatabase(params.vaultPath)
   const limit = Math.max(1, Math.min(params.recentNoteLimit ?? DEFAULT_RECENT_NOTE_LIMIT, 10))
   const rows = db.prepare(`
@@ -149,6 +176,7 @@ export async function runVaultLongContextMaintenance(
   let analyzed = 0
   const language = params.language ?? getAppLanguage()
   for (const row of rows) {
+    if (params.signal?.aborted) break
     const absolutePath = join(params.vaultPath, row.filePath)
     const result = await runLongContextBackgroundCycle({
       vaultPath: params.vaultPath,
@@ -160,17 +188,19 @@ export async function runVaultLongContextMaintenance(
       now: params.now,
       relationProvider: params.relationProvider,
       themeProvider: params.themeProvider,
-      language
+      language,
+      signal: params.signal
     })
     if (result.eventRecorded || result.discovery.discovered > 0) analyzed += 1
   }
 
+  if (params.signal?.aborted) return { analyzed }
   const review = maybeGenerateCognitiveReview({
     vaultPath: params.vaultPath,
     now: params.now ?? unixNow(),
     force: false,
     write: true,
-    minIntervalSeconds: REVIEW_INTERVAL_SECONDS
+    minIntervalMilliseconds: REVIEW_INTERVAL_MS
   })
 
   if (review?.filePath) {
@@ -204,6 +234,7 @@ export async function runVaultLongContextMaintenance(
 export async function runLongContextBackgroundCycle(
   params: RunLongContextBackgroundCycleParams
 ): Promise<LongContextBackgroundCycleResult> {
+  if (params.signal?.aborted) return emptyBackgroundCycleResult()
   const db = getDatabase(params.vaultPath)
   const now = params.now ?? unixNow()
   const language = params.language ?? getAppLanguage()
@@ -225,6 +256,7 @@ export async function runLongContextBackgroundCycle(
     eventRecorded = true
   }
 
+  if (params.signal?.aborted) return emptyBackgroundCycleResult(eventRecorded)
   const discovery = await discoverLongContextRelations({
     vaultPath: params.vaultPath,
     entityType: params.entityType,
@@ -232,9 +264,11 @@ export async function runLongContextBackgroundCycle(
     content: params.content,
     limit: params.limit || 10,
     provider: params.relationProvider,
-    language
+    language,
+    signal: params.signal
   })
 
+  if (params.signal?.aborted) return emptyBackgroundCycleResult(eventRecorded, discovery)
   const refresh = refreshRelationScores({
     vaultPath: params.vaultPath,
     entityType: params.entityType,
@@ -250,15 +284,19 @@ export async function runLongContextBackgroundCycle(
     now,
     force: Boolean(params.forceThemeExtraction),
     provider: params.themeProvider,
-    language
+    language,
+    signal: params.signal
   })
 
+  if (params.signal?.aborted) {
+    return { eventRecorded, discovery, refresh, themes }
+  }
   const review = maybeGenerateCognitiveReview({
     vaultPath: params.vaultPath,
     now,
     force: Boolean(params.forceReview),
     write: params.writeReview !== false,
-    minIntervalSeconds: params.reviewMinIntervalSeconds ?? REVIEW_INTERVAL_SECONDS
+    minIntervalMilliseconds: resolveReviewMinIntervalMilliseconds(params.reviewMinIntervalSeconds)
   })
 
   if (params.entityType === 'note' && discovery.discovered > 0) {
@@ -304,22 +342,39 @@ async function drainLongContextQueue(vaultPath: string): Promise<void> {
   const queue = getQueue(vaultPath)
   if (queue.running) return
   queue.running = true
+  const controller = new AbortController()
+  queue.activeControllers.add(controller)
   try {
     const jobs = Array.from(queue.pending.values()).slice(0, DEFAULT_BATCH_LIMIT)
     for (const job of jobs) {
+      if (controller.signal.aborted) break
       queue.pending.delete(`${job.entityType}:${job.entityId}`)
       try {
-        await runLongContextBackgroundCycle(job)
-      } catch {
+        await runLongContextBackgroundCycle({ ...job, signal: controller.signal })
+      } catch (error) {
         // Background analysis must never interrupt editing, saving, or chat.
+        if (!controller.signal.aborted) {
+          logger.warn('Long-context background analysis failed', {
+            vaultPath,
+            entityType: job.entityType,
+            entityId: job.entityId,
+            error: error instanceof Error ? error.message : String(error)
+          })
+        }
       }
     }
   } finally {
     queue.running = false
+    queue.activeControllers.delete(controller)
     if (queue.pending.size > 0 && !queue.timer) {
       queue.timer = setTimeout(() => {
         queue.timer = null
-        void drainLongContextQueue(vaultPath)
+        void drainLongContextQueue(vaultPath).catch((error) => {
+          logger.warn('Long-context queue drain failed', {
+            vaultPath,
+            error: error instanceof Error ? error.message : String(error)
+          })
+        })
       }, DEFAULT_DEBOUNCE_MS)
     }
   }
@@ -333,7 +388,9 @@ async function maybeExtractThemes(params: {
   force: boolean
   provider?: ThemeExtractorProvider
   language: AppLanguage
+  signal?: AbortSignal
 }): Promise<ThemeExtractionResult> {
+  if (params.signal?.aborted) return { created: 0, updated: 0 }
   if (!params.force && !shouldExtractThemes(params.vaultPath, params.now)) {
     return { created: 0, updated: 0 }
   }
@@ -341,8 +398,10 @@ async function maybeExtractThemes(params: {
     vaultPath: params.vaultPath,
     changedEntityIds: params.entityType === 'note' ? [params.entityId] : undefined,
     provider: params.provider,
-    language: params.language
+    language: params.language,
+    signal: params.signal
   })
+  if (params.signal?.aborted) return result
   recordContextEvent({
     vaultPath: params.vaultPath,
     eventType: 'theme_extraction_run',
@@ -363,14 +422,14 @@ function maybeGenerateCognitiveReview(params: {
   now: number
   force: boolean
   write: boolean
-  minIntervalSeconds: number
+  minIntervalMilliseconds: number
 }): CognitiveReviewResult | undefined {
-  if (!params.force && !shouldGenerateReview(params.vaultPath, params.now, params.minIntervalSeconds)) {
+  if (!params.force && !shouldGenerateReview(params.vaultPath, params.now, params.minIntervalMilliseconds)) {
     return undefined
   }
   const result = generateCognitiveReview({
     vaultPath: params.vaultPath,
-    since: params.now - REVIEW_WINDOW_SECONDS,
+    since: params.now - REVIEW_WINDOW_MS,
     until: params.now,
     write: params.write
   })
@@ -393,8 +452,8 @@ function maybeGenerateCognitiveReview(params: {
 function shouldExtractThemes(vaultPath: string, now: number): boolean {
   const db = getDatabase(vaultPath)
   const lastRun = getLastEventAt(vaultPath, 'theme_extraction_run')
-  if (lastRun && now - lastRun < THEME_MIN_INTERVAL_SECONDS) return false
-  const since = lastRun || now - 86_400
+  if (lastRun && now - lastRun < THEME_MIN_INTERVAL_MS) return false
+  const since = lastRun || now - DAY_MS
   const row = db.prepare(`
     SELECT COUNT(*) as count
     FROM context_events
@@ -404,11 +463,11 @@ function shouldExtractThemes(vaultPath: string, now: number): boolean {
   return row.count >= THEME_RELATION_EVENT_THRESHOLD
 }
 
-function shouldGenerateReview(vaultPath: string, now: number, minIntervalSeconds: number): boolean {
+function shouldGenerateReview(vaultPath: string, now: number, minIntervalMilliseconds: number): boolean {
   const lastRun = getLastEventAt(vaultPath, 'cognitive_review_generated')
-  if (lastRun && now - lastRun < minIntervalSeconds) return false
+  if (lastRun && now - lastRun < minIntervalMilliseconds) return false
   const db = getDatabase(vaultPath)
-  const since = now - REVIEW_WINDOW_SECONDS
+  const since = now - REVIEW_WINDOW_MS
   const rows = [
     db.prepare('SELECT COUNT(*) as count FROM ai_relations WHERE created_at BETWEEN ? AND ?').get(since, now) as { count: number },
     db.prepare('SELECT COUNT(*) as count FROM long_term_themes WHERE updated_at BETWEEN ? AND ?').get(since, now) as { count: number },
@@ -442,13 +501,32 @@ function getLastEventAt(vaultPath: string, eventType: LongContextEventType): num
   return row?.createdAt ?? null
 }
 
+function resolveReviewMinIntervalMilliseconds(reviewMinIntervalSeconds?: number): number {
+  if (typeof reviewMinIntervalSeconds !== 'number' || !Number.isFinite(reviewMinIntervalSeconds)) {
+    return REVIEW_INTERVAL_MS
+  }
+  return Math.max(0, reviewMinIntervalSeconds * 1000)
+}
+
 function getQueue(vaultPath: string): QueueState {
   let queue = queues.get(vaultPath)
   if (!queue) {
-    queue = { pending: new Map(), timer: null, running: false }
+    queue = { pending: new Map(), timer: null, running: false, activeControllers: new Set() }
     queues.set(vaultPath, queue)
   }
   return queue
+}
+
+function emptyBackgroundCycleResult(
+  eventRecorded = false,
+  discovery: DiscoverLongContextRelationsResult = { discovered: 0, suggestions: [] }
+): LongContextBackgroundCycleResult {
+  return {
+    eventRecorded,
+    discovery,
+    refresh: { refreshed: 0, archived: 0 },
+    themes: { created: 0, updated: 0 }
+  }
 }
 
 function getIndexedNote(vaultPath: string, filePath: string): { id: string } | null {

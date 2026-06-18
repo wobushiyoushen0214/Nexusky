@@ -3,7 +3,7 @@ import { aiManager, ChatMessage, ToolCallEvent } from '../services/ai'
 import { store } from '../services/store'
 import { lexicalSearch } from '../services/search-index'
 import { parseToolArguments } from '../services/ai/tool-arguments'
-import { withMergedSystemContext } from '../services/ai/system-context'
+import { buildNoVaultEvidenceSystemPrompt, withMergedSystemContext } from '../services/ai/system-context'
 import { buildLongContextPack, mergeLongContextIntoSystemPrompt, type LongContextPack } from '../services/long-context/context-pack-builder'
 import { logger } from '../services/logger'
 import { abortAiTask, finishAiTask, startAiTask } from '../services/ai-task-control'
@@ -191,13 +191,25 @@ ${wrapRetrievedNotes(context)}`
             origins: ['local_search' as const]
           }))
           window.webContents.send('ai:sources', mergeChatSources(longContextPack?.sources, retrievalSources))
-        } else if (params.systemPrompt) {
-          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(`${params.systemPrompt}\n\n${getAiOutputLanguageInstruction(language)}`, longContextPack, language), messages)
-          if (longContextPack?.sources.length) window.webContents.send('ai:sources', longContextPack.sources)
-        } else if (longContextPack?.systemText) {
-          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(`You are the user's personal Markdown vault assistant. Use the long-term context only when it helps answer the current question.
-${getAiOutputLanguageInstruction(language)}`, longContextPack, language), messages)
-          if (longContextPack.sources.length) window.webContents.send('ai:sources', longContextPack.sources)
+        } else {
+          const hasContextPackSources = Boolean(longContextPack?.sources.length)
+          const basePrompt = params.systemPrompt || (hasContextPackSources
+            ? 'You are the user\'s personal Markdown vault assistant. Use the long-term context only when it helps answer the current question.'
+            : undefined)
+          const systemPrompt = hasContextPackSources
+            ? `${basePrompt}\n\n${getAiOutputLanguageInstruction(language)}`
+            : buildNoVaultEvidenceSystemPrompt({ basePrompt, language })
+
+          messages = withMergedSystemContext(mergeLongContextIntoSystemPrompt(systemPrompt, longContextPack, language), messages)
+          if (hasContextPackSources) {
+            window.webContents.send('ai:sources', longContextPack!.sources)
+          } else {
+            window.webContents.send('ai:evidence', {
+              status: 'none',
+              reason: 'no_vault_sources',
+              sourceCount: 0
+            })
+          }
         }
       }
     } else if (params.systemPrompt) {

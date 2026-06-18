@@ -43,8 +43,6 @@ Overview 应整合四类信息：
 
 ### 3.2 Vault Health 从诊断到修复
 
-### 3.2 Vault Health 从诊断到修复
-
 Vault Health 扫描出问题后，应提供直接跳转：
 
 - **断链** → Chat "帮我修复这些断链"或 Graph 定位缺失节点

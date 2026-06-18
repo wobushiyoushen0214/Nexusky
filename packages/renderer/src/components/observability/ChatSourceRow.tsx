@@ -1,11 +1,12 @@
 import { forwardRef, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ChatSource, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
+import type { ChatSource, LongContextFeedbackType, LongContextSuggestion, LongTermTheme } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { toast } from '../../stores/toast-store'
-import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
+import { getErrorMessage } from '../../utils/errors'
+import { prepareChatSourceNavigation, resolveVaultSourcePath } from '../../utils/source-navigation'
 import { getRelationTypeLabel } from '../long-context/LongContextBadge'
 import { Button, type ButtonProps } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
@@ -14,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { ScrollArea } from '../ui/scroll-area'
 import { Spinner } from '../ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
+import { RelationFeedbackControls } from '../long-context/RelationFeedbackControls'
+import { applyRelationFeedbackToSuggestions } from '../long-context/relation-feedback'
 import { getChatSourceProvenance } from './chat-source-provenance'
 import './chat-source-row.css'
 
@@ -37,17 +40,30 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ relations: LongContextSuggestion[]; themes: LongTermTheme[]; found: boolean } | null>(null)
+  const [feedbackByRelation, setFeedbackByRelation] = useState<Record<string, LongContextFeedbackType>>({})
   const provenance = getChatSourceProvenance(source)
 
   const openSourceFile = useCallback(() => {
-    const full = resolveVaultSourcePath(vaultPath, source.filePath)
-    if (!full) return
-    const target = buildChatSourceNavigationTarget(source)
-    setMainView('editor')
-    const editorStore = useEditorStore.getState()
-    if (target) void editorStore.openFileAt(full, target)
-    else void editorStore.openFile(full)
-  }, [source, setMainView, vaultPath])
+    void (async () => {
+      const navigation = await prepareChatSourceNavigation(vaultPath, source)
+      if (!navigation.filePath || navigation.status === 'missing-file') {
+        toast(t('citationLookup.navigation.missingFile'), 'error')
+        return
+      }
+
+      setMainView('editor')
+      const editorStore = useEditorStore.getState()
+      if (navigation.status === 'targeted' && navigation.target) {
+        await editorStore.openFileAt(navigation.filePath, navigation.target)
+        return
+      }
+
+      await editorStore.openFile(navigation.filePath)
+      if (navigation.status === 'fallback-top') {
+        toast(t('citationLookup.navigation.targetNotFound'), 'info')
+      }
+    })()
+  }, [source, setMainView, t, vaultPath])
 
   const fetchLookup = useCallback(async () => {
     if (!vaultPath || !source.filePath) return
@@ -66,6 +82,34 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
       setLoading(false)
     }
   }, [vaultPath, source.filePath, source.title])
+
+  const submitRelationFeedback = useCallback(async (relation: LongContextSuggestion, feedbackType: LongContextFeedbackType) => {
+    if (!vaultPath) return
+    const previousFeedback = feedbackByRelation[relation.relationId]
+    const previousResult = result
+    setFeedbackByRelation((prev) => ({ ...prev, [relation.relationId]: feedbackType }))
+    setResult((current) => {
+      if (!current) return current
+      const relations = applyRelationFeedbackToSuggestions(current.relations, relation.relationId, feedbackType)
+      return { ...current, relations, found: relations.length > 0 || current.themes.length > 0 }
+    })
+    try {
+      await window.api.invoke('long-context:submit-feedback', {
+        vaultPath,
+        relationId: relation.relationId,
+        feedbackType
+      })
+    } catch (err) {
+      setFeedbackByRelation((prev) => {
+        const next = { ...prev }
+        if (previousFeedback) next[relation.relationId] = previousFeedback
+        else delete next[relation.relationId]
+        return next
+      })
+      setResult(previousResult)
+      toast(getErrorMessage(err, t('relatedContext.feedbackFailed')), 'error')
+    }
+  }, [feedbackByRelation, result, vaultPath, t])
 
   const handleOpenChange = useCallback((next: boolean) => {
     setOpen(next)
@@ -167,6 +211,10 @@ export function ChatSourceRow({ index, source }: ChatSourceRowProps) {
                       {t('citationLookup.score')}={r.score.toFixed(2)}, {t('citationLookup.confidence')}={Math.round(r.confidence * 100)}%
                     </div>
                     {r.reason && <div className="chat-source-row__lookup-reason">{r.reason}</div>}
+                    <RelationFeedbackControls
+                      feedback={feedbackByRelation[r.relationId]}
+                      onFeedback={(feedbackType) => submitRelationFeedback(r, feedbackType)}
+                    />
                     {r.targetPath && (
                       <Button
                         type="button"

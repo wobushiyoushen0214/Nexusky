@@ -19,6 +19,14 @@ import {
   shouldSkipGraphAutoZoom
 } from '../packages/renderer/src/components/graph/graph-types'
 import { buildGraphGroupColorMap } from '../packages/renderer/src/components/graph/graph-colors'
+import { buildGraphMaintenanceChatDraft } from '../packages/renderer/src/components/graph/graph-maintenance-chat'
+import type { GraphMaintenanceSignals } from '../packages/renderer/src/components/graph/graph-types'
+
+const graphMaintenancePromptT = ((key: string, params?: Record<string, unknown>) => {
+  if (key === 'graph.maintenance.chatDraft.noSamples') return 'No examples'
+  if (key.endsWith('.prompt')) return `${key} count=${params?.count} samples=${params?.samples} do not write files directly`
+  return key
+}) as any
 
 describe('graph UI layout helpers', () => {
   it('seeds node positions from the active layout cache before falling back to last known positions', () => {
@@ -193,6 +201,46 @@ describe('graph UI layout helpers', () => {
     expect([...(getGraphMaintenanceFocusNodeIds('orphans', signals) ?? [])]).toEqual(['note-d'])
     expect([...(getGraphMaintenanceFocusNodeIds('bridges', signals) ?? [])].sort()).toEqual(['note-a', 'note-b'])
     expect([...(getGraphMaintenanceFocusNodeIds('inferred', signals) ?? [])].sort()).toEqual(['note-b', 'note-c'])
+  })
+
+  it('builds ordinary Chat drafts from graph maintenance signals', () => {
+    const signals: GraphMaintenanceSignals = {
+      orphanNoteCount: 2,
+      orphanNoteIds: new Set(['note-a', 'note-b']),
+      orphanSamples: ['A', 'B'],
+      crossFolderBridgeCount: 1,
+      crossFolderBridgeNodeIds: new Set(['note-c', 'note-d']),
+      crossFolderBridgeSamples: ['C -> D'],
+      inferredRelationCount: 1,
+      inferredRelationNodeIds: new Set(['note-e', 'note-f']),
+      inferredRelationSamples: ['E -> F']
+    }
+
+    const orphanDraft = buildGraphMaintenanceChatDraft({ focus: 'orphans', signals, t: graphMaintenancePromptT })
+    const bridgeDraft = buildGraphMaintenanceChatDraft({ focus: 'bridges', signals, t: graphMaintenancePromptT })
+    const inferredDraft = buildGraphMaintenanceChatDraft({ focus: 'inferred', signals, t: graphMaintenancePromptT })
+
+    expect(orphanDraft).toMatchObject({ mode: 'chat', agentMode: false })
+    expect(orphanDraft?.prompt).toContain('count=2')
+    expect(orphanDraft?.prompt).toContain('samples=A, B')
+    expect(orphanDraft?.prompt).toContain('do not write files directly')
+    expect(bridgeDraft?.prompt).toContain('samples=C -> D')
+    expect(inferredDraft?.prompt).toContain('samples=E -> F')
+  })
+
+  it('does not build a graph maintenance Chat draft for empty signals', () => {
+    const signals = buildGraphMaintenanceSignals({
+      nodes: [
+        { id: 'note-a', title: 'A', type: 'file', folder: 'Research' },
+        { id: 'note-b', title: 'B', type: 'file', folder: 'Research' },
+      ],
+      edges: [
+        { source: 'note-a', target: 'note-b', linkType: 'explicit' },
+      ],
+    })
+
+    expect(buildGraphMaintenanceChatDraft({ focus: 'bridges', signals, t: graphMaintenancePromptT })).toBeNull()
+    expect(buildGraphMaintenanceChatDraft({ focus: 'inferred', signals, t: graphMaintenancePromptT })).toBeNull()
   })
 
   it('hides non-focused graph nodes while keeping folder context for focused notes', () => {

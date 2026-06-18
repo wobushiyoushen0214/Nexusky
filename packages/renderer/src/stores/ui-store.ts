@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import i18n from '../i18n'
 import { safeGet, safeGetJSON, safeRemove, safeSet, safeSetJSON } from '../utils/storage'
 import type { GraphMode } from '@shared/types/ipc'
+import type { PendingGraphMaintenanceFocus } from '../utils/vault-health-actions'
 
 type Panel = 'none' | 'chat' | 'outline' | 'properties' | 'tags' | 'history' | 'graph' | 'plugin' | 'agent'
 export const THEME_IDS = ['dark', 'light', 'ocean', 'amber', 'forest', 'rose', 'minimal', 'obsidian', 'nord', 'solarized', 'contrast'] as const
@@ -58,6 +59,7 @@ interface UIState {
   graphMode: GraphMode
   pendingAgentGoal: { goal: string; description?: string } | null
   pendingBasesFocus: { filePath: string } | null
+  pendingGraphMaintenanceFocus: PendingGraphMaintenanceFocus | null
   setRightPanel: (panel: Panel) => void
   toggleRightPanel: (panel: Panel) => void
   setMainView: (view: MainView) => void
@@ -86,6 +88,8 @@ interface UIState {
   resetWorkspaceLayout: () => void
   sendToAgent: (payload: { goal: string; description?: string }) => void
   consumePendingAgentGoal: () => { goal: string; description?: string } | null
+  focusGraphMaintenance: (focus: PendingGraphMaintenanceFocus) => void
+  consumePendingGraphMaintenanceFocus: () => PendingGraphMaintenanceFocus | null
   focusInBases: (filePath: string) => void
   consumePendingBasesFocus: () => { filePath: string } | null
 }
@@ -296,10 +300,7 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
   const scopedRightPanel = normalizeRightPanel(scoped?.rightPanel as string | undefined)
   const scopedMainView = normalizeMainView(scoped?.mainView)
   if (scoped && scopedMainView && scopedRightPanel && typeof scoped.sidebarCollapsed === 'boolean') {
-    // Editor is a transient working surface; startup should land on the overview
-    // unless the user has explicitly persisted another top-level section.
-    if (scopedMainView === 'editor') return getDefaultWorkspaceLayout()
-    const sidebarCollapsed = scopedMainView === 'graph'
+    const sidebarCollapsed = scopedMainView === 'editor' || scopedMainView === 'graph'
       ? scoped.sidebarCollapsed
       : true
     return { ...scoped, mainView: scopedMainView, rightPanel: getAvailableRightPanel(scopedMainView, scopedRightPanel), sidebarCollapsed }
@@ -370,6 +371,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   graphMode: getInitialGraphMode(),
   pendingAgentGoal: null,
   pendingBasesFocus: null,
+  pendingGraphMaintenanceFocus: null,
 
   setRightPanel: (panel) => {
     if (!isRightPanelAvailable(get().mainView, panel)) return
@@ -539,6 +541,26 @@ export const useUIStore = create<UIState>((set, get) => ({
   consumePendingAgentGoal: () => {
     const pending = get().pendingAgentGoal
     if (pending) set({ pendingAgentGoal: null })
+    return pending
+  },
+  focusGraphMaintenance: (focus) => {
+    const rightPanel = getAvailableRightPanel('graph', get().rightPanel)
+    const layout = saveWorkspaceLayout(get().workspaceScope, {
+      mainView: 'graph',
+      rightPanel,
+      sidebarCollapsed: true
+    })
+    set({
+      pendingGraphMaintenanceFocus: focus,
+      mainView: layout.mainView,
+      rightPanel: layout.rightPanel,
+      sidebarCollapsed: layout.sidebarCollapsed,
+      ...(layout.rightPanel !== 'none' ? { rightPanelWidth: getInitialRightPanelWidth(layout.rightPanel) } : {})
+    })
+  },
+  consumePendingGraphMaintenanceFocus: () => {
+    const pending = get().pendingGraphMaintenanceFocus
+    if (pending) set({ pendingGraphMaintenanceFocus: null })
     return pending
   },
   focusInBases: (filePath) => {

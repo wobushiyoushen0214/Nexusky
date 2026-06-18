@@ -35,6 +35,16 @@ describe('activity bar store', () => {
 
     const { useActivityBarStore } = await import('../packages/renderer/src/stores/activity-bar-store')
 
+    expect(useActivityBarStore.getState().visibleIds).toEqual(['overview', 'files', 'search', 'chat', 'graph'])
+  })
+
+  it('keeps memory out of fresh defaults while allowing explicit opt-in', async () => {
+    const { useActivityBarStore } = await import('../packages/renderer/src/stores/activity-bar-store')
+
+    expect(useActivityBarStore.getState().visibleIds).toEqual(['overview', 'files', 'search', 'chat', 'graph'])
+
+    useActivityBarStore.getState().toggleVisibility('memory')
+
     expect(useActivityBarStore.getState().visibleIds).toEqual(['overview', 'files', 'search', 'chat', 'graph', 'memory'])
   })
 })

@@ -1,10 +1,11 @@
-import { type ReactNode, useMemo, useState } from 'react'
+import { Fragment, type ReactNode, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   GRAPH_MAINTENANCE_FOCUS_ORDER,
   type GraphMaintenanceFocus,
   type GraphMaintenanceSignals,
 } from './graph-types'
+import type { GraphMaintenanceChatFocus } from './graph-maintenance-chat'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
@@ -13,6 +14,7 @@ interface GraphMaintenanceNudgeProps {
   signals: GraphMaintenanceSignals | null
   focus: GraphMaintenanceFocus
   onSetFocus: (focus: GraphMaintenanceFocus) => void
+  onAskChat?: (focus: GraphMaintenanceChatFocus) => void
 }
 
 interface GraphMaintenanceNudgeItem {
@@ -23,7 +25,7 @@ interface GraphMaintenanceNudgeItem {
   samples: string[]
 }
 
-export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaintenanceNudgeProps) {
+export function GraphMaintenanceNudge({ signals, focus, onSetFocus, onAskChat }: GraphMaintenanceNudgeProps) {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -102,21 +104,40 @@ export function GraphMaintenanceNudge({ signals, focus, onSetFocus }: GraphMaint
         {visibleItems.map((item) => {
           const hint = `${item.hint}${item.samples.length > 0 ? `: ${item.samples.join(', ')}` : ''}`
           return (
-            <Tooltip key={item.focus}>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={`graph-maintenance-pill${focus === item.focus ? ' active' : ''}`}
-                  onClick={() => onSetFocus(item.focus)}
-                >
-                  <MaintenanceFocusIcon focus={item.focus} />
-                  <span>{item.label}</span>
-                  <Badge variant="secondary" className="graph-maintenance-pill-count">{item.count}</Badge>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{hint}</TooltipContent>
-            </Tooltip>
+            <Fragment key={item.focus}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={`graph-maintenance-pill${focus === item.focus ? ' active' : ''}`}
+                    onClick={() => onSetFocus(item.focus)}
+                  >
+                    <MaintenanceFocusIcon focus={item.focus} />
+                    <span>{item.label}</span>
+                    <Badge variant="secondary" className="graph-maintenance-pill-count">{item.count}</Badge>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{hint}</TooltipContent>
+              </Tooltip>
+              {onAskChat && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="graph-maintenance-chat-button"
+                      aria-label={t('graph.maintenance.askChat', { label: item.label })}
+                      onClick={() => onAskChat(item.focus)}
+                    >
+                      <ChatIcon />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('graph.maintenance.askChat', { label: item.label })}</TooltipContent>
+                </Tooltip>
+              )}
+            </Fragment>
           )
         })}
         {focus !== 'all' && (
@@ -192,4 +213,8 @@ function ClearFocusIcon() {
 
 function MinimizeIcon() {
   return <IconSvg><path d="M6 12h12" /></IconSvg>
+}
+
+function ChatIcon() {
+  return <IconSvg><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /><path d="M8 9h8" /><path d="M8 13h5" /></IconSvg>
 }

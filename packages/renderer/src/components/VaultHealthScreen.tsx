@@ -1,10 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import type { VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../stores/vault-store'
 import { useUIStore } from '../stores/ui-store'
-import { queueAiCommandDraft, type AICommandDraft } from './ai/ai-command-draft'
+import { queueAiCommandDraft } from './ai/ai-command-draft'
+import {
+  buildVaultHealthActionTarget,
+  buildVaultHealthNextSteps,
+  type VaultHealthNextStepId,
+} from '../utils/vault-health-actions'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
@@ -12,76 +16,15 @@ import { Empty, EmptyDescription } from './ui/empty'
 import { Progress } from './ui/progress'
 import './VaultHealthScreen.css'
 
-type VaultHealthNextStepId =
-  | 'askAi'
-  | 'fixLinks'
-  | 'reviewStructure'
-  | 'reviewTasks'
-  | 'reviewMemory'
-  | 'reviewStale'
-  | 'browseGraph'
-
-interface VaultHealthNextStep {
-  id: VaultHealthNextStepId
-  count?: number
-  priority: number
-}
-
 interface VaultHealthScreenProps {
   vaultPath: string
   onDismiss: () => void
 }
 
-export function buildVaultHealthAskAiDraft(t: TFunction, summary: VaultHealthSummary | null): AICommandDraft {
-  return {
-    mode: 'chat',
-    agentMode: false,
-    prompt: t('vaultHealth.action.askAi.prompt', {
-      notes: summary?.noteCount ?? 0,
-      links: summary?.linkCount ?? 0,
-      unresolved: summary?.unresolvedLinkCount ?? 0,
-      orphans: summary?.orphanCount ?? 0,
-      tasks: summary?.openTaskCount ?? 0,
-      missingMemory: summary?.missingMemoryCount ?? 0
-    })
-  }
-}
-
-export function buildVaultHealthNextSteps(summary: VaultHealthSummary): VaultHealthNextStep[] {
-  const factorImpact = new Map(summary.scoreFactors.map((factor) => [factor.id, factor.impact]))
-  const signalSteps: VaultHealthNextStep[] = []
-  const addSignal = (
-    id: VaultHealthNextStepId,
-    count: number,
-    factorId: 'links' | 'tasks' | 'memory' | 'structure' | 'freshness'
-  ) => {
-    if (count <= 0) return
-    signalSteps.push({
-      id,
-      count,
-      priority: (factorImpact.get(factorId) ?? 0) * 1000 + count
-    })
-  }
-
-  addSignal('fixLinks', summary.unresolvedLinkCount, 'links')
-  addSignal('reviewStructure', summary.orphanCount + summary.duplicateTitleCount, 'structure')
-  addSignal('reviewTasks', summary.openTaskCount, 'tasks')
-  addSignal('reviewMemory', summary.missingMemoryCount, 'memory')
-  addSignal('reviewStale', summary.staleNoteCount, 'freshness')
-
-  const sortedSignals = signalSteps.sort((a, b) => b.priority - a.priority).slice(0, 3)
-  const fallbackSteps: VaultHealthNextStep[] = [
-    { id: 'askAi', priority: 0 },
-    { id: 'browseGraph', priority: 0 }
-  ]
-  return [...sortedSignals, ...fallbackSteps.filter((step) => !sortedSignals.some((signal) => signal.id === step.id))]
-    .slice(0, 3)
-}
-
 export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenProps) {
   const { t } = useTranslation()
   const setRightPanel = useUIStore((s) => s.setRightPanel)
-  const setMainView = useUIStore((s) => s.setMainView)
+  const focusGraphMaintenance = useUIStore((s) => s.focusGraphMaintenance)
   const refreshFiles = useVaultStore((s) => s.refreshFiles)
   const [summary, setSummary] = useState<VaultHealthSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -111,16 +54,6 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
     onDismiss()
   }
 
-  const askAi = async () => {
-    queueAiCommandDraft(buildVaultHealthAskAiDraft(t, summary), () => setRightPanel('chat'))
-    await dismiss()
-  }
-
-  const openGraph = async () => {
-    setMainView('graph')
-    await dismiss()
-  }
-
   const repairSignalCount = summary
     ? summary.unresolvedLinkCount + summary.orphanCount + summary.duplicateTitleCount
     : 0
@@ -130,14 +63,13 @@ export function VaultHealthScreen({ vaultPath, onDismiss }: VaultHealthScreenPro
   const nextSteps = summary ? buildVaultHealthNextSteps(summary) : []
 
   const runNextStep = async (id: VaultHealthNextStepId) => {
-    if (id === 'askAi') {
-      await askAi()
-      return
+    const target = buildVaultHealthActionTarget(id, t, summary)
+    if (target.kind === 'chat') {
+      queueAiCommandDraft(target.draft, () => setRightPanel('chat'))
+    } else {
+      focusGraphMaintenance(target.focus)
     }
-    if (id === 'browseGraph') {
-      await openGraph()
-      return
-    }
+    await dismiss()
   }
 
   return (

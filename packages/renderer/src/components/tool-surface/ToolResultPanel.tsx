@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import type { ChatSource } from '@shared/types/ipc'
 import { useEditorStore } from '../../stores/editor-store'
+import { toast } from '../../stores/toast-store'
 import { useUIStore } from '../../stores/ui-store'
 import { useVaultStore } from '../../stores/vault-store'
 import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
-import { buildChatSourceNavigationTarget, resolveVaultSourcePath } from '../../utils/source-navigation'
+import { prepareChatSourceNavigation } from '../../utils/source-navigation'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { ScrollArea } from '../ui/scroll-area'
@@ -28,6 +29,28 @@ export function ToolResultPanel() {
   const [copying, setCopying] = useState(false)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const setMainView = useUIStore((s) => s.setMainView)
+
+  const openSource = useCallback((source: ChatSource) => {
+    void (async () => {
+      const navigation = await prepareChatSourceNavigation(vaultPath, source)
+      if (!navigation.filePath || navigation.status === 'missing-file') {
+        toast(t('citationLookup.navigation.missingFile'), 'error')
+        return
+      }
+
+      setMainView('editor')
+      const editorStore = useEditorStore.getState()
+      if (navigation.status === 'targeted' && navigation.target) {
+        await editorStore.openFileAt(navigation.filePath, navigation.target)
+        return
+      }
+
+      await editorStore.openFile(navigation.filePath)
+      if (navigation.status === 'fallback-top') {
+        toast(t('citationLookup.navigation.targetNotFound'), 'info')
+      }
+    })()
+  }, [setMainView, t, vaultPath])
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -118,15 +141,7 @@ export function ToolResultPanel() {
                           type="button"
                           variant="ghost"
                           className="tool-result-panel__source"
-                          onClick={() => {
-                            const fullPath = resolveVaultSourcePath(vaultPath, source.filePath)
-                            if (!fullPath) return
-                            const target = buildChatSourceNavigationTarget(source)
-                            setMainView('editor')
-                            const editorStore = useEditorStore.getState()
-                            if (target) void editorStore.openFileAt(fullPath, target)
-                            else void editorStore.openFile(fullPath)
-                          }}
+                          onClick={() => openSource(source)}
                         >
                           <span className="tool-result-panel__source-title">{source.title}</span>
                           <span className="tool-result-panel__source-path">{source.filePath}</span>

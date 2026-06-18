@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import i18n from '../packages/renderer/src/i18n'
 import { buildChatHints } from '../packages/renderer/src/components/ai/ai-command-draft'
-import { buildVaultHealthAskAiDraft, buildVaultHealthNextSteps } from '../packages/renderer/src/components/VaultHealthScreen'
+import { buildVaultHealthAskAiDraft, buildVaultHealthNextSteps } from '../packages/renderer/src/utils/vault-health-actions'
 import type { VaultHealthScoreFactor, VaultHealthScoreFactorId, VaultHealthSummary } from '../packages/shared/src/types/ipc'
 
 const summary: VaultHealthSummary = {

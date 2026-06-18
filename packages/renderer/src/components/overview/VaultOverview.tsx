@@ -2,13 +2,16 @@ import { useMemo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AIUsageRecord, PropertyTableRow, VaultHealthSummary } from '@shared/types/ipc'
 import { useVaultStore } from '../../stores/vault-store'
+import { useUIStore } from '../../stores/ui-store'
 import { useOverviewData } from './hooks/useOverviewData'
 import { OverviewCard } from './OverviewCard'
 import { VitalityCard } from './VitalityCard'
 import { DonutChart } from '../charts/DonutChart'
+import { queueAiCommandDraft } from '../ai/ai-command-draft'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardDescription, CardTitle } from '../ui/card'
 import { Empty, EmptyDescription } from '../ui/empty'
+import { buildVaultHealthActionTarget, buildVaultHealthNextSteps } from '../../utils/vault-health-actions'
 import { DiaryHeatmapChart, TokenUsageAreaChart, type DiaryHeatmapPoint, type TokenUsagePoint } from './OverviewCharts'
 import './vault-overview.css'
 
@@ -168,6 +171,8 @@ function buildCompositionData(
 export function VaultOverview() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const setRightPanel = useUIStore((s) => s.setRightPanel)
+  const focusGraphMaintenance = useUIStore((s) => s.focusGraphMaintenance)
   const { data, loading, reload } = useOverviewData(vaultPath)
   const vaultName = vaultPath?.split(/[\\/]/).pop() || ''
 
@@ -198,6 +203,7 @@ export function VaultOverview() {
 
   const totalTokens = tokenUsageData.reduce((sum, point) => sum + point.totalTokens, 0)
   const repairSignalCount = getRepairSignalCount(data.health)
+  const quickActions = useMemo(() => data.health ? buildVaultHealthNextSteps(data.health) : [], [data.health])
   const noteCount = data.health?.noteCount ?? data.notes.length
   const linkCount = data.health?.linkCount ?? 0
   const linkDensity = noteCount > 0 ? linkCount / noteCount : 0
@@ -228,6 +234,15 @@ export function VaultOverview() {
       tone: recentUpdatedCount > 0 ? 'accent' as const : 'neutral' as const
     }
   ]
+
+  const runQuickAction = (id: typeof quickActions[number]['id']) => {
+    const target = buildVaultHealthActionTarget(id, t, data.health)
+    if (target.kind === 'chat') {
+      queueAiCommandDraft(target.draft, () => setRightPanel('chat'))
+    } else {
+      focusGraphMaintenance(target.focus)
+    }
+  }
 
   return (
     <div className="vault-overview">
@@ -262,6 +277,40 @@ export function VaultOverview() {
             </Card>
           ))}
         </section>
+
+        <div className="vault-overview__workbench">
+          <section className="vault-overview__actions" aria-label={t('overviewPage.quickActions.title')}>
+            <div className="vault-overview__actions-head">
+              <h2>{t('overviewPage.quickActions.title')}</h2>
+              <span>{t('overviewPage.quickActions.boundary')}</span>
+            </div>
+            <div className="vault-overview__actions-list">
+              {quickActions.length > 0 ? quickActions.map((action) => {
+                const target = buildVaultHealthActionTarget(action.id, t, data.health)
+                return (
+                  <Button
+                    key={action.id}
+                    type="button"
+                    variant="ghost"
+                    className="vault-overview__action"
+                    onClick={() => runQuickAction(action.id)}
+                  >
+                    <span className="vault-overview__action-copy">
+                      <strong>{t(`vaultHealth.action.${action.id}.title`, { count: action.count ?? 0 })}</strong>
+                      <span>
+                        {target.kind === 'chat' ? t('overviewPage.quickActions.chatTarget') : t('overviewPage.quickActions.graphTarget')}
+                      </span>
+                    </span>
+                  </Button>
+                )
+              }) : (
+                <Empty className="vault-overview__actions-empty">
+                  <EmptyDescription>{loading ? t('overviewPage.loading') : t('overviewPage.quickActions.empty')}</EmptyDescription>
+                </Empty>
+              )}
+            </div>
+          </section>
+        </div>
 
         <div className="vault-overview__dashboard">
           <VitalityCard health={data.health} />

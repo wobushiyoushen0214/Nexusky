@@ -316,6 +316,15 @@ export interface ChatSource {
   memoryTier?: ChatSourceMemoryTier
 }
 
+export type ChatEvidenceStatus = 'local' | 'none'
+export type ChatEvidenceReason = 'retrieval' | 'context_pack' | 'vault_tool' | 'no_vault_sources'
+
+export interface ChatEvidenceState {
+  status: ChatEvidenceStatus
+  reason: ChatEvidenceReason
+  sourceCount?: number
+}
+
 export type AIOutboundPreviewMode = 'chat' | 'agent'
 
 export type AIOutboundPreviewSnippetKind = 'prompt' | 'client_context' | 'attachment' | 'retrieved_note' | 'long_context'
@@ -393,6 +402,7 @@ export interface ChatHistoryEntry {
   role: ChatHistoryRole
   content: string
   sources?: ChatSource[]
+  evidence?: ChatEvidenceState
 }
 
 export interface AIStreamEvent {
@@ -1268,7 +1278,7 @@ export interface IPCChannelMap {
     }
   }
   'db:chat-history-load': { params: { vaultPath: string; sessionId?: string }; result: ChatHistoryEntry[] }
-  'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }; result: void }
+  'db:chat-history-append': { params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; evidence?: ChatEvidenceState; sessionId?: string }; result: void }
   'db:chat-history-clear': { params: { vaultPath: string; sessionId?: string }; result: void }
   'db:chat-sessions-list': { params: { vaultPath: string }; result: { id: string; title: string; createdAt: number; updatedAt: number }[] }
   'db:chat-session-create': { params: { vaultPath: string; id: string; title: string }; result: void }

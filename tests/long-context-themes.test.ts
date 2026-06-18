@@ -115,4 +115,33 @@ describe('long-context theme extractor', () => {
     await expect(extractLongTermThemes({ vaultPath, limit: 5 })).resolves.toEqual({ created: 0, updated: 0 })
     expect(getLongTermThemes(vaultPath)).toEqual([])
   })
+
+  it('does not reuse a closed database connection after async theme draft generation', async () => {
+    let enteredProvider!: () => void
+    let releaseProvider!: () => void
+    const providerEntered = new Promise<void>((resolve) => { enteredProvider = resolve })
+    const releaseDraft = new Promise<void>((resolve) => { releaseProvider = resolve })
+    const provider: ThemeExtractorProvider = {
+      async *chatStream(_messages: ChatMessage[], _signal?: AbortSignal, _options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
+        enteredProvider()
+        await releaseDraft
+        yield {
+          type: 'text',
+          content: '{"title":"AI Automation Workflows","summary":"The notes repeatedly connect AI automation with external tool orchestration.","keywords":["AI automation","tool orchestration"],"confidence":0.9}'
+        }
+      }
+    }
+    await insertRelation('r1', 'n1', 'n2', now - 10 * 86_400, now - 9 * 86_400)
+    await insertRelation('r2', 'n2', 'n3', now - 8 * 86_400, now)
+
+    const pending = extractLongTermThemes({ vaultPath, limit: 1, provider })
+    await providerEntered
+
+    const { closeDatabase } = await import('../packages/main/src/services/database')
+    closeDatabase()
+    releaseProvider()
+
+    await expect(pending).resolves.toEqual({ created: 1, updated: 0 })
+    expect(getLongTermThemes(vaultPath)[0].title).toBe('AI Automation Workflows')
+  })
 })

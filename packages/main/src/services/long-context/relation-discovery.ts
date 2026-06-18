@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import { getDatabase } from '../database'
+import { getDatabase, isCurrentDatabaseConnection } from '../database'
 import { findRelationCandidates, type EntityType } from './relation-candidates'
 import { classifyRelation, shouldPersistRelationClassification, type RelationClassifierProvider } from './relation-classifier'
 import { getContextSuggestions, upsertRelation, type ContextSuggestion } from './relation-store'
@@ -31,7 +31,7 @@ export interface DiscoverLongContextRelationsResult {
 export async function discoverLongContextRelations(
   params: DiscoverLongContextRelationsParams
 ): Promise<DiscoverLongContextRelationsResult> {
-  const db = getDatabase(params.vaultPath)
+  let db = getDatabase(params.vaultPath)
   const limit = Math.max(1, Math.min(params.limit ?? 10, 20))
   const current = getLongContextEntitySnapshot(db, params.entityType, params.entityId, params.content)
   if (!current) {
@@ -51,6 +51,7 @@ export async function discoverLongContextRelations(
   let discovered = 0
   for (const candidate of candidates) {
     if (params.signal?.aborted) break
+    db = isCurrentDatabaseConnection(params.vaultPath, db) ? db : getDatabase(params.vaultPath)
     const target = getLongContextEntitySnapshot(db, candidate.targetType, candidate.targetId)
     if (!target) continue
     const classification = await classifyRelation({
@@ -68,6 +69,7 @@ export async function discoverLongContextRelations(
       signal: params.signal,
       language: params.language
     })
+    if (params.signal?.aborted) break
     if (!shouldPersistRelationClassification(classification, prefs.confidenceThreshold)) continue
 
     upsertRelation(params.vaultPath, {

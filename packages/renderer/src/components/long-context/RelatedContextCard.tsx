@@ -5,6 +5,7 @@ import { Button } from '../ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { LongContextBadge } from './LongContextBadge'
+import { RelationFeedbackControls } from './RelationFeedbackControls'
 
 interface RelatedContextCardProps {
   suggestion: LongContextSuggestion
@@ -61,26 +62,11 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
               <path d="M7 17L17 7" />
               <path d="M9 7h8v8" />
             </IconButton>
-            <IconButton title={t('relatedContext.card.useful')} active={feedback === 'useful'} onClick={() => onFeedback(suggestion, 'useful')}>
-              <path d="M20 6L9 17l-5-5" />
-            </IconButton>
-            <IconButton title={t('relatedContext.card.notRelated')} onClick={() => onFeedback(suggestion, 'not_related')}>
-              <path d="M4 12h16" />
-              <path d="M8 8l8 8" />
-            </IconButton>
-            <IconButton title={t('relatedContext.card.wrongReason')} active={feedback === 'wrong_reason'} onClick={() => onFeedback(suggestion, 'wrong_reason')}>
-              <circle cx="12" cy="12" r="8" />
-              <path d="M12 8v5" />
-              <path d="M12 16h.01" />
-            </IconButton>
-            <IconButton title={t('relatedContext.card.snooze')} active={feedback === 'snoozed'} onClick={() => onFeedback(suggestion, 'snoozed')}>
-              <circle cx="12" cy="12" r="8" />
-              <path d="M12 6v6l4 2" />
-            </IconButton>
-            <IconButton title={t('relatedContext.card.dismiss')} onClick={() => onFeedback(suggestion, 'dismissed')}>
-              <path d="M18 6L6 18" />
-              <path d="M6 6l12 12" />
-            </IconButton>
+            <RelationFeedbackControls
+              feedback={feedback}
+              includeDismiss
+              onFeedback={(feedbackType) => onFeedback(suggestion, feedbackType)}
+            />
           </div>
         </CardFooter>
       </article>
@@ -88,7 +74,7 @@ export function RelatedContextCard({ suggestion, feedback, onOpen, onFeedback }:
   )
 }
 
-function IconButton({ title, active, onClick, children }: { title: string; active?: boolean; onClick: () => void; children: ReactNode }) {
+function IconButton({ title, onClick, children }: { title: string; onClick: () => void; children: ReactNode }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -96,7 +82,7 @@ function IconButton({ title, active, onClick, children }: { title: string; activ
           type="button"
           variant="ghost"
           size="icon"
-          className={`related-context-card__icon-button${active ? ' is-active' : ''}`}
+          className="related-context-card__icon-button"
           aria-label={title}
           onClick={onClick}
         >

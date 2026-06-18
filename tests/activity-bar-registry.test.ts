@@ -8,6 +8,16 @@ function item(id: string) {
 }
 
 describe('activity bar registry', () => {
+  it('defaults to the five core workspace entries', () => {
+    const defaultIds = ACTIVITY_BAR_REGISTRY
+      .filter((entry) => entry.defaultVisible)
+      .sort((a, b) => a.defaultOrder - b.defaultOrder)
+      .map((entry) => entry.id)
+
+    expect(defaultIds).toEqual(['overview', 'files', 'search', 'chat', 'graph'])
+    expect(item('memory').defaultVisible).toBe(false)
+  })
+
   it('marks note panels as current-file scoped', () => {
     expect(item('outline').requiresCurrentFile).toBe(true)
     expect(item('tags').requiresCurrentFile).toBe(true)

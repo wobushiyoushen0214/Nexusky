@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildChatSourceNavigationTarget, findMarkdownLineForBlockId, findMarkdownLineForHeading, findMarkdownLineForSnippet, resolveVaultSourcePath } from '../packages/renderer/src/utils/source-navigation'
+import {
+  buildChatSourceNavigationTarget,
+  findMarkdownLineForBlockId,
+  findMarkdownLineForHeading,
+  findMarkdownLineForSnippet,
+  prepareSourceNavigation,
+  resolveNavigationTargetFromContent,
+  resolveVaultSourcePath
+} from '../packages/renderer/src/utils/source-navigation'
 import type { ChatSource } from '../packages/shared/src/types/ipc'
 
 function installLocalStorageMock() {
@@ -88,6 +96,77 @@ describe('source navigation helpers', () => {
     expect(findMarkdownLineForHeading(content, 'Evidence')).toBe(5)
     expect(findMarkdownLineForBlockId(`${content}\nTask line ^todo-1`, 'todo-1')).toBe(10)
     expect(findMarkdownLineForSnippet(content, 'tiny')).toBeNull()
+  })
+
+  it('resolves navigation targets from markdown content by priority', () => {
+    const content = [
+      '# Topic',
+      '',
+      '## Evidence',
+      'The cited paragraph is here.',
+      '',
+      'A block target. ^block-1'
+    ].join('\n')
+
+    expect(resolveNavigationTargetFromContent(content, { line: 2, snippet: 'missing' })).toMatchObject({
+      status: 'targeted',
+      matchedBy: 'line',
+      target: { line: 2 }
+    })
+    expect(resolveNavigationTargetFromContent(content, { blockId: 'block-1', heading: 'Evidence' })).toMatchObject({
+      status: 'targeted',
+      matchedBy: 'blockId',
+      target: { line: 6 }
+    })
+    expect(resolveNavigationTargetFromContent(content, { heading: 'Evidence' })).toMatchObject({
+      status: 'targeted',
+      matchedBy: 'heading',
+      target: { line: 3 }
+    })
+    expect(resolveNavigationTargetFromContent(content, { snippet: 'The cited paragraph is here.' })).toMatchObject({
+      status: 'targeted',
+      matchedBy: 'snippet',
+      target: { line: 4 }
+    })
+    expect(resolveNavigationTargetFromContent(content, { snippet: 'No matching citation.' })).toEqual({
+      status: 'fallback-top'
+    })
+  })
+
+  it('preflights source files before opening them', async () => {
+    const reads: string[] = []
+    const files: Record<string, string> = {
+      '/vault/Topic.md': '# Topic\n\nThe cited paragraph.'
+    }
+    const io = {
+      statFile: vi.fn(async (path: string) => {
+        if (!(path in files)) throw new Error('missing')
+        return { size: files[path].length }
+      }),
+      readFile: vi.fn(async (path: string) => {
+        reads.push(path)
+        return files[path]
+      })
+    }
+
+    await expect(prepareSourceNavigation('/vault/Topic.md', { line: 3 }, io)).resolves.toMatchObject({
+      status: 'targeted',
+      matchedBy: 'line',
+      target: { line: 3 }
+    })
+    expect(reads).toEqual([])
+
+    await expect(prepareSourceNavigation('/vault/Topic.md', { snippet: 'The cited paragraph.' }, io)).resolves.toMatchObject({
+      status: 'targeted',
+      matchedBy: 'snippet',
+      target: { line: 3 }
+    })
+    await expect(prepareSourceNavigation('/vault/Topic.md', { snippet: 'No matching citation.' }, io)).resolves.toEqual({
+      status: 'fallback-top'
+    })
+    await expect(prepareSourceNavigation('/vault/Missing.md', { snippet: 'Missing paragraph.' }, io)).resolves.toEqual({
+      status: 'missing-file'
+    })
   })
 })
 

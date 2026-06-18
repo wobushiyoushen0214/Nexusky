@@ -1,7 +1,7 @@
 import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
 import type { AppLanguage, LongTermTheme, LongTermThemeMembership } from '@shared/types/ipc'
-import { getDatabase } from '../database'
+import { getDatabase, isCurrentDatabaseConnection } from '../database'
 import { aiManager } from '../ai'
 import type { ChatMessage, ChatOptions, ChatStreamEvent } from '../ai'
 import { extractJsonFromText } from '../ai/json'
@@ -24,6 +24,7 @@ export interface ExtractLongTermThemesParams {
   limit?: number
   provider?: ThemeExtractorProvider
   language?: AppLanguage
+  signal?: AbortSignal
 }
 
 interface RelationThemeRow {
@@ -76,14 +77,17 @@ const STOP_WORDS = new Set([
 ])
 
 export async function extractLongTermThemes(params: ExtractLongTermThemesParams): Promise<ThemeExtractionResult> {
-  const db = getDatabase(params.vaultPath)
+  let db = getDatabase(params.vaultPath)
   const candidates = buildThemeCandidates(db, params.changedEntityIds)
     .slice(0, Math.max(1, Math.min(params.limit || 10, 20)))
   let created = 0
   let updated = 0
 
   for (const candidate of candidates) {
-    const draft = await generateThemeDraft(candidate, params.provider, params.language)
+    if (params.signal?.aborted) break
+    const draft = await generateThemeDraft(candidate, params.provider, params.language, params.signal)
+    if (params.signal?.aborted) break
+    db = isCurrentDatabaseConnection(params.vaultPath, db) ? db : getDatabase(params.vaultPath)
     const result = upsertTheme(db, candidate, draft)
     if (result.status === 'created') {
       created += 1
@@ -105,7 +109,8 @@ export async function extractLongTermThemes(params: ExtractLongTermThemesParams)
     }
   }
 
-  if (created > 0 || updated > 0) {
+  if ((created > 0 || updated > 0) && !params.signal?.aborted) {
+    db = isCurrentDatabaseConnection(params.vaultPath, db) ? db : getDatabase(params.vaultPath)
     runThemeProximityForRecentNotes(db, params.vaultPath)
   }
 
@@ -332,13 +337,19 @@ function addThemeEntity(
   entityMap.set(key, existing)
 }
 
-async function generateThemeDraft(candidate: ThemeCandidate, provider?: ThemeExtractorProvider, language: AppLanguage = 'zh-CN'): Promise<ThemeDraft> {
+async function generateThemeDraft(
+  candidate: ThemeCandidate,
+  provider?: ThemeExtractorProvider,
+  language: AppLanguage = 'zh-CN',
+  signal?: AbortSignal
+): Promise<ThemeDraft> {
   const activeProvider = provider || getActiveProvider()
   if (!activeProvider) return fallbackThemeDraft(candidate, language)
 
   let response = ''
   try {
-    for await (const event of activeProvider.chatStream(buildThemeExtractionPrompt(candidate, language), undefined, { temperature: 0 })) {
+    for await (const event of activeProvider.chatStream(buildThemeExtractionPrompt(candidate, language), signal, { temperature: 0 })) {
+      if (signal?.aborted) return fallbackThemeDraft(candidate, language)
       if (event.type === 'text') response += event.content
       if (event.type === 'error') return fallbackThemeDraft(candidate, language)
     }

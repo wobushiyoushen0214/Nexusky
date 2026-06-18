@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import type { LongContextFeedbackType, LongContextInspection, LongContextMemoryTier, LongContextPackItemPayload, LongContextSuggestion, NoteSearchResult } from '@shared/types/ipc'
 import { RelatedContextCard } from './RelatedContextCard'
 import { getRelationTypeLabel } from './LongContextBadge'
+import { applyRelationFeedbackToSuggestions } from './relation-feedback'
 import './long-context.css'
 
 interface RelatedContextPanelProps {
@@ -184,10 +185,10 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
 
   const submitFeedback = useCallback(async (suggestion: LongContextSuggestion, feedbackType: LongContextFeedbackType) => {
     if (!vaultPath) return
+    const previousFeedback = feedbackByRelation[suggestion.relationId]
+    const previousSuggestions = suggestions
     setFeedbackByRelation((prev) => ({ ...prev, [suggestion.relationId]: feedbackType }))
-    if (feedbackType === 'not_related' || feedbackType === 'dismissed' || feedbackType === 'snoozed') {
-      setSuggestions((prev) => prev.filter((item) => item.relationId !== suggestion.relationId))
-    }
+    setSuggestions((prev) => applyRelationFeedbackToSuggestions(prev, suggestion.relationId, feedbackType))
     try {
       await window.api.invoke('long-context:submit-feedback', {
         vaultPath,
@@ -195,9 +196,16 @@ export function RelatedContextPanel({ currentFilePath, content, placement = 'inl
         feedbackType
       })
     } catch (err) {
+      setFeedbackByRelation((prev) => {
+        const next = { ...prev }
+        if (previousFeedback) next[suggestion.relationId] = previousFeedback
+        else delete next[suggestion.relationId]
+        return next
+      })
+      setSuggestions(previousSuggestions)
       toast(getErrorMessage(err, t('relatedContext.feedbackFailed')), 'error')
     }
-  }, [vaultPath, t])
+  }, [feedbackByRelation, suggestions, vaultPath, t])
 
   if (!noteId) return null
 

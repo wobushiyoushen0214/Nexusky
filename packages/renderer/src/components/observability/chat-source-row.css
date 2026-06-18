@@ -175,6 +175,14 @@
   margin-top: 2px;
 }
 
+.chat-source-row__lookup-item .relation-feedback-controls {
+  margin-top: 5px;
+}
+
+.chat-source-row__lookup-item .relation-feedback-controls__status {
+  max-width: 110px;
+}
+
 .chat-source-row__open-target {
   height: 20px;
   margin-top: 2px;

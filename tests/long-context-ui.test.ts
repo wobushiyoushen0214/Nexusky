@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import i18n from '../packages/renderer/src/i18n'
 import { getRelationTypeLabel } from '../packages/renderer/src/components/long-context/LongContextBadge'
+import { applyRelationFeedbackToSuggestions, getRelationFeedbackStatusKey, isSuppressiveRelationFeedback } from '../packages/renderer/src/components/long-context/relation-feedback'
 import { getChatSourceProvenance } from '../packages/renderer/src/components/observability/chat-source-provenance'
-import type { ChatSource } from '../packages/shared/src/types/ipc'
+import type { ChatSource, LongContextSuggestion } from '../packages/shared/src/types/ipc'
 
 describe('long-context UI helpers', () => {
   afterEach(async () => {
@@ -45,5 +46,43 @@ describe('long-context UI helpers', () => {
       explanation: 'Both notes connect AI automation with external tool orchestration.',
       evidence: ['Current note mentions AI automation', 'Tool note explains orchestration']
     })
+  })
+
+  it('keeps relation feedback state visible and hides suppressive feedback locally', async () => {
+    await i18n.changeLanguage('en')
+    const suggestions: LongContextSuggestion[] = [
+      {
+        relationId: 'keep',
+        targetType: 'note',
+        targetId: 'keep-note',
+        targetTitle: 'Keep',
+        targetPath: 'Keep.md',
+        relationType: 'supports_goal',
+        confidence: 0.8,
+        score: 0.7,
+        reason: 'Useful context',
+        evidence: [],
+        lastSeenAt: 1
+      },
+      {
+        relationId: 'hide',
+        targetType: 'note',
+        targetId: 'hide-note',
+        targetTitle: 'Hide',
+        targetPath: 'Hide.md',
+        relationType: 'related_to',
+        confidence: 0.7,
+        score: 0.6,
+        reason: 'Noisy context',
+        evidence: [],
+        lastSeenAt: 1
+      }
+    ]
+
+    expect(isSuppressiveRelationFeedback('useful')).toBe(false)
+    expect(isSuppressiveRelationFeedback('not_related')).toBe(true)
+    expect(applyRelationFeedbackToSuggestions(suggestions, 'keep', 'useful')).toHaveLength(2)
+    expect(applyRelationFeedbackToSuggestions(suggestions, 'hide', 'snoozed').map((item) => item.relationId)).toEqual(['keep'])
+    expect(i18n.t(getRelationFeedbackStatusKey('wrong_reason'))).toBe('Lower ranked')
   })
 })

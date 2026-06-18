@@ -29,7 +29,7 @@ import { buildLongContextPack, type LongContextPackItem } from '../services/long
 import { runProactiveCycle } from '../services/proactive/proactive-orchestrator'
 import { createHash } from 'crypto'
 import type Database from 'better-sqlite3'
-import type { AppLanguage, ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextRelationRefreshResult, LongContextRelationType, LongContextSuggestion, LongContextUserPrefs, LongTermTheme, SearchIndexStatus } from '@shared/types/ipc'
+import type { AppLanguage, ChatEvidenceState, ChatHistoryEntry, ChatHistoryRole, ChatSource, FlashcardQueueItem, FlashcardReviewRating, KanbanAiPlan, KanbanColumn, LongContextCognitiveReviewResult, LongContextEntityType, LongContextFeedbackType, LongContextInspection, LongContextMetrics, LongContextPackItemPayload, LongContextRelationRefreshResult, LongContextRelationType, LongContextSuggestion, LongContextUserPrefs, LongTermTheme, SearchIndexStatus } from '@shared/types/ipc'
 import { resolveAppLanguage } from '../services/app-language'
 
 type KanbanRelationType = KanbanAiPlan['relations'][number]['relationType']
@@ -70,6 +70,27 @@ function parseChatSources(raw: string | null): ChatSource[] | undefined {
       typeof source?.chunk === 'string' &&
       typeof source?.score === 'number'
     ))
+  } catch {
+    return undefined
+  }
+}
+
+function parseChatEvidence(raw: string | null): ChatEvidenceState | undefined {
+  if (!raw) return undefined
+  try {
+    const parsed = JSON.parse(raw) as Partial<ChatEvidenceState>
+    if (parsed.status !== 'local' && parsed.status !== 'none') return undefined
+    if (parsed.reason !== 'retrieval' &&
+      parsed.reason !== 'context_pack' &&
+      parsed.reason !== 'vault_tool' &&
+      parsed.reason !== 'no_vault_sources') {
+      return undefined
+    }
+    return {
+      status: parsed.status,
+      reason: parsed.reason,
+      sourceCount: typeof parsed.sourceCount === 'number' ? parsed.sourceCount : undefined
+    }
   } catch {
     return undefined
   }
@@ -1080,31 +1101,39 @@ export function registerDbIPC(): void {
     const db = getDatabase(params.vaultPath)
     if (params.sessionId) {
       const rows = db.prepare(
-        'SELECT id, role, content, sources, created_at as createdAt FROM conversations WHERE session_id = ? ORDER BY created_at ASC LIMIT 200'
-      ).all(params.sessionId) as { id: number; role: string; content: string; sources: string | null; createdAt: number }[]
+        'SELECT id, role, content, sources, evidence, created_at as createdAt FROM conversations WHERE session_id = ? ORDER BY created_at ASC LIMIT 200'
+      ).all(params.sessionId) as { id: number; role: string; content: string; sources: string | null; evidence: string | null; createdAt: number }[]
       return rows.map((r): ChatHistoryEntry => ({
         id: String(r.id),
         role: normalizeChatRole(r.role),
         content: r.content,
-        sources: parseChatSources(r.sources)
+        sources: parseChatSources(r.sources),
+        evidence: parseChatEvidence(r.evidence)
       }))
     }
     const rows = db.prepare(
-      'SELECT id, role, content, sources, created_at as createdAt FROM conversations WHERE session_id IS NULL ORDER BY created_at ASC LIMIT 200'
-    ).all() as { id: number; role: string; content: string; sources: string | null; createdAt: number }[]
+      'SELECT id, role, content, sources, evidence, created_at as createdAt FROM conversations WHERE session_id IS NULL ORDER BY created_at ASC LIMIT 200'
+    ).all() as { id: number; role: string; content: string; sources: string | null; evidence: string | null; createdAt: number }[]
     return rows.map((r): ChatHistoryEntry => ({
       id: String(r.id),
       role: normalizeChatRole(r.role),
       content: r.content,
-      sources: parseChatSources(r.sources)
+      sources: parseChatSources(r.sources),
+      evidence: parseChatEvidence(r.evidence)
     }))
   })
 
-  ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; sessionId?: string }) => {
+  ipcMain.handle('db:chat-history-append', async (_event, params: { vaultPath: string; role: ChatHistoryRole; content: string; sources?: ChatSource[]; evidence?: ChatEvidenceState; sessionId?: string }) => {
     const db = getDatabase(params.vaultPath)
     const result = db.prepare(
-      'INSERT INTO conversations (role, content, sources, session_id) VALUES (?, ?, ?, ?)'
-    ).run(params.role, params.content, params.sources ? JSON.stringify(params.sources) : null, params.sessionId || null)
+      'INSERT INTO conversations (role, content, sources, evidence, session_id) VALUES (?, ?, ?, ?, ?)'
+    ).run(
+      params.role,
+      params.content,
+      params.sources ? JSON.stringify(params.sources) : null,
+      params.evidence ? JSON.stringify(params.evidence) : null,
+      params.sessionId || null
+    )
     if (params.sessionId) {
       db.prepare('UPDATE chat_sessions SET updated_at = unixepoch() WHERE id = ?').run(params.sessionId)
     }

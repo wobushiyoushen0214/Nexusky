@@ -61,27 +61,32 @@
       "fixLinks": {
         "kicker": "Repair",
         "title": "Resolve {{count}} unresolved links",
-        "desc": "Open the maintenance queue and clean up broken wikilinks."
+        "desc": "Open a Chat draft that lists broken wikilink sources and repair suggestions.",
+        "prompt": "Help me review the {{unresolved}} unresolved wikilinks in this vault. Use local search and the Context Pack, group broken links by source note, suggest likely targets with confidence, and do not write files directly. If a change is useful, explain how it should go through preview or a reversible workflow. Current health: {{notes}} notes, {{links}} links, {{orphans}} isolated notes."
       },
       "reviewStructure": {
         "kicker": "Review",
         "title": "Review {{count}} structure signals",
-        "desc": "Check isolated notes and duplicate titles before they hide useful context."
+        "desc": "Isolated notes open in graph focus; duplicate titles get a Chat review.",
+        "prompt": "Review this vault's structure issues: {{orphans}} isolated notes and {{duplicates}} duplicate-title groups. Explain which issues most affect retrieval, graph clarity, and source trust, then propose previewable fixes. Do not write files directly."
       },
       "reviewTasks": {
         "kicker": "Tasks",
         "title": "Review {{count}} open tasks",
-        "desc": "Open the maintenance queue and decide what still belongs in this vault."
+        "desc": "Open a Chat draft that groups open tasks by source note.",
+        "prompt": "Review the {{tasks}} open Markdown tasks in this vault. Group them by source note, recommend which should stay open, be completed, deferred, or archived, cite the notes you used, and do not modify files directly."
       },
       "reviewMemory": {
         "kicker": "Memory",
         "title": "Review {{count}} notes without Memory Ledger",
-        "desc": "See which notes lack explainable long-context evidence."
+        "desc": "Open a Chat draft that finds the notes most worth adding memory evidence for.",
+        "prompt": "Review the {{missingMemory}} notes without Memory Ledger in this vault. Prioritize the notes most worth adding explainable long-context evidence for, explain why, name related themes, and suggest next steps. Do not create or write memory files directly."
       },
       "reviewStale": {
         "kicker": "Refresh",
         "title": "Review {{count}} stale notes",
-        "desc": "Find old notes that may need links, updates, or archiving."
+        "desc": "Open a Chat draft that finds old notes needing updates, links, or archiving.",
+        "prompt": "Review the {{stale}} notes untouched for more than 60 days. Use local search and the Context Pack to identify which stale notes most need updates, links, or archiving, explain why, and propose previewable next steps. Do not write files directly."
       },
       "browseGraph": {
         "kicker": "Map",
@@ -174,8 +179,21 @@
       "all": "All",
       "suggested": "AI suggests checking {{label}}: {{count}}",
       "focused": "AI is focusing on {{label}}",
+      "askChat": "Ask Chat about {{label}}",
       "collapse": "Collapse maintenance prompt",
       "expand": "Show maintenance prompt",
+      "chatDraft": {
+        "noSamples": "No examples available",
+        "orphans": {
+          "prompt": "Review this graph maintenance signal: isolated notes. Count: {{count}}. Example nodes: {{samples}}. Use local search and the Context Pack to explain why these notes may be isolated, suggest link/tag/structure fixes, cite sources when available, and do not write files directly. If a fix is useful, describe a preview-first or reversible path."
+        },
+        "bridges": {
+          "prompt": "Review this graph maintenance signal: cross-folder bridge paths. Count: {{count}}. Example edges: {{samples}}. Explain which bridges look useful, noisy, or missing stronger authored links. Use local search and the Context Pack, cite sources when available, and do not write files directly. If a fix is useful, describe a preview-first or reversible path."
+        },
+        "inferred": {
+          "prompt": "Review this graph maintenance signal: AI-inferred relations. Count: {{count}}. Example inferred edges: {{samples}}. Explain which inferred relations deserve confirmation, authored links, tags, or dismissal. Use local search and the Context Pack, cite sources when available, and do not write files directly. If a fix is useful, describe a preview-first or reversible path."
+        }
+      },
       "orphans": {
         "label": "Orphans",
         "hint": "Isolated notes"
@@ -236,6 +254,132 @@
       "recentUpdates": "7d Updates",
       "recentUpdatesDetail": "Content is active",
       "recentUpdatesEmpty": "No recent updates"
+    },
+    "quickActions": {
+      "title": "Next actions",
+      "subtitle": "The top three actionable signals from Vault Health.",
+      "boundary": "Opens a route, never writes automatically",
+      "chatTarget": "Chat",
+      "graphTarget": "Graph",
+      "empty": "No priority health actions need review right now."
+    },
+    "boundaryStrip": {
+      "title": "AI and trust boundary",
+      "ai": "AI",
+      "aiDetail": "{{provider}} · {{budget}}",
+      "localStillAvailable": "Files, Search, Graph, and Vault Health stay local."
+    },
+    "usageBoundary": {
+      "title": "AI boundary",
+      "subtitle": "Provider, spend, and Vault tools availability.",
+      "status": {
+        "ready": "Provider set",
+        "needsProvider": "AI needs provider"
+      },
+      "provider": {
+        "label": "Provider",
+        "none": "Not configured",
+        "local": "Local",
+        "remote": "Remote",
+        "detail": "{{scope}} · {{model}}",
+        "noneDetail": "Files, Search, Graph, and Vault Health stay local; AI actions need a provider."
+      },
+      "usage": {
+        "label": "30d usage",
+        "detail": "{{cost}} estimated cost",
+        "partialDetail": "{{cost}} known cost · {{count}} records missing rates",
+        "unknownDetail": "{{count}} records do not expose cost rates"
+      },
+      "budget": {
+        "label": "Budget",
+        "monthly": "{{amount}}/mo",
+        "none": "Not set",
+        "detail": "{{percent}}% used · warn at {{warn}}%",
+        "unknown": "Budget set, cost rates incomplete",
+        "noneDetail": "No monthly AI spend boundary is set."
+      },
+      "tools": {
+        "label": "Vault tools",
+        "status": {
+          "available": "Available",
+          "no-provider": "Needs provider",
+          "unsupported-provider": "Unavailable",
+          "empty": "No tools"
+        },
+        "detail": "Read-only {{readOnly}} · preview {{previewWrite}} · execution {{agentOnly}}",
+        "noProviderDetail": "Tool calling needs an active AI provider.",
+        "unsupportedDetail": "The active provider does not support tool calling.",
+        "emptyDetail": "No Vault tools are registered."
+      }
+    },
+    "recentTrust": {
+      "title": "Recent trust",
+      "subtitle": "Latest AI execution, sync, and recovery signals.",
+      "empty": "No recent reviewable writes, restores, or sync risks.",
+      "attention": "Review needed: {{count}}",
+      "compact": {
+        "quiet": "Quiet",
+        "review": "{{count}} to review"
+      },
+      "status": {
+        "quiet": "Quiet",
+        "review": "Review"
+      },
+      "agent": {
+        "label": "Agent",
+        "status": {
+          "none": "No runs",
+          "previewed": "Preview completed",
+          "applied": "Run applied",
+          "failed": "Run failed",
+          "cancelled": "Run cancelled",
+          "waiting": "Needs review",
+          "running": "In progress"
+        },
+        "detail": {
+          "noneDetail": "No recent Agent preview or execution.",
+          "previewedDetail": "Dry run for \"{{goal}}\" - {{total}} steps.",
+          "appliedDetail": "Applied \"{{goal}}\" - {{total}} steps.",
+          "failedDetail": "\"{{goal}}\" failed: {{error}}",
+          "cancelledDetail": "\"{{goal}}\" was cancelled before completion.",
+          "waitingDetail": "\"{{goal}}\" is waiting for review.",
+          "runningDetail": "\"{{goal}}\" is at step {{current}} of {{total}}."
+        }
+      },
+      "sync": {
+        "label": "Sync",
+        "status": {
+          "unknown": "Unavailable",
+          "notConfigured": "Not configured",
+          "idle": "Idle",
+          "ok": "Synced",
+          "queued": "Offline queue",
+          "conflict": "Conflict",
+          "error": "Sync error"
+        },
+        "detail": {
+          "unknownDetail": "Sync health is not available.",
+          "notConfiguredDetail": "{{provider}} is not configured.",
+          "idleDetail": "No sync run recorded yet.",
+          "okDetail": "{{direction}} completed with {{changed}} changed files.",
+          "queuedDetail": "{{queued}} changes are waiting to sync.",
+          "conflictDetail": "{{conflicts}} conflicts need review.",
+          "errorDetail": "{{error}}"
+        }
+      },
+      "recovery": {
+        "label": "Recovery",
+        "status": {
+          "none": "No recovery item",
+          "recoverable": "Undo available",
+          "remoteDelete": "Remote delete"
+        },
+        "detail": {
+          "noneDetail": "Trash has no recoverable entries.",
+          "recoverableDetail": "\"{{file}}\" can be restored. {{count}} items in trash.",
+          "remoteDeleteDetail": "\"{{file}}\" was moved to trash by remote sync. Restore is available."
+        }
+      }
     },
     "vitality": {
       "title": "Knowledge Vitality",
@@ -344,6 +488,10 @@
       "compact": "Read-only {{readOnly}} · preview {{previewWrite}} · execution {{agentOnly}}",
       "title": "Vault tools available: {{readOnly}} read-only tools, {{previewWrite}} preview-write tools, {{agentOnly}} execution-only tools. Writes still require edit mode, maintenance preview, or reviewable execution.",
       "loading": "Loading Vault tools boundary"
+    },
+    "noVaultEvidence": {
+      "title": "No local source found",
+      "detail": "This answer has no retrieved note or Context Pack citation; any extra guidance should be treated as general knowledge."
     },
     "hints": {
       "citedVaultQuestion": {
@@ -584,6 +732,10 @@
     "openSource": "Open source",
     "openTarget": "Open related note",
     "contextPackReason": "Context Pack reason",
+    "navigation": {
+      "missingFile": "Source file is unavailable or was moved.",
+      "targetNotFound": "Opened the file, but the cited block was not found."
+    },
     "origin": {
       "source": "Source",
       "localSearch": "Local search",
@@ -821,6 +973,16 @@
       "wrongReason": "Wrong reason",
       "snooze": "Snooze",
       "dismiss": "Dismiss"
+    },
+    "feedback": {
+      "lowerRank": "Lower rank",
+      "status": {
+        "useful": "Marked useful",
+        "wrong_reason": "Lower ranked",
+        "snoozed": "Hidden for now",
+        "not_related": "Marked unrelated",
+        "dismissed": "Dismissed"
+      }
     }
   },
   "toolSurface": {

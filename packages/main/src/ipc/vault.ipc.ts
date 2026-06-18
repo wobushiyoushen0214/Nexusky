@@ -8,6 +8,7 @@ import { closeDatabase } from '../services/database'
 import { invalidateVaultQueryCache } from '../services/db-query-cache'
 import { scanVaultHealth } from '../services/vault-health'
 import { createWorkflowSampleVault } from '../services/workflow-samples'
+import { cancelLongContextAnalysis } from '../services/long-context/background'
 import type { WorkflowSampleVaultId } from '@shared/types/ipc'
 
 function addToRecentVaults(vaultPath: string): void {
@@ -17,6 +18,7 @@ function addToRecentVaults(vaultPath: string): void {
 }
 
 function resetVaultRuntimeState(): void {
+  cancelLongContextAnalysis()
   closeDatabase()
   invalidateVaultQueryCache()
 }

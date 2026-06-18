@@ -97,7 +97,8 @@ export function recordContextEvent(params: RecordContextEventParams): void {
   recordHeatmapEvent(params.vaultPath, params.eventType, now)
 }
 
-const DAY_MILLISECONDS = 86400 * 1000
+const DAY_SECONDS = 86_400
+const DAY_MILLISECONDS = DAY_SECONDS * 1000
 const DEFAULT_SERIES_WINDOW_DAYS = 30
 
 export function getLongContextMetrics(params: {
@@ -124,9 +125,10 @@ export function getLongContextMetrics(params: {
     themeCreated: 0
   }
 
-  const seriesRange = resolveSeriesRange(params.since, params.until)
+  const bucketSize = resolveBucketSize(params.since, params.until, rows)
+  const seriesRange = resolveSeriesRange(params.since, params.until, bucketSize)
   const bucketMap = new Map<number, LongContextMetricsBucket>()
-  for (let t = seriesRange.start; t < seriesRange.end; t += DAY_MILLISECONDS) {
+  for (let t = seriesRange.start; t < seriesRange.end; t += bucketSize) {
     bucketMap.set(t, emptyBucket(t))
   }
 
@@ -144,7 +146,7 @@ export function getLongContextMetrics(params: {
       if (feedbackType === 'not_related') counts.suggestionNotRelated += 1
     }
 
-    const bucketStart = Math.floor(row.createdAt / DAY_MILLISECONDS) * DAY_MILLISECONDS
+    const bucketStart = Math.floor(row.createdAt / bucketSize) * bucketSize
     if (bucketStart < seriesRange.start || bucketStart >= seriesRange.end) continue
     const bucket = bucketMap.get(bucketStart)
     if (!bucket) continue
@@ -175,7 +177,7 @@ export function getLongContextMetrics(params: {
       notRelatedRate: ratio(counts.suggestionNotRelated, counts.suggestionShown)
     },
     series: {
-      bucketSizeSec: DAY_MILLISECONDS,
+      bucketSizeSec: DAY_SECONDS,
       buckets
     }
   }
@@ -194,13 +196,20 @@ function emptyBucket(bucketStart: number): LongContextMetricsBucket {
   }
 }
 
-function resolveSeriesRange(since?: number, until?: number): { start: number; end: number } {
+function resolveSeriesRange(since: number | undefined, until: number | undefined, bucketSize: number): { start: number; end: number } {
   const nowMs = Date.now() // 使用毫秒时间戳
   const rawUntil = until ?? nowMs
-  const rawSince = since ?? rawUntil - DEFAULT_SERIES_WINDOW_DAYS * DAY_MILLISECONDS
-  const start = Math.floor(rawSince / DAY_MILLISECONDS) * DAY_MILLISECONDS
-  const endAligned = Math.floor(rawUntil / DAY_MILLISECONDS) * DAY_MILLISECONDS + DAY_MILLISECONDS
-  return { start, end: Math.max(endAligned, start + DAY_MILLISECONDS) }
+  const rawSince = since ?? rawUntil - DEFAULT_SERIES_WINDOW_DAYS * bucketSize
+  const start = Math.floor(rawSince / bucketSize) * bucketSize
+  const endAligned = Math.floor(rawUntil / bucketSize) * bucketSize + bucketSize
+  return { start, end: Math.max(endAligned, start + bucketSize) }
+}
+
+function resolveBucketSize(since: number | undefined, until: number | undefined, rows: ContextEventRow[]): number {
+  const samples = [since, until, ...rows.slice(0, 10).map((row) => row.createdAt)]
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+  if (samples.length === 0) return DAY_MILLISECONDS
+  return samples.some((value) => Math.abs(value) >= 10_000_000_000) ? DAY_MILLISECONDS : DAY_SECONDS
 }
 
 function buildWindowWhere(since?: number, until?: number): { where: string; values: number[] } {

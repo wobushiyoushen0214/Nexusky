@@ -11,7 +11,7 @@ Nexusky 是一个本地优先的 Markdown vault 桌面工作台。它把普通 M
 - **知识网络**：反链、出链、未链接提及、知识图谱、属性视图和时间线围绕同一个 vault 运转。
 - **AI 工作台**：支持 OpenAI、Claude、Ollama、自定义 OpenAI 兼容接口和 Codex CLI；提供 RAG 问答、AI 编辑、批量笔记生成和可审查维护执行。
 - **长期上下文**：系统会沉淀关系、主题和认知复盘，把 Hot / Warm / Cold context 注入 AI 对话，并解释来源。
-- **主动建议与维护队列**：基于长期上下文、任务、孤岛笔记、断链和重复标题等信号，生成可处理的维护建议。
+- **主动建议与健康行动**：基于长期上下文、任务、孤岛笔记、断链和重复标题等信号，生成可处理的维护建议和下一步入口。
 - **Markdown 任务与维护信号**：从 task list、frontmatter、链接和长期上下文中抽取维护候选，独立看板仅保留历史数据兼容。
 - **导入、剪藏、同步与发布**：支持 Obsidian、Notion、Readwise、Pocket、Web Clipper、Supabase、iCloud、OneDrive、WebDAV、S3、HTML/PDF 导出和静态站点发布。
 
@@ -86,6 +86,7 @@ pnpm -C website run build
 - [项目全景文档](docs/PROJECT_OVERVIEW.md)：给维护者和 AI agent 的代码导航与系统说明。
 - [产品上下文](PRODUCT.md)：当前产品取舍、ActivityBar 调整、Canvas/Kanban/Agent 入口决策。
 - [产品改造路线图](docs/PRODUCT_ROADMAP.md)：下一阶段产品改造主线、优先级、指标和不做清单。
+- [详细开发方案](docs/DEVELOPMENT_PLAN.md)：把路线图拆成阶段、任务、涉及文件、验收标准和测试范围。
 - [迁移指南](docs/MIGRATION_GUIDE.md)：Markdown/Obsidian vault 安全打开、备份、忽略规则和 AI 数据边界。
 - [10k+ vault 性能回归](docs/10K_VAULT_PERFORMANCE_REGRESSION.md)：大 vault fixture 生成、手动 UI 回归和可选服务级 smoke 测试。
 - [同步灾难恢复演练](docs/SYNC_DISASTER_RECOVERY_DRILL.md)：本地 fake remote fixture、删除/覆盖/冲突恢复路径和发布前回归标准。

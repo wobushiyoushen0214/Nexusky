@@ -61,27 +61,32 @@
       "fixLinks": {
         "kicker": "修复",
         "title": "修复 {{count}} 个未解析链接",
-        "desc": "打开维护队列，集中处理失效的 wikilink。"
+        "desc": "打开 Chat 草稿，先列出断链来源和修复建议。",
+        "prompt": "请帮我审查这个 vault 的 {{unresolved}} 个未解析 wikilink。使用本地搜索和 Context Pack，先按来源笔记列出断链、可能目标和置信度；不要直接写入文件，如果建议修改，请说明会进入预览或可撤销流程。当前 health：{{notes}} 篇笔记，{{links}} 条链接，{{orphans}} 篇孤立笔记。"
       },
       "reviewStructure": {
         "kicker": "审查",
         "title": "审查 {{count}} 个结构信号",
-        "desc": "检查孤立笔记和重复标题，避免有用上下文被藏起来。"
+        "desc": "孤岛会进入图谱聚焦；重复标题用 Chat 给出处理建议。",
+        "prompt": "请审查这个 vault 的结构问题：{{orphans}} 篇孤立笔记，{{duplicates}} 组重复标题。先解释哪些问题最影响检索、图谱和来源可信度，再给出可预览的修复建议；不要直接写入。"
       },
       "reviewTasks": {
         "kicker": "任务",
         "title": "审查 {{count}} 个未完成任务",
-        "desc": "打开维护队列，判断哪些任务仍然属于当前 vault。"
+        "desc": "打开 Chat 草稿，按来源笔记归类仍需处理的任务。",
+        "prompt": "请审查这个 vault 的 {{tasks}} 个未完成 Markdown task。按来源笔记分组，判断哪些任务应该保留、完成、延期或归档；引用用到的笔记来源，不要直接修改文件。"
       },
       "reviewMemory": {
         "kicker": "记忆",
         "title": "审查 {{count}} 篇缺少记忆账本的笔记",
-        "desc": "查看哪些笔记还缺少可解释的长期上下文证据。"
+        "desc": "打开 Chat 草稿，找出最值得补记忆证据的笔记。",
+        "prompt": "请审查这个 vault 中 {{missingMemory}} 篇缺少 Memory Ledger 的笔记。优先找出最值得补长期上下文证据的笔记，说明原因、相关主题和建议的下一步；不要直接生成或写入记忆文件。"
       },
       "reviewStale": {
         "kicker": "刷新",
         "title": "审查 {{count}} 篇陈旧笔记",
-        "desc": "找到可能需要补链接、更新或归档的旧笔记。"
+        "desc": "打开 Chat 草稿，找出需要更新、补链接或归档的旧笔记。",
+        "prompt": "请审查这个 vault 中 {{stale}} 篇 60 天未更新的笔记。请用本地搜索和 Context Pack 找出最需要更新、补链接或归档的旧笔记，给出原因和可预览的下一步；不要直接写入。"
       },
       "browseGraph": {
         "kicker": "查看",
@@ -174,8 +179,21 @@
       "all": "全部",
       "suggested": "AI 建议检查{{label}}：{{count}}",
       "focused": "AI 正在聚焦{{label}}",
+      "askChat": "用 Chat 审查{{label}}",
       "collapse": "折叠维护提示",
       "expand": "展开维护提示",
+      "chatDraft": {
+        "noSamples": "暂无示例",
+        "orphans": {
+          "prompt": "请审查这个图谱维护信号：孤立笔记。数量：{{count}}。示例节点：{{samples}}。请使用本地搜索和 Context Pack 解释这些笔记为什么可能处于孤岛状态，建议补链接、标签或结构调整；有来源时引用来源，不要直接写入文件。如果建议修复，请说明应进入预览优先或可撤销流程。"
+        },
+        "bridges": {
+          "prompt": "请审查这个图谱维护信号：跨目录桥接路径。数量：{{count}}。示例边：{{samples}}。请判断哪些桥接关系有价值、哪些可能是噪声、哪些需要更明确的人工链接。使用本地搜索和 Context Pack，有来源时引用来源，不要直接写入文件。如果建议修复，请说明应进入预览优先或可撤销流程。"
+        },
+        "inferred": {
+          "prompt": "请审查这个图谱维护信号：AI 推断关系。数量：{{count}}。示例推断边：{{samples}}。请判断哪些推断关系值得确认、补人工链接、补标签或忽略。使用本地搜索和 Context Pack，有来源时引用来源，不要直接写入文件。如果建议修复，请说明应进入预览优先或可撤销流程。"
+        }
+      },
       "orphans": {
         "label": "孤岛",
         "hint": "缺少关系的笔记"
@@ -236,6 +254,132 @@
       "recentUpdates": "近 7 天更新",
       "recentUpdatesDetail": "内容保持活跃",
       "recentUpdatesEmpty": "暂无最近更新"
+    },
+    "quickActions": {
+      "title": "下一步行动",
+      "subtitle": "基于 Vault Health 的前三个可处理信号。",
+      "boundary": "只打开入口，不自动写入",
+      "chatTarget": "Chat",
+      "graphTarget": "图谱",
+      "empty": "当前没有需要优先处理的健康行动。"
+    },
+    "boundaryStrip": {
+      "title": "AI 与信任边界",
+      "ai": "AI",
+      "aiDetail": "{{provider}} · {{budget}}",
+      "localStillAvailable": "Files、Search、Graph 和 Vault Health 仍在本地可用。"
+    },
+    "usageBoundary": {
+      "title": "AI 使用边界",
+      "subtitle": "提供商、预算和 Vault 工具可用性。",
+      "status": {
+        "ready": "已设置提供商",
+        "needsProvider": "AI 需要提供商"
+      },
+      "provider": {
+        "label": "提供商",
+        "none": "未配置",
+        "local": "本地",
+        "remote": "远程",
+        "detail": "{{scope}} · {{model}}",
+        "noneDetail": "Files、Search、Graph 和 Vault Health 仍在本地可用；AI 行动需要配置提供商。"
+      },
+      "usage": {
+        "label": "近 30 天",
+        "detail": "估算成本 {{cost}}",
+        "partialDetail": "已知成本 {{cost}} · {{count}} 条记录缺少费率",
+        "unknownDetail": "{{count}} 条记录没有可用费率"
+      },
+      "budget": {
+        "label": "预算",
+        "monthly": "{{amount}}/月",
+        "none": "未设置",
+        "detail": "已用 {{percent}}% · {{warn}}% 提醒",
+        "unknown": "已设置预算，但成本费率不完整",
+        "noneDetail": "尚未设置每月 AI 花费边界。"
+      },
+      "tools": {
+        "label": "Vault 工具",
+        "status": {
+          "available": "可用",
+          "no-provider": "需要提供商",
+          "unsupported-provider": "不可用",
+          "empty": "无工具"
+        },
+        "detail": "只读 {{readOnly}} · 预览 {{previewWrite}} · 执行 {{agentOnly}}",
+        "noProviderDetail": "工具调用需要启用 AI 提供商。",
+        "unsupportedDetail": "当前提供商不支持 tool calling。",
+        "emptyDetail": "当前没有注册 Vault 工具。"
+      }
+    },
+    "recentTrust": {
+      "title": "最近可信记录",
+      "subtitle": "最近 AI 执行、同步和恢复信号。",
+      "empty": "最近没有需要审查的写入、恢复或同步风险。",
+      "attention": "需要审查：{{count}} 项",
+      "compact": {
+        "quiet": "平稳",
+        "review": "{{count}} 项待审"
+      },
+      "status": {
+        "quiet": "平稳",
+        "review": "待审查"
+      },
+      "agent": {
+        "label": "Agent",
+        "status": {
+          "none": "暂无运行",
+          "previewed": "预览完成",
+          "applied": "已应用",
+          "failed": "执行失败",
+          "cancelled": "已取消",
+          "waiting": "等待审查",
+          "running": "执行中"
+        },
+        "detail": {
+          "noneDetail": "最近没有 Agent 预览或执行记录。",
+          "previewedDetail": "“{{goal}}”的 dry run 已完成，共 {{total}} 步。",
+          "appliedDetail": "已应用“{{goal}}”，共 {{total}} 步。",
+          "failedDetail": "“{{goal}}”失败：{{error}}",
+          "cancelledDetail": "“{{goal}}”在完成前已取消。",
+          "waitingDetail": "“{{goal}}”正在等待审查。",
+          "runningDetail": "“{{goal}}”执行到第 {{current}} / {{total}} 步。"
+        }
+      },
+      "sync": {
+        "label": "同步",
+        "status": {
+          "unknown": "不可用",
+          "notConfigured": "未配置",
+          "idle": "空闲",
+          "ok": "已同步",
+          "queued": "离线队列",
+          "conflict": "有冲突",
+          "error": "同步错误"
+        },
+        "detail": {
+          "unknownDetail": "当前无法读取同步健康状态。",
+          "notConfiguredDetail": "{{provider}} 尚未配置。",
+          "idleDetail": "尚未记录同步运行。",
+          "okDetail": "{{direction}} 已完成，变更 {{changed}} 个文件。",
+          "queuedDetail": "{{queued}} 个变更等待同步。",
+          "conflictDetail": "{{conflicts}} 个冲突需要审查。",
+          "errorDetail": "{{error}}"
+        }
+      },
+      "recovery": {
+        "label": "恢复",
+        "status": {
+          "none": "暂无恢复项",
+          "recoverable": "可撤销",
+          "remoteDelete": "远端删除"
+        },
+        "detail": {
+          "noneDetail": "回收站没有可恢复条目。",
+          "recoverableDetail": "“{{file}}”可以恢复；回收站共 {{count}} 项。",
+          "remoteDeleteDetail": "“{{file}}”因远端同步被移入回收站，可恢复。"
+        }
+      }
     },
     "vitality": {
       "title": "知识活力",
@@ -344,6 +488,10 @@
       "compact": "只读 {{readOnly}} · 预览 {{previewWrite}} · 执行 {{agentOnly}}",
       "title": "Vault 工具清单：{{readOnly}} 个只读工具，{{previewWrite}} 个预览写入工具，{{agentOnly}} 个执行型工具。写入仍需进入编辑模式、维护预览或可审查执行。",
       "loading": "正在读取 Vault 工具边界"
+    },
+    "noVaultEvidence": {
+      "title": "未找到本地来源",
+      "detail": "这条回答没有检索笔记或 Context Pack 引用；额外建议应按通用知识理解。"
     },
     "hints": {
       "citedVaultQuestion": {
@@ -584,6 +732,10 @@
     "openSource": "打开来源",
     "openTarget": "打开关联笔记",
     "contextPackReason": "上下文包原因",
+    "navigation": {
+      "missingFile": "来源文件不可用，可能已被移动。",
+      "targetNotFound": "已打开文件，但未找到引用片段。"
+    },
     "origin": {
       "source": "来源",
       "localSearch": "本地搜索",
@@ -821,6 +973,16 @@
       "wrongReason": "原因不对",
       "snooze": "稍后",
       "dismiss": "忽略"
+    },
+    "feedback": {
+      "lowerRank": "降权",
+      "status": {
+        "useful": "已标记有用",
+        "wrong_reason": "已降权",
+        "snoozed": "已暂时隐藏",
+        "not_related": "已标记不相关",
+        "dismissed": "已忽略"
+      }
     }
   },
   "toolSurface": {

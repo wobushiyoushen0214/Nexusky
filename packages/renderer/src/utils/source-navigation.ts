@@ -8,6 +8,24 @@ export interface SourceNavigationTargetInput {
   snippet?: string
 }
 
+export type SourceNavigationStatus = 'targeted' | 'fallback-top' | 'file-only' | 'missing-file'
+export type SourceNavigationMatch = 'line' | 'blockId' | 'heading' | 'snippet'
+
+export interface SourceNavigationResult {
+  status: SourceNavigationStatus
+  target?: SourceNavigationTargetInput
+  matchedBy?: SourceNavigationMatch
+}
+
+export interface ChatSourceNavigationResult extends SourceNavigationResult {
+  filePath: string | null
+}
+
+export interface SourceNavigationIO {
+  statFile?: (path: string) => Promise<unknown>
+  readFile?: (path: string) => Promise<string>
+}
+
 function isAbsolutePath(filePath: string): boolean {
   return filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath)
 }
@@ -51,6 +69,95 @@ export function buildChatSourceNavigationTarget(source: ChatSource): SourceNavig
 
   if (!line && !endLine && !heading && !blockId && !snippet) return undefined
   return { line, endLine, heading, blockId, snippet }
+}
+
+function hasLineTarget(target: SourceNavigationTargetInput): boolean {
+  return Boolean(cleanPositiveInteger(target.line) || cleanPositiveInteger(target.endLine))
+}
+
+function cleanNavigationTarget(target: SourceNavigationTargetInput | undefined): SourceNavigationTargetInput | undefined {
+  if (!target) return undefined
+  const line = cleanPositiveInteger(target.line)
+  const endLine = cleanPositiveInteger(target.endLine)
+  const heading = cleanText(target.heading)
+  const blockId = cleanText(target.blockId)
+  const snippet = cleanText(target.snippet)
+  if (!line && !endLine && !heading && !blockId && !snippet) return undefined
+  return { line, endLine, heading, blockId, snippet }
+}
+
+async function defaultStatFile(path: string): Promise<unknown> {
+  return window.api.invoke('file:stat', { path })
+}
+
+async function defaultReadFile(path: string): Promise<string> {
+  return window.api.invoke('file:read', { path })
+}
+
+export function resolveNavigationTargetFromContent(
+  content: string,
+  target: SourceNavigationTargetInput | undefined
+): SourceNavigationResult {
+  const cleanTarget = cleanNavigationTarget(target)
+  if (!cleanTarget) return { status: 'file-only' }
+  if (hasLineTarget(cleanTarget)) return { status: 'targeted', target: cleanTarget, matchedBy: 'line' }
+
+  if (cleanTarget.blockId) {
+    const line = findMarkdownLineForBlockId(content, cleanTarget.blockId)
+    if (line) return { status: 'targeted', target: { ...cleanTarget, line }, matchedBy: 'blockId' }
+  }
+  if (cleanTarget.heading) {
+    const line = findMarkdownLineForHeading(content, cleanTarget.heading)
+    if (line) return { status: 'targeted', target: { ...cleanTarget, line }, matchedBy: 'heading' }
+  }
+  if (cleanTarget.snippet) {
+    const line = findMarkdownLineForSnippet(content, cleanTarget.snippet)
+    if (line) return { status: 'targeted', target: { ...cleanTarget, line }, matchedBy: 'snippet' }
+  }
+
+  return { status: 'fallback-top' }
+}
+
+export async function prepareSourceNavigation(
+  filePath: string,
+  target?: SourceNavigationTargetInput,
+  io: SourceNavigationIO = {}
+): Promise<SourceNavigationResult> {
+  const path = cleanText(filePath)
+  if (!path) return { status: 'missing-file' }
+
+  const statFile = io.statFile ?? defaultStatFile
+  const readFile = io.readFile ?? defaultReadFile
+
+  if (statFile) {
+    try {
+      await statFile(path)
+    } catch {
+      return { status: 'missing-file' }
+    }
+  }
+
+  const cleanTarget = cleanNavigationTarget(target)
+  if (!cleanTarget) return { status: 'file-only' }
+  if (hasLineTarget(cleanTarget)) return { status: 'targeted', target: cleanTarget, matchedBy: 'line' }
+
+  try {
+    const content = await readFile(path)
+    return resolveNavigationTargetFromContent(content, cleanTarget)
+  } catch {
+    return { status: 'missing-file' }
+  }
+}
+
+export async function prepareChatSourceNavigation(
+  vaultPath: string | null | undefined,
+  source: ChatSource,
+  io?: SourceNavigationIO
+): Promise<ChatSourceNavigationResult> {
+  const filePath = resolveVaultSourcePath(vaultPath, source.filePath)
+  if (!filePath) return { filePath: null, status: 'missing-file' }
+  const result = await prepareSourceNavigation(filePath, buildChatSourceNavigationTarget(source), io)
+  return { ...result, filePath }
 }
 
 export function normalizeSourceNavigationText(text: string): string {

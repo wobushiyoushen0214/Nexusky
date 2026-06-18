@@ -7,6 +7,8 @@ import type { EntityType } from './relation-candidates'
 import type { RelationType } from './relation-classifier'
 import { getLongContextPrefs } from './long-context-prefs'
 
+const DAY_MS = 86_400 * 1000
+
 export type RelationStatus = 'active' | 'dismissed' | 'archived' | 'wrong'
 export type RelationFeedbackType = 'useful' | 'not_related' | 'wrong_reason' | 'dismissed' | 'snoozed'
 
@@ -250,7 +252,7 @@ export function refreshRelationScores(params: {
         halfLifeDays: prefs.decayHalfLifeDays
       })
       const score = applyFeedbackAndStatusPenalty(baseScore, row.status, feedback)
-      const daysSinceSeen = Math.max(0, (now - row.last_seen_at) / 86_400)
+      const daysSinceSeen = Math.max(0, (normalizeTimestamp(now) - normalizeTimestamp(row.last_seen_at)) / DAY_MS)
       const nextStatus = row.status === 'active' && daysSinceSeen >= archiveAfterDays && score <= archiveScoreThreshold
         ? 'archived'
         : row.status
@@ -390,4 +392,8 @@ function applyFeedbackAndStatusPenalty(score: number, status: RelationStatus, fe
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
+}
+
+function normalizeTimestamp(value: number): number {
+  return Math.abs(value) < 10_000_000_000 ? value * 1000 : value
 }

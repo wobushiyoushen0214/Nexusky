@@ -1,11 +1,12 @@
 import { type ReactNode, memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import type { ChatSource } from '@shared/types/ipc'
+import type { ChatEvidenceState, ChatSource } from '@shared/types/ipc'
 import { MARKDOWN_PURIFY_CONFIG } from '../../utils/sanitize-html'
 import { isBatchPlanContent, parseBatchPlanLine } from './batch-progress'
 import { ChatSourceRow } from '../observability/ChatSourceRow'
@@ -26,6 +27,7 @@ export interface Message {
   role: 'user' | 'assistant'
   content: string
   sources?: ChatSource[]
+  evidence?: ChatEvidenceState
   attachments?: { type: 'note' | 'selection' | 'image' | 'document'; label: string }[]
 }
 
@@ -36,6 +38,7 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, onContinue }: MessageBubbleProps) {
+  const { t } = useTranslation()
   const isPlanList = msg.role === 'assistant' && isBatchPlanContent(msg.content)
 
   return (
@@ -98,6 +101,12 @@ export const MessageBubble = memo(function MessageBubble({ msg, onRegenerate, on
         </div>
         {msg.role === 'assistant' && (
           <MessageActionBar content={msg.content} onRegenerate={onRegenerate ? () => onRegenerate(msg) : undefined} onContinue={onContinue ? () => onContinue(msg) : undefined} />
+        )}
+        {msg.role === 'assistant' && msg.evidence?.status === 'none' && (
+          <div className="message-evidence-notice" role="status">
+            <span>{t('chatMessages.noVaultEvidence.title')}</span>
+            <small>{t('chatMessages.noVaultEvidence.detail')}</small>
+          </div>
         )}
         {msg.sources && msg.sources.length > 0 && (
           <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>

@@ -22,6 +22,7 @@ import { buildDocumentAttachmentContext, createDocumentAttachment, createDocumen
 import { createEditableBatchPlanItem, MAX_EDITABLE_BATCH_NOTE_COUNT, normalizeEditableBatchCount, normalizeEditableBatchPlan } from './batch-plan'
 import { isCurrentBatchOperation, shouldApplyBatchOperationUpdate, shouldApplyBatchProgressEvent } from './batch-operation'
 import { stopPendingBatchPlanContent } from './batch-progress'
+import { buildChatEvidenceFromSources } from './chat-evidence'
 import { shouldApplyAiEditStreamEvent, type AiEditStreamEvent } from './edit-stream'
 import { summarizeVaultToolsBoundary, type VaultToolsBoundarySummary } from './vault-tools-boundary'
 import { getVaultToolsAvailability, type VaultToolsAvailability } from './vault-tools-capability'
@@ -29,7 +30,7 @@ import { formatAiProviderError } from '../../utils/ai-provider-errors'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { safeGet, safeRemove, safeSet } from '../../utils/storage'
 import type { Message } from './MessageBubble'
-import type { AIOutboundPreview, AIOutboundPreviewSnippet, ChatContentPart, ChatSource, GeneratedNoteBatchPlanItem, IPCChannelMap, IPCChatMessage } from '@shared/types/ipc'
+import type { AIOutboundPreview, AIOutboundPreviewSnippet, ChatContentPart, ChatEvidenceState, ChatSource, GeneratedNoteBatchPlanItem, IPCChannelMap, IPCChatMessage } from '@shared/types/ipc'
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
@@ -243,6 +244,7 @@ export function ChatPanel() {
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const language = useUIStore((s) => s.language)
   const pendingSourcesRef = useRef<ChatSource[]>([])
+  const pendingEvidenceRef = useRef<ChatEvidenceState | null>(null)
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const isStreamingRef = useRef(false)
@@ -362,7 +364,7 @@ export function ChatPanel() {
     window.api.invoke('db:chat-sessions-list', { vaultPath }).then(setSessions).catch(() => {})
     window.api.invoke('db:chat-history-load', { vaultPath, sessionId: currentSessionId || undefined }).then((rows) => {
       if (rows && rows.length > 0) {
-        setMessages(rows.map((r) => ({ id: r.id, role: r.role, content: r.content, sources: r.sources })))
+        setMessages(rows.map((r) => ({ id: r.id, role: r.role, content: r.content, sources: r.sources, evidence: r.evidence })))
       } else {
         setMessages([])
       }
@@ -371,14 +373,14 @@ export function ChatPanel() {
 
   const appendToDb = useCallback((msg: Message) => {
     if (!vaultPath) return
-    window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources, sessionId: currentSessionId || undefined }).catch(() => {})
+    window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources, evidence: msg.evidence, sessionId: currentSessionId || undefined }).catch(() => {})
   }, [vaultPath, currentSessionId])
 
   const rewriteDbHistory = useCallback(async (nextMessages: Message[]) => {
     if (!vaultPath) return
     await window.api.invoke('db:chat-history-clear', { vaultPath, sessionId: currentSessionId || undefined })
     for (const msg of nextMessages) {
-      await window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources, sessionId: currentSessionId || undefined })
+      await window.api.invoke('db:chat-history-append', { vaultPath, role: msg.role, content: msg.content, sources: msg.sources, evidence: msg.evidence, sessionId: currentSessionId || undefined })
     }
   }, [vaultPath, currentSessionId])
 
@@ -541,6 +543,7 @@ export function ChatPanel() {
         streamContentRef.current = ''
         setStreamContent('')
         pendingSourcesRef.current = []
+        pendingEvidenceRef.current = null
         setIsStreaming(false)
       } else if (event.type === 'retry') {
         setToolStatus(event.content)
@@ -563,13 +566,15 @@ export function ChatPanel() {
     if (prevStreaming.current && !isStreaming) {
       if (streamContentRef.current && !editCompleteRef.current) {
         const sources = pendingSourcesRef.current.length > 0 ? [...pendingSourcesRef.current] : undefined
-        const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContentRef.current, sources }
+        const evidence = pendingEvidenceRef.current ?? (sources ? buildChatEvidenceFromSources(sources) : undefined)
+        const msg: Message = { id: Date.now().toString(), role: 'assistant', content: streamContentRef.current, sources, evidence }
         setMessages((msgs) => [...msgs, msg])
         appendToDb(msg)
         streamContentRef.current = ''
         setStreamContent('')
       }
       pendingSourcesRef.current = []
+      pendingEvidenceRef.current = null
     }
     editCompleteRef.current = false
     prevStreaming.current = isStreaming
@@ -588,7 +593,17 @@ export function ChatPanel() {
   }, [])
 
   useEffect(() => {
-    const cleanup = window.api.onAiSources((sources) => { pendingSourcesRef.current = sources })
+    const cleanup = window.api.onAiSources((sources) => {
+      pendingSourcesRef.current = sources
+      pendingEvidenceRef.current = buildChatEvidenceFromSources(sources) ?? null
+    })
+    return () => { cleanup() }
+  }, [])
+
+  useEffect(() => {
+    const cleanup = window.api.onAiEvidence((evidence) => {
+      pendingEvidenceRef.current = evidence
+    })
     return () => { cleanup() }
   }, [])
 
@@ -638,6 +653,7 @@ export function ChatPanel() {
     batchOperationIdRef.current += 1
     batchCancelledRef.current = false
     pendingSourcesRef.current = []
+    pendingEvidenceRef.current = null
     streamContentRef.current = ''
     setStreamContent('')
     setEditStreamContent('')
@@ -655,6 +671,7 @@ export function ChatPanel() {
         streamContentRef.current = ''
         setStreamContent('')
         pendingSourcesRef.current = []
+        pendingEvidenceRef.current = null
         setIsStreaming(false)
         setToolStatus(null)
         appendAssistantMessage('已停止。')
@@ -664,6 +681,7 @@ export function ChatPanel() {
       streamContentRef.current = ''
       setStreamContent('')
       pendingSourcesRef.current = []
+      pendingEvidenceRef.current = null
       setIsStreaming(false)
     }
   }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast, t])
@@ -696,6 +714,7 @@ export function ChatPanel() {
     batchOperationIdRef.current += 1
     batchCancelledRef.current = false
     pendingSourcesRef.current = []
+    pendingEvidenceRef.current = null
     streamContentRef.current = msg.content
     setStreamContent(msg.content)
     setEditStreamContent('')
@@ -714,6 +733,7 @@ export function ChatPanel() {
         streamContentRef.current = ''
         setStreamContent('')
         pendingSourcesRef.current = []
+        pendingEvidenceRef.current = null
         setIsStreaming(false)
         setToolStatus(null)
         appendAssistantMessage('已停止。')
@@ -723,6 +743,7 @@ export function ChatPanel() {
       streamContentRef.current = ''
       setStreamContent('')
       pendingSourcesRef.current = []
+      pendingEvidenceRef.current = null
       setIsStreaming(false)
     }
   }, [messages, isStreaming, vaultPath, rewriteDbHistory, agentMode, currentFilePath, language, appendAssistantMessage, showNoAiProviderToast, t])
@@ -961,6 +982,8 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     }
     window.api.invoke('ai:stop', undefined).catch(() => {})
     isStreamingRef.current = false
+    pendingSourcesRef.current = []
+    pendingEvidenceRef.current = null
     setIsStreaming(false)
     setToolStatus(null)
     setEditStreamContent('')
@@ -1223,6 +1246,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     streamContentRef.current = ''
     setStreamContent('')
     pendingSourcesRef.current = []
+    pendingEvidenceRef.current = null
     setEditStreamContent('')
     if (editTimerRef.current) clearInterval(editTimerRef.current)
     editTimerRef.current = null
@@ -1459,6 +1483,7 @@ Discard: greetings, repeated confirmations, old plans superseded by later decisi
     setAttachedDocuments([])
     setIsStreaming(true)
     pendingSourcesRef.current = []
+    pendingEvidenceRef.current = null
     streamContentRef.current = ''
     setStreamContent('')
     setEditStreamContent('')

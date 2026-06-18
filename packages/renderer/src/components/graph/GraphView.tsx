@@ -7,12 +7,14 @@ import { useEditorStore } from '../../stores/editor-store'
 import { useUIStore } from '../../stores/ui-store'
 import { getErrorMessage, isCancellationError } from '../../utils/errors'
 import { ConfirmModal } from '../ConfirmModal'
+import { queueAiCommandDraft } from '../ai/ai-command-draft'
 import { Button } from '../ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../ui/empty'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { GraphMaintenanceNudge } from './GraphMaintenanceNudge'
 import { GraphPanel } from './GraphPanel'
 import { buildGraphGroupColorMap } from './graph-colors'
+import { buildGraphMaintenanceChatDraft, type GraphMaintenanceChatFocus } from './graph-maintenance-chat'
 import {
   DEFAULT_GRAPH_DISPLAY_STATE,
   buildGraphMaintenanceSignals,
@@ -670,6 +672,9 @@ export function GraphView() {
   const openFile = useEditorStore((s) => s.openFile)
   const currentFilePath = useEditorStore((s) => s.currentFilePath)
   const setMainView = useUIStore((s) => s.setMainView)
+  const setRightPanel = useUIStore((s) => s.setRightPanel)
+  const pendingGraphMaintenanceFocus = useUIStore((s) => s.pendingGraphMaintenanceFocus)
+  const consumePendingGraphMaintenanceFocus = useUIStore((s) => s.consumePendingGraphMaintenanceFocus)
 
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [layout, setLayout] = useState<GraphLayoutState>({
@@ -755,8 +760,7 @@ export function GraphView() {
     [maintenanceFocus, maintenanceSignals]
   )
 
-  const handleSetMaintenanceFocus = useCallback((next: GraphMaintenanceFocus) => {
-    setMaintenanceFocus((current) => current === next ? 'all' : next)
+  const configureMaintenanceFocusDisplay = useCallback((next: GraphMaintenanceFocus) => {
     if (next === 'orphans') {
       setShowOrphans(true)
       setMinLinks(0)
@@ -771,6 +775,29 @@ export function GraphView() {
       setMinLinks(0)
     }
   }, [])
+
+  const applyMaintenanceFocus = useCallback((next: GraphMaintenanceFocus, toggle = false) => {
+    setMaintenanceFocus((current) => toggle && current === next ? 'all' : next)
+    configureMaintenanceFocusDisplay(next)
+  }, [configureMaintenanceFocusDisplay])
+
+  const handleSetMaintenanceFocus = useCallback((next: GraphMaintenanceFocus) => {
+    applyMaintenanceFocus(next, true)
+  }, [applyMaintenanceFocus])
+
+  const handleAskMaintenanceChat = useCallback((next: GraphMaintenanceChatFocus) => {
+    if (!maintenanceSignals) return
+    const draft = buildGraphMaintenanceChatDraft({ focus: next, signals: maintenanceSignals, t })
+    if (!draft) return
+    queueAiCommandDraft(draft, () => setRightPanel('chat'))
+  }, [maintenanceSignals, setRightPanel, t])
+
+  useEffect(() => {
+    if (!pendingGraphMaintenanceFocus) return
+    const pending = consumePendingGraphMaintenanceFocus()
+    if (!pending) return
+    applyMaintenanceFocus(pending)
+  }, [applyMaintenanceFocus, consumePendingGraphMaintenanceFocus, pendingGraphMaintenanceFocus])
 
   const loadGraph = useCallback(() => {
     if (!vaultPath) return
@@ -1510,6 +1537,7 @@ export function GraphView() {
           signals={maintenanceSignals}
           focus={maintenanceFocus}
           onSetFocus={handleSetMaintenanceFocus}
+          onAskChat={handleAskMaintenanceChat}
         />
 
         <div

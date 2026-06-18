@@ -54,6 +54,10 @@ export function getDatabase(vaultPath: string): Database.Database {
   return db
 }
 
+export function isCurrentDatabaseConnection(vaultPath: string, candidate: Database.Database): boolean {
+  return db === candidate && currentVaultPath === vaultPath && candidate.open
+}
+
 export function closeDatabase(): void {
   if (db) {
     db.close()
@@ -189,6 +193,7 @@ function initSchema(db: Database.Database): void {
       role TEXT NOT NULL,
       content TEXT NOT NULL,
       sources TEXT,
+      evidence TEXT,
       session_id TEXT DEFAULT NULL,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -534,6 +539,7 @@ function repairExistingSchema(db: Database.Database): void {
   ensureColumn(db, 'chunks', 'heading_context', 'heading_context TEXT')
   ensureColumn(db, 'chunks', 'token_count', 'token_count INTEGER')
   ensureColumn(db, 'conversations', 'sources', 'sources TEXT')
+  ensureColumn(db, 'conversations', 'evidence', 'evidence TEXT')
   ensureColumn(db, 'conversations', 'session_id', 'session_id TEXT DEFAULT NULL')
 
   ensureColumn(db, 'chat_sessions', 'title', "title TEXT NOT NULL DEFAULT ''")

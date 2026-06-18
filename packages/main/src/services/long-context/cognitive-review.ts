@@ -76,7 +76,7 @@ const RESURFACED_AFTER_MILLISECONDS = 30 * 86_400 * 1000
 export function generateCognitiveReview(params: GenerateCognitiveReviewParams): CognitiveReviewResult {
   const db = getDatabase(params.vaultPath)
   const until = params.until ?? Date.now() // 使用毫秒时间戳
-  const since = params.since ?? until - WEEK_MILLISECONDS
+  const since = params.since ?? until - normalizeDurationForTimestamp(until, WEEK_MILLISECONDS)
   const generatedAt = Date.now() // 使用毫秒时间戳
 
   const newRelations = getNewRelations(db, since, until)
@@ -166,7 +166,7 @@ function getResurfacedContexts(db: Database.Database, since: number, until: numb
       AND first_seen_at <= ?
     ORDER BY score DESC, last_seen_at DESC
     LIMIT 8
-  `).all(since, until, since - RESURFACED_AFTER_MILLISECONDS) as RelationReviewRow[]
+  `).all(since, until, since - normalizeDurationForTimestamp(since, RESURFACED_AFTER_MILLISECONDS)) as RelationReviewRow[]
 }
 
 function getThemeChanges(db: Database.Database, since: number, until: number): ThemeReviewRow[] {
@@ -392,9 +392,19 @@ function parseStringArray(value: string): string[] {
 }
 
 function formatDate(value: number): string {
-  return new Date(value * 1000).toISOString().slice(0, 10)
+  return new Date(normalizeTimestamp(value)).toISOString().slice(0, 10)
 }
 
 function formatDateTime(value: number): string {
-  return new Date(value * 1000).toISOString().replace('T', ' ').slice(0, 16)
+  return new Date(normalizeTimestamp(value)).toISOString().replace('T', ' ').slice(0, 16)
+}
+
+function normalizeTimestamp(value: number): number {
+  return Math.abs(value) < 10_000_000_000 ? value * 1000 : value
+}
+
+function normalizeDurationForTimestamp(referenceTimestamp: number, durationMilliseconds: number): number {
+  return Math.abs(referenceTimestamp) < 10_000_000_000
+    ? Math.floor(durationMilliseconds / 1000)
+    : durationMilliseconds
 }

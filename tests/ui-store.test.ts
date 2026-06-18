@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const WORKSPACE_DEFAULT_VERSION = 'overview-first-v5'
+const WORKSPACE_DEFAULT_VERSION = 'overview-first-v8'
 
 function installLocalStorageMock() {
   const store = new Map<string, string>()
@@ -124,6 +124,24 @@ describe('ui store workspace widths', () => {
     expect(JSON.parse(localStorage.getItem('nexusky-workspace-layouts') || '{}')).toEqual({
       'workspace:/vault/memory': { mainView: 'memory', rightPanel: 'none', sidebarCollapsed: true },
     })
+  })
+
+  it('opens graph with a consumable maintenance focus', async () => {
+    const { useUIStore } = await import('../packages/renderer/src/stores/ui-store')
+    const store = useUIStore.getState()
+
+    store.setWorkspaceScope('workspace:/vault/graph-focus')
+    store.setMainView('editor')
+    store.setRightPanel('tags')
+    store.focusGraphMaintenance('orphans')
+
+    expect(useUIStore.getState().mainView).toBe('graph')
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+    expect(useUIStore.getState().rightPanel).toBe('none')
+    expect(useUIStore.getState().pendingGraphMaintenanceFocus).toBe('orphans')
+    expect(useUIStore.getState().consumePendingGraphMaintenanceFocus()).toBe('orphans')
+    expect(useUIStore.getState().pendingGraphMaintenanceFocus).toBeNull()
+    expect(useUIStore.getState().consumePendingGraphMaintenanceFocus()).toBeNull()
   })
 
   it('keeps note-scoped right panels unavailable outside the editor view', async () => {
