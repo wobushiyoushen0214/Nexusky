@@ -6,7 +6,7 @@ import { renderMarkdownCallouts } from '@shared/markdown/callouts'
 import { renderMarkdownFootnotes } from '@shared/markdown/footnotes'
 import { renderMarkdownHighlights } from '@shared/markdown/highlights'
 import { stripMarkdownComments } from '@shared/markdown/comments'
-import { PUBLISH_MANIFEST_REL_PATH, buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishAccessOutputs, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishRobotsMeta, getPublishScopeLabel, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishOutputFile, type PublishWikilinkLookup } from '../services/publish'
+import { PUBLISH_MANIFEST_REL_PATH, buildPublishWikilinkLookup, collectPublishPreviewIssues, collectPublishPreviewRisks, createPublishAccessOutputs, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishRobotsMeta, getPublishScopeLabel, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText, type PublishCandidate, type PublishOutputFile, type PublishWikilinkLookup } from '../services/publish'
 import { getPropertyRows } from '../services/indexer'
 import { store } from '../services/store'
 import type { PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
@@ -160,7 +160,7 @@ ${markdownToHtml(params.content)}
 
   ipcMain.handle('export:preview-publish-vault', async (event, params: { vaultPath: string; scope?: PublishScope }) => {
     const window = BrowserWindow.fromWebContents(event.sender)
-    if (!window) return { scopeLabel: '全部 vault', notes: [], assets: [], linkCount: 0, missingLinks: [], missingAssets: [] }
+    if (!window) return { scopeLabel: '全部 vault', notes: [], assets: [], linkCount: 0, missingLinks: [], missingAssets: [], risks: [] }
     return toRendererPublishPreview(await buildPublishPreview(params.vaultPath, params.scope))
   })
 
@@ -454,7 +454,8 @@ async function buildPublishPreview(root: string, scope?: PublishScope): Promise<
     assets: Array.from(scopedAssets).sort((a, b) => a.localeCompare(b)),
     linkCount,
     missingLinks,
-    missingAssets
+    missingAssets,
+    risks: collectPublishPreviewRisks(scopedNotes, missingLinks, missingAssets)
   }
 }
 
@@ -465,7 +466,8 @@ function toRendererPublishPreview(preview: PublishPreviewData): PublishPreviewRe
     assets: preview.assets,
     linkCount: preview.linkCount,
     missingLinks: preview.missingLinks,
-    missingAssets: preview.missingAssets
+    missingAssets: preview.missingAssets,
+    risks: preview.risks
   }
 }
 

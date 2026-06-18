@@ -104,7 +104,8 @@ describe('accessibility component semantics', () => {
       pulled: 2,
       conflicts: 0,
       errors: 1,
-      lastError: 'timeout'
+      lastError: 'timeout',
+      preflightRisks: []
     }
     const html = renderToStaticMarkup(createElement(CloudSyncHealthPanel, {
       health,
@@ -232,7 +233,11 @@ describe('accessibility component semantics', () => {
         target: 'assets/missing.png',
         line: 4,
         context: '![Missing](assets/missing.png)'
-      }]
+      }],
+      risks: [
+        { kind: 'unresolved_wikilink', severity: 'blocker', count: 1, examples: ['One.md:2 -> Missing'] },
+        { kind: 'unpublished_asset', severity: 'blocker', count: 1, examples: ['Two.md:4 -> assets/missing.png'] }
+      ]
     })).toEqual({ notes: 2, assets: 1, links: 3, issues: 2 })
   })
 })

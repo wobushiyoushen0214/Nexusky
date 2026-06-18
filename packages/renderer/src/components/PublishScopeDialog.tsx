@@ -20,7 +20,7 @@ import { ScrollArea } from './ui/scroll-area'
 import { Spinner } from './ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
-import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishScope, PublishTarget } from '@shared/types/ipc'
+import type { FileEntry, PropertyTableRow, PublishAccessMode, PublishPreviewResult, PublishPreviewRisk, PublishScope, PublishTarget } from '@shared/types/ipc'
 import './publish-scope-dialog.css'
 
 type PublishScopeType = PublishScope['type']
@@ -104,9 +104,10 @@ export function PublishScopeDialog({ open, onClose }: PublishScopeDialogProps) {
     || (scopeType === 'property' && propertyKey.trim().length > 0)
   )
   const canPreview = scopeReady && !previewing && !publishing && !unpublishing
-  const canPublish = scopeReady && !!preview && preview.notes.length > 0 && !previewing && !publishing && !unpublishing
+  const hasBlockingRisks = (preview?.risks || []).some((risk) => risk.severity === 'blocker')
+  const canPublish = scopeReady && !!preview && preview.notes.length > 0 && !hasBlockingRisks && !previewing && !publishing && !unpublishing
   const canUnpublish = !!vaultPath && !!target && !previewing && !publishing && !unpublishing
-  const hasIssues = (preview?.missingLinks.length || 0) > 0 || (preview?.missingAssets.length || 0) > 0
+  const hasIssues = (preview?.risks?.length || 0) > 0
 
   const handlePreview = async () => {
     if (!vaultPath || !canPreview) return
@@ -292,11 +293,12 @@ export function buildPublishScope(type: PublishScopeType, folderPath: string, ta
 }
 
 export function summarizePublishPreview(preview: PublishPreviewResult | null): { notes: number; assets: number; links: number; issues: number } {
+  const fallbackIssues = (preview?.missingLinks.length ?? 0) + (preview?.missingAssets.length ?? 0)
   return {
     notes: preview?.notes.length ?? 0,
     assets: preview?.assets.length ?? 0,
     links: preview?.linkCount ?? 0,
-    issues: (preview?.missingLinks.length ?? 0) + (preview?.missingAssets.length ?? 0)
+    issues: preview?.risks?.reduce((sum, risk) => sum + risk.count, 0) ?? fallbackIssues
   }
 }
 
@@ -327,20 +329,7 @@ function PublishPreviewPanel({ preview, loading, hasIssues }: { preview: Publish
   }
 
   const summary = summarizePublishPreview(preview)
-  const issueItems = [
-    ...preview.missingLinks.slice(0, 8).map((item) => ({
-      key: `link:${item.sourcePath}:${item.line}:${item.target}`,
-      title: item.target,
-      meta: `${item.sourceTitle} · ${item.sourcePath}:${item.line}`,
-      context: item.context
-    })),
-    ...preview.missingAssets.slice(0, 8).map((item) => ({
-      key: `asset:${item.sourcePath}:${item.line}:${item.target}`,
-      title: item.target,
-      meta: `${item.sourceTitle} · ${item.sourcePath}:${item.line}`,
-      context: item.context
-    }))
-  ].slice(0, 8)
+  const riskItems = (preview.risks || []).slice(0, 8)
 
   return (
     <section style={previewPanelStyle} aria-label={t('commandPalette.publishScope.previewAriaLabel')}>
@@ -378,16 +367,36 @@ function PublishPreviewPanel({ preview, loading, hasIssues }: { preview: Publish
             </div>
           ))}
         </PreviewList>
-        <PreviewList title={t('commandPalette.publishScope.issues')} empty={t('commandPalette.publishScope.noIssueRows')} count={issueItems.length}>
-          {issueItems.map((item) => (
-            <div key={item.key} style={{ ...rowStyle, alignItems: 'flex-start', flexDirection: 'column', gap: 3 }}>
-              <span style={{ width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>{item.title}</span>
-              <span style={{ width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-tertiary)' }}>{item.meta}</span>
-            </div>
+        <PreviewList title={t('commandPalette.publishScope.risks')} empty={t('commandPalette.publishScope.noRiskRows')} count={riskItems.length}>
+          {riskItems.map((risk) => (
+            <PublishRiskRow key={risk.kind} risk={risk} />
           ))}
         </PreviewList>
       </div>
     </section>
+  )
+}
+
+function PublishRiskRow({ risk }: { risk: PublishPreviewRisk }) {
+  const { t } = useTranslation()
+  const example = risk.examples[0]
+  return (
+    <div style={{ ...rowStyle, alignItems: 'flex-start', flexDirection: 'column', gap: 3 }}>
+      <span style={{ width: '100%', display: 'flex', justifyContent: 'space-between', gap: 8, color: 'var(--text-primary)' }}>
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {t(`commandPalette.publishScope.riskKinds.${risk.kind}.title`, { count: risk.count })}
+        </span>
+        <span style={{ flex: '0 0 auto', color: 'var(--warning, #d97706)' }}>{risk.count}</span>
+      </span>
+      <span style={{ width: '100%', color: 'var(--text-tertiary)', lineHeight: 1.35 }}>
+        {t(`commandPalette.publishScope.riskKinds.${risk.kind}.suggestion`)}
+      </span>
+      {example && (
+        <span style={{ width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted, var(--text-tertiary))' }}>
+          {example}
+        </span>
+      )}
+    </div>
   )
 }
 

@@ -1,7 +1,7 @@
 import { createHash } from 'crypto'
 import { basename, posix } from 'path'
 import { stripMarkdownComments } from '../../../shared/src/markdown/comments'
-import type { PublishAccessMode, PublishPreviewAssetIssue, PublishPreviewLinkIssue, PublishScope } from '@shared/types/ipc'
+import type { PublishAccessMode, PublishPreviewAssetIssue, PublishPreviewLinkIssue, PublishPreviewRisk, PublishScope } from '@shared/types/ipc'
 import { extractMarkdownBlockReference, extractMarkdownHeadingSection, extractNoteReferenceBlockId, extractNoteReferenceHeading } from './ai/note-lookup'
 
 export interface PublishWikilinkNote {
@@ -57,6 +57,7 @@ export interface PublishIncrementalPlan {
 }
 
 const SKIPPED_PUBLISH_ENTRIES = new Set(['.obsidian', '.nexusky', '.trash', '.git', '.DS_Store'])
+const PRIVATE_PUBLISH_TAGS = new Set(['private', 'secret', 'confidential', 'internal'])
 export const PUBLISH_MANIFEST_REL_PATH = '.nexusky-publish-manifest.json'
 
 export function shouldPublishVaultEntry(name: string): boolean {
@@ -344,6 +345,24 @@ export function collectPublishPreviewIssues(
   return { linkCount, missingLinks, missingAssets }
 }
 
+export function collectPublishPreviewRisks(
+  notes: Pick<PublishCandidate, 'relPath' | 'title' | 'body' | 'properties'>[],
+  missingLinks: PublishPreviewLinkIssue[],
+  missingAssets: PublishPreviewAssetIssue[]
+): PublishPreviewRisk[] {
+  const risks: PublishPreviewRisk[] = []
+  const wikilinks = missingLinks.filter((item) => item.kind === 'wikilink')
+  const markdownLinks = missingLinks.filter((item) => item.kind === 'markdown')
+  const privateTags = collectPrivatePublishTagExamples(notes)
+
+  addPublishRisk(risks, 'unresolved_wikilink', wikilinks.length, wikilinks.map(formatPublishLinkIssueExample))
+  addPublishRisk(risks, 'broken_markdown_link', markdownLinks.length, markdownLinks.map(formatPublishLinkIssueExample))
+  addPublishRisk(risks, 'unpublished_asset', missingAssets.length, missingAssets.map(formatPublishAssetIssueExample))
+  addPublishRisk(risks, 'private_tag', privateTags.length, privateTags)
+
+  return risks
+}
+
 export function createPublishIncrementalPlan(outputs: PublishOutputFile[], previousManifest: PublishManifest = {}): PublishIncrementalPlan {
   const manifest: PublishManifest = {}
   const changed: PublishOutputFile[] = []
@@ -507,6 +526,59 @@ function collectPublishPropertyValues(value: unknown): string[] {
   if (value === null || value === undefined) return []
   if (Array.isArray(value)) return value.flatMap((item) => collectPublishPropertyValues(item))
   return [String(value)]
+}
+
+function addPublishRisk(risks: PublishPreviewRisk[], kind: PublishPreviewRisk['kind'], count: number, examples: string[]): void {
+  if (count <= 0) return
+  risks.push({
+    kind,
+    severity: 'blocker',
+    count,
+    examples: Array.from(new Set(examples.filter(Boolean))).slice(0, 3)
+  })
+}
+
+function collectPrivatePublishTagExamples(notes: Pick<PublishCandidate, 'relPath' | 'title' | 'body' | 'properties'>[]): string[] {
+  const examples: string[] = []
+  for (const note of notes) {
+    const tags = collectPublishTags(note)
+    const matched = tags.find(isPrivatePublishTag)
+    if (matched) examples.push(`${note.relPath} #${matched}`)
+  }
+  return examples
+}
+
+function collectPublishTags(note: Pick<PublishCandidate, 'body' | 'properties'>): string[] {
+  const tags = new Set<string>()
+  const addTag = (value: string) => {
+    const normalized = normalizePublishScopeTag(value)
+    if (normalized) tags.add(normalized)
+  }
+
+  for (const value of collectPublishPropertyValues(note.properties?.tags)) addTag(value)
+  for (const value of collectPublishPropertyValues(note.properties?.tag)) addTag(value)
+
+  const body = stripMarkdownComments(note.body || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`\n]+`/g, ' ')
+  for (const match of body.matchAll(/(^|[\s([,{])#([A-Za-z0-9_/-]+)/g)) {
+    addTag(String(match[2]))
+  }
+
+  return Array.from(tags)
+}
+
+function isPrivatePublishTag(tag: string): boolean {
+  const root = tag.split('/')[0]
+  return PRIVATE_PUBLISH_TAGS.has(root)
+}
+
+function formatPublishLinkIssueExample(issue: PublishPreviewLinkIssue): string {
+  return `${issue.sourcePath}:${issue.line} -> ${issue.target}`
+}
+
+function formatPublishAssetIssueExample(issue: PublishPreviewAssetIssue): string {
+  return `${issue.sourcePath}:${issue.line} -> ${issue.target}`
 }
 
 function resolvePublishAssetTarget(

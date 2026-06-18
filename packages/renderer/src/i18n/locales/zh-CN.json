@@ -1160,18 +1160,20 @@
       "previewSummary": "{{notes}} 篇笔记, {{assets}} 个资源, {{links}} 条链接, {{issues}} 个缺失项",
       "previewRequired": "必须先预览，再执行发布。",
       "readyHint": "预览已就绪。点击发布后选择输出文件夹。",
-      "issueHint": "预览发现缺失链接或资源，你仍可在检查后继续发布。",
-      "hasIssues": "需检查",
+      "issueHint": "先修复阻断项，或调整发布范围。",
+      "hasIssues": "阻断",
       "noIssues": "可发布",
       "navigation": "导航",
       "issues": "缺失项",
+      "risks": "阻断项",
       "noNotes": "当前范围没有匹配的笔记",
       "noIssueRows": "没有缺失链接或资源",
+      "noRiskRows": "没有发布阻断风险",
       "metrics": {
         "notes": "笔记",
         "assets": "资源",
         "links": "链接",
-        "issues": "缺失"
+        "issues": "风险"
       },
       "publish": "发布",
       "publishing": "发布中...",
@@ -1187,6 +1189,24 @@
       "access": {
         "public": { "label": "公开", "hint": "生成页面可被索引，除非托管方施加更严格规则。" },
         "private": { "label": "私有", "hint": "生成页面会带上 noindex 和 robots 屏蔽。" }
+      },
+      "riskKinds": {
+        "unresolved_wikilink": {
+          "title": "未解析 wikilink",
+          "suggestion": "创建目标笔记、修正 wikilink，或把它移出本次发布范围。"
+        },
+        "broken_markdown_link": {
+          "title": "断开的本地链接",
+          "suggestion": "修正 Markdown 目标，或把被引用笔记纳入同一发布范围。"
+        },
+        "unpublished_asset": {
+          "title": "缺失附件",
+          "suggestion": "恢复资源文件，或在导出前修正图片 / 嵌入引用。"
+        },
+        "private_tag": {
+          "title": "包含私有标签",
+          "suggestion": "从发布范围中移除 private/internal 标签，或改用更安全的范围。"
+        }
       }
     }
   },
@@ -1575,6 +1595,29 @@
       "direction_sync": "双向同步",
       "direction_pull": "仅拉取",
       "offlineQueue": "离线队列中有 {{count}} 个文件等待同步",
+      "preflight": {
+        "title": "同步前检查",
+        "provider_unconfigured": {
+          "title": "尚未配置同步后端",
+          "suggestion": "先配置一个后端，再同步当前 vault。"
+        },
+        "conflicts": {
+          "title": "{{count}} 个冲突待处理",
+          "suggestion": "先处理冲突，再启动下一次同步。"
+        },
+        "offline_queue": {
+          "title": "{{count}} 个文件在离线队列中",
+          "suggestion": "恢复网络并等待队列发送后，再判断同步是否最新。"
+        },
+        "errors": {
+          "title": "记录到 {{count}} 个同步错误",
+          "suggestion": "先处理最近一次错误，再重试同步。"
+        },
+        "recovery": {
+          "title": "恢复边界已启用",
+          "suggestion": "覆盖会保留版本历史，远端删除会先把本地文件移入回收站。"
+        }
+      },
       "icloud": {
         "path": "iCloud 路径",
         "pathPlaceholder": "自动检测或手动输入",

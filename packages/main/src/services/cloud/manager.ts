@@ -8,6 +8,7 @@ import { join } from 'path'
 import { existsSync, readFileSync, statSync } from 'fs'
 import { closeDatabase } from '../database'
 import { decideSyncSide, md5 } from './conflict-detection'
+import { buildCloudSyncPreflightRisks } from '../vault-health'
 import type { CloudSyncHealth, CloudSyncHealthStatus } from '@shared/types/ipc'
 import { getErrorMessage } from '../../../../shared/src/utils/errors'
 
@@ -113,6 +114,7 @@ function defaultSyncHealth(vaultPath?: string): CloudSyncHealth {
     conflicts: 0,
     errors: 0,
     lastError: null,
+    preflightRisks: [],
     ...(store.get(getSyncHealthStoreKey(vaultPath)) as Partial<CloudSyncHealth> | undefined)
   }
 }
@@ -126,7 +128,12 @@ export function getSyncHealth(vaultPath?: string): CloudSyncHealth {
     activeProvider,
     activeProviderName: provider?.name || activeProvider,
     activeProviderConfigured: !!provider?.isConfigured(),
-    offlineQueueSize: getOfflineQueueSize()
+    offlineQueueSize: getOfflineQueueSize(),
+    preflightRisks: buildCloudSyncPreflightRisks({
+      ...health,
+      activeProviderConfigured: !!provider?.isConfigured(),
+      offlineQueueSize: getOfflineQueueSize()
+    })
   }
 }
 
@@ -146,8 +153,10 @@ function recordSyncHealth(vaultPath: string, direction: 'sync' | 'pull', result:
     pulled: result.pulled,
     conflicts: result.conflicts.length,
     errors: result.errors.length,
-    lastError: result.errors[0] || null
+    lastError: result.errors[0] || null,
+    preflightRisks: []
   }
+  health.preflightRisks = buildCloudSyncPreflightRisks(health)
   store.set(getSyncHealthStoreKey(vaultPath), health)
 }
 

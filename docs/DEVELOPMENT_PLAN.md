@@ -1,6 +1,6 @@
 # Nexusky 详细开发方案
 
-> 最后更新：2026-06-17
+> 最后更新：2026-06-18
 > 上游依据：`PRODUCT.md` 记录产品取舍，`docs/PRODUCT_ROADMAP.md` 记录未来 3 到 6 个月路线图，本文只记录可执行开发拆分。
 
 ## 1. 目标
@@ -869,6 +869,43 @@ pnpm test
 下一步：
 
 - `P1-1.3 Context Pack 反馈可见`：把关系反馈入口放到 source popover 或 related context 面板。
+
+### 2026-06-18：P1-3.1 发布/同步前 Health 风险复用
+
+已完成：
+
+- `packages/shared/src/types/ipc.ts`：`PublishPreviewResult` 增加 `risks`，`CloudSyncHealth` 增加 `preflightRisks`；风险 payload 只传 kind、severity、count 和 examples/detail，UI 文案继续走 i18n。
+- `packages/main/src/services/publish.ts`：新增 `collectPublishPreviewRisks()`，把未解析 wikilink、断开的本地 Markdown 链接、缺失/未发布附件和 private/internal/secret/confidential 标签聚合为发布阻断风险。
+- `packages/main/src/ipc/export.ipc.ts`：Publish preview 复用已有缺失链接/资源扫描，并返回聚合风险；renderer 不再需要重新推导发布风险。
+- `packages/main/src/services/vault-health.ts`：新增 `buildCloudSyncPreflightRisks()`，把同步 provider 未配置、冲突、离线队列、错误和恢复边界归一成 sync preflight risks。
+- `packages/main/src/services/cloud/manager.ts`：`getSyncHealth()` 和同步记录都会返回最新 preflight risks，离线队列变化时可重新计算。
+- `packages/renderer/src/components/PublishScopeDialog.tsx`：发布预览右侧只展示紧凑阻断风险和建议；有 blocker 时禁用发布按钮，避免坏链接或私有标签直接出站。
+- `packages/renderer/src/components/settings/pages/CloudSyncSettings.tsx`：同步设置状态卡内展示紧凑 Sync preflight 摘要；不新增入口、不放入 Overview。
+- `packages/renderer/src/i18n/locales/en.json`、`packages/renderer/src/i18n/locales/zh-CN.json`：补充发布风险和同步 preflight 中英文文案。
+- `tests/publish-wikilinks.test.ts`：覆盖四类发布风险聚合。
+- `tests/cloud-sync-health.test.ts`：覆盖未配置 provider、同步错误、冲突、离线队列和恢复边界风险。
+
+设计/实现约束：
+
+- Publish preview 不做复杂审计报告，只展示阻断风险类别、数量、建议和最多少量示例。
+- 发布阻断风险先从已有 Health/preview 扫描结果复用，不引入第二套全量扫描。
+- Sync preflight 复用 `CloudSyncHealth` 当前事实，不主动拉远端、不改变 sync 执行动作。
+- 恢复边界提示只在冲突、错误或离线队列存在时出现；单纯未配置同步后端不额外占用注意力。
+- Overview 不新增任何发布/同步状态块，遵守“首页只保留摘要指标、Quick Actions、图表”的取舍。
+
+已验证：
+
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node scripts/vitest-electron.mjs run tests/publish-wikilinks.test.ts tests/cloud-sync-health.test.ts`，20 tests passed。
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node_modules/.bin/tsc -p packages/main/tsconfig.json --noEmit`
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node_modules/.bin/tsc -p packages/renderer/tsconfig.json --noEmit`
+- `PATH=/Users/lizhiwei/.nvm/versions/node/v22.22.3/bin:$PATH node_modules/.bin/tsc -p packages/shared/tsconfig.json --noEmit`
+- `python3 -m json.tool packages/renderer/src/i18n/locales/en.json`
+- `python3 -m json.tool packages/renderer/src/i18n/locales/zh-CN.json`
+- `git diff --check`
+
+验证备注：
+
+- 额外尝试运行 `tests/accessibility-components.test.ts`，失败点为该测试从 `Settings.tsx` 引入已不存在的 named exports，以及 Dialog SSR 渲染为空；属于既有测试老化问题，不作为 P1-3.1 focused 验收依据。
 
 ### 2026-06-18：P1-1.3 Context Pack 反馈可见
 

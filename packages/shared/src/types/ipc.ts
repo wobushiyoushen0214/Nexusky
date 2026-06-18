@@ -78,6 +78,16 @@ export interface PublishPreviewAssetIssue {
   context: string
 }
 
+export type PublishPreviewRiskKind = 'unresolved_wikilink' | 'broken_markdown_link' | 'unpublished_asset' | 'private_tag'
+export type PublishPreviewRiskSeverity = 'blocker' | 'warning'
+
+export interface PublishPreviewRisk {
+  kind: PublishPreviewRiskKind
+  severity: PublishPreviewRiskSeverity
+  count: number
+  examples: string[]
+}
+
 export interface PublishPreviewResult {
   scopeLabel: string
   notes: PublishPreviewNote[]
@@ -85,6 +95,7 @@ export interface PublishPreviewResult {
   linkCount: number
   missingLinks: PublishPreviewLinkIssue[]
   missingAssets: PublishPreviewAssetIssue[]
+  risks: PublishPreviewRisk[]
 }
 
 export interface PublishResult {
@@ -1061,6 +1072,15 @@ export interface FileApplyContentMutationResult {
 }
 
 export type CloudSyncHealthStatus = 'idle' | 'ok' | 'conflict' | 'error'
+export type CloudSyncPreflightRiskKind = 'provider_unconfigured' | 'conflicts' | 'offline_queue' | 'errors' | 'recovery'
+export type CloudSyncPreflightRiskSeverity = 'blocker' | 'warning' | 'info'
+
+export interface CloudSyncPreflightRisk {
+  kind: CloudSyncPreflightRiskKind
+  severity: CloudSyncPreflightRiskSeverity
+  count: number
+  detail?: string
+}
 
 export interface CloudSyncHealth {
   activeProvider: string
@@ -1076,6 +1096,7 @@ export interface CloudSyncHealth {
   conflicts: number
   errors: number
   lastError: string | null
+  preflightRisks: CloudSyncPreflightRisk[]
 }
 
 export interface CloudSyncConflict {

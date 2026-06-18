@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { getDatabase } from './database'
 import { store } from './store'
-import type { CloudSyncHealth, VaultHealthScoreFactor, VaultHealthScoreFactorId, VaultHealthSummary, VaultHealthTrendPoint, GrowthMetrics } from '@shared/types/ipc'
+import type { CloudSyncHealth, CloudSyncPreflightRisk, VaultHealthScoreFactor, VaultHealthScoreFactorId, VaultHealthSummary, VaultHealthTrendPoint, GrowthMetrics } from '@shared/types/ipc'
 
 const STALE_AGE_SECONDS = 60 * 24 * 60 * 60
 const SNAPSHOT_WINDOW_DAYS = 56
@@ -117,6 +117,53 @@ export function buildScoreFactors(
     makeFactor('freshness', 100 - (summary.staleNoteCount / noteBase) * 100, summary.staleNoteCount),
     makeFactor('sync', scoreSyncHealth(syncHealth), syncIssueCount)
   ]
+}
+
+export function buildCloudSyncPreflightRisks(
+  syncHealth: Pick<CloudSyncHealth, 'status' | 'activeProviderConfigured' | 'offlineQueueSize' | 'conflicts' | 'errors' | 'lastError'>
+): CloudSyncPreflightRisk[] {
+  const risks: CloudSyncPreflightRisk[] = []
+  let needsRecoveryBoundary = false
+  if (!syncHealth.activeProviderConfigured) {
+    risks.push({
+      kind: 'provider_unconfigured',
+      severity: 'blocker',
+      count: 1
+    })
+  }
+  if (syncHealth.conflicts > 0 || syncHealth.status === 'conflict') {
+    risks.push({
+      kind: 'conflicts',
+      severity: 'blocker',
+      count: Math.max(1, syncHealth.conflicts)
+    })
+    needsRecoveryBoundary = true
+  }
+  if (syncHealth.errors > 0 || syncHealth.status === 'error') {
+    risks.push({
+      kind: 'errors',
+      severity: 'blocker',
+      count: Math.max(1, syncHealth.errors),
+      detail: syncHealth.lastError || undefined
+    })
+    needsRecoveryBoundary = true
+  }
+  if (syncHealth.offlineQueueSize > 0) {
+    risks.push({
+      kind: 'offline_queue',
+      severity: 'warning',
+      count: syncHealth.offlineQueueSize
+    })
+    needsRecoveryBoundary = true
+  }
+  if (needsRecoveryBoundary) {
+    risks.push({
+      kind: 'recovery',
+      severity: 'info',
+      count: 1
+    })
+  }
+  return risks
 }
 
 function calculateWeightedScore(factors: VaultHealthScoreFactor[]): number {
@@ -333,4 +380,3 @@ export function calculateRelativeRanking(score: number): string {
 
   return `Healthier than ${percentile}% of vaults`
 }
-

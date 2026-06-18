@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CloudSyncHealth } from '@shared/types/ipc'
+import type { CloudSyncHealth, CloudSyncPreflightRisk } from '@shared/types/ipc'
 import { toast } from '../../../stores/toast-store'
 import { SettingsLoadingState } from '../SettingsLoadingState'
 import { Alert, AlertDescription } from '../../ui/alert'
@@ -450,6 +450,8 @@ export function CloudSyncSettings() {
     return <SettingsLoadingState className="cloud-sync-settings" label={t('settings.loading')} />
   }
 
+  const preflightRisks = health?.preflightRisks || []
+
   return (
     <div className="cloud-sync-settings">
       <SettingsSection>
@@ -563,6 +565,9 @@ export function CloudSyncSettings() {
                     <AlertDescription>{health.lastError}</AlertDescription>
                   </Alert>
                 )}
+                {preflightRisks.length > 0 && (
+                  <SyncPreflightRiskList risks={preflightRisks} />
+                )}
                 <div className="status-stats">
                   <div className="stat-item">
                     <span className="stat-label">{t('settings.cloudSync.stats.total')}:</span>
@@ -607,5 +612,27 @@ export function CloudSyncSettings() {
         )}
       </SettingsSection>
     </div>
+  )
+}
+
+function SyncPreflightRiskList({ risks }: { risks: CloudSyncPreflightRisk[] }) {
+  const { t } = useTranslation()
+  const hasBlocker = risks.some((risk) => risk.severity === 'blocker')
+  return (
+    <Alert variant={hasBlocker ? 'destructive' : 'default'} className="cloud-sync-status-alert">
+      <AlertDescription>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <strong style={{ fontSize: 12 }}>{t('settings.cloudSync.preflight.title')}</strong>
+          {risks.slice(0, 4).map((risk) => (
+            <div key={risk.kind} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 12, lineHeight: 1.45 }}>
+              <span>{t(`settings.cloudSync.preflight.${risk.kind}.title`, { count: risk.count })}</span>
+              <span style={{ color: 'var(--text-tertiary)' }}>
+                {risk.detail || t(`settings.cloudSync.preflight.${risk.kind}.suggestion`)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </AlertDescription>
+    </Alert>
   )
 }

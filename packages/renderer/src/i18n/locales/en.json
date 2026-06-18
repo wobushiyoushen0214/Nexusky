@@ -1160,18 +1160,20 @@
       "previewSummary": "{{notes}} notes, {{assets}} assets, {{links}} links, {{issues}} issues",
       "previewRequired": "Preview is required before publishing.",
       "readyHint": "Preview ready. Choose Publish to select an output folder.",
-      "issueHint": "Preview found missing links or resources. You can still publish after reviewing them.",
-      "hasIssues": "Review",
+      "issueHint": "Resolve blockers or adjust the scope before publishing.",
+      "hasIssues": "Blocked",
       "noIssues": "Ready",
       "navigation": "Navigation",
       "issues": "Missing",
+      "risks": "Blockers",
       "noNotes": "No notes match this scope",
       "noIssueRows": "No missing links or resources",
+      "noRiskRows": "No blocking publish risks",
       "metrics": {
         "notes": "Notes",
         "assets": "Assets",
         "links": "Links",
-        "issues": "Missing"
+        "issues": "Risks"
       },
       "publish": "Publish",
       "publishing": "Publishing...",
@@ -1187,6 +1189,24 @@
       "access": {
         "public": { "label": "Public", "hint": "Generated pages can be indexed unless the host applies stricter rules." },
         "private": { "label": "Private", "hint": "Generated pages include noindex and robots blocking." }
+      },
+      "riskKinds": {
+        "unresolved_wikilink": {
+          "title": "Unresolved wikilinks",
+          "suggestion": "Create the target note, fix the wikilink, or remove it from this publish scope."
+        },
+        "broken_markdown_link": {
+          "title": "Broken local links",
+          "suggestion": "Fix the local Markdown target or publish the referenced note in the same scope."
+        },
+        "unpublished_asset": {
+          "title": "Missing attachments",
+          "suggestion": "Restore the asset file or update the image/embed reference before exporting."
+        },
+        "private_tag": {
+          "title": "Private tags included",
+          "suggestion": "Remove private/internal tags from the publish scope or choose a safer scope."
+        }
       }
     }
   },
@@ -1575,6 +1595,29 @@
       "direction_sync": "Two-way sync",
       "direction_pull": "Pull only",
       "offlineQueue": "{{count}} files waiting in offline queue",
+      "preflight": {
+        "title": "Sync preflight",
+        "provider_unconfigured": {
+          "title": "No sync backend configured",
+          "suggestion": "Configure a backend before syncing this vault."
+        },
+        "conflicts": {
+          "title": "{{count}} conflicts need review",
+          "suggestion": "Resolve conflicts before starting another sync."
+        },
+        "offline_queue": {
+          "title": "{{count}} files queued offline",
+          "suggestion": "Reconnect and let the queue flush before treating sync as current."
+        },
+        "errors": {
+          "title": "{{count}} sync errors recorded",
+          "suggestion": "Fix the last error before retrying sync."
+        },
+        "recovery": {
+          "title": "Recovery boundary is active",
+          "suggestion": "Overwrites keep version history and remote deletes move local files to Trash."
+        }
+      },
       "icloud": {
         "path": "iCloud Path",
         "pathPlaceholder": "Auto-detect or enter manually",

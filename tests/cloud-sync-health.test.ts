@@ -121,11 +121,14 @@ describe('cloud sync health', () => {
     const health = getSyncHealth('/vault')
 
     expect(health.status).toBe('idle')
-    expect(health.activeProvider).toBe('supabase')
+    expect(health.activeProvider).toBe('icloud')
     expect(health.activeProviderConfigured).toBe(false)
     expect(health.offlineQueueSize).toBe(0)
     expect(health.lastRunAt).toBeNull()
     expect(health.lastError).toBeNull()
+    expect(health.preflightRisks).toEqual([
+      { kind: 'provider_unconfigured', severity: 'blocker', count: 1 }
+    ])
   })
 
   it('records sync failures so the renderer can show the last failure reason', async () => {
@@ -139,6 +142,8 @@ describe('cloud sync health', () => {
     expect(health.lastDirection).toBe('sync')
     expect(health.lastRunAt).toEqual(expect.any(Number))
     expect(health.lastError).toContain('未配置')
+    expect(health.preflightRisks.map((risk) => risk.kind)).toEqual(['provider_unconfigured', 'errors', 'recovery'])
+    expect(health.preflightRisks.find((risk) => risk.kind === 'errors')?.detail).toContain('未配置')
   })
 
   it('records pull failures with the pull direction', async () => {
@@ -152,5 +157,25 @@ describe('cloud sync health', () => {
     expect(health.lastDirection).toBe('pull')
     expect(health.errors).toBe(1)
     expect(health.lastError).toContain('未配置')
+    expect(health.preflightRisks.map((risk) => risk.kind)).toEqual(['provider_unconfigured', 'errors', 'recovery'])
+  })
+
+  it('builds preflight risks for conflicts and offline queues without running a sync', async () => {
+    const { buildCloudSyncPreflightRisks } = await import('../packages/main/src/services/vault-health')
+
+    const risks = buildCloudSyncPreflightRisks({
+      status: 'conflict',
+      activeProviderConfigured: true,
+      offlineQueueSize: 2,
+      conflicts: 3,
+      errors: 0,
+      lastError: null
+    })
+
+    expect(risks).toEqual([
+      { kind: 'conflicts', severity: 'blocker', count: 3 },
+      { kind: 'offline_queue', severity: 'warning', count: 2 },
+      { kind: 'recovery', severity: 'info', count: 1 }
+    ])
   })
 })

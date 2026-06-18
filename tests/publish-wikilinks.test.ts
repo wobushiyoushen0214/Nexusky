@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPublishWikilinkLookup, collectPublishPreviewIssues, createPublishAccessOutputs, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishRobotsMeta, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
+import { buildPublishWikilinkLookup, collectPublishPreviewIssues, collectPublishPreviewRisks, createPublishAccessOutputs, createPublishIncrementalPlan, expandPublishTransclusions, filterPublishCandidatesByScope, getPublishRobotsMeta, normalizePublishAliases, parsePublishManifest, resolvePublishAssetReferences, resolvePublishAssetTargetPath, resolvePublishMarkdownLinkHref, resolvePublishWikilinkHref, serializePublishManifest, shouldPublishVaultEntry, toPublishSearchText } from '../packages/main/src/services/publish'
 
 describe('publish wikilink lookup', () => {
   it('resolves published wikilinks by title, filename, nested path, heading, and case variant', () => {
@@ -176,6 +176,49 @@ describe('publish wikilink lookup', () => {
       'wikilink:Gone:2'
     ])
     expect(preview.missingAssets.map((item) => `${item.target}:${item.line}`)).toEqual(['assets/missing.png:4'])
+  })
+
+  it('groups publish preview blockers for wikilinks, local links, assets, and private tags', () => {
+    const lookup = buildPublishWikilinkLookup([
+      { title: 'Target', relPath: 'Target.md', href: 'Target.html' }
+    ])
+    const note = {
+      title: 'Source',
+      relPath: 'Source.md',
+      properties: { tags: ['private/project'] },
+      body: [
+        '# Source',
+        'See [[Gone]] and [missing](Missing Note).',
+        '![Missing](assets/missing.png)'
+      ].join('\n')
+    }
+    const preview = collectPublishPreviewIssues(note, lookup, ['Source.md', 'Target.md'], [])
+    const risks = collectPublishPreviewRisks([note], preview.missingLinks, preview.missingAssets)
+
+    expect(risks.map((risk) => [risk.kind, risk.severity, risk.count])).toEqual([
+      ['unresolved_wikilink', 'blocker', 1],
+      ['broken_markdown_link', 'blocker', 1],
+      ['unpublished_asset', 'blocker', 1],
+      ['private_tag', 'blocker', 1]
+    ])
+    expect(risks[0].examples[0]).toBe('Source.md:2 -> Gone')
+    expect(risks[3].examples[0]).toBe('Source.md #private/project')
+  })
+
+  it('does not flag private tags hidden inside comments or code blocks', () => {
+    const risks = collectPublishPreviewRisks([{
+      title: 'Source',
+      relPath: 'Source.md',
+      body: [
+        '%% #private/comment %%',
+        '```md',
+        '#private/code',
+        '```',
+        '`#private/inline`'
+      ].join('\n')
+    }], [], [])
+
+    expect(risks).toEqual([])
   })
 
   it('builds an incremental publish plan and manifest for changed, unchanged, and removed outputs', () => {
