@@ -3,11 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { SettingsSidebar, type SettingsTab } from './SettingsSidebar'
 import { AppearanceSettings } from './pages/AppearanceSettings'
 import { AIProviderSettings } from './AIProviderSettings'
-import { CloudSyncSettings } from './pages/CloudSyncSettings'
-import { PluginsSettings } from './pages/PluginsSettings'
 import { KeysSettings } from './pages/KeysSettings'
-import { ProactiveSettings } from './pages/ProactiveSettings'
-import { LongContextSettings } from './pages/LongContextSettings'
 import {
   Dialog,
   DialogClose,
@@ -79,20 +75,8 @@ export function Settings({ open, onClose }: SettingsProps) {
                 <TabsContent value="ai" className="settings-dialog__tab-panel">
                   <AIProviderSettings />
                 </TabsContent>
-                <TabsContent value="cloud" className="settings-dialog__tab-panel">
-                  <CloudSyncSettings />
-                </TabsContent>
-                <TabsContent value="plugins" className="settings-dialog__tab-panel">
-                  <PluginsSettings />
-                </TabsContent>
                 <TabsContent value="keys" className="settings-dialog__tab-panel">
                   <KeysSettings />
-                </TabsContent>
-                <TabsContent value="proactive" className="settings-dialog__tab-panel">
-                  <ProactiveSettings />
-                </TabsContent>
-                <TabsContent value="long-context" className="settings-dialog__tab-panel">
-                  <LongContextSettings />
                 </TabsContent>
               </ScrollArea>
             </main>

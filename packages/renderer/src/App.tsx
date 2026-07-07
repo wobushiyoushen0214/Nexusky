@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { useVaultStore } from './stores/vault-store'
 import { useUIStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
-import { useSyncStore } from './stores/sync-store'
 import { useKeyBindingStore } from './stores/keybinding-store'
 import { toast } from './stores/toast-store'
 import { Sidebar } from './components/sidebar/Sidebar'
@@ -19,16 +18,10 @@ import { ToastContainer } from './components/Toast'
 import { Onboarding, shouldShowOnboarding } from './components/Onboarding'
 import { VaultHealthScreen } from './components/VaultHealthScreen'
 import { GraphGenerator } from './components/GraphGenerator'
-import { NotificationCenter } from './components/proactive/NotificationCenter'
-import { ProactiveToast } from './components/proactive/ProactiveToast'
-import { ToolResultPanel } from './components/tool-surface/ToolResultPanel'
 import { Button } from './components/ui/button'
-import { getErrorMessage } from './utils/errors'
 import { applyCssSnippets, CSS_SNIPPETS_UPDATED } from './utils/css-snippets'
 import { applyThemePackage, THEME_PACKAGES_UPDATED } from './utils/theme-packages'
 import { matchesShortcut } from './utils/shortcuts'
-import { safeGet } from './utils/storage'
-import type { LocalPlugin, PluginPanel } from '@shared/types/ipc'
 
 const GraphView = lazy(() => import('./components/graph/GraphView').then((m) => ({ default: m.GraphView })))
 const ChatPanel = lazy(() => import('./components/ai/ChatPanel').then((m) => ({ default: m.ChatPanel })))
@@ -40,39 +33,12 @@ const TagsPanel = lazy(() => import('./components/TagsPanel').then((m) => ({ def
 const HistoryPanel = lazy(() => import('./components/HistoryPanel').then((m) => ({ default: m.HistoryPanel })))
 const TrashPanel = lazy(() => import('./components/TrashPanel').then((m) => ({ default: m.TrashPanel })))
 const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })))
-const PublishScopeDialog = lazy(() => import('./components/PublishScopeDialog').then((m) => ({ default: m.PublishScopeDialog })))
 const VaultOverview = lazy(() => import('./components/overview/VaultOverview').then((m) => ({ default: m.VaultOverview })))
-const MemoryTimelinePanel = lazy(() => import('./components/memory/MemoryTimelinePanel').then((m) => ({ default: m.MemoryTimelinePanel })))
-const AgentRunPanel = lazy(() => import('./components/agent/AgentRunPanel').then((m) => ({ default: m.AgentRunPanel })))
-const BasesView = lazy(() => import('./components/bases/BasesView').then((m) => ({ default: m.BasesView })))
 
 interface FileEntry { name: string; path: string; isDirectory: boolean; children?: FileEntry[] }
 type FileWithPath = File & { path?: string }
-type ActivePluginPanel = { plugin: LocalPlugin; panel: PluginPanel }
 
 const FILE_REQUIRED_RIGHT_PANELS = new Set(['outline', 'properties', 'tags', 'history'])
-
-function PluginPanelView({ active }: { active: ActivePluginPanel | null }) {
-  const { t } = useTranslation()
-  if (!active) {
-    return <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>{t('common.pluginPanelEmpty')}</div>
-  }
-  const { plugin, panel } = active
-  return (
-    <div style={{ padding: 16, overflow: 'auto', fontSize: 12, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{panel.title}</div>
-        <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>{plugin.name}{plugin.version ? ` · ${plugin.version}` : ''}</div>
-      </div>
-      {panel.description && <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)' }}>{panel.description}</p>}
-      {panel.content ? (
-        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', color: 'var(--text-primary)' }}>{panel.content}</pre>
-      ) : (
-        <div style={{ color: 'var(--text-tertiary)' }}>{t('common.pluginPanelNoContent')}</div>
-      )}
-    </div>
-  )
-}
 
 function flatMdPaths(entries: FileEntry[]): string[] {
   const result: string[] = []
@@ -87,7 +53,7 @@ export default function App() {
   const { t } = useTranslation()
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const loadVault = useVaultStore((s) => s.loadVault)
-  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, publishScopeOpen, toggleRightPanel, openFilesSidebar, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setPublishScopeOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore(
+  const { rightPanel, sidebarCollapsed, sidebarWidth, rightPanelWidth, focusMode, mainView, quickSwitcherOpen, settingsOpen, searchOpen, commandPaletteOpen, toggleRightPanel, openFilesSidebar, toggleSidebar, toggleFocusMode, resizeSidebar, resizeRightPanel, setQuickSwitcherOpen, setSettingsOpen, setSearchOpen, setCommandPaletteOpen, setMainView, setRightPanel, setWorkspaceScope, setSidebarWidthScope } = useUIStore(
     useShallow((s) => ({
       rightPanel: s.rightPanel,
       sidebarCollapsed: s.sidebarCollapsed,
@@ -99,7 +65,6 @@ export default function App() {
       settingsOpen: s.settingsOpen,
       searchOpen: s.searchOpen,
       commandPaletteOpen: s.commandPaletteOpen,
-      publishScopeOpen: s.publishScopeOpen,
       toggleRightPanel: s.toggleRightPanel,
       openFilesSidebar: s.openFilesSidebar,
       toggleSidebar: s.toggleSidebar,
@@ -110,7 +75,6 @@ export default function App() {
       setSettingsOpen: s.setSettingsOpen,
       setSearchOpen: s.setSearchOpen,
       setCommandPaletteOpen: s.setCommandPaletteOpen,
-      setPublishScopeOpen: s.setPublishScopeOpen,
       setMainView: s.setMainView,
       setRightPanel: s.setRightPanel,
       setWorkspaceScope: s.setWorkspaceScope,
@@ -123,7 +87,6 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding)
   const [graphGenPaths, setGraphGenPaths] = useState<string[]>([])
   const [chatEverOpened, setChatEverOpened] = useState(false)
-  const [activePluginPanel, setActivePluginPanel] = useState<ActivePluginPanel | null>(null)
   const [showVaultHealth, setShowVaultHealth] = useState(false)
 
   useEffect(() => {
@@ -156,17 +119,6 @@ export default function App() {
   useEffect(() => {
     if (rightPanel === 'chat') setChatEverOpened(true)
   }, [rightPanel])
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<ActivePluginPanel>).detail
-      if (!detail?.plugin || !detail?.panel) return
-      setActivePluginPanel(detail)
-      setRightPanel('plugin')
-    }
-    window.addEventListener('plugin-panel-open', handler)
-    return () => window.removeEventListener('plugin-panel-open', handler)
-  }, [setRightPanel])
 
   useEffect(() => {
     if (!currentFilePath && FILE_REQUIRED_RIGHT_PANELS.has(rightPanel)) {
@@ -277,15 +229,6 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
-  // Network status monitoring for offline queue
-  useEffect(() => {
-    const handleOnline = () => window.api.invoke('cloud:set-online', { online: true })
-    const handleOffline = () => window.api.invoke('cloud:set-online', { online: false })
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline) }
-  }, [])
-
   useEffect(() => {
     const cleanup = window.api.onVaultChanged((changedPaths) => {
       useVaultStore.getState().refreshFiles(changedPaths)
@@ -312,11 +255,6 @@ export default function App() {
           setMainView('graph')
           if (!state.sidebarCollapsed) toggleSidebar()
         }
-      }
-      if (matchesShortcut(e, getKey('bases'))) {
-        e.preventDefault()
-        setMainView('bases')
-        if (!useUIStore.getState().sidebarCollapsed) toggleSidebar()
       }
       if (matchesShortcut(e, getKey('chat'))) {
         e.preventDefault()
@@ -347,11 +285,6 @@ export default function App() {
       if (matchesShortcut(e, getKey('new-note'))) {
         e.preventDefault()
         window.dispatchEvent(new CustomEvent('create-new-note'))
-      }
-      if (matchesShortcut(e, getKey('sync'))) {
-        e.preventDefault()
-        const vault = useVaultStore.getState().vaultPath
-        if (vault) window.api.invoke('cloud:sync', { vaultPath: vault })
       }
       if (matchesShortcut(e, getKey('focus'))) {
         e.preventDefault()
@@ -391,49 +324,6 @@ export default function App() {
     }
   }, [])
 
-  // Auto sync timer
-  const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [autoSyncInterval, setAutoSyncInterval] = useState(() => {
-    return Number(safeGet('nexusky-auto-sync') || '0')
-  })
-
-  useEffect(() => {
-    const handler = () => {
-      setAutoSyncInterval(Number(safeGet('nexusky-auto-sync') || '0'))
-    }
-    window.addEventListener('storage', handler)
-    window.addEventListener('sync-interval-changed', handler)
-    return () => { window.removeEventListener('storage', handler); window.removeEventListener('sync-interval-changed', handler) }
-  }, [])
-
-  useEffect(() => {
-    if (syncTimerRef.current) clearInterval(syncTimerRef.current)
-
-    if (!autoSyncInterval || !vaultPath) return
-
-    syncTimerRef.current = setInterval(async () => {
-      const { status, setSyncing, setSuccess, setError } = useSyncStore.getState()
-      if (status === 'syncing') return
-      setSyncing()
-      try {
-        const result = await window.api.invoke('cloud:sync', { vaultPath })
-        if (result.errors.length === 0) {
-          setSuccess()
-          if (result.pushed > 0 || result.pulled > 0) toast(t('common.syncDone', { pushed: result.pushed, pulled: result.pulled }), 'success')
-        } else {
-          setError(result.errors[0])
-          toast(t('common.syncError', { error: result.errors[0] }), 'error')
-        }
-      } catch (e: unknown) {
-        const message = getErrorMessage(e, '同步失败')
-        setError(message)
-        toast(t('common.syncFailed', { error: message }), 'error')
-      }
-    }, autoSyncInterval * 60 * 1000)
-
-    return () => { if (syncTimerRef.current) clearInterval(syncTimerRef.current) }
-  }, [vaultPath, autoSyncInterval])
-
   const showEditorChromeTabs = Boolean(vaultPath && !showVaultHealth && mainView === 'editor' && !focusMode && tabCount > 0)
   const workspaceContentInset = 18
   const activityRailWidth = 56
@@ -459,11 +349,7 @@ export default function App() {
         ? t('panels.tags')
         : rightPanel === 'history'
           ? t('panels.history')
-          : rightPanel === 'agent'
-            ? t('panels.agent')
-            : rightPanel === 'plugin'
-              ? (activePluginPanel?.panel.title || 'Plugin')
-              : t('panels.outline')
+          : t('panels.outline')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--workspace-bg)' }}>
@@ -509,14 +395,6 @@ export default function App() {
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><VaultOverview /></Suspense>
               </div>
-            ) : mainView === 'memory' ? (
-              <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><MemoryTimelinePanel /></Suspense>
-              </div>
-            ) : mainView === 'bases' ? (
-              <div style={{ height: '100%', overflow: 'hidden' }}>
-                <Suspense fallback={null}><BasesView /></Suspense>
-              </div>
             ) : (
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <Suspense fallback={null}><GraphView /></Suspense>
@@ -554,8 +432,6 @@ export default function App() {
               {rightPanel === 'properties' && <PropertiesPanel />}
               {rightPanel === 'tags' && <TagsPanel />}
               {rightPanel === 'history' && <HistoryPanel />}
-              {rightPanel === 'agent' && <AgentRunPanel />}
-              {rightPanel === 'plugin' && <PluginPanelView active={activePluginPanel} />}
               </Suspense>
               {chatEverOpened && (
                 <div style={{ flex: 1, overflow: 'hidden', display: rightPanel === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
@@ -574,14 +450,10 @@ export default function App() {
         {settingsOpen && <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
         {searchOpen && <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />}
         {commandPaletteOpen && <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />}
-        {publishScopeOpen && <PublishScopeDialog open={publishScopeOpen} onClose={() => setPublishScopeOpen(false)} />}
         {trashOpen && <TrashPanel open={trashOpen} onClose={() => setTrashOpen(false)} />}
       </Suspense>
       <ToastContainer />
       <GraphGenerator open={graphGenPaths.length > 0} filePaths={graphGenPaths} onClose={() => setGraphGenPaths([])} />
-      <NotificationCenter />
-      <ProactiveToast />
-      <ToolResultPanel />
         </>
       )}
     </div>

@@ -234,6 +234,7 @@ function saveRightPanelWidth(panel: Panel, width: number): number {
 function normalizeMainView(value: string | null | undefined): MainView | null {
   if (value === 'canvas' || value === 'timeline') return 'editor'
   if (value === 'kanban' || value === 'reader' || value === 'maintenance') return 'editor'
+  if (value === 'memory' || value === 'bases') return 'overview'
   return value && MAIN_VIEW_IDS.includes(value as MainView) ? value as MainView : null
 }
 
@@ -253,6 +254,7 @@ function normalizeRightPanel(value: string | null | undefined): Panel | null {
   if (value === 'context') return 'none'
   if (value === 'calendar') return 'none'
   if (value === 'maintenance') return 'none'
+  if (value === 'agent' || value === 'plugin' || value === 'graph') return 'none'
   return value && PANEL_IDS.includes(value as Panel) ? value as Panel : null
 }
 
@@ -309,6 +311,7 @@ function getInitialWorkspaceLayout(scope = 'workspace'): WorkspaceLayout {
 }
 
 function isRightPanelAvailable(mainView: MainView, panel: Panel): boolean {
+  if (panel === 'agent' || panel === 'plugin' || panel === 'graph') return false
   return panel === 'none' || mainView === 'editor' || !NOTE_SCOPED_PANELS.has(panel)
 }
 
@@ -529,7 +532,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     const view = get().mainView
     const layout = saveWorkspaceLayout(get().workspaceScope, {
       mainView: view,
-      rightPanel: 'agent'
+      rightPanel: 'chat'
     })
     set({
       pendingAgentGoal: { goal: payload.goal, description: payload.description },

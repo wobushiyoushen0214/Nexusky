@@ -14,13 +14,11 @@ const DEFAULT_BINDINGS: KeyBinding[] = [
   { id: 'quick-switch', label: '快速切换', defaultKey: 'Ctrl+O', customKey: null },
   { id: 'search', label: '全文搜索', defaultKey: 'Ctrl+Shift+F', customKey: null },
   { id: 'graph', label: '知识图谱', defaultKey: 'Ctrl+G', customKey: null },
-  { id: 'bases', label: '属性视图', defaultKey: 'Ctrl+Shift+D', customKey: null },
   { id: 'chat', label: 'AI 对话', defaultKey: 'Ctrl+L', customKey: null },
   { id: 'outline', label: '大纲', defaultKey: 'Ctrl+E', customKey: null },
   { id: 'settings', label: '设置', defaultKey: 'Ctrl+,', customKey: null },
   { id: 'command-palette', label: '命令面板', defaultKey: 'Ctrl+Shift+P', customKey: null },
   { id: 'sidebar', label: '切换侧边栏', defaultKey: 'Ctrl+Shift+B', customKey: null },
-  { id: 'sync', label: '云端同步', defaultKey: 'Ctrl+Shift+S', customKey: null },
   { id: 'find-replace', label: '搜索替换', defaultKey: 'Ctrl+H', customKey: null },
   { id: 'focus', label: '聚焦模式', defaultKey: 'F11', customKey: null },
 ]
